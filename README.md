@@ -16,6 +16,13 @@ A sleek Windows music player with synced lyrics, equalizer, smart playlists, and
 
 ---
 
+> [!WARNING]
+> This app is in early development and may contain bugs. If you find issues or want to request features, please open an [issue](https://github.com/heartached/Noctis/issues).
+>
+> Windows may flag the installer as untrusted because it isn't code-signed. This is normal for indie software — the app is safe to use.
+
+---
+
 ![Library](docs/images/librarypanel.png)
 
 ![Albums](docs/images/albumspanel.png)
