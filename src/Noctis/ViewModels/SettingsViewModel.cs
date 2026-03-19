@@ -184,7 +184,7 @@ public partial class SettingsViewModel : ViewModelBase
             Dispatcher.UIThread.Post(() =>
             {
                 ScanProgress = count;
-                ScanStatusText = $"Scanned {count} files...";
+                ScanStatusText = $"Scanning Library {count}...";
             });
         };
     }
