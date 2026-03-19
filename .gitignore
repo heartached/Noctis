@@ -22,6 +22,7 @@ packages/
 
 ## AI / Claude tools
 .claude/
+CLAUDE.md
 noctis-v2/
 tools/
 
