@@ -21,7 +21,7 @@
 
         <!-- Column headers (sortable) -->
         <Grid DockPanel.Dock="Top"
-              ColumnDefinitions="*,80,*,*,*,50,50,30"
+              ColumnDefinitions="*,80,*,*,*,70,50,30"
               Margin="8,0,8,8">
             <Button Grid.Column="0" Content="Title" Command="{Binding SortCommand}" CommandParameter="Title"
                     Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
@@ -34,7 +34,7 @@
             <Button Grid.Column="4" Content="Genre" Command="{Binding SortCommand}" CommandParameter="Genre"
                     Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="5" Content="Favorites" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
-                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="6" Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
                     Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             <TextBlock Grid.Column="7" Text="" FontSize="12" />
@@ -51,7 +51,7 @@
                      x:Name="TrackList">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="m:Track">
-                    <Grid ColumnDefinitions="*,80,*,*,*,50,50,30"
+                    <Grid ColumnDefinitions="*,80,*,*,*,70,50,30"
                           Margin="0,2"
                           Background="Transparent"
                           helpers:DragFileBehavior.EnableFileDrag="True"
