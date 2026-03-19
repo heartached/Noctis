@@ -39,7 +39,7 @@
                                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaybackBarVisible, FallbackValue=False}"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
-                                   Margin="0,4,0,4">
+                                   Margin="200,4,200,4">
                     <views:PlaybackBarView.Transitions>
                         <Transitions>
                             <DoubleTransition Property="Opacity" Duration="0:0:0.2">
