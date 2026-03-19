@@ -21,7 +21,7 @@
 
         <!-- Column headers (sortable) -->
         <Grid DockPanel.Dock="Top"
-              ColumnDefinitions="*,80,*,*,*,60,80,40"
+              ColumnDefinitions="*,80,*,*,*,50,50,30"
               Margin="8,0,8,8">
             <Button Grid.Column="0" Content="Title" Command="{Binding SortCommand}" CommandParameter="Title"
                     Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
@@ -36,7 +36,7 @@
             <Button Grid.Column="5" Content="Favorites" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
                     Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             <Button Grid.Column="6" Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
-                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
+                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             <TextBlock Grid.Column="7" Text="" FontSize="12" />
         </Grid>
 
@@ -51,7 +51,7 @@
                      x:Name="TrackList">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="m:Track">
-                    <Grid ColumnDefinitions="*,80,*,*,*,60,80,40"
+                    <Grid ColumnDefinitions="*,80,*,*,*,50,50,30"
                           Margin="0,2"
                           Background="Transparent"
                           helpers:DragFileBehavior.EnableFileDrag="True"
@@ -272,7 +272,7 @@
                                    Text="{Binding PlayCount}"
                                    FontSize="12"
                                    Opacity="0.5"
-                                   HorizontalAlignment="Left"
+                                   HorizontalAlignment="Center"
                                    VerticalAlignment="Center" />
 
                         <!-- 3-dots menu button -->
