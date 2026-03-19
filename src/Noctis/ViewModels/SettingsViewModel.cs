@@ -966,7 +966,9 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             await _library.ScanAsync(MusicFolders);
-            ScanStatusText = $"Scan complete. {_library.Tracks.Count} tracks found.";
+            ScanStatusText = _library.Tracks.Count == 0
+                ? "No tracks found."
+                : $"{_library.Tracks.Count} tracks found.";
             RefreshLibraryStats();
             RefreshStorageInfo();
         }
@@ -991,7 +993,9 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             await _library.RebuildIndexAsync();
-            ScanStatusText = $"Index rebuild complete. {_library.Tracks.Count} tracks indexed.";
+            ScanStatusText = _library.Tracks.Count == 0
+                ? "Index Library. No tracks found."
+                : $"Index Library. {_library.Tracks.Count} tracks indexed.";
             RefreshLibraryStats();
             RefreshStorageInfo();
         }
