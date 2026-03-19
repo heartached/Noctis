@@ -10,7 +10,7 @@ A sleek Windows music player with synced lyrics, equalizer, smart playlists, and
 [![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=yellowgreen)](https://github.com/heartached/Noctis/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/heartached/Noctis/dotnet.yml?label=build)](https://github.com/heartached/Noctis/actions)
 
-[Download](#) • [Features](#features) • [Build](#build)
+[Download](https://github.com/heartached/Noctis/releases) • [Features](#features) • [Build](#build)
 
 </div>
 
