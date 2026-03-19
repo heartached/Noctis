@@ -21,7 +21,7 @@
 
         <!-- Column headers (sortable) -->
         <Grid DockPanel.Dock="Top"
-              ColumnDefinitions="*,80,*,*,*,70,50,30"
+              ColumnDefinitions="*,80,*,*,*,80,55,32"
               Margin="8,0,8,8">
             <Button Grid.Column="0" Content="Title" Command="{Binding SortCommand}" CommandParameter="Title"
                     Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
@@ -51,7 +51,7 @@
                      x:Name="TrackList">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="m:Track">
-                    <Grid ColumnDefinitions="*,80,*,*,*,70,50,30"
+                    <Grid ColumnDefinitions="*,80,*,*,*,80,55,32"
                           Margin="0,2"
                           Background="Transparent"
                           helpers:DragFileBehavior.EnableFileDrag="True"
@@ -280,7 +280,7 @@
                                 Background="Transparent"
                                 BorderThickness="0"
                                 Padding="0"
-                                Width="32" Height="32"
+                                Width="28" Height="28"
                                 HorizontalAlignment="Left"
                                 VerticalAlignment="Center"
                                 Cursor="Hand"
