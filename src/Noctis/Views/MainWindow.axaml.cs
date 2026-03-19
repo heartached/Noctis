@@ -14,9 +14,13 @@ namespace Noctis.Views;
 
 public partial class MainWindow : Window
 {
+    private static readonly IBrush ActiveToggleBg = new SolidColorBrush(Color.Parse("#30FFFFFF"));
+    private static readonly IBrush InactiveToggleBg = Brushes.Transparent;
+
     private TaskbarIntegrationService? _taskbar;
     private EventHandler<bool>? _themeChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _playerPropertyChangedHandler;
+    private System.ComponentModel.PropertyChangedEventHandler? _topBarPropertyChangedHandler;
 
     public MainWindow()
     {
@@ -37,6 +41,15 @@ public partial class MainWindow : Window
 
                 await vm.InitializeAsync();
                 RestoreWindowPlacement(vm.Settings.GetSettings());
+
+                // Wire up albums view-mode toggle visuals
+                _topBarPropertyChangedHandler = (_, e) =>
+                {
+                    if (e.PropertyName == nameof(TopBarViewModel.IsAlbumsCoverFlowMode))
+                        UpdateAlbumsToggleVisuals(vm.TopBar.IsAlbumsCoverFlowMode);
+                };
+                vm.TopBar.PropertyChanged += _topBarPropertyChangedHandler;
+                UpdateAlbumsToggleVisuals(vm.TopBar.IsAlbumsCoverFlowMode);
 
                 // Initialize taskbar thumbnail buttons (Previous / Play-Pause / Next)
                 InitializeTaskbarButtons(vm);
@@ -113,6 +126,9 @@ public partial class MainWindow : Window
 
             if (_playerPropertyChangedHandler != null)
                 vm.Player.PropertyChanged -= _playerPropertyChangedHandler;
+
+            if (_topBarPropertyChangedHandler != null)
+                vm.TopBar.PropertyChanged -= _topBarPropertyChangedHandler;
         }
     }
 
@@ -290,10 +306,45 @@ public partial class MainWindow : Window
         }
     }
 
+    // ── Albums toggle visuals ──
+
+    private void UpdateAlbumsToggleVisuals(bool isCoverFlow)
+    {
+        if (AlbumsLibraryModeBtn != null)
+        {
+            AlbumsLibraryModeBtn.Background = isCoverFlow ? InactiveToggleBg : ActiveToggleBg;
+            AlbumsLibraryModeBtn.Opacity = isCoverFlow ? 0.5 : 1.0;
+        }
+        if (AlbumsUpNextModeBtn != null)
+        {
+            AlbumsUpNextModeBtn.Background = isCoverFlow ? ActiveToggleBg : InactiveToggleBg;
+            AlbumsUpNextModeBtn.Opacity = isCoverFlow ? 1.0 : 0.5;
+        }
+    }
+
     // ── Queue popup event handlers ──
 
     private void OnGlobalPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        // Clear search box focus when clicking outside it
+        var searchBox = this.FindControl<TextBox>("SearchBox");
+        if (searchBox is { IsFocused: true })
+        {
+            var pillBorder = (searchBox.Parent as Visual)?.GetVisualParent();
+            bool insidePill = false;
+            if (e.Source is Visual clickSource && pillBorder != null)
+            {
+                Visual? v = clickSource;
+                while (v != null)
+                {
+                    if (ReferenceEquals(v, pillBorder)) { insidePill = true; break; }
+                    v = v.GetVisualParent();
+                }
+            }
+            if (!insidePill)
+                this.Focus(NavigationMethod.Pointer);
+        }
+
         if (DataContext is not MainWindowViewModel vm) return;
         if (!vm.Player.IsQueuePopupOpen) return;
         DebugLogger.Info(DebugLogger.Category.ContextMenu, "MainWindow.GlobalPointerPressed(Tunnel)",
