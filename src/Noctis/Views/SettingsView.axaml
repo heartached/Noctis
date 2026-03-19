@@ -799,14 +799,7 @@
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
-                        <TextBlock Grid.Column="2" Grid.Row="1"
-                                   IsVisible="{Binding !IsLastFmConnected}"
-                                   Text="{Binding LastFmStatusText}"
-                                   FontSize="12" Opacity="0.6"
-                                   TextWrapping="Wrap"
-                                   MaxWidth="220"
-                                   HorizontalAlignment="Center"
-                                   TextAlignment="Center"/>
+                        <!-- Status text removed -->
 
                         <!-- Logout button (top-right, when connected) -->
                         <Button Grid.Column="2" Grid.Row="0"
@@ -842,19 +835,14 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                             <Viewbox Width="18" Height="18" VerticalAlignment="Center">
                                 <Canvas Width="24" Height="24">
                                     <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.55"
                                           Data="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
                                 </Canvas>
                             </Viewbox>
-                            <StackPanel Spacing="2">
-                                <TextBlock Text="Media Folder Locations" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding MediaFolderDisplay}"
-                                           FontSize="12" Opacity="0.5"
-                                           TextTrimming="CharacterEllipsis"/>
-                            </StackPanel>
+                            <TextBlock Text="Media Folder Locations" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                         <Button Grid.Column="1" Content="Add Folder"
                                 x:Name="AddFolderButton"
@@ -915,13 +903,13 @@
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Button Content="Rescan Library"
+                        <Button Content="Scan Library"
                                 Classes="pill-action"
                                 Command="{Binding RescanCommand}"
                                 IsEnabled="{Binding !IsScanning}"
                                 Padding="16,10"
                                 Cursor="Hand"/>
-                        <Button Content="Rebuild Index"
+                        <Button Content="Index Library"
                                 Classes="pill-action"
                                 Command="{Binding RebuildIndexCommand}"
                                 IsEnabled="{Binding !IsScanning}"
