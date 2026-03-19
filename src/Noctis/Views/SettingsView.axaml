@@ -287,7 +287,10 @@
         </Style>
     </UserControl.Styles>
 
-    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+    <Grid RowDefinitions="Auto,*">
+        <Separator Grid.Row="0" Classes="page-top-separator" />
+    <ScrollViewer Grid.Row="1"
+                  HorizontalScrollBarVisibility="Auto"
                   VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="32,24,32,40" MaxWidth="900" HorizontalAlignment="Left" Spacing="4">
 
@@ -1402,6 +1405,7 @@
 
         </StackPanel>
     </ScrollViewer>
+    </Grid>
 
 </UserControl>
 
