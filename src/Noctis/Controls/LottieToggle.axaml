@@ -1,0 +1,11 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Noctis.Controls.LottieToggle"
+             Width="52" Height="26"
+             Cursor="Hand">
+    <Border x:Name="Track" CornerRadius="13" Background="#484C54">
+        <Border x:Name="Knob" Width="20" Height="20" CornerRadius="10"
+                Background="White" HorizontalAlignment="Left"
+                VerticalAlignment="Center" Margin="3,0,0,0" />
+    </Border>
+</UserControl>

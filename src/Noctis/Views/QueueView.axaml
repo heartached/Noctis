@@ -1,0 +1,192 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             xmlns:helpers="using:Noctis.Helpers"
+             x:Class="Noctis.Views.QueueView"
+             x:DataType="vm:QueueViewModel"
+             Background="{DynamicResource AppMainBackground}">
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="16">
+
+            <!-- Now Playing section -->
+            <TextBlock Text="Now Playing"
+                       FontSize="24"
+                       FontWeight="Bold"
+                       Margin="0,0,0,12" />
+
+            <Border Padding="12"
+                    CornerRadius="8"
+                    Background="{DynamicResource SystemControlBackgroundListLowBrush}"
+                    Margin="0,0,0,24"
+                    IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Stretch">
+                    <Border Grid.Column="0"
+                            Width="16" Height="16"
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            Opacity="0.6"
+                            Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                            RenderOptions.BitmapInterpolationMode="HighQuality">
+                        <Border.OpacityMask>
+                            <ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" />
+                        </Border.OpacityMask>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding Player.CurrentTrack.Title}"
+                                       Grid.Column="0"
+                                       Classes="one-line-explicit-title"
+                                       FontSize="14"
+                                       FontWeight="SemiBold" />
+                            <Border Grid.Column="1"
+                                    Classes="explicit-badge compact"
+                                    Margin="6,0,0,0"
+                                    IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
+                                    ToolTip.Tip="Explicit">
+                                <TextBlock Text="E"
+                                           Classes="explicit-badge-text compact"
+                                           FontSize="9"
+                                           Opacity="0.9" />
+                            </Border>
+                        </Grid>
+                        <TextBlock Text="{Binding Player.CurrentTrack.Artist}"
+                                   FontSize="12"
+                                   Opacity="0.6"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="No track playing"
+                       FontSize="14"
+                       Opacity="0.4"
+                       Margin="0,0,0,24"
+                       IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNull}}" />
+
+            <!-- Up Next section -->
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                <TextBlock Grid.Column="0"
+                           Text="Up Next"
+                           FontSize="18"
+                           FontWeight="SemiBold" />
+                <Button Grid.Column="1"
+                        Command="{Binding ClearQueueCommand}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="6,3"
+                        Cursor="Hand"
+                        IsVisible="{Binding !!UpNext.Count}">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <Border Width="14" Height="14"
+                                VerticalAlignment="Center"
+                                Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                Opacity="0.6"
+                                RenderOptions.BitmapInterpolationMode="HighQuality">
+                            <Border.OpacityMask>
+                                <ImageBrush Source="avares://Noctis/Assets/Icons/Clear%20Queue%20ICON.png" Stretch="Uniform" />
+                            </Border.OpacityMask>
+                        </Border>
+                        <TextBlock Text="Clear"
+                                   FontSize="12"
+                                   Opacity="0.6"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+
+            <ListBox Classes="track-list"
+                     ItemsSource="{Binding UpNext}"
+                     Margin="0,0,0,24">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="m:Track">
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,2"
+                              helpers:DragFileBehavior.EnableFileDrag="True">
+                            <StackPanel Grid.Column="0">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{Binding Title}"
+                                               Grid.Column="0"
+                                               Classes="one-line-explicit-title"
+                                               FontSize="13" />
+                                    <Border Grid.Column="1"
+                                            Classes="explicit-badge compact"
+                                            Margin="6,0,0,0"
+                                            IsVisible="{Binding IsExplicit}"
+                                            ToolTip.Tip="Explicit">
+                                        <TextBlock Text="E"
+                                                   Classes="explicit-badge-text compact"
+                                                   FontSize="9"
+                                                   Opacity="0.9" />
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="{Binding Artist}"
+                                           FontSize="11"
+                                           Opacity="0.6"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding DurationFormatted}"
+                                       FontSize="12"
+                                       Opacity="0.5"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- History section -->
+            <TextBlock Text="History"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,8"
+                       IsVisible="{Binding !!History.Count}" />
+
+            <ListBox Classes="track-list"
+                     ItemsSource="{Binding History}"
+                     IsVisible="{Binding !!History.Count}"
+                     Opacity="0.6">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="m:Track">
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,2"
+                              helpers:DragFileBehavior.EnableFileDrag="True">
+                            <StackPanel Grid.Column="0">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{Binding Title}"
+                                               Grid.Column="0"
+                                               Classes="one-line-explicit-title"
+                                               FontSize="13" />
+                                    <Border Grid.Column="1"
+                                            Classes="explicit-badge compact"
+                                            Margin="6,0,0,0"
+                                            IsVisible="{Binding IsExplicit}"
+                                            ToolTip.Tip="Explicit">
+                                        <TextBlock Text="E"
+                                                   Classes="explicit-badge-text compact"
+                                                   FontSize="9"
+                                                   Opacity="0.9" />
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="{Binding Artist}"
+                                           FontSize="11"
+                                           Opacity="0.6"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding DurationFormatted}"
+                                       FontSize="12"
+                                       Opacity="0.5"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

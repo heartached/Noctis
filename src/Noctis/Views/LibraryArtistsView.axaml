@@ -1,0 +1,106 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             xmlns:ctrl="using:Noctis.Controls"
+             x:Class="Noctis.Views.LibraryArtistsView"
+             x:DataType="vm:LibraryArtistsViewModel"
+             Background="{DynamicResource AppMainBackground}">
+
+    <Grid RowDefinitions="Auto,*">
+        <Separator Grid.Row="0" Classes="page-top-separator" />
+        <DockPanel Grid.Row="1" Margin="16,8,16,16">
+
+        <!-- Content area with overlay for empty state -->
+        <Grid>
+            <!-- Single virtualized list with letter headers and artist rows -->
+            <ListBox x:Name="ArtistListBox"
+                     ItemsSource="{Binding FlatArtistList}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     SelectionMode="Single">
+                <ListBox.DataTemplates>
+                    <!-- Letter header template -->
+                    <DataTemplate DataType="{x:Type m:ArtistHeaderItem}">
+                        <TextBlock Text="{Binding Letter}"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   Opacity="0.4"
+                                   Margin="0,8,0,4"
+                                   IsHitTestVisible="False" />
+                    </DataTemplate>
+                    <!-- Artist data template -->
+                    <DataTemplate DataType="{x:Type m:ArtistDataItem}">
+                        <Button Classes="artist-item"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Padding="12,8"
+                                MinHeight="0"
+                                CornerRadius="6"
+                                Cursor="Hand"
+                                Command="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).OpenArtistCommand, FallbackValue={x:Null}}"
+                                CommandParameter="{Binding Artist}">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <!-- Artist avatar with image or fallback -->
+                                <Border Width="40" Height="40"
+                                        CornerRadius="20"
+                                        Background="#505050"
+                                        ClipToBounds="True">
+                                    <Panel>
+                                        <ctrl:CachedImage SourcePath="{Binding Artist.ImagePath}"
+                                                          Stretch="UniformToFill"
+                                                          Width="40" Height="40" />
+                                        <TextBlock Text="&#x266A;"
+                                                   FontSize="16"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Opacity="0.4"
+                                                   IsVisible="{Binding Artist.ImagePath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                    </Panel>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Artist.Name}"
+                                               FontSize="14"
+                                               LineHeight="18"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock FontSize="11" Opacity="0.5">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}{0} albums · {1} tracks">
+                                                <Binding Path="Artist.AlbumCount" />
+                                                <Binding Path="Artist.TrackCount" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </StackPanel>
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ListBox.DataTemplates>
+            </ListBox>
+
+            <!-- Empty state overlay -->
+            <StackPanel IsVisible="{Binding !FlatArtistList.Count}"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="8">
+                <TextBlock Text="No artists found"
+                           FontSize="18"
+                           Opacity="0.5"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+                <TextBlock Text="Add music folders in Settings to get started"
+                           FontSize="13"
+                           Opacity="0.3"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+            </StackPanel>
+        </Grid>
+
+        </DockPanel>
+    </Grid>
+
+</UserControl>

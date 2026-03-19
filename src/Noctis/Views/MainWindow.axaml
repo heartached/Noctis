@@ -1,0 +1,256 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:m="using:Noctis.Models"
+        xmlns:views="using:Noctis.Views"
+        xmlns:controls="using:Noctis.Controls"
+        xmlns:conv="using:Noctis.Converters"
+        x:Class="Noctis.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Noctis"
+        Icon="avares://Noctis/Assets/Icons/Noctis.ico"
+        Width="1280" Height="800"
+        MinWidth="780" MinHeight="500"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource AppMainBackground}">
+
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+Right" Command="{Binding Player.NextCommand}" />
+        <KeyBinding Gesture="Ctrl+Left" Command="{Binding Player.PreviousCommand}" />
+        <KeyBinding Gesture="Ctrl+N" Command="{Binding Sidebar.CreatePlaylistCommand}" />
+    </Window.KeyBindings>
+
+    <DockPanel>
+        <!--
+            Zone B: Sidebar (left, fixed 220px, full height)
+            Docked first to ensure it spans from top to bottom
+        -->
+        <views:SidebarView DockPanel.Dock="Left"
+                           Width="220"
+                           DataContext="{Binding Sidebar}" />
+
+        <Grid RowDefinitions="Auto,*">
+            <!-- Zone A: Top bar shell + centered playback island overlaid -->
+            <Grid Grid.Row="0">
+                <views:TopBarView DataContext="{Binding TopBar}"
+                                  IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsLyricsViewActive, Converter={x:Static BoolConverters.Not}, FallbackValue=True}" />
+                <views:PlaybackBarView
+                                   DataContext="{Binding Player}"
+                                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaybackBarVisible, FallbackValue=False}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Margin="0,4,0,4">
+                    <views:PlaybackBarView.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Opacity" Duration="0:0:0.2">
+                                <DoubleTransition.Easing>
+                                    <CubicEaseOut/>
+                                </DoubleTransition.Easing>
+                            </DoubleTransition>
+                        </Transitions>
+                    </views:PlaybackBarView.Transitions>
+                </views:PlaybackBarView>
+            </Grid>
+
+            <!-- Zone C: Main Content Area + Queue Popup -->
+            <Grid Grid.Row="1" Background="{DynamicResource AppMainBackground}">
+                <ContentControl Content="{Binding CurrentView}"
+                                RenderTransformOrigin="50%,50%">
+                    <ContentControl.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                                <DoubleTransition.Easing>
+                                    <CubicEaseOut/>
+                                </DoubleTransition.Easing>
+                            </DoubleTransition>
+                        </Transitions>
+                    </ContentControl.Transitions>
+                </ContentControl>
+
+                <!-- Queue popup panel (right side, rounded) -->
+                <Border x:Name="QueuePopupPanel"
+                        HorizontalAlignment="Right"
+                        Width="330"
+                        Margin="0,8,8,8"
+                        CornerRadius="16"
+                        ClipToBounds="True"
+                        Background="{DynamicResource AppSidebarBackground}"
+                        IsVisible="{Binding Player.IsQueuePopupOpen}"
+                        BoxShadow="-2 0 12 0 #40000000">
+
+                    <DockPanel>
+                        <!-- Header -->
+                        <Grid DockPanel.Dock="Top" Margin="20,16,20,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <TextBlock Text="Queue"
+                                           FontSize="18"
+                                           FontWeight="Bold" />
+                                <TextBlock Text="{Binding Player.UpNext.Count, StringFormat='{}&#x2022; {0}'}"
+                                           FontSize="14"
+                                           Opacity="0.7"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="6,3"
+                                    Cursor="Hand"
+                                    Click="OnQueueClearClick"
+                                    IsVisible="{Binding !!Player.UpNext.Count}"
+                                    VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Border Width="18" Height="18"
+                                            VerticalAlignment="Center"
+                                            Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                            RenderOptions.BitmapInterpolationMode="HighQuality">
+                                        <Border.OpacityMask>
+                                            <ImageBrush Source="avares://Noctis/Assets/Icons/Clear%20Queue%20ICON.png" Stretch="Uniform" />
+                                        </Border.OpacityMask>
+                                    </Border>
+                                    <TextBlock Text="Clear"
+                                               FontSize="14"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- Separator -->
+                        <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.08" Margin="20,0" />
+
+
+                        <!-- Queue track list (virtualized, drag-reorder enabled) -->
+                        <Grid x:Name="QueueListWrapper">
+                            <ListBox x:Name="QueuePopupListBox"
+                                     Classes="queue-popup"
+                                     ItemsSource="{Binding Player.UpNext}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Margin="0,6,0,8"
+                                     SelectionMode="Single"
+                                     ScrollViewer.VerticalScrollBarVisibility="Hidden"
+                                     DragDrop.AllowDrop="True"
+                                     DoubleTapped="OnQueueItemDoubleTapped">
+                                <ListBox.Styles>
+                                    <Style Selector="ListBoxItem">
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="Cursor" Value="Hand"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Transitions">
+                                            <Transitions>
+                                                <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+                                            </Transitions>
+                                        </Setter>
+                                    </Style>
+                                    <Style Selector="ListBox.queue-popup ListBoxItem:pointerover /template/ ContentPresenter">
+                                        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+                                    </Style>
+                                </ListBox.Styles>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="m:Track">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" Height="56"
+                                              Margin="20,0,18,0"
+                                              Background="Transparent"
+                                              Tag="{Binding}"
+                                              PointerPressed="OnQueueItemPointerPressed"
+                                              PointerMoved="OnQueueItemPointerMoved">
+                                            <Grid.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Remove from Queue"
+                                                              Click="OnQueueRemoveClick">
+                                                        <MenuItem.Icon>
+                                                            <Border Width="14" Height="14"
+                                                                    Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                                    RenderOptions.BitmapInterpolationMode="HighQuality">
+                                                                <Border.OpacityMask>
+                                                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Clear%20Queue%20ICON.png" Stretch="Uniform" />
+                                                                </Border.OpacityMask>
+                                                            </Border>
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                </ContextMenu>
+                                            </Grid.ContextMenu>
+
+                                            <!-- Album art thumbnail -->
+                                            <Border Grid.Column="0"
+                                                    Width="48" Height="48"
+                                                    ClipToBounds="True"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,0,10,0">
+                                                <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                                      Stretch="UniformToFill" />
+                                            </Border>
+                                            <!-- Title + Artist -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <Grid ColumnDefinitions="Auto,Auto">
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{Binding Title}"
+                                                               Classes="one-line-explicit-title"
+                                                               FontSize="13"
+                                                               FontWeight="SemiBold"
+                                                               MaxWidth="165" />
+                                                    <Border Grid.Column="1"
+                                                            Classes="explicit-badge compact"
+                                                            Margin="4,0,0,0"
+                                                            IsVisible="{Binding IsExplicit}"
+                                                            ToolTip.Tip="Explicit"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Text="E"
+                                                                   Classes="explicit-badge-text compact"
+                                                                   FontSize="9"
+                                                                   Opacity="0.9" />
+                                                    </Border>
+                                                </Grid>
+                                                <TextBlock Text="{Binding Artist}"
+                                                           FontSize="11"
+                                                           Opacity="0.5"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxLines="1"
+                                                           Margin="0,2,0,0" />
+                                            </StackPanel>
+                                            <!-- Track duration -->
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{Binding DurationFormatted}"
+                                                       FontSize="12"
+                                                       Opacity="0.4"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <!-- Drop indicator line for drag reorder -->
+                            <Border x:Name="QueueDropIndicator"
+                                    IsHitTestVisible="False"
+                                    IsVisible="False"
+                                    Height="2"
+                                    VerticalAlignment="Top"
+                                    HorizontalAlignment="Stretch"
+                                    Margin="20,0"
+                                    CornerRadius="1"
+                                    Background="{DynamicResource AccentColorBrush}">
+                                <Border.RenderTransform>
+                                    <TranslateTransform Y="0"/>
+                                </Border.RenderTransform>
+                            </Border>
+                        </Grid>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <!-- Debug panel overlay (toggled via Ctrl+Shift+D) -->
+            <views:DebugPanelView Grid.Row="1"
+                                  DataContext="{Binding DebugPanel}"
+                                  IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsDebugPanelVisible}"
+                                  HorizontalAlignment="Left"
+                                  VerticalAlignment="Stretch"
+                                  Width="620"
+                                  Margin="228,8,0,8"
+                                  IsHitTestVisible="True" />
+        </Grid>
+    </DockPanel>
+
+</Window>

@@ -1,0 +1,101 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.CreatePlaylistDialog"
+        x:DataType="vm:CreatePlaylistDialogViewModel"
+        Title="Create New Playlist"
+        Width="450" Height="320"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        SystemDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent">
+
+    <Window.Styles>
+        <!-- Remove red focus outline from text boxes in this dialog -->
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="TextBox:focus-within /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+        </Style>
+    </Window.Styles>
+
+    <!-- Outer border gives the popup its rounded shape and shadow -->
+    <Border CornerRadius="16"
+            ClipToBounds="True"
+            Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+            BoxShadow="0 8 32 0 #60000000">
+        <DockPanel>
+
+            <!-- Bottom: OK / Cancel buttons -->
+            <Border DockPanel.Dock="Bottom"
+                    Padding="24,12"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                    BorderThickness="0,1,0,0">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <Button Grid.Column="1"
+                            Content="Create"
+                            Command="{Binding CreateCommand}"
+                            Width="100"
+                            Padding="0,8"
+                            Classes="accent-btn"
+                            Background="#E04060"
+                            Foreground="White"
+                            FontWeight="SemiBold"
+                            HorizontalContentAlignment="Center"
+                            CornerRadius="999"
+                            Margin="0,0,8,0"
+                            Cursor="Hand" />
+                    <Button Grid.Column="2"
+                            Content="Cancel"
+                            Command="{Binding CancelCommand}"
+                            Width="100"
+                            Padding="0,8"
+                            HorizontalContentAlignment="Center"
+                            CornerRadius="999"
+                            Cursor="Hand" />
+                </Grid>
+            </Border>
+
+            <!-- Content -->
+            <StackPanel Margin="24,20,24,16" Spacing="14">
+
+                <!-- Title -->
+                <TextBlock Text="Create New Playlist"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center" />
+
+                <!-- Playlist Name -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Playlist Name" FontSize="13" FontWeight="SemiBold" />
+                    <TextBox Text="{Binding PlaylistName}"
+                             Watermark="Enter playlist name..."
+                             CornerRadius="999"
+                             x:Name="NameTextBox" />
+                    <TextBlock Text="Name is required"
+                               FontSize="11"
+                               Foreground="#E04060"
+                               IsVisible="{Binding ShowNameRequiredError}" />
+                </StackPanel>
+
+                <!-- Playlist Description (Optional) -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Description (Optional)" FontSize="13" FontWeight="SemiBold" />
+                    <TextBox Text="{Binding PlaylistDescription}"
+                             Watermark="Enter playlist description..."
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="70" />
+                </StackPanel>
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</Window>

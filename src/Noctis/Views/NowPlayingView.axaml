@@ -1,0 +1,159 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:conv="using:Noctis.Converters"
+             xmlns:m="using:Noctis.Models"
+             x:Class="Noctis.Views.NowPlayingView"
+             x:DataType="vm:NowPlayingViewModel"
+             Background="{DynamicResource AppMainBackground}">
+
+    <UserControl.Resources>
+        <conv:TrackMetadataConverter x:Key="TrackMetadata" />
+    </UserControl.Resources>
+
+    <DockPanel>
+        <!-- Back button -->
+        <Button DockPanel.Dock="Top"
+                Content="← Back"
+                Command="{Binding GoBackCommand}"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="16,8"
+                FontSize="13"
+                Opacity="0.7"
+                Cursor="Hand" />
+
+        <!-- Centered now-playing content with constrained height -->
+        <Grid HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              MaxWidth="800"
+              MaxHeight="500">
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Large album art (left side) -->
+            <Border Grid.Column="0"
+                    Width="350" Height="350"
+                    CornerRadius="12"
+                    ClipToBounds="True"
+                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                    VerticalAlignment="Center">
+                <Panel>
+                    <TextBlock Text="♪"
+                               FontSize="64"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Opacity="0.15"
+                               IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNull}}" />
+                    <Image Source="{Binding Player.AlbumArt}"
+                           Stretch="UniformToFill"
+                           IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </Panel>
+            </Border>
+
+            <!-- Track info and controls (right side) -->
+            <StackPanel Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Spacing="20"
+                        MaxWidth="380">
+
+                <!-- Track info -->
+                <StackPanel Spacing="10">
+                    <TextBlock Text="{Binding Player.CurrentTrack.Title, FallbackValue='No track selected'}"
+                               FontSize="28"
+                               FontWeight="Bold"
+                               TextWrapping="Wrap"
+                               MaxLines="2"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock FontSize="18"
+                               Opacity="0.6"
+                               TextWrapping="Wrap"
+                               MaxLines="2"
+                               TextTrimming="CharacterEllipsis">
+                        <TextBlock.Text>
+                            <MultiBinding Converter="{StaticResource TrackMetadata}">
+                                <Binding Path="Player.CurrentTrack.Artist" FallbackValue="" />
+                                <Binding Path="Player.CurrentTrack.Album" FallbackValue="" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Seek bar -->
+                <StackPanel Spacing="8">
+                    <Slider Value="{Binding Player.PositionFraction, Mode=TwoWay}"
+                            Minimum="0" Maximum="1"
+                            Height="36" />
+                    <Grid ColumnDefinitions="*,*">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding Player.PositionText}"
+                                   FontSize="13"
+                                   Opacity="0.5" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Player.DurationText}"
+                                   FontSize="13"
+                                   Opacity="0.5"
+                                   HorizontalAlignment="Right" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Transport controls -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Left"
+                            Spacing="20"
+                            Margin="0,12,0,0">
+                    <Button Classes="transport-btn"
+                            Command="{Binding Player.PreviousCommand}">
+                        <Border Width="32" Height="32"
+                                Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                RenderOptions.BitmapInterpolationMode="HighQuality">
+                            <Border.OpacityMask>
+                                <ImageBrush Source="avares://Noctis/Assets/Icons/Previous%20ICON.png" Stretch="Uniform" />
+                            </Border.OpacityMask>
+                        </Border>
+                    </Button>
+                    <Button Classes="transport-btn-main"
+                            Command="{Binding Player.PlayPauseCommand}"
+                            Width="64" Height="64"
+                            CornerRadius="32">
+                        <Panel>
+                            <Border Width="36" Height="36"
+                                    Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                    RenderOptions.BitmapInterpolationMode="HighQuality"
+                                    IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
+                                <Border.OpacityMask>
+                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" />
+                                </Border.OpacityMask>
+                            </Border>
+                            <Border Width="36" Height="36"
+                                    Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                    RenderOptions.BitmapInterpolationMode="HighQuality"
+                                    IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
+                                <Border.OpacityMask>
+                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Pause%20ICON.png" Stretch="Uniform" />
+                                </Border.OpacityMask>
+                            </Border>
+                        </Panel>
+                    </Button>
+                    <Button Classes="transport-btn"
+                            Command="{Binding Player.NextCommand}">
+                        <Border Width="32" Height="32"
+                                Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                RenderOptions.BitmapInterpolationMode="HighQuality">
+                            <Border.OpacityMask>
+                                <ImageBrush Source="avares://Noctis/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" />
+                            </Border.OpacityMask>
+                        </Border>
+                    </Button>
+                </StackPanel>
+
+            </StackPanel>
+
+        </Grid>
+    </DockPanel>
+
+</UserControl>

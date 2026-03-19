@@ -1,0 +1,282 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             xmlns:ctrl="using:Noctis.Controls"
+             xmlns:controls="using:Noctis.Controls"
+             xmlns:conv="using:Noctis.Converters"
+             xmlns:helpers="using:Noctis.Helpers"
+             x:Class="Noctis.Views.LibraryAlbumsView"
+             x:DataType="vm:LibraryAlbumsViewModel"
+             Background="{DynamicResource AppMainBackground}">
+
+    <UserControl.Resources>
+        <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,*">
+        <Separator Grid.Row="0" Classes="page-top-separator" />
+        <DockPanel Grid.Row="1" Margin="12,8,12,8">
+
+        <!-- Header — only shown when filtering by artist (shows artist name) -->
+        <TextBlock DockPanel.Dock="Top"
+                   Text="{Binding HeaderText}"
+                   FontSize="24"
+                   FontWeight="Bold"
+                   Margin="0,0,0,8"
+                   IsVisible="{Binding IsArtistFiltered}" />
+
+        <!-- Content area with overlay for empty state -->
+        <Grid>
+            <!-- Album grid: outer ListBox virtualizes rows, inner UniformGrid lays out 6 columns per row -->
+            <ListBox x:Name="AlbumListBox"
+                     ItemsSource="{Binding FilteredAlbumRows}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     SelectionMode="Single">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="m:AlbumRow">
+                        <ItemsControl ItemsSource="{Binding Albums}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="6" Rows="1" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="m:Album">
+                                    <Button Classes="album-tile"
+                                            Margin="2"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Top"
+                                            helpers:DragFileBehavior.EnableFileDrag="True"
+                                            Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).OpenAlbumCommand}"
+                                            CommandParameter="{Binding}">
+
+                                        <!-- Context menu for album tiles -->
+                                        <Button.ContextMenu>
+                                            <ContextMenu DataContext="{Binding}" Opened="OnAlbumContextMenuOpened">
+                                                <!-- Album header -->
+                                                <MenuItem IsHitTestVisible="False" Focusable="False">
+                                                    <MenuItem.Template>
+                                                        <ControlTemplate>
+                                                            <Border Padding="11,8" Background="Transparent">
+                                                                <ContentPresenter Content="{TemplateBinding Header}" />
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </MenuItem.Template>
+                                                    <MenuItem.Header>
+                                                        <Grid ColumnDefinitions="40,10,*">
+                                                            <Border Grid.Column="0" Width="40" Height="40" CornerRadius="4" ClipToBounds="True"
+                                                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                                                <Panel>
+                                                                    <TextBlock Text="&#x266A;" FontSize="14" HorizontalAlignment="Center"
+                                                                               VerticalAlignment="Center" Opacity="0.3"
+                                                                               IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                                                    <Image Source="{Binding ArtworkPath, Converter={StaticResource ArtworkConverter}}"
+                                                                           Stretch="UniformToFill"
+                                                                           IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                </Panel>
+                                                            </Border>
+                                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                                                <Grid ColumnDefinitions="Auto,Auto">
+                                                                    <controls:MarqueeTextBlock Grid.Column="0" Text="{Binding Name}"
+                                                                               FontWeight="SemiBold" FontSize="13"
+                                                                               MaxDisplayWidth="240" IsForArtist="False" />
+                                                                    <Border Grid.Column="1"
+                                                                            Classes="explicit-badge compact"
+                                                                            Margin="4,0,0,0"
+                                                                            VerticalAlignment="Center"
+                                                                            IsVisible="{Binding IsExplicit}">
+                                                                        <TextBlock Text="E"
+                                                                                   Classes="explicit-badge-text compact"
+                                                                                   FontSize="9"
+                                                                                   Opacity="0.9" />
+                                                                    </Border>
+                                                                </Grid>
+                                                                <controls:MarqueeTextBlock Text="{Binding Artist}" FontSize="11"
+                                                                           Foreground="#E74856" MaxDisplayWidth="240" IsForArtist="True" Margin="0,2,0,0" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </MenuItem.Header>
+                                                </MenuItem>
+                                                <Separator />
+                                                <MenuItem Header="{Binding Name, StringFormat='Play &quot;{0}&quot;'}"
+                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).PlayAlbumCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Shuffle"
+                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ShuffleAlbumCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Shuffle%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Play Next"
+                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).PlayNextCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Add to Queue"
+                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).AddToQueueCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <Separator />
+                                                <MenuItem Header="Add to Playlist">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                    <MenuItem Header="Create New Playlist"
+                                                              Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).AddToNewPlaylistCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                    <Separator />
+                                                </MenuItem>
+                                                <Separator />
+                                                <MenuItem Header="Add to Favorites"
+                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ToggleAlbumFavoritesCommand}"
+                                                          CommandParameter="{Binding}"
+                                                          IsVisible="{Binding !IsAllTracksFavorite}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Your%20Favorites%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Remove from Favorites"
+                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ToggleAlbumFavoritesCommand}"
+                                                          CommandParameter="{Binding}"
+                                                          IsVisible="{Binding IsAllTracksFavorite}">
+                                                    <MenuItem.Icon>
+                                                        <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <Separator />
+                                                <MenuItem Header="Metadata"
+                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).OpenMetadataCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <Separator />
+                                                <MenuItem Header="View Album"
+                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).OpenAlbumCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Albums%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="View Artist"
+                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ViewArtistCommand}"
+                                                          CommandParameter="{Binding Artist}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Artists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <Separator />
+                                                <MenuItem Header="Show in Folder"
+                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ShowInExplorerCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Folder%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <Separator />
+                                                <MenuItem Header="Remove from Library"
+                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).RemoveFromLibraryCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+
+                                        <StackPanel Spacing="0" HorizontalAlignment="Stretch">
+                                            <!-- Album artwork: size computed once in code-behind, no per-tile Bounds binding -->
+                                            <Border Width="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TileArtworkSize}"
+                                                    Height="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TileArtworkSize}"
+                                                    CornerRadius="6"
+                                                    ClipToBounds="True"
+                                                    Background="#1AFFFFFF">
+                                                <Panel>
+                                                    <!-- Placeholder -->
+                                                    <TextBlock Text="&#x266A;"
+                                                               FontSize="40"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Opacity="0.15"
+                                                               IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                                    <!-- Async artwork loading: cache hits instant, misses load on background thread -->
+                                                    <ctrl:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                                      Stretch="UniformToFill"
+                                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                      IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                </Panel>
+                                            </Border>
+                                            <!-- Album name + explicit badge -->
+                                            <Grid ColumnDefinitions="*,Auto"
+                                                  Margin="0,5,0,0">
+                                                <TextBlock Text="{Binding Name}"
+                                                           Grid.Column="0"
+                                                           Classes="one-line-explicit-title"
+                                                           FontSize="13"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxLines="1" />
+                                                <Border Grid.Column="1"
+                                                        Classes="explicit-badge compact"
+                                                        Margin="6,0,0,0"
+                                                        IsVisible="{Binding IsExplicit}"
+                                                        ToolTip.Tip="Explicit">
+                                                    <TextBlock Text="E"
+                                                               Classes="explicit-badge-text compact"
+                                                               FontSize="9"
+                                                               Opacity="0.9" />
+                                                </Border>
+                                            </Grid>
+                                            <!-- Artist name -->
+                                            <TextBlock Text="{Binding Artist}"
+                                                       FontSize="12"
+                                                       Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="1"
+                                                       Margin="0,1,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- Empty state overlay -->
+            <StackPanel IsVisible="{Binding !FilteredAlbumRows.Count}"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="8">
+                <TextBlock Text="No albums found"
+                           FontSize="18"
+                           Opacity="0.5"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+                <TextBlock Text="Add music folders in Settings to get started"
+                           FontSize="13"
+                           Opacity="0.3"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+            </StackPanel>
+        </Grid>
+
+        </DockPanel>
+    </Grid>
+
+</UserControl>

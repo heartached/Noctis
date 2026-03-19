@@ -1,0 +1,495 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:ctrl="using:Noctis.Controls"
+             x:Class="Noctis.Views.CoverFlowView"
+             x:DataType="vm:CoverFlowViewModel"
+             Background="{DynamicResource AppMainBackground}"
+             ClipToBounds="True">
+
+    <UserControl.Styles>
+        <Style Selector="Button.link-btn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.link-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Opacity" Value="0.7"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="*">
+
+        <!-- Blurred background: large artwork behind everything -->
+        <Panel Grid.Row="0" IsHitTestVisible="False">
+            <ctrl:CachedImage SourcePath="{Binding CenterArtworkPath}"
+                              Stretch="UniformToFill"
+                              Opacity="0.35"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
+                              IsVisible="{Binding CenterArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <ctrl:CachedImage.Effect>
+                    <BlurEffect Radius="80" />
+                </ctrl:CachedImage.Effect>
+            </ctrl:CachedImage>
+            <!-- Dark gradient overlay for readability -->
+            <Border Background="{DynamicResource AppMainBackground}" Opacity="0.45" />
+        </Panel>
+
+        <!-- Main content: carousel + text stacked vertically -->
+        <Grid Grid.Row="0" Margin="0,24,0,12">
+
+            <!-- Vertical stack: covers centered, text just below -->
+            <StackPanel HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="0"
+                        IsVisible="{Binding HasQueue}">
+
+                <!-- Carousel area -->
+                <Grid HorizontalAlignment="Stretch"
+                      Height="460"
+                      Margin="0,0">
+
+                    <!-- 15-item carousel: center + 7 each side -->
+                    <!-- Solid artwork + subtle dark overlay for depth (no transparency/see-through) -->
+                    <Grid HorizontalAlignment="Center" VerticalAlignment="Center"
+                          ClipToBounds="False">
+
+                        <!-- ═══ PREVIOUS SIDE (history) ═══ -->
+
+                        <!-- Position -7 (farthest left) -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="6"
+                                ClipToBounds="True"
+                                IsVisible="{Binding Prev7ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="1"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.42" ScaleY="0.42" />
+                                    <TranslateTransform X="-820" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding Prev7ArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.55" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Position -6 -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="6"
+                                ClipToBounds="True"
+                                IsVisible="{Binding Prev6ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="2"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.46" ScaleY="0.46" />
+                                    <TranslateTransform X="-720" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding Prev6ArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.48" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Position -5 -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="6"
+                                ClipToBounds="True"
+                                IsVisible="{Binding Prev5ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="3"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.50" ScaleY="0.50" />
+                                    <TranslateTransform X="-625" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding Prev5ArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.40" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Position -4 -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="8"
+                                ClipToBounds="True"
+                                IsVisible="{Binding OffPreviousArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="4"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.55" ScaleY="0.55" />
+                                    <TranslateTransform X="-535" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding OffPreviousArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.32" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Position -3 -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="8"
+                                ClipToBounds="True"
+                                IsVisible="{Binding EdgePreviousArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="5"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.60" ScaleY="0.60" />
+                                    <TranslateTransform X="-445" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding EdgePreviousArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.24" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Position -2 -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="10"
+                                ClipToBounds="True"
+                                IsVisible="{Binding FarPreviousArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="6"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.68" ScaleY="0.68" />
+                                    <TranslateTransform X="-345" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding FarPreviousArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.16" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Position -1 -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="10"
+                                ClipToBounds="True"
+                                IsVisible="{Binding PreviousArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="7"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.80" ScaleY="0.80" />
+                                    <TranslateTransform X="-240" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding PreviousArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.08" />
+                            </Panel>
+                        </Border>
+
+                        <!-- ═══ CENTER COVER ═══ -->
+                        <Border x:Name="CenterCover"
+                                Width="440" Height="440"
+                                CornerRadius="12"
+                                ClipToBounds="True"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="15">
+                            <Panel>
+                                <!-- Placeholder when no artwork -->
+                                <TextBlock Text="&#x266A;"
+                                           FontSize="100"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Opacity="0.15"
+                                           IsVisible="{Binding CenterArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                <ctrl:CachedImage SourcePath="{Binding CenterArtworkPath}"
+                                                  Stretch="UniformToFill"
+                                                  RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                  IsVisible="{Binding CenterArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            </Panel>
+                        </Border>
+
+                        <!-- ═══ NEXT SIDE (UpNext queue) ═══ -->
+
+                        <!-- Position +1 -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="10"
+                                ClipToBounds="True"
+                                IsVisible="{Binding NextArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="7"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.80" ScaleY="0.80" />
+                                    <TranslateTransform X="240" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding NextArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.08" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Position +2 -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="10"
+                                ClipToBounds="True"
+                                IsVisible="{Binding FarNextArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="6"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.68" ScaleY="0.68" />
+                                    <TranslateTransform X="345" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding FarNextArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.16" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Position +3 -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="8"
+                                ClipToBounds="True"
+                                IsVisible="{Binding EdgeNextArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="5"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.60" ScaleY="0.60" />
+                                    <TranslateTransform X="445" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding EdgeNextArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.24" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Position +4 -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="8"
+                                ClipToBounds="True"
+                                IsVisible="{Binding OffNextArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="4"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.55" ScaleY="0.55" />
+                                    <TranslateTransform X="535" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding OffNextArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.32" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Position +5 -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="6"
+                                ClipToBounds="True"
+                                IsVisible="{Binding Next5ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="3"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.50" ScaleY="0.50" />
+                                    <TranslateTransform X="625" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding Next5ArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.40" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Position +6 -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="6"
+                                ClipToBounds="True"
+                                IsVisible="{Binding Next6ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="2"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.46" ScaleY="0.46" />
+                                    <TranslateTransform X="720" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding Next6ArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.48" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Position +7 (farthest right) -->
+                        <Border Width="320" Height="320"
+                                CornerRadius="6"
+                                ClipToBounds="True"
+                                IsVisible="{Binding Next7ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ZIndex="1"
+                                RenderTransformOrigin="50%,50%">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform ScaleX="0.42" ScaleY="0.42" />
+                                    <TranslateTransform X="820" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding Next7ArtworkPath}" Stretch="UniformToFill" />
+                                <Border Background="#000" Opacity="0.55" />
+                            </Panel>
+                        </Border>
+
+                    </Grid>
+
+                </Grid>
+
+                <!-- Track info just below the center cover -->
+                <StackPanel HorizontalAlignment="Center"
+                            Spacing="4"
+                            Margin="0,16,0,0"
+                            IsVisible="{Binding HasQueue}">
+                    <!-- Title row with explicit badge -->
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Spacing="6">
+                        <ctrl:MarqueeTextBlock Text="{Binding CenterTitle}"
+                                               FontSize="22"
+                                               FontWeight="Bold"
+                                               MaxDisplayWidth="480"
+                                               IsCoverFlow="True" />
+                        <Border Classes="explicit-badge compact"
+                                VerticalAlignment="Center"
+                                IsVisible="{Binding CenterIsExplicit}"
+                                ToolTip.Tip="Explicit">
+                            <TextBlock Text="E"
+                                       Classes="explicit-badge-text compact"
+                                       FontSize="9"
+                                       Opacity="0.9" />
+                        </Border>
+                    </StackPanel>
+                    <Button Classes="link-btn"
+                            Command="{Binding GoToArtistCommand}"
+                            HorizontalAlignment="Center"
+                            IsVisible="{Binding CenterArtist, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <ctrl:MarqueeTextBlock Text="{Binding CenterArtist}"
+                                               FontSize="15"
+                                               Foreground="#E74856"
+                                               MaxDisplayWidth="400"
+                                               IsCoverFlow="True"
+                                               IsForArtist="True" />
+                    </Button>
+                    <Button Classes="link-btn"
+                            Command="{Binding GoToAlbumCommand}"
+                            HorizontalAlignment="Center"
+                            IsVisible="{Binding CenterAlbum.Length}">
+                        <TextBlock Text="{Binding CenterAlbum}"
+                                   FontSize="13"
+                                   Foreground="#E74856"
+                                   TextAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="400"
+                                   MaxLines="1" />
+                    </Button>
+                </StackPanel>
+
+            </StackPanel>
+
+            <!-- Navigation arrows - pinned to far left/right edges, shifted up to align with covers -->
+            <Button HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Margin="16,0,0,80"
+                    Background="#B0000000"
+                    BorderBrush="#40FFFFFF"
+                    BorderThickness="1"
+                    CornerRadius="999"
+                    Width="36" Height="36"
+                    Cursor="Hand"
+                    Command="{Binding GoPreviousCommand}"
+                    IsVisible="{Binding PreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Opacity="0.85">
+                <PathIcon Data="{StaticResource ChevronLeftIcon}"
+                         Width="14" Height="14"
+                         Foreground="White"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center" />
+            </Button>
+
+            <Button HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Margin="0,0,16,80"
+                    Background="#B0000000"
+                    BorderBrush="#40FFFFFF"
+                    BorderThickness="1"
+                    CornerRadius="999"
+                    Width="36" Height="36"
+                    Cursor="Hand"
+                    Command="{Binding GoNextCommand}"
+                    IsVisible="{Binding NextTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Opacity="0.85">
+                <PathIcon Data="{StaticResource ChevronRightIcon}"
+                         Width="14" Height="14"
+                         Foreground="White"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center" />
+            </Button>
+
+            <!-- Empty state when nothing is playing -->
+            <StackPanel HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="8"
+                        IsVisible="{Binding !HasQueue}">
+                <TextBlock Text="Nothing playing"
+                           FontSize="20"
+                           Opacity="0.4"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+                <TextBlock Text="Play some music to see the queue flow"
+                           FontSize="13"
+                           Opacity="0.25"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+            </StackPanel>
+
+        </Grid>
+
+    </Grid>
+
+</UserControl>

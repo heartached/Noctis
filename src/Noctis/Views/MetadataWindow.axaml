@@ -1,0 +1,460 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.MetadataWindow"
+        x:DataType="vm:MetadataViewModel"
+        Title="Metadata"
+        Width="700" Height="700"
+        MinWidth="550" MinHeight="500"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+
+    <Window.Styles>
+        <Style Selector="TextBox.metadata-info-field">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+
+        <Style Selector="TextBox.metadata-info-field /template/ Border#PART_BorderElement">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+
+        <Style Selector="TextBox.metadata-info-field:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+
+        <Style Selector="AutoCompleteBox.metadata-info-field">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+
+        <Style Selector="AutoCompleteBox.metadata-info-field /template/ TextBox#PART_TextBox">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
+        </Style>
+
+        <Style Selector="AutoCompleteBox.metadata-info-field /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+
+        <Style Selector="AutoCompleteBox.metadata-info-field /template/ TextBox#PART_TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+
+    </Window.Styles>
+
+    <DockPanel Margin="0">
+
+        <!-- Header: artwork + track title, artist, album -->
+        <Border DockPanel.Dock="Top"
+                Padding="24,20,24,16"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+            <Grid ColumnDefinitions="72,16,*">
+                <Border Grid.Column="0"
+                        Width="72" Height="72"
+                        CornerRadius="8"
+                        ClipToBounds="True"
+                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                    <Panel>
+                        <TextBlock Text="Album"
+                                   FontSize="11"
+                                   Opacity="0.35"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   IsVisible="{Binding !HasArtwork}" />
+                        <Image Source="{Binding ArtworkPreview}"
+                               Stretch="UniformToFill"
+                               IsVisible="{Binding HasArtwork}" />
+                    </Panel>
+                </Border>
+
+                <StackPanel Grid.Column="2"
+                            Spacing="2"
+                            VerticalAlignment="Center">
+                    <Grid ColumnDefinitions="Auto,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Classes="one-line-explicit-title"
+                                   Text="{Binding HeaderTitle}"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   MaxWidth="350" />
+                        <Border Grid.Column="1"
+                                Classes="explicit-badge"
+                                Margin="8,0,0,0"
+                                IsVisible="{Binding HeaderIsExplicit}"
+                                ToolTip.Tip="Explicit">
+                            <TextBlock Text="E"
+                                       Classes="explicit-badge-text"
+                                       FontSize="9"
+                                       Opacity="0.9" />
+                        </Border>
+                    </Grid>
+                    <TextBlock Text="{Binding HeaderArtist}"
+                               FontSize="13"
+                               Opacity="0.7" />
+                    <TextBlock Text="{Binding HeaderAlbum}"
+                               FontSize="13"
+                               Opacity="0.5" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Bottom: Save / Cancel buttons -->
+        <Border DockPanel.Dock="Bottom"
+                Padding="24,12"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            Spacing="8">
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Content="Save"
+                        Command="{Binding SaveCommand}"
+                        Width="100"
+                        Padding="0,10"
+                        Classes="accent-btn"
+                            Background="#E04060"
+                        Foreground="White"
+                        FontWeight="SemiBold"
+                        HorizontalContentAlignment="Center"
+                        CornerRadius="999"
+                        Margin="0,0,8,0"
+                        Cursor="Hand" />
+                <Button Grid.Column="2"
+                        Content="Cancel"
+                        Command="{Binding CancelCommand}"
+                        Width="100"
+                        Padding="0,10"
+                        HorizontalContentAlignment="Center"
+                        CornerRadius="999"
+                        Cursor="Hand" />
+            </Grid>
+        </Border>
+
+        <!-- Tab control -->
+        <TabControl SelectedIndex="{Binding SelectedTabIndex}"
+                    Margin="0"
+                    Padding="0">
+
+            <!-- ═══════════ DETAILS TAB ═══════════ -->
+            <TabItem Header="Details" FontSize="14" FontWeight="SemiBold">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="16" Margin="24,16,24,24">
+                        <!-- Title -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="title" FontSize="12" Opacity="0.5" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Title}" />
+                        </StackPanel>
+
+                        <!-- Album -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="album" FontSize="12" Opacity="0.5" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Album}" />
+                        </StackPanel>
+
+                        <!-- Album is compilation -->
+                        <CheckBox Classes="metadata-pill-checkbox"
+                                  Content="Album is compilation"
+                                  IsChecked="{Binding IsCompilation}" />
+
+                        <!-- Artist -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="artist" FontSize="12" Opacity="0.5" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Artist}" />
+                        </StackPanel>
+
+                        <!-- Album Artist -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="album artist" FontSize="12" Opacity="0.5" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding AlbumArtist}" />
+                        </StackPanel>
+
+                        <!-- Composer -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="composer" FontSize="12" Opacity="0.5" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Composer}" />
+                        </StackPanel>
+
+                        <!-- Genre -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="genre" FontSize="12" Opacity="0.5" />
+                            <AutoCompleteBox Classes="metadata-info-field"
+                                             ItemsSource="{x:Static vm:MetadataViewModel.AvailableGenres}"
+                                             Text="{Binding Genre}"
+                                             FilterMode="Contains"
+                                             MinimumPrefixLength="0" />
+                        </StackPanel>
+
+                        <!-- Year -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="year" FontSize="12" Opacity="0.5" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Year}" Width="120" HorizontalAlignment="Left" />
+                        </StackPanel>
+
+                        <!-- Track number -->
+                        <Grid ColumnDefinitions="Auto,8,Auto,16,Auto,8,Auto">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="track" FontSize="12" Opacity="0.5" />
+                                <TextBox Classes="metadata-info-field" Text="{Binding TrackNumber}" Width="80" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Text="of" FontSize="12" Opacity="0.5" />
+                                <TextBox Classes="metadata-info-field" Text="{Binding TrackCount}" Width="80" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="4" Spacing="4">
+                                <TextBlock Text="disc" FontSize="12" Opacity="0.5" />
+                                <TextBox Classes="metadata-info-field" Text="{Binding DiscNumber}" Width="80" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="6" Spacing="4">
+                                <TextBlock Text="of" FontSize="12" Opacity="0.5" />
+                                <TextBox Classes="metadata-info-field" Text="{Binding DiscCount}" Width="80" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Play Count -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="play count" FontSize="12" Opacity="0.5" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding PlayCountDisplay}" FontSize="14" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Content="Reset" Command="{Binding ResetPlayCountCommand}"
+                                        Margin="8,0,0,0" Padding="12,6" FontSize="12" Cursor="Hand"
+                                        Foreground="#E04060" Background="Transparent" BorderThickness="0" />
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Song comment -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="comment" FontSize="12" Opacity="0.5" />
+                            <TextBox Classes="metadata-info-field"
+                                     Text="{Binding Comment}" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ═══════════ ARTWORK TAB ═══════════ -->
+            <TabItem Header="Artwork" FontSize="14" FontWeight="SemiBold">
+                <DockPanel Margin="24,16">
+                    <!-- Add Artwork button at bottom -->
+                    <StackPanel DockPanel.Dock="Bottom"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                Spacing="12"
+                                Margin="0,12,0,0">
+                        <Button Content="Add Artwork"
+                                Command="{Binding AddArtworkCommand}"
+                                CommandParameter="{Binding $parent[Window]}"
+                                Width="112"
+                                Padding="0,8"
+                                Classes="accent-btn"
+                            Background="#E04060"
+                                Foreground="White"
+                                FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                FontSize="12" />
+                        <Button Content="Download"
+                                Command="{Binding DownloadArtworkCommand}"
+                                CommandParameter="{Binding $parent[Window]}"
+                                IsVisible="{Binding HasArtwork}"
+                                Width="104"
+                                Padding="0,8"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                FontSize="12" />
+                        <Button Content="Remove"
+                                Command="{Binding RemoveArtworkCommand}"
+                                IsVisible="{Binding HasArtwork}"
+                                Width="90"
+                                Padding="0,8"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                FontSize="12" />
+                    </StackPanel>
+
+                    <!-- Artwork preview centered -->
+                    <Border HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            MaxWidth="450" MaxHeight="450"
+                            CornerRadius="8"
+                            ClipToBounds="True"
+                            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                        <Panel>
+                            <TextBlock Text="No Artwork"
+                                       FontSize="18"
+                                       Opacity="0.3"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding !HasArtwork}" />
+                            <Image Source="{Binding ArtworkPreview}"
+                                   Stretch="Uniform"
+                                   RenderOptions.BitmapInterpolationMode="HighQuality"
+                                   IsVisible="{Binding HasArtwork}" />
+                        </Panel>
+                    </Border>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═══════════ LYRICS TAB ═══════════ -->
+            <TabItem Header="Lyrics" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowLyricsTab}">
+                <DockPanel Margin="24,16">
+                    <CheckBox DockPanel.Dock="Top"
+                              Classes="metadata-pill-checkbox"
+                              Content="Enable"
+                              IsChecked="{Binding HasCustomLyrics}"
+                              Margin="0,0,0,12" />
+                    <TextBox Text="{Binding Lyrics}"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalContentAlignment="Top"
+                             MinHeight="300"
+                             BorderBrush="#44E04060"
+                             BorderThickness="1"
+                             IsEnabled="{Binding HasCustomLyrics}" />
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═══════════ SYNCED LYRICS TAB ═══════════ -->
+            <TabItem Header="Synced Lyrics" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowSyncedLyricsTab}">
+                <DockPanel Margin="24,16">
+                    <CheckBox DockPanel.Dock="Top"
+                              Classes="metadata-pill-checkbox"
+                              Content="Enable"
+                              IsChecked="{Binding HasCustomLyrics}"
+                              Margin="0,0,0,12" />
+                    <TextBox Text="{Binding SyncedLyrics}"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalContentAlignment="Top"
+                             MinHeight="300"
+                             BorderBrush="#44E04060"
+                             BorderThickness="1"
+                             FontFamily="Consolas, Menlo, Monaco, Courier New, monospace"
+                             IsEnabled="{Binding HasCustomLyrics}" />
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═══════════ OPTIONS TAB ═══════════ -->
+            <TabItem Header="Options" FontSize="14" FontWeight="SemiBold">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                             Padding="24,16">
+                    <StackPanel Spacing="20">
+                        <CheckBox Classes="metadata-pill-checkbox"
+                                  Content="Remember playback position"
+                                  IsChecked="{Binding RememberPlaybackPosition}" />
+
+                        <CheckBox Classes="metadata-pill-checkbox"
+                                  Content="Skip when shuffling"
+                                  IsChecked="{Binding SkipWhenShuffling}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ═══════════ FILE TAB ═══════════ -->
+            <TabItem Header="File" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowFileTab}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                             Padding="24,16">
+                    <StackPanel Spacing="14">
+                        <!-- Kind -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="kind" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{Binding FileFormat}" FontSize="14" />
+                        </StackPanel>
+
+                        <!-- Duration -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="duration" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{Binding Duration}" FontSize="14" />
+                        </StackPanel>
+
+                        <!-- File Size -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="size" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{Binding FileSize}" FontSize="14" />
+                        </StackPanel>
+
+                        <!-- Bitrate -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="bit rate" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{Binding Bitrate}" FontSize="14" />
+                        </StackPanel>
+
+                        <!-- Bits Per Sample -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="sample size" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{Binding BitsPerSample}" FontSize="14" />
+                        </StackPanel>
+
+                        <!-- Sample Rate -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="sample rate" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{Binding SampleRate}" FontSize="14" />
+                        </StackPanel>
+
+                        <!-- Channels -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="channels" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{Binding Channels}" FontSize="14" />
+                        </StackPanel>
+
+                        <!-- Codec -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="codec" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{Binding Codec}" FontSize="14" />
+                        </StackPanel>
+
+                        <!-- Lossless / Lossy -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="quality" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{Binding LosslessOrLossy}" FontSize="14" />
+                        </StackPanel>
+
+                        <Separator Opacity="0.3" Margin="0,4" />
+
+                        <!-- Date Modified -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="date modified" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{Binding DateModified}" FontSize="14" />
+                        </StackPanel>
+
+                        <!-- Date Added -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="date added" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{Binding DateAdded}" FontSize="14" />
+                        </StackPanel>
+
+                        <Separator Opacity="0.3" Margin="0,4" />
+
+                        <!-- Location -->
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="location" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="{Binding FileLocation}"
+                                       FontSize="13"
+                                       TextWrapping="Wrap"
+                                       Opacity="0.8" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

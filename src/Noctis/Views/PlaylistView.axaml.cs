@@ -1,0 +1,147 @@
+using System.Collections.Generic;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
+using Noctis.Helpers;
+using Noctis.Models;
+using Noctis.ViewModels;
+
+namespace Noctis.Views;
+
+public partial class PlaylistView : UserControl
+{
+    private EventHandler? _pendingScrollRestore;
+    private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
+
+    public PlaylistView()
+    {
+        InitializeComponent();
+
+        TrackList.DoubleTapped += OnTrackDoubleTapped;
+    }
+
+    private void OnContextMenuOpened(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not PlaylistViewModel vm) return;
+        if (sender is not ContextMenu ctx) return;
+
+        if (!_playlistPopulators.TryGetValue(ctx, out var populator))
+        {
+            MenuItem? addToPlaylist = null;
+            Separator? separator = null;
+            foreach (var item in ctx.Items)
+            {
+                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
+                {
+                    addToPlaylist = mi;
+                    foreach (var sub in mi.Items)
+                    {
+                        if (sub is Separator sep) { separator = sep; break; }
+                    }
+                    break;
+                }
+            }
+            if (addToPlaylist == null || separator == null) return;
+            populator = new PlaylistMenuPopulator(addToPlaylist, separator);
+            _playlistPopulators[ctx] = populator;
+        }
+
+        var track = ctx.DataContext as Track;
+        populator.Populate(vm.Playlists, vm.AddToExistingPlaylistCommand,
+            playlist => new object[] { track!, playlist });
+    }
+
+    private void OnTrackFlyoutOpened(object? sender, EventArgs e)
+    {
+        if (DataContext is not PlaylistViewModel vm) return;
+        if (sender is not MenuFlyout flyout) return;
+
+        if (!_playlistPopulators.TryGetValue(flyout, out var populator))
+        {
+            MenuItem? addToPlaylist = null;
+            Separator? separator = null;
+            foreach (var item in flyout.Items)
+            {
+                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
+                {
+                    addToPlaylist = mi;
+                    foreach (var sub in mi.Items)
+                    {
+                        if (sub is Separator sep) { separator = sep; break; }
+                    }
+                    break;
+                }
+            }
+            if (addToPlaylist == null || separator == null) return;
+            populator = new PlaylistMenuPopulator(addToPlaylist, separator);
+            _playlistPopulators[flyout] = populator;
+        }
+
+        var track = (flyout.Target as Button)?.Tag as Track;
+        populator.Populate(vm.Playlists, vm.AddToExistingPlaylistCommand,
+            playlist => new object[] { track!, playlist });
+    }
+
+    private void OnTrackDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is not PlaylistViewModel vm) return;
+        if (TrackList.SelectedItem is Track track)
+        {
+            vm.PlayFromCommand.Execute(track);
+        }
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        CancelPendingScrollRestore();
+
+        if (DataContext is PlaylistViewModel vm)
+        {
+            var sv = TrackList.FindDescendantOfType<ScrollViewer>();
+            if (sv != null)
+                vm.SavedScrollOffset = sv.Offset.Y;
+        }
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void CancelPendingScrollRestore()
+    {
+        if (_pendingScrollRestore != null)
+        {
+            TrackList.LayoutUpdated -= _pendingScrollRestore;
+            _pendingScrollRestore = null;
+            TrackList.Opacity = 1;
+        }
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+
+        if (DataContext is PlaylistViewModel vm && vm.SavedScrollOffset > 0)
+        {
+            TrackList.Opacity = 0;
+            var targetOffset = vm.SavedScrollOffset;
+            var attempts = 0;
+
+            _pendingScrollRestore = (s, args) =>
+            {
+                attempts++;
+                var sv = TrackList.FindDescendantOfType<ScrollViewer>();
+                if (sv == null) return;
+
+                if (sv.Extent.Height < targetOffset && attempts < 50)
+                    return;
+
+                var clampedOffset = Math.Min(targetOffset, Math.Max(0, sv.Extent.Height - sv.Viewport.Height));
+                sv.Offset = new Vector(0, clampedOffset);
+                TrackList.Opacity = 1;
+                CancelPendingScrollRestore();
+            };
+
+            TrackList.LayoutUpdated += _pendingScrollRestore;
+        }
+    }
+}

@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon Condition="Exists('Assets\Icons\Noctis.ico')">Assets\Icons\Noctis.ico</ApplicationIcon>
+    <AssemblyName>Noctis</AssemblyName>
+    <RootNamespace>Noctis</RootNamespace>
+    <Product>Noctis</Product>
+    <Company>Noctis</Company>
+    <Version>1.0.0</Version>
+
+    <!-- Avalonia requires this for XAML compilation -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+    <!-- Suppress build warnings -->
+    <NoWarn>CS8625;CS0067;MVVMTK0039;CA1416</NoWarn>
+  </PropertyGroup>
+
+  <!-- Avalonia UI -->
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Labs.Lottie" Version="11.3.1" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.2.3" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
+  </ItemGroup>
+
+  <!-- MVVM -->
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+
+  <!-- Dependency Injection -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+  </ItemGroup>
+
+  <!-- Audio playback via libVLC -->
+  <ItemGroup>
+    <PackageReference Include="LibVLCSharp" Version="3.9.6" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="VideoLAN.LibVLC.Mac" Version="3.0.21" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+  </ItemGroup>
+
+  <!-- Metadata reading -->
+  <ItemGroup>
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+  </ItemGroup>
+
+  <!-- Image color extraction (transitive dep of Avalonia.Skia, explicit for compile-time access) -->
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+  </ItemGroup>
+
+  <!-- JSON persistence -->
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+  </ItemGroup>
+
+  <!-- Embedded assets -->
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+</Project>

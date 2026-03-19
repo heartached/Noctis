@@ -1,0 +1,180 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             xmlns:conv="using:Noctis.Converters"
+             xmlns:controls="using:Noctis.Controls"
+             x:Class="Noctis.Views.GenreDetailView"
+             x:DataType="vm:GenreDetailViewModel"
+             Background="{DynamicResource AppMainBackground}">
+
+    <UserControl.Resources>
+        <conv:GuidEqualsConverter x:Key="GuidEquals" />
+        <conv:HexColorToBrushConverter x:Key="HexColorConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,*">
+        <Separator Grid.Row="0" Classes="page-top-separator" />
+        <DockPanel Grid.Row="1" Margin="16">
+
+        <!-- Genre header banner -->
+        <Border DockPanel.Dock="Top"
+                CornerRadius="12"
+                ClipToBounds="True"
+                Height="140"
+                Margin="0,0,0,16"
+                Background="{Binding GenreColor, Converter={StaticResource HexColorConverter}}">
+            <Panel>
+                <!-- Watermark icon -->
+                <PathIcon Data="{StaticResource BulletListIcon}"
+                         Width="80" Height="80"
+                         Foreground="White"
+                         Opacity="0.1"
+                         HorizontalAlignment="Right"
+                         VerticalAlignment="Center"
+                         Margin="0,0,24,0" />
+
+                <!-- Genre info -->
+                <StackPanel VerticalAlignment="Center"
+                            Margin="28,0,0,0"
+                            Spacing="6">
+                    <TextBlock Text="{Binding GenreName}"
+                               FontSize="28"
+                               FontWeight="Bold"
+                               Foreground="White" />
+                    <TextBlock Foreground="White"
+                               Opacity="0.8"
+                               FontSize="14">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0} songs">
+                                <Binding Path="TrackCount" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+
+                    <!-- Play + Shuffle buttons -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                        <Button Command="{Binding PlayAllCommand}"
+                                Padding="20,10"
+                                CornerRadius="999"
+                                Classes="accent-btn"
+                            Background="#E04060"
+                                Foreground="White"
+                                BorderThickness="0"
+                                FontWeight="SemiBold"
+                                Cursor="Hand">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource PlaySolidIcon}"
+                                         Width="16" Height="16"
+                                         Foreground="White"
+                                         VerticalAlignment="Center" />
+                                <TextBlock Text="Play"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding ShufflePlayCommand}"
+                                Padding="20,10"
+                                CornerRadius="999"
+                                Classes="accent-btn"
+                            Background="#E04060"
+                                Foreground="White"
+                                BorderThickness="0"
+                                FontWeight="SemiBold"
+                                Cursor="Hand">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource SortIcon}"
+                                         Width="16" Height="16"
+                                         Foreground="White"
+                                         VerticalAlignment="Center" />
+                                <TextBlock Text="Shuffle"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Panel>
+        </Border>
+
+        <Separator DockPanel.Dock="Top" Margin="0,0,0,8" />
+
+        <!-- Track list -->
+        <ListBox Classes="track-list"
+                 ItemsSource="{Binding Tracks}"
+                 x:Name="TrackList">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="m:Track">
+                    <Grid ColumnDefinitions="24,26,*,*,90" Margin="0,3" Background="Transparent" Tag="{Binding}">
+
+                        <!-- Equalizer animation (visible when this track is playing) -->
+                        <controls:EqualizerAnimation Grid.Column="0"
+                                                     VerticalAlignment="Center"
+                                                     HorizontalAlignment="Center"
+                                                     IsActive="{Binding $parent[UserControl].((vm:GenreDetailViewModel)DataContext).IsPlayerPlaying}">
+                            <controls:EqualizerAnimation.IsVisible>
+                                <MultiBinding Converter="{StaticResource GuidEquals}">
+                                    <Binding Path="Id" />
+                                    <Binding Path="$parent[UserControl].((vm:GenreDetailViewModel)DataContext).CurrentPlayingTrackId" />
+                                </MultiBinding>
+                            </controls:EqualizerAnimation.IsVisible>
+                        </controls:EqualizerAnimation>
+
+                        <!-- Track number (always visible) -->
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding TrackNumber}"
+                                   Opacity="0.5"
+                                   FontSize="14"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+
+                        <!-- Title + Artist -->
+                        <StackPanel Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    Margin="12,0,0,0"
+                                    Spacing="1">
+                            <Grid ColumnDefinitions="Auto,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Classes="one-line-explicit-title"
+                                           Text="{Binding Title}"
+                                           FontSize="15"
+                                           MaxWidth="600" />
+                                <Border Grid.Column="1"
+                                        Classes="explicit-badge compact"
+                                        Margin="6,0,0,0"
+                                        IsVisible="{Binding IsExplicit}"
+                                        ToolTip.Tip="Explicit">
+                                    <TextBlock Text="E"
+                                               Classes="explicit-badge-text compact"
+                                               FontSize="9"
+                                               Opacity="0.9" />
+                                </Border>
+                            </Grid>
+                            <TextBlock Text="{Binding Artist}"
+                                       FontSize="12"
+                                       Opacity="0.5"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+
+                        <!-- Album name -->
+                        <TextBlock Grid.Column="3"
+                                   Text="{Binding Album}"
+                                   FontSize="13"
+                                   Opacity="0.5"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+
+                        <!-- Duration -->
+                        <TextBlock Grid.Column="4"
+                                   Text="{Binding DurationFormatted}"
+                                   FontSize="14"
+                                   Opacity="0.5"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        </DockPanel>
+    </Grid>
+
+</UserControl>

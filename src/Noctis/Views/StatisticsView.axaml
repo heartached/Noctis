@@ -1,0 +1,244 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             xmlns:conv="using:Noctis.Converters"
+             x:Class="Noctis.Views.StatisticsView"
+             x:DataType="vm:StatisticsViewModel"
+             Background="{DynamicResource AppMainBackground}">
+
+    <UserControl.Resources>
+        <conv:PercentageToWidthConverter x:Key="PercentageToWidth" />
+    </UserControl.Resources>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="24" Spacing="28">
+
+            <!-- Page title -->
+            <TextBlock Text="Statistics"
+                       FontSize="28"
+                       FontWeight="Bold" />
+
+            <!-- ═══ Overview Cards ═══ -->
+            <WrapPanel Orientation="Horizontal">
+                <!-- Total Tracks -->
+                <Border Background="{DynamicResource SystemControlBackgroundListLowBrush}" CornerRadius="12" Padding="20" Margin="0,0,12,12" MinWidth="170">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{Binding TotalTracks}" FontSize="28" FontWeight="Bold" />
+                        <TextBlock Text="Tracks" FontSize="12" Opacity="0.5" />
+                    </StackPanel>
+                </Border>
+                <!-- Total Albums -->
+                <Border Background="{DynamicResource SystemControlBackgroundListLowBrush}" CornerRadius="12" Padding="20" Margin="0,0,12,12" MinWidth="170">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{Binding TotalAlbums}" FontSize="28" FontWeight="Bold" />
+                        <TextBlock Text="Albums" FontSize="12" Opacity="0.5" />
+                    </StackPanel>
+                </Border>
+                <!-- Total Artists -->
+                <Border Background="{DynamicResource SystemControlBackgroundListLowBrush}" CornerRadius="12" Padding="20" Margin="0,0,12,12" MinWidth="170">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{Binding TotalArtists}" FontSize="28" FontWeight="Bold" />
+                        <TextBlock Text="Artists" FontSize="12" Opacity="0.5" />
+                    </StackPanel>
+                </Border>
+                <!-- Total Genres -->
+                <Border Background="{DynamicResource SystemControlBackgroundListLowBrush}" CornerRadius="12" Padding="20" Margin="0,0,12,12" MinWidth="170">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{Binding TotalGenres}" FontSize="28" FontWeight="Bold" />
+                        <TextBlock Text="Genres" FontSize="12" Opacity="0.5" />
+                    </StackPanel>
+                </Border>
+                <!-- Total Listening Time -->
+                <Border Background="{DynamicResource SystemControlBackgroundListLowBrush}" CornerRadius="12" Padding="20" Margin="0,0,12,12" MinWidth="170">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{Binding TotalListeningTime}" FontSize="28" FontWeight="Bold" />
+                        <TextBlock Text="Total Duration" FontSize="12" Opacity="0.5" />
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+
+            <!-- ═══ Top 10 Most Played Tracks ═══ -->
+            <StackPanel Spacing="12">
+                <TextBlock Text="Most Played Tracks" FontSize="22" FontWeight="Bold" />
+                <!-- Empty state -->
+                <TextBlock Text="Play some tracks to see your top 10"
+                           FontSize="13" Opacity="0.4"
+                           IsVisible="{Binding !TopTracks.Count}" />
+                <ItemsControl ItemsSource="{Binding TopTracks}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="m:StatItem">
+                            <Grid ColumnDefinitions="180,*,Auto" Margin="0,3" Height="36">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Label}" FontSize="13"
+                                               TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                    <TextBlock Text="{Binding SubLabel}" FontSize="10" Opacity="0.5"
+                                               TextTrimming="CharacterEllipsis" MaxLines="1"
+                                               IsVisible="{Binding SubLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                </StackPanel>
+                                <Border Grid.Column="1" VerticalAlignment="Center" Height="20"
+                                        CornerRadius="999" ClipToBounds="True" Margin="8,0" Background="{DynamicResource SystemControlBackgroundListLowBrush}">
+                                    <Border Background="#E04060" CornerRadius="999"
+                                            HorizontalAlignment="Left"
+                                            Width="{Binding Percentage, Converter={StaticResource PercentageToWidth}, ConverterParameter=400}" />
+                                </Border>
+                                <TextBlock Grid.Column="2" Text="{Binding ValueLabel}"
+                                           FontSize="12" Opacity="0.6" VerticalAlignment="Center"
+                                           MinWidth="70" TextAlignment="Right" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ═══ Top 10 Most Played Artists ═══ -->
+            <StackPanel Spacing="12">
+                <TextBlock Text="Most Played Artists" FontSize="22" FontWeight="Bold" />
+                <TextBlock Text="Play some tracks to see your top artists"
+                           FontSize="13" Opacity="0.4"
+                           IsVisible="{Binding !TopArtists.Count}" />
+                <ItemsControl ItemsSource="{Binding TopArtists}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="m:StatItem">
+                            <Grid ColumnDefinitions="180,*,Auto" Margin="0,3" Height="36">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Label}" FontSize="13"
+                                               TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                    <TextBlock Text="{Binding SubLabel}" FontSize="10" Opacity="0.5"
+                                               TextTrimming="CharacterEllipsis" MaxLines="1"
+                                               IsVisible="{Binding SubLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                </StackPanel>
+                                <Border Grid.Column="1" VerticalAlignment="Center" Height="20"
+                                        CornerRadius="999" ClipToBounds="True" Margin="8,0" Background="{DynamicResource SystemControlBackgroundListLowBrush}">
+                                    <Border Background="#45B7D1" CornerRadius="999"
+                                            HorizontalAlignment="Left"
+                                            Width="{Binding Percentage, Converter={StaticResource PercentageToWidth}, ConverterParameter=400}" />
+                                </Border>
+                                <TextBlock Grid.Column="2" Text="{Binding ValueLabel}"
+                                           FontSize="12" Opacity="0.6" VerticalAlignment="Center"
+                                           MinWidth="70" TextAlignment="Right" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ═══ Top 5 Most Played Albums ═══ -->
+            <StackPanel Spacing="12">
+                <TextBlock Text="Most Played Albums" FontSize="22" FontWeight="Bold" />
+                <TextBlock Text="Play some tracks to see your top albums"
+                           FontSize="13" Opacity="0.4"
+                           IsVisible="{Binding !TopAlbums.Count}" />
+                <ItemsControl ItemsSource="{Binding TopAlbums}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="m:StatItem">
+                            <Grid ColumnDefinitions="180,*,Auto" Margin="0,3" Height="36">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Label}" FontSize="13"
+                                               TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                    <TextBlock Text="{Binding SubLabel}" FontSize="10" Opacity="0.5"
+                                               TextTrimming="CharacterEllipsis" MaxLines="1"
+                                               IsVisible="{Binding SubLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                </StackPanel>
+                                <Border Grid.Column="1" VerticalAlignment="Center" Height="20"
+                                        CornerRadius="999" ClipToBounds="True" Margin="8,0" Background="{DynamicResource SystemControlBackgroundListLowBrush}">
+                                    <Border Background="#BB8FCE" CornerRadius="999"
+                                            HorizontalAlignment="Left"
+                                            Width="{Binding Percentage, Converter={StaticResource PercentageToWidth}, ConverterParameter=400}" />
+                                </Border>
+                                <TextBlock Grid.Column="2" Text="{Binding ValueLabel}"
+                                           FontSize="12" Opacity="0.6" VerticalAlignment="Center"
+                                           MinWidth="70" TextAlignment="Right" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ═══ Genre Distribution ═══ -->
+            <StackPanel Spacing="12">
+                <TextBlock Text="Genre Distribution" FontSize="22" FontWeight="Bold" />
+                <TextBlock Text="No genre data available"
+                           FontSize="13" Opacity="0.4"
+                           IsVisible="{Binding !GenreDistribution.Count}" />
+                <ItemsControl ItemsSource="{Binding GenreDistribution}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="m:StatItem">
+                            <Grid ColumnDefinitions="180,*,Auto" Margin="0,3" Height="32">
+                                <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="13"
+                                           TextTrimming="CharacterEllipsis" MaxLines="1"
+                                           VerticalAlignment="Center" />
+                                <Border Grid.Column="1" VerticalAlignment="Center" Height="20"
+                                        CornerRadius="999" ClipToBounds="True" Margin="8,0" Background="{DynamicResource SystemControlBackgroundListLowBrush}">
+                                    <Border Background="#52B788" CornerRadius="999"
+                                            HorizontalAlignment="Left"
+                                            Width="{Binding Percentage, Converter={StaticResource PercentageToWidth}, ConverterParameter=400}" />
+                                </Border>
+                                <TextBlock Grid.Column="2" Text="{Binding ValueLabel}"
+                                           FontSize="12" Opacity="0.6" VerticalAlignment="Center"
+                                           MinWidth="70" TextAlignment="Right" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ═══ Decade Distribution ═══ -->
+            <StackPanel Spacing="12">
+                <TextBlock Text="Decades" FontSize="22" FontWeight="Bold" />
+                <TextBlock Text="No year data available"
+                           FontSize="13" Opacity="0.4"
+                           IsVisible="{Binding !DecadeDistribution.Count}" />
+                <ItemsControl ItemsSource="{Binding DecadeDistribution}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="m:StatItem">
+                            <Grid ColumnDefinitions="180,*,Auto" Margin="0,3" Height="32">
+                                <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="13"
+                                           VerticalAlignment="Center" />
+                                <Border Grid.Column="1" VerticalAlignment="Center" Height="20"
+                                        CornerRadius="999" ClipToBounds="True" Margin="8,0" Background="{DynamicResource SystemControlBackgroundListLowBrush}">
+                                    <Border Background="#F8B500" CornerRadius="999"
+                                            HorizontalAlignment="Left"
+                                            Width="{Binding Percentage, Converter={StaticResource PercentageToWidth}, ConverterParameter=400}" />
+                                </Border>
+                                <TextBlock Grid.Column="2" Text="{Binding ValueLabel}"
+                                           FontSize="12" Opacity="0.6" VerticalAlignment="Center"
+                                           MinWidth="70" TextAlignment="Right" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ═══ Library Growth ═══ -->
+            <StackPanel Spacing="12" Margin="0,0,0,24">
+                <TextBlock Text="Library Growth (Last 12 Months)" FontSize="22" FontWeight="Bold" />
+                <TextBlock Text="No recent additions"
+                           FontSize="13" Opacity="0.4"
+                           IsVisible="{Binding !MonthlyGrowth.Count}" />
+                <ItemsControl ItemsSource="{Binding MonthlyGrowth}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="m:StatItem">
+                            <Grid ColumnDefinitions="180,*,Auto" Margin="0,3" Height="32">
+                                <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="13"
+                                           VerticalAlignment="Center" />
+                                <Border Grid.Column="1" VerticalAlignment="Center" Height="20"
+                                        CornerRadius="999" ClipToBounds="True" Margin="8,0" Background="{DynamicResource SystemControlBackgroundListLowBrush}">
+                                    <Border Background="#F39C12" CornerRadius="999"
+                                            HorizontalAlignment="Left"
+                                            Width="{Binding Percentage, Converter={StaticResource PercentageToWidth}, ConverterParameter=400}" />
+                                </Border>
+                                <TextBlock Grid.Column="2" Text="{Binding ValueLabel}"
+                                           FontSize="12" Opacity="0.6" VerticalAlignment="Center"
+                                           MinWidth="70" TextAlignment="Right" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

@@ -1,0 +1,148 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             xmlns:conv="using:Noctis.Converters"
+             x:Class="Noctis.Views.SidebarView"
+             x:DataType="vm:SidebarViewModel"
+             Background="{DynamicResource AppSidebarBackground}">
+
+    <UserControl.Resources>
+        <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry" />
+    </UserControl.Resources>
+
+    <Border BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="0,0,1,0"
+            Padding="0,4">
+        <DockPanel LastChildFill="True">
+
+            <!-- Settings pinned to absolute bottom (must be declared first for DockPanel.Dock) -->
+            <StackPanel DockPanel.Dock="Bottom" Background="Transparent">
+                <ListBox Classes="sidebar"
+                         x:Name="SystemList"
+                         ItemsSource="{Binding SystemItems}"
+                         SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
+                         SelectionChanged="OnNavListSelectionChanged"
+                         Margin="8,8,8,8">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="m:NavItem">
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <Grid Width="20"
+                                      Height="20"
+                                      VerticalAlignment="Center">
+                                    <Border RenderOptions.BitmapInterpolationMode="HighQuality"
+                                            Background="{DynamicResource SystemControlForegroundBaseHighBrush}">
+                                        <Border.OpacityMask>
+                                            <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
+                                                        Stretch="Uniform" />
+                                        </Border.OpacityMask>
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="{Binding Label}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+
+            <!-- Scrollable content fills remaining space -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel>
+                    <!-- Home section -->
+                    <ListBox Classes="sidebar"
+                             x:Name="HomeList"
+                             ItemsSource="{Binding HomeItems}"
+                             SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
+                             SelectionChanged="OnNavListSelectionChanged"
+                             Margin="8,10,8,8">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="m:NavItem">
+                                <StackPanel Orientation="Horizontal" Spacing="14">
+                                    <Grid Width="20"
+                                          Height="20"
+                                          VerticalAlignment="Center">
+                                        <Border RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                Background="{DynamicResource SystemControlForegroundBaseHighBrush}">
+                                            <Border.OpacityMask>
+                                                <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
+                                                            Stretch="Uniform" />
+                                            </Border.OpacityMask>
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock Text="{Binding Label}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Library header and items -->
+                    <TextBlock Text="LIBRARY"
+                               Classes="section-header" />
+
+                    <ListBox Classes="sidebar"
+                             x:Name="LibraryList"
+                             ItemsSource="{Binding LibraryItems}"
+                             SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
+                             SelectionChanged="OnNavListSelectionChanged"
+                             Margin="8,0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="m:NavItem">
+                                <StackPanel Orientation="Horizontal" Spacing="14">
+                                    <Grid Width="20"
+                                          Height="20"
+                                          VerticalAlignment="Center">
+                                        <Border RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                Background="{DynamicResource SystemControlForegroundBaseHighBrush}">
+                                            <Border.OpacityMask>
+                                                <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
+                                                            Stretch="Uniform" />
+                                            </Border.OpacityMask>
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock Text="{Binding Label}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Favorites header and items -->
+                    <TextBlock Text="FAVORITES"
+                               Classes="section-header" />
+
+                    <ListBox Classes="sidebar"
+                             x:Name="FavoritesList"
+                             ItemsSource="{Binding FavoritesItems}"
+                             SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
+                             SelectionChanged="OnNavListSelectionChanged"
+                             Margin="8,0,8,16">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="m:NavItem">
+                                <StackPanel Orientation="Horizontal" Spacing="14">
+                                    <Grid Width="20"
+                                          Height="20"
+                                          VerticalAlignment="Center">
+                                        <Border RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                Background="{DynamicResource SystemControlForegroundBaseHighBrush}">
+                                            <Border.OpacityMask>
+                                                <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
+                                                            Stretch="Uniform" />
+                                            </Border.OpacityMask>
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock Text="{Binding Label}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+            </ScrollViewer>
+
+        </DockPanel>
+    </Border>
+
+</UserControl>

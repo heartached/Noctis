@@ -1,0 +1,102 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:Noctis"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:views="using:Noctis.Views"
+             x:Class="Noctis.App"
+             RequestedThemeVariant="Dark">
+
+    <!-- Custom Font Support Section
+         To add custom fonts to Noctis:
+
+         1. Add font files to the Assets/Fonts directory (create if it doesn't exist)
+            Supported formats: .ttf, .otf
+
+         2. Set Build Action to "AvaloniaResource" for each font file
+
+         3. Define FontFamily resources in this section:
+            <Application.Resources>
+                <FontFamily x:Key="CustomFont">avares://Noctis/Assets/Fonts/YourFont.ttf#Font Name</FontFamily>
+                <FontFamily x:Key="IconFont">avares://Noctis/Assets/Fonts/Icons.ttf#Icons</FontFamily>
+            </Application.Resources>
+
+         4. Use the font in XAML:
+            <TextBlock FontFamily="{StaticResource CustomFont}" Text="Sample Text" />
+
+         5. Or use directly:
+            <TextBlock FontFamily="avares://Noctis/Assets/Fonts/YourFont.ttf#Font Name" />
+
+         Note: The #Font Name part should match the PostScript name of the font.
+         You can find this in the font file properties or using font inspection tools.
+    -->
+
+    <!-- Font + Icon Resources -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://Noctis/Assets/Icons.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <FontFamily x:Key="InterSemiBold">avares://Noctis/Assets/Fonts/Inter-SemiBold.ttf#Inter SemiBold</FontFamily>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <!-- Global style overrides -->
+        <StyleInclude Source="avares://Noctis/Assets/Styles.axaml" />
+    </Application.Styles>
+
+    <!-- Map ViewModels to Views for ContentControl binding -->
+    <Application.DataTemplates>
+        <DataTemplate DataType="{x:Type vm:HomeViewModel}">
+            <views:HomeView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:LibrarySongsViewModel}">
+            <views:LibrarySongsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:LibraryAlbumsViewModel}">
+            <views:LibraryAlbumsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AlbumDetailViewModel}">
+            <views:AlbumDetailView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:LibraryArtistsViewModel}">
+            <views:LibraryArtistsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:LibraryGenresViewModel}">
+            <views:LibraryGenresView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:GenreDetailViewModel}">
+            <views:GenreDetailView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:LibraryPlaylistsViewModel}">
+            <views:LibraryPlaylistsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:FavoritesViewModel}">
+            <views:FavoritesView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:QueueViewModel}">
+            <views:QueueView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
+            <views:PlaylistView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:NowPlayingViewModel}">
+            <views:NowPlayingView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:LyricsViewModel}">
+            <views:LyricsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:StatisticsViewModel}">
+            <views:StatisticsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CoverFlowViewModel}">
+            <views:CoverFlowView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView />
+        </DataTemplate>
+    </Application.DataTemplates>
+
+</Application>

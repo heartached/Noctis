@@ -1,0 +1,46 @@
+## .NET
+bin/
+obj/
+publish/
+artifacts/
+
+## IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.csproj.user
+
+## OS
+Thumbs.db
+.DS_Store
+
+## NuGet
+*.nupkg
+packages/
+
+## AI / Claude tools
+.claude/
+noctis-v2/
+tools/
+
+## Temp / build scratch
+build_tmp_verify/
+tmp_frames/
+noctis_pid.txt
+
+## Internal docs (not for public repo)
+DesignNotes.md
+ICON_PLACEMENT_INSTRUCTIONS.md
+IMPLEMENTATION_SUMMARY.md
+QA_PHASE0_CHECKLIST.md
+USAGE.md
+
+## Node (noctis-v2 experiment)
+node_modules/
+
+## Local .NET SDK artifacts
+.dotnet/
+.templateengine/
+dotnet

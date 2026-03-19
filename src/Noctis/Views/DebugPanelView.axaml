@@ -1,0 +1,157 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             x:Class="Noctis.Views.DebugPanelView"
+             x:DataType="vm:DebugPanelViewModel">
+
+    <Border Background="#F0101010"
+            CornerRadius="12"
+            Padding="14"
+            ClipToBounds="True">
+        <DockPanel>
+            <!-- Header row -->
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="Debug"
+                           FontSize="14"
+                           FontWeight="Bold"
+                           Foreground="#FFFFFF"
+                           VerticalAlignment="Center" />
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding EntryCount, StringFormat='({0})'}"
+                           FontSize="11"
+                           Foreground="#60FFFFFF"
+                           VerticalAlignment="Center"
+                           Margin="6,0,0,0" />
+
+                <!-- Filter -->
+                <ComboBox Grid.Column="3"
+                          ItemsSource="{Binding CategoryFilters}"
+                          SelectedItem="{Binding SelectedCategoryFilter}"
+                          FontSize="11"
+                          MinWidth="85"
+                          MaxHeight="26"
+                          VerticalAlignment="Center"
+                          Margin="0,0,4,0" />
+
+                <!-- Copy button -->
+                <Button Grid.Column="4"
+                        Command="{Binding CopyAllCommand}"
+                        ToolTip.Tip="Copy all logs to clipboard"
+                        FontSize="11"
+                        Padding="6,3"
+                        Background="#30FFFFFF"
+                        Foreground="#FFFFFF"
+                        BorderThickness="0"
+                        CornerRadius="4"
+                        VerticalAlignment="Center"
+                        Margin="0,0,4,0"
+                        Cursor="Hand">
+                    <PathIcon Data="{StaticResource CopyIcon}"
+                             Width="13" Height="13" />
+                </Button>
+
+                <!-- Clear button -->
+                <Button Grid.Column="5"
+                        Command="{Binding ClearLogCommand}"
+                        Content="Clear"
+                        FontSize="11"
+                        Padding="6,3"
+                        Background="#30FFFFFF"
+                        Foreground="#FFFFFF"
+                        BorderThickness="0"
+                        CornerRadius="4"
+                        VerticalAlignment="Center"
+                        Cursor="Hand" />
+            </Grid>
+
+            <!-- Live state -->
+            <Border DockPanel.Dock="Top"
+                    Background="#18FFFFFF"
+                    CornerRadius="6"
+                    Padding="10,6"
+                    Margin="0,0,0,6">
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" FontSize="10" Foreground="#A0FFFFFF">
+                        <Run Text="Tab: " FontWeight="SemiBold"/><Run Text="{Binding ActiveTab}"/>
+                    </TextBlock>
+                    <TextBlock Grid.Row="0" Grid.Column="1" FontSize="10" Foreground="#A0FFFFFF">
+                        <Run Text="Status: " FontWeight="SemiBold"/><Run Text="{Binding PlaybackStatus}"/>
+                    </TextBlock>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" FontSize="10" Foreground="#A0FFFFFF">
+                        <Run Text="Track: " FontWeight="SemiBold"/><Run Text="{Binding SelectedTrack}"/>
+                    </TextBlock>
+                    <TextBlock Grid.Row="2" Grid.Column="0" FontSize="10" Foreground="#A0FFFFFF">
+                        <Run Text="Shuffle: " FontWeight="SemiBold"/><Run Text="{Binding ShuffleState}"/>
+                    </TextBlock>
+                    <TextBlock Grid.Row="2" Grid.Column="1" FontSize="10" Foreground="#A0FFFFFF">
+                        <Run Text="Repeat: " FontWeight="SemiBold"/><Run Text="{Binding RepeatState}"/>
+                    </TextBlock>
+                    <TextBlock Grid.Row="3" Grid.Column="0" FontSize="10" Foreground="#A0FFFFFF">
+                        <Run Text="Queue: " FontWeight="SemiBold"/><Run Text="{Binding QueueLength}"/>
+                    </TextBlock>
+                    <TextBlock Grid.Row="3" Grid.Column="1" FontSize="10" Foreground="#A0FFFFFF">
+                        <Run Text="Search: " FontWeight="SemiBold"/><Run Text="{Binding SearchQuery}"/>
+                    </TextBlock>
+                </Grid>
+            </Border>
+
+            <!-- Log entries — full text, no truncation, word-wrap -->
+            <ListBox ItemsSource="{Binding Entries}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Padding" Value="4,3"/>
+                        <Setter Property="MinHeight" Value="0"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                    </Style>
+                    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                        <Setter Property="Background" Value="#15FFFFFF"/>
+                    </Style>
+                </ListBox.Styles>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Spacing="1">
+                            <!-- Line 1: timestamp + category:level + action -->
+                            <TextBlock FontSize="10"
+                                       FontFamily="Consolas, Menlo, Monaco, Courier New, monospace"
+                                       Foreground="#C0FFFFFF"
+                                       TextWrapping="Wrap">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0:HH:mm:ss.fff}  {1}:{2}  {3}">
+                                        <Binding Path="Timestamp" />
+                                        <Binding Path="Category" />
+                                        <Binding Path="Level" />
+                                        <Binding Path="Action" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <!-- Line 2: metadata (if any), full wrap -->
+                            <TextBlock Text="{Binding Metadata}"
+                                       FontSize="10"
+                                       FontFamily="Consolas, Menlo, Monaco, Courier New, monospace"
+                                       Foreground="#80FFFFFF"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding Metadata, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       Margin="4,0,0,0" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+    </Border>
+
+</UserControl>
