@@ -855,6 +855,11 @@
 
                     <!-- Folder list -->
                     <ItemsControl ItemsSource="{Binding MusicFolders}">
+                        <ItemsControl.Styles>
+                            <Style Selector="ItemsControl:empty">
+                                <Setter Property="IsVisible" Value="False"/>
+                            </Style>
+                        </ItemsControl.Styles>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="sys:String">
                                 <Border Padding="12,8" Margin="0,2" CornerRadius="6"
@@ -890,19 +895,21 @@
 
             <!-- Library Management (scan) -->
             <Border Classes="setting-card">
-                <StackPanel Spacing="12">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                         <Viewbox Width="18" Height="18" VerticalAlignment="Center">
                             <Canvas Width="24" Height="24">
                                 <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.55"
                                       Data="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
                             </Canvas>
                         </Viewbox>
-                        <TextBlock Text="Library Scan" FontSize="15" FontWeight="SemiBold"
-                                   VerticalAlignment="Center"/>
+                        <TextBlock Text="Library Scan" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Spacing="12">
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ScanStatusText}"
+                                   FontSize="12"
+                                   Opacity="0.6"
+                                   VerticalAlignment="Center"/>
                         <Button Content="Scan Library"
                                 Classes="pill-action"
                                 Command="{Binding RescanCommand}"
@@ -915,12 +922,8 @@
                                 IsEnabled="{Binding !IsScanning}"
                                 Padding="16,10"
                                 Cursor="Hand"/>
-                        <TextBlock Text="{Binding ScanStatusText}"
-                                   FontSize="12"
-                                   Opacity="0.6"
-                                   VerticalAlignment="Center"/>
                     </StackPanel>
-                </StackPanel>
+                </Grid>
             </Border>
 
 
