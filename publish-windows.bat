@@ -17,7 +17,7 @@ dotnet publish src\Noctis\Noctis.csproj ^
     -r win-x64 ^
     --self-contained true ^
     -p:PublishSingleFile=true ^
-    -p:IncludeNativeLibrariesForSelfExtract=true ^
+    -p:IncludeNativeLibrariesForSelfExtract=false ^
     -p:EnableCompressionInSingleFile=true ^
     -o publish\win-x64
 
@@ -34,12 +34,8 @@ echo   Build successful!
 echo   Output: publish\win-x64\Noctis.exe
 echo  ============================================================
 echo.
-echo  IMPORTANT: The libVLC native DLLs (libvlc/ folder) must
-echo  be present alongside Noctis.exe or will be extracted from
-echo  the single-file exe to a temp directory on first run.
-echo.
-echo  If playback fails, copy the libvlc\ folder from:
-echo    src\Noctis\bin\Release\net8.0\win-x64\libvlc\
-echo  to sit alongside Noctis.exe.
+echo  The libvlc\ folder alongside Noctis.exe contains the
+echo  native audio engine. Both must be included when
+echo  distributing (e.g. zip the entire publish\win-x64\ folder).
 echo.
 pause
