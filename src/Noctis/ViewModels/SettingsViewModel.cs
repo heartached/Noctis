@@ -166,7 +166,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── About ──
 
-    public string AppVersion => "Version 1.0.0";
+    public string AppVersion => "Version 1.0.1";
 
     // ── Events ──
 
