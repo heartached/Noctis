@@ -44,7 +44,7 @@ A sleek Windows music player with synced lyrics, equalizer, smart playlists, and
 ## Build
 
 ```bash
-git clone https://github.com/yourusername/noctis
+git clone https://github.com/heartached/noctis
 dotnet run --project src/Noctis/Noctis.csproj
 ```
 
