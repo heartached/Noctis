@@ -36,7 +36,7 @@
             <Button Grid.Column="5" Content="Favorites" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
                     Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             <Button Grid.Column="6" Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
-                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Right" />
+                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <TextBlock Grid.Column="7" Text="" FontSize="12" />
         </Grid>
 
@@ -272,7 +272,7 @@
                                    Text="{Binding PlayCount}"
                                    FontSize="12"
                                    Opacity="0.5"
-                                   HorizontalAlignment="Right"
+                                   HorizontalAlignment="Left"
                                    VerticalAlignment="Center" />
 
                         <!-- 3-dots menu button -->
@@ -281,14 +281,14 @@
                                 BorderThickness="0"
                                 Padding="0"
                                 Width="32" Height="32"
-                                HorizontalAlignment="Center"
+                                HorizontalAlignment="Left"
                                 VerticalAlignment="Center"
                                 Cursor="Hand"
                                 Tag="{Binding}"
                                 ToolTip.Tip="Options">
                             <PathIcon Data="{StaticResource MoreDotsIcon}"
                                      Width="14" Height="14"
-                                     Opacity="0.7"
+                                     Foreground="#E74856"
                                      HorizontalAlignment="Center"
                                      VerticalAlignment="Center" />
                             <Button.Flyout>
