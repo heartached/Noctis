@@ -82,7 +82,7 @@
                                 FontWeight="SemiBold"
                                 Cursor="Hand">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <PathIcon Data="{StaticResource SortIcon}"
+                                <PathIcon Data="{StaticResource ShuffleIcon}"
                                          Width="16" Height="16"
                                          Foreground="White"
                                          VerticalAlignment="Center" />

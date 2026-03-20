@@ -255,10 +255,21 @@ public partial class MainWindowViewModel : ViewModelBase
             });
         }
 
-        // Connect loon client if configured (for Discord cover art)
+        // Connect loon client for Discord cover art
         var loonUrl = Settings.GetSettings().LoonServerUrl;
-        if (!string.IsNullOrWhiteSpace(loonUrl))
-            _ = _loon.ConnectAsync(loonUrl);
+        if (string.IsNullOrWhiteSpace(loonUrl))
+            loonUrl = "http://noctis-loon.duckdns.org";
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _loon.ConnectAsync(loonUrl);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Loon] Connection failed: {ex.Message}");
+            }
+        });
 
         // Navigate to the user's preferred default page
         var defaultKey = Settings.GetDefaultPageKey();

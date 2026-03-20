@@ -27,6 +27,7 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _settingsLoaded;
     private bool _suspendSettingPersistence;
     private CancellationTokenSource? _eqSaveDebounceCts;
+    private CancellationTokenSource? _scanStatusClearCts;
 
     private AppSettings _settings;
 
@@ -166,7 +167,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── About ──
 
-    public string AppVersion => "Version 1.0.1";
+    public string AppVersion => "Version 1.0.2";
 
     // ── Events ──
 
@@ -411,6 +412,7 @@ public partial class SettingsViewModel : ViewModelBase
     private void ApplyPlayerSettings()
     {
         if (_player == null) return;
+        _player.Volume = _settings.Volume;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalMenuTitleScrollEnabled = MenuTitleMarqueeEnabled;
@@ -955,6 +957,31 @@ public partial class SettingsViewModel : ViewModelBase
         await SaveAsync();
     }
 
+    private void SetScanStatus(string text, bool autoClear = false)
+    {
+        ScanStatusText = text;
+        _scanStatusClearCts?.Cancel();
+        _scanStatusClearCts?.Dispose();
+        _scanStatusClearCts = null;
+
+        if (autoClear && !string.IsNullOrEmpty(text))
+        {
+            var cts = new CancellationTokenSource();
+            _scanStatusClearCts = cts;
+            _ = ClearScanStatusAfterDelay(cts.Token);
+        }
+    }
+
+    private async Task ClearScanStatusAfterDelay(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(3000, ct);
+            ScanStatusText = "";
+        }
+        catch (OperationCanceledException) { }
+    }
+
     [RelayCommand]
     private async Task Rescan()
     {
@@ -966,15 +993,15 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             await _library.ScanAsync(MusicFolders);
-            ScanStatusText = _library.Tracks.Count == 0
+            SetScanStatus(_library.Tracks.Count == 0
                 ? "No tracks found."
-                : $"{_library.Tracks.Count} tracks found.";
+                : $"{_library.Tracks.Count} tracks found.", autoClear: true);
             RefreshLibraryStats();
             RefreshStorageInfo();
         }
         catch (Exception ex)
         {
-            ScanStatusText = $"Scan error: {ex.Message}";
+            SetScanStatus($"Scan error: {ex.Message}", autoClear: true);
         }
         finally
         {
@@ -993,15 +1020,15 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             await _library.RebuildIndexAsync();
-            ScanStatusText = _library.Tracks.Count == 0
-                ? "Index Library. No tracks found."
-                : $"Index Library. {_library.Tracks.Count} tracks indexed.";
+            SetScanStatus(_library.Tracks.Count == 0
+                ? "No tracks found."
+                : "Indexed Library.", autoClear: true);
             RefreshLibraryStats();
             RefreshStorageInfo();
         }
         catch (Exception ex)
         {
-            ScanStatusText = $"Index rebuild error: {ex.Message}";
+            SetScanStatus($"Index rebuild error: {ex.Message}", autoClear: true);
         }
         finally
         {
@@ -1026,7 +1053,7 @@ public partial class SettingsViewModel : ViewModelBase
         await _persistence.SavePlaylistsAsync(new List<Playlist>());
         await _persistence.SaveQueueStateAsync(new QueueState());
 
-        ScanStatusText = "Library has been reset.";
+        SetScanStatus("Library has been reset.", autoClear: true);
         RefreshLibraryStats();
         TotalPlaylists = 0;
         RefreshStorageInfo();
@@ -1040,7 +1067,7 @@ public partial class SettingsViewModel : ViewModelBase
         var artists = _library.Artists;
         if (artists.Count == 0)
         {
-            ScanStatusText = "No artists in library.";
+            SetScanStatus("No artists in library.", autoClear: true);
             return;
         }
 
@@ -1056,13 +1083,13 @@ public partial class SettingsViewModel : ViewModelBase
                     ScanStatusText = $"Fetched {fetched} artist image(s)...");
             });
 
-            ScanStatusText = fetched > 0
+            SetScanStatus(fetched > 0
                 ? $"Fetched {fetched} new artist image(s)."
-                : "All artist images are already cached.";
+                : "All artist images are already cached.", autoClear: true);
         }
         catch (Exception ex)
         {
-            ScanStatusText = $"Failed to fetch artist images: {ex.Message}";
+            SetScanStatus($"Failed to fetch artist images: {ex.Message}", autoClear: true);
         }
     }
 
@@ -1078,11 +1105,11 @@ public partial class SettingsViewModel : ViewModelBase
                 Directory.CreateDirectory(artworkDir);
             }
             RefreshStorageInfo();
-            ScanStatusText = "Artwork cache cleared.";
+            SetScanStatus("Artwork cache cleared.", autoClear: true);
         }
         catch (Exception ex)
         {
-            ScanStatusText = $"Failed to clear cache: {ex.Message}";
+            SetScanStatus($"Failed to clear cache: {ex.Message}", autoClear: true);
         }
     }
 
@@ -1101,6 +1128,12 @@ public partial class SettingsViewModel : ViewModelBase
         {
             Debug.WriteLine($"[Settings] Failed to open data folder: {ex.Message}");
         }
+    }
+
+    [RelayCommand]
+    private void OpenGitHub()
+    {
+        Helpers.PlatformHelper.OpenUrl("https://github.com/heartached/Noctis");
     }
 }
 

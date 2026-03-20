@@ -553,7 +553,7 @@
                                 <MenuItem Header="Shuffle"
                                           Command="{Binding Player.ShuffleCurrentAlbumCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Shuffle%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="Play Next"
@@ -964,31 +964,14 @@
                                         Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
                                         CommandParameter="{Binding}">
                                     <Panel HorizontalAlignment="Stretch">
-                                        <!-- Glow layer -->
-                                        <TextBlock Text="{Binding Text}"
-                                                   FontSize="{Binding IsActive, Converter={StaticResource BoolToOpacity}, ConverterParameter=30;36}"
-                                                   FontWeight="Bold"
-                                                   Foreground="White"
-                                                   HorizontalAlignment="Stretch"
-                                                   TextWrapping="Wrap"
-                                                   Opacity="{Binding IsActive, Converter={StaticResource BoolToOpacity}, ConverterParameter=0;0.55}">
-                                            <TextBlock.Effect>
-                                                <BlurEffect Radius="30"/>
-                                            </TextBlock.Effect>
-                                            <TextBlock.Transitions>
-                                                <Transitions>
-                                                    <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
-                                                    <DoubleTransition Property="FontSize" Duration="0:0:0.4" Easing="CubicEaseInOut"/>
-                                                </Transitions>
-                                            </TextBlock.Transitions>
-                                        </TextBlock>
-                                        <!-- Main text layer -->
+                                        <!-- Main text layer (hidden for intro placeholder) -->
                                         <TextBlock Text="{Binding Text}"
                                                    FontSize="{Binding IsActive, Converter={StaticResource BoolToOpacity}, ConverterParameter=30;36}"
                                                    FontWeight="Bold"
                                                    Foreground="White"
                                                    HorizontalAlignment="Stretch"
                                                    Opacity="{Binding LineOpacity}"
+                                                   IsVisible="{Binding !IsIntroPlaceholder}"
                                                    TextWrapping="Wrap">
                                             <TextBlock.Transitions>
                                                 <Transitions>
@@ -997,6 +980,72 @@
                                                 </Transitions>
                                             </TextBlock.Transitions>
                                         </TextBlock>
+                                        <!-- Intro dots -->
+                                        <StackPanel Orientation="Horizontal"
+                                                    Spacing="6"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,8"
+                                                    Opacity="{Binding LineOpacity}"
+                                                    IsVisible="{Binding IsIntroPlaceholder}"
+                                                    Classes.active="{Binding IsActive}">
+                                            <StackPanel.Transitions>
+                                                <Transitions>
+                                                    <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                                </Transitions>
+                                            </StackPanel.Transitions>
+                                            <Ellipse x:Name="IntroDot1" Width="8" Height="8" Fill="White">
+                                                <Ellipse.Styles>
+                                                    <Style Selector="StackPanel.active Ellipse#IntroDot1">
+                                                        <Style.Animations>
+                                                            <Animation Duration="0:0:1.8" IterationCount="INFINITE">
+                                                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                                <KeyFrame Cue="16%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                                                                <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                            </Animation>
+                                                        </Style.Animations>
+                                                    </Style>
+                                                    <Style Selector="StackPanel:not(.active) Ellipse#IntroDot1">
+                                                        <Setter Property="Opacity" Value="1.0"/>
+                                                    </Style>
+                                                </Ellipse.Styles>
+                                            </Ellipse>
+                                            <Ellipse x:Name="IntroDot2" Width="8" Height="8" Fill="White">
+                                                <Ellipse.Styles>
+                                                    <Style Selector="StackPanel.active Ellipse#IntroDot2">
+                                                        <Style.Animations>
+                                                            <Animation Duration="0:0:1.8" IterationCount="INFINITE" Delay="0:0:0.3">
+                                                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                                <KeyFrame Cue="16%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                                                                <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                            </Animation>
+                                                        </Style.Animations>
+                                                    </Style>
+                                                    <Style Selector="StackPanel:not(.active) Ellipse#IntroDot2">
+                                                        <Setter Property="Opacity" Value="1.0"/>
+                                                    </Style>
+                                                </Ellipse.Styles>
+                                            </Ellipse>
+                                            <Ellipse x:Name="IntroDot3" Width="8" Height="8" Fill="White">
+                                                <Ellipse.Styles>
+                                                    <Style Selector="StackPanel.active Ellipse#IntroDot3">
+                                                        <Style.Animations>
+                                                            <Animation Duration="0:0:1.8" IterationCount="INFINITE" Delay="0:0:0.6">
+                                                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                                <KeyFrame Cue="16%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                                                                <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                            </Animation>
+                                                        </Style.Animations>
+                                                    </Style>
+                                                    <Style Selector="StackPanel:not(.active) Ellipse#IntroDot3">
+                                                        <Setter Property="Opacity" Value="1.0"/>
+                                                    </Style>
+                                                </Ellipse.Styles>
+                                            </Ellipse>
+                                        </StackPanel>
                                     </Panel>
                                 </Button>
                             </DataTemplate>

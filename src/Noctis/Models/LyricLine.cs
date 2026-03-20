@@ -28,6 +28,9 @@ public partial class LyricLine : ObservableObject
     [ObservableProperty]
     private bool _isClickable = true;
 
+    /// <summary>Whether this line is the intro placeholder ("...").</summary>
+    public bool IsIntroPlaceholder { get; set; }
+
     /// <summary>Whether these lyrics are synced (have timestamps).</summary>
     public bool IsSynced => Timestamp.HasValue;
 }

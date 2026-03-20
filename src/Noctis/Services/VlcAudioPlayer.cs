@@ -456,13 +456,19 @@ public class VlcAudioPlayer : IAudioPlayer
             _currentMedia = media;
             _isPaused = false;
 
-            // 4. Apply audio filters
+            // 4. Apply loudness normalization via ReplayGain tags (static per-track).
+            //    IMPORTANT: The previous implementation used VLC's "normvol" audio
+            //    filter, which is a real-time AGC (automatic gain control). It analyzes
+            //    a sliding window of audio buffers and adjusts gain dynamically — this
+            //    causes audible "pumping" on music with high dynamic range (e.g. beat
+            //    drops). ReplayGain reads pre-computed loudness metadata from the file
+            //    and applies a fixed gain offset for the entire track — no real-time
+            //    volume fluctuation.
             if (_normalizationEnabled)
             {
-                _currentMedia.AddOption(":audio-filter=normvol");
-                // Limit normalization strength to prevent muting quiet tracks
-                _currentMedia.AddOption(":norm-buff-size=20");
-                _currentMedia.AddOption(":norm-max-level=2.0");
+                _currentMedia.AddOption(":audio-replay-gain-mode=track");
+                _currentMedia.AddOption(":audio-replay-gain-preamp=0.0");
+                _currentMedia.AddOption(":audio-replay-gain-default=-7.0");
             }
 
             // 5. Start playback

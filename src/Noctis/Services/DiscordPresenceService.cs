@@ -101,7 +101,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
                 State = Truncate(artist, 128),
                 Assets = new Assets
                 {
-                    LargeImageKey = !string.IsNullOrWhiteSpace(track.ArtworkUrl) ? track.ArtworkUrl : "velour_icon",
+                    LargeImageKey = !string.IsNullOrWhiteSpace(track.ArtworkUrl) ? track.ArtworkUrl : "noctis_icon",
                     LargeImageText = Truncate(!string.IsNullOrWhiteSpace(album) ? album : artist, 128),
                     SmallImageKey = isPlaying ? "play" : "pause",
                     SmallImageText = isPlaying ? "Playing" : "Paused",
