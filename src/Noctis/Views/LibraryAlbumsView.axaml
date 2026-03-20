@@ -113,7 +113,7 @@
                                                           Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ShuffleAlbumCommand}"
                                                           CommandParameter="{Binding}">
                                                     <MenuItem.Icon>
-                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Shuffle%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                        <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                                                     </MenuItem.Icon>
                                                 </MenuItem>
                                                 <MenuItem Header="Play Next"

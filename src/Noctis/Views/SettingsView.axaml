@@ -1096,27 +1096,28 @@
                         <WrapPanel Orientation="Horizontal">
                             <Border CornerRadius="10" Padding="16,14" Margin="0,0,8,8" MinWidth="140"
                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                <StackPanel Spacing="4">
+                                <StackPanel Spacing="4" HorizontalAlignment="Center">
                                     <TextBlock Text="Lossless" FontSize="13" FontWeight="SemiBold" Foreground="#E04060"
-                                                   ToolTip.Tip="Lossless preserves the original audio recording without quality loss"/>
-                                    <TextBlock Text="{Binding LosslessCount}" FontSize="22" FontWeight="Bold"/>
-                                    <TextBlock Text="{Binding LosslessPercentageText}" FontSize="11" Opacity="0.5"/>
+                                               HorizontalAlignment="Center"
+                                               ToolTip.Tip="Lossless preserves the original audio recording without quality loss"/>
+                                    <TextBlock Text="{Binding LosslessCount}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding LosslessPercentageText}" FontSize="11" Opacity="0.5" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
                             <Border CornerRadius="10" Padding="16,14" Margin="0,0,8,8" MinWidth="140"
                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Hi-Res Lossless" FontSize="13" FontWeight="SemiBold" Foreground="#45B7D1"/>
-                                    <TextBlock Text="{Binding HiResCount}" FontSize="22" FontWeight="Bold"/>
-                                    <TextBlock Text="{Binding HiResPercentageText}" FontSize="11" Opacity="0.5"/>
+                                <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                    <TextBlock Text="Hi-Res Lossless" FontSize="13" FontWeight="SemiBold" Foreground="#45B7D1" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding HiResCount}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding HiResPercentageText}" FontSize="11" Opacity="0.5" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
                             <Border CornerRadius="10" Padding="16,14" Margin="0,0,8,8" MinWidth="140"
                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="Lossy" FontSize="13" FontWeight="SemiBold" Opacity="0.6"/>
-                                    <TextBlock Text="{Binding LossyCount}" FontSize="22" FontWeight="Bold"/>
-                                    <TextBlock Text="{Binding LossyPercentageText}" FontSize="11" Opacity="0.5"/>
+                                <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                    <TextBlock Text="Lossy" FontSize="13" FontWeight="SemiBold" Opacity="0.6" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding LossyCount}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding LossyPercentageText}" FontSize="11" Opacity="0.5" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
                         </WrapPanel>
@@ -1400,6 +1401,26 @@
                                FontSize="13" Opacity="0.6"/>
                     <TextBlock Text="Yours Truly, heartached."
                                FontSize="12" Opacity="0.4"/>
+
+                    <Border Height="1"
+                            Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                            Opacity="0.2" Margin="0,4"/>
+
+                    <Button Command="{Binding OpenGitHubCommand}"
+                            Background="Transparent" BorderThickness="0"
+                            Padding="0" Cursor="Hand"
+                            HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                    VerticalAlignment="Center">
+                            <!-- GitHub logo (Octicon mark) -->
+                            <PathIcon Width="18" Height="18"
+                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                      Data="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                            <TextBlock Text="Star on GitHub · Check for updates"
+                                       FontSize="13" Opacity="0.6"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Border>
 

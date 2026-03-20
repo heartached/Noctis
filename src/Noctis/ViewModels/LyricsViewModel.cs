@@ -1015,7 +1015,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             lines.Insert(0, new LyricLine
             {
                 Timestamp = TimeSpan.Zero,
-                Text = "..."
+                Text = "...",
+                IsIntroPlaceholder = true
             });
         }
     }
@@ -1252,7 +1253,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Sets LineOpacity on each lyric line based on distance from the active line.
-    /// Active=1.0, previous=0.15, next=0.25, 2nd next=0.12, rest=0.0 (hidden).
+    /// Active=1.0, adjacent lines fade gradually over ±9 lines, rest=0.0 (hidden).
     /// Pass activeIndex=-1 to restore all lines to full opacity (e.g. unsynced or reset).
     /// </summary>
     private void UpdateLineOpacities(int activeIndex)
@@ -1270,14 +1271,19 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         for (int i = 0; i < LyricLines.Count; i++)
         {
             var dist = i - activeIndex;
-            var opacity = dist switch
+            var absDist = Math.Abs(dist);
+            var opacity = absDist switch
             {
                  0 => 1.0,
-                 1 or -1 => 0.55,
-                 2 or -2 => 0.32,
-                 3 or -3 => 0.18,
-                 4 or -4 => 0.10,
-                 5 or -5 => 0.05,
+                 1 => 0.55,
+                 2 => 0.32,
+                 3 => 0.18,
+                 4 => 0.12,
+                 5 => 0.08,
+                 6 => 0.06,
+                 7 => 0.04,
+                 8 => 0.03,
+                 9 => 0.02,
                  _ => 0.0
             };
             var line = LyricLines[i];

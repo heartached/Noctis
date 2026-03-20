@@ -644,6 +644,12 @@ public partial class PlayerViewModel : ViewModelBase
         Position = TimeSpan.Zero;
         PositionFraction = 0;
         PositionText = "0:00";
+
+        // Arm the seek-settle guard so stale VLC position callbacks from the
+        // previous track are rejected (same mechanism used after user seeks).
+        _lastSeekTime = DateTime.UtcNow;
+        _lastCommittedSeekTarget = TimeSpan.Zero;
+
         State = PlaybackState.Playing;
 
         // Update play count and last played time

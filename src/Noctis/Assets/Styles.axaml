@@ -93,6 +93,11 @@
                     <SolidColorBrush x:Key="IslandExplicitBadge" Color="#88888888" />
                     <SolidColorBrush x:Key="IslandIconAccent" Color="#E74856" />
 
+                    <!-- Sidebar highlight -->
+                    <SolidColorBrush x:Key="SidebarSelectedBrush" Color="#545454" />
+                    <SolidColorBrush x:Key="SidebarSelectedHoverBrush" Color="#626262" />
+                    <SolidColorBrush x:Key="SidebarHoverBrush" Color="#20FFFFFF" />
+
                     <!-- Icon pill buttons -->
                     <SolidColorBrush x:Key="SmartPlaylistBtnBackground" Color="#E04060" />
                 </ResourceDictionary>
@@ -185,6 +190,11 @@
                     <SolidColorBrush x:Key="IslandAlbumArtPlaceholder" Color="#33FFFFFF" />
                     <SolidColorBrush x:Key="IslandExplicitBadge" Color="#88888888" />
                     <SolidColorBrush x:Key="IslandIconAccent" Color="#E74856" />
+
+                    <!-- Sidebar highlight -->
+                    <SolidColorBrush x:Key="SidebarSelectedBrush" Color="#DEDEDE" />
+                    <SolidColorBrush x:Key="SidebarSelectedHoverBrush" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="SidebarHoverBrush" Color="#12000000" />
 
                     <!-- Icon pill buttons -->
                     <SolidColorBrush x:Key="SmartPlaylistBtnBackground" Color="#E04060" />
@@ -422,31 +432,43 @@
 
     <Style Selector="ListBox.sidebar ListBoxItem">
         <Setter Property="Padding" Value="14,10" />
-        <Setter Property="Margin" Value="4,2" />
-        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Margin" Value="0,2" />
+        <Setter Property="CornerRadius" Value="8" />
         <Setter Property="FontSize" Value="15" />
+        <Setter Property="Background" Value="Transparent" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
     </Style>
 
     <Style Selector="ListBox.sidebar ListBoxItem /template/ ContentPresenter">
-        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
     </Style>
 
     <Style Selector="ListBox.sidebar ListBoxItem:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#2AE74856" />
+        <Setter Property="Background" Value="{DynamicResource SidebarHoverBrush}" />
     </Style>
 
     <Style Selector="ListBox.sidebar ListBoxItem:selected">
-        <Setter Property="Background" Value="#66E74856" />
+        <Setter Property="Background" Value="{DynamicResource SidebarSelectedBrush}" />
     </Style>
 
     <Style Selector="ListBox.sidebar ListBoxItem:selected /template/ ContentPresenter">
-        <Setter Property="Background" Value="#66E74856" />
-        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Background" Value="{DynamicResource SidebarSelectedBrush}" />
+        <Setter Property="CornerRadius" Value="8" />
     </Style>
 
     <Style Selector="ListBox.sidebar ListBoxItem:selected:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#66E74856" />
+        <Setter Property="Background" Value="{DynamicResource SidebarSelectedHoverBrush}" />
     </Style>
 
     <!-- Track list styling -->

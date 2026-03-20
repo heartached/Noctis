@@ -202,7 +202,7 @@
                             FontWeight="SemiBold"
                             Cursor="Hand">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource SortIcon}"
+                            <PathIcon Data="{StaticResource ShuffleIcon}"
                                      Width="16" Height="16"
                                      Foreground="White"
                                      VerticalAlignment="Center" />
@@ -226,9 +226,9 @@
                     Cursor="Hand"
                     Margin="0,0,0,0"
                     ToolTip.Tip="Options">
-                <PathIcon Data="{StaticResource DismissIcon}"
-                          Width="18" Height="18"
-                          Foreground="#E04060"
+                <PathIcon Data="{StaticResource MoreDotsIcon}"
+                          Width="14" Height="14"
+                          Foreground="#E74856"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center" />
                 <Button.Flyout>
@@ -287,7 +287,7 @@
                         <MenuItem Header="Shuffle"
                                   Command="{Binding ShufflePlayCommand}">
                             <MenuItem.Icon>
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Shuffle%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="Add to Queue"
@@ -431,7 +431,7 @@
                                 <MenuItem Header="Shuffle"
                                           Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShufflePlayCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Shuffle%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="Play Next"
@@ -601,9 +601,9 @@
                                     Cursor="Hand"
                                     ToolTip.Tip="Options"
                                     Tag="{Binding}">
-                                <PathIcon Data="{StaticResource DismissIcon}"
-                                          Width="16" Height="16"
-                                          Foreground="#E04060"
+                                <PathIcon Data="{StaticResource MoreDotsIcon}"
+                                          Width="14" Height="14"
+                                          Foreground="#E74856"
                                           HorizontalAlignment="Center"
                                           VerticalAlignment="Center" />
                                 <Button.Flyout>
@@ -664,7 +664,7 @@
                                         <MenuItem Header="Shuffle"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShufflePlayCommand}">
                                             <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Shuffle%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="Play Next"

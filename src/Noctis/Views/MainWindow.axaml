@@ -137,7 +137,7 @@
                                 BorderThickness="0" Padding="12,10" CornerRadius="999" Cursor="Hand"
                                 Command="{Binding PageCreateSmartPlaylistCommand}"
                                 ToolTip.Tip="Create Smart Playlist" VerticalAlignment="Center">
-                            <PathIcon Data="{StaticResource AudioDeviceIcon}" Width="15" Height="15"
+                            <PathIcon Data="{StaticResource SmartPlaylistIcon}" Width="15" Height="15"
                                      VerticalAlignment="Center" Foreground="White" />
                         </Button>
                     </StackPanel>
@@ -148,12 +148,9 @@
                                 BorderThickness="0" Padding="12,10" CornerRadius="999" Cursor="Hand"
                                 Command="{Binding PageShuffleArtistCommand}"
                                 ToolTip.Tip="Shuffle All" VerticalAlignment="Center">
-                            <Border Width="18" Height="18" Background="White"
-                                    RenderOptions.BitmapInterpolationMode="HighQuality">
-                                <Border.OpacityMask>
-                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Shuffle%20ICON.png" Stretch="Uniform" />
-                                </Border.OpacityMask>
-                            </Border>
+                            <PathIcon Data="{StaticResource ShuffleIcon}"
+                                     Width="16" Height="16"
+                                     Foreground="White" />
                         </Button>
                         <Button Classes="accent-btn" Background="#E04060"
                                 BorderThickness="0" Padding="12,10" CornerRadius="999" Cursor="Hand"
