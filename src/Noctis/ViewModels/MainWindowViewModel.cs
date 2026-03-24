@@ -61,6 +61,21 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Whether the playback island bar should be visible (has content and not in lyrics view).</summary>
     public bool IsPlaybackBarVisible => Player.HasContent && !IsLyricsViewActive;
 
+    // ── Sidebar toggle (lyrics immersive mode) ──
+
+    /// <summary>Session preference: user wants sidebar hidden in lyrics view.</summary>
+    private bool _lyricsSidebarPref;
+
+    /// <summary>Whether the sidebar is currently hidden (animated to width 0).</summary>
+    [ObservableProperty] private bool _isSidebarHidden;
+
+    [RelayCommand]
+    private void ToggleSidebar()
+    {
+        _lyricsSidebarPref = !_lyricsSidebarPref;
+        IsSidebarHidden = _lyricsSidebarPref;
+    }
+
     private sealed class NavigationEntry
     {
         public required ViewModelBase View { get; init; }
@@ -131,7 +146,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _genresVm = new LibraryGenresViewModel(library, Player);
         _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
         _queueVm = new QueueViewModel(Player);
-        _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence);
+        _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
         _statisticsVm = new StatisticsViewModel(library);
         _coverFlowVm = new CoverFlowViewModel(Player);
 
@@ -434,6 +449,12 @@ public partial class MainWindowViewModel : ViewModelBase
         // Notify island bar visibility
         OnPropertyChanged(nameof(IsLyricsViewActive));
         OnPropertyChanged(nameof(IsPlaybackBarVisible));
+
+        // Sidebar: force-show when leaving lyrics, re-apply pref when entering
+        if (IsLyricsViewActive)
+            IsSidebarHidden = _lyricsSidebarPref;
+        else
+            IsSidebarHidden = false;
 
         RefreshBackButton();
 
