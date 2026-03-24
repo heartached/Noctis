@@ -211,6 +211,63 @@ public static class DominantColorExtractor
         };
     }
 
+    /// <summary>
+    /// Generates a diagonal gradient brush from two colors for gradient presets.
+    /// </summary>
+    public static LinearGradientBrush GenerateGradientBrush(Color color1, Color color2)
+    {
+        var (h1, s1, _) = RgbToHsl(color1.R, color1.G, color1.B);
+        var (h2, s2, _) = RgbToHsl(color2.R, color2.G, color2.B);
+        s1 = Math.Max(s1, 0.30);
+        s2 = Math.Max(s2, 0.30);
+
+        var stop0 = HslToColor(h1, s1 * 0.60, 0.08);
+        var stop1 = HslToColor(h1, s1 * 0.85, 0.18);
+        var stop2 = HslToColor((h1 + h2) / 2.0, (s1 + s2) / 2.0 * 0.80, 0.20);
+        var stop3 = HslToColor(h2, s2 * 0.85, 0.18);
+        var stop4 = HslToColor(h2, s2 * 0.60, 0.08);
+
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0.85, RelativeUnit.Relative),
+            EndPoint   = new RelativePoint(1, 0.15, RelativeUnit.Relative),
+            GradientStops = new GradientStops
+            {
+                new GradientStop(stop0, 0.00),
+                new GradientStop(stop1, 0.25),
+                new GradientStop(stop2, 0.50),
+                new GradientStop(stop3, 0.75),
+                new GradientStop(stop4, 1.00),
+            }
+        };
+    }
+
+    /// <summary>
+    /// Creates a vertical gradient for album detail pages: dominant color at top, fading to dark at bottom.
+    /// Inspired by Apple Music's album page style.
+    /// </summary>
+    public static LinearGradientBrush CreateAlbumDetailGradient(Color color)
+    {
+        var (hue, sat, _) = RgbToHsl(color.R, color.G, color.B);
+        sat = Math.Max(sat, 0.25);
+
+        var top    = HslToColor(hue, sat * 0.90, 0.32);   // rich dominant color
+        var mid    = HslToColor(hue, sat * 0.70, 0.16);   // darker mid
+        var bottom = HslToColor(hue, sat * 0.40, 0.07);   // very dark, tinted
+
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0.5, 0, RelativeUnit.Relative),
+            EndPoint   = new RelativePoint(0.5, 1, RelativeUnit.Relative),
+            GradientStops = new GradientStops
+            {
+                new GradientStop(top,    0.0),
+                new GradientStop(mid,    0.45),
+                new GradientStop(bottom, 1.0),
+            }
+        };
+    }
+
     private static (double H, double S, double L) RgbToHsl(byte r, byte g, byte b)
     {
         double rd = r / 255.0, gd = g / 255.0, bd = b / 255.0;
