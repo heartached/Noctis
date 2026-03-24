@@ -21,6 +21,9 @@ public partial class MainWindow : Window
     private EventHandler<bool>? _themeChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _playerPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _topBarPropertyChangedHandler;
+    private System.ComponentModel.PropertyChangedEventHandler? _mainVmPropertyChangedHandler;
+    private Border? _sidebarWrapper;
+    private Button? _sidebarToggleBtn;
 
     public MainWindow()
     {
@@ -51,6 +54,20 @@ public partial class MainWindow : Window
                 vm.TopBar.PropertyChanged += _topBarPropertyChangedHandler;
                 UpdateAlbumsToggleVisuals(vm.TopBar.IsAlbumsCoverFlowMode);
 
+                // Wire sidebar toggle (lyrics immersive mode)
+                _sidebarWrapper = this.FindControl<Border>("SidebarWrapper");
+                _sidebarToggleBtn = this.FindControl<Button>("SidebarToggleBtn");
+                _mainVmPropertyChangedHandler = (s, e) =>
+                {
+                    if (e.PropertyName == nameof(MainWindowViewModel.IsSidebarHidden))
+                    {
+                        var hidden = ((MainWindowViewModel)s!).IsSidebarHidden;
+                        if (_sidebarWrapper != null) _sidebarWrapper.Width = hidden ? 0 : 220;
+                        if (_sidebarToggleBtn != null) _sidebarToggleBtn.Content = hidden ? "»" : "«";
+                    }
+                };
+                vm.PropertyChanged += _mainVmPropertyChangedHandler;
+
                 // Initialize taskbar thumbnail buttons (Previous / Play-Pause / Next)
                 InitializeTaskbarButtons(vm);
             }
@@ -66,6 +83,7 @@ public partial class MainWindow : Window
         DragDrop.SetAllowDrop(this, true);
         AddHandler(DragDrop.DragOverEvent, OnWindowDragOver, RoutingStrategies.Tunnel);
         AddHandler(DragDrop.DropEvent, OnWindowDrop, RoutingStrategies.Tunnel);
+        AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Tunnel);
 
         Closing += (_, _) => CaptureWindowPlacement();
         Closed += OnWindowClosed;
@@ -129,6 +147,9 @@ public partial class MainWindow : Window
 
             if (_topBarPropertyChangedHandler != null)
                 vm.TopBar.PropertyChanged -= _topBarPropertyChangedHandler;
+
+            if (_mainVmPropertyChangedHandler != null)
+                vm.PropertyChanged -= _mainVmPropertyChangedHandler;
         }
     }
 
@@ -173,12 +194,19 @@ public partial class MainWindow : Window
         var paths = GetDroppedLocalPaths(e.Data);
         var hasImportable = paths.Any(IsImportablePath);
         e.DragEffects = hasImportable ? DragDropEffects.Copy : DragDropEffects.None;
+        ShowDragOverlay(hasImportable);
         e.Handled = true;
+    }
+
+    private void OnWindowDragLeave(object? sender, DragEventArgs e)
+    {
+        ShowDragOverlay(false);
     }
 
     private async void OnWindowDrop(object? sender, DragEventArgs e)
     {
         e.Handled = true;
+        ShowDragOverlay(false);
         if (DataContext is not MainWindowViewModel vm) return;
 
         var paths = GetDroppedLocalPaths(e.Data);
@@ -198,34 +226,74 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ShowDragOverlay(bool show)
+    {
+        var overlay = this.FindControl<Avalonia.Controls.Border>("DragDropOverlay");
+        if (overlay == null) return;
+        overlay.IsVisible = show;
+        overlay.Opacity = show ? 1 : 0;
+    }
+
     private static List<string> GetDroppedLocalPaths(IDataObject data)
     {
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         try
         {
-            // Preferred Avalonia API: handles both Files and FileNames payloads.
+            // Primary: Avalonia IStorageItem API (works for Explorer drops on most platforms).
             foreach (var item in data.GetFiles() ?? Enumerable.Empty<IStorageItem>())
             {
-                var uri = item.Path;
-                if (uri.IsFile)
-                    TryAddPath(uri.LocalPath);
-                else
-                    TryAddPath(uri.ToString());
+                try
+                {
+                    var uri = item.Path;
+                    if (uri is { IsFile: true })
+                        TryAddPath(uri.LocalPath);
+                    else if (item.Name is { } name && !string.IsNullOrWhiteSpace(name))
+                        TryAddPath(name);
+                }
+                catch
+                {
+                    // Skip items with inaccessible Path property.
+                }
             }
 
-            // Defensive fallback for non-standard payloads.
-            if (data.Contains(DataFormats.Files) && data.Get(DataFormats.Files) is IEnumerable<string> rawFiles)
+            // Fallback: DataFormats.Files may contain IStorageItem or string collections.
+            if (paths.Count == 0 && data.Contains(DataFormats.Files))
             {
-                foreach (var raw in rawFiles)
-                    TryAddPath(raw);
+                var raw = data.Get(DataFormats.Files);
+                if (raw is IEnumerable<IStorageItem> storageItems)
+                {
+                    foreach (var si in storageItems)
+                    {
+                        try { TryAddPath(si.Path?.LocalPath); } catch { }
+                    }
+                }
+                else if (raw is IEnumerable<string> stringPaths)
+                {
+                    foreach (var s in stringPaths)
+                        TryAddPath(s);
+                }
             }
 
-            // Some drag sources provide file names only.
-            if (data.Contains(DataFormats.FileNames) && data.Get(DataFormats.FileNames) is IEnumerable<string> fileNames)
+            // Fallback: raw Text payload (some drag sources provide newline-separated paths).
+            // Only accept lines that look like real file paths (drive letter or UNC prefix).
+            if (paths.Count == 0 && data.Contains(DataFormats.Text))
             {
-                foreach (var fileName in fileNames)
-                    TryAddPath(fileName);
+                var text = data.GetText();
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    foreach (var line in text.Split('\n', '\r'))
+                    {
+                        var trimmed = line.Trim();
+                        if (trimmed.Length >= 2 &&
+                            ((char.IsLetter(trimmed[0]) && trimmed[1] == ':') ||
+                             trimmed.StartsWith(@"\\") ||
+                             trimmed.StartsWith("/")))
+                        {
+                            TryAddPath(trimmed);
+                        }
+                    }
+                }
             }
         }
         catch
@@ -342,7 +410,7 @@ public partial class MainWindow : Window
                 }
             }
             if (!insidePill)
-                this.Focus(NavigationMethod.Pointer);
+                Dispatcher.UIThread.Post(() => RootPanel.Focus(NavigationMethod.Pointer), DispatcherPriority.Background);
         }
 
         if (DataContext is not MainWindowViewModel vm) return;
