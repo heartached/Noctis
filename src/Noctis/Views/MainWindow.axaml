@@ -12,7 +12,8 @@
         Width="1280" Height="800"
         MinWidth="780" MinHeight="500"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource AppMainBackground}">
+        Background="{DynamicResource AppMainBackground}"
+        DragDrop.AllowDrop="True">
 
     <Window.KeyBindings>
         <KeyBinding Gesture="Ctrl+Right" Command="{Binding Player.NextCommand}" />
@@ -20,14 +21,33 @@
         <KeyBinding Gesture="Ctrl+N" Command="{Binding Sidebar.CreatePlaylistCommand}" />
     </Window.KeyBindings>
 
-    <DockPanel>
+    <Window.Styles>
+        <Style Selector="Button#SidebarToggleBtn:pointerover">
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+    </Window.Styles>
+
+    <Panel>
+    <DockPanel x:Name="RootPanel" Focusable="True">
         <!--
             Zone B: Sidebar (left, fixed 220px, full height)
             Docked first to ensure it spans from top to bottom
         -->
-        <views:SidebarView DockPanel.Dock="Left"
-                           Width="220"
-                           DataContext="{Binding Sidebar}" />
+        <Border x:Name="SidebarWrapper" DockPanel.Dock="Left"
+                Width="220"
+                ClipToBounds="True">
+            <Border.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.2">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
+                </Transitions>
+            </Border.Transitions>
+            <views:SidebarView Width="220"
+                               DataContext="{Binding Sidebar}" />
+        </Border>
 
         <Grid RowDefinitions="Auto,*">
             <!-- Zone A: Top bar left | centered playback island | right actions -->
@@ -165,33 +185,21 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Albums view mode toggle (Library / Up Next) -->
+                    <!-- Albums view mode toggle (Library / Cover Flow) -->
                     <Border IsVisible="{Binding HasAlbumsViewModeToggle}"
                             Background="{DynamicResource SystemControlBackgroundListLowBrush}"
-                            CornerRadius="8" Padding="3" VerticalAlignment="Center">
+                            CornerRadius="999" Padding="3" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="2">
                             <Button x:Name="AlbumsLibraryModeBtn"
                                     Command="{Binding AlbumsSetLibraryModeCommand}"
-                                    BorderThickness="0" Padding="10,6" CornerRadius="6" Cursor="Hand"
-                                    Background="#30FFFFFF" ToolTip.Tip="Library">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <PathIcon Data="{StaticResource SearchIcon}" Width="13" Height="13"
-                                             VerticalAlignment="Center" />
-                                    <TextBlock Text="Library" FontSize="12" FontWeight="SemiBold"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
+                                    BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
+                                    Background="#30FFFFFF" ToolTip.Tip="Library"
+                                    Content="Library" FontSize="12" FontWeight="SemiBold" />
                             <Button x:Name="AlbumsUpNextModeBtn"
                                     Command="{Binding AlbumsSetCoverFlowModeCommand}"
-                                    BorderThickness="0" Padding="10,6" CornerRadius="6" Cursor="Hand"
-                                    Background="Transparent" Opacity="0.5" ToolTip.Tip="Up Next">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <PathIcon Data="{StaticResource ViewSortIcon}" Width="13" Height="13"
-                                             VerticalAlignment="Center" />
-                                    <TextBlock Text="Up Next" FontSize="12" FontWeight="SemiBold"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
+                                    BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
+                                    Background="Transparent" Opacity="0.5" ToolTip.Tip="Cover Flow"
+                                    Content="Cover Flow" FontSize="12" FontWeight="SemiBold" />
                         </StackPanel>
                     </Border>
 
@@ -428,5 +436,56 @@
                                   IsHitTestVisible="True" />
         </Grid>
     </DockPanel>
+
+    <!-- Drag-drop overlay (shown while dragging importable files over the window) -->
+    <Border x:Name="DragDropOverlay"
+            IsVisible="False"
+            IsHitTestVisible="False"
+            Background="#18FFFFFF"
+            BorderBrush="{StaticResource SystemControlHighlightAccentBrush}"
+            BorderThickness="2"
+            Margin="4"
+            CornerRadius="8"
+            Opacity="0">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+            </Transitions>
+        </Border.Transitions>
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="8">
+            <PathIcon Data="M12,2 L12,14 M8,10 L12,14 L16,10 M4,18 L20,18"
+                      Width="32" Height="32"
+                      Foreground="{StaticResource SystemControlHighlightAccentBrush}" />
+            <TextBlock Text="Drop files to import"
+                       FontSize="14" FontWeight="SemiBold"
+                       Foreground="#CCFFFFFF"
+                       HorizontalAlignment="Center" />
+        </StackPanel>
+    </Border>
+
+    <!-- Sidebar toggle button (lyrics immersive mode) -->
+    <Button x:Name="SidebarToggleBtn"
+            Command="{Binding ToggleSidebarCommand}"
+            IsVisible="{Binding IsLyricsViewActive}"
+            Background="Transparent"
+            BorderThickness="0"
+            Padding="6,8"
+            Margin="8,8,0,0"
+            VerticalAlignment="Top"
+            HorizontalAlignment="Left"
+            Cursor="Hand"
+            Opacity="0.5"
+            FontSize="14"
+            Foreground="White"
+            Content="«">
+        <Button.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+            </Transitions>
+        </Button.Transitions>
+    </Button>
+    </Panel>
 
 </Window>
