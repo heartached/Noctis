@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,12 +23,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private readonly SidebarViewModel _sidebar;
     private readonly System.ComponentModel.PropertyChangedEventHandler _playerPropertyChangedHandler;
     private readonly EventHandler _libraryUpdatedHandler;
+    private readonly EventHandler _favoritesChangedHandler;
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
     [ObservableProperty] private Album _album;
     [ObservableProperty] private Bitmap? _albumArt;
+    [ObservableProperty] private IBrush? _backgroundBrush;
     [ObservableProperty] private Guid? _currentPlayingTrackId;
     [ObservableProperty] private bool _isPlayerPlaying;
     [ObservableProperty] private string _albumDescription = string.Empty;
@@ -35,6 +38,15 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _isAlbumDescriptionOpen;
     [ObservableProperty] private bool _isAlbumDescriptionEditing;
     [ObservableProperty] private string _albumDescriptionEditorText = string.Empty;
+
+    /// <summary>Whether this album is a single (1 track only).</summary>
+    public bool IsSingle => Album?.TrackCount == 1;
+
+    /// <summary>Whether all tracks in the album are favorited (for metadata row heart).</summary>
+    public bool IsAlbumFavorited => Album?.IsAllTracksFavorite ?? false;
+
+    /// <summary>Whether to show hearts on individual track rows (hide for singles and fully-favorited albums).</summary>
+    public bool ShowTrackRowHearts => !IsSingle && !IsAlbumFavorited;
 
     public bool HasAlbumDescription => !string.IsNullOrWhiteSpace(AlbumDescription);
     public bool HasAlbumDescriptionOverflow =>
@@ -100,11 +112,19 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         foreach (var track in album.Tracks)
             Tracks.Add(track);
 
-        // Load artwork
+        // Load artwork off UI thread
         var artPath = persistence.GetArtworkPath(album.Id);
         if (File.Exists(artPath))
         {
-            try { AlbumArt = new Bitmap(artPath); } catch { }
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    var bmp = new Bitmap(artPath);
+                    Dispatcher.UIThread.Post(() => AlbumArt = bmp);
+                }
+                catch { }
+            });
         }
 
         // Track the currently playing song — store handler so we can unsubscribe in Dispose
@@ -122,6 +142,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         // Refresh when library metadata changes (e.g. metadata editor save)
         _libraryUpdatedHandler = (_, _) => Dispatcher.UIThread.Post(RefreshFromLibrary);
         _library.LibraryUpdated += _libraryUpdatedHandler;
+
+        // Refresh album-level favorite indicators when any favorite changes externally
+        _favoritesChangedHandler = (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            OnPropertyChanged(nameof(IsAlbumFavorited));
+            OnPropertyChanged(nameof(ShowTrackRowHearts));
+        });
+        _library.FavoritesChanged += _favoritesChangedHandler;
 
         // Fetch album description asynchronously; fail silently if unavailable.
         _ = LoadAlbumDescriptionAsync();
@@ -225,6 +253,23 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
             AlbumArt = null;
         }
         oldArt?.Dispose();
+    }
+
+    partial void OnAlbumArtChanged(Bitmap? value)
+    {
+        if (value == null)
+        {
+            BackgroundBrush = null;
+            return;
+        }
+
+        // Extract dominant color off UI thread, then create gradient
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            var color = DominantColorExtractor.ExtractDominantColor(value);
+            var brush = DominantColorExtractor.CreateAlbumDetailGradient(color);
+            Dispatcher.UIThread.Post(() => BackgroundBrush = brush);
+        });
     }
 
     private void UpdateCurrentPlayingTrack()
@@ -374,6 +419,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         track.IsFavorite = !track.IsFavorite;
         await _library.SaveAsync();
         _library.NotifyFavoritesChanged();
+        // Refresh hearts visibility
+        OnPropertyChanged(nameof(IsAlbumFavorited));
+        OnPropertyChanged(nameof(ShowTrackRowHearts));
     }
 
     [RelayCommand]
@@ -387,7 +435,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
         await _library.SaveAsync();
         _library.NotifyFavoritesChanged();
-        OnPropertyChanged(nameof(Album));
+        // Refresh hearts visibility
+        OnPropertyChanged(nameof(IsAlbumFavorited));
+        OnPropertyChanged(nameof(ShowTrackRowHearts));
     }
 
     [RelayCommand]
@@ -474,6 +524,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     {
         _player.PropertyChanged -= _playerPropertyChangedHandler;
         _library.LibraryUpdated -= _libraryUpdatedHandler;
+        _library.FavoritesChanged -= _favoritesChangedHandler;
         AlbumArt?.Dispose();
         AlbumArt = null;
     }

@@ -7,7 +7,8 @@
              xmlns:helpers="using:Noctis.Helpers"
              x:Class="Noctis.Views.AlbumDetailView"
              x:DataType="vm:AlbumDetailViewModel"
-             Background="{DynamicResource AppMainBackground}">
+             Background="{DynamicResource AppMainBackground}"
+             ClipToBounds="True">
 
     <UserControl.Resources>
         <conv:GuidEqualsConverter x:Key="GuidEquals" />
@@ -32,6 +33,20 @@
     </UserControl.Styles>
 
     <Grid>
+    <!-- Dynamic gradient background from album dominant color -->
+    <Border x:Name="AlbumGradientBg"
+            Background="{Binding BackgroundBrush}"
+            IsHitTestVisible="False"
+            Opacity="0">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.6">
+                    <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
+    </Border>
+
     <DockPanel IsHitTestVisible="{Binding !IsAlbumDescriptionOpen}">
 
         <Separator DockPanel.Dock="Top" Classes="page-top-separator" />
@@ -101,7 +116,7 @@
                                VerticalAlignment="Center"
                                Foreground="#E04060" />
                 </Button>
-                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="0" Margin="0,4,0,0">
                     <TextBlock FontSize="13" Opacity="0.5" VerticalAlignment="Center">
                         <TextBlock.Text>
                             <MultiBinding StringFormat="{}{0} · {1} · {2} tracks">
@@ -111,7 +126,7 @@
                             </MultiBinding>
                         </TextBlock.Text>
                     </TextBlock>
-                    <TextBlock Text="·"
+                    <TextBlock Text=" · "
                                FontSize="13"
                                Opacity="0.5"
                                VerticalAlignment="Center"
@@ -119,9 +134,8 @@
 
                     <!-- Lossless / Hi-Res Lossless badge (hover for info, non-clickable) -->
                     <StackPanel Orientation="Horizontal"
-                                Spacing="5"
+                                Spacing="4"
                                 VerticalAlignment="Center"
-                                Margin="0,1,0,0"
                                 IsVisible="{Binding Album.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                         <ToolTip.Tip>
                             <StackPanel Width="220" Spacing="4">
@@ -141,16 +155,28 @@
                                            Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
                             </StackPanel>
                         </ToolTip.Tip>
-                        <Viewbox Width="16" Height="11" VerticalAlignment="Center" Opacity="0.5">
+                        <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,1,0,0" Opacity="0.5">
                             <Path Data="M8.184,0.35C9.944,0.35 10.703,3.296 11.338,5.238C11.673,3.842 11.497,3.542 11.857,3.542C11.99,3.542 12.126,3.633 12.126,3.798C12.126,3.809 12.123,3.839 12.117,3.883L12.091,4.058C12.02,4.522 11.845,5.494 11.654,6.144C13.198,10.191 14.345,4.861 14.474,3.772C14.493,3.615 14.612,3.542 14.731,3.542C14.891,3.542 15.022,3.662 14.997,3.843C14.72,5.605 14.295,8.35 12.547,8.35C11.582,8.35 11.04,7.595 10.611,6.73C9.54,4.626 9.047,1.093 7.997,1.093C7.66,1.093 7.411,1.444 7.394,1.444C7.362,1.444 7.337,1.301 7.023,0.909C7.322,0.567 7.734,0.35 8.184,0.35ZM2.458,0.354C5.211,0.354 5.456,7.618 7.014,7.618C7.197,7.618 7.394,7.507 7.61,7.256C7.729,7.458 7.851,7.638 7.978,7.796C7.667,8.151 7.28,8.35 6.795,8.35C5.054,8.349 4.306,5.434 3.663,3.466C3.511,4.097 3.432,4.669 3.402,4.925C3.382,5.088 3.263,5.163 3.143,5.163C3.009,5.163 2.874,5.071 2.874,4.908L2.874,4.908L2.877,4.87C2.966,4.223 3.146,3.243 3.347,2.56C3.079,1.858 2.745,1.091 2.252,1.091C1.257,1.091 0.687,3.591 0.527,4.925C0.508,5.088 0.388,5.163 0.268,5.163C0.135,5.163 0,5.071 0,4.908C0,4.896 0.001,4.883 0.002,4.87C0.283,2.836 0.808,0.354 2.458,0.354ZM5.315,0.35C5.809,0.35 6.339,0.608 6.797,1.211C6.822,1.241 7.078,1.639 7.159,1.777C8.277,3.802 8.818,7.627 9.881,7.627C10.065,7.627 10.264,7.513 10.484,7.256C10.604,7.458 10.726,7.638 10.852,7.796C10.542,8.15 10.155,8.35 9.67,8.35C6.933,8.349 6.636,1.09 5.128,1.09C4.788,1.09 4.536,1.444 4.519,1.444C4.487,1.444 4.462,1.301 4.148,0.909C4.455,0.558 4.87,0.35 5.315,0.35Z"
                                   Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                         </Viewbox>
                         <TextBlock Text="{Binding Album.AudioQualityBadge}"
-                                   FontSize="11"
+                                   FontSize="13"
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center"
                                    Opacity="0.5" />
                     </StackPanel>
+
+                    <!-- Favorite heart for singles or fully-favorited albums -->
+                    <TextBlock Text=" · "
+                               FontSize="13"
+                               Opacity="0.5"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding IsAlbumFavorited}" />
+                    <PathIcon Data="{StaticResource HeartFillIcon}"
+                              Width="12" Height="12"
+                              Foreground="#E74856"
+                              VerticalAlignment="Center"
+                              IsVisible="{Binding IsAlbumFavorited}"/>
                 </StackPanel>
 
                 <Button Background="Transparent"
@@ -278,8 +304,11 @@
                             </MenuItem.Header>
                         </MenuItem>
                         <Separator />
-                        <MenuItem Header="{Binding Album.Name, StringFormat='Play &quot;{0}&quot;'}"
+                        <MenuItem MaxWidth="400"
                                   Command="{Binding PlayAllCommand}">
+                            <MenuItem.Header>
+                                <TextBlock Text="{Binding Album.Name, StringFormat='Play &quot;{0}&quot;'}" TextTrimming="CharacterEllipsis" FontWeight="Normal" FontSize="14" FontFamily="{Binding $parent[MenuItem].FontFamily}" />
+                            </MenuItem.Header>
                             <MenuItem.Icon>
                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                             </MenuItem.Icon>
@@ -370,7 +399,7 @@
                  ScrollViewer.VerticalScrollBarVisibility="Disabled">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="m:Track">
-                    <Grid ColumnDefinitions="26,26,*,Auto" Margin="0,3" Background="Transparent"
+                    <Grid ColumnDefinitions="20,26,*,Auto" Margin="0,3" Background="Transparent"
                           helpers:DragFileBehavior.EnableFileDrag="True"
                           Tag="{Binding}">
 
@@ -399,21 +428,20 @@
                                                 </Panel>
                                             </Border>
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                                <Grid ColumnDefinitions="Auto,Auto">
-                                                    <controls:MarqueeTextBlock Grid.Column="0" Text="{Binding Title}"
-                                                               FontWeight="SemiBold" FontSize="13"
-                                                               MaxDisplayWidth="240" IsForArtist="False" />
-                                                    <Border Grid.Column="1"
-                                                            Classes="explicit-badge compact"
-                                                            Margin="4,0,0,0"
-                                                            VerticalAlignment="Center"
-                                                            IsVisible="{Binding IsExplicit}">
-                                                        <TextBlock Text="E"
-                                                                   Classes="explicit-badge-text compact"
-                                                                   FontSize="9"
-                                                                   Opacity="0.9" />
-                                                    </Border>
-                                                </Grid>
+                                                <controls:MarqueeTextBlock Text="{Binding Title}"
+                                                           FontWeight="SemiBold" FontSize="13"
+                                                           MaxDisplayWidth="240" IsForArtist="False">
+                                                    <controls:MarqueeTextBlock.InlineContent>
+                                                        <Border Classes="explicit-badge compact"
+                                                                VerticalAlignment="Center"
+                                                                IsVisible="{Binding IsExplicit}">
+                                                            <TextBlock Text="E"
+                                                                       Classes="explicit-badge-text compact"
+                                                                       FontSize="9"
+                                                                       Opacity="0.9" />
+                                                        </Border>
+                                                    </controls:MarqueeTextBlock.InlineContent>
+                                                </controls:MarqueeTextBlock>
                                                 <controls:MarqueeTextBlock Text="{Binding Artist}" FontSize="11"
                                                            Foreground="#E74856" MaxDisplayWidth="240" IsForArtist="True" Margin="0,2,0,0" />
                                             </StackPanel>
@@ -421,9 +449,12 @@
                                     </MenuItem.Header>
                                 </MenuItem>
                                 <Separator />
-                                <MenuItem Header="{Binding Title, StringFormat='Play &quot;{0}&quot;'}"
+                                <MenuItem MaxWidth="400"
                                           Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayFromCommand}"
                                           CommandParameter="{Binding}">
+                                    <MenuItem.Header>
+                                        <TextBlock Text="{Binding Title, StringFormat='Play &quot;{0}&quot;'}" TextTrimming="CharacterEllipsis" FontWeight="Normal" FontSize="14" FontFamily="{Binding $parent[MenuItem].FontFamily}" />
+                                    </MenuItem.Header>
                                     <MenuItem.Icon>
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
@@ -577,26 +608,35 @@
                                        IsVisible="{Binding ShouldShowArtistSubtitleInAlbum}" />
                         </StackPanel>
 
-                        <!-- Heart + Duration + Track options (column 3, combined) -->
-                        <StackPanel Grid.Column="3"
-                                    Orientation="Horizontal"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Center"
-                                    Spacing="6"
-                                    Margin="0,0,4,0">
-                            <PathIcon Data="{StaticResource HeartFillIcon}"
-                                     Width="14" Height="14"
-                                     Foreground="#E74856"
-                                     VerticalAlignment="Center"
-                                     IsVisible="{Binding IsFavorite}"/>
-                            <TextBlock Text="{Binding DurationFormatted}"
+                        <!-- Heart + Duration + Track options (column 3, fixed-width grid for alignment) -->
+                        <Grid Grid.Column="3"
+                              ColumnDefinitions="22,52,44"
+                              VerticalAlignment="Center"
+                              Margin="0,0,10,0">
+                            <!-- Col 0: heart — always 22px wide so duration never shifts -->
+                            <!-- Hidden for singles and fully-favorited albums (heart shown in metadata row instead) -->
+                            <Panel Grid.Column="0" IsVisible="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShowTrackRowHearts}">
+                                <PathIcon Data="{StaticResource HeartFillIcon}"
+                                         Width="14" Height="14"
+                                         Foreground="#E74856"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         IsVisible="{Binding IsFavorite}"/>
+                            </Panel>
+                            <!-- Col 1: duration — fixed 52px, right-aligned for perfect column -->
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding DurationFormatted}"
                                        FontSize="14"
                                        Opacity="0.5"
+                                       HorizontalAlignment="Right"
                                        VerticalAlignment="Center"/>
-                            <Button Background="Transparent"
+                            <!-- Col 2: 3-dot button — fixed 44px -->
+                            <Button Grid.Column="2"
+                                    Background="Transparent"
                                     BorderThickness="0"
                                     Padding="0"
                                     Width="28" Height="28"
+                                    HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     Cursor="Hand"
                                     ToolTip.Tip="Options"
@@ -632,21 +672,20 @@
                                                         </Panel>
                                                     </Border>
                                                     <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                                        <Grid ColumnDefinitions="Auto,Auto">
-                                                            <controls:MarqueeTextBlock Grid.Column="0" Text="{Binding Title}"
-                                                                       FontWeight="SemiBold" FontSize="13"
-                                                                       MaxDisplayWidth="240" IsForArtist="False" />
-                                                            <Border Grid.Column="1"
-                                                                    Classes="explicit-badge compact"
-                                                                    Margin="4,0,0,0"
-                                                                    VerticalAlignment="Center"
-                                                                    IsVisible="{Binding IsExplicit}">
-                                                                <TextBlock Text="E"
-                                                                           Classes="explicit-badge-text compact"
-                                                                           FontSize="9"
-                                                                           Opacity="0.9" />
-                                                            </Border>
-                                                        </Grid>
+                                                        <controls:MarqueeTextBlock Text="{Binding Title}"
+                                                                   FontWeight="SemiBold" FontSize="13"
+                                                                   MaxDisplayWidth="240" IsForArtist="False">
+                                                            <controls:MarqueeTextBlock.InlineContent>
+                                                                <Border Classes="explicit-badge compact"
+                                                                        VerticalAlignment="Center"
+                                                                        IsVisible="{Binding IsExplicit}">
+                                                                    <TextBlock Text="E"
+                                                                               Classes="explicit-badge-text compact"
+                                                                               FontSize="9"
+                                                                               Opacity="0.9" />
+                                                                </Border>
+                                                            </controls:MarqueeTextBlock.InlineContent>
+                                                        </controls:MarqueeTextBlock>
                                                         <controls:MarqueeTextBlock Text="{Binding Artist}" FontSize="11"
                                                                    Foreground="#E74856" MaxDisplayWidth="240" IsForArtist="True" Margin="0,2,0,0" />
                                                     </StackPanel>
@@ -654,9 +693,12 @@
                                             </MenuItem.Header>
                                         </MenuItem>
                                         <Separator />
-                                        <MenuItem Header="{Binding Title, StringFormat='Play &quot;{0}&quot;'}"
+                                        <MenuItem MaxWidth="400"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayFromCommand}"
                                                   CommandParameter="{Binding}">
+                                            <MenuItem.Header>
+                                                <TextBlock Text="{Binding Title, StringFormat='Play &quot;{0}&quot;'}" TextTrimming="CharacterEllipsis" FontWeight="Normal" FontSize="14" FontFamily="{Binding $parent[MenuItem].FontFamily}" />
+                                            </MenuItem.Header>
                                             <MenuItem.Icon>
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
@@ -756,7 +798,7 @@
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
-                        </StackPanel>
+                        </Grid>
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>

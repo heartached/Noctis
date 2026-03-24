@@ -14,6 +14,7 @@ namespace Noctis.Views;
 public partial class AlbumDetailView : UserControl
 {
     private EventHandler? _pendingScrollRestore;
+    private System.ComponentModel.PropertyChangedEventHandler? _bgHandler;
     private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
 
     public AlbumDetailView()
@@ -128,6 +129,12 @@ public partial class AlbumDetailView : UserControl
     {
         CancelPendingScrollRestore();
 
+        if (_bgHandler != null && DataContext is AlbumDetailViewModel bgVm)
+        {
+            bgVm.PropertyChanged -= _bgHandler;
+            _bgHandler = null;
+        }
+
         if (DataContext is AlbumDetailViewModel vm)
         {
             var sv = TrackList.FindDescendantOfType<ScrollViewer>();
@@ -151,6 +158,21 @@ public partial class AlbumDetailView : UserControl
     {
         base.OnAttachedToVisualTree(e);
 
+        // Fade in gradient background when BackgroundBrush becomes available
+        if (DataContext is AlbumDetailViewModel vm2)
+        {
+            // If brush is already set (re-attach), show immediately
+            if (vm2.BackgroundBrush != null)
+                AlbumGradientBg.Opacity = 1;
+
+            _bgHandler = (_, args) =>
+            {
+                if (args.PropertyName == nameof(AlbumDetailViewModel.BackgroundBrush))
+                    AlbumGradientBg.Opacity = ((AlbumDetailViewModel)DataContext!).BackgroundBrush != null ? 1 : 0;
+            };
+            vm2.PropertyChanged += _bgHandler;
+        }
+
         if (DataContext is AlbumDetailViewModel vm && vm.SavedScrollOffset > 0)
         {
             TrackList.Opacity = 0;
@@ -163,7 +185,7 @@ public partial class AlbumDetailView : UserControl
                 var sv = TrackList.FindDescendantOfType<ScrollViewer>();
                 if (sv == null) return;
 
-                if (sv.Extent.Height < targetOffset && attempts < 50)
+                if (sv.Extent.Height < targetOffset && attempts < 10)
                     return;
 
                 var clampedOffset = Math.Min(targetOffset, Math.Max(0, sv.Extent.Height - sv.Viewport.Height));
