@@ -55,18 +55,28 @@ A lightweight lyrics overlay panel (~340px) that slides in from the right edge o
 
 ## Data Flow
 
-1. `LyricsPanelViewModel` is created once (owned by `MainWindowViewModel`), receives `PlayerViewModel` + `ILrcLibService` + `IMetadataService` via constructor.
-2. Subscribes to `PlayerViewModel.CurrentTrack` PropertyChanged — on change, loads lyrics (sidecar .lrc -> embedded -> cache -> online search, same priority as `LyricsViewModel`).
+1. `LyricsPanelViewModel` is created once (owned by `MainWindowViewModel`), receives `PlayerViewModel` + `ILrcLibService` + `INetEaseService` + `IMetadataService` + `IPersistenceService` via constructor (same dependencies as `LyricsViewModel` for full lyrics pipeline).
+2. Subscribes to `PlayerViewModel.CurrentTrack` PropertyChanged — on change, loads lyrics (sidecar .lrc -> embedded -> cache -> LRCLIB online -> NetEase fallback, same priority as `LyricsViewModel`).
 3. A `DispatcherTimer` (same pattern as `LyricsViewModel._lyricsSyncTimer`) polls `PlayerViewModel.PositionMs` to update `ActiveLineIndex`.
 4. Parsed lyrics stored as `ObservableCollection<LyricLine>` (reuse existing `LyricLine` model).
 5. Active line index drives UI highlight + auto-scroll in the view's code-behind.
-6. Tapping a synced line calls `PlayerViewModel.SeekCommand` with that line's timestamp.
+6. Tapping a synced line calls `PlayerViewModel.SeekToPositionCommand` with the line's timestamp as a fraction of total duration.
+
+### Empty / Loading States
+- **Loading:** Show a subtle "Loading lyrics..." text centered in the lyrics area.
+- **No lyrics found:** Show "No lyrics available" centered, dimmed.
+- **Unsynced lyrics only:** Display all lines statically (no highlight, no auto-scroll). Tap-to-seek disabled for unsynced lines.
+- **No track playing:** Panel shows empty state with "No track playing" message.
 
 ### Background Tint
 - On track change, extract dominant color from album art bitmap (off UI thread via `ThreadPool`).
-- Create a subtle vertical gradient: `HslToColor(hue, sat * 0.4, 0.08)` at top, `HslToColor(hue, sat * 0.3, 0.05)` at bottom.
-- Apply via `BackgroundBrush` property on `LyricsPanelViewModel`, bound in XAML.
+- Add a new public static method to `DominantColorExtractor`: `CreatePanelTintGradient(Color color)` — returns a subtle vertical `LinearGradientBrush` (dark tinted top, darker tinted bottom).
+- Apply via `IBrush? BackgroundBrush` property on `LyricsPanelViewModel`, bound in XAML.
 - 400ms opacity fade-in transition on the background Border.
+
+### Narrow Window
+- The lyrics panel and Queue popup are mutually exclusive, so they cannot both be open.
+- No minimum width guard needed — the panel overlays the content area and the content simply has less visible space behind it (same behavior as Queue popup).
 
 ## Playback Bar Button
 
@@ -75,4 +85,4 @@ A lightweight lyrics overlay panel (~340px) that slides in from the right edge o
 - Style: `secondary-btn` class (matches Queue and Lyrics buttons).
 - Size: 34x34, same as adjacent buttons.
 - Click handler navigates up to `MainWindowViewModel.ToggleLyricsPanelCommand`.
-- `IsVisible` bound to `!IsLyricsViewActive` (hidden on full lyrics view).
+- Hidden when on full lyrics view: use `Converter={x:Static BoolConverters.Not}` with `IsLyricsViewActive` binding (Avalonia's built-in negation converter).
