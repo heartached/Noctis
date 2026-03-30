@@ -1,6 +1,7 @@
 using Avalonia;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Headers;
+using System.Threading;
 using Noctis.Services;
 using Noctis.Services.Loon;
 using Noctis.ViewModels;
@@ -17,6 +18,13 @@ internal class Program
     {
         try
         {
+            // Explicit STA setup required for Windows OLE drag-and-drop from external apps
+            if (OperatingSystem.IsWindows())
+            {
+                Thread.CurrentThread.SetApartmentState(ApartmentState.Unknown);
+                Thread.CurrentThread.SetApartmentState(ApartmentState.STA);
+            }
+
             // Configure DI container
             var services = new ServiceCollection();
             ConfigureServices(services);
@@ -24,6 +32,19 @@ internal class Program
 
             // Make services available to the Avalonia App
             App.Services = provider;
+
+            // Log unhandled exceptions to a crash file for post-mortem debugging
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            {
+                if (args.ExceptionObject is Exception ex)
+                    LogCrash("AppDomain.UnhandledException", ex);
+            };
+
+            TaskScheduler.UnobservedTaskException += (_, args) =>
+            {
+                LogCrash("TaskScheduler.UnobservedTaskException", args.Exception);
+                args.SetObserved(); // prevent process termination
+            };
 
             // Launch the Avalonia application
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
@@ -91,10 +112,28 @@ internal class Program
         services.AddSingleton<IDiscordPresenceService, DiscordPresenceService>();
         services.AddSingleton<ILastFmService, LastFmService>();
         services.AddSingleton<ArtistImageService>();
+        services.AddSingleton<UpdateService>();
         services.AddSingleton<ILrcLibService, LrcLibService>();
         services.AddSingleton<INetEaseService, NetEaseService>();
 
         // ViewModels — MainWindowViewModel is the root, created once
         services.AddSingleton<MainWindowViewModel>();
+    }
+
+    private static void LogCrash(string source, Exception ex)
+    {
+        try
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var crashDir = Path.Combine(appData, "Noctis");
+            Directory.CreateDirectory(crashDir);
+            var crashPath = Path.Combine(crashDir, "crash.log");
+            var entry = $"[{DateTime.UtcNow:O}] {source}: {ex}\n---\n";
+            File.AppendAllText(crashPath, entry);
+        }
+        catch
+        {
+            // Last-resort: don't let crash logging itself crash
+        }
     }
 }
