@@ -23,6 +23,9 @@ public partial class SettingsViewModel : ViewModelBase
     private LoonClient? _loon;
     private ILastFmService? _lastFm;
     private ArtistImageService? _artistImageService;
+    private UpdateService? _updateService;
+    private CancellationTokenSource? _updateCts;
+    private string? _downloadedInstallerPath;
     private bool _lastFmAuthInProgress;
     private bool _settingsLoaded;
     private bool _suspendSettingPersistence;
@@ -47,6 +50,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _menuTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _menuArtistMarqueeEnabled = true;
     [ObservableProperty] private bool _coverFlowMarqueeEnabled = true;
+    [ObservableProperty] private bool _coverFlowArtistMarqueeEnabled = true;
+    [ObservableProperty] private bool _coverFlowAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsArtistMarqueeEnabled = true;
 
@@ -105,7 +110,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private int _totalArtists;
     [ObservableProperty] private int _totalAlbums;
     [ObservableProperty] private int _totalPlaylists;
-    [ObservableProperty] private int _totalGenres;
+
     [ObservableProperty] private string _totalFileSize = "0 MB";
     [ObservableProperty] private string _totalListeningTime = "0 min";
 
@@ -167,7 +172,15 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── About ──
 
-    public string AppVersion => "Version 1.0.2";
+    public string AppVersion => UpdateService.CurrentVersionDisplay;
+
+    [ObservableProperty] private string _updateStatusText = "";
+    [ObservableProperty] private bool _isCheckingForUpdate;
+    [ObservableProperty] private bool _isUpdateAvailable;
+    [ObservableProperty] private bool _isDownloadingUpdate;
+    [ObservableProperty] private double _downloadProgress;
+    [ObservableProperty] private bool _isReadyToInstall;
+    [ObservableProperty] private string _latestVersionTag = "";
 
     // ── Events ──
 
@@ -215,6 +228,8 @@ public partial class SettingsViewModel : ViewModelBase
 
     public void SetArtistImageService(ArtistImageService svc) => _artistImageService = svc;
 
+    public void SetUpdateService(UpdateService updateService) => _updateService = updateService;
+
     /// <summary>Gets the navigation key for the default page.</summary>
     public string GetDefaultPageKey() => "home";
 
@@ -257,6 +272,8 @@ public partial class SettingsViewModel : ViewModelBase
             MenuTitleMarqueeEnabled = _settings.MenuTitleMarqueeEnabled;
             MenuArtistMarqueeEnabled = _settings.MenuArtistMarqueeEnabled;
             CoverFlowMarqueeEnabled = _settings.CoverFlowMarqueeEnabled;
+            CoverFlowArtistMarqueeEnabled = _settings.CoverFlowArtistMarqueeEnabled;
+            CoverFlowAlbumMarqueeEnabled = _settings.CoverFlowAlbumMarqueeEnabled;
             LyricsTitleMarqueeEnabled = _settings.LyricsTitleMarqueeEnabled;
             LyricsArtistMarqueeEnabled = _settings.LyricsArtistMarqueeEnabled;
 
@@ -381,6 +398,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MenuTitleMarqueeEnabled = MenuTitleMarqueeEnabled;
         _settings.MenuArtistMarqueeEnabled = MenuArtistMarqueeEnabled;
         _settings.CoverFlowMarqueeEnabled = CoverFlowMarqueeEnabled;
+        _settings.CoverFlowArtistMarqueeEnabled = CoverFlowArtistMarqueeEnabled;
+        _settings.CoverFlowAlbumMarqueeEnabled = CoverFlowAlbumMarqueeEnabled;
         _settings.LyricsTitleMarqueeEnabled = LyricsTitleMarqueeEnabled;
         _settings.LyricsArtistMarqueeEnabled = LyricsArtistMarqueeEnabled;
         _settings.LrcLibEnabled = LrcLibEnabled;
@@ -412,12 +431,13 @@ public partial class SettingsViewModel : ViewModelBase
     private void ApplyPlayerSettings()
     {
         if (_player == null) return;
-        _player.Volume = _settings.Volume;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalMenuTitleScrollEnabled = MenuTitleMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalMenuArtistScrollEnabled = MenuArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowScrollEnabled = CoverFlowMarqueeEnabled;
+        Controls.MarqueeTextBlock.GlobalCoverFlowArtistScrollEnabled = CoverFlowArtistMarqueeEnabled;
+        Controls.MarqueeTextBlock.GlobalCoverFlowAlbumScrollEnabled = CoverFlowAlbumMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalLyricsTitleScrollEnabled = LyricsTitleMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalLyricsArtistScrollEnabled = LyricsArtistMarqueeEnabled;
     }
@@ -559,6 +579,18 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnCoverFlowMarqueeEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnCoverFlowArtistMarqueeEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnCoverFlowAlbumMarqueeEnabledChanged(bool value)
     {
         ApplyPlayerSettings();
         _ = SaveAsync();
@@ -826,11 +858,6 @@ public partial class SettingsViewModel : ViewModelBase
         TotalSongs = tracks.Count;
         TotalArtists = _library.Artists.Count;
         TotalAlbums = _library.Albums.Count;
-        TotalGenres = tracks
-            .Where(t => !string.IsNullOrWhiteSpace(t.Genre))
-            .Select(t => t.Genre!.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Count();
 
         // Library size
         var totalBytes = tracks.Sum(t => t.FileSize);
@@ -1049,11 +1076,130 @@ public partial class SettingsViewModel : ViewModelBase
     {
         IsResetConfirmVisible = false;
 
+        // Clear library, playlists, queue
         await _library.ClearAsync();
         await _persistence.SavePlaylistsAsync(new List<Playlist>());
         await _persistence.SaveQueueStateAsync(new QueueState());
 
-        SetScanStatus("Library has been reset.", autoClear: true);
+        // Clear artwork cache (albums + artists)
+        try
+        {
+            var artworkDir = Path.Combine(_persistence.DataDirectory, "artwork");
+            if (Directory.Exists(artworkDir))
+            {
+                Directory.Delete(artworkDir, true);
+                Directory.CreateDirectory(artworkDir);
+                Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear artwork cache: {ex.Message}");
+        }
+
+        // Clear lyrics cache
+        try
+        {
+            var lyricsDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Noctis", "lyrics_cache");
+            if (Directory.Exists(lyricsDir))
+            {
+                Directory.Delete(lyricsDir, true);
+                Directory.CreateDirectory(lyricsDir);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear lyrics cache: {ex.Message}");
+        }
+
+        // Clear index cache
+        try
+        {
+            var indexPath = Path.Combine(_persistence.DataDirectory, "indexes.json");
+            if (File.Exists(indexPath))
+                File.Delete(indexPath);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear index cache: {ex.Message}");
+        }
+
+        // Reset settings to defaults and save
+        var defaultSettings = new AppSettings();
+        await _persistence.SaveSettingsAsync(defaultSettings);
+
+        // Update ViewModel with defaults (suspend persistence during update)
+        _suspendSettingPersistence = true;
+        try
+        {
+            _settings = defaultSettings;
+
+            // Theme
+            IsDarkTheme = true;
+            IsLightTheme = false;
+            IsSystemTheme = false;
+
+            // Preferences
+            ScanOnStartup = true;
+
+            // Playback
+            CrossfadeEnabled = false;
+            CrossfadeDuration = 6;
+            SoundCheckEnabled = false;
+            TrackTitleMarqueeEnabled = true;
+            ArtistMarqueeEnabled = true;
+            MenuTitleMarqueeEnabled = true;
+            MenuArtistMarqueeEnabled = true;
+            CoverFlowMarqueeEnabled = true;
+            CoverFlowArtistMarqueeEnabled = true;
+            CoverFlowAlbumMarqueeEnabled = true;
+            LyricsTitleMarqueeEnabled = true;
+            LyricsArtistMarqueeEnabled = true;
+
+            // Lyrics providers
+            LrcLibEnabled = true;
+            NetEaseEnabled = true;
+
+            // Equalizer
+            _suppressEqNotify = true;
+            EqualizerEnabled = true;
+            SelectedEqPresetIndex = 1; // Flat
+            EqBand0 = 0; EqBand1 = 0; EqBand2 = 0; EqBand3 = 0; EqBand4 = 0;
+            EqBand5 = 0; EqBand6 = 0; EqBand7 = 0; EqBand8 = 0; EqBand9 = 0;
+            _suppressEqNotify = false;
+
+            // Music folders
+            MusicFolders.Clear();
+            FolderRules.Clear();
+            OnPropertyChanged(nameof(MediaFolderDisplay));
+
+            // Integrations
+            DiscordRichPresenceEnabled = false;
+            LastFmScrobblingEnabled = true;
+            LastFmUsername = "";
+            IsLastFmConnected = false;
+            LastFmStatusText = "Not connected";
+
+            // Disconnect Discord if connected
+            if (_discord != null)
+            {
+                _ = _discord.DisconnectAsync();
+            }
+
+            // Apply audio settings
+            ApplyAudioSettings();
+
+            // Apply theme
+            ThemeChanged?.Invoke(this, true); // Dark theme
+        }
+        finally
+        {
+            _suspendSettingPersistence = false;
+        }
+
+        SetScanStatus("All settings and data have been reset.", autoClear: true);
         RefreshLibraryStats();
         TotalPlaylists = 0;
         RefreshStorageInfo();
@@ -1128,6 +1274,149 @@ public partial class SettingsViewModel : ViewModelBase
         {
             Debug.WriteLine($"[Settings] Failed to open data folder: {ex.Message}");
         }
+    }
+
+    [RelayCommand]
+    private async Task CheckForUpdateAsync()
+    {
+        if (_updateService is null || IsCheckingForUpdate) return;
+
+        // Reset state
+        IsUpdateAvailable = false;
+        IsDownloadingUpdate = false;
+        IsReadyToInstall = false;
+        DownloadProgress = 0;
+        UpdateStatusText = "Checking for updates...";
+        IsCheckingForUpdate = true;
+        _downloadedInstallerPath = null;
+
+        try
+        {
+            _updateCts?.Cancel();
+            _updateCts?.Dispose();
+            _updateCts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+            var update = await _updateService.CheckForUpdateAsync(_updateCts.Token);
+
+            if (update is null)
+            {
+                UpdateStatusText = "You're on the latest version.";
+                _ = ClearUpdateStatusAfterDelay();
+            }
+            else if (update.InstallerUrl is null)
+            {
+                LatestVersionTag = update.TagName;
+                UpdateStatusText = $"{update.TagName} available — installer not found. Visit GitHub.";
+            }
+            else
+            {
+                LatestVersionTag = update.TagName;
+                UpdateStatusText = $"{update.TagName} is available.";
+                IsUpdateAvailable = true;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            UpdateStatusText = "Update check timed out. Try again later.";
+            _ = ClearUpdateStatusAfterDelay();
+        }
+        catch
+        {
+            UpdateStatusText = "Couldn't check for updates. Try again later.";
+            _ = ClearUpdateStatusAfterDelay();
+        }
+        finally
+        {
+            IsCheckingForUpdate = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DownloadUpdateAsync()
+    {
+        if (_updateService is null || IsDownloadingUpdate) return;
+
+        IsUpdateAvailable = false;
+        IsDownloadingUpdate = true;
+        DownloadProgress = 0;
+        UpdateStatusText = "Downloading update...";
+
+        try
+        {
+            _updateCts?.Cancel();
+            _updateCts?.Dispose();
+            _updateCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+
+            // Re-check to get fresh URL
+            var update = await _updateService.CheckForUpdateAsync(_updateCts.Token);
+            if (update?.InstallerUrl is null)
+            {
+                UpdateStatusText = "Update no longer available.";
+                IsDownloadingUpdate = false;
+                _ = ClearUpdateStatusAfterDelay();
+                return;
+            }
+
+            var progress = new Progress<double>(p =>
+                Dispatcher.UIThread.Post(() =>
+                {
+                    DownloadProgress = p;
+                    UpdateStatusText = $"Downloading update... {p:F0}%";
+                }));
+
+            _downloadedInstallerPath = await _updateService.DownloadInstallerAsync(
+                update.InstallerUrl, update.InstallerSize, progress, _updateCts.Token);
+
+            UpdateStatusText = "Update ready to install.";
+            IsReadyToInstall = true;
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("corrupted"))
+        {
+            UpdateStatusText = "Download corrupted. Try again.";
+            _ = ClearUpdateStatusAfterDelay();
+        }
+        catch (OperationCanceledException)
+        {
+            UpdateStatusText = "Download timed out. Try again.";
+            _ = ClearUpdateStatusAfterDelay();
+        }
+        catch
+        {
+            UpdateStatusText = "Download failed. Try again.";
+            _ = ClearUpdateStatusAfterDelay();
+        }
+        finally
+        {
+            IsDownloadingUpdate = false;
+        }
+    }
+
+    [RelayCommand]
+    private void InstallUpdate()
+    {
+        if (_updateService is null || string.IsNullOrEmpty(_downloadedInstallerPath)) return;
+
+        if (_updateService.LaunchInstaller(_downloadedInstallerPath))
+        {
+            // Shut down the app so Inno Setup can replace files
+            if (Avalonia.Application.Current?.ApplicationLifetime
+                is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                desktop.Shutdown(0);
+            }
+        }
+        else
+        {
+            UpdateStatusText = "Couldn't start installer. Download manually from GitHub.";
+            IsReadyToInstall = false;
+        }
+    }
+
+    private async Task ClearUpdateStatusAfterDelay()
+    {
+        await Task.Delay(5000);
+        if (!IsUpdateAvailable && !IsDownloadingUpdate && !IsReadyToInstall)
+            UpdateStatusText = "";
     }
 
     [RelayCommand]

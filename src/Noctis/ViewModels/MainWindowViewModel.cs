@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Loon;
@@ -49,6 +50,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public TopBarViewModel TopBar { get; }
     public PlayerViewModel Player { get; }
     public SettingsViewModel Settings { get; }
+    public LyricsViewModel Lyrics => _lyricsVm;
 
     // ── Content area ──
 
@@ -61,19 +63,18 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Whether the playback island bar should be visible (has content and not in lyrics view).</summary>
     public bool IsPlaybackBarVisible => Player.HasContent && !IsLyricsViewActive;
 
-    // ── Sidebar toggle (lyrics immersive mode) ──
+    // ── Lyrics side panel ──
 
-    /// <summary>Session preference: user wants sidebar hidden in lyrics view.</summary>
-    private bool _lyricsSidebarPref;
-
-    /// <summary>Whether the sidebar is currently hidden (animated to width 0).</summary>
-    [ObservableProperty] private bool _isSidebarHidden;
+    /// <summary>Whether the lyrics side panel overlay is open.</summary>
+    [ObservableProperty] private bool _isLyricsPanelOpen;
 
     [RelayCommand]
-    private void ToggleSidebar()
+    private void ToggleLyricsPanel()
     {
-        _lyricsSidebarPref = !_lyricsSidebarPref;
-        IsSidebarHidden = _lyricsSidebarPref;
+        if (IsLyricsViewActive) return;
+        IsLyricsPanelOpen = !IsLyricsPanelOpen;
+        if (IsLyricsPanelOpen)
+            Player.IsQueuePopupOpen = false;
     }
 
     private sealed class NavigationEntry
@@ -95,7 +96,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly LibraryArtistsViewModel _artistsVm;
     private readonly LibraryPlaylistsViewModel _playlistsVm;
     private readonly FavoritesViewModel _favoritesVm;
-    private readonly LibraryGenresViewModel _genresVm;
+
     private readonly QueueViewModel _queueVm;
     private readonly LyricsViewModel _lyricsVm;
     private readonly StatisticsViewModel _statisticsVm;
@@ -135,6 +136,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetLoonClient(loon);
         Settings.SetLastFm(lastFm);
         Settings.SetArtistImageService(artistImageService);
+        Settings.SetUpdateService(App.Services!.GetRequiredService<UpdateService>());
 
         // Create content ViewModels
         _homeVm = new HomeViewModel(Player, library, Sidebar);
@@ -143,7 +145,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _artistsVm = new LibraryArtistsViewModel(library);
         _artistsVm.SetArtistImageService(artistImageService);
         _playlistsVm = new LibraryPlaylistsViewModel(Sidebar, Player, library, persistence);
-        _genresVm = new LibraryGenresViewModel(library, Player);
+
         _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
@@ -160,7 +162,13 @@ public partial class MainWindowViewModel : ViewModelBase
         Player.SetNavigateAction(ToggleLyrics);
 
         // Wire up "View Album" from playback bar three-dots menu
-        Player.SetViewAlbumAction(track => OnViewAlbumFromTrack(this, track));
+        Player.SetViewAlbumAction(track =>
+        {
+            var album = _library.Albums.FirstOrDefault(a => a.Id == track.AlbumId);
+            if (album == null) return;
+            OpenAlbumDetail(album, pushHistory: false);
+            TopBar.IsPageTitleVisible = false;
+        });
 
         // Wire up playlist access for playback bar
         Player.SetSidebar(Sidebar);
@@ -183,8 +191,6 @@ public partial class MainWindowViewModel : ViewModelBase
         _artistsVm.ArtistOpened += OnArtistOpened;
 
 
-        // Wire up genre detail navigation from genres view
-        _genresVm.GenreOpened += OnGenreOpened;
 
         // Wire up playlist detail navigation from playlists view
         _playlistsVm.PlaylistOpened += OnPlaylistOpened;
@@ -237,9 +243,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Refresh content ViewModels with loaded data
         _songsVm.Refresh();
+        await Task.Yield();
         _albumsVm.Refresh();
+        await Task.Yield();
         _artistsVm.Refresh();
-        _genresVm.Refresh();
+        await Task.Yield();
         _homeVm.Refresh();
         _favoritesVm.Refresh();
 
@@ -286,17 +294,21 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         });
 
+        // Pre-warm cached views so the first navigation to Songs/Albums is instant.
+        // Build creates the view once; subsequent navigations reuse the cached instance.
+        App.CachedLocator?.Build(_songsVm);
+        App.CachedLocator?.Build(_albumsVm);
+
         // Navigate to the user's preferred default page
         var defaultKey = Settings.GetDefaultPageKey();
         Navigate(defaultKey);
 
         // Select the matching sidebar item
-        var allNavItems = Sidebar.HomeItems
-            .Concat(Sidebar.LibraryItems)
+        var allNavItems = Sidebar.NavItems
             .Concat(Sidebar.FavoritesItems)
-            .Concat(Sidebar.SystemItems);
+            .Concat(Sidebar.PlaylistItems);
         Sidebar.SelectedNavItem = allNavItems.FirstOrDefault(n => n.Key == defaultKey)
-                                  ?? Sidebar.HomeItems[0];
+                                  ?? Sidebar.NavItems[0];
     }
 
     /// <summary>
@@ -338,19 +350,32 @@ public partial class MainWindowViewModel : ViewModelBase
             foreach (var rawPath in input)
             {
                 var normalized = TryNormalizePath(rawPath);
+                System.Diagnostics.Debug.WriteLine($"[DropImport] rawPath={rawPath} → normalized={normalized}");
                 if (string.IsNullOrWhiteSpace(normalized)) continue;
 
                 if (Directory.Exists(normalized))
                 {
+                    System.Diagnostics.Debug.WriteLine($"[DropImport]   → is directory");
                     folders.Add(normalized);
                     continue;
                 }
 
-                if (!File.Exists(normalized)) continue;
-                if (!MetadataService.SupportedExtensions.Contains(Path.GetExtension(normalized))) continue;
+                if (!File.Exists(normalized))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DropImport]   → File.Exists=false, skipping");
+                    continue;
+                }
+                var ext = Path.GetExtension(normalized);
+                if (!MetadataService.SupportedExtensions.Contains(ext))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DropImport]   → unsupported ext '{ext}', skipping");
+                    continue;
+                }
+                System.Diagnostics.Debug.WriteLine($"[DropImport]   → accepted as file");
                 files.Add(normalized);
             }
 
+            System.Diagnostics.Debug.WriteLine($"[DropImport] folders={folders.Count} files={files.Count}");
             if (folders.Count == 0 && files.Count == 0) return;
 
             // A folder scan already includes its child files.
@@ -379,6 +404,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (files.Count > 0)
             {
                 var managedRoot = await EnsureManagedImportRootAsync(ct);
+                System.Diagnostics.Debug.WriteLine($"[DropImport] managedRoot={managedRoot}");
 
                 var libraryRoots = Settings.GetSettings().MusicFolders
                     .Where(f => !string.IsNullOrWhiteSpace(f))
@@ -387,6 +413,8 @@ public partial class MainWindowViewModel : ViewModelBase
                     .Select(f => f!)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
+
+                System.Diagnostics.Debug.WriteLine($"[DropImport] libraryRoots={string.Join("; ", libraryRoots)}");
 
                 if (!string.IsNullOrWhiteSpace(managedRoot) &&
                     !libraryRoots.Contains(managedRoot, StringComparer.OrdinalIgnoreCase))
@@ -403,6 +431,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     // Files already inside configured library roots can be imported as-is.
                     if (libraryRoots.Any(root => IsPathUnderRoot(file, root)))
                     {
+                        System.Diagnostics.Debug.WriteLine($"[DropImport]   {file} → already under library root, importing as-is");
                         importTargets.Add(file);
                         continue;
                     }
@@ -412,18 +441,23 @@ public partial class MainWindowViewModel : ViewModelBase
                         ? file
                         : CopyFileIntoManagedRoot(file, managedRoot);
 
+                    System.Diagnostics.Debug.WriteLine($"[DropImport]   {file} → copied to: {copiedPath}");
                     if (!string.IsNullOrWhiteSpace(copiedPath))
                         importTargets.Add(copiedPath);
                 }
 
+                System.Diagnostics.Debug.WriteLine($"[DropImport] importTargets={importTargets.Count} beforeCount={beforeCount}");
                 if (importTargets.Count > 0)
                 {
                     await _library.ImportFilesAsync(importTargets, ct);
+                    System.Diagnostics.Debug.WriteLine($"[DropImport] afterCount={_library.Tracks.Count}");
 
                     // If nothing new appeared (TagLib quirks, etc.), fallback to a targeted rescan.
                     if (_library.Tracks.Count == beforeCount && libraryRoots.Count > 0)
                     {
+                        System.Diagnostics.Debug.WriteLine($"[DropImport] No new tracks, falling back to rescan");
                         await _library.ScanAsync(libraryRoots, ct);
+                        System.Diagnostics.Debug.WriteLine($"[DropImport] Rescan done, count={_library.Tracks.Count}");
                     }
                 }
             }
@@ -432,7 +466,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _songsVm.Refresh();
             _albumsVm.Refresh();
             _artistsVm.Refresh();
-            _genresVm.Refresh();
+    
             _homeVm.Refresh();
             _favoritesVm.Refresh();
             Settings.RefreshLibraryStats();
@@ -450,11 +484,11 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsLyricsViewActive));
         OnPropertyChanged(nameof(IsPlaybackBarVisible));
 
-        // Sidebar: force-show when leaving lyrics, re-apply pref when entering
+        // Close lyrics panel when entering lyrics full-screen view
         if (IsLyricsViewActive)
-            IsSidebarHidden = _lyricsSidebarPref;
-        else
-            IsSidebarHidden = false;
+        {
+            IsLyricsPanelOpen = false;
+        }
 
         RefreshBackButton();
 
@@ -487,7 +521,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool ShouldShowTopBarBackButton(ViewModelBase? view)
     {
         return view is AlbumDetailViewModel
-               || view is GenreDetailViewModel
+
                || (ReferenceEquals(view, _albumsVm) && _albumsVm.IsArtistFiltered)
                || (_navigationHistory.Count > 0 && view is ISearchable && !string.IsNullOrWhiteSpace(TopBar.SearchText));
     }
@@ -526,9 +560,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         var view = CurrentView;
         var tabName = TopBar.CurrentTabName;
-        var backButtonText = IsAlbumsRootSnapshot() ? "Back to Albums"
-            : ReferenceEquals(CurrentView, _genresVm) ? "Back to Genres"
-            : "Back";
+        var backButtonText = GetRootBackButtonText(view);
         var restoreState = CaptureRestoreState(view);
 
         return new NavigationEntry
@@ -647,14 +679,17 @@ public partial class MainWindowViewModel : ViewModelBase
             return "Back to Albums";
         if (ReferenceEquals(view, _songsVm))
             return "Back to Songs";
-        if (ReferenceEquals(view, _genresVm))
-            return "Back to Genres";
+
         if (ReferenceEquals(view, _artistsVm))
             return "Back to Artists";
         if (ReferenceEquals(view, _playlistsVm))
             return "Back to Playlists";
         if (ReferenceEquals(view, _favoritesVm))
             return "Back to Favorites";
+        if (view is AlbumDetailViewModel)
+            return "Back to Albums";
+        if (view is PlaylistViewModel)
+            return "Back to Playlists";
         return "Back";
     }
 
@@ -666,7 +701,7 @@ public partial class MainWindowViewModel : ViewModelBase
                || ReferenceEquals(view, _artistsVm)
                || ReferenceEquals(view, _playlistsVm)
                || ReferenceEquals(view, _favoritesVm)
-               || ReferenceEquals(view, _genresVm)
+
                || ReferenceEquals(view, _queueVm)
                || ReferenceEquals(view, _lyricsVm)
                || ReferenceEquals(view, _statisticsVm)
@@ -693,7 +728,7 @@ public partial class MainWindowViewModel : ViewModelBase
             "songs" => RefreshAndReturnSongs(_songsVm),
             "albums" => ResetFilterAndReturnAlbums(),
             "artists" => ResetAndReturnArtists(),
-            "genres" => RefreshAndReturnGenres(_genresVm),
+
             "playlists" => RefreshAndReturnPlaylists(_playlistsVm),
             "favorites" => RefreshAndReturnFavorites(_favoritesVm),
             "statistics" => RefreshAndReturnStatistics(_statisticsVm),
@@ -713,7 +748,7 @@ public partial class MainWindowViewModel : ViewModelBase
             "songs" => "Songs",
             "albums" => "Albums",
             "artists" => "Artists",
-            "genres" => "Genres",
+
             "playlists" => "Playlists",
             "favorites" => "Favorites",
             "statistics" => "Statistics",
@@ -761,7 +796,11 @@ public partial class MainWindowViewModel : ViewModelBase
         // Clear any stale artist filter from OnArtistOpened so the user
         // sees the full album grid when navigating via the sidebar.
         _albumsVm.ClearArtistFilter();
-        _albumsVm.ApplyFilter(string.Empty);
+
+        // Use Refresh() so the dirty check prevents unnecessary rebuilds.
+        // ApplyFilter("") was bypassing the dirty check, forcing a full
+        // rebuild on every navigation even when data hadn't changed.
+        _albumsVm.Refresh();
 
         // Return cover flow or library view based on remembered mode
         return _isAlbumsCoverFlowMode ? _coverFlowVm : _albumsVm;
@@ -773,11 +812,6 @@ public partial class MainWindowViewModel : ViewModelBase
         return vm;
     }
 
-    private LibraryGenresViewModel RefreshAndReturnGenres(LibraryGenresViewModel vm)
-    {
-        vm.Refresh();
-        return vm;
-    }
 
     private LibraryPlaylistsViewModel RefreshAndReturnPlaylists(LibraryPlaylistsViewModel vm)
     {
@@ -830,17 +864,6 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenArtistDiscography(artist.Name);
     }
 
-    private void OnGenreOpened(object? sender, GenreItem genre)
-    {
-        PushCurrentViewToHistory();
-        ClearAllTopBarActions();
-
-        var detail = new GenreDetailViewModel(genre, Player, _library, Sidebar);
-        detail.BackRequested += (_, _) => GoBackInHistory();
-        detail.SetSearchLyricsAction(SearchLyricsForTrack);
-        detail.SetViewArtistAction(ViewArtistByName);
-        CurrentView = detail;
-    }
 
     private void OnPlaylistOpened(object? sender, Playlist playlist)
     {
@@ -864,9 +887,10 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenAlbumDetail(album);
     }
 
-    private void OpenAlbumDetail(Album album)
+    private void OpenAlbumDetail(Album album, bool pushHistory = true)
     {
-        PushCurrentViewToHistory();
+        if (pushHistory)
+            PushCurrentViewToHistory();
         ClearAllTopBarActions();
 
         var detail = new AlbumDetailViewModel(album, Player, _persistence, _library, Sidebar, _lastFm);
@@ -1010,7 +1034,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (CurrentView == _songsVm) return "songs";
         if (CurrentView == _albumsVm || CurrentView == _coverFlowVm) return "albums";
         if (CurrentView == _artistsVm) return "artists";
-        if (CurrentView == _genresVm) return "genres";
+
         if (CurrentView == _playlistsVm) return "playlists";
         if (CurrentView == _favoritesVm) return "favorites";
         if (CurrentView == _queueVm) return "queue";
@@ -1077,6 +1101,15 @@ public partial class MainWindowViewModel : ViewModelBase
             var fileName = Path.GetFileName(sourcePath);
             var destinationPath = Path.Combine(rootPath, fileName);
             destinationPath = TryNormalizePath(destinationPath) ?? destinationPath;
+
+            // Prevent path traversal: ensure destination stays within managed root
+            var fullDestination = Path.GetFullPath(destinationPath);
+            var fullRoot = Path.GetFullPath(rootPath);
+            if (!fullDestination.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                System.Diagnostics.Debug.WriteLine($"[DropImport] Path traversal blocked: {destinationPath}");
+                return null;
+            }
 
             // Already in the managed root.
             if (string.Equals(sourcePath, destinationPath, StringComparison.OrdinalIgnoreCase))
