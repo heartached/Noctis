@@ -118,16 +118,17 @@
         <Style Selector="ComboBox.pill-combo">
             <Setter Property="Padding" Value="12,6"/>
             <Setter Property="MinWidth" Value="155"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <ControlTemplate>
                     <DataValidationErrors>
                         <Panel>
                             <Border Name="Background"
-                                    Background="{DynamicResource ComboBoxBackground}"
-                                    BorderBrush="{DynamicResource ComboBoxBorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="18"
+                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="16"
                                     Padding="{TemplateBinding Padding}"
                                     MinWidth="{TemplateBinding MinWidth}">
                                 <Grid ColumnDefinitions="*,Auto">
@@ -195,12 +196,22 @@
             <Setter Property="Height" Value="8"/>
         </Style>
         <Style Selector="Slider.accent-slider /template/ RepeatButton">
-            <Setter Property="Margin" Value="-9,0"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Slider.accent-slider /template/ RepeatButton#PART_DecreaseButton">
+            <Setter Property="Margin" Value="0,0,-9,0"/>
+        </Style>
+        <Style Selector="Slider.accent-slider /template/ RepeatButton#PART_IncreaseButton">
+            <Setter Property="Margin" Value="-9,0,0,0"/>
         </Style>
         <Style Selector="Slider.accent-slider /template/ RepeatButton /template/ Border">
             <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
             <Setter Property="Opacity" Value="0.95"/>
-            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Height" Value="8"/>
         </Style>
         <Style Selector="Slider.accent-slider /template/ RepeatButton#PART_IncreaseButton /template/ Border">
@@ -227,7 +238,8 @@
             </Setter>
         </Style>
         <Style Selector="Slider.accent-slider:pointerover /template/ Thumb">
-            <Setter Property="RenderTransform" Value="scale(1.08)"/>
+            <Setter Property="Width" Value="19.44"/>
+            <Setter Property="Height" Value="19.44"/>
         </Style>
 
         <!-- Accent sliders (vertical EQ) -->
@@ -243,12 +255,22 @@
             <Setter Property="Width" Value="8"/>
         </Style>
         <Style Selector="Slider.accent-vertical /template/ RepeatButton">
-            <Setter Property="Margin" Value="0,-9"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Slider.accent-vertical /template/ RepeatButton#PART_DecreaseButton">
+            <Setter Property="Margin" Value="0,-9,0,0"/>
+        </Style>
+        <Style Selector="Slider.accent-vertical /template/ RepeatButton#PART_IncreaseButton">
+            <Setter Property="Margin" Value="0,0,0,-9"/>
         </Style>
         <Style Selector="Slider.accent-vertical /template/ RepeatButton /template/ Border">
             <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
             <Setter Property="Opacity" Value="0.95"/>
-            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Width" Value="8"/>
         </Style>
         <Style Selector="Slider.accent-vertical /template/ RepeatButton#PART_IncreaseButton /template/ Border">
@@ -287,9 +309,8 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*">
-        <Separator Grid.Row="0" Classes="page-top-separator" />
-    <ScrollViewer Grid.Row="1"
+    <Grid RowDefinitions="*">
+    <ScrollViewer Grid.Row="0"
                   HorizontalScrollBarVisibility="Auto"
                   VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="32,24,32,40" MaxWidth="900" HorizontalAlignment="Left" Spacing="4">
@@ -467,12 +488,24 @@
                                               VerticalAlignment="Center"/>
                     </Grid>
 
-                    <!-- Sub-header: Up Next -->
-                    <TextBlock Text="UP NEXT" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <!-- Sub-header: Cover Flow -->
+                    <TextBlock Text="COVER FLOW" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long text" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding CoverFlowMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long artist names" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding CoverFlowArtistMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long album titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding CoverFlowAlbumMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
 
@@ -515,45 +548,38 @@
 
             <Border Classes="setting-card" Padding="22,16,38,16" ClipToBounds="False">
                 <StackPanel Spacing="16">
-                    <!-- Header row with icon -->
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <Viewbox Width="20" Height="20" VerticalAlignment="Center">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.55"
-                                      Data="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
-                            </Canvas>
-                        </Viewbox>
-                        <StackPanel Spacing="2">
-                            <TextBlock Text="Equalizer" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Fine-tune audio frequencies for your listening preference."
-                                       FontSize="12" Opacity="0.5"/>
+                    <!-- Header row with icon, preset selector, and reset button -->
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                            <Viewbox Width="20" Height="20" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.55"
+                                          Data="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
+                                </Canvas>
+                            </Viewbox>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Equalizer" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="Fine-tune audio frequencies for your listening preference."
+                                           FontSize="12" Opacity="0.5"/>
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
-
-                    <!-- Preset selector + Reset button -->
-                    <Grid ColumnDefinitions="Auto,*,Auto">
-                        <ComboBox Grid.Column="0"
+                        <ComboBox Grid.Column="2"
                                   Classes="pill-combo"
                                   ItemsSource="{x:Static vm:SettingsViewModel.EqPresetNames}"
                                   SelectedIndex="{Binding SelectedEqPresetIndex}"
-                                  VerticalAlignment="Center" />
-                        <Button Grid.Column="2"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,10,0" />
+                        <Button Grid.Column="3"
                                 Classes="pill-action"
                                 Command="{Binding ResetEqualizerCommand}"
-                                Background="Transparent"
-                                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-                                BorderThickness="1"
-                                CornerRadius="18"
+                                CornerRadius="16"
                                 Padding="14,8"
                                 Cursor="Hand"
                                 VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="{StaticResource SyncIcon}" Width="14" Height="14"
-                                         VerticalAlignment="Center" />
-                                <TextBlock Text="Reset"
-                                           FontSize="13"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
+                            <TextBlock Text="Reset"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
                         </Button>
                     </Grid>
 
@@ -784,20 +810,22 @@
                         <!-- Not connected state -->
                         <Button Grid.Column="2" Grid.Row="0"
                                 IsVisible="{Binding !IsLastFmConnected}"
-                                Content="Login with Last.fm"
+                                Content="Connect Last.fm"
                                 Classes="pill-action"
                                 Command="{Binding LoginLastFmCommand}"
-                                Padding="16,10"
-                                CornerRadius="18"
+                                Padding="14,8"
+                                CornerRadius="16"
                                 Cursor="Hand"
                                 VerticalAlignment="Center"
                                 Margin="0,0,0,4">
                             <Button.Template>
                                 <ControlTemplate>
-                                    <ContentPresenter Background="#D51007"
+                                    <ContentPresenter Background="#E74856"
                                                       Foreground="White"
-                                                      CornerRadius="18"
-                                                      Padding="16,10"
+                                                      CornerRadius="16"
+                                                      Padding="14,8"
+                                                      FontSize="13"
+                                                      FontWeight="SemiBold"
                                                       Content="{TemplateBinding Content}"/>
                                 </ControlTemplate>
                             </Button.Template>
@@ -807,13 +835,15 @@
                         <!-- Logout button (top-right, when connected) -->
                         <Button Grid.Column="2" Grid.Row="0"
                                 IsVisible="{Binding IsLastFmConnected}"
-                                Content="Logout"
                                 Command="{Binding LogoutLastFmCommand}"
                                 Classes="pill-action"
                                 Padding="14,8"
-                                CornerRadius="18"
+                                CornerRadius="16"
                                 Cursor="Hand"
-                                VerticalAlignment="Center"/>
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Logout" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                        </Button>
                     </Grid>
 
                     <!-- Enable Scrobbling (when connected) -->
@@ -851,13 +881,16 @@
                                            FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </StackPanel>
-                        <Button Grid.Column="1" Content="Add Folder"
+                        <Button Grid.Column="1"
                                 x:Name="AddFolderButton"
                                 Classes="pill-action"
-                                Padding="16,10"
-                                CornerRadius="18"
+                                Padding="14,8"
+                                CornerRadius="16"
                                 Cursor="Hand"
-                                VerticalAlignment="Center"/>
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Add Folder" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                        </Button>
                     </Grid>
 
                     <!-- Folder list -->
@@ -921,18 +954,24 @@
                                    FontSize="12"
                                    Opacity="0.6"
                                    VerticalAlignment="Center"/>
-                        <Button Content="Scan Library"
-                                Classes="pill-action"
+                        <Button Classes="pill-action"
                                 Command="{Binding RescanCommand}"
                                 IsEnabled="{Binding !IsScanning}"
-                                Padding="16,10"
-                                Cursor="Hand"/>
-                        <Button Content="Index Library"
-                                Classes="pill-action"
+                                Padding="14,8"
+                                CornerRadius="16"
+                                Cursor="Hand">
+                            <TextBlock Text="Scan Library" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                        </Button>
+                        <Button Classes="pill-action"
                                 Command="{Binding RebuildIndexCommand}"
                                 IsEnabled="{Binding !IsScanning}"
-                                Padding="16,10"
-                                Cursor="Hand"/>
+                                Padding="14,8"
+                                CornerRadius="16"
+                                Cursor="Hand">
+                            <TextBlock Text="Index Library" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -1060,25 +1099,6 @@
                                            HorizontalAlignment="Center" />
                             </StackPanel>
                         </Border>
-                        <!-- Genres -->
-                        <Border CornerRadius="10" Padding="12,14" Margin="4"
-                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                            <StackPanel HorizontalAlignment="Center" Spacing="4">
-                                <Border Width="24" Height="24" HorizontalAlignment="Center"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality"
-                                        Background="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.55">
-                                    <Border.OpacityMask>
-                                        <ImageBrush Source="{Binding Converter={StaticResource IconKeyToGeometry}, ConverterParameter=GenresIcon}"
-                                                    Stretch="Uniform" />
-                                    </Border.OpacityMask>
-                                </Border>
-                                <TextBlock Text="{Binding TotalGenres}"
-                                           FontSize="20" FontWeight="Bold"
-                                           HorizontalAlignment="Center" />
-                                <TextBlock Text="Genres" FontSize="11" Opacity="0.5"
-                                           HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
                     </UniformGrid>
 
                     <!-- Audio Quality breakdown -->
@@ -1090,7 +1110,7 @@
                                           Data="M7 18h2V6H7v12zm4 4h2V2h-2v20zm-8-8h2v-4H3v4zm12 4h2V6h-2v12zm4-8v4h2v-4h-2z"/>
                                 </Canvas>
                             </Viewbox>
-                            <TextBlock Text="Audio Quality" FontSize="14" FontWeight="SemiBold" Opacity="0.7"
+                            <TextBlock Text="Audio Quality" FontSize="15" FontWeight="SemiBold"
                                        VerticalAlignment="Center"/>
                         </StackPanel>
                         <WrapPanel Orientation="Horizontal">
@@ -1133,19 +1153,31 @@
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="14">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <Viewbox Width="18" Height="18" VerticalAlignment="Center">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.55"
-                                      Data="M2 20h20v-4H2v4zm2-3h2v2H4v-2zM2 4v4h20V4H2zm4 3H4V5h2v2zm-4 7h20v-4H2v4zm2-3h2v2H4v-2z"/>
-                            </Canvas>
-                        </Viewbox>
-                        <StackPanel Spacing="2">
-                            <TextBlock Text="Disk Usage" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Space used by Noctis data on your system."
-                                       FontSize="12" Opacity="0.5"/>
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                            <Viewbox Width="18" Height="18" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.55"
+                                          Data="M2 20h20v-4H2v4zm2-3h2v2H4v-2zM2 4v4h20V4H2zm4 3H4V5h2v2zm-4 7h20v-4H2v4zm2-3h2v2H4v-2z"/>
+                                </Canvas>
+                            </Viewbox>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Disk Usage" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="Space used by Noctis data on your system."
+                                           FontSize="12" Opacity="0.5"/>
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
+                        <Button Grid.Column="2"
+                                Command="{Binding OpenDataFolderCommand}"
+                                Classes="pill-action"
+                                Padding="14,8"
+                                CornerRadius="16"
+                                Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Open Data Folder" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                        </Button>
+                    </Grid>
 
                     <StackPanel Spacing="8" Margin="0,4,0,0">
                         <!-- Library size (music files on disk) -->
@@ -1241,21 +1273,6 @@
                         </Grid>
                     </StackPanel>
 
-                    <!-- Open data folder button -->
-                    <Button Command="{Binding OpenDataFolderCommand}"
-                            Classes="pill-action"
-                            Padding="14,10"
-                            CornerRadius="18"
-                            Cursor="Hand"
-                            Margin="0,4,0,0">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource ShieldIcon}"
-                                     Width="14" Height="14"
-                                     VerticalAlignment="Center"/>
-                            <TextBlock Text="Open Data Folder" FontSize="13"
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
                 </StackPanel>
             </Border>
 
@@ -1277,22 +1294,24 @@
                                 </Canvas>
                             </Viewbox>
                             <StackPanel Spacing="2">
-                                <TextBlock Text="Reset Library" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Remove all tracks, playlists, and cached artwork data."
+                                <TextBlock Text="Reset Settings" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="Reset all settings to defaults and clear library, playlists, artwork, and lyrics cache."
                                            FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </StackPanel>
 
                         <!-- Normal state -->
                         <Button Grid.Column="1"
-                                Content="Reset Library"
                                 Command="{Binding ShowResetConfirmCommand}"
                                 IsVisible="{Binding !IsResetConfirmVisible}"
                                 Classes="pill-action"
-                                Padding="16,10"
-                                CornerRadius="18"
+                                Padding="14,8"
+                                CornerRadius="16"
                                 Cursor="Hand"
-                                VerticalAlignment="Center"/>
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Reset Settings" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                        </Button>
                     </Grid>
 
                     <!-- Confirmation state -->
@@ -1333,13 +1352,15 @@
                         </StackPanel>
                     </StackPanel>
                     <Button Grid.Column="1"
-                            Content="Fetch Images"
                             Command="{Binding FetchArtistImagesCommand}"
                             Classes="pill-action"
-                            Padding="16,10"
-                            CornerRadius="18"
+                            Padding="14,8"
+                            CornerRadius="16"
                             Cursor="Hand"
-                            VerticalAlignment="Center"/>
+                            VerticalAlignment="Center">
+                        <TextBlock Text="Fetch Images" FontSize="13"
+                                   VerticalAlignment="Center"/>
+                    </Button>
                 </Grid>
             </Border>
             <!-- Clear Artwork Cache -->
@@ -1361,13 +1382,15 @@
                         </StackPanel>
                     </StackPanel>
                     <Button Grid.Column="1"
-                            Content="Clear Cache"
                             Command="{Binding ClearArtworkCacheCommand}"
                             Classes="pill-action"
-                            Padding="16,10"
-                            CornerRadius="18"
+                            Padding="14,8"
+                            CornerRadius="16"
                             Cursor="Hand"
-                            VerticalAlignment="Center"/>
+                            VerticalAlignment="Center">
+                        <TextBlock Text="Clear Cache" FontSize="13"
+                                   VerticalAlignment="Center"/>
+                    </Button>
                 </Grid>
             </Border>
 
@@ -1397,7 +1420,7 @@
                             Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
                             Opacity="0.2" Margin="0,4"/>
 
-                    <TextBlock Text="Modern music player for Windows and macOS."
+                    <TextBlock Text="Modern music player for Windows."
                                FontSize="13" Opacity="0.6"/>
                     <TextBlock Text="Yours Truly, heartached."
                                FontSize="12" Opacity="0.4"/>
@@ -1406,21 +1429,73 @@
                             Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
                             Opacity="0.2" Margin="0,4"/>
 
+                    <!-- GitHub link -->
                     <Button Command="{Binding OpenGitHubCommand}"
                             Background="Transparent" BorderThickness="0"
                             Padding="0" Cursor="Hand"
                             HorizontalAlignment="Left">
                         <StackPanel Orientation="Horizontal" Spacing="8"
                                     VerticalAlignment="Center">
-                            <!-- GitHub logo (Octicon mark) -->
                             <PathIcon Width="18" Height="18"
                                       Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                       Data="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-                            <TextBlock Text="Star on GitHub · Check for updates"
+                            <TextBlock Text="Star on GitHub"
                                        FontSize="13" Opacity="0.6"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
+
+                    <!-- Update section -->
+                    <StackPanel Spacing="8" Margin="0,4,0,0">
+                        <!-- Check for updates button -->
+                        <Button Command="{Binding CheckForUpdateCommand}"
+                                Background="Transparent" BorderThickness="0"
+                                Padding="0" Cursor="Hand"
+                                HorizontalAlignment="Left"
+                                IsVisible="{Binding !IsReadyToInstall}">
+                            <StackPanel Orientation="Horizontal" Spacing="8"
+                                        VerticalAlignment="Center">
+                                <PathIcon Width="16" Height="16"
+                                          Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                          Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-7v4h4l-5 7z" />
+                                <TextBlock Text="Check for updates"
+                                           FontSize="13" Opacity="0.6"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Status text -->
+                        <TextBlock Text="{Binding UpdateStatusText}"
+                                   FontSize="12" Opacity="0.7"
+                                   IsVisible="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                        <!-- Download progress bar -->
+                        <ProgressBar Minimum="0" Maximum="100"
+                                     Value="{Binding DownloadProgress}"
+                                     IsVisible="{Binding IsDownloadingUpdate}"
+                                     Height="4" CornerRadius="2"
+                                     Margin="0,2" />
+
+                        <!-- Update Now button -->
+                        <Button Command="{Binding DownloadUpdateCommand}"
+                                IsVisible="{Binding IsUpdateAvailable}"
+                                Classes="pill"
+                                HorizontalAlignment="Left"
+                                Padding="16,6">
+                            <TextBlock Text="{Binding LatestVersionTag, StringFormat='Update to {0}'}"
+                                       FontSize="12" />
+                        </Button>
+
+                        <!-- Install & Restart button -->
+                        <Button Command="{Binding InstallUpdateCommand}"
+                                IsVisible="{Binding IsReadyToInstall}"
+                                Classes="pill"
+                                HorizontalAlignment="Left"
+                                Padding="16,6">
+                            <TextBlock Text="Install &amp; Restart"
+                                       FontSize="12" />
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
