@@ -5,8 +5,6 @@
 A sleek Windows music player with synced lyrics, equalizer, smart playlists, and a beautiful dark UI.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows-blue.svg)]()
-[![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)]()
 [![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=yellowgreen)](https://github.com/heartached/Noctis/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/heartached/Noctis/dotnet.yml?label=build)](https://github.com/heartached/Noctis/actions)
 
