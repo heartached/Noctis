@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -15,18 +18,61 @@ public partial class LibraryAlbumsView : UserControl
     private LibraryAlbumsViewModel? _vm;
     private EventHandler? _pendingScrollRestore;
     private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
+    private readonly HashSet<Button> _selectedTiles = new();
+    private bool _isLyricsPanelAnimating;
+    private double _savedScrollBeforePanel = -1;
+    private DispatcherTimer? _panelAnimationTimer;
 
     public LibraryAlbumsView()
     {
         InitializeComponent();
 
         DataContextChanged += OnDataContextChanged;
+        AddHandler(PointerPressedEvent, OnTilePointerPressed, RoutingStrategies.Tunnel);
+        AddHandler(KeyDownEvent, OnViewKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
+    }
+
+    private void OnTilePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        var source = e.Source as Control;
+        while (source != null && !(source is Button b && b.Classes.Contains("album-tile")))
+            source = source.Parent as Control;
+        if (source is not Button tile) return;
+
+        MultiSelectHelper.HandleAlbumTileClick(tile, e, _selectedTiles);
+
+        // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
+        if (_selectedTiles.Count > 0)
+            Focus();
+    }
+
+    private void OnViewKeyDown(object? sender, KeyEventArgs e)
+    {
+        var allTiles = new List<Button>();
+        foreach (var desc in AlbumListBox.GetVisualDescendants())
+        {
+            if (desc is Button b && b.Classes.Contains("album-tile"))
+                allTiles.Add(b);
+        }
+        MultiSelectHelper.HandleAlbumSelectAll(e, allTiles, _selectedTiles);
+    }
+
+    /// <summary>Returns the list of ctrl-selected albums, or a single-item list with the given album if none are selected.</summary>
+    private List<Album> GetSelectedAlbumsOr(Album? fallback)
+    {
+        var selected = MultiSelectHelper.GetSelectedData<Album>(_selectedTiles);
+        if (selected.Count > 0) return selected;
+        if (fallback != null) return new List<Album> { fallback };
+        return new List<Album>();
     }
 
     private void OnAlbumContextMenuOpened(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not LibraryAlbumsViewModel vm) return;
         if (sender is not ContextMenu ctx) return;
+
+        // Push ctrl-selected albums to ViewModel so commands can operate on all of them
+        vm.CtrlSelectedAlbums = MultiSelectHelper.GetSelectedData<Album>(_selectedTiles);
 
         if (!_playlistPopulators.TryGetValue(ctx, out var populator))
         {
@@ -85,14 +131,84 @@ public partial class LibraryAlbumsView : UserControl
     {
         base.OnSizeChanged(e);
 
+        // Skip tile recalculation entirely while lyrics panel is animating.
+        // Tiles stay fixed; the grid just has less horizontal space (cells shrink).
+        if (_isLyricsPanelAnimating)
+            return;
+
         if (e.NewSize.Width <= 0 || DataContext is not LibraryAlbumsViewModel vm)
             return;
 
         // DockPanel has Margin="12,8,12,0" → 24px horizontal margin
-        // Each tile has Margin="2" (4px horiz) + Button Padding="4" (8px horiz)
+        // Each tile has Margin="2" (4px horiz) + Button Padding="2" (4px horiz)
         var usable = e.NewSize.Width - 24;
-        var tileContentWidth = usable / 6.0 - 12;
-        vm.TileArtworkSize = Math.Max(80, tileContentWidth);
+        var tileContentWidth = usable / 5.0 - 8;
+        var newSize = Math.Max(80, tileContentWidth);
+
+        if (Math.Abs(newSize - vm.TileArtworkSize) < 0.5)
+            return;
+
+        // Save and restore scroll position so sidebar hover doesn't reset scroll
+        var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+        var savedY = sv?.Offset.Y ?? 0;
+
+        vm.TileArtworkSize = newSize;
+
+        if (sv != null && savedY > 0)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                sv.Offset = new Vector(0, Math.Min(savedY, Math.Max(0, sv.Extent.Height - sv.Viewport.Height)));
+            }, DispatcherPriority.Background);
+        }
+    }
+
+    /// <summary>
+    /// Called by MainWindow when the lyrics panel starts opening/closing.
+    /// Freezes tile size and saves scroll position for the duration of the animation.
+    /// </summary>
+    public void OnLyricsPanelAnimating()
+    {
+        _isLyricsPanelAnimating = true;
+
+        // Save scroll position once before the animation starts
+        var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+        _savedScrollBeforePanel = sv?.Offset.Y ?? 0;
+
+        // Cancel any existing timer
+        _panelAnimationTimer?.Stop();
+
+        // Restore scroll after the animation completes (200ms animation + 50ms buffer)
+        _panelAnimationTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(300), DispatcherPriority.Background, (s, _) =>
+        {
+            ((DispatcherTimer)s!).Stop();
+            _panelAnimationTimer = null;
+            _isLyricsPanelAnimating = false;
+
+            // Recalculate tile sizes for the new available width
+            if (DataContext is LibraryAlbumsViewModel vm2 && Bounds.Width > 0)
+            {
+                var usable = Bounds.Width - 24;
+                var tileContentWidth = usable / 5.0 - 8;
+                var newSize = Math.Max(80, tileContentWidth);
+                if (Math.Abs(newSize - vm2.TileArtworkSize) >= 0.5)
+                    vm2.TileArtworkSize = newSize;
+            }
+
+            // Restore scroll position after layout processes the new tile size
+            var savedScroll = _savedScrollBeforePanel;
+            if (savedScroll > 0)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    var sv2 = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+                    if (sv2 != null)
+                        sv2.Offset = new Vector(0, Math.Min(savedScroll, Math.Max(0, sv2.Extent.Height - sv2.Viewport.Height)));
+                }, DispatcherPriority.Background);
+            }
+            _savedScrollBeforePanel = -1;
+        });
+        _panelAnimationTimer.Start();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -126,25 +242,17 @@ public partial class LibraryAlbumsView : UserControl
 
         if (DataContext is LibraryAlbumsViewModel vm && vm.SavedScrollOffset > 0)
         {
-            // Hide ListBox until scroll is restored to prevent flash-at-top flicker
-            AlbumListBox.Opacity = 0;
             var targetOffset = vm.SavedScrollOffset;
-            var attempts = 0;
 
+            // Restore scroll position after layout without hiding the view.
+            // Using a single-shot LayoutUpdated avoids the Opacity=0 blank flash.
             _pendingScrollRestore = (s, args) =>
             {
-                attempts++;
                 var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
                 if (sv == null) return;
 
-                // Wait until the ScrollViewer extent is tall enough, with safety limit
-                if (sv.Extent.Height < targetOffset && attempts < 50)
-                    return;
-
-                // Clamp to actual extent if content shrank since last visit
                 var clampedOffset = Math.Min(targetOffset, Math.Max(0, sv.Extent.Height - sv.Viewport.Height));
                 sv.Offset = new Vector(0, clampedOffset);
-                AlbumListBox.Opacity = 1;
                 CancelPendingScrollRestore();
             };
 

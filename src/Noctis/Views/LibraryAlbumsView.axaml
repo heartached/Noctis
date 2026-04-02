@@ -8,15 +8,15 @@
              xmlns:helpers="using:Noctis.Helpers"
              x:Class="Noctis.Views.LibraryAlbumsView"
              x:DataType="vm:LibraryAlbumsViewModel"
+             Focusable="True"
              Background="{DynamicResource AppMainBackground}">
 
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,*">
-        <Separator Grid.Row="0" Classes="page-top-separator" />
-        <DockPanel Grid.Row="1" Margin="12,8,12,8">
+    <Grid RowDefinitions="*">
+        <DockPanel Grid.Row="0" Margin="12,8,12,8">
 
         <!-- Header — only shown when filtering by artist (shows artist name) -->
         <TextBlock DockPanel.Dock="Top"
@@ -28,25 +28,32 @@
 
         <!-- Content area with overlay for empty state -->
         <Grid>
-            <!-- Album grid: outer ListBox virtualizes rows, inner UniformGrid lays out 6 columns per row -->
+            <!-- Album grid: outer ListBox virtualizes rows, inner UniformGrid lays out 5 columns per row -->
             <ListBox x:Name="AlbumListBox"
                      ItemsSource="{Binding FilteredAlbumRows}"
                      Background="Transparent"
                      BorderThickness="0"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     SelectionMode="Single">
+                     SelectionMode="Single"
+                     AutoScrollToSelectedItem="False">
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Focusable" Value="False" />
+                    </Style>
+                </ListBox.Styles>
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:AlbumRow">
                         <ItemsControl ItemsSource="{Binding Albums}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <UniformGrid Columns="6" Rows="1" />
+                                    <UniformGrid Columns="5" Rows="1" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="m:Album">
                                     <Button Classes="album-tile"
+                                            Focusable="False"
                                             Margin="2"
                                             HorizontalAlignment="Stretch"
                                             VerticalAlignment="Top"
@@ -80,21 +87,20 @@
                                                                 </Panel>
                                                             </Border>
                                                             <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                                                <Grid ColumnDefinitions="Auto,Auto">
-                                                                    <controls:MarqueeTextBlock Grid.Column="0" Text="{Binding Name}"
-                                                                               FontWeight="SemiBold" FontSize="13"
-                                                                               MaxDisplayWidth="240" IsForArtist="False" />
-                                                                    <Border Grid.Column="1"
-                                                                            Classes="explicit-badge compact"
-                                                                            Margin="4,0,0,0"
-                                                                            VerticalAlignment="Center"
-                                                                            IsVisible="{Binding IsExplicit}">
-                                                                        <TextBlock Text="E"
-                                                                                   Classes="explicit-badge-text compact"
-                                                                                   FontSize="9"
-                                                                                   Opacity="0.9" />
-                                                                    </Border>
-                                                                </Grid>
+                                                                <controls:MarqueeTextBlock Text="{Binding Name}"
+                                                                           FontWeight="SemiBold" FontSize="13"
+                                                                           MaxDisplayWidth="240" IsForArtist="False">
+                                                                    <controls:MarqueeTextBlock.InlineContent>
+                                                                        <Border Classes="explicit-badge compact"
+                                                                                VerticalAlignment="Center"
+                                                                                IsVisible="{Binding IsExplicit}">
+                                                                            <TextBlock Text="E"
+                                                                                       Classes="explicit-badge-text compact"
+                                                                                       FontSize="9"
+                                                                                       Opacity="0.9" />
+                                                                        </Border>
+                                                                    </controls:MarqueeTextBlock.InlineContent>
+                                                                </controls:MarqueeTextBlock>
                                                                 <controls:MarqueeTextBlock Text="{Binding Artist}" FontSize="11"
                                                                            Foreground="#E74856" MaxDisplayWidth="240" IsForArtist="True" Margin="0,2,0,0" />
                                                             </StackPanel>
@@ -102,9 +108,16 @@
                                                     </MenuItem.Header>
                                                 </MenuItem>
                                                 <Separator />
-                                                <MenuItem Header="{Binding Name, StringFormat='Play &quot;{0}&quot;'}"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).PlayAlbumCommand}"
-                                                          CommandParameter="{Binding}">
+                                                <MenuItem Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).PlayAlbumCommand}"
+                                                          CommandParameter="{Binding}"
+                                                          MaxWidth="400">
+                                                    <MenuItem.Header>
+                                                        <TextBlock Text="{Binding Name, StringFormat='Play &quot;{0}&quot;'}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   FontWeight="Normal"
+                                                                   FontSize="14"
+                                                                   FontFamily="{Binding $parent[MenuItem].FontFamily}" />
+                                                    </MenuItem.Header>
                                                     <MenuItem.Icon>
                                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                                     </MenuItem.Icon>
@@ -141,7 +154,7 @@
                                                     <Separator />
                                                 </MenuItem>
                                                 <Separator />
-                                                <MenuItem Header="Add to Favorites"
+                                                <MenuItem Header="Favorites"
                                                           Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ToggleAlbumFavoritesCommand}"
                                                           CommandParameter="{Binding}"
                                                           IsVisible="{Binding !IsAllTracksFavorite}">
@@ -157,7 +170,6 @@
                                                         <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
                                                     </MenuItem.Icon>
                                                 </MenuItem>
-                                                <Separator />
                                                 <MenuItem Header="Metadata"
                                                           Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).OpenMetadataCommand}"
                                                           CommandParameter="{Binding}">
@@ -165,23 +177,7 @@
                                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                                     </MenuItem.Icon>
                                                 </MenuItem>
-                                                <Separator />
-                                                <MenuItem Header="View Album"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).OpenAlbumCommand}"
-                                                          CommandParameter="{Binding}">
-                                                    <MenuItem.Icon>
-                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Albums%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <MenuItem Header="View Artist"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ViewArtistCommand}"
-                                                          CommandParameter="{Binding Artist}">
-                                                    <MenuItem.Icon>
-                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Artists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <Separator />
-                                                <MenuItem Header="Show in Folder"
+                                                <MenuItem Header="Show Folder"
                                                           Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ShowInExplorerCommand}"
                                                           CommandParameter="{Binding}">
                                                     <MenuItem.Icon>
@@ -222,18 +218,17 @@
                                                 </Panel>
                                             </Border>
                                             <!-- Album name + explicit badge -->
-                                            <Grid ColumnDefinitions="*,Auto"
-                                                  Margin="0,5,0,0">
+                                            <StackPanel Orientation="Horizontal"
+                                                        Margin="0,5,0,0"
+                                                        HorizontalAlignment="Left">
                                                 <TextBlock Text="{Binding Name}"
-                                                           Grid.Column="0"
-                                                           Classes="one-line-explicit-title"
                                                            FontSize="13"
                                                            FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis"
                                                            MaxLines="1" />
-                                                <Border Grid.Column="1"
-                                                        Classes="explicit-badge compact"
-                                                        Margin="6,0,0,0"
+                                                <Border Classes="explicit-badge compact"
+                                                        Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
                                                         IsVisible="{Binding IsExplicit}"
                                                         ToolTip.Tip="Explicit">
                                                     <TextBlock Text="E"
@@ -241,7 +236,7 @@
                                                                FontSize="9"
                                                                Opacity="0.9" />
                                                 </Border>
-                                            </Grid>
+                                            </StackPanel>
                                             <!-- Artist name -->
                                             <TextBlock Text="{Binding Artist}"
                                                        FontSize="12"

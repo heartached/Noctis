@@ -8,6 +8,9 @@ public class AppSettings
     /// <summary>Directories to scan for music files.</summary>
     public List<string> MusicFolders { get; set; } = new();
 
+    /// <summary>File paths explicitly removed from the library. Skipped during rescans.</summary>
+    public List<string> ExcludedFilePaths { get; set; } = new();
+
     /// <summary>Persistent include/exclude rules for scanning.</summary>
     public List<FolderRule> FolderRules { get; set; } = new();
 
@@ -65,8 +68,14 @@ public class AppSettings
     /// <summary>Whether long artist names in options menus should scroll.</summary>
     public bool MenuArtistMarqueeEnabled { get; set; } = true;
 
-    /// <summary>Whether long text in the CoverFlow Up Next view should scroll.</summary>
+    /// <summary>Whether long track titles in the CoverFlow view should scroll.</summary>
     public bool CoverFlowMarqueeEnabled { get; set; } = true;
+
+    /// <summary>Whether long artist names in the CoverFlow view should scroll.</summary>
+    public bool CoverFlowArtistMarqueeEnabled { get; set; } = true;
+
+    /// <summary>Whether long album titles in the CoverFlow view should scroll.</summary>
+    public bool CoverFlowAlbumMarqueeEnabled { get; set; } = true;
 
     /// <summary>Whether long track titles in the Lyrics page should scroll.</summary>
     public bool LyricsTitleMarqueeEnabled { get; set; } = true;

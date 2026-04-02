@@ -1,10 +1,12 @@
 using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Models;
+using Noctis.Helpers;
 using Noctis.Services;
 using Noctis.Views;
 
@@ -18,55 +20,65 @@ public partial class SidebarViewModel : ViewModelBase
     private readonly IPersistenceService _persistence;
     private readonly ILibraryService _library;
 
-    [ObservableProperty] private NavItem? _selectedNavItem;
+    private const int MaxVisiblePlaylists = 12;
 
-    /// <summary>Home navigation item.</summary>
-    public ObservableCollection<NavItem> HomeItems { get; } = new()
+    [ObservableProperty] private NavItem? _selectedNavItem;
+    [ObservableProperty] private bool _showShowAll;
+    [ObservableProperty] private bool _isExpanded;
+    [ObservableProperty] private int _favoritesCount;
+
+    /// <summary>Playlists visible in the sidebar (capped to 10).</summary>
+    public ObservableCollection<PlaylistNavItem> VisiblePlaylistItems { get; } = new();
+
+    /// <summary>Main navigation items (Home, Songs, Albums, Artists, Playlists, Settings).</summary>
+    public ObservableCollection<NavItem> NavItems { get; } = new()
     {
         new NavItem { Key = "home", Label = "Home", IconGlyph = "HomeIcon" },
-    };
-
-    /// <summary>Fixed library navigation items.</summary>
-    public ObservableCollection<NavItem> LibraryItems { get; } = new()
-    {
         new NavItem { Key = "songs", Label = "Songs", IconGlyph = "SongsIcon" },
         new NavItem { Key = "albums", Label = "Albums", IconGlyph = "AlbumsIcon" },
         new NavItem { Key = "artists", Label = "Artists", IconGlyph = "ArtistsIcon" },
-        new NavItem { Key = "genres", Label = "Genres", IconGlyph = "GenresIcon" },
         new NavItem { Key = "playlists", Label = "Playlists", IconGlyph = "PlaylistsIcon" },
-    };
-
-    /// <summary>Favorites navigation items.</summary>
-    public ObservableCollection<NavItem> FavoritesItems { get; } = new()
-    {
-        new NavItem { Key = "favorites", Label = "Your Favorites", IconGlyph = "FavoritesIcon" },
-    };
-
-    /// <summary>User-created playlists (hidden from sidebar, shown in playlists view).</summary>
-    public ObservableCollection<NavItem> PlaylistItems { get; } = new();
-
-    /// <summary>System navigation items (settings).</summary>
-    public ObservableCollection<NavItem> SystemItems { get; } = new()
-    {
         new NavItem { Key = "settings", Label = "Settings", IconGlyph = "SettingsIcon" },
     };
+
+    /// <summary>Favorites navigation item (below divider).</summary>
+    public ObservableCollection<NavItem> FavoritesItems { get; } = new()
+    {
+        new NavItem { Key = "favorites", Label = "Favorites", IconGlyph = "FavoritesIcon" },
+    };
+
+    /// <summary>User-created playlists shown in sidebar with artwork thumbnails.</summary>
+    public ObservableCollection<PlaylistNavItem> PlaylistItems { get; } = new();
 
     /// <summary>The underlying playlist models as observable collection.</summary>
     public ObservableCollection<Playlist> Playlists { get; } = new();
 
     /// <summary>Fires when the user selects a different navigation item.</summary>
     public event EventHandler<string>? NavigationRequested;
+    public event EventHandler<Guid>? PlaylistTracksChanged;
 
     public SidebarViewModel(IPersistenceService persistence, ILibraryService library)
     {
         _persistence = persistence;
         _library = library;
+        _library.LibraryUpdated += (_, _) => RefreshFavoritesCount();
+        _library.FavoritesChanged += (_, _) => RefreshFavoritesCount();
     }
 
     partial void OnSelectedNavItemChanged(NavItem? value)
     {
         if (value != null)
             NavigationRequested?.Invoke(this, value.Key);
+    }
+
+    /// <summary>Recalculates the number of favorited tracks off the UI thread.</summary>
+    public void RefreshFavoritesCount()
+    {
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            var count = _library.Tracks.Count(t => t.IsFavorite);
+            Dispatcher.UIThread.Post(() => FavoritesCount = count);
+        });
     }
 
     /// <summary>Loads playlists from persistence.</summary>
@@ -79,15 +91,65 @@ public partial class SidebarViewModel : ViewModelBase
         foreach (var pl in loadedPlaylists)
         {
             Playlists.Add(pl);
-
-            PlaylistItems.Add(new NavItem
-            {
-                Key = $"playlist:{pl.Id}",
-                Label = pl.Name,
-                IconGlyph = pl.IsSmartPlaylist ? "SmartPlaylistIcon" : "PlaylistsIcon",
-                PlaylistId = pl.Id
-            });
+            PlaylistItems.Add(BuildPlaylistNavItem(pl));
         }
+
+        RefreshVisiblePlaylists();
+    }
+
+    /// <summary>Rebuilds the visible playlist list (capped to 10).</summary>
+    public void RefreshVisiblePlaylists()
+    {
+        VisiblePlaylistItems.Clear();
+        foreach (var item in PlaylistItems.Take(MaxVisiblePlaylists))
+            VisiblePlaylistItems.Add(item);
+
+        ShowShowAll = PlaylistItems.Count > MaxVisiblePlaylists;
+    }
+
+    [RelayCommand]
+    private void ShowAllPlaylists()
+    {
+        SelectedNavItem = NavItems.First(n => n.Key == "playlists");
+    }
+
+    /// <summary>Builds a PlaylistNavItem with resolved artwork for sidebar display.</summary>
+
+    private PlaylistNavItem BuildPlaylistNavItem(Playlist pl)
+    {
+        var item = new PlaylistNavItem
+        {
+            Key = $"playlist:{pl.Id}",
+            Label = pl.Name,
+            IconGlyph = pl.IsSmartPlaylist ? "SmartPlaylistIcon" : "PlaylistsIcon",
+            PlaylistId = pl.Id,
+            TrackCount = pl.TrackIds.Count,
+            CoverArtPath = pl.CoverArtPath,
+            Color = pl.Color,
+        };
+
+        // Resolve up to 4 unique album arts for collage thumbnail
+        if (string.IsNullOrEmpty(pl.CoverArtPath))
+        {
+            var uniqueArts = new List<string>();
+            var seenAlbums = new HashSet<Guid>();
+            foreach (var trackId in pl.TrackIds)
+            {
+                if (uniqueArts.Count >= 4) break;
+                var track = _library.GetTrackById(trackId);
+                if (track?.AlbumArtworkPath != null && seenAlbums.Add(track.AlbumId))
+                    uniqueArts.Add(track.AlbumArtworkPath);
+            }
+            if (uniqueArts.Count > 0) item.Art1 = uniqueArts[0];
+            if (uniqueArts.Count > 1) item.Art2 = uniqueArts[1];
+            if (uniqueArts.Count > 2) item.Art3 = uniqueArts[2];
+            if (uniqueArts.Count > 3) item.Art4 = uniqueArts[3];
+            // Fill empty collage cells so the 2x2 grid has no gaps
+            if (uniqueArts.Count == 3) item.Art4 = uniqueArts[0];
+            if (uniqueArts.Count == 2) { item.Art3 = uniqueArts[1]; item.Art4 = uniqueArts[0]; }
+        }
+
+        return item;
     }
 
     [RelayCommand]
@@ -113,9 +175,10 @@ public partial class SidebarViewModel : ViewModelBase
         dialogVm.CloseRequested += (_, _) => dialog.Close();
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
+            && desktop.MainWindow is Window owner)
         {
-            await dialog.ShowDialog(desktop.MainWindow);
+            DialogHelper.SizeToOwner(dialog, owner);
+            await dialog.ShowDialog(owner);
         }
         else
         {
@@ -133,14 +196,8 @@ public partial class SidebarViewModel : ViewModelBase
             Color = Playlist.GetRandomColor()
         };
         Playlists.Add(playlist);
-
-        PlaylistItems.Add(new NavItem
-        {
-            Key = $"playlist:{playlist.Id}",
-            Label = playlist.Name,
-            IconGlyph = "PlaylistsIcon",
-            PlaylistId = playlist.Id
-        });
+        PlaylistItems.Add(BuildPlaylistNavItem(playlist));
+        RefreshVisiblePlaylists();
 
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
@@ -148,6 +205,10 @@ public partial class SidebarViewModel : ViewModelBase
     [RelayCommand]
     private async Task DeletePlaylist(Guid playlistId)
     {
+        var playlist = Playlists.FirstOrDefault(p => p.Id == playlistId);
+        var name = playlist?.Name ?? "this playlist";
+        var confirmed = await Views.ConfirmationDialog.ShowAsync($"Are you sure you want to delete \"{name}\"? This cannot be undone.");
+        if (!confirmed) return;
         await DeletePlaylistAsync(playlistId);
     }
 
@@ -161,6 +222,7 @@ public partial class SidebarViewModel : ViewModelBase
 
         var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistId);
         if (navItem != null) PlaylistItems.Remove(navItem);
+        RefreshVisiblePlaylists();
 
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
@@ -195,7 +257,20 @@ public partial class SidebarViewModel : ViewModelBase
         }
         playlist.ModifiedAt = DateTime.UtcNow;
 
+        // Update the sidebar item's track count and artwork
+        var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistId);
+        if (navItem != null)
+        {
+            var rebuilt = BuildPlaylistNavItem(playlist);
+            navItem.TrackCount = rebuilt.TrackCount;
+            navItem.Art1 = rebuilt.Art1;
+            navItem.Art2 = rebuilt.Art2;
+            navItem.Art3 = rebuilt.Art3;
+            navItem.Art4 = rebuilt.Art4;
+        }
+
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        PlaylistTracksChanged?.Invoke(this, playlistId);
     }
 
     /// <summary>Creates a new playlist containing a single track.</summary>
@@ -221,9 +296,10 @@ public partial class SidebarViewModel : ViewModelBase
         dialogVm.CloseRequested += (_, _) => dialog.Close();
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
+            && desktop.MainWindow is Window owner)
         {
-            await dialog.ShowDialog(desktop.MainWindow);
+            DialogHelper.SizeToOwner(dialog, owner);
+            await dialog.ShowDialog(owner);
         }
         else
         {
@@ -242,14 +318,8 @@ public partial class SidebarViewModel : ViewModelBase
         };
         playlist.TrackIds.Add(track.Id);
         Playlists.Add(playlist);
-
-        PlaylistItems.Add(new NavItem
-        {
-            Key = $"playlist:{playlist.Id}",
-            Label = playlist.Name,
-            IconGlyph = "PlaylistsIcon",
-            PlaylistId = playlist.Id
-        });
+        PlaylistItems.Add(BuildPlaylistNavItem(playlist));
+        RefreshVisiblePlaylists();
 
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
@@ -279,9 +349,10 @@ public partial class SidebarViewModel : ViewModelBase
         dialogVm.CloseRequested += (_, _) => dialog.Close();
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
+            && desktop.MainWindow is Window owner)
         {
-            await dialog.ShowDialog(desktop.MainWindow);
+            DialogHelper.SizeToOwner(dialog, owner);
+            await dialog.ShowDialog(owner);
         }
         else
         {
@@ -303,14 +374,8 @@ public partial class SidebarViewModel : ViewModelBase
             playlist.TrackIds.Add(track.Id);
         }
         Playlists.Add(playlist);
-
-        PlaylistItems.Add(new NavItem
-        {
-            Key = $"playlist:{playlist.Id}",
-            Label = playlist.Name,
-            IconGlyph = "PlaylistsIcon",
-            PlaylistId = playlist.Id
-        });
+        PlaylistItems.Add(BuildPlaylistNavItem(playlist));
+        RefreshVisiblePlaylists();
 
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
@@ -318,12 +383,17 @@ public partial class SidebarViewModel : ViewModelBase
     /// <summary>Opens the edit playlist dialog pre-filled with existing data and saves changes.</summary>
     public async Task EditPlaylistAsync(Playlist playlist)
     {
+        var currentNavItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlist.Id);
         var dialogVm = new EditPlaylistDialogViewModel
         {
             PlaylistName = playlist.Name,
             PlaylistDescription = playlist.Description,
             PlaylistColor = playlist.Color,
-            CoverArtPath = playlist.CoverArtPath
+            CoverArtPath = playlist.CoverArtPath,
+            Art1 = currentNavItem?.Art1,
+            Art2 = currentNavItem?.Art2,
+            Art3 = currentNavItem?.Art3,
+            Art4 = currentNavItem?.Art4
         };
         var dialog = new EditPlaylistDialog { DataContext = dialogVm };
 
@@ -341,9 +411,10 @@ public partial class SidebarViewModel : ViewModelBase
         dialogVm.CloseRequested += (_, _) => dialog.Close();
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
+            && desktop.MainWindow is Window owner)
         {
-            await dialog.ShowDialog(desktop.MainWindow);
+            DialogHelper.SizeToOwner(dialog, owner);
+            await dialog.ShowDialog(owner);
         }
         else
         {
@@ -379,8 +450,19 @@ public partial class SidebarViewModel : ViewModelBase
             playlist.CoverArtPath = destPath;
         }
 
+        // Rebuild the sidebar nav item with updated info
         var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlist.Id);
-        if (navItem != null) navItem.Label = newName;
+        if (navItem != null)
+        {
+            var rebuilt = BuildPlaylistNavItem(playlist);
+            navItem.Label = newName;
+            navItem.TrackCount = rebuilt.TrackCount;
+            navItem.CoverArtPath = rebuilt.CoverArtPath;
+            navItem.Art1 = rebuilt.Art1;
+            navItem.Art2 = rebuilt.Art2;
+            navItem.Art3 = rebuilt.Art3;
+            navItem.Art4 = rebuilt.Art4;
+        }
 
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
@@ -404,9 +486,10 @@ public partial class SidebarViewModel : ViewModelBase
         dialogVm.CloseRequested += (_, _) => dialog.Close();
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
+            && desktop.MainWindow is Window owner)
         {
-            await dialog.ShowDialog(desktop.MainWindow);
+            DialogHelper.SizeToOwner(dialog, owner);
+            await dialog.ShowDialog(owner);
         }
         else
         {
@@ -417,14 +500,8 @@ public partial class SidebarViewModel : ViewModelBase
         if (createdPlaylist == null) return;
 
         Playlists.Add(createdPlaylist);
-
-        PlaylistItems.Add(new NavItem
-        {
-            Key = $"playlist:{createdPlaylist.Id}",
-            Label = createdPlaylist.Name,
-            IconGlyph = "SmartPlaylistIcon",
-            PlaylistId = createdPlaylist.Id
-        });
+        PlaylistItems.Add(BuildPlaylistNavItem(createdPlaylist));
+        RefreshVisiblePlaylists();
 
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }

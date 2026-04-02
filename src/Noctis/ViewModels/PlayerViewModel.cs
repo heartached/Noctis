@@ -5,6 +5,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -23,7 +24,9 @@ public partial class PlayerViewModel : ViewModelBase
     // ── Observable properties bound to the playback bar ──
 
     [ObservableProperty] private Track? _currentTrack;
-    [ObservableProperty] private PlaybackState _state = PlaybackState.Stopped;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlayPauseTooltip))]
+    private PlaybackState _state = PlaybackState.Stopped;
     [ObservableProperty] private TimeSpan _position;
     [ObservableProperty] private TimeSpan _duration;
     [ObservableProperty] private double _positionFraction; // 0.0 – 1.0 for slider
@@ -42,13 +45,15 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>True if there's any content loaded (current track or upcoming tracks in queue).</summary>
     public bool HasContent => CurrentTrack != null || UpNext.Count > 0;
 
+    public string PlayPauseTooltip => State == PlaybackState.Playing ? "Pause" : "Play";
+
     // ── Queue ──
 
     /// <summary>Upcoming tracks to play.</summary>
-    public ObservableCollection<Track> UpNext { get; } = new();
+    public BulkObservableCollection<Track> UpNext { get; } = new();
 
     /// <summary>Previously played tracks (most recent first).</summary>
-    public ObservableCollection<Track> History { get; } = new();
+    public BulkObservableCollection<Track> History { get; } = new();
 
     /// <summary>Fires when a new track starts playing.</summary>
     public event EventHandler<Track>? TrackStarted;
@@ -209,16 +214,12 @@ public partial class PlayerViewModel : ViewModelBase
                     .Where(t => !t.SkipWhenShuffling)
                     .OrderBy(_ => Random.Shared.Next())
                     .ToList();
-                UpNext.Clear();
-                foreach (var track in shuffled)
-                    UpNext.Add(track);
+                UpNext.ReplaceAll(shuffled);
             }
             else if (_originalQueue.Count > 0)
             {
                 // Restore original queue order
-                UpNext.Clear();
-                foreach (var track in _originalQueue)
-                    UpNext.Add(track);
+                UpNext.ReplaceAll(_originalQueue);
                 _originalQueue.Clear();
             }
         }
@@ -368,7 +369,7 @@ public partial class PlayerViewModel : ViewModelBase
     private async Task RemoveCurrentTrackFromLibrary()
     {
         if (CurrentTrack == null) return;
-        if (!await Views.ConfirmationDialog.ShowAsync($"Remove \"{CurrentTrack.Title}\" from your library?"))
+        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
             return;
         var trackToRemove = CurrentTrack;
 
@@ -410,11 +411,10 @@ public partial class PlayerViewModel : ViewModelBase
         IsShuffleEnabled = false;
 
         // Clear and rebuild the queue
-        UpNext.Clear();
+        var upNextTracks = new List<Track>(tracks.Count - startIndex - 1);
         for (int i = startIndex + 1; i < tracks.Count; i++)
-        {
-            UpNext.Add(tracks[i]);
-        }
+            upNextTracks.Add(tracks[i]);
+        UpNext.ReplaceAll(upNextTracks);
 
         // Play the selected track
         PlayTrack(tracks[startIndex]);
@@ -432,6 +432,20 @@ public partial class PlayerViewModel : ViewModelBase
     {
         DebugLogger.Info(DebugLogger.Category.Queue, "AddToQueue", $"track={track.Title}, newLen={UpNext.Count + 1}");
         UpNext.Add(track);
+    }
+
+    /// <summary>Appends multiple tracks to the end of the UpNext queue in a single batch.</summary>
+    public void AddRangeToQueue(IList<Track> tracks)
+    {
+        if (tracks.Count == 0) return;
+        DebugLogger.Info(DebugLogger.Category.Queue, "AddRangeToQueue", $"count={tracks.Count}, newLen={UpNext.Count + tracks.Count}");
+        _suppressHasContentNotify = true;
+        try { UpNext.AddRange(tracks); }
+        finally
+        {
+            _suppressHasContentNotify = false;
+            OnPropertyChanged(nameof(HasContent));
+        }
     }
 
     /// <summary>Removes a track from the UpNext queue by index.</summary>
@@ -514,18 +528,22 @@ public partial class PlayerViewModel : ViewModelBase
         if (state == null) return;
 
         // Restore history
+        var restoredHistory = new List<Track>();
         foreach (var id in state.HistoryIds)
         {
             var track = _library.GetTrackById(id);
-            if (track != null) History.Add(track);
+            if (track != null) restoredHistory.Add(track);
         }
+        History.AddRange(restoredHistory);
 
         // Restore up-next
+        var restoredUpNext = new List<Track>();
         foreach (var id in state.UpNextIds)
         {
             var track = _library.GetTrackById(id);
-            if (track != null) UpNext.Add(track);
+            if (track != null) restoredUpNext.Add(track);
         }
+        UpNext.AddRange(restoredUpNext);
 
         // Restore current track (paused, not auto-playing)
         if (state.CurrentTrackId.HasValue)
@@ -560,6 +578,12 @@ public partial class PlayerViewModel : ViewModelBase
     {
         _audioPlayer.Volume = value;
     }
+
+    /// <summary>
+    /// Flush the final volume to VLC immediately — call on slider drag-end
+    /// so the exact value is applied without waiting for the trailing timer.
+    /// </summary>
+    public void CommitVolume() => _audioPlayer.CommitVolume();
 
     partial void OnCurrentTrackChanged(Track? value)
     {
@@ -705,8 +729,16 @@ public partial class PlayerViewModel : ViewModelBase
 
         if (UpNext.Count > 0)
         {
-            var next = UpNext[0];
-            UpNext.RemoveAt(0);
+            Track next;
+            try
+            {
+                next = UpNext[0];
+                UpNext.RemoveAt(0);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return; // collection was modified concurrently
+            }
             PlayTrack(next);
         }
         else if (RepeatMode == RepeatMode.All && History.Count > 0)
@@ -754,8 +786,16 @@ public partial class PlayerViewModel : ViewModelBase
             UpNext.Insert(0, CurrentTrack);
         }
 
-        var prev = History[0];
-        History.RemoveAt(0);
+        Track prev;
+        try
+        {
+            prev = History[0];
+            History.RemoveAt(0);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return;
+        }
         PlayTrack(prev);
     }
 
@@ -923,6 +963,16 @@ public partial class PlayerViewModel : ViewModelBase
                 return;
             }
 
+            // Clean up UpNext and History FIRST so that if we need to advance,
+            // we only advance into tracks that still exist in the library.
+            var deletedTracks = UpNext.Where(t => _library.GetTrackById(t.Id) == null).ToList();
+            foreach (var track in deletedTracks)
+                UpNext.Remove(track);
+
+            var deletedHistory = History.Where(t => _library.GetTrackById(t.Id) == null).ToList();
+            foreach (var track in deletedHistory)
+                History.Remove(track);
+
             // Check if current track was deleted
             if (CurrentTrack != null && _library.GetTrackById(CurrentTrack.Id) == null)
             {
@@ -935,20 +985,6 @@ public partial class PlayerViewModel : ViewModelBase
                 {
                     StopAndClear();
                 }
-            }
-
-            // Clean up UpNext queue - remove any deleted tracks
-            var deletedTracks = UpNext.Where(t => _library.GetTrackById(t.Id) == null).ToList();
-            foreach (var track in deletedTracks)
-            {
-                UpNext.Remove(track);
-            }
-
-            // Clean up History - remove any deleted tracks
-            var deletedHistory = History.Where(t => _library.GetTrackById(t.Id) == null).ToList();
-            foreach (var track in deletedHistory)
-            {
-                History.Remove(track);
             }
 
             // Reload album art in case artwork was changed via metadata editor

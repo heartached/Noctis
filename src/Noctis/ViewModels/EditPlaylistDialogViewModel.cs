@@ -14,7 +14,23 @@ public partial class EditPlaylistDialogViewModel : ViewModelBase
     [ObservableProperty] private string _playlistDescription = string.Empty;
     [ObservableProperty] private bool _showNameRequiredError;
     [ObservableProperty] private string _playlistColor = "#808080";
-    [ObservableProperty] private string? _coverArtPath;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCustomArt))]
+    [NotifyPropertyChangedFor(nameof(HasCollageArt))]
+    [NotifyPropertyChangedFor(nameof(HasSingleArt))]
+    [NotifyPropertyChangedFor(nameof(ShowFallbackIcon))]
+    private string? _coverArtPath;
+
+    /// <summary>Up to 4 unique album art paths for collage display.</summary>
+    [ObservableProperty] private string? _art1;
+    [ObservableProperty] private string? _art2;
+    [ObservableProperty] private string? _art3;
+    [ObservableProperty] private string? _art4;
+
+    public bool HasCustomArt => !string.IsNullOrEmpty(CoverArtPath);
+    public bool HasCollageArt => !HasCustomArt && Art1 != null && Art2 != null;
+    public bool HasSingleArt => !HasCustomArt && Art1 != null && Art2 == null;
+    public bool ShowFallbackIcon => !HasCustomArt && Art1 == null;
 
     /// <summary>Pending cover art file chosen by the user (null = no change, empty = remove).</summary>
     public string? PendingCoverArtFile { get; private set; }

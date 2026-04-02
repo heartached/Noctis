@@ -14,222 +14,233 @@
         <conv:TrackPlaylistCommandParameterConverter x:Key="TrackPlaylistParamConverter" />
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,*">
-        <Separator Grid.Row="0" Classes="page-top-separator" />
-        <DockPanel Grid.Row="1" Margin="16,8,16,16">
+    <Grid RowDefinitions="*">
+        <DockPanel Grid.Row="0" Margin="12,8,12,8">
 
         <!-- Content area with overlay for empty state -->
         <Grid>
-            <!-- Favorite cards in a wrap panel -->
-            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                          VerticalScrollBarVisibility="Auto"
-                          IsVisible="{Binding FavoriteItems.Count}">
-                <ItemsControl x:Name="FavoritesList" ItemsSource="{Binding FavoriteItems}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="m:FavoriteItem">
-                            <!-- Single button per item — left-click routed in code-behind -->
-                            <Button Classes="album-tile"
-                                    Width="290"
-                                    Margin="6"
-                                    helpers:DragFileBehavior.EnableFileDrag="True"
-                                    Tag="{Binding}"
-                                    Click="OnFavoriteCardClick">
-                                <Button.ContextMenu>
-                                    <ContextMenu DataContext="{Binding}" x:DataType="m:FavoriteItem" Opened="OnContextMenuOpened">
-                                        <!-- Item header -->
-                                        <MenuItem IsHitTestVisible="False" Focusable="False">
-                                            <MenuItem.Template>
-                                                <ControlTemplate>
-                                                    <Border Padding="11,8" Background="Transparent">
-                                                        <ContentPresenter Content="{TemplateBinding Header}" />
-                                                    </Border>
-                                                </ControlTemplate>
-                                            </MenuItem.Template>
-                                            <MenuItem.Header>
-                                                <Grid ColumnDefinitions="40,10,*">
-                                                    <Border Grid.Column="0" Width="40" Height="40" CornerRadius="4" ClipToBounds="True"
-                                                            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                                        <Panel>
-                                                            <TextBlock Text="&#x266A;" FontSize="14" HorizontalAlignment="Center"
-                                                                       VerticalAlignment="Center" Opacity="0.3"
-                                                                       IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                            <Image Source="{Binding ArtworkPath, Converter={StaticResource ArtworkConverter}}"
-                                                                   Stretch="UniformToFill"
-                                                                   IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                                        </Panel>
-                                                    </Border>
-                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                                        <Grid ColumnDefinitions="Auto,Auto">
-                                                            <controls:MarqueeTextBlock Grid.Column="0" Text="{Binding Title}"
-                                                                       FontWeight="SemiBold" FontSize="13"
-                                                                       MaxDisplayWidth="240" IsForArtist="False" />
-                                                            <Border Grid.Column="1"
-                                                                    Classes="explicit-badge compact"
-                                                                    Margin="4,0,0,0"
-                                                                    VerticalAlignment="Center"
-                                                                    IsVisible="{Binding IsExplicit}">
-                                                                <TextBlock Text="E"
-                                                                           Classes="explicit-badge-text compact"
-                                                                           FontSize="9"
-                                                                           Opacity="0.9" />
+            <!-- Favorite grid: outer ListBox virtualizes rows, inner UniformGrid lays out 5 columns per row -->
+            <ListBox x:Name="FavoritesList"
+                     ItemsSource="{Binding FavoriteItemRows}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     SelectionMode="Single"
+                     AutoScrollToSelectedItem="False">
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Focusable" Value="False" />
+                    </Style>
+                </ListBox.Styles>
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="m:FavoriteItemRow">
+                        <ItemsControl ItemsSource="{Binding Items}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="5" Rows="1" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="m:FavoriteItem">
+                                    <!-- Single button per item — left-click routed in code-behind -->
+                                    <Button Classes="album-tile"
+                                            Focusable="False"
+                                            Margin="2"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Top"
+                                            helpers:DragFileBehavior.EnableFileDrag="True"
+                                            Tag="{Binding}"
+                                            Click="OnFavoriteCardClick">
+                                        <Button.ContextMenu>
+                                            <ContextMenu DataContext="{Binding}" x:DataType="m:FavoriteItem" Opened="OnContextMenuOpened">
+                                                <!-- Item header -->
+                                                <MenuItem IsHitTestVisible="False" Focusable="False">
+                                                    <MenuItem.Template>
+                                                        <ControlTemplate>
+                                                            <Border Padding="11,8" Background="Transparent">
+                                                                <ContentPresenter Content="{TemplateBinding Header}" />
                                                             </Border>
+                                                        </ControlTemplate>
+                                                    </MenuItem.Template>
+                                                    <MenuItem.Header>
+                                                        <Grid ColumnDefinitions="40,10,*">
+                                                            <Border Grid.Column="0" Width="40" Height="40" CornerRadius="4" ClipToBounds="True"
+                                                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                                                <Panel>
+                                                                    <TextBlock Text="&#x266A;" FontSize="14" HorizontalAlignment="Center"
+                                                                               VerticalAlignment="Center" Opacity="0.3"
+                                                                               IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                                                    <Image Source="{Binding ArtworkPath, Converter={StaticResource ArtworkConverter}}"
+                                                                           Stretch="UniformToFill"
+                                                                           IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                </Panel>
+                                                            </Border>
+                                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                                                <controls:MarqueeTextBlock Text="{Binding Title}"
+                                                                           FontWeight="SemiBold" FontSize="13"
+                                                                           MaxDisplayWidth="240" IsForArtist="False">
+                                                                    <controls:MarqueeTextBlock.InlineContent>
+                                                                        <Border Classes="explicit-badge compact"
+                                                                                VerticalAlignment="Center"
+                                                                                IsVisible="{Binding IsExplicit}">
+                                                                            <TextBlock Text="E"
+                                                                                       Classes="explicit-badge-text compact"
+                                                                                       FontSize="9"
+                                                                                       Opacity="0.9" />
+                                                                        </Border>
+                                                                    </controls:MarqueeTextBlock.InlineContent>
+                                                                </controls:MarqueeTextBlock>
+                                                                <controls:MarqueeTextBlock Text="{Binding Subtitle}" FontSize="11"
+                                                                           Foreground="#E74856" MaxDisplayWidth="240" IsForArtist="True" Margin="0,2,0,0" />
+                                                            </StackPanel>
                                                         </Grid>
-                                                        <controls:MarqueeTextBlock Text="{Binding Subtitle}" FontSize="11"
-                                                                   Foreground="#E74856" MaxDisplayWidth="240" IsForArtist="True" Margin="0,2,0,0" />
-                                                    </StackPanel>
-                                                </Grid>
-                                            </MenuItem.Header>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="{Binding Title, StringFormat='Play &quot;{0}&quot;'}"
-                                                  Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).PlayItemCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="Shuffle"
-                                                  Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).ShuffleItemCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="Play Next"
-                                                  Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).PlayNextItemCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="Add to Queue"
-                                                  Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).AddItemToQueueCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="Add to Playlist">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                            <MenuItem Header="Create New Playlist"
-                                                      Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).AddItemToNewPlaylistCommand}"
-                                                      CommandParameter="{Binding}" />
-                                            <Separator />
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="Remove from Favorites"
-                                                  Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).RemoveItemFavoriteCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="Metadata"
-                                                  Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).OpenItemMetadataCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="View Album"
-                                                  Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).ViewItemAlbumCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Albums%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="Show in Folder"
-                                                  Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).ShowItemInExplorerCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Folder%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <Separator />
-                                        <MenuItem Header="Remove from Library"
-                                                  Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).RemoveItemFromLibraryCommand}"
-                                                  CommandParameter="{Binding}">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </Button.ContextMenu>
-                                <StackPanel Spacing="0">
-                                    <Border Width="270" Height="270"
-                                            CornerRadius="8"
-                                            ClipToBounds="True"
-                                            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                        <Panel>
-                                            <TextBlock Text="&#x266A;"
-                                                       FontSize="48"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       Opacity="0.2"
-                                                       IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                            <Image Source="{Binding ArtworkPath, Converter={StaticResource ArtworkConverter}}"
-                                                   Stretch="UniformToFill"
-                                                   RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                   IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                            <!-- Heart overlay -->
-                                            <PathIcon Data="{StaticResource HeartFillIcon}"
-                                                     Width="16" Height="16"
-                                                     Foreground="#E74856"
-                                                     HorizontalAlignment="Right"
-                                                     VerticalAlignment="Bottom"
-                                                     Margin="0,0,8,8" />
-                                        </Panel>
-                                    </Border>
-                                    <Grid ColumnDefinitions="*,Auto"
-                                          Margin="2,6,2,0">
-                                        <TextBlock Text="{Binding Title}"
-                                                   Grid.Column="0"
-                                                   Classes="one-line-explicit-title"
-                                                   FontSize="13"
-                                                   FontWeight="SemiBold"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   MaxLines="1" />
-                                        <Border Grid.Column="1"
-                                                Classes="explicit-badge compact"
-                                                Margin="6,0,0,0"
-                                                IsVisible="{Binding IsExplicit}"
-                                                ToolTip.Tip="Explicit">
-                                            <TextBlock Text="E"
-                                                       Classes="explicit-badge-text"
-                                                       FontSize="9" />
-                                        </Border>
-                                    </Grid>
-                                    <Button Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
-                                            Cursor="Hand" HorizontalAlignment="Left"
-                                            Command="{Binding $parent[ItemsControl].((vm:FavoritesViewModel)DataContext).ViewArtistCommand}"
-                                            CommandParameter="{Binding Subtitle}">
-                                        <TextBlock Text="{Binding Subtitle}"
-                                                   FontSize="11"
-                                                   Foreground="#E04060"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   MaxLines="1"
-                                                   Margin="2,2,2,0" />
+                                                    </MenuItem.Header>
+                                                </MenuItem>
+                                                <Separator />
+                                                <MenuItem Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).PlayItemCommand}"
+                                                          CommandParameter="{Binding}"
+                                                          MaxWidth="400">
+                                                    <MenuItem.Header>
+                                                        <TextBlock Text="{Binding Title, StringFormat='Play &quot;{0}&quot;'}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   FontWeight="Normal"
+                                                                   FontSize="14"
+                                                                   FontFamily="{Binding $parent[MenuItem].FontFamily}" />
+                                                    </MenuItem.Header>
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Shuffle"
+                                                          Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).ShuffleItemCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Play Next"
+                                                          Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).PlayNextItemCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Add to Queue"
+                                                          Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).AddItemToQueueCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <Separator />
+                                                <MenuItem Header="Add to Playlist">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                    <MenuItem Header="Create New Playlist"
+                                                              Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).AddItemToNewPlaylistCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                    <Separator />
+                                                </MenuItem>
+                                                <Separator />
+                                                <MenuItem Header="Remove from Favorites"
+                                                          Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).RemoveItemFavoriteCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Metadata"
+                                                          Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).OpenItemMetadataCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Show Folder"
+                                                          Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).ShowItemInExplorerCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Folder%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <Separator />
+                                                <MenuItem Header="Remove from Library"
+                                                          Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).RemoveItemFromLibraryCommand}"
+                                                          CommandParameter="{Binding}">
+                                                    <MenuItem.Icon>
+                                                        <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+
+                                        <StackPanel Spacing="0" HorizontalAlignment="Stretch">
+                                            <!-- Artwork with heart overlay -->
+                                            <Border Width="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).TileArtworkSize}"
+                                                    Height="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).TileArtworkSize}"
+                                                    CornerRadius="6"
+                                                    ClipToBounds="True"
+                                                    Background="#1AFFFFFF">
+                                                <Panel>
+                                                    <TextBlock Text="&#x266A;"
+                                                               FontSize="40"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Opacity="0.15"
+                                                               IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                                    <controls:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                                          Stretch="UniformToFill"
+                                                                          RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                          IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                    <!-- Heart overlay -->
+                                                    <PathIcon Data="{StaticResource HeartFillIcon}"
+                                                             Width="16" Height="16"
+                                                             Foreground="#E74856"
+                                                             HorizontalAlignment="Right"
+                                                             VerticalAlignment="Bottom"
+                                                             Margin="0,0,8,8" />
+                                                </Panel>
+                                            </Border>
+                                            <!-- Title + explicit badge -->
+                                            <StackPanel Orientation="Horizontal"
+                                                        Margin="0,5,0,0"
+                                                        HorizontalAlignment="Left">
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontSize="13"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxLines="1" />
+                                                <Border Classes="explicit-badge compact"
+                                                        Margin="4,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        IsVisible="{Binding IsExplicit}"
+                                                        ToolTip.Tip="Explicit">
+                                                    <TextBlock Text="E"
+                                                               Classes="explicit-badge-text compact"
+                                                               FontSize="9"
+                                                               Opacity="0.9" />
+                                                </Border>
+                                            </StackPanel>
+                                            <!-- Artist name -->
+                                            <TextBlock Text="{Binding Subtitle}"
+                                                       FontSize="12"
+                                                       Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="1"
+                                                       Margin="0,1,0,0" />
+                                        </StackPanel>
                                     </Button>
-                                </StackPanel>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
 
             <!-- Empty state overlay -->
-            <StackPanel IsVisible="{Binding !FavoriteItems.Count}"
+            <StackPanel IsVisible="{Binding !FavoriteItemRows.Count}"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="8">
@@ -238,7 +249,7 @@
                            Opacity="0.5"
                            HorizontalAlignment="Center"
                            TextAlignment="Center" />
-                <TextBlock Text="Right-click on tracks and select 'Add to Favorites'"
+                <TextBlock Text="Right-click on tracks and select 'Favorites'"
                            FontSize="13"
                            Opacity="0.3"
                            HorizontalAlignment="Center"

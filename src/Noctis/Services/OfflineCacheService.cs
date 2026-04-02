@@ -123,10 +123,18 @@ public sealed class OfflineCacheService : IOfflineCacheService
 
     private async Task SaveIndexAsync(CancellationToken ct)
     {
-        var temp = _indexPath + ".tmp";
-        var json = JsonSerializer.Serialize(_index);
-        await File.WriteAllTextAsync(temp, json, ct);
-        File.Move(temp, _indexPath, true);
+        try
+        {
+            var temp = _indexPath + ".tmp";
+            var json = JsonSerializer.Serialize(_index);
+            await File.WriteAllTextAsync(temp, json, ct);
+            File.Move(temp, _indexPath, true);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.Error, "OfflineCacheService.SaveIndex",
+                $"Failed to save cache index: {ex.Message}");
+        }
     }
 
     private sealed class CacheEntry

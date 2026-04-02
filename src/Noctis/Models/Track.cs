@@ -73,6 +73,10 @@ public partial class Track : ObservableObject
     /// <summary>Timestamp of when this track was first discovered by a library scan.</summary>
     public DateTime DateAdded { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Transient flag: true when the track was just drag-and-drop imported this session.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsRecentImport { get; set; }
+
     // ── Extended metadata ──
 
     /// <summary>Composer(s) of the track.</summary>
@@ -118,6 +122,10 @@ public partial class Track : ObservableObject
     /// <summary>Cached album artwork path, populated from album data during index build. Not persisted.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public string? AlbumArtworkPath { get; set; }
+
+    /// <summary>Whether this track has album artwork available.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool HasAlbumArt => !string.IsNullOrEmpty(AlbumArtworkPath);
 
     /// <summary>User comment or notes about the track.</summary>
     public string Comment { get; set; } = string.Empty;

@@ -23,8 +23,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private string _currentFilter = string.Empty;
     private DispatcherTimer? _searchDebounce;
     private int _rebuildGeneration;
+    private bool _isDirty = true;
 
-    private const int ColumnsPerRow = 6;
+    private const int ColumnsPerRow = 5;
 
     [ObservableProperty] private bool _isSearchVisible = false;
     [ObservableProperty] private string _searchText = string.Empty;
@@ -40,6 +41,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
+
+    /// <summary>Albums currently Ctrl-selected in the view. Set by code-behind.</summary>
+    public List<Album> CtrlSelectedAlbums { get; set; } = new();
 
     /// <summary>Filtered albums grouped into rows for the virtualized grid.</summary>
     public BulkObservableCollection<AlbumRow> FilteredAlbumRows { get; } = new();
@@ -59,8 +63,12 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         _player = player;
         _sidebar = sidebar;
 
-        // Dispatch to UI thread since scan fires LibraryUpdated from a background thread
-        _library.LibraryUpdated += (_, _) => Dispatcher.UIThread.Post(Refresh);
+        // Mark dirty when library changes — actual reload deferred to next Refresh() call
+        _library.LibraryUpdated += (_, _) =>
+        {
+            _isDirty = true;
+            Dispatcher.UIThread.Post(Refresh);
+        };
     }
 
     partial void OnArtistFilterNameChanged(string value)
@@ -69,10 +77,37 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         OnPropertyChanged(nameof(HeaderText));
     }
 
+    /// <summary>Forces the next Refresh() call to rebuild even if data hasn't changed.</summary>
+    public void MarkDirty() => _isDirty = true;
+
     public void Refresh()
     {
-        _allAlbums = _library.Albums.ToList();
-        RebuildFilteredRows();
+        if (!_isDirty && FilteredAlbumRows.Count > 0)
+            return;
+
+        _isDirty = false;
+
+        // Capture state for the background task; avoid blocking UI with ToList()
+        var generation = Interlocked.Increment(ref _rebuildGeneration);
+        var artistFilter = ArtistFilterName;
+        var searchFilter = _currentFilter;
+        var columns = ColumnsPerRow;
+
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            var albums = _library.Albums.ToList();
+            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns);
+
+            if (Volatile.Read(ref _rebuildGeneration) == generation)
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (Volatile.Read(ref _rebuildGeneration) == generation)
+                    {
+                        _allAlbums = albums;
+                        FilteredAlbumRows.ReplaceAll(rows);
+                    }
+                });
+        });
     }
 
     /// <summary>Sets the artist filter for showing a specific artist's discography.</summary>
@@ -99,6 +134,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Clears the artist filter (when navigating back to all albums).</summary>
     public void ClearArtistFilter()
     {
+        // Mark dirty if any filter was active so Refresh() rebuilds with cleared state
+        if (!string.IsNullOrEmpty(ArtistFilterName) || !string.IsNullOrEmpty(_currentFilter))
+            _isDirty = true;
+
         ArtistFilterName = string.Empty;
         _currentFilter = string.Empty;
         OnPropertyChanged(nameof(HasActiveFilter));
@@ -168,11 +207,36 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
 
+        // Float drag-and-drop imported albums to the top when not searching/filtering.
+        IEnumerable<Album> ordered;
+        if (string.IsNullOrEmpty(artistFilter) && string.IsNullOrWhiteSpace(searchFilter))
+        {
+            var materialized = filtered.ToList();
+            var recent = materialized
+                .Where(a => a.Tracks.Any(t => t.IsRecentImport))
+                .OrderByDescending(a => a.Tracks.Max(t => t.DateAdded))
+                .ToList();
+            if (recent.Count > 0)
+            {
+                var recentIds = new HashSet<Guid>(recent.Select(a => a.Id));
+                var rest = materialized.Where(a => !recentIds.Contains(a.Id));
+                ordered = recent.Concat(rest);
+            }
+            else
+            {
+                ordered = materialized;
+            }
+        }
+        else
+        {
+            ordered = filtered;
+        }
+
         // Group albums into rows of columnsPerRow for virtualized display
         var rows = new List<AlbumRow>();
         var currentRow = new List<Album>();
 
-        foreach (var album in filtered)
+        foreach (var album in ordered)
         {
             currentRow.Add(album);
             if (currentRow.Count == columnsPerRow)
@@ -297,24 +361,18 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        // Create a copy to avoid collection modification issues
-        var tracks = album.Tracks.ToList();
-
-        foreach (var track in tracks)
-        {
-            _player.AddToQueue(track);
-        }
+        _player.AddRangeToQueue(album.Tracks.ToList());
     }
 
     [RelayCommand]
     private async Task AddToNewPlaylist(Album album)
     {
-        if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-
-        // Create a copy to avoid collection modification issues
-        var tracks = album.Tracks.ToList();
-
+        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        if (albums.Count == 0) return;
+        var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
+        if (tracks.Count == 0) return;
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
+        CtrlSelectedAlbums.Clear();
     }
 
     [RelayCommand]
@@ -322,21 +380,28 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         if (parameters == null || parameters.Length != 2) return;
         if (parameters[0] is not Album album || parameters[1] is not Playlist playlist) return;
-        if (album.Tracks == null || album.Tracks.Count == 0) return;
-
-        var tracks = album.Tracks.ToList();
+        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : new List<Album> { album };
+        var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
+        if (tracks.Count == 0) return;
         await _sidebar.AddTracksToPlaylist(playlist.Id, tracks);
+        CtrlSelectedAlbums.Clear();
     }
 
     [RelayCommand]
     private async Task ToggleAlbumFavorites(Album album)
     {
-        if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        var newState = !album.IsAllTracksFavorite;
-        foreach (var track in album.Tracks)
-            track.IsFavorite = newState;
+        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        if (albums.Count == 0) return;
+        foreach (var a in albums)
+        {
+            if (a.Tracks == null || a.Tracks.Count == 0) continue;
+            var newState = !a.IsAllTracksFavorite;
+            foreach (var track in a.Tracks)
+                track.IsFavorite = newState;
+        }
         await _library.SaveAsync();
         _library.NotifyFavoritesChanged();
+        CtrlSelectedAlbums.Clear();
     }
 
     [RelayCommand]
@@ -370,11 +435,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private async Task RemoveFromLibrary(Album album)
     {
-        if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        if (!await Views.ConfirmationDialog.ShowAsync($"Remove \"{album.Name}\" from your library?"))
+        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        if (albums.Count == 0) return;
+        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
             return;
-        var trackIds = album.Tracks.Select(t => t.Id).ToList();
-        await _library.RemoveTracksAsync(trackIds);
+        var trackIds = albums.SelectMany(a => a.Tracks ?? new()).Select(t => t.Id).ToList();
+        if (trackIds.Count > 0)
+            await _library.RemoveTracksAsync(trackIds);
+        CtrlSelectedAlbums.Clear();
     }
 
     private static bool MatchesSearch(string? source, string query, string queryNoSpaces)

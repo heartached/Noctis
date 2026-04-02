@@ -19,9 +19,13 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private readonly SidebarViewModel _sidebar;
     private readonly DispatcherTimer _refreshDebounce;
     private readonly EventHandler _libraryUpdatedHandler;
+    private bool _isDirty = true;
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
+
+    /// <summary>Albums currently Ctrl-selected in the view. Set by code-behind.</summary>
+    public List<Album> CtrlSelectedAlbums { get; set; } = new();
 
     /// <summary>Top songs sorted by play count descending.</summary>
     public BulkObservableCollection<Track> TopSongs { get; } = new();
@@ -53,11 +57,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             _refreshDebounce.Stop();
             Refresh();
         };
-        _libraryUpdatedHandler = (_, _) => Dispatcher.UIThread.Post(() =>
+        _libraryUpdatedHandler = (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(() =>
         {
             _refreshDebounce.Stop();
             _refreshDebounce.Start();
-        });
+        }); };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }
 
@@ -83,9 +87,19 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         });
     }
 
+    /// <summary>Forces the next Refresh() call to rebuild even if data hasn't changed.</summary>
+    public void MarkDirty() => _isDirty = true;
+
     /// <summary>Refreshes the Home tab content with latest data.</summary>
     public async void Refresh()
     {
+        if (!_isDirty && TopSongs.Count > 0)
+        {
+            Greeting = GetGreeting();
+            return;
+        }
+        _isDirty = false;
+
         try
         {
             Greeting = GetGreeting();
@@ -215,7 +229,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task RemoveTrackFromLibrary(Track track)
     {
-        if (!await Views.ConfirmationDialog.ShowAsync($"Remove \"{track.Title}\" from your library?"))
+        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
             return;
         await _library.RemoveTrackAsync(track.Id);
     }
@@ -260,20 +274,17 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        var tracks = album.Tracks.ToList();
-        foreach (var track in tracks)
-        {
-            _player.AddToQueue(track);
-        }
+        _player.AddRangeToQueue(album.Tracks.ToList());
     }
 
     [RelayCommand]
     private async Task AddAlbumToNewPlaylist(Album album)
     {
-        if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-
-        var tracks = album.Tracks.ToList();
+        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
+        if (tracks.Count == 0) return;
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
+        CtrlSelectedAlbums.Clear();
     }
 
     [RelayCommand]
@@ -281,21 +292,28 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (parameters == null || parameters.Length != 2) return;
         if (parameters[0] is not Album album || parameters[1] is not Playlist playlist) return;
-        if (album.Tracks == null || album.Tracks.Count == 0) return;
-
-        var tracks = album.Tracks.ToList();
+        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : new List<Album> { album };
+        var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
+        if (tracks.Count == 0) return;
         await _sidebar.AddTracksToPlaylist(playlist.Id, tracks);
+        CtrlSelectedAlbums.Clear();
     }
 
     [RelayCommand]
     private async Task ToggleAlbumFavorites(Album album)
     {
-        if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        var newState = !album.IsAllTracksFavorite;
-        foreach (var track in album.Tracks)
-            track.IsFavorite = newState;
+        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        if (albums.Count == 0) return;
+        foreach (var a in albums)
+        {
+            if (a.Tracks == null || a.Tracks.Count == 0) continue;
+            var newState = !a.IsAllTracksFavorite;
+            foreach (var track in a.Tracks)
+                track.IsFavorite = newState;
+        }
         await _library.SaveAsync();
         _library.NotifyFavoritesChanged();
+        CtrlSelectedAlbums.Clear();
     }
 
     [RelayCommand]
@@ -308,11 +326,14 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task RemoveFromLibrary(Album album)
     {
-        if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        if (!await Views.ConfirmationDialog.ShowAsync($"Remove \"{album.Name}\" from your library?"))
+        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        if (albums.Count == 0) return;
+        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
             return;
-        var trackIds = album.Tracks.Select(t => t.Id).ToList();
-        await _library.RemoveTracksAsync(trackIds);
+        var trackIds = albums.SelectMany(a => a.Tracks ?? new()).Select(t => t.Id).ToList();
+        if (trackIds.Count > 0)
+            await _library.RemoveTracksAsync(trackIds);
+        CtrlSelectedAlbums.Clear();
     }
 
     [RelayCommand]

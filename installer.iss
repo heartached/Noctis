@@ -3,8 +3,8 @@
 ; Compile with: ISCC.exe installer.iss
 
 #define MyAppName "Noctis"
-#define MyAppVersion "1.0.2"
-#define MyAppPublisher "Noctis"
+#define MyAppVersion "1.1.0"
+#define MyAppPublisher "heartached"
 #define MyAppExeName "Noctis.exe"
 #define MyAppURL "https://github.com/heartached/Noctis"
 
@@ -12,6 +12,7 @@
 AppId={{E8A3B5F1-7C2D-4A9E-B6F0-1D3E5A7C9B2F}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+AppVerName={#MyAppName}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}

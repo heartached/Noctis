@@ -16,6 +16,8 @@ namespace Noctis.Services;
 public class VlcAudioPlayer : IAudioPlayer
 {
     private const int SeekThrottleMs = 50;
+    private const int VolumeThrottleMs = 80;
+    private const int VolumeDeadband = 2;
     private const int EndReachedGraceMs = 1200;
     private const int FadeStepMs = 35;
 
@@ -38,6 +40,13 @@ public class VlcAudioPlayer : IAudioPlayer
     private long _latestSeekMs = -1;
     private int _seekWorkerActive;
     private long _lastAppliedSeekTicksUtc;
+
+    // Rate-limited volume path — applies immediately then enforces a cooldown.
+    private int _pendingVolumeTarget = -1;
+    private int _lastAppliedVolume = -1;
+    private long _lastVolumeWriteTick;
+    private CancellationTokenSource? _volumeTrailingCts;
+    private readonly object _volumeGate = new();
 
     // EndReached can fire before the final output buffer is fully audible.
     // Keep lyrics/UI alive briefly, then raise TrackEnded once the grace window passes.
@@ -71,6 +80,10 @@ public class VlcAudioPlayer : IAudioPlayer
     private bool _crossfadeEnabled;
     private int _crossfadeDurationMs = 6000;
 
+    // Skip cancellation — cancelled when a new Play() is requested so any
+    // in-progress fade or parse aborts immediately for instant track switching.
+    private CancellationTokenSource _skipCts = new();
+
     public event EventHandler? TrackEnded;
     public event EventHandler<TimeSpan>? PositionChanged;
     public event EventHandler<string>? PlaybackError;
@@ -94,10 +107,13 @@ public class VlcAudioPlayer : IAudioPlayer
         //                           VBR MP3 files without a Xing/LAME seek index, causing
         //                           audible seek stutter on those tracks. FFmpeg reads the
         //                           Xing header and builds an O(1) seek table on open,
-        //                           fixing per-song variation in seek quality. Applies
-        //                           globally — M4A, FLAC, CBR MP3 are unaffected.
+        //                           fixing per-song variation in seek quality. Also needed
+        //                           for AAC/M4A Lossless seek smoothness.
         //   NOTE: --gain=0 was removed — it multiplies audio by 0 (silence!)
-        //   NOTE: --aout removed — let VLC auto-detect best output module
+        //   --aout=waveout: Use WaveOut instead of mmdevice. mmdevice triggers
+        //   vlc_AudioSessionEvents_OnSimpleVolumeChanged callbacks on every
+        //   volume change, causing audible static/clicks during slider drag.
+        //   WaveOut doesn't have these session event callbacks.
         _libVlc = new LibVLC(
             "--no-video",
             "--no-osd",
@@ -110,7 +126,8 @@ public class VlcAudioPlayer : IAudioPlayer
             "--no-audio-time-stretch",
             "--audio-resampler=speex",
             "--speex-resampler-quality=10",
-            "--clock-jitter=0"
+            "--clock-jitter=0",
+            "--aout=waveout"
         );
 
         _player = new MediaPlayer(_libVlc);
@@ -168,7 +185,25 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             if (_disposed) return;
             _userVolume = Math.Clamp(value, 0, 100);
-            _player.Volume = ApplyVolumeCurve(_userVolume);
+            var target = ApplyVolumeCurve(_userVolume);
+            ScheduleVolumeWrite(target);
+        }
+    }
+
+    /// <summary>
+    /// Applies the final volume to VLC immediately, bypassing the throttle.
+    /// Call on drag-end / pointer-release to ensure the exact target is applied.
+    /// </summary>
+    public void CommitVolume()
+    {
+        if (_disposed) return;
+        var target = ApplyVolumeCurve(_userVolume);
+        lock (_volumeGate)
+        {
+            _volumeTrailingCts?.Cancel();
+            _pendingVolumeTarget = -1;
+            _lastAppliedVolume = target;
+            _player.Volume = target;
         }
     }
 
@@ -179,29 +214,84 @@ public class VlcAudioPlayer : IAudioPlayer
     }
 
     /// <summary>
-    /// Applies a logarithmic curve so that low volume levels remain audible
+    /// Applies a perceptual curve so that low volume levels remain audible
     /// and the full range feels smooth and consistent.
-    /// Linear volume maps poorly to human hearing — at 10% linear,
-    /// perceived loudness is nearly silent. This curve fixes that.
+    /// Uses x^0.5 (square root) — gentler than the old x^0.4 curve,
+    /// producing smaller VLC jumps per slider unit and fewer audible
+    /// discontinuities during drag.
     /// </summary>
     private static int ApplyVolumeCurve(int userVolume)
     {
         if (userVolume <= 0) return 0;
         if (userVolume >= 100) return 100;
 
-        // Use a power curve (x^0.4) for even better low-end audibility.
-        // At 1%  user → ~16% VLC (barely audible but present)
-        // At 5%  user → ~28% VLC (clearly audible)
-        // At 10% user → ~40% VLC (comfortable low volume)
-        // At 25% user → ~55% VLC (moderate)
-        // At 50% user → ~76% VLC (loud)
-        // At 100% user → 100% VLC (max)
         double normalized = userVolume / 100.0;
-        double curved = Math.Pow(normalized, 0.4);
+        double curved = Math.Pow(normalized, 0.5);
         return (int)Math.Round(curved * 100);
     }
 
-    private void FadePlayerVolumeBlocking(int fromVolume, int toVolume, int durationMs)
+    /// <summary>
+    /// Schedules a single delayed volume write. Every call resets the timer;
+    /// only the trailing write actually touches _player.Volume, eliminating
+    /// the race between immediate and delayed paths that caused static.
+    /// A deadband skips writes where the mapped VLC value hasn't moved
+    /// enough to be audible.
+    /// </summary>
+    private void ScheduleVolumeWrite(int target)
+    {
+        lock (_volumeGate)
+        {
+            // Skip if the mapped VLC value hasn't changed enough to matter.
+            if (_lastAppliedVolume >= 0 && Math.Abs(target - _lastAppliedVolume) < VolumeDeadband)
+            {
+                _pendingVolumeTarget = target; // remember it for CommitVolume
+                return;
+            }
+
+            var now = Environment.TickCount64;
+            var elapsed = now - _lastVolumeWriteTick;
+
+            if (elapsed >= VolumeThrottleMs)
+            {
+                // Cooldown expired — apply immediately.
+                _pendingVolumeTarget = -1;
+                _lastAppliedVolume = target;
+                _lastVolumeWriteTick = now;
+                _player.Volume = target;
+            }
+            else
+            {
+                // Inside cooldown — schedule a trailing write for the remaining time.
+                _pendingVolumeTarget = target;
+                _volumeTrailingCts?.Cancel();
+                var cts = new CancellationTokenSource();
+                _volumeTrailingCts = cts;
+                var delay = (int)(VolumeThrottleMs - elapsed);
+
+                ThreadPool.QueueUserWorkItem(async _ =>
+                {
+                    try
+                    {
+                        await Task.Delay(delay, cts.Token);
+                        lock (_volumeGate)
+                        {
+                            var pending = _pendingVolumeTarget;
+                            if (!_disposed && pending >= 0)
+                            {
+                                _pendingVolumeTarget = -1;
+                                _lastAppliedVolume = pending;
+                                _lastVolumeWriteTick = Environment.TickCount64;
+                                _player.Volume = pending;
+                            }
+                        }
+                    }
+                    catch (TaskCanceledException) { }
+                });
+            }
+        }
+    }
+
+    private void FadePlayerVolumeBlocking(int fromVolume, int toVolume, int durationMs, CancellationToken cancel = default)
     {
         if (_disposed) return;
 
@@ -220,7 +310,11 @@ public class VlcAudioPlayer : IAudioPlayer
 
         for (var i = 1; i <= steps; i++)
         {
-            if (_disposed) return;
+            if (_disposed || cancel.IsCancellationRequested)
+            {
+                _player.Volume = toVolume;
+                return;
+            }
             var progress = (double)i / steps;
             var next = (int)Math.Round(fromVolume + ((toVolume - fromVolume) * progress));
             _player.Volume = Math.Clamp(next, 0, 100);
@@ -371,7 +465,14 @@ public class VlcAudioPlayer : IAudioPlayer
 
     public void Play(string filePath)
     {
-        if (_disposed) return;
+        if (_disposed || string.IsNullOrWhiteSpace(filePath)) return;
+
+        if (!File.Exists(filePath))
+        {
+            PlaybackError?.Invoke(this, $"File not found: {filePath}");
+            return;
+        }
+
         DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play", $"path={Path.GetFileName(filePath)}");
 
         // All heavy work on ThreadPool, serialized by the lock.
@@ -406,6 +507,14 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         try
         {
+            // Cancel any in-progress fade/parse from a previous PlayInternal call
+            // so rapid Next/Previous skips respond instantly.
+            var oldCts = _skipCts;
+            _skipCts = new CancellationTokenSource();
+            oldCts.Cancel();
+            oldCts.Dispose();
+            var cancel = _skipCts.Token;
+
             ResetEndReachedPending();
             Interlocked.Exchange(ref _latestSeekMs, -1);
             Interlocked.Exchange(ref _lastKnownLengthMs, 0);
@@ -424,7 +533,7 @@ public class VlcAudioPlayer : IAudioPlayer
             if (_player.IsPlaying || _isPaused)
             {
                 if (fadeOutMs > 0)
-                    FadePlayerVolumeBlocking(_player.Volume, 0, fadeOutMs);
+                    FadePlayerVolumeBlocking(_player.Volume, 0, fadeOutMs, cancel);
 
                 _player.Stop();
             }
@@ -440,9 +549,19 @@ public class VlcAudioPlayer : IAudioPlayer
             // Parse the file header synchronously. This reads container
             // metadata (codec, sample rate, duration, channel layout).
             // Without this, M4A/ALAC/AAC can fail to decode.
-            using var cts = new CancellationTokenSource(8000);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+            cts.CancelAfter(8000);
             var parseTask = media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
-            parseTask.Wait(cts.Token);
+            try
+            {
+                parseTask.Wait(cts.Token);
+            }
+            catch (OperationCanceledException) when (cancel.IsCancellationRequested)
+            {
+                // Skipped by a new Play() call — abort cleanly
+                media.Dispose();
+                return;
+            }
 
             var parseResult = parseTask.Result;
             if (parseResult != MediaParsedStatus.Done)
@@ -479,7 +598,7 @@ public class VlcAudioPlayer : IAudioPlayer
             {
                 // Single-player approximation of crossfade: fade out old track, then fade in new one.
                 _player.Volume = 0;
-                FadePlayerVolumeBlocking(0, targetVolume, fadeInMs);
+                FadePlayerVolumeBlocking(0, targetVolume, fadeInMs, cancel);
             }
             else
             {

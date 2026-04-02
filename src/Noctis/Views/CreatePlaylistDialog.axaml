@@ -4,41 +4,49 @@
         x:Class="Noctis.Views.CreatePlaylistDialog"
         x:DataType="vm:CreatePlaylistDialogViewModel"
         Title="Create New Playlist"
-        Width="450" Height="320"
-        WindowStartupLocation="CenterOwner"
         CanResize="False"
         SystemDecorations="None"
-        ExtendClientAreaToDecorationsHint="True"
         TransparencyLevelHint="Transparent"
-        Background="Transparent">
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
-        <!-- Remove red focus outline from text boxes in this dialog -->
+        <Style Selector="TextBox /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="#E74856" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
         <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BorderBrush" Value="#E74856" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style Selector="TextBox:focus-within /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BorderBrush" Value="#E74856" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BorderBrush" Value="#E74856" />
         </Style>
     </Window.Styles>
 
-    <!-- Outer border gives the popup its rounded shape and shadow -->
-    <Border CornerRadius="16"
+    <!-- Full-window dimmed overlay that captures all input -->
+    <Border Background="#50000000"
+            PointerPressed="OnOverlayPointerPressed"
+            PointerWheelChanged="OnOverlayWheel">
+
+    <!-- Centered dialog card -->
+    <Border CornerRadius="24"
             ClipToBounds="True"
-            Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+            Background="{DynamicResource AppMainBackground}"
+            Width="450"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
             BoxShadow="0 8 32 0 #60000000">
         <DockPanel>
 
             <!-- Bottom: OK / Cancel buttons -->
             <Border DockPanel.Dock="Bottom"
-                    Padding="24,12"
-                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                    BorderThickness="0,1,0,0">
+                    Padding="24,12,24,16">
                 <Grid ColumnDefinitions="*,Auto,Auto">
                     <Button Grid.Column="1"
                             Content="Create"
@@ -86,9 +94,9 @@
                                IsVisible="{Binding ShowNameRequiredError}" />
                 </StackPanel>
 
-                <!-- Playlist Description (Optional) -->
+                <!-- Playlist Description -->
                 <StackPanel Spacing="4">
-                    <TextBlock Text="Description (Optional)" FontSize="13" FontWeight="SemiBold" />
+                    <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" />
                     <TextBox Text="{Binding PlaylistDescription}"
                              Watermark="Enter playlist description..."
                              AcceptsReturn="True"
@@ -97,5 +105,6 @@
                 </StackPanel>
             </StackPanel>
         </DockPanel>
+    </Border>
     </Border>
 </Window>

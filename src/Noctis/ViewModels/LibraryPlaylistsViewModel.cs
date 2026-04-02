@@ -23,6 +23,7 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
     private readonly IPersistenceService _persistence;
 
     private string _currentFilter = string.Empty;
+    private bool _isDirty = true;
     private DispatcherTimer? _searchDebounce;
 
     [ObservableProperty] private bool _isSearchVisible = false;
@@ -34,8 +35,11 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
     /// <summary>All user-created playlists displayed in the grid.</summary>
     public ObservableCollection<Playlist> Playlists => _sidebar.Playlists;
 
-    /// <summary>Filtered playlists for display.</summary>
-    public ObservableCollection<Playlist> FilteredPlaylists { get; } = new();
+    /// <summary>All playlist nav items with computed artwork (source of truth for display).</summary>
+    public ObservableCollection<PlaylistNavItem> PlaylistItems => _sidebar.PlaylistItems;
+
+    /// <summary>Filtered playlists for display (uses PlaylistNavItem for artwork sync with sidebar).</summary>
+    public ObservableCollection<PlaylistNavItem> FilteredPlaylists { get; } = new();
 
     /// <summary>Fires when the user wants to open a playlist's detail view.</summary>
     public event EventHandler<Playlist>? PlaylistOpened;
@@ -48,11 +52,16 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
         _persistence = persistence;
 
         // Re-filter when the source playlists change
-        _sidebar.Playlists.CollectionChanged += (_, _) => ApplyFilter(_currentFilter);
+        _sidebar.Playlists.CollectionChanged += (_, _) => { _isDirty = true; ApplyFilter(_currentFilter); };
+        _sidebar.PlaylistItems.CollectionChanged += (_, _) => { _isDirty = true; ApplyFilter(_currentFilter); };
     }
 
     public void Refresh()
     {
+        if (!_isDirty && FilteredPlaylists.Count > 0)
+            return;
+        _isDirty = false;
+
         OnPropertyChanged(nameof(Playlists));
         ApplyFilter(_currentFilter);
     }
@@ -63,16 +72,15 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
 
         FilteredPlaylists.Clear();
 
-        var filtered = Playlists.AsEnumerable();
+        var filtered = PlaylistItems.AsEnumerable();
         if (!string.IsNullOrWhiteSpace(query))
         {
             filtered = filtered.Where(p =>
-                p.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                p.Description.Contains(query, StringComparison.OrdinalIgnoreCase));
+                p.Label.Contains(query, StringComparison.OrdinalIgnoreCase));
         }
 
-        foreach (var playlist in filtered)
-            FilteredPlaylists.Add(playlist);
+        foreach (var item in filtered)
+            FilteredPlaylists.Add(item);
     }
 
     partial void OnSearchTextChanged(string value)
@@ -101,10 +109,14 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
         }
     }
 
+    private Playlist? ResolvePlaylist(PlaylistNavItem item)
+        => Playlists.FirstOrDefault(p => p.Id == item.PlaylistId);
+
     [RelayCommand]
-    private void OpenPlaylist(Playlist playlist)
+    private void OpenPlaylist(PlaylistNavItem item)
     {
-        PlaylistOpened?.Invoke(this, playlist);
+        var playlist = ResolvePlaylist(item);
+        if (playlist != null) PlaylistOpened?.Invoke(this, playlist);
     }
 
     private List<Track> ResolvePlaylistTracks(Playlist playlist)
@@ -120,16 +132,20 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
     }
 
     [RelayCommand]
-    private void PlayPlaylist(Playlist playlist)
+    private void PlayPlaylist(PlaylistNavItem item)
     {
+        var playlist = ResolvePlaylist(item);
+        if (playlist == null) return;
         var tracks = ResolvePlaylistTracks(playlist);
         if (tracks.Count == 0) return;
         _player.ReplaceQueueAndPlay(tracks, 0);
     }
 
     [RelayCommand]
-    private void ShufflePlaylist(Playlist playlist)
+    private void ShufflePlaylist(PlaylistNavItem item)
     {
+        var playlist = ResolvePlaylist(item);
+        if (playlist == null) return;
         var tracks = ResolvePlaylistTracks(playlist);
         if (tracks.Count == 0) return;
         var shuffled = tracks.OrderBy(_ => Random.Shared.Next()).ToList();
@@ -137,8 +153,10 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
     }
 
     [RelayCommand]
-    private void PlayNextPlaylist(Playlist playlist)
+    private void PlayNextPlaylist(PlaylistNavItem item)
     {
+        var playlist = ResolvePlaylist(item);
+        if (playlist == null) return;
         var tracks = ResolvePlaylistTracks(playlist);
         if (tracks.Count == 0) return;
         for (int i = tracks.Count - 1; i >= 0; i--)
@@ -146,16 +164,19 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
     }
 
     [RelayCommand]
-    private void AddPlaylistToQueue(Playlist playlist)
+    private void AddPlaylistToQueue(PlaylistNavItem item)
     {
+        var playlist = ResolvePlaylist(item);
+        if (playlist == null) return;
         var tracks = ResolvePlaylistTracks(playlist);
-        foreach (var track in tracks)
-            _player.AddToQueue(track);
+        _player.AddRangeToQueue(tracks);
     }
 
     [RelayCommand]
-    private async Task EditPlaylist(Playlist playlist)
+    private async Task EditPlaylist(PlaylistNavItem item)
     {
+        var playlist = ResolvePlaylist(item);
+        if (playlist == null) return;
         await _sidebar.EditPlaylistAsync(playlist);
         ApplyFilter(_currentFilter);
     }
@@ -167,16 +188,22 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
     }
 
     [RelayCommand]
-    private async Task DeletePlaylist(Playlist playlist)
+    private async Task DeletePlaylist(PlaylistNavItem item)
     {
-        await _sidebar.DeletePlaylistAsync(playlist.Id);
+        if (item.PlaylistId == null) return;
+        var confirmed = await Views.ConfirmationDialog.ShowAsync($"Are you sure you want to delete \"{item.Label}\"? This cannot be undone.");
+        if (!confirmed) return;
+        await _sidebar.DeletePlaylistAsync(item.PlaylistId.Value);
         OnPropertyChanged(nameof(Playlists));
         ApplyFilter(_currentFilter);
     }
 
     [RelayCommand]
-    private async Task SetCoverArt(Playlist playlist)
+    private async Task SetCoverArt(PlaylistNavItem item)
     {
+        var playlist = ResolvePlaylist(item);
+        if (playlist == null) return;
+
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
             || desktop.MainWindow == null) return;
 
@@ -215,8 +242,10 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
     }
 
     [RelayCommand]
-    private async Task RemoveCoverArt(Playlist playlist)
+    private async Task RemoveCoverArt(PlaylistNavItem item)
     {
+        var playlist = ResolvePlaylist(item);
+        if (playlist == null) return;
         if (string.IsNullOrEmpty(playlist.CoverArtPath)) return;
 
         // Delete the file if it exists in our covers directory

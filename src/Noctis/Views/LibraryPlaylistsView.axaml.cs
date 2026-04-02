@@ -53,7 +53,7 @@ public partial class LibraryPlaylistsView : UserControl
                 var sv = this.FindDescendantOfType<ScrollViewer>();
                 if (sv == null) return;
 
-                if (sv.Extent.Height < targetOffset && attempts < 50)
+                if (sv.Extent.Height < targetOffset && attempts < 10)
                     return;
 
                 var clampedOffset = Math.Min(targetOffset, Math.Max(0, sv.Extent.Height - sv.Viewport.Height));

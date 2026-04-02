@@ -244,6 +244,7 @@
     <Grid x:Name="MainLayoutGrid" ColumnDefinitions="*,*"
           Background="{Binding FullBackgroundBrush}">
 
+
         <!-- ══════════════════════════════════════════════════════ -->
         <!-- LEFT PANEL: Cover Art + Track Info + Controls         -->
         <!-- ══════════════════════════════════════════════════════ -->
@@ -253,7 +254,7 @@
                 Padding="40,30">
             <StackPanel x:Name="LeftContentStack" VerticalAlignment="Center"
                         HorizontalAlignment="Center"
-                        MaxWidth="560">
+                        MaxWidth="620">
                 <StackPanel.Transitions>
                     <Transitions>
                         <DoubleTransition Property="MaxWidth" Duration="0:0:0.25">
@@ -264,7 +265,7 @@
 
                 <!-- Album Art -->
                 <Border x:Name="AlbumArtBorder"
-                        Width="520" Height="520"
+                        Width="580" Height="580"
                         CornerRadius="12"
                         ClipToBounds="True"
                         HorizontalAlignment="Center"
@@ -472,16 +473,16 @@
                     <!-- Play / Pause -->
                     <Button Classes="lyrics-play-btn"
                             Command="{Binding Player.PlayPauseCommand}"
-                            Width="48" Height="48"
+                            Width="54" Height="54"
                             ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
                         <Panel>
-                            <Viewbox Width="22" Height="22"
+                            <Viewbox Width="24" Height="24"
                                      IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
                                 <Canvas Width="24" Height="24">
                                     <Path Fill="{Binding LyricsControlFill}" Data="{StaticResource PlayIcon}"/>
                                 </Canvas>
                             </Viewbox>
-                            <Viewbox Width="22" Height="22"
+                            <Viewbox Width="24" Height="24"
                                      IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
                                 <Canvas Width="24" Height="24">
                                     <Path Fill="{Binding LyricsControlFill}" Data="{StaticResource PauseIcon}"/>
@@ -630,7 +631,8 @@
                                               Command="{Binding Player.AddCurrentTrackToNewPlaylistCommand}" />
                                     <Separator />
                                 </MenuItem>
-                                <MenuItem Header="Add to Favorites"
+                                <Separator />
+                                <MenuItem Header="Favorites"
                                           Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                           IsVisible="{Binding Player.CurrentTrack.IsFavorite, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
                                     <MenuItem.Icon>
@@ -644,7 +646,6 @@
                                         <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="{Binding LyricsAccentFg}" VerticalAlignment="Center" />
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <Separator />
                                 <MenuItem Header="Metadata"
                                           Command="{Binding Player.OpenCurrentTrackMetadataCommand}">
                                     <MenuItem.Icon>
@@ -657,21 +658,7 @@
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <Separator />
-                                <MenuItem Header="View Album"
-                                          Command="{Binding Player.ViewCurrentTrackAlbumCommand}">
-                                    <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Albums%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="View Artist"
-                                          Command="{Binding Player.ViewCurrentArtistCommand}">
-                                    <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Artists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <Separator />
-                                <MenuItem Header="Show in Folder"
+                                <MenuItem Header="Show Folder"
                                           Command="{Binding Player.ShowCurrentTrackInExplorerCommand}">
                                     <MenuItem.Icon>
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Folder%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
@@ -1036,12 +1023,12 @@
                     Margin="0,20,0,20">
                 <Border.OpacityMask>
                     <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
-                        <GradientStop Color="#00FFFFFF" Offset="0.0"/>
-                        <GradientStop Color="#60FFFFFF" Offset="0.06"/>
+                        <GradientStop Color="#A0FFFFFF" Offset="0.0"/>
+                        <GradientStop Color="#E0FFFFFF" Offset="0.06"/>
                         <GradientStop Color="#FFFFFFFF" Offset="0.15"/>
-                        <GradientStop Color="#FFFFFFFF" Offset="0.75"/>
-                        <GradientStop Color="#60FFFFFF" Offset="0.90"/>
-                        <GradientStop Color="#00FFFFFF" Offset="1.0"/>
+                        <GradientStop Color="#FFFFFFFF" Offset="0.80"/>
+                        <GradientStop Color="#E0FFFFFF" Offset="0.93"/>
+                        <GradientStop Color="#A0FFFFFF" Offset="1.0"/>
                     </LinearGradientBrush>
                 </Border.OpacityMask>
 
@@ -1051,7 +1038,7 @@
                               Padding="50,0,40,0">
                     <ItemsControl ItemsSource="{Binding LyricLines}"
                                   x:Name="LyricsItemsControl"
-                                  MaxWidth="500"
+                                  MaxWidth="560"
                                   HorizontalAlignment="Left">
                         <ItemsControl.Transitions>
                             <Transitions>
@@ -1075,7 +1062,7 @@
                                     <Panel HorizontalAlignment="Stretch">
                                         <!-- Main text layer (hidden for intro placeholder) -->
                                         <TextBlock Text="{Binding Text}"
-                                                   FontSize="{Binding IsActive, Converter={StaticResource BoolToOpacity}, ConverterParameter=30;36}"
+                                                   FontSize="{Binding IsActive, Converter={StaticResource BoolToOpacity}, ConverterParameter=34;40}"
                                                    FontWeight="Bold"
                                                    Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
                                                    HorizontalAlignment="Stretch"

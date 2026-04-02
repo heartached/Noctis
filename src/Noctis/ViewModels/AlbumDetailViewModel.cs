@@ -263,12 +263,22 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        // Extract dominant color off UI thread, then create gradient
+        // Extract dominant color off UI thread, then create gradient.
+        // Capture a local ref so we don't access a disposed bitmap if Dispose() races.
+        var bmp = value;
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            var color = DominantColorExtractor.ExtractDominantColor(value);
-            var brush = DominantColorExtractor.CreateAlbumDetailGradient(color);
-            Dispatcher.UIThread.Post(() => BackgroundBrush = brush);
+            try
+            {
+                var color = DominantColorExtractor.ExtractDominantColor(bmp);
+                var brush = DominantColorExtractor.CreateAlbumDetailGradient(color);
+                Dispatcher.UIThread.Post(() => BackgroundBrush = brush);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error(DebugLogger.Category.UI, "AlbumDetail.GradientBg", ex.ToString());
+                // Gracefully fall back — no gradient rather than crash
+            }
         });
     }
 
@@ -331,14 +341,16 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void OpenAlbumDescription()
+    private async Task OpenAlbumDescription()
     {
         if (!HasAlbumDescription) return;
         AlbumDescriptionEditorText = !string.IsNullOrWhiteSpace(AlbumDescriptionFull)
             ? AlbumDescriptionFull
             : AlbumDescription;
         IsAlbumDescriptionEditing = false;
-        IsAlbumDescriptionOpen = true;
+        await Views.AlbumDescriptionDialog.ShowAsync(this);
+        // Dialog closed — clean up state
+        IsAlbumDescriptionEditing = false;
     }
 
     [RelayCommand]
@@ -394,10 +406,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void AddAlbumToQueue()
     {
         if (Tracks.Count == 0) return;
-
-        var tracks = Tracks.ToList();
-        foreach (var track in tracks)
-            _player.AddToQueue(track);
+        _player.AddRangeToQueue(Tracks.ToList());
     }
 
     [RelayCommand]
@@ -472,7 +481,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task RemoveFromLibrary(Track track)
     {
-        if (!await Views.ConfirmationDialog.ShowAsync($"Remove \"{track.Title}\" from your library?"))
+        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
             return;
         var idx = Tracks.IndexOf(track);
         if (idx >= 0)
@@ -484,7 +493,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private async Task RemoveAlbumFromLibrary()
     {
         if (Tracks.Count == 0) return;
-        if (!await Views.ConfirmationDialog.ShowAsync("Remove this entire album from your library?"))
+        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
             return;
         var trackIds = Tracks.Select(t => t.Id).ToList();
         Tracks.Clear();

@@ -16,6 +16,7 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
     private readonly PlayerViewModel _player;
     private Action<string>? _viewArtistAction;
     private Action<Track>? _viewAlbumAction;
+    private Track? _subscribedCenterTrack;
 
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
     public void SetViewAlbumAction(Action<Track> action) => _viewAlbumAction = action;
@@ -64,6 +65,7 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private string? _next7ArtworkPath;
 
     [ObservableProperty] private bool _centerIsExplicit;
+    [ObservableProperty] private bool _centerIsFavorite;
     [ObservableProperty] private bool _hasQueue;
 
     public PlayerViewModel Player => _player;
@@ -108,12 +110,23 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
 
         HasQueue = current != null || upNext.Count > 0;
 
+        // Track center track property changes (e.g. IsFavorite toggle)
+        if (_subscribedCenterTrack != current)
+        {
+            if (_subscribedCenterTrack != null)
+                _subscribedCenterTrack.PropertyChanged -= OnCenterTrackPropertyChanged;
+            _subscribedCenterTrack = current;
+            if (_subscribedCenterTrack != null)
+                _subscribedCenterTrack.PropertyChanged += OnCenterTrackPropertyChanged;
+        }
+
         // Center = currently playing track
         CenterTrack = current;
         CenterTitle = current?.Title ?? string.Empty;
         CenterArtist = current?.Artist ?? string.Empty;
         CenterAlbum = current?.Album ?? string.Empty;
         CenterIsExplicit = current?.IsExplicit ?? false;
+        CenterIsFavorite = current?.IsFavorite ?? false;
         CenterArtworkPath = current?.AlbumArtworkPath;
 
         // Previous items from history (index 0 = most recent)
@@ -161,6 +174,12 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
         Next7ArtworkPath = Next7Track?.AlbumArtworkPath;
     }
 
+    private void OnCenterTrackPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Track.IsFavorite))
+            Dispatcher.UIThread.Post(() => CenterIsFavorite = _subscribedCenterTrack?.IsFavorite ?? false);
+    }
+
     [RelayCommand]
     private void GoToArtist()
     {
@@ -194,5 +213,7 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
         _player.PropertyChanged -= OnPlayerPropertyChanged;
         _player.UpNext.CollectionChanged -= OnQueueChanged;
         _player.History.CollectionChanged -= OnQueueChanged;
+        if (_subscribedCenterTrack != null)
+            _subscribedCenterTrack.PropertyChanged -= OnCenterTrackPropertyChanged;
     }
 }

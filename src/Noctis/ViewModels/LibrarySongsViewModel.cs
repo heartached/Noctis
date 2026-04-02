@@ -28,8 +28,8 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
     [ObservableProperty] private bool _isSearchVisible = false;
     [ObservableProperty] private string _searchText = string.Empty;
-    [ObservableProperty] private string _sortColumn = "Title";
-    [ObservableProperty] private bool _sortAscending = true;
+    [ObservableProperty] private string _sortColumn = "Date Added";
+    [ObservableProperty] private bool _sortAscending = false;
     [ObservableProperty] private bool _showOnlyFavorites = false;
     [ObservableProperty] private bool _isFilterMenuOpen = false;
 
@@ -37,6 +37,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
+
+    /// <summary>Tracks currently Ctrl-selected in the view. Set by code-behind.</summary>
+    public List<Track> CtrlSelectedTracks { get; set; } = new();
 
     /// <summary>Filtered and sorted tracks displayed in the DataGrid.</summary>
     public BulkObservableCollection<Track> FilteredTracks { get; } = new();
@@ -66,6 +69,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }
 
+    /// <summary>Forces the next Refresh() call to rebuild even if data hasn't changed.</summary>
+    public void MarkDirty() => _isDirty = true;
+
     /// <summary>Reloads tracks from the library service. Skips if data hasn't changed.</summary>
     public void Refresh()
     {
@@ -73,8 +79,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             return;
 
         _isDirty = false;
-        _allTracks = _library.Tracks.ToList();
-        ApplyFilterAndSort();
+        ApplyFilterAndSort(refreshFromLibrary: true);
     }
 
     public void ApplyFilter(string query)
@@ -195,7 +200,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task AddToNewPlaylist(Track track)
     {
-        await _sidebar.CreatePlaylistWithTrackAsync(track);
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        await _sidebar.CreatePlaylistWithTracksAsync(tracks);
+        CtrlSelectedTracks.Clear();
     }
 
     [RelayCommand]
@@ -203,16 +210,20 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     {
         if (parameters == null || parameters.Length != 2) return;
         if (parameters[0] is not Track track || parameters[1] is not Playlist playlist) return;
-
-        await _sidebar.AddTracksToPlaylist(playlist.Id, new[] { track });
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        await _sidebar.AddTracksToPlaylist(playlist.Id, tracks);
+        CtrlSelectedTracks.Clear();
     }
 
     [RelayCommand]
     private async Task RemoveFromLibrary(Track track)
     {
-        if (!await Views.ConfirmationDialog.ShowAsync($"Remove \"{track.Title}\" from your library?"))
+        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
             return;
-        await _library.RemoveTrackAsync(track.Id);
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        var ids = tracks.Select(t => t.Id).ToList();
+        await _library.RemoveTracksAsync(ids);
+        CtrlSelectedTracks.Clear();
     }
 
     [RelayCommand]
@@ -224,9 +235,12 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task ToggleFavorite(Track track)
     {
-        track.IsFavorite = !track.IsFavorite;
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        foreach (var t in tracks)
+            t.IsFavorite = !t.IsFavorite;
         await _library.SaveAsync();
         _library.NotifyFavoritesChanged();
+        CtrlSelectedTracks.Clear();
     }
 
     [RelayCommand]
@@ -258,7 +272,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             _viewArtistAction?.Invoke(artistName);
     }
 
-    private async void ApplyFilterAndSort()
+    private async void ApplyFilterAndSort(bool refreshFromLibrary = false)
     {
         try
         {
@@ -270,10 +284,15 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             var sortAsc = SortAscending;
             var favOnly = ShowOnlyFavorites;
             var tracks = _allTracks;
+            var library = refreshFromLibrary ? _library : null;
 
             // Run the heavy filter/sort work on a background thread
             var result = await Task.Run(() =>
             {
+                // Move ToList() off the UI thread when refreshing from library
+                if (library != null)
+                    tracks = library.Tracks.ToList();
+
                 var filtered = tracks.AsEnumerable();
 
                 // Apply favorites filter
@@ -309,6 +328,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
                     "Genre" => sortAsc ? ordered.ThenBy(x => x.Track.Genre).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Genre).ThenBy(x => x.Track.Title),
                     "Plays" => sortAsc ? ordered.ThenBy(x => x.Track.PlayCount) : ordered.ThenByDescending(x => x.Track.PlayCount),
                     "Duration" => sortAsc ? ordered.ThenBy(x => x.Track.Duration) : ordered.ThenByDescending(x => x.Track.Duration),
+                    "Date Added" => sortAsc ? ordered.ThenBy(x => x.Track.DateAdded) : ordered.ThenByDescending(x => x.Track.DateAdded),
                     _ => ordered.ThenBy(x => x.Track.Title)
                 };
 
@@ -317,6 +337,10 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
             // Discard stale results if a newer filter/sort has been requested
             if (generation != _filterGeneration) return;
+
+            // Save refreshed tracks list back (already on UI thread)
+            if (refreshFromLibrary)
+                _allTracks = tracks;
 
             FilteredTracks.ReplaceAll(result);
         }

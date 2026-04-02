@@ -63,6 +63,14 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Whether the playback island bar should be visible (has content and not in lyrics view).</summary>
     public bool IsPlaybackBarVisible => Player.HasContent && !IsLyricsViewActive;
 
+    // ── Sidebar visibility ──
+
+    /// <summary>Whether the sidebar is hidden (toggled from lyrics view).</summary>
+    [ObservableProperty] private bool _isSidebarHidden;
+
+    [RelayCommand]
+    private void ToggleSidebar() => IsSidebarHidden = !IsSidebarHidden;
+
     // ── Lyrics side panel ──
 
     /// <summary>Whether the lyrics side panel overlay is open.</summary>
@@ -137,6 +145,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetLastFm(lastFm);
         Settings.SetArtistImageService(artistImageService);
         Settings.SetUpdateService(App.Services!.GetRequiredService<UpdateService>());
+        Settings.SettingsReset += async (_, _) => await Sidebar.LoadPlaylistsAsync();
 
         // Create content ViewModels
         _homeVm = new HomeViewModel(Player, library, Sidebar);
@@ -216,10 +225,13 @@ public partial class MainWindowViewModel : ViewModelBase
         _coverFlowVm.SetViewAlbumAction(track => OnViewAlbumFromTrack(this, track));
 
         // Forward Player.HasContent changes to IsPlaybackBarVisible
+        // and close lyrics panel when playback ends
         Player.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(PlayerViewModel.HasContent))
                 OnPropertyChanged(nameof(IsPlaybackBarVisible));
+            if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack) && Player.CurrentTrack == null)
+                IsLyricsPanelOpen = false;
         };
 
         // Wire up Discord RPC and Last.fm integrations
@@ -378,27 +390,26 @@ public partial class MainWindowViewModel : ViewModelBase
             System.Diagnostics.Debug.WriteLine($"[DropImport] folders={folders.Count} files={files.Count}");
             if (folders.Count == 0 && files.Count == 0) return;
 
-            // A folder scan already includes its child files.
-            if (folders.Count > 0)
-                files.RemoveWhere(file => folders.Any(folder => IsPathUnderRoot(file, folder)));
-
-            if (folders.Count > 0)
+            // Expand dropped folders into their audio files so we can use
+            // the additive ImportFilesAsync path instead of a full library rescan.
+            // A full ScanAsync replaces the entire library with whatever is on disk
+            // across ALL configured music folders, which can resurrect deleted files
+            // or pull in unrelated media from other roots.
+            foreach (var folder in folders)
             {
-                var existingFolders = new HashSet<string>(
-                    Settings.GetSettings().MusicFolders
-                        .Where(f => !string.IsNullOrWhiteSpace(f))
-                        .Select(TryNormalizePath)
-                        .Where(f => !string.IsNullOrWhiteSpace(f))
-                        .Select(f => f!),
-                    StringComparer.OrdinalIgnoreCase);
-
-                foreach (var folder in folders)
+                try
                 {
-                    if (existingFolders.Add(folder))
-                        await Settings.AddFolderPath(folder);
+                    foreach (var file in Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories))
+                    {
+                        var ext = Path.GetExtension(file);
+                        if (MetadataService.SupportedExtensions.Contains(ext))
+                            files.Add(file);
+                    }
                 }
-
-                await _library.ScanAsync(Settings.GetSettings().MusicFolders, ct);
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[DropImport] Failed to enumerate folder {folder}: {ex.Message}");
+                }
             }
 
             if (files.Count > 0)
@@ -463,10 +474,18 @@ public partial class MainWindowViewModel : ViewModelBase
             }
 
             // Force refresh to guarantee newly imported content is visible immediately.
+            // Mark all VMs dirty first — the LibraryUpdated event may have already
+            // posted a Refresh() that consumed the dirty flag before we get here.
+            _songsVm.MarkDirty();
+            _albumsVm.MarkDirty();
+            _artistsVm.MarkDirty();
+            _homeVm.MarkDirty();
+            _favoritesVm.MarkDirty();
+
             _songsVm.Refresh();
             _albumsVm.Refresh();
             _artistsVm.Refresh();
-    
+
             _homeVm.Refresh();
             _favoritesVm.Refresh();
             Settings.RefreshLibraryStats();

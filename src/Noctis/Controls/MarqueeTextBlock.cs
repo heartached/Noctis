@@ -20,6 +20,8 @@ public class MarqueeTextBlock : UserControl
     public static bool GlobalMenuTitleScrollEnabled { get; set; } = true;
     public static bool GlobalMenuArtistScrollEnabled { get; set; } = true;
     public static bool GlobalCoverFlowScrollEnabled { get; set; } = true;
+    public static bool GlobalCoverFlowArtistScrollEnabled { get; set; } = true;
+    public static bool GlobalCoverFlowAlbumScrollEnabled { get; set; } = true;
     public static bool GlobalLyricsTitleScrollEnabled { get; set; } = true;
     public static bool GlobalLyricsArtistScrollEnabled { get; set; } = true;
 
@@ -47,11 +49,17 @@ public class MarqueeTextBlock : UserControl
     public static readonly StyledProperty<bool> IsForArtistProperty =
         AvaloniaProperty.Register<MarqueeTextBlock, bool>(nameof(IsForArtist));
 
+    public static readonly StyledProperty<bool> IsForAlbumProperty =
+        AvaloniaProperty.Register<MarqueeTextBlock, bool>(nameof(IsForAlbum));
+
     public static readonly StyledProperty<bool> IsCoverFlowProperty =
         AvaloniaProperty.Register<MarqueeTextBlock, bool>(nameof(IsCoverFlow));
 
     public static readonly StyledProperty<bool> IsLyricsPageProperty =
         AvaloniaProperty.Register<MarqueeTextBlock, bool>(nameof(IsLyricsPage));
+
+    public static readonly StyledProperty<Control?> InlineContentProperty =
+        AvaloniaProperty.Register<MarqueeTextBlock, Control?>(nameof(InlineContent));
 
     public string? Text
     {
@@ -93,6 +101,15 @@ public class MarqueeTextBlock : UserControl
     }
 
     /// <summary>
+    /// When true, uses the album scroll setting instead of title/artist settings.
+    /// </summary>
+    public bool IsForAlbum
+    {
+        get => GetValue(IsForAlbumProperty);
+        set => SetValue(IsForAlbumProperty, value);
+    }
+
+    /// <summary>
     /// When true, uses the CoverFlow scroll setting instead of menu settings.
     /// </summary>
     public bool IsCoverFlow
@@ -110,10 +127,20 @@ public class MarqueeTextBlock : UserControl
         set => SetValue(IsLyricsPageProperty, value);
     }
 
+    /// <summary>
+    /// Optional inline content (e.g. explicit badge) that scrolls together with the text.
+    /// </summary>
+    public Control? InlineContent
+    {
+        get => GetValue(InlineContentProperty);
+        set => SetValue(InlineContentProperty, value);
+    }
+
     // ── Internal controls ──
 
     private readonly Border _viewport;
     private readonly TextBlock _textBlock;
+    private readonly StackPanel _contentPanel;
     private readonly TranslateTransform _transform;
 
     // ── Animation state ──
@@ -130,18 +157,22 @@ public class MarqueeTextBlock : UserControl
         _transform = new TranslateTransform();
         _textBlock = new TextBlock
         {
-            RenderTransform = _transform,
             MaxLines = 1,
             TextTrimming = TextTrimming.None
         };
 
-        var stack = new StackPanel { Orientation = Orientation.Horizontal };
-        stack.Children.Add(_textBlock);
+        _contentPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            RenderTransform = _transform
+        };
+        _contentPanel.Children.Add(_textBlock);
 
         _viewport = new Border
         {
             ClipToBounds = true,
-            Child = stack,
+            Child = _contentPanel,
             HorizontalAlignment = HorizontalAlignment.Left
         };
 
@@ -180,6 +211,14 @@ public class MarqueeTextBlock : UserControl
             _viewport.MaxWidth = MaxDisplayWidth;
             ResetAndRecalc();
         }
+        else if (change.Property == InlineContentProperty)
+        {
+            if (change.OldValue is Control old)
+                _contentPanel.Children.Remove(old);
+            if (change.NewValue is Control newCtrl)
+                _contentPanel.Children.Add(newCtrl);
+            ResetAndRecalc();
+        }
     }
 
     private void OnAttached(object? sender, VisualTreeAttachmentEventArgs e)
@@ -202,7 +241,9 @@ public class MarqueeTextBlock : UserControl
     private bool IsScrollEnabled => IsLyricsPage
         ? (IsForArtist ? GlobalLyricsArtistScrollEnabled : GlobalLyricsTitleScrollEnabled)
         : IsCoverFlow
-            ? GlobalCoverFlowScrollEnabled
+            ? (IsForAlbum ? GlobalCoverFlowAlbumScrollEnabled
+                : IsForArtist ? GlobalCoverFlowArtistScrollEnabled
+                : GlobalCoverFlowScrollEnabled)
             : IsForArtist
                 ? GlobalMenuArtistScrollEnabled
                 : GlobalMenuTitleScrollEnabled;
@@ -238,7 +279,10 @@ public class MarqueeTextBlock : UserControl
             _textBlock.TextTrimming = _overflow > OverflowThreshold
                 ? TextTrimming.CharacterEllipsis
                 : TextTrimming.None;
-            _textBlock.Width = _overflow > OverflowThreshold ? viewportWidth : double.NaN;
+            var staticWidth = viewportWidth;
+            if (InlineContent is { IsVisible: true, Bounds.Width: > 0 } ic2)
+                staticWidth = Math.Max(0, staticWidth - _contentPanel.Spacing - ic2.Bounds.Width);
+            _textBlock.Width = _overflow > OverflowThreshold ? staticWidth : double.NaN;
             return;
         }
 
@@ -321,6 +365,12 @@ public class MarqueeTextBlock : UserControl
             _textBlock.FontSize,
             Brushes.Transparent);
 
-        return formatted.WidthIncludingTrailingWhitespace;
+        var width = formatted.WidthIncludingTrailingWhitespace;
+
+        // Include inline content width + spacing when present and visible
+        if (InlineContent is { IsVisible: true, Bounds.Width: > 0 } ic)
+            width += _contentPanel.Spacing + ic.Bounds.Width;
+
+        return width;
     }
 }

@@ -272,11 +272,21 @@ public partial class PlaybackBarView : UserControl
             TrackTitleTextBlock.FontSize,
             Brushes.Transparent);
 
-        return formattedText.WidthIncludingTrailingWhitespace;
+        var width = formattedText.WidthIncludingTrailingWhitespace;
+
+        // Include explicit badge width + spacing when visible
+        if (ExplicitBadge.IsVisible && ExplicitBadge.Bounds.Width > 0)
+            width += 6 + ExplicitBadge.Bounds.Width; // 6 = StackPanel Spacing
+
+        return width;
     }
 
     private void SetTrackTitleWidth(double width)
     {
+        // When constraining for static truncation, reserve space for the badge
+        if (!double.IsNaN(width) && ExplicitBadge.IsVisible && ExplicitBadge.Bounds.Width > 0)
+            width = Math.Max(0, width - 6 - ExplicitBadge.Bounds.Width);
+
         var currentWidth = TrackTitleTextBlock.Width;
         var widthsMatch = (double.IsNaN(currentWidth) && double.IsNaN(width)) ||
                           (!double.IsNaN(currentWidth) && !double.IsNaN(width) && Math.Abs(currentWidth - width) < 0.5);
@@ -349,7 +359,7 @@ public partial class PlaybackBarView : UserControl
     {
         _trackTitleOffset = offset;
 
-        if (TrackTitleTextBlock.RenderTransform is TranslateTransform transform)
+        if (TrackTitleContent.RenderTransform is TranslateTransform transform)
             transform.X = offset;
     }
 
@@ -579,33 +589,39 @@ public partial class PlaybackBarView : UserControl
 
     private void OnVolumeSliderPressed(object? sender, PointerPressedEventArgs e)
     {
-        // Keep position up to date during drag; badge visibility is tied to hover
         UpdateVolumePercentagePosition();
     }
 
     private void OnVolumeSliderReleased(object? sender, PointerReleasedEventArgs e)
     {
-        // Badge remains visible while container is hovered — OnVolumeContainerExited handles hide
+        (DataContext as ViewModels.PlayerViewModel)?.CommitVolume();
     }
 
     private void OnVolumeSliderCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
-        // Badge remains visible while container is hovered — OnVolumeContainerExited handles hide
+        (DataContext as ViewModels.PlayerViewModel)?.CommitVolume();
     }
+
+    private const double IslandBaseWidth = 620;
+    private const double VolumeSliderExpandedWidth = 99;
 
     private void OnVolumeContainerEntered(object? sender, PointerEventArgs e)
     {
-        // Expand the volume slider and show percentage badge immediately
-        VolumeSliderContainer.Width = 99;
+        // Expand the island and volume slider together so the timeline doesn't shrink
+        IslandBorder.Width = IslandBaseWidth + VolumeSliderExpandedWidth;
+        VolumeSliderContainer.Width = VolumeSliderExpandedWidth;
+        VolumePercentageBadge.IsVisible = true;
         UpdateVolumePercentagePosition();
         VolumePercentageBadge.Opacity = 1.0;
     }
 
     private void OnVolumeContainerExited(object? sender, PointerEventArgs e)
     {
-        // Collapse the volume slider and hide percentage badge
+        // Collapse the island and volume slider together
+        IslandBorder.Width = IslandBaseWidth;
         VolumeSliderContainer.Width = 0;
         VolumePercentageBadge.Opacity = 0;
+        VolumePercentageBadge.IsVisible = false;
     }
 
     private void OnTrackInfoRightClick(object? sender, PointerReleasedEventArgs e)
@@ -615,6 +631,13 @@ public partial class PlaybackBarView : UserControl
 
         OptionsButton.Flyout?.ShowAt(OptionsButton);
         e.Handled = true;
+    }
+
+    private void OnLyricsPanelButtonClick(object? sender, RoutedEventArgs e)
+    {
+        var mainWindow = this.FindLogicalAncestorOfType<MainWindow>();
+        if (mainWindow?.DataContext is MainWindowViewModel mainVm)
+            mainVm.ToggleLyricsPanelCommand.Execute(null);
     }
 
     private void OnLyricsButtonClick(object? sender, RoutedEventArgs e)

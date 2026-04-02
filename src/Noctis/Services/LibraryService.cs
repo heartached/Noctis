@@ -61,6 +61,10 @@ public class LibraryService : ILibraryService
                 .Where(n => !string.IsNullOrWhiteSpace(n))
                 .Select(n => n.Trim().ToLowerInvariant()),
             StringComparer.OrdinalIgnoreCase);
+        var excludedFiles = new HashSet<string>(
+            settings.ExcludedFilePaths
+                .Where(p => !string.IsNullOrWhiteSpace(p)),
+            StringComparer.OrdinalIgnoreCase);
 
         var newTracks = new ConcurrentBag<Track>();
         var fileCount = 0;
@@ -93,8 +97,9 @@ public class LibraryService : ILibraryService
             {
                 if (!Directory.Exists(folder)) continue;
 
-                // Enumerate recursively with folder rules.
+                // Enumerate recursively with folder rules, excluding removed files.
                 var files = EnumerateAudioFiles(folder, excludedRoots, ignoredNames)
+                    .Where(f => !excludedFiles.Contains(f))
                     .ToList();
 
                 var options = new ParallelOptions
@@ -107,56 +112,66 @@ public class LibraryService : ILibraryService
                 {
                     if (ct.IsCancellationRequested) return;
 
-                    Track? existing = null;
-
-                    // Skip files we already have that haven't changed
-                    if (trackIndexSnapshot.TryGetValue(ComputeFileId(filePath), out existing))
+                    try
                     {
-                        var fi = new FileInfo(filePath);
-                        if (fi.LastWriteTimeUtc == existing.LastModified && fi.Length == existing.FileSize)
+                        Track? existing = null;
+
+                        // Skip files we already have that haven't changed
+                        if (trackIndexSnapshot.TryGetValue(ComputeFileId(filePath), out existing))
                         {
-                            newTracks.Add(existing);
-                            Interlocked.Increment(ref unchangedCount);
-                            Interlocked.Increment(ref fileCount);
-                            ScanProgress?.Invoke(this, fileCount);
-                            return;
-                        }
-                    }
-
-                    // Read metadata for new or changed files
-                    var track = _metadata.ReadTrackMetadata(filePath);
-                    if (track != null)
-                    {
-                        // Use file path hash as stable ID so rescans don't create duplicates
-                        track.Id = ComputeFileId(filePath);
-
-                        // Preserve user data (favorites, play count, etc.) from the
-                        // old track when a file's metadata/size has changed on disk.
-                        if (existing != null)
-                            CopyMutableTrackState(existing, track);
-                        else
-                            track.SourceType = SourceType.Local;
-                        newTracks.Add(track);
-                        Interlocked.Increment(ref changedCount);
-
-                        // Extract and cache album artwork if we don't have it yet
-                        var artPath = _persistence.GetArtworkPath(track.AlbumId);
-                        if (!File.Exists(artPath) && artExtracted.TryAdd(track.AlbumId, 0))
-                        {
-                            var artBytes = _metadata.ExtractAlbumArt(filePath);
-                            if (artBytes != null)
+                            var fi = new FileInfo(filePath);
+                            if (fi.LastWriteTimeUtc == existing.LastModified && fi.Length == existing.FileSize)
                             {
-                                _persistence.SaveArtwork(track.AlbumId, artBytes);
+                                newTracks.Add(existing);
+                                Interlocked.Increment(ref unchangedCount);
+                                Interlocked.Increment(ref fileCount);
+                                ScanProgress?.Invoke(this, fileCount);
+                                return;
                             }
                         }
-                    }
-                    else
-                    {
-                        Interlocked.Increment(ref skippedCount);
-                    }
 
-                    Interlocked.Increment(ref fileCount);
-                    ScanProgress?.Invoke(this, fileCount);
+                        // Read metadata for new or changed files
+                        var track = _metadata.ReadTrackMetadata(filePath);
+                        if (track != null)
+                        {
+                            // Use file path hash as stable ID so rescans don't create duplicates
+                            track.Id = ComputeFileId(filePath);
+
+                            // Preserve user data (favorites, play count, etc.) from the
+                            // old track when a file's metadata/size has changed on disk.
+                            if (existing != null)
+                                CopyMutableTrackState(existing, track);
+                            else
+                                track.SourceType = SourceType.Local;
+                            newTracks.Add(track);
+                            Interlocked.Increment(ref changedCount);
+
+                            // Extract and cache album artwork if we don't have it yet
+                            var artPath = _persistence.GetArtworkPath(track.AlbumId);
+                            if (!File.Exists(artPath) && artExtracted.TryAdd(track.AlbumId, 0))
+                            {
+                                var artBytes = _metadata.ExtractAlbumArt(filePath);
+                                if (artBytes != null)
+                                {
+                                    _persistence.SaveArtwork(track.AlbumId, artBytes);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Interlocked.Increment(ref skippedCount);
+                        }
+
+                        Interlocked.Increment(ref fileCount);
+                        ScanProgress?.Invoke(this, fileCount);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        // Skip files that can't be read (locked, permissions, I/O error)
+                        Interlocked.Increment(ref skippedCount);
+                        Interlocked.Increment(ref fileCount);
+                        ScanProgress?.Invoke(this, fileCount);
+                    }
                 });
             }
         }, ct);
@@ -211,6 +226,16 @@ public class LibraryService : ILibraryService
 
         if (files.Count == 0) return;
 
+        // Clear exclusions for files being explicitly re-imported
+        var settings = await _persistence.LoadSettingsAsync();
+        var excludedSet = new HashSet<string>(settings.ExcludedFilePaths, StringComparer.OrdinalIgnoreCase);
+        if (excludedSet.Overlaps(files))
+        {
+            excludedSet.ExceptWith(files);
+            settings.ExcludedFilePaths = excludedSet.ToList();
+            await _persistence.SaveSettingsAsync(settings);
+        }
+
         var trackById = _tracks.ToDictionary(t => t.Id);
         var changed = false;
 
@@ -255,6 +280,7 @@ public class LibraryService : ILibraryService
                     _persistence.SaveArtwork(track.AlbumId, artBytes);
             }
 
+            track.IsRecentImport = true;
             trackById[track.Id] = track;
             changed = true;
         }
@@ -296,6 +322,7 @@ public class LibraryService : ILibraryService
         if (track == null) return;
 
         _tracks.Remove(track);
+        await ExcludeFilePathsAndCleanFoldersAsync(new[] { track.FilePath });
         await RebuildIndexesAsync();
         await SaveAsync();
         await _sqliteIndex.DeleteTracksAsync(new[] { id });
@@ -305,13 +332,45 @@ public class LibraryService : ILibraryService
     public async Task RemoveTracksAsync(IEnumerable<Guid> ids)
     {
         var idSet = new HashSet<Guid>(ids);
+        var removedTracks = _tracks.Where(t => idSet.Contains(t.Id)).ToList();
         var removed = _tracks.RemoveAll(t => idSet.Contains(t.Id));
         if (removed == 0) return;
 
+        await ExcludeFilePathsAndCleanFoldersAsync(removedTracks.Select(t => t.FilePath));
         await RebuildIndexesAsync();
         await SaveAsync();
         await _sqliteIndex.DeleteTracksAsync(idSet);
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Adds removed file paths to the exclusion list and removes any MusicFolders
+    /// entries that no longer contribute any tracks to the library.
+    /// </summary>
+    private async Task ExcludeFilePathsAndCleanFoldersAsync(IEnumerable<string> removedPaths)
+    {
+        var settings = await _persistence.LoadSettingsAsync();
+
+        // Add to exclusion list
+        var excluded = new HashSet<string>(settings.ExcludedFilePaths, StringComparer.OrdinalIgnoreCase);
+        foreach (var path in removedPaths)
+        {
+            if (!string.IsNullOrWhiteSpace(path))
+                excluded.Add(path);
+        }
+        settings.ExcludedFilePaths = excluded.ToList();
+
+        // Auto-remove folder locations that have zero remaining library tracks
+        var remainingPaths = new HashSet<string>(_tracks.Select(t => t.FilePath), StringComparer.OrdinalIgnoreCase);
+        settings.MusicFolders.RemoveAll(folder =>
+        {
+            if (string.IsNullOrWhiteSpace(folder)) return true;
+            var normalized = TryNormalizePath(folder);
+            if (string.IsNullOrWhiteSpace(normalized)) return true;
+            return !remainingPaths.Any(fp => IsUnderAnyRoot(fp, new[] { normalized! }));
+        });
+
+        await _persistence.SaveSettingsAsync(settings);
     }
 
     public async Task LoadAsync()
@@ -439,14 +498,23 @@ public class LibraryService : ILibraryService
                 ti[t.Id] = t;
 
             // Pre-collect unique album IDs and batch-check artwork existence
+            // using a directory listing instead of N individual File.Exists calls
             var albumIds = tracks.Select(t => t.AlbumId).Distinct().ToList();
+            var artworkDir = Path.GetDirectoryName(persistence.GetArtworkPath(Guid.Empty));
+            var existingArtFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (artworkDir != null && Directory.Exists(artworkDir))
+            {
+                foreach (var file in Directory.EnumerateFiles(artworkDir, "*.jpg"))
+                    existingArtFiles.Add(file);
+            }
+
             var artworkExists = new HashSet<Guid>();
             var artworkPaths = new Dictionary<Guid, string>(albumIds.Count);
             foreach (var albumId in albumIds)
             {
                 var artPath = persistence.GetArtworkPath(albumId);
                 artworkPaths[albumId] = artPath;
-                if (File.Exists(artPath))
+                if (existingArtFiles.Contains(artPath))
                     artworkExists.Add(albumId);
             }
 
@@ -472,7 +540,9 @@ public class LibraryService : ILibraryService
                         Tracks = albumTracks
                     };
                 })
-                .OrderBy(a => a.Artist).ThenBy(a => a.Year).ThenBy(a => a.Name)
+                .OrderBy(a => GetPrimaryArtist(a.Artist), StringComparer.OrdinalIgnoreCase)
+                .ThenBy(a => a.Year)
+                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             // Build album lookup dictionary
@@ -990,7 +1060,11 @@ public class LibraryService : ILibraryService
                     t.AlbumArtworkPath = album.ArtworkPath;
             }
 
-            _albums = albums;
+            _albums = albums
+                .OrderBy(a => GetPrimaryArtist(a.Artist), StringComparer.OrdinalIgnoreCase)
+                .ThenBy(a => a.Year)
+                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
             _artists = cache.Artists;
             _trackIndex = trackIndex;
             _albumIndex = albumIndex;
@@ -1051,6 +1125,15 @@ public class LibraryService : ILibraryService
         var hash = System.Security.Cryptography.MD5.HashData(
             System.Text.Encoding.UTF8.GetBytes(normalized));
         return new Guid(hash);
+    }
+
+    /// <summary>Returns the first artist token for sorting (e.g. "Bad Bunny" from "Bad Bunny & J Balvin").</summary>
+    private static string GetPrimaryArtist(string? artist)
+    {
+        if (string.IsNullOrWhiteSpace(artist))
+            return string.Empty;
+        var tokens = Track.ParseArtistTokens(artist);
+        return tokens.Length > 0 ? tokens[0] : artist;
     }
 
     private static Guid ComputeArtistId(string artistName)

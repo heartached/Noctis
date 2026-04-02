@@ -21,44 +21,38 @@
         <KeyBinding Gesture="Ctrl+N" Command="{Binding Sidebar.CreatePlaylistCommand}" />
     </Window.KeyBindings>
 
-    <Window.Styles>
-        <Style Selector="Button#SidebarToggleBtn:pointerover">
-            <Setter Property="Opacity" Value="0.9" />
-        </Style>
-    </Window.Styles>
 
-    <Panel>
-    <DockPanel x:Name="RootPanel" Focusable="True">
-        <!--
-            Zone B: Sidebar (left, fixed 220px, full height)
-            Docked first to ensure it spans from top to bottom
-        -->
-        <Border x:Name="SidebarWrapper" DockPanel.Dock="Left"
-                Width="220"
-                ClipToBounds="True">
-            <Border.Transitions>
-                <Transitions>
-                    <DoubleTransition Property="Width" Duration="0:0:0.2">
-                        <DoubleTransition.Easing>
-                            <CubicEaseOut/>
-                        </DoubleTransition.Easing>
-                    </DoubleTransition>
-                </Transitions>
-            </Border.Transitions>
-            <views:SidebarView Width="220"
-                               DataContext="{Binding Sidebar}" />
-        </Border>
+    <Panel Background="Transparent">
+    <DockPanel x:Name="RootPanel" Focusable="True" Background="Transparent" Margin="76,0,0,0">
+        <DockPanel.RenderTransform>
+            <TranslateTransform X="0">
+                <TranslateTransform.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="X" Duration="0:0:0.2">
+                            <DoubleTransition.Easing>
+                                <CubicEaseOut/>
+                            </DoubleTransition.Easing>
+                        </DoubleTransition>
+                    </Transitions>
+                </TranslateTransform.Transitions>
+            </TranslateTransform>
+        </DockPanel.RenderTransform>
 
-        <Grid RowDefinitions="Auto,*">
+        <Grid RowDefinitions="58,*">
             <!-- Zone A: Top bar left | centered playback island | right actions -->
             <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                <!-- Full-width bottom separator line -->
+                <Border Grid.ColumnSpan="2" VerticalAlignment="Bottom"
+                        Height="1" Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                        Opacity="0.08"
+                        IsVisible="{Binding IsLyricsViewActive, Converter={x:Static BoolConverters.Not}}" />
                 <!-- Left: page title / back button (spans both columns for background) -->
                 <views:TopBarView Grid.Column="0" Grid.ColumnSpan="2"
                                   DataContext="{Binding TopBar}"
                                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsLyricsViewActive, Converter={x:Static BoolConverters.Not}, FallbackValue=True}" />
 
                 <!-- Center: playback island (column 0 only — can never overlap column 1) -->
-                <views:PlaybackBarView Grid.Column="0"
+                <views:PlaybackBarView Grid.Column="0" Grid.ColumnSpan="2"
                                        DataContext="{Binding Player}"
                                        IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaybackBarVisible, FallbackValue=False}"
                                        HorizontalAlignment="Center"
@@ -169,14 +163,14 @@
                                 Command="{Binding PageShuffleArtistCommand}"
                                 ToolTip.Tip="Shuffle All" VerticalAlignment="Center">
                             <PathIcon Data="{StaticResource ShuffleIcon}"
-                                     Width="16" Height="16"
-                                     Foreground="White" />
+                                     Width="15" Height="15"
+                                     VerticalAlignment="Center" Foreground="White" />
                         </Button>
                         <Button Classes="accent-btn" Background="#E04060"
                                 BorderThickness="0" Padding="12,10" CornerRadius="999" Cursor="Hand"
                                 Command="{Binding PagePlayArtistCommand}"
                                 ToolTip.Tip="Play All" VerticalAlignment="Center">
-                            <Border Width="18" Height="18" Background="White"
+                            <Border Width="15" Height="15" Background="White" VerticalAlignment="Center"
                                     RenderOptions.BitmapInterpolationMode="HighQuality">
                                 <Border.OpacityMask>
                                     <ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" />
@@ -236,9 +230,47 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Zone C: Main Content Area + Queue Popup -->
-            <Grid Grid.Row="1" Background="{DynamicResource AppMainBackground}">
+            <!-- Zone C: Main Content Area + Lyrics Panel + Queue Popup -->
+            <DockPanel x:Name="ContentDockPanel" Grid.Row="1">
+                <!-- Lyrics side panel (right, below top bar) -->
+                <Border x:Name="LyricsPanelWrapper" DockPanel.Dock="Right"
+                        Width="0"
+                        Margin="8,8,8,12"
+                        CornerRadius="16"
+                        ClipToBounds="True">
+                    <Border.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Width" Duration="0:0:0.2">
+                                <DoubleTransition.Easing>
+                                    <CubicEaseOut/>
+                                </DoubleTransition.Easing>
+                            </DoubleTransition>
+                        </Transitions>
+                    </Border.Transitions>
+                    <Grid Width="340">
+                        <Grid>
+                            <!-- Base dark background -->
+                            <Border Background="{DynamicResource AppSidebarBackground}" CornerRadius="16" />
+                            <!-- Subtle color tint from album art -->
+                            <Border Background="{Binding Lyrics.LyricsBackgroundBrush}"
+                                    CornerRadius="16"
+                                    Opacity="0.85">
+                                <Border.Transitions>
+                                    <Transitions>
+                                        <DoubleTransition Property="Opacity" Duration="0:0:0.4">
+                                            <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
+                                        </DoubleTransition>
+                                    </Transitions>
+                                </Border.Transitions>
+                            </Border>
+                            <views:LyricsPanelView DataContext="{Binding Lyrics}" />
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Grid Background="{DynamicResource AppMainBackground}">
                 <ContentControl Content="{Binding CurrentView}"
+                                Classes="page-host"
                                 RenderTransformOrigin="50%,50%">
                     <ContentControl.Transitions>
                         <Transitions>
@@ -315,6 +347,7 @@
                                      BorderThickness="0"
                                      Margin="0,6,0,8"
                                      SelectionMode="Single"
+                                     AutoScrollToSelectedItem="False"
                                      ScrollViewer.VerticalScrollBarVisibility="Hidden"
                                      DragDrop.AllowDrop="True"
                                      DoubleTapped="OnQueueItemDoubleTapped">
@@ -423,7 +456,9 @@
                         </Grid>
                     </DockPanel>
                 </Border>
+
             </Grid>
+            </DockPanel>
 
             <!-- Debug panel overlay (toggled via Ctrl+Shift+D) -->
             <views:DebugPanelView Grid.Row="1"
@@ -465,27 +500,28 @@
         </StackPanel>
     </Border>
 
-    <!-- Sidebar toggle button (lyrics immersive mode) -->
-    <Button x:Name="SidebarToggleBtn"
-            Command="{Binding ToggleSidebarCommand}"
-            IsVisible="{Binding IsLyricsViewActive}"
-            Background="Transparent"
-            BorderThickness="0"
-            Padding="6,8"
-            Margin="8,8,0,0"
-            VerticalAlignment="Top"
+    <!-- Sidebar: overlaid so hover-expand doesn't reflow content -->
+    <Border x:Name="SidebarWrapper"
             HorizontalAlignment="Left"
-            Cursor="Hand"
-            Opacity="0.5"
-            FontSize="14"
-            Foreground="White"
-            Content="«">
-        <Button.Transitions>
+            VerticalAlignment="Stretch"
+            Width="60"
+            Margin="8,8,8,12"
+            CornerRadius="20"
+            ClipToBounds="True"
+            ZIndex="10">
+        <Border.Transitions>
             <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+                <DoubleTransition Property="Width" Duration="0:0:0.2">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
             </Transitions>
-        </Button.Transitions>
-    </Button>
+        </Border.Transitions>
+        <views:SidebarView HorizontalAlignment="Stretch"
+                           DataContext="{Binding Sidebar}" />
+    </Border>
+
     </Panel>
 
 </Window>

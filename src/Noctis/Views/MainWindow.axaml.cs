@@ -1,3 +1,4 @@
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -23,7 +24,9 @@ public partial class MainWindow : Window
     private System.ComponentModel.PropertyChangedEventHandler? _topBarPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _mainVmPropertyChangedHandler;
     private Border? _sidebarWrapper;
-    private Button? _sidebarToggleBtn;
+    private Border? _lyricsPanelWrapper;
+    private DockPanel? _contentDockPanel;
+    private DockPanel? _rootPanel;
 
     public MainWindow()
     {
@@ -54,19 +57,72 @@ public partial class MainWindow : Window
                 vm.TopBar.PropertyChanged += _topBarPropertyChangedHandler;
                 UpdateAlbumsToggleVisuals(vm.TopBar.IsAlbumsCoverFlowMode);
 
-                // Wire sidebar toggle (lyrics immersive mode)
+                // Wire lyrics panel + sidebar hover
                 _sidebarWrapper = this.FindControl<Border>("SidebarWrapper");
-                _sidebarToggleBtn = this.FindControl<Button>("SidebarToggleBtn");
+                _lyricsPanelWrapper = this.FindControl<Border>("LyricsPanelWrapper");
+                _contentDockPanel = this.FindControl<DockPanel>("ContentDockPanel");
+                _rootPanel = this.FindControl<DockPanel>("RootPanel");
                 _mainVmPropertyChangedHandler = (s, e) =>
                 {
+                    var mainVm2 = (MainWindowViewModel)s!;
+                    if (e.PropertyName == nameof(MainWindowViewModel.IsLyricsPanelOpen))
+                    {
+                        if (_lyricsPanelWrapper != null) _lyricsPanelWrapper.Width = mainVm2.IsLyricsPanelOpen ? 356 : 0;
+
+                        // Notify the albums view to freeze tile size during the animation
+                        var albumsView = this.FindControl<DockPanel>("ContentDockPanel")
+                            ?.GetVisualDescendants()
+                            .OfType<LibraryAlbumsView>()
+                            .FirstOrDefault();
+                        albumsView?.OnLyricsPanelAnimating();
+                    }
+                    if (e.PropertyName == nameof(MainWindowViewModel.IsLyricsViewActive))
+                    {
+                        if (_contentDockPanel != null)
+                        {
+                            var lyricsActive = mainVm2.IsLyricsViewActive;
+                            Grid.SetRow(_contentDockPanel, lyricsActive ? 0 : 1);
+                            Grid.SetRowSpan(_contentDockPanel, lyricsActive ? 2 : 1);
+                        }
+                        // Restore sidebar when leaving lyrics view
+                        if (!mainVm2.IsLyricsViewActive && mainVm2.IsSidebarHidden)
+                        {
+                            mainVm2.IsSidebarHidden = false;
+                            if (_sidebarWrapper != null) _sidebarWrapper.Width = 60;
+                        }
+                    }
                     if (e.PropertyName == nameof(MainWindowViewModel.IsSidebarHidden))
                     {
-                        var hidden = ((MainWindowViewModel)s!).IsSidebarHidden;
-                        if (_sidebarWrapper != null) _sidebarWrapper.Width = hidden ? 0 : 220;
-                        if (_sidebarToggleBtn != null) _sidebarToggleBtn.Content = hidden ? "»" : "«";
+                        if (_sidebarWrapper != null)
+                        {
+                            _sidebarWrapper.Width = mainVm2.IsSidebarHidden ? 0 : 60;
+                            _sidebarWrapper.IsVisible = !mainVm2.IsSidebarHidden;
+                        }
+                        if (_rootPanel != null)
+                        {
+                            _rootPanel.Margin = new Avalonia.Thickness(mainVm2.IsSidebarHidden ? 0 : 76, 0, 0, 0);
+                            if (_rootPanel.RenderTransform is TranslateTransform t)
+                                t.X = 0;
+                        }
                     }
                 };
                 vm.PropertyChanged += _mainVmPropertyChangedHandler;
+
+                // Sidebar hover expand/collapse
+                if (_sidebarWrapper != null)
+                {
+                    _sidebarWrapper.PropertyChanged += (_, e) =>
+                    {
+                        if (e.Property == Border.IsPointerOverProperty && !vm.IsSidebarHidden)
+                        {
+                            var expanded = _sidebarWrapper.IsPointerOver;
+                            _sidebarWrapper.Width = expanded ? 220 : 60;
+                            if (_rootPanel?.RenderTransform is TranslateTransform translate)
+                                translate.X = expanded ? 160 : 0;
+                            vm.Sidebar.IsExpanded = expanded;
+                        }
+                    };
+                }
 
                 // Initialize taskbar thumbnail buttons (Previous / Play-Pause / Next)
                 InitializeTaskbarButtons(vm);
@@ -79,11 +135,7 @@ public partial class MainWindow : Window
         // Volume control via mouse wheel and keyboard
         KeyDown += OnWindowKeyDown;
 
-        // Accept dragging audio files/folders from Explorer into the app.
-        DragDrop.SetAllowDrop(this, true);
-        AddHandler(DragDrop.DragOverEvent, OnWindowDragOver, RoutingStrategies.Tunnel);
-        AddHandler(DragDrop.DropEvent, OnWindowDrop, RoutingStrategies.Tunnel);
-        AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Tunnel);
+        // Drag-drop handlers are registered in OnLoaded (after visual tree is ready).
 
         Closing += (_, _) => CaptureWindowPlacement();
         Closed += OnWindowClosed;
@@ -173,12 +225,17 @@ public partial class MainWindow : Window
             _taskbar.NextClicked += () =>
                 Dispatcher.UIThread.Post(() => vm.Player.NextCommand.Execute(null));
 
-            // Update play/pause icon when playback state changes
+            // Update play/pause icon when playback state changes + mutual exclusion
             _playerPropertyChangedHandler = (_, e) =>
             {
                 if (e.PropertyName == nameof(PlayerViewModel.State))
                 {
                     _taskbar?.UpdatePlayPauseState(vm.Player.State == PlaybackState.Playing);
+                }
+                else if (e.PropertyName == nameof(PlayerViewModel.IsQueuePopupOpen))
+                {
+                    if (vm.Player.IsQueuePopupOpen)
+                        vm.IsLyricsPanelOpen = false;
                 }
             };
             vm.Player.PropertyChanged += _playerPropertyChangedHandler;
@@ -191,6 +248,10 @@ public partial class MainWindow : Window
 
     private void OnWindowDragOver(object? sender, DragEventArgs e)
     {
+        // Don't show import overlay for internal drags (album/track tiles dragged within the app)
+        if (e.Data.Contains(Helpers.DragFileBehavior.InternalDragFormat))
+            return;
+
         var paths = GetDroppedLocalPaths(e.Data);
         var hasImportable = paths.Any(IsImportablePath);
         e.DragEffects = hasImportable ? DragDropEffects.Copy : DragDropEffects.None;
@@ -205,6 +266,10 @@ public partial class MainWindow : Window
 
     private async void OnWindowDrop(object? sender, DragEventArgs e)
     {
+        // Ignore internal drags (album/track tiles dragged within the app)
+        if (e.Data.Contains(Helpers.DragFileBehavior.InternalDragFormat))
+            return;
+
         e.Handled = true;
         ShowDragOverlay(false);
         if (DataContext is not MainWindowViewModel vm) return;
@@ -367,10 +432,12 @@ public partial class MainWindow : Window
                     e.Handled = true;
                 }
                 break;
+#if DEBUG
             case Key.D when e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift):
                 vm.ToggleDebugPanel();
                 e.Handled = true;
                 break;
+#endif
         }
     }
 
@@ -414,6 +481,7 @@ public partial class MainWindow : Window
         }
 
         if (DataContext is not MainWindowViewModel vm) return;
+
         if (!vm.Player.IsQueuePopupOpen) return;
         DebugLogger.Info(DebugLogger.Category.ContextMenu, "MainWindow.GlobalPointerPressed(Tunnel)",
             $"queueOpen=true, source={e.Source?.GetType().Name}, will close queue popup");
@@ -422,9 +490,9 @@ public partial class MainWindow : Window
         var panel = this.FindControl<Border>("QueuePopupPanel");
         if (panel is { IsVisible: true })
         {
-            var pos = e.GetPosition(panel);
-            if (pos.X >= 0 && pos.Y >= 0 &&
-                pos.X <= panel.Bounds.Width && pos.Y <= panel.Bounds.Height)
+            var pos2 = e.GetPosition(panel);
+            if (pos2.X >= 0 && pos2.Y >= 0 &&
+                pos2.X <= panel.Bounds.Width && pos2.Y <= panel.Bounds.Height)
                 return;
         }
 
@@ -547,6 +615,22 @@ public partial class MainWindow : Window
     protected override void OnLoaded(RoutedEventArgs e)
     {
         base.OnLoaded(e);
+
+        // Register drag-drop for file import on both the Window and root Panel.
+        // AllowDrop must be set on the actual hit-test target, not just the Window.
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DragOverEvent, OnWindowDragOver, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(DragDrop.DropEvent, OnWindowDrop, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Tunnel, handledEventsToo: true);
+
+        var rootPanel = this.FindControl<Panel>("RootPanel")?.Parent as Panel;
+        if (rootPanel != null)
+        {
+            DragDrop.SetAllowDrop(rootPanel, true);
+            rootPanel.AddHandler(DragDrop.DragOverEvent, OnWindowDragOver, RoutingStrategies.Bubble, handledEventsToo: true);
+            rootPanel.AddHandler(DragDrop.DropEvent, OnWindowDrop, RoutingStrategies.Bubble, handledEventsToo: true);
+            rootPanel.AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Bubble, handledEventsToo: true);
+        }
 
         // Wire up drag-drop handlers on the queue popup ListBox
         var listBox = this.FindControl<ListBox>("QueuePopupListBox");

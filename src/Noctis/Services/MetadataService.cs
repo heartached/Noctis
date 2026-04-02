@@ -57,6 +57,25 @@ public class MetadataService : IMetadataService
 
     public Track? ReadTrackMetadata(string filePath)
     {
+        if (string.IsNullOrWhiteSpace(filePath))
+            return null;
+
+        // Reject paths with invalid characters
+        if (filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return null;
+
+        // Skip very large files that are unlikely to be audio (>2GB)
+        try
+        {
+            var fi = new FileInfo(filePath);
+            if (fi.Length > 2L * 1024 * 1024 * 1024)
+                return null;
+        }
+        catch
+        {
+            return null;
+        }
+
         try
         {
             using var file = TagLib.File.Create(filePath);

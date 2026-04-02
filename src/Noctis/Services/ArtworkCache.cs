@@ -1,32 +1,49 @@
+using System.Collections.Concurrent;
 using Avalonia.Media.Imaging;
 
 namespace Noctis.Services;
 
 /// <summary>
 /// Thread-safe LRU bitmap cache shared across the application.
-/// Decodes artwork at thumbnail size (300px) to minimize memory and decode time.
+/// Uses ConcurrentDictionary for lock-free reads on cache hits.
+/// Decodes artwork at thumbnail size (512px) to balance sharpness and memory.
 /// </summary>
 public static class ArtworkCache
 {
-    private static readonly LinkedList<(string Path, Bitmap Bitmap)> LruList = new();
-    private static readonly Dictionary<string, LinkedListNode<(string Path, Bitmap Bitmap)>> LruMap = new();
-    private static readonly object CacheLock = new();
-    private const int MaxCacheSize = 500;
+    private sealed class CacheEntry
+    {
+        public readonly Bitmap Bitmap;
+        public readonly string Path;
+        public long LastAccess; // atomic via Interlocked
+
+        public CacheEntry(string path, Bitmap bitmap, long accessCounter)
+        {
+            Path = path;
+            Bitmap = bitmap;
+            LastAccess = accessCounter;
+        }
+    }
+
+    private static readonly ConcurrentDictionary<string, CacheEntry> Cache =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private static long _accessCounter;
+    private static int _evictLock; // 0 = free, 1 = held — used with Monitor.TryEnter pattern via Interlocked
+
+    private const int MaxCacheSize = 2000;
+    private const int EvictBatchSize = 200;
     private const int DecodeWidth = 512;
 
     /// <summary>
     /// Returns a cached bitmap if available, or null on cache miss. No I/O performed.
+    /// Lock-free on the hot path.
     /// </summary>
     public static Bitmap? TryGet(string path)
     {
-        lock (CacheLock)
+        if (Cache.TryGetValue(path, out var entry))
         {
-            if (LruMap.TryGetValue(path, out var node))
-            {
-                LruList.Remove(node);
-                LruList.AddFirst(node);
-                return node.Value.Bitmap;
-            }
+            Interlocked.Increment(ref entry.LastAccess);
+            return entry.Bitmap;
         }
         return null;
     }
@@ -37,14 +54,7 @@ public static class ArtworkCache
     /// </summary>
     public static void Invalidate(string path)
     {
-        lock (CacheLock)
-        {
-            if (LruMap.TryGetValue(path, out var node))
-            {
-                LruList.Remove(node);
-                LruMap.Remove(path);
-            }
-        }
+        Cache.TryRemove(path, out _);
         Invalidated?.Invoke(path);
     }
 
@@ -64,32 +74,38 @@ public static class ArtworkCache
             if (!File.Exists(path))
                 return null;
 
+            // Double-check: another thread may have cached this while we waited for I/O to start
+            if (Cache.TryGetValue(path, out var hit))
+            {
+                Interlocked.Increment(ref hit.LastAccess);
+                return hit.Bitmap;
+            }
+
             Bitmap bitmap;
             using (var stream = File.OpenRead(path))
                 bitmap = Bitmap.DecodeToWidth(stream, DecodeWidth, BitmapInterpolationMode.HighQuality);
 
-            lock (CacheLock)
+            var counter = Interlocked.Increment(ref _accessCounter);
+            var newEntry = new CacheEntry(path, bitmap, counter);
+
+            if (!Cache.TryAdd(path, newEntry))
             {
-                // Another thread may have cached this while we were loading
-                if (LruMap.TryGetValue(path, out var existing))
+                // Another thread won the race — discard our decode
+                bitmap.Dispose();
+                if (Cache.TryGetValue(path, out var existing))
                 {
-                    LruList.Remove(existing);
-                    LruList.AddFirst(existing);
-                    bitmap.Dispose();
-                    return existing.Value.Bitmap;
+                    Interlocked.Increment(ref existing.LastAccess);
+                    return existing.Bitmap;
                 }
+                return null;
+            }
 
-                // Evict oldest entries if cache is full
-                while (LruList.Count >= MaxCacheSize)
-                {
-                    var oldest = LruList.Last!;
-                    LruList.RemoveLast();
-                    LruMap.Remove(oldest.Value.Path);
-                    oldest.Value.Bitmap.Dispose();
-                }
-
-                var newNode = LruList.AddFirst((path, bitmap));
-                LruMap[path] = newNode;
+            // Evict if over capacity — non-blocking; skip if another thread is already evicting
+            if (Cache.Count > MaxCacheSize &&
+                Interlocked.CompareExchange(ref _evictLock, 1, 0) == 0)
+            {
+                try { EvictOldest(); }
+                finally { Interlocked.Exchange(ref _evictLock, 0); }
             }
 
             return bitmap;
@@ -98,5 +114,14 @@ public static class ArtworkCache
         {
             return null;
         }
+    }
+
+    private static void EvictOldest()
+    {
+        // Collect entries, sort by last access, evict the oldest batch
+        var entries = Cache.Values.OrderBy(e => Interlocked.Read(ref e.LastAccess)).Take(EvictBatchSize);
+        foreach (var entry in entries)
+            Cache.TryRemove(entry.Path, out _);
+        // We intentionally do not dispose bitmaps here; UI controls may still hold references.
     }
 }

@@ -3,68 +3,47 @@
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
+             xmlns:ctrl="using:Noctis.Controls"
              x:Class="Noctis.Views.SidebarView"
              x:DataType="vm:SidebarViewModel"
-             Background="{DynamicResource AppSidebarBackground}">
+             Background="{DynamicResource IslandBackground}"
+             Foreground="{DynamicResource IslandForeground}">
 
     <UserControl.Resources>
         <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry" />
+        <conv:HexColorToBrushConverter x:Key="HexColorToBrush" />
+        <conv:BoolToHorizontalAlignmentConverter x:Key="BoolToAlignment" />
+        <conv:BoolToThicknessConverter x:Key="BoolToThickness" />
     </UserControl.Resources>
 
-    <Border BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-            BorderThickness="0,0,1,0"
-            Padding="0,4">
+    <Border CornerRadius="20">
         <DockPanel LastChildFill="True">
 
-            <!-- Settings pinned to absolute bottom (must be declared first for DockPanel.Dock) -->
-            <StackPanel DockPanel.Dock="Bottom" Background="Transparent">
-                <ListBox Classes="sidebar"
-                         x:Name="SystemList"
-                         ItemsSource="{Binding SystemItems}"
-                         SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
-                         SelectionChanged="OnNavListSelectionChanged"
-                         Margin="8,8,8,8">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="m:NavItem">
-                            <StackPanel Orientation="Horizontal" Spacing="14">
-                                <Grid Width="20"
-                                      Height="20"
-                                      VerticalAlignment="Center">
-                                    <Border RenderOptions.BitmapInterpolationMode="HighQuality"
-                                            Background="{DynamicResource SystemControlForegroundBaseHighBrush}">
-                                        <Border.OpacityMask>
-                                            <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
-                                                        Stretch="Uniform" />
-                                        </Border.OpacityMask>
-                                    </Border>
-                                </Grid>
-                                <TextBlock Text="{Binding Label}"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </StackPanel>
+            <!-- Top spacing -->
+            <Border DockPanel.Dock="Top" Height="8" />
 
             <!-- Scrollable content fills remaining space -->
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
-                    <!-- Home section -->
+
+                    <!-- Main navigation: Home, Songs, Albums, Artists, Playlists, Settings -->
                     <ListBox Classes="sidebar"
-                             x:Name="HomeList"
-                             ItemsSource="{Binding HomeItems}"
+                             x:Name="NavList"
+                             ItemsSource="{Binding NavItems}"
                              SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
                              SelectionChanged="OnNavListSelectionChanged"
-                             Margin="8,10,8,8">
+                             Margin="6,0,6,4">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="m:NavItem">
-                                <StackPanel Orientation="Horizontal" Spacing="14">
+                                <StackPanel Orientation="Horizontal" Spacing="14"
+                                            ToolTip.Tip="{Binding Label}"
+                                            HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
                                     <Grid Width="20"
                                           Height="20"
                                           VerticalAlignment="Center">
                                         <Border RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                Background="{DynamicResource SystemControlForegroundBaseHighBrush}">
+                                                Background="{DynamicResource IslandForeground}">
                                             <Border.OpacityMask>
                                                 <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
                                                             Stretch="Uniform" />
@@ -72,73 +51,180 @@
                                         </Border>
                                     </Grid>
                                     <TextBlock Text="{Binding Label}"
-                                               VerticalAlignment="Center" />
+                                               VerticalAlignment="Center"
+                                               IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <!-- Library header and items -->
-                    <TextBlock Text="LIBRARY"
-                               Classes="section-header" />
+                    <!-- Horizontal divider -->
+                    <Border Height="1"
+                            Background="{DynamicResource IslandForeground}"
+                            Opacity="0.1"
+                            Margin="8,8,8,8" />
 
-                    <ListBox Classes="sidebar"
-                             x:Name="LibraryList"
-                             ItemsSource="{Binding LibraryItems}"
-                             SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
-                             SelectionChanged="OnNavListSelectionChanged"
-                             Margin="8,0">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate x:DataType="m:NavItem">
-                                <StackPanel Orientation="Horizontal" Spacing="14">
-                                    <Grid Width="20"
-                                          Height="20"
-                                          VerticalAlignment="Center">
-                                        <Border RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                Background="{DynamicResource SystemControlForegroundBaseHighBrush}">
-                                            <Border.OpacityMask>
-                                                <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
-                                                            Stretch="Uniform" />
-                                            </Border.OpacityMask>
-                                        </Border>
-                                    </Grid>
-                                    <TextBlock Text="{Binding Label}"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-
-                    <!-- Favorites header and items -->
-                    <TextBlock Text="FAVORITES"
-                               Classes="section-header" />
-
+                    <!-- Favorites -->
                     <ListBox Classes="sidebar"
                              x:Name="FavoritesList"
                              ItemsSource="{Binding FavoritesItems}"
                              SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
                              SelectionChanged="OnNavListSelectionChanged"
-                             Margin="8,0,8,16">
+                             Margin="6,0,6,4">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="m:NavItem">
-                                <StackPanel Orientation="Horizontal" Spacing="14">
-                                    <Grid Width="20"
-                                          Height="20"
-                                          VerticalAlignment="Center">
-                                        <Border RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                Background="{DynamicResource SystemControlForegroundBaseHighBrush}">
-                                            <Border.OpacityMask>
-                                                <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
-                                                            Stretch="Uniform" />
-                                            </Border.OpacityMask>
-                                        </Border>
-                                    </Grid>
-                                    <TextBlock Text="{Binding Label}"
-                                               VerticalAlignment="Center" />
+                                <StackPanel Orientation="Horizontal" Spacing="10"
+                                            ToolTip.Tip="{Binding Label}"
+                                            HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                                    <!-- Heart cover art thumbnail -->
+                                    <Border Width="28" Height="28"
+                                            CornerRadius="14"
+                                            ClipToBounds="True"
+                                            VerticalAlignment="Center"
+                                            Background="#E04060">
+                                        <PathIcon Data="{StaticResource HeartFillIcon}"
+                                                  Width="14" Height="14"
+                                                  Foreground="White"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center" Spacing="1"
+                                                IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">
+                                        <TextBlock Text="{Binding Label}"
+                                                   FontSize="13" />
+                                        <TextBlock FontSize="11"
+                                                   Opacity="0.5">
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0} songs">
+                                                    <Binding Path="$parent[UserControl].((vm:SidebarViewModel)DataContext).FavoritesCount" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+
+                    <!-- Horizontal divider below Favorites -->
+                    <Border Height="1"
+                            Background="{DynamicResource IslandForeground}"
+                            Opacity="0.1"
+                            Margin="8,2,8,8" />
+
+                    <!-- Playlists header with + button (only visible when expanded) -->
+                    <Grid Margin="18,4,12,4"
+                          IsVisible="{Binding IsExpanded}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="PLAYLISTS"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Opacity="0.5"
+                                   VerticalAlignment="Center" />
+                        <Button Grid.Column="1"
+                                Command="{Binding CreatePlaylistCommand}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="4"
+                                Cursor="Hand"
+                                CornerRadius="4"
+                                ToolTip.Tip="Create new playlist">
+                            <PathIcon Data="{StaticResource AddIcon}"
+                                      Width="16" Height="16"
+                                      Foreground="{DynamicResource IslandForeground}"
+                                      Opacity="0.6" />
+                        </Button>
+                    </Grid>
+
+                    <!-- User playlists with artwork thumbnails (scrolls when >12) -->
+                    <ListBox Classes="sidebar"
+                             x:Name="PlaylistList"
+                             ItemsSource="{Binding PlaylistItems}"
+                             SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
+                             SelectionChanged="OnNavListSelectionChanged"
+                             MaxHeight="528"
+                             ScrollViewer.VerticalScrollBarVisibility="Hidden"
+                             Margin="6,0,6,4">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="m:PlaylistNavItem">
+                                <StackPanel Orientation="Horizontal" Spacing="10"
+                                            ToolTip.Tip="{Binding Label}"
+                                            HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                                    <!-- Playlist artwork thumbnail -->
+                                    <Border Width="28" Height="28"
+                                            CornerRadius="14"
+                                            ClipToBounds="True"
+                                            VerticalAlignment="Center">
+                                        <Panel>
+                                            <!-- Layer 1: Colored background (always present) -->
+                                            <Border Background="{Binding Color, Converter={StaticResource HexColorToBrush}}"
+                                                    CornerRadius="14" />
+
+                                            <!-- Layer 2: Fallback playlist icon -->
+                                            <PathIcon Data="{StaticResource PlaylistsIcon}"
+                                                      Width="12" Height="12"
+                                                      Foreground="#80FFFFFF"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      IsVisible="{Binding ShowFallbackIcon}" />
+
+                                            <!-- Layer 3: Single album art (only 1 unique art) -->
+                                            <ctrl:CachedImage SourcePath="{Binding Art1}"
+                                                              Stretch="UniformToFill"
+                                                              IsVisible="{Binding HasSingleArt}" />
+
+                                            <!-- Layer 4: 2x2 collage (2+ unique arts) -->
+                                            <Grid RowDefinitions="*,*"
+                                                  ColumnDefinitions="*,*"
+                                                  IsVisible="{Binding HasCollageArt}">
+                                                <ctrl:CachedImage Grid.Row="0" Grid.Column="0"
+                                                                  SourcePath="{Binding Art1}"
+                                                                  Stretch="UniformToFill" />
+                                                <ctrl:CachedImage Grid.Row="0" Grid.Column="1"
+                                                                  SourcePath="{Binding Art2}"
+                                                                  Stretch="UniformToFill" />
+                                                <ctrl:CachedImage Grid.Row="1" Grid.Column="0"
+                                                                  SourcePath="{Binding Art3}"
+                                                                  Stretch="UniformToFill" />
+                                                <ctrl:CachedImage Grid.Row="1" Grid.Column="1"
+                                                                  SourcePath="{Binding Art4}"
+                                                                  Stretch="UniformToFill" />
+                                            </Grid>
+
+                                            <!-- Layer 5: Custom cover art (highest priority, covers everything) -->
+                                            <ctrl:CachedImage SourcePath="{Binding CoverArtPath}"
+                                                              Stretch="UniformToFill"
+                                                              IsVisible="{Binding HasCustomArt}" />
+                                        </Panel>
+                                    </Border>
+
+                                    <!-- Playlist name and track count (only when expanded) -->
+                                    <StackPanel VerticalAlignment="Center" Spacing="1"
+                                                IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">
+                                        <TextBlock Text="{Binding Label}"
+                                                   FontSize="13"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="120" />
+                                        <TextBlock FontSize="11"
+                                                   Opacity="0.5"
+                                                   TextTrimming="CharacterEllipsis">
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0} songs">
+                                                    <Binding Path="TrackCount" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+
                 </StackPanel>
             </ScrollViewer>
 

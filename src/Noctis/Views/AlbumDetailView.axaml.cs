@@ -22,6 +22,37 @@ public partial class AlbumDetailView : UserControl
         InitializeComponent();
 
         TrackList.DoubleTapped += OnTrackDoubleTapped;
+        TrackList.ContainerPrepared += OnTrackContainerPrepared;
+        TrackList.ContainerClearing += OnTrackContainerClearing;
+    }
+
+    private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)
+    {
+        if (e.Container is ListBoxItem item)
+            item.ContextRequested += OnTrackItemContextRequested;
+    }
+
+    private void OnTrackContainerClearing(object? sender, ContainerClearingEventArgs e)
+    {
+        if (e.Container is ListBoxItem item)
+            item.ContextRequested -= OnTrackItemContextRequested;
+    }
+
+    private void OnTrackItemContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (e.Handled) return; // Grid's AXAML ContextMenu already handled it (non-dead-zone click)
+        if (sender is not ListBoxItem item) return;
+
+        // Dead zone click — find the Grid's context menu and show it
+        Grid? grid = null;
+        foreach (var desc in item.GetVisualDescendants())
+        {
+            if (desc is Grid g && g.ContextMenu != null)
+            { grid = g; break; }
+        }
+        if (grid?.ContextMenu == null) return;
+        grid.ContextMenu.Open(grid);
+        e.Handled = true;
     }
 
     private void OnContextMenuOpened(object? sender, RoutedEventArgs e)
@@ -117,6 +148,9 @@ public partial class AlbumDetailView : UserControl
 
     private void OnTrackDoubleTapped(object? sender, TappedEventArgs e)
     {
+        // Ignore double-taps on the 3-dot options button — it should only open the menu
+        if (e.Source is Control source && source.FindAncestorOfType<Button>() != null)
+            return;
         if (DataContext is not AlbumDetailViewModel vm) return;
         if (TrackList.SelectedItem is Track track)
         {

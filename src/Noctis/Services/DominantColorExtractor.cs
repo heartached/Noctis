@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media;
@@ -40,12 +41,30 @@ public static class DominantColorExtractor
 
     private static readonly Color FallbackColor = Color.FromRgb(0x1A, 0x1A, 0x2E);
 
+    private static readonly ConcurrentDictionary<string, Color> ColorCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Returns a cached dominant color for the given artwork path, or extracts and caches it.
+    /// </summary>
+    public static Color GetOrExtractDominantColor(string artworkPath, Bitmap bitmap)
+    {
+        if (ColorCache.TryGetValue(artworkPath, out var cached))
+            return cached;
+
+        var color = ExtractDominantColor(bitmap);
+        ColorCache.TryAdd(artworkPath, color);
+        return color;
+    }
+
     /// <summary>
     /// Extracts the dominant color from a bitmap using center-weighted pixel sampling.
     /// Downscales to ~50x50 for performance and skips near-black/near-white pixels.
     /// </summary>
-    public static Color ExtractDominantColor(Bitmap bitmap)
+    public static Color ExtractDominantColor(Bitmap? bitmap)
     {
+        if (bitmap == null || bitmap.Size.Width <= 0 || bitmap.Size.Height <= 0)
+            return FallbackColor;
+
         const int sampleSize = 50;
         const int brightnessMin = 15;
         const int brightnessMax = 240;
@@ -199,14 +218,14 @@ public static class DominantColorExtractor
 
         return new LinearGradientBrush
         {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+            StartPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
             GradientStops = new GradientStops
             {
-                new GradientStop(darkest, 0.0),
-                new GradientStop(dark,    0.35),
-                new GradientStop(mid,     0.70),
-                new GradientStop(accent,  1.0),
+                new GradientStop(accent,  0.0),
+                new GradientStop(mid,     0.30),
+                new GradientStop(dark,    0.65),
+                new GradientStop(darkest, 1.0),
             }
         };
     }

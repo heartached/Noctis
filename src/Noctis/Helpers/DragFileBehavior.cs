@@ -15,6 +15,9 @@ namespace Noctis.Helpers;
 /// </summary>
 public static class DragFileBehavior
 {
+    /// <summary>Custom format marker so the main window can distinguish internal drags from external file drops.</summary>
+    public const string InternalDragFormat = "Noctis.InternalDrag";
+
     public static readonly AttachedProperty<bool> EnableFileDragProperty =
         AvaloniaProperty.RegisterAttached<Control, bool>("EnableFileDrag", typeof(DragFileBehavior));
 
@@ -84,6 +87,7 @@ public static class DragFileBehavior
             {
                 var data = new DataObject();
                 data.Set(DataFormats.Files, items);
+                data.Set(InternalDragFormat, true);
                 await DragDrop.DoDragDrop(e, data, DragDropEffects.Copy);
             }
         }

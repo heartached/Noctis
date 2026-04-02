@@ -2,16 +2,16 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:conv="using:Noctis.Converters"
+        xmlns:ctrl="using:Noctis.Controls"
         x:Class="Noctis.Views.EditPlaylistDialog"
         x:DataType="vm:EditPlaylistDialogViewModel"
         Title="Edit Playlist"
-        Width="420" Height="620"
-        WindowStartupLocation="CenterOwner"
         CanResize="False"
         SystemDecorations="None"
-        ExtendClientAreaToDecorationsHint="True"
         TransparencyLevelHint="Transparent"
-        Background="Transparent">
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
 
     <Window.Resources>
         <conv:HexColorToBrushConverter x:Key="HexColorConverter" />
@@ -19,32 +19,41 @@
     </Window.Resources>
 
     <Window.Styles>
-        <!-- Remove red focus outline from text boxes in this dialog -->
+        <Style Selector="TextBox /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="#E74856" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
         <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BorderBrush" Value="#E74856" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style Selector="TextBox:focus-within /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BorderBrush" Value="#E74856" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BorderBrush" Value="#E74856" />
         </Style>
     </Window.Styles>
 
-    <!-- Outer border gives the popup its rounded shape and shadow -->
-    <Border CornerRadius="16"
+    <!-- Full-window dimmed overlay that captures all input -->
+    <Border Background="#50000000"
+            PointerPressed="OnOverlayPointerPressed"
+            PointerWheelChanged="OnOverlayWheel">
+
+    <!-- Centered dialog card -->
+    <Border CornerRadius="24"
             ClipToBounds="True"
-            Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+            Background="{DynamicResource AppMainBackground}"
+            Width="450"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
             BoxShadow="0 8 32 0 #60000000">
         <DockPanel>
 
             <!-- Bottom: Done / Cancel buttons -->
             <Border DockPanel.Dock="Bottom"
-                    Padding="24,12"
-                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                    BorderThickness="0,1,0,0">
+                    Padding="24,12,24,16">
                 <Grid ColumnDefinitions="*,Auto,Auto">
                     <Button Grid.Column="1"
                             Content="Done"
@@ -70,6 +79,7 @@
                 </Grid>
             </Border>
 
+            <!-- Content -->
             <StackPanel Margin="24,20,24,16" Spacing="14">
 
                 <!-- Title -->
@@ -78,29 +88,47 @@
                            FontWeight="Bold"
                            HorizontalAlignment="Center" />
 
-                <!-- Cover art (centered, bigger) -->
-                <Border Width="220" Height="220"
+                <!-- Cover art (centered) -->
+                <Border Width="160" Height="160"
                         CornerRadius="10"
                         ClipToBounds="True"
                         BoxShadow="0 4 12 0 #40000000"
                         HorizontalAlignment="Center"
                         Background="{Binding PlaylistColor, Converter={StaticResource HexColorConverter}}">
                     <Panel>
+                        <!-- Fallback icon -->
                         <TextBlock Text="&#x266B;"
-                                   FontSize="60"
+                                   FontSize="48"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
                                    Foreground="White"
                                    Opacity="0.25"
-                                   IsVisible="{Binding CoverArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                   IsVisible="{Binding ShowFallbackIcon}" />
+
+                        <!-- Single album art -->
+                        <ctrl:CachedImage SourcePath="{Binding Art1}"
+                                          Stretch="UniformToFill"
+                                          IsVisible="{Binding HasSingleArt}" />
+
+                        <!-- 2x2 collage -->
+                        <Grid RowDefinitions="*,*"
+                              ColumnDefinitions="*,*"
+                              IsVisible="{Binding HasCollageArt}">
+                            <ctrl:CachedImage Grid.Row="0" Grid.Column="0" SourcePath="{Binding Art1}" Stretch="UniformToFill" />
+                            <ctrl:CachedImage Grid.Row="0" Grid.Column="1" SourcePath="{Binding Art2}" Stretch="UniformToFill" />
+                            <ctrl:CachedImage Grid.Row="1" Grid.Column="0" SourcePath="{Binding Art3}" Stretch="UniformToFill" />
+                            <ctrl:CachedImage Grid.Row="1" Grid.Column="1" SourcePath="{Binding Art4}" Stretch="UniformToFill" />
+                        </Grid>
+
+                        <!-- Custom cover art (highest priority) -->
                         <Image Source="{Binding CoverArtPath, Converter={StaticResource ArtworkConverter}}"
                                Stretch="UniformToFill"
                                RenderOptions.BitmapInterpolationMode="HighQuality"
-                               IsVisible="{Binding CoverArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                               IsVisible="{Binding HasCustomArt}" />
                     </Panel>
                 </Border>
 
-                <!-- Set / Remove cover art buttons (smaller) -->
+                <!-- Set / Remove cover art buttons -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
                     <Button Content="Set Cover Art"
                             Command="{Binding SetCoverArtCommand}"
@@ -138,17 +166,17 @@
                                IsVisible="{Binding ShowNameRequiredError}" />
                 </StackPanel>
 
-                <!-- Playlist Description (Optional) -->
+                <!-- Playlist Description -->
                 <StackPanel Spacing="4">
-                    <TextBlock Text="Description (Optional)" FontSize="13" FontWeight="SemiBold" />
+                    <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" />
                     <TextBox Text="{Binding PlaylistDescription}"
                              Watermark="Enter playlist description..."
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
                              MinHeight="70" />
                 </StackPanel>
-
             </StackPanel>
         </DockPanel>
+    </Border>
     </Border>
 </Window>

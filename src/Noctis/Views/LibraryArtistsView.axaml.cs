@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.ViewModels;
@@ -95,7 +96,7 @@ public partial class LibraryArtistsView : UserControl
                 if (sv == null) return;
 
                 // Wait until the ScrollViewer extent is tall enough, with safety limit
-                if (sv.Extent.Height < targetOffset && attempts < 50)
+                if (sv.Extent.Height < targetOffset && attempts < 10)
                     return;
 
                 // Clamp to actual extent if content shrank since last visit

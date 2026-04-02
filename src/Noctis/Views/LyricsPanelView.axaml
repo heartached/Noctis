@@ -1,0 +1,209 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             xmlns:conv="using:Noctis.Converters"
+             x:Class="Noctis.Views.LyricsPanelView"
+             x:DataType="vm:LyricsViewModel">
+
+    <UserControl.Resources>
+        <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
+    </UserControl.Resources>
+
+    <Panel>
+        <!-- No track playing -->
+        <TextBlock Text="No track playing"
+                   IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNull}}"
+                   Foreground="{Binding LyricsPrimaryFg}" Opacity="0.3"
+                   FontSize="13" HorizontalAlignment="Center"
+                   Margin="0,40,0,0"/>
+
+        <!-- Opacity-masked lyrics container -->
+        <Border ClipToBounds="True"
+                VerticalAlignment="Stretch"
+                IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <Border.OpacityMask>
+                <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
+                    <GradientStop Color="#B0FFFFFF" Offset="0.0"/>
+                    <GradientStop Color="#E8FFFFFF" Offset="0.04"/>
+                    <GradientStop Color="#FFFFFFFF" Offset="0.10"/>
+                    <GradientStop Color="#FFFFFFFF" Offset="0.90"/>
+                    <GradientStop Color="#E8FFFFFF" Offset="0.96"/>
+                    <GradientStop Color="#B0FFFFFF" Offset="1.0"/>
+                </LinearGradientBrush>
+            </Border.OpacityMask>
+
+            <ScrollViewer x:Name="PanelScrollViewer"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Hidden"
+                          Padding="16,0,18,0">
+                <ItemsControl x:Name="PanelLyricsItems"
+                              ItemsSource="{Binding LyricLines}"
+                              Margin="0,0,0,20"
+                              HorizontalAlignment="Stretch">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Vertical" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="m:LyricLine">
+                            <Button Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Margin="0,10"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
+                                    Cursor="Hand"
+                                    IsHitTestVisible="{Binding IsClickable}"
+                                    Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
+                                    CommandParameter="{Binding}">
+                                <Grid ColumnDefinitions="*">
+                                    <!-- Main text layer -->
+                                    <TextBlock Text="{Binding Text}"
+                                               FontSize="{Binding IsActive, Converter={StaticResource BoolToOpacity}, ConverterParameter=22;26}"
+                                               FontWeight="Bold"
+                                               Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
+                                               HorizontalAlignment="Left"
+                                               MaxWidth="306"
+                                               Opacity="{Binding LineOpacity}"
+                                               IsVisible="{Binding !IsIntroPlaceholder}"
+                                               TextWrapping="Wrap">
+                                        <TextBlock.Transitions>
+                                            <Transitions>
+                                                <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                                <DoubleTransition Property="FontSize" Duration="0:0:0.4" Easing="CubicEaseInOut"/>
+                                            </Transitions>
+                                        </TextBlock.Transitions>
+                                    </TextBlock>
+                                    <!-- Intro dots (animated, matching main lyrics view) -->
+                                    <StackPanel Orientation="Horizontal"
+                                                Spacing="6"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                Margin="0,8"
+                                                Opacity="{Binding LineOpacity}"
+                                                IsVisible="{Binding IsIntroPlaceholder}"
+                                                Classes.active="{Binding IsActive}">
+                                        <StackPanel.Transitions>
+                                            <Transitions>
+                                                <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                            </Transitions>
+                                        </StackPanel.Transitions>
+                                        <Ellipse x:Name="PanelDot1" Width="7" Height="7" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}">
+                                            <Ellipse.Styles>
+                                                <Style Selector="StackPanel.active Ellipse#PanelDot1">
+                                                    <Style.Animations>
+                                                        <Animation Duration="0:0:1.8" IterationCount="INFINITE">
+                                                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                            <KeyFrame Cue="16%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                                                            <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                        </Animation>
+                                                    </Style.Animations>
+                                                </Style>
+                                                <Style Selector="StackPanel:not(.active) Ellipse#PanelDot1">
+                                                    <Setter Property="Opacity" Value="1.0"/>
+                                                </Style>
+                                            </Ellipse.Styles>
+                                        </Ellipse>
+                                        <Ellipse x:Name="PanelDot2" Width="7" Height="7" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}">
+                                            <Ellipse.Styles>
+                                                <Style Selector="StackPanel.active Ellipse#PanelDot2">
+                                                    <Style.Animations>
+                                                        <Animation Duration="0:0:1.8" IterationCount="INFINITE" Delay="0:0:0.3">
+                                                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                            <KeyFrame Cue="16%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                                                            <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                        </Animation>
+                                                    </Style.Animations>
+                                                </Style>
+                                                <Style Selector="StackPanel:not(.active) Ellipse#PanelDot2">
+                                                    <Setter Property="Opacity" Value="1.0"/>
+                                                </Style>
+                                            </Ellipse.Styles>
+                                        </Ellipse>
+                                        <Ellipse x:Name="PanelDot3" Width="7" Height="7" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}">
+                                            <Ellipse.Styles>
+                                                <Style Selector="StackPanel.active Ellipse#PanelDot3">
+                                                    <Style.Animations>
+                                                        <Animation Duration="0:0:1.8" IterationCount="INFINITE" Delay="0:0:0.6">
+                                                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                            <KeyFrame Cue="16%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                                                            <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                        </Animation>
+                                                    </Style.Animations>
+                                                </Style>
+                                                <Style Selector="StackPanel:not(.active) Ellipse#PanelDot3">
+                                                    <Setter Property="Opacity" Value="1.0"/>
+                                                </Style>
+                                            </Ellipse.Styles>
+                                        </Ellipse>
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- No lyrics found + Search button -->
+        <StackPanel IsVisible="{Binding ShowSearchButton}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="12">
+            <TextBlock Text="{Binding SearchFailedMessage}"
+                       FontSize="14"
+                       Foreground="{Binding LyricsPrimaryFg}"
+                       Opacity="0.4"
+                       HorizontalAlignment="Center"
+                       IsVisible="{Binding SearchFailedMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <Button HorizontalAlignment="Center"
+                    Background="#E74856"
+                    Foreground="White"
+                    Padding="16,8"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    CornerRadius="20"
+                    Cursor="Hand"
+                    Command="{Binding SearchLyricsCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Data="{StaticResource SearchGlobeIcon}"
+                             Width="13" Height="13"
+                             Foreground="White"
+                             VerticalAlignment="Center"/>
+                    <TextBlock Text="Search Lyrics" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+        </StackPanel>
+
+        <!-- Searching indicator with pulse animation -->
+        <TextBlock x:Name="PanelSearchingText"
+                   Text="Searching for Lyrics..."
+                   FontSize="14"
+                   Foreground="{Binding LyricsPrimaryFg}"
+                   Opacity="0.5"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding IsSearching}">
+            <TextBlock.Styles>
+                <Style Selector="TextBlock#PanelSearchingText[IsVisible=True]">
+                    <Style.Animations>
+                        <Animation Duration="0:0:1.5" IterationCount="INFINITE"
+                                   Easing="SineEaseInOut" PlaybackDirection="Alternate">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.3"/>
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="1.0"/>
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </TextBlock.Styles>
+        </TextBlock>
+    </Panel>
+</UserControl>

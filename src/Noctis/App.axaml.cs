@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Noctis.Controls;
 using Noctis.Services;
 using Noctis.Views;
 using Noctis.ViewModels;
@@ -13,9 +14,31 @@ public partial class App : Application
     /// <summary>Global service provider, configured in Program.cs.</summary>
     public static IServiceProvider? Services { get; set; }
 
+    /// <summary>Cached view locator for pre-warming heavy views.</summary>
+    public static CachedViewLocator? CachedLocator { get; private set; }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+
+        // Cache heavy views so they aren't recreated on every navigation.
+        // Views with complex templates (virtualized lists, context menus)
+        // take ~1s to build from scratch. Caching eliminates this lag.
+        var cachedLocator = new CachedViewLocator(new Dictionary<Type, Func<Avalonia.Controls.Control>>
+        {
+            [typeof(LibrarySongsViewModel)] = () => new LibrarySongsView(),
+            [typeof(LibraryAlbumsViewModel)] = () => new LibraryAlbumsView(),
+            [typeof(LibraryArtistsViewModel)] = () => new LibraryArtistsView(),
+            [typeof(CoverFlowViewModel)] = () => new CoverFlowView(),
+            [typeof(HomeViewModel)] = () => new HomeView(),
+            [typeof(FavoritesViewModel)] = () => new FavoritesView(),
+            [typeof(LibraryPlaylistsViewModel)] = () => new LibraryPlaylistsView(),
+            [typeof(StatisticsViewModel)] = () => new StatisticsView(),
+            [typeof(QueueViewModel)] = () => new QueueView(),
+            [typeof(SettingsViewModel)] = () => new SettingsView(),
+        });
+        DataTemplates.Insert(0, cachedLocator);
+        CachedLocator = cachedLocator;
 
         // Global error capture — logs to DebugLogger when enabled
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>

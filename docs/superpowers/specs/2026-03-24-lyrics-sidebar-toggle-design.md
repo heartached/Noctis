@@ -7,7 +7,7 @@ Add a toggle button visible only in the lyrics view that slides the sidebar out/
 ## Behavior
 
 - **Toggle button** appears in the top-left corner of the content area only when `IsLyricsViewActive` is true.
-- Clicking it hides the sidebar with a slide-out animation (width 220 → 0, ~250ms, `CubicEaseOut`).
+- Clicking it hides the sidebar with a slide-out animation (width 220 → 0, ~200ms, `CubicEaseOut`).
 - Clicking again slides it back in (0 → 220).
 - The sidebar wrapper has `ClipToBounds="True"` so content doesn't overflow during animation.
 - **Session persistence:** `IsSidebarHidden` stays across track changes and lyrics re-entry. Resets on app restart.
@@ -26,6 +26,11 @@ Add a toggle button visible only in the lyrics view that slides the sidebar out/
 |------|--------|
 | `MainWindowViewModel.cs` | Add `IsSidebarHidden` bool property, `ToggleSidebarCommand`, logic to force-show on non-lyrics nav and re-apply on lyrics entry |
 | `MainWindow.axaml` | Wrap sidebar in a container with animated width + `ClipToBounds`. Add toggle button overlay bound to `IsLyricsViewActive` visibility and `IsSidebarHidden` for icon state. Add `DoubleTransition` on width. |
+
+## Implementation Notes
+
+- Animate the **wrapper's** width, not SidebarView's own width. Ensure no `MinWidth` on the wrapper prevents collapsing to 0.
+- The debug panel (`DebugPanelView`) has a hardcoded `Margin="228,8,0,8"`. Bind or adjust its left margin based on sidebar visibility so it doesn't misposition when sidebar is hidden.
 
 ## Architecture Notes
 

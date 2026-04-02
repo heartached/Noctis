@@ -24,8 +24,6 @@ public partial class LyricsView : UserControl
     private DispatcherTimer? _autoFollowResumeTimer;
     private LyricsViewModel? _subscribedVm;
     private bool _isNarrowMode;
-    private bool _isImmersiveMode;
-    private System.ComponentModel.PropertyChangedEventHandler? _mainVmImmersiveHandler;
     private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
 
     private const double NarrowBreakpoint = 900;
@@ -129,17 +127,6 @@ public partial class LyricsView : UserControl
                 vm.EnsureLyricsForCurrentTrack();
         }, TimeSpan.FromMilliseconds(50));
 
-        // Subscribe to sidebar hidden state for immersive scaling
-        if (this.FindAncestorOfType<Window>()?.DataContext is MainWindowViewModel mainVm)
-        {
-            ApplyImmersiveMode(mainVm.IsSidebarHidden);
-            _mainVmImmersiveHandler = (s, args) =>
-            {
-                if (args.PropertyName == nameof(MainWindowViewModel.IsSidebarHidden))
-                    Dispatcher.UIThread.Post(() => ApplyImmersiveMode(((MainWindowViewModel)s!).IsSidebarHidden));
-            };
-            mainVm.PropertyChanged += _mainVmImmersiveHandler;
-        }
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -150,14 +137,6 @@ public partial class LyricsView : UserControl
             _isSeekDragging = false;
             if (DataContext is LyricsViewModel { Player: { } player })
                 player.EndSeek();
-        }
-
-        // Unsubscribe immersive mode listener
-        if (_mainVmImmersiveHandler != null &&
-            this.FindAncestorOfType<Window>()?.DataContext is MainWindowViewModel mainVm)
-        {
-            mainVm.PropertyChanged -= _mainVmImmersiveHandler;
-            _mainVmImmersiveHandler = null;
         }
 
         base.OnDetachedFromVisualTree(e);
@@ -213,13 +192,11 @@ public partial class LyricsView : UserControl
             LeftPanel.MaxHeight = double.PositiveInfinity;
             LeftPanel.Padding = new Thickness(40, 30);
 
-            AlbumArtBorder.Width = _isImmersiveMode ? 620 : 520;
-            AlbumArtBorder.Height = _isImmersiveMode ? 620 : 520;
-            LeftContentStack.MaxWidth = _isImmersiveMode ? 680 : 560;
-            LyricsItemsControl.MaxWidth = _isImmersiveMode ? 620 : 500;
-            RightPanel.RenderTransform = _isImmersiveMode
-                ? Avalonia.Media.Transformation.TransformOperations.Parse("scale(1.1, 1.1)")
-                : Avalonia.Media.Transformation.TransformOperations.Parse("scale(1, 1)");
+            AlbumArtBorder.Width = 620;
+            AlbumArtBorder.Height = 620;
+            LeftContentStack.MaxWidth = 680;
+            LyricsItemsControl.MaxWidth = 620;
+            RightPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1.1, 1.1)");
 
             var rightPanel = MainLayoutGrid.Children.Count > 1
                 ? MainLayoutGrid.Children[1] as Grid
@@ -229,32 +206,6 @@ public partial class LyricsView : UserControl
                 Grid.SetColumn(rightPanel, 1);
                 Grid.SetRow(rightPanel, 0);
             }
-        }
-    }
-
-    private void ApplyImmersiveMode(bool immersive)
-    {
-        if (immersive == _isImmersiveMode) return;
-        _isImmersiveMode = immersive;
-
-        // Only scale up in wide mode (narrow mode has its own compact sizes)
-        if (_isNarrowMode) return;
-
-        if (_isImmersiveMode)
-        {
-            AlbumArtBorder.Width = 620;
-            AlbumArtBorder.Height = 620;
-            LeftContentStack.MaxWidth = 680;
-            LyricsItemsControl.MaxWidth = 620;
-            RightPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1.1, 1.1)");
-        }
-        else
-        {
-            AlbumArtBorder.Width = 520;
-            AlbumArtBorder.Height = 520;
-            LeftContentStack.MaxWidth = 560;
-            LyricsItemsControl.MaxWidth = 500;
-            RightPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1, 1)");
         }
     }
 

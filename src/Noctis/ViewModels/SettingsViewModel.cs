@@ -187,6 +187,9 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Fires when the theme changes so the App can update.</summary>
     public event EventHandler<bool>? ThemeChanged;
 
+    /// <summary>Fires after a full settings reset so the shell can reload playlists, etc.</summary>
+    public event EventHandler? SettingsReset;
+
     public SettingsViewModel(IPersistenceService persistence, ILibraryService library)
     {
         _persistence = persistence;
@@ -199,6 +202,28 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 ScanProgress = count;
                 ScanStatusText = $"Scanning Library {count}...";
+            });
+        };
+
+        _library.LibraryUpdated += (_, _) =>
+        {
+            Dispatcher.UIThread.Post(async () =>
+            {
+                try
+                {
+                    var settings = await _persistence.LoadSettingsAsync();
+                    var currentFolders = new HashSet<string>(settings.MusicFolders, StringComparer.OrdinalIgnoreCase);
+                    var displayedFolders = new HashSet<string>(MusicFolders, StringComparer.OrdinalIgnoreCase);
+                    if (!currentFolders.SetEquals(displayedFolders))
+                    {
+                        MusicFolders.Clear();
+                        foreach (var folder in settings.MusicFolders)
+                            MusicFolders.Add(folder);
+                        _settings.MusicFolders = settings.MusicFolders;
+                        OnPropertyChanged(nameof(MediaFolderDisplay));
+                    }
+                }
+                catch { }
             });
         };
     }
@@ -1077,9 +1102,32 @@ public partial class SettingsViewModel : ViewModelBase
         IsResetConfirmVisible = false;
 
         // Clear library, playlists, queue
-        await _library.ClearAsync();
-        await _persistence.SavePlaylistsAsync(new List<Playlist>());
-        await _persistence.SaveQueueStateAsync(new QueueState());
+        try
+        {
+            await _library.ClearAsync();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear library: {ex.Message}");
+        }
+
+        try
+        {
+            await _persistence.SavePlaylistsAsync(new List<Playlist>());
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear playlists: {ex.Message}");
+        }
+
+        try
+        {
+            await _persistence.SaveQueueStateAsync(new QueueState());
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear queue state: {ex.Message}");
+        }
 
         // Clear artwork cache (albums + artists)
         try
@@ -1114,6 +1162,63 @@ public partial class SettingsViewModel : ViewModelBase
             Debug.WriteLine($"[Settings] Failed to clear lyrics cache: {ex.Message}");
         }
 
+        // Clear playlist covers
+        try
+        {
+            var coversDir = Path.Combine(_persistence.DataDirectory, "playlist_covers");
+            if (Directory.Exists(coversDir))
+            {
+                Directory.Delete(coversDir, true);
+                Directory.CreateDirectory(coversDir);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear playlist covers: {ex.Message}");
+        }
+
+        // Clear offline / streaming cache
+        try
+        {
+            var cacheDir = Path.Combine(_persistence.DataDirectory, "cache");
+            if (Directory.Exists(cacheDir))
+            {
+                Directory.Delete(cacheDir, true);
+                Directory.CreateDirectory(cacheDir);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear offline cache: {ex.Message}");
+        }
+
+        // Clear audit trail
+        try
+        {
+            var auditDir = Path.Combine(_persistence.DataDirectory, "audit");
+            if (Directory.Exists(auditDir))
+            {
+                Directory.Delete(auditDir, true);
+                Directory.CreateDirectory(auditDir);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear audit trail: {ex.Message}");
+        }
+
+        // Clear crash log
+        try
+        {
+            var crashPath = Path.Combine(_persistence.DataDirectory, "crash.log");
+            if (File.Exists(crashPath))
+                File.Delete(crashPath);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear crash log: {ex.Message}");
+        }
+
         // Clear index cache
         try
         {
@@ -1128,7 +1233,14 @@ public partial class SettingsViewModel : ViewModelBase
 
         // Reset settings to defaults and save
         var defaultSettings = new AppSettings();
-        await _persistence.SaveSettingsAsync(defaultSettings);
+        try
+        {
+            await _persistence.SaveSettingsAsync(defaultSettings);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to save default settings: {ex.Message}");
+        }
 
         // Update ViewModel with defaults (suspend persistence during update)
         _suspendSettingPersistence = true;
@@ -1203,6 +1315,8 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshLibraryStats();
         TotalPlaylists = 0;
         RefreshStorageInfo();
+
+        SettingsReset?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
