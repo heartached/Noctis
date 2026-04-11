@@ -34,6 +34,16 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private string _discCount = string.Empty;
     [ObservableProperty] private string _year = string.Empty;
     [ObservableProperty] private bool _isCompilation;
+    [ObservableProperty] private bool _showComposerInAllViews;
+    [ObservableProperty] private string _grouping = string.Empty;
+
+    // Work & Movement (classical)
+    [ObservableProperty] private bool _useWorkAndMovement;
+    [ObservableProperty] private string _workName = string.Empty;
+    [ObservableProperty] private string _movementName = string.Empty;
+    [ObservableProperty] private string _movementNumber = string.Empty;
+    [ObservableProperty] private string _movementCount = string.Empty;
+
     [ObservableProperty] private string _playCount = string.Empty;
     [ObservableProperty] private string _comment = string.Empty;
 
@@ -47,10 +57,18 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private string _lyrics = string.Empty;
     [ObservableProperty] private string _syncedLyrics = string.Empty;
     [ObservableProperty] private bool _hasCustomLyrics;
+    [ObservableProperty] private bool _hasCustomSyncedLyrics;
 
     // ── Options tab ──
     [ObservableProperty] private bool _skipWhenShuffling;
     [ObservableProperty] private bool _rememberPlaybackPosition;
+    [ObservableProperty] private string _mediaKind = "Music";
+    [ObservableProperty] private bool _hasStartTime;
+    [ObservableProperty] private string _startTime = "0:00.000";
+    [ObservableProperty] private bool _hasStopTime;
+    [ObservableProperty] private string _stopTime = "0:00.000";
+    [ObservableProperty] private int _volumeAdjust;
+    [ObservableProperty] private string _selectedEqPreset = "None";
 
     // ── File tab (read-only) ──
     [ObservableProperty] private string _fileName = string.Empty;
@@ -72,6 +90,8 @@ public partial class MetadataViewModel : ViewModelBase
     public string HeaderArtist => _track.Artist;
     public string HeaderAlbum => _track.Album;
     public bool HeaderIsExplicit => _track.IsExplicit;
+    public string HeaderAudioQualityBadge => _track.AudioQualityBadge;
+    public string HeaderAudioQualityDetail => _track.AudioQualityDetailedInfo;
 
     public bool ShowLyricsTab => !_albumScoped;
     public bool ShowSyncedLyricsTab => !_albumScoped;
@@ -104,6 +124,20 @@ public partial class MetadataViewModel : ViewModelBase
         "Soundtrack", "Techno", "Trance", "Trap", "Turkish Alternative",
         "Unclassifiable", "Urbano latino", "World", "Worldwide"
     };
+
+    /// <summary>Available media kinds for the Options tab dropdown.</summary>
+    public static string[] AvailableMediaKinds => Track.AvailableMediaKinds;
+
+    /// <summary>EQ presets for the Options tab dropdown (None + all presets from Settings).</summary>
+    public static readonly string[] OptionsEqPresets = BuildOptionsEqPresets();
+
+    private static string[] BuildOptionsEqPresets()
+    {
+        var list = new List<string> { "None" };
+        for (int i = 1; i < SettingsViewModel.EqPresetNames.Length; i++)
+            list.Add(SettingsViewModel.EqPresetNames[i]);
+        return list.ToArray();
+    }
 
     /// <summary>Fires when the user clicks OK and changes were saved.</summary>
     public event EventHandler? ChangesSaved;
@@ -139,6 +173,13 @@ public partial class MetadataViewModel : ViewModelBase
         DiscCount = _track.DiscCount > 0 ? _track.DiscCount.ToString() : string.Empty;
         Year = _track.Year > 0 ? _track.Year.ToString() : string.Empty;
         IsCompilation = _track.IsCompilation;
+        ShowComposerInAllViews = _track.ShowComposerInAllViews;
+        Grouping = _track.Grouping;
+        UseWorkAndMovement = _track.UseWorkAndMovement;
+        WorkName = _track.WorkName;
+        MovementName = _track.MovementName;
+        MovementNumber = _track.MovementNumber > 0 ? _track.MovementNumber.ToString() : string.Empty;
+        MovementCount = _track.MovementCount > 0 ? _track.MovementCount.ToString() : string.Empty;
         PlayCount = _track.PlayCount > 0 ? _track.PlayCount.ToString() : "0";
         Comment = _track.Comment;
 
@@ -174,11 +215,25 @@ public partial class MetadataViewModel : ViewModelBase
             Lyrics = _track.Lyrics;
             SyncedLyrics = string.Empty;
         }
-        HasCustomLyrics = !string.IsNullOrWhiteSpace(Lyrics) || !string.IsNullOrWhiteSpace(SyncedLyrics);
+        HasCustomLyrics = !string.IsNullOrWhiteSpace(Lyrics);
+        HasCustomSyncedLyrics = !string.IsNullOrWhiteSpace(SyncedLyrics);
 
         // Options
         SkipWhenShuffling = _track.SkipWhenShuffling;
         RememberPlaybackPosition = _track.RememberPlaybackPosition;
+
+        // Options - extended
+        MediaKind = string.IsNullOrEmpty(_track.MediaKind) ? "Music" : _track.MediaKind;
+        HasStartTime = _track.StartTimeMs > 0;
+        StartTime = _track.StartTimeMs > 0
+            ? TimeSpan.FromMilliseconds(_track.StartTimeMs).ToString(@"m\:ss\.fff")
+            : "0:00.000";
+        HasStopTime = _track.StopTimeMs > 0;
+        StopTime = _track.StopTimeMs > 0
+            ? TimeSpan.FromMilliseconds(_track.StopTimeMs).ToString(@"m\:ss\.fff")
+            : _track.Duration.ToString(@"m\:ss\.fff");
+        VolumeAdjust = _track.VolumeAdjust;
+        SelectedEqPreset = string.IsNullOrEmpty(_track.EqPreset) ? "None" : _track.EqPreset;
     }
 
     private void LoadFileInfo()
@@ -382,6 +437,13 @@ public partial class MetadataViewModel : ViewModelBase
         _track.DiscCount = int.TryParse(DiscCount, out var dc) ? Math.Max(1, dc) : 1;
         _track.Year = int.TryParse(Year, out var yr) ? yr : 0;
         _track.IsCompilation = IsCompilation;
+        _track.ShowComposerInAllViews = ShowComposerInAllViews;
+        _track.Grouping = Grouping;
+        _track.UseWorkAndMovement = UseWorkAndMovement;
+        _track.WorkName = WorkName;
+        _track.MovementName = MovementName;
+        _track.MovementNumber = int.TryParse(MovementNumber, out var mn) ? Math.Max(0, mn) : 0;
+        _track.MovementCount = int.TryParse(MovementCount, out var mc) ? Math.Max(0, mc) : 0;
         _track.PlayCount = int.TryParse(PlayCount, out var pc) ? Math.Max(0, pc) : 0;
         _track.Comment = Comment;
 
@@ -391,11 +453,16 @@ public partial class MetadataViewModel : ViewModelBase
 
         // Apply Lyrics (plain + synced)
         _track.Lyrics = HasCustomLyrics ? Lyrics : string.Empty;
-        _track.SyncedLyrics = HasCustomLyrics ? SyncedLyrics : string.Empty;
+        _track.SyncedLyrics = HasCustomSyncedLyrics ? SyncedLyrics : string.Empty;
 
         // Apply Options
         _track.SkipWhenShuffling = SkipWhenShuffling;
         _track.RememberPlaybackPosition = RememberPlaybackPosition;
+        _track.MediaKind = MediaKind;
+        _track.StartTimeMs = HasStartTime ? ParseTimeToMs(StartTime) : 0;
+        _track.StopTimeMs = HasStopTime ? ParseTimeToMs(StopTime) : 0;
+        _track.VolumeAdjust = VolumeAdjust;
+        _track.EqPreset = SelectedEqPreset == "None" ? string.Empty : SelectedEqPreset;
 
         // Write metadata to file tags (plain lyrics go to USLT tag)
         _metadata.WriteTrackMetadata(_track);
@@ -448,6 +515,17 @@ public partial class MetadataViewModel : ViewModelBase
     private void Cancel()
     {
         CloseRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Parses a time string like "1:23.456" or "0:05.000" to milliseconds.</summary>
+    private static long ParseTimeToMs(string time)
+    {
+        if (string.IsNullOrWhiteSpace(time)) return 0;
+        if (TimeSpan.TryParseExact(time, @"m\:ss\.fff", null, out var ts))
+            return (long)ts.TotalMilliseconds;
+        if (TimeSpan.TryParseExact(time, @"m\:ss", null, out var ts2))
+            return (long)ts2.TotalMilliseconds;
+        return 0;
     }
 
     [RelayCommand]
