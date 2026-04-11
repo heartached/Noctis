@@ -108,6 +108,39 @@
                     <TextBlock Text="{Binding HeaderAlbum}"
                                FontSize="13"
                                Opacity="0.5" />
+
+                    <!-- Lossless / Hi-Res Lossless badge -->
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="4"
+                                IsVisible="{Binding HeaderAudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <ToolTip.Tip>
+                            <StackPanel Width="220" Spacing="4">
+                                <TextBlock Text="{Binding HeaderAudioQualityBadge}"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                <TextBlock Text="{Binding HeaderAudioQualityDetail}"
+                                           FontSize="12"
+                                           Opacity="0.9"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                                <TextBlock Text="Lossless audio preserves more detail from the original recording."
+                                           FontSize="11"
+                                           TextWrapping="Wrap"
+                                           Opacity="0.85"
+                                           Margin="0,4,0,0"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                            </StackPanel>
+                        </ToolTip.Tip>
+                        <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,1,0,0" Opacity="0.5">
+                            <Path Data="M8.184,0.35C9.944,0.35 10.703,3.296 11.338,5.238C11.673,3.842 11.497,3.542 11.857,3.542C11.99,3.542 12.126,3.633 12.126,3.798C12.126,3.809 12.123,3.839 12.117,3.883L12.091,4.058C12.02,4.522 11.845,5.494 11.654,6.144C13.198,10.191 14.345,4.861 14.474,3.772C14.493,3.615 14.612,3.542 14.731,3.542C14.891,3.542 15.022,3.662 14.997,3.843C14.72,5.605 14.295,8.35 12.547,8.35C11.582,8.35 11.04,7.595 10.611,6.73C9.54,4.626 9.047,1.093 7.997,1.093C7.66,1.093 7.411,1.444 7.394,1.444C7.362,1.444 7.337,1.301 7.023,0.909C7.322,0.567 7.734,0.35 8.184,0.35ZM2.458,0.354C5.211,0.354 5.456,7.618 7.014,7.618C7.197,7.618 7.394,7.507 7.61,7.256C7.729,7.458 7.851,7.638 7.978,7.796C7.667,8.151 7.28,8.35 6.795,8.35C5.054,8.349 4.306,5.434 3.663,3.466C3.511,4.097 3.432,4.669 3.402,4.925C3.382,5.088 3.263,5.163 3.143,5.163C3.009,5.163 2.874,5.071 2.874,4.908L2.874,4.908L2.877,4.87C2.966,4.223 3.146,3.243 3.347,2.56C3.079,1.858 2.745,1.091 2.252,1.091C1.257,1.091 0.687,3.591 0.527,4.925C0.508,5.088 0.388,5.163 0.268,5.163C0.135,5.163 0,5.071 0,4.908C0,4.896 0.001,4.883 0.002,4.87C0.283,2.836 0.808,0.354 2.458,0.354ZM5.315,0.35C5.809,0.35 6.339,0.608 6.797,1.211C6.822,1.241 7.078,1.639 7.159,1.777C8.277,3.802 8.818,7.627 9.881,7.627C10.065,7.627 10.264,7.513 10.484,7.256C10.604,7.458 10.726,7.638 10.852,7.796C10.542,8.15 10.155,8.35 9.67,8.35C6.933,8.349 6.636,1.09 5.128,1.09C4.788,1.09 4.536,1.444 4.519,1.444C4.487,1.444 4.462,1.301 4.148,0.909C4.455,0.558 4.87,0.35 5.315,0.35Z"
+                                  Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                        </Viewbox>
+                        <TextBlock Text="{Binding HeaderAudioQualityBadge}"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Opacity="0.5" />
+                    </StackPanel>
                 </StackPanel>
             </Grid>
         </Border>
@@ -162,6 +195,34 @@
                             <TextBox Classes="metadata-info-field" Text="{Binding Title}" />
                         </StackPanel>
 
+                        <!-- Use Work & Movement -->
+                        <CheckBox Classes="metadata-pill-checkbox"
+                                  Content="Use Work &amp; Movement"
+                                  IsChecked="{Binding UseWorkAndMovement}" />
+
+                        <!-- Work Name (visible only when Work & Movement is enabled) -->
+                        <StackPanel Spacing="4" IsVisible="{Binding UseWorkAndMovement}">
+                            <TextBlock Text="work name" FontSize="12" Opacity="0.5" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding WorkName}" />
+                        </StackPanel>
+
+                        <!-- Movement index + count + title -->
+                        <Grid ColumnDefinitions="Auto,8,Auto,16,*"
+                              IsVisible="{Binding UseWorkAndMovement}">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="movement" FontSize="12" Opacity="0.5" />
+                                <TextBox Classes="metadata-info-field" Text="{Binding MovementNumber}" Width="80" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Text="of" FontSize="12" Opacity="0.5" />
+                                <TextBox Classes="metadata-info-field" Text="{Binding MovementCount}" Width="80" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="4" Spacing="4">
+                                <TextBlock Text="title" FontSize="12" Opacity="0.5" />
+                                <TextBox Classes="metadata-info-field" Text="{Binding MovementName}" />
+                            </StackPanel>
+                        </Grid>
+
                         <!-- Album -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="album" FontSize="12" Opacity="0.5" />
@@ -189,6 +250,17 @@
                         <StackPanel Spacing="4">
                             <TextBlock Text="composer" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Composer}" />
+                        </StackPanel>
+
+                        <!-- Show composer in all views -->
+                        <CheckBox Classes="metadata-pill-checkbox"
+                                  Content="Show composer in all views"
+                                  IsChecked="{Binding ShowComposerInAllViews}" />
+
+                        <!-- Grouping -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="grouping" FontSize="12" Opacity="0.5" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Grouping}" />
                         </StackPanel>
 
                         <!-- Genre -->
@@ -260,35 +332,28 @@
                         <Button Content="Add Artwork"
                                 Command="{Binding AddArtworkCommand}"
                                 CommandParameter="{Binding $parent[Window]}"
-                                Width="112"
-                                Padding="0,8"
-                                Classes="accent-btn"
-                            Background="#E04060"
-                                Foreground="White"
-                                FontWeight="SemiBold"
+                                Padding="10,5"
                                 HorizontalContentAlignment="Center"
                                 CornerRadius="999"
                                 Cursor="Hand"
-                                FontSize="12" />
+                                FontSize="11" />
                         <Button Content="Download"
                                 Command="{Binding DownloadArtworkCommand}"
                                 CommandParameter="{Binding $parent[Window]}"
                                 IsVisible="{Binding HasArtwork}"
-                                Width="104"
-                                Padding="0,8"
+                                Padding="10,5"
                                 HorizontalContentAlignment="Center"
                                 CornerRadius="999"
                                 Cursor="Hand"
-                                FontSize="12" />
+                                FontSize="11" />
                         <Button Content="Remove"
                                 Command="{Binding RemoveArtworkCommand}"
                                 IsVisible="{Binding HasArtwork}"
-                                Width="90"
-                                Padding="0,8"
+                                Padding="10,5"
                                 HorizontalContentAlignment="Center"
                                 CornerRadius="999"
                                 Cursor="Hand"
-                                FontSize="12" />
+                                FontSize="11" />
                     </StackPanel>
 
                     <!-- Artwork preview centered -->
@@ -339,7 +404,7 @@
                     <CheckBox DockPanel.Dock="Top"
                               Classes="metadata-pill-checkbox"
                               Content="Enable"
-                              IsChecked="{Binding HasCustomLyrics}"
+                              IsChecked="{Binding HasCustomSyncedLyrics}"
                               Margin="0,0,0,12" />
                     <TextBox Text="{Binding SyncedLyrics}"
                              AcceptsReturn="True"
@@ -349,22 +414,100 @@
                              BorderBrush="#44E04060"
                              BorderThickness="1"
                              FontFamily="Consolas, Menlo, Monaco, Courier New, monospace"
-                             IsEnabled="{Binding HasCustomLyrics}" />
+                             IsEnabled="{Binding HasCustomSyncedLyrics}" />
                 </DockPanel>
             </TabItem>
 
-            <!-- ═══════════ OPTIONS TAB ═══════════ -->
+            <!-- OPTIONS TAB -->
             <TabItem Header="Options" FontSize="14" FontWeight="SemiBold">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
-                             Padding="24,16">
+                              Padding="24,16">
                     <StackPanel Spacing="20">
+
+                        <!-- Media Kind -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="media kind" FontSize="12" Opacity="0.5" />
+                            <ComboBox ItemsSource="{x:Static vm:MetadataViewModel.AvailableMediaKinds}"
+                                      SelectedItem="{Binding MediaKind}"
+                                      MinWidth="200"
+                                      CornerRadius="999"
+                                      Padding="14,8" />
+                        </StackPanel>
+
+                        <!-- Start / Stop Time -->
+                        <Grid ColumnDefinitions="*,24,*">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="start" FontSize="12" Opacity="0.5"
+                                               VerticalAlignment="Center" />
+                                    <CheckBox IsChecked="{Binding HasStartTime}"
+                                              Padding="0" Margin="0"
+                                              MinWidth="0" />
+                                </StackPanel>
+                                <TextBox Classes="metadata-info-field"
+                                         Text="{Binding StartTime}"
+                                         IsEnabled="{Binding HasStartTime}"
+                                         Width="140"
+                                         HorizontalAlignment="Left" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="stop" FontSize="12" Opacity="0.5"
+                                               VerticalAlignment="Center" />
+                                    <CheckBox IsChecked="{Binding HasStopTime}"
+                                              Padding="0" Margin="0"
+                                              MinWidth="0" />
+                                </StackPanel>
+                                <TextBox Classes="metadata-info-field"
+                                         Text="{Binding StopTime}"
+                                         IsEnabled="{Binding HasStopTime}"
+                                         Width="140"
+                                         HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Separator Opacity="0.15" Margin="0,4" />
+
+                        <!-- Remember playback position -->
                         <CheckBox Classes="metadata-pill-checkbox"
                                   Content="Remember playback position"
                                   IsChecked="{Binding RememberPlaybackPosition}" />
 
+                        <!-- Skip when shuffling -->
                         <CheckBox Classes="metadata-pill-checkbox"
                                   Content="Skip when shuffling"
                                   IsChecked="{Binding SkipWhenShuffling}" />
+
+                        <Separator Opacity="0.15" Margin="0,4" />
+
+                        <!-- Volume Adjust -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="volume adjust" FontSize="12" Opacity="0.5" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Slider Grid.Column="0"
+                                        Value="{Binding VolumeAdjust, Mode=TwoWay}"
+                                        Minimum="-100" Maximum="100"
+                                        Width="300"
+                                        HorizontalAlignment="Left" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding VolumeAdjust, StringFormat='{}{0}%'}"
+                                           FontSize="12"
+                                           Opacity="0.6"
+                                           VerticalAlignment="Center"
+                                           Margin="12,0,0,0" />
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Equalizer Preset -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="equalizer" FontSize="12" Opacity="0.5" />
+                            <ComboBox ItemsSource="{x:Static vm:MetadataViewModel.OptionsEqPresets}"
+                                      SelectedItem="{Binding SelectedEqPreset}"
+                                      MinWidth="200"
+                                      CornerRadius="999"
+                                      Padding="14,8" />
+                        </StackPanel>
+
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
