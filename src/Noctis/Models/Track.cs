@@ -73,6 +73,10 @@ public partial class Track : ObservableObject
     /// <summary>Timestamp of when this track was first discovered by a library scan.</summary>
     public DateTime DateAdded { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Transient flag: true when the track was just drag-and-drop imported this session.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsRecentImport { get; set; }
+
     // ── Extended metadata ──
 
     /// <summary>Composer(s) of the track.</summary>
@@ -93,11 +97,50 @@ public partial class Track : ObservableObject
     /// <summary>Whether this track is part of a compilation album.</summary>
     public bool IsCompilation { get; set; }
 
+    /// <summary>Grouping tag (e.g., a sub-genre or classical work grouping).</summary>
+    public string Grouping { get; set; } = string.Empty;
+
+    /// <summary>If true, library views should show the composer alongside the artist for this track.</summary>
+    public bool ShowComposerInAllViews { get; set; }
+
+    /// <summary>If true, this track is part of a classical Work with Movements; library views should prefer Work/Movement display over Title.</summary>
+    public bool UseWorkAndMovement { get; set; }
+
+    /// <summary>Name of the Work this track belongs to (e.g., "Symphony No. 9").</summary>
+    public string WorkName { get; set; } = string.Empty;
+
+    /// <summary>Title of the Movement (e.g., "Allegro ma non troppo").</summary>
+    public string MovementName { get; set; } = string.Empty;
+
+    /// <summary>Movement number within the Work (1-based).</summary>
+    public int MovementNumber { get; set; }
+
+    /// <summary>Total number of Movements in the Work.</summary>
+    public int MovementCount { get; set; }
+
     /// <summary>If true, skip this track during shuffle playback.</summary>
     public bool SkipWhenShuffling { get; set; }
 
     /// <summary>If true, remember the playback position when switching away.</summary>
     public bool RememberPlaybackPosition { get; set; }
+
+    /// <summary>Media kind classification for this track.</summary>
+    public string MediaKind { get; set; } = "Music";
+
+    /// <summary>Custom start time in milliseconds. 0 = disabled (play from beginning).</summary>
+    public long StartTimeMs { get; set; }
+
+    /// <summary>Custom stop time in milliseconds. 0 = disabled (play to end).</summary>
+    public long StopTimeMs { get; set; }
+
+    /// <summary>Per-track volume adjustment (-100 to +100). 0 = no adjustment.</summary>
+    public int VolumeAdjust { get; set; }
+
+    /// <summary>Per-track EQ preset name. Empty = use global setting.</summary>
+    public string EqPreset { get; set; } = string.Empty;
+
+    /// <summary>Saved playback position in milliseconds (for RememberPlaybackPosition).</summary>
+    public long SavedPositionMs { get; set; }
 
     /// <summary>Number of times this track has been played.</summary>
     public int PlayCount { get; set; }
@@ -118,6 +161,10 @@ public partial class Track : ObservableObject
     /// <summary>Cached album artwork path, populated from album data during index build. Not persisted.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public string? AlbumArtworkPath { get; set; }
+
+    /// <summary>Whether this track has album artwork available.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool HasAlbumArt => !string.IsNullOrEmpty(AlbumArtworkPath);
 
     /// <summary>User comment or notes about the track.</summary>
     public string Comment { get; set; } = string.Empty;
@@ -275,6 +322,10 @@ public partial class Track : ObservableObject
     {
         get
         {
+            // Always show the subtitle when the user wants composer visible in all views.
+            if (ShowComposerInAllViews && !string.IsNullOrWhiteSpace(Composer))
+                return true;
+
             var trackArtists = ParseArtistTokens(Artist);
             if (trackArtists.Length == 0)
                 return false;
@@ -302,6 +353,9 @@ public partial class Track : ObservableObject
         return set.SetEquals(right);
     }
 
+    /// <summary>Available media kind values for the Options tab dropdown.</summary>
+    public static readonly string[] AvailableMediaKinds = { "Music", "Podcast", "Audiobook", "Voice Memo", "Music Video" };
+
     internal static string[] ParseArtistTokens(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -316,6 +370,37 @@ public partial class Track : ObservableObject
             .Where(v => !string.IsNullOrWhiteSpace(v))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
+
+    /// <summary>
+    /// Artist text to show in list views. When ShowComposerInAllViews is set and a Composer exists,
+    /// returns "Artist — Composer". Falls back to raw Artist otherwise.
+    /// </summary>
+    [JsonIgnore]
+    public string ArtistDisplay =>
+        ShowComposerInAllViews && !string.IsNullOrWhiteSpace(Composer)
+            ? $"{Artist} \u2014 {Composer}"
+            : Artist;
+
+    /// <summary>
+    /// Title text to show in list views. When UseWorkAndMovement is set and a Work/Movement exists,
+    /// returns "Work: Movement" (or just Work / Movement when one is missing). Falls back to Title.
+    /// </summary>
+    [JsonIgnore]
+    public string TitleDisplay
+    {
+        get
+        {
+            if (!UseWorkAndMovement) return Title;
+
+            var hasWork = !string.IsNullOrWhiteSpace(WorkName);
+            var hasMovement = !string.IsNullOrWhiteSpace(MovementName);
+
+            if (hasWork && hasMovement) return $"{WorkName}: {MovementName}";
+            if (hasWork) return WorkName;
+            if (hasMovement) return MovementName;
+            return Title;
+        }
     }
 
     public override string ToString() => $"{Artist} - {Title}";
