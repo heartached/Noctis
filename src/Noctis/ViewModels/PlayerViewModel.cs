@@ -78,6 +78,7 @@ public partial class PlayerViewModel : ViewModelBase
     private SidebarViewModel? _sidebar; // injected for playlist access
     private bool _suppressHasContentNotify; // prevents layout thrashing during batch queue updates
     private bool _isAdvancingQueue; // re-entrancy guard for AdvanceQueue
+    private SettingsViewModel? _settings;
 
     public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence)
     {
@@ -242,6 +243,9 @@ public partial class PlayerViewModel : ViewModelBase
             _ => RepeatMode.Off
         };
     }
+
+    /// <summary>Sets the SettingsViewModel for per-track EQ and audio overrides.</summary>
+    public void SetSettingsViewModel(SettingsViewModel settings) => _settings = settings;
 
     /// <summary>Sets the navigation action for the lyrics view.</summary>
     public void SetNavigateAction(Action<string> navigateAction)
@@ -468,6 +472,10 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Stops playback and clears all queue data.</summary>
     public void StopAndClear()
     {
+        if (CurrentTrack?.RememberPlaybackPosition == true)
+        {
+            CurrentTrack.SavedPositionMs = (long)Position.TotalMilliseconds;
+        }
         _hasPendingSeekTarget = false;
         _audioPlayer.Stop();
         State = PlaybackState.Stopped;
@@ -660,6 +668,13 @@ public partial class PlayerViewModel : ViewModelBase
         _seekDebounceTimer?.Dispose();
         _seekDebounceTimer = null;
         _hasPendingSeekTarget = false;
+
+        // Save playback position for the outgoing track if it has RememberPlaybackPosition
+        if (CurrentTrack?.RememberPlaybackPosition == true)
+        {
+            CurrentTrack.SavedPositionMs = (long)Position.TotalMilliseconds;
+        }
+
         CurrentTrack = track;
         LoadAlbumArt(track);
         Duration = track.Duration;
@@ -683,6 +698,39 @@ public partial class PlayerViewModel : ViewModelBase
         // Apply per-track volume adjustment
         _audioPlayer.VolumeAdjust = track.VolumeAdjust;
         _audioPlayer.Play(track.FilePath);
+
+        // Apply per-track EQ preset (or restore global)
+        _settings?.ApplyEqPresetByName(
+            string.IsNullOrEmpty(track.EqPreset) ? null : track.EqPreset);
+
+        // Seek to custom start time if set
+        if (track.StartTimeMs > 0)
+        {
+            var startPos = TimeSpan.FromMilliseconds(track.StartTimeMs);
+            if (startPos < track.Duration)
+            {
+                _audioPlayer.Seek(startPos);
+                Position = startPos;
+                PositionText = FormatTime(startPos);
+                PositionFraction = track.Duration.TotalSeconds > 0
+                    ? startPos.TotalSeconds / track.Duration.TotalSeconds
+                    : 0;
+            }
+        }
+        // Restore saved position if RememberPlaybackPosition is set and no custom start time
+        else if (track.RememberPlaybackPosition && track.SavedPositionMs > 0)
+        {
+            var savedPos = TimeSpan.FromMilliseconds(track.SavedPositionMs);
+            if (savedPos < track.Duration)
+            {
+                _audioPlayer.Seek(savedPos);
+                Position = savedPos;
+                PositionText = FormatTime(savedPos);
+                PositionFraction = track.Duration.TotalSeconds > 0
+                    ? savedPos.TotalSeconds / track.Duration.TotalSeconds
+                    : 0;
+            }
+        }
 
         // Ensure UI updates happen on UI thread and force property re-evaluation
         Dispatcher.UIThread.Post(() =>
@@ -725,6 +773,10 @@ public partial class PlayerViewModel : ViewModelBase
 
         if (CurrentTrack != null)
         {
+            if (CurrentTrack.RememberPlaybackPosition == true)
+            {
+                CurrentTrack.SavedPositionMs = 0;
+            }
             History.Insert(0, CurrentTrack);
             TrimHistory();
         }
@@ -915,6 +967,17 @@ public partial class PlayerViewModel : ViewModelBase
             PositionText = newPositionText;
             PositionFraction = newPositionFraction;
             RemainingTimeText = newRemainingTimeText;
+
+            // Check per-track stop time
+            if (CurrentTrack?.StopTimeMs > 0)
+            {
+                var stopTime = TimeSpan.FromMilliseconds(CurrentTrack.StopTimeMs);
+                if (newPosition >= stopTime)
+                {
+                    AdvanceQueue();
+                    return;
+                }
+            }
 
         });
     }

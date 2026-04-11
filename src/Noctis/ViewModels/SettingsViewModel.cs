@@ -64,6 +64,18 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private bool _equalizerEnabled = true;
     [ObservableProperty] private int _selectedEqPresetIndex = 1; // 0 = Custom, 1 = Flat, 2+ = VLC preset
+    [ObservableProperty] private string _selectedEqPresetName = "Flat";
+
+    /// <summary>Preset names shown in the dropdown. "Custom" is only present while bands deviate from a preset.</summary>
+    public ObservableCollection<string> VisibleEqPresets { get; } = CreateDefaultVisiblePresets();
+
+    private static ObservableCollection<string> CreateDefaultVisiblePresets()
+    {
+        var list = new ObservableCollection<string>();
+        for (int i = 1; i < EqPresetNames.Length; i++)
+            list.Add(EqPresetNames[i]);
+        return list;
+    }
     [ObservableProperty] private float _eqBand0;
     [ObservableProperty] private float _eqBand1;
     [ObservableProperty] private float _eqBand2;
@@ -187,6 +199,9 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Fires when the theme changes so the App can update.</summary>
     public event EventHandler<bool>? ThemeChanged;
 
+    /// <summary>Fires after a full settings reset so the shell can reload playlists, etc.</summary>
+    public event EventHandler? SettingsReset;
+
     public SettingsViewModel(IPersistenceService persistence, ILibraryService library)
     {
         _persistence = persistence;
@@ -199,6 +214,28 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 ScanProgress = count;
                 ScanStatusText = $"Scanning Library {count}...";
+            });
+        };
+
+        _library.LibraryUpdated += (_, _) =>
+        {
+            Dispatcher.UIThread.Post(async () =>
+            {
+                try
+                {
+                    var settings = await _persistence.LoadSettingsAsync();
+                    var currentFolders = new HashSet<string>(settings.MusicFolders, StringComparer.OrdinalIgnoreCase);
+                    var displayedFolders = new HashSet<string>(MusicFolders, StringComparer.OrdinalIgnoreCase);
+                    if (!currentFolders.SetEquals(displayedFolders))
+                    {
+                        MusicFolders.Clear();
+                        foreach (var folder in settings.MusicFolders)
+                            MusicFolders.Add(folder);
+                        _settings.MusicFolders = settings.MusicFolders;
+                        OnPropertyChanged(nameof(MediaFolderDisplay));
+                    }
+                }
+                catch { }
             });
         };
     }
@@ -284,7 +321,10 @@ public partial class SettingsViewModel : ViewModelBase
             // Equalizer
             _suppressEqNotify = true;
             EqualizerEnabled = _settings.EqualizerEnabled;
-            SelectedEqPresetIndex = Math.Clamp(_settings.EqualizerPresetIndex + 1, 0, EqPresetNames.Length - 1);
+            int loadedIdx = Math.Clamp(_settings.EqualizerPresetIndex + 1, 0, EqPresetNames.Length - 1);
+            SelectedEqPresetIndex = loadedIdx;
+            SelectedEqPresetName = EqPresetNames[loadedIdx];
+            SyncCustomInVisiblePresets(loadedIdx == 0);
             if (_settings.EqualizerBands is { Length: 10 })
             {
                 EqBand0 = _settings.EqualizerBands[0];
@@ -446,6 +486,25 @@ public partial class SettingsViewModel : ViewModelBase
     {
         int vlcPresetIndex = SelectedEqPresetIndex - 1;
         _audioPlayer?.SetAdvancedEqualizer(EqualizerEnabled, vlcPresetIndex, GetEqBands());
+    }
+
+    /// <summary>
+    /// Applies an EQ preset by name for per-track overrides.
+    /// Pass empty/null to restore the global EQ setting.
+    /// </summary>
+    public void ApplyEqPresetByName(string? presetName)
+    {
+        if (string.IsNullOrEmpty(presetName))
+        {
+            ApplyEqualizer();
+            return;
+        }
+
+        var index = Array.IndexOf(EqPresetNames, presetName);
+        if (index < 0) { ApplyEqualizer(); return; }
+
+        int vlcPresetIndex = index - 1;
+        _audioPlayer?.SetAdvancedEqualizer(true, vlcPresetIndex, GetEqBands());
     }
 
     private void QueueEqualizerSave()
@@ -796,6 +855,37 @@ public partial class SettingsViewModel : ViewModelBase
         QueueEqualizerSave();
     }
 
+    partial void OnSelectedEqPresetNameChanged(string value)
+    {
+        if (_suppressEqNotify) return;
+        if (string.IsNullOrEmpty(value)) return;
+
+        int idx = System.Array.IndexOf(EqPresetNames, value);
+        if (idx < 0) return;
+
+        _suppressEqNotify = true;
+        SelectedEqPresetIndex = idx;
+        _suppressEqNotify = false;
+
+        if (idx > 0)
+        {
+            LoadPresetBands(idx - 1);
+            SyncCustomInVisiblePresets(false);
+        }
+
+        ApplyEqualizer();
+        QueueEqualizerSave();
+    }
+
+    private void SyncCustomInVisiblePresets(bool shouldShowCustom)
+    {
+        bool hasCustom = VisibleEqPresets.Count > 0 && VisibleEqPresets[0] == "Custom";
+        if (shouldShowCustom && !hasCustom)
+            VisibleEqPresets.Insert(0, "Custom");
+        else if (!shouldShowCustom && hasCustom)
+            VisibleEqPresets.RemoveAt(0);
+    }
+
     private void LoadPresetBands(int vlcPresetIndex)
     {
         try
@@ -819,7 +909,9 @@ public partial class SettingsViewModel : ViewModelBase
         if (SelectedEqPresetIndex != 0)
         {
             _suppressEqNotify = true;
+            SyncCustomInVisiblePresets(true);
             SelectedEqPresetIndex = 0;
+            SelectedEqPresetName = "Custom";
             _suppressEqNotify = false;
         }
 
@@ -843,6 +935,8 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _suppressEqNotify = true;
         SelectedEqPresetIndex = 1; // "Flat"
+        SelectedEqPresetName = "Flat";
+        SyncCustomInVisiblePresets(false);
         _suppressEqNotify = false;
 
         SetEqBands(new float[10]);
@@ -1077,9 +1171,32 @@ public partial class SettingsViewModel : ViewModelBase
         IsResetConfirmVisible = false;
 
         // Clear library, playlists, queue
-        await _library.ClearAsync();
-        await _persistence.SavePlaylistsAsync(new List<Playlist>());
-        await _persistence.SaveQueueStateAsync(new QueueState());
+        try
+        {
+            await _library.ClearAsync();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear library: {ex.Message}");
+        }
+
+        try
+        {
+            await _persistence.SavePlaylistsAsync(new List<Playlist>());
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear playlists: {ex.Message}");
+        }
+
+        try
+        {
+            await _persistence.SaveQueueStateAsync(new QueueState());
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear queue state: {ex.Message}");
+        }
 
         // Clear artwork cache (albums + artists)
         try
@@ -1114,6 +1231,63 @@ public partial class SettingsViewModel : ViewModelBase
             Debug.WriteLine($"[Settings] Failed to clear lyrics cache: {ex.Message}");
         }
 
+        // Clear playlist covers
+        try
+        {
+            var coversDir = Path.Combine(_persistence.DataDirectory, "playlist_covers");
+            if (Directory.Exists(coversDir))
+            {
+                Directory.Delete(coversDir, true);
+                Directory.CreateDirectory(coversDir);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear playlist covers: {ex.Message}");
+        }
+
+        // Clear offline / streaming cache
+        try
+        {
+            var cacheDir = Path.Combine(_persistence.DataDirectory, "cache");
+            if (Directory.Exists(cacheDir))
+            {
+                Directory.Delete(cacheDir, true);
+                Directory.CreateDirectory(cacheDir);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear offline cache: {ex.Message}");
+        }
+
+        // Clear audit trail
+        try
+        {
+            var auditDir = Path.Combine(_persistence.DataDirectory, "audit");
+            if (Directory.Exists(auditDir))
+            {
+                Directory.Delete(auditDir, true);
+                Directory.CreateDirectory(auditDir);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear audit trail: {ex.Message}");
+        }
+
+        // Clear crash log
+        try
+        {
+            var crashPath = Path.Combine(_persistence.DataDirectory, "crash.log");
+            if (File.Exists(crashPath))
+                File.Delete(crashPath);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to clear crash log: {ex.Message}");
+        }
+
         // Clear index cache
         try
         {
@@ -1128,7 +1302,14 @@ public partial class SettingsViewModel : ViewModelBase
 
         // Reset settings to defaults and save
         var defaultSettings = new AppSettings();
-        await _persistence.SaveSettingsAsync(defaultSettings);
+        try
+        {
+            await _persistence.SaveSettingsAsync(defaultSettings);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Settings] Failed to save default settings: {ex.Message}");
+        }
 
         // Update ViewModel with defaults (suspend persistence during update)
         _suspendSettingPersistence = true;
@@ -1166,6 +1347,8 @@ public partial class SettingsViewModel : ViewModelBase
             _suppressEqNotify = true;
             EqualizerEnabled = true;
             SelectedEqPresetIndex = 1; // Flat
+            SelectedEqPresetName = "Flat";
+            SyncCustomInVisiblePresets(false);
             EqBand0 = 0; EqBand1 = 0; EqBand2 = 0; EqBand3 = 0; EqBand4 = 0;
             EqBand5 = 0; EqBand6 = 0; EqBand7 = 0; EqBand8 = 0; EqBand9 = 0;
             _suppressEqNotify = false;
@@ -1203,6 +1386,8 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshLibraryStats();
         TotalPlaylists = 0;
         RefreshStorageInfo();
+
+        SettingsReset?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -1303,7 +1488,7 @@ public partial class SettingsViewModel : ViewModelBase
                 UpdateStatusText = "You're on the latest version.";
                 _ = ClearUpdateStatusAfterDelay();
             }
-            else if (update.InstallerUrl is null)
+            else if (update.InstallerApiUrl is null && update.InstallerUrl is null)
             {
                 LatestVersionTag = update.TagName;
                 UpdateStatusText = $"{update.TagName} available — installer not found. Visit GitHub.";
@@ -1349,7 +1534,8 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Re-check to get fresh URL
             var update = await _updateService.CheckForUpdateAsync(_updateCts.Token);
-            if (update?.InstallerUrl is null)
+            var downloadUrl = update?.InstallerApiUrl ?? update?.InstallerUrl;
+            if (downloadUrl is null)
             {
                 UpdateStatusText = "Update no longer available.";
                 IsDownloadingUpdate = false;
@@ -1365,7 +1551,7 @@ public partial class SettingsViewModel : ViewModelBase
                 }));
 
             _downloadedInstallerPath = await _updateService.DownloadInstallerAsync(
-                update.InstallerUrl, update.InstallerSize, progress, _updateCts.Token);
+                downloadUrl, update!.InstallerSize, progress, _updateCts.Token);
 
             UpdateStatusText = "Update ready to install.";
             IsReadyToInstall = true;
@@ -1377,7 +1563,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            UpdateStatusText = "Download timed out. Try again.";
+            UpdateStatusText = "Download cancelled.";
             _ = ClearUpdateStatusAfterDelay();
         }
         catch
@@ -1389,6 +1575,12 @@ public partial class SettingsViewModel : ViewModelBase
         {
             IsDownloadingUpdate = false;
         }
+    }
+
+    [RelayCommand]
+    private void CancelUpdate()
+    {
+        _updateCts?.Cancel();
     }
 
     [RelayCommand]
