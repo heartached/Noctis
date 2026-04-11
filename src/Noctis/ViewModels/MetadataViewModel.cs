@@ -17,6 +17,7 @@ public partial class MetadataViewModel : ViewModelBase
     private readonly IPersistenceService _persistence;
     private readonly Track _track;
     private readonly bool _albumScoped;
+    private readonly List<Track>? _albumTracks;
 
     // ── Tab selection ──
     [ObservableProperty] private int _selectedTabIndex;
@@ -145,13 +146,14 @@ public partial class MetadataViewModel : ViewModelBase
     /// <summary>Fires when the window should close.</summary>
     public event EventHandler? CloseRequested;
 
-    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, bool albumScoped = false)
+    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, bool albumScoped = false, List<Track>? albumTracks = null)
     {
         _track = track;
         _metadata = metadata;
         _library = library;
         _persistence = persistence;
         _albumScoped = albumScoped;
+        _albumTracks = albumTracks;
 
         LoadFromTrack();
         LoadFileInfo();
@@ -463,6 +465,21 @@ public partial class MetadataViewModel : ViewModelBase
         _track.StopTimeMs = HasStopTime ? ParseTimeToMs(StopTime) : 0;
         _track.VolumeAdjust = VolumeAdjust;
         _track.EqPreset = SelectedEqPreset == "None" ? string.Empty : SelectedEqPreset;
+
+        // Fan out options to all album tracks when album-scoped
+        if (_albumScoped && _albumTracks != null)
+        {
+            foreach (var t in _albumTracks)
+            {
+                t.SkipWhenShuffling = SkipWhenShuffling;
+                t.RememberPlaybackPosition = RememberPlaybackPosition;
+                t.MediaKind = MediaKind;
+                t.StartTimeMs = HasStartTime ? ParseTimeToMs(StartTime) : 0;
+                t.StopTimeMs = HasStopTime ? ParseTimeToMs(StopTime) : 0;
+                t.VolumeAdjust = VolumeAdjust;
+                t.EqPreset = SelectedEqPreset == "None" ? string.Empty : SelectedEqPreset;
+            }
+        }
 
         // Write metadata to file tags (plain lyrics go to USLT tag)
         _metadata.WriteTrackMetadata(_track);

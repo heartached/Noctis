@@ -1,3 +1,4 @@
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -19,7 +20,15 @@ public static class MetadataHelper
         var library = App.Services!.GetRequiredService<ILibraryService>();
         var persistence = App.Services!.GetRequiredService<IPersistenceService>();
 
-        var vm = new MetadataViewModel(track, metadata, library, persistence, albumScoped);
+        List<Track>? albumTracks = null;
+        if (albumScoped)
+        {
+            albumTracks = library.Tracks
+                .Where(t => t.AlbumId == track.AlbumId)
+                .ToList();
+        }
+
+        var vm = new MetadataViewModel(track, metadata, library, persistence, albumScoped, albumTracks);
         var window = new MetadataWindow(vm);
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
