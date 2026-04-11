@@ -23,15 +23,25 @@ A sleek Windows music player with synced lyrics, equalizer, smart playlists, and
 
 ---
 
-![Library](docs/images/librarypanel.png)
+### Home
 
-![Albums](docs/images/albumspanel.png)
+![Home](docs/images/Home.png)
 
-![Artists](docs/images/artistspanel.png)
+### Synced Lyrics
 
-![Lyrics](docs/images/lyricspanel.png)
+![Lyrics](docs/images/lyrics.png)
 
-![Metadata & Integrations](docs/images/metadataandintegrationspanel.png)
+### Cover Flow
+
+![Cover Flow](docs/images/coverflow.png)
+
+### Albums
+
+![Albums](docs/images/albums.png)
+
+### Discord Rich Presence
+
+<img src="docs/images/discord.png" width="280">
 
 ---
 
@@ -44,6 +54,7 @@ A sleek Windows music player with synced lyrics, equalizer, smart playlists, and
 - Album art & full metadata display
 - Crossfade & volume normalization
 - Last.fm scrobbling
+- Discord Rich Presence integration
 - Library indexing with SQLite
 
 ---
@@ -56,6 +67,12 @@ dotnet run --project src/Noctis/Noctis.csproj
 ```
 
 **Requirements:** .NET 8 SDK · Windows 10/11 x64
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=heartached/Noctis&type=Date)](https://star-history.com/#heartached/Noctis&Date)
 
 ---
 
