@@ -534,14 +534,20 @@ public partial class MetadataViewModel : ViewModelBase
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Parses a time string like "1:23.456" or "0:05.000" to milliseconds.</summary>
+    /// <summary>Parses a time string like "1:23.456", "12:34.567", or "1:02:03.456" to milliseconds.</summary>
     private static long ParseTimeToMs(string time)
     {
         if (string.IsNullOrWhiteSpace(time)) return 0;
-        if (TimeSpan.TryParseExact(time, @"m\:ss\.fff", null, out var ts))
-            return (long)ts.TotalMilliseconds;
-        if (TimeSpan.TryParseExact(time, @"m\:ss", null, out var ts2))
-            return (long)ts2.TotalMilliseconds;
+        // Try exact formats first, then general TimeSpan.TryParse as fallback
+        string[] formats = { @"m\:ss\.fff", @"mm\:ss\.fff", @"m\:ss", @"mm\:ss",
+                             @"h\:mm\:ss\.fff", @"h\:mm\:ss" };
+        foreach (var fmt in formats)
+        {
+            if (TimeSpan.TryParseExact(time, fmt, null, out var ts))
+                return (long)ts.TotalMilliseconds;
+        }
+        if (TimeSpan.TryParse(time, out var fallback))
+            return (long)fallback.TotalMilliseconds;
         return 0;
     }
 

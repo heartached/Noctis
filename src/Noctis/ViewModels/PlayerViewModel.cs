@@ -697,40 +697,36 @@ public partial class PlayerViewModel : ViewModelBase
 
         // Apply per-track volume adjustment
         _audioPlayer.VolumeAdjust = track.VolumeAdjust;
+
+        // Set pending seek position BEFORE Play() so VlcAudioPlayer applies it
+        // inside PlayInternal after the media is loaded (avoids race condition).
+        long seekMs = -1;
+        if (track.StartTimeMs > 0 && TimeSpan.FromMilliseconds(track.StartTimeMs) < track.Duration)
+        {
+            seekMs = track.StartTimeMs;
+        }
+        else if (track.RememberPlaybackPosition && track.SavedPositionMs > 0
+                 && TimeSpan.FromMilliseconds(track.SavedPositionMs) < track.Duration)
+        {
+            seekMs = track.SavedPositionMs;
+        }
+        _audioPlayer.PendingSeekMs = seekMs;
+
+        if (seekMs > 0)
+        {
+            var seekPos = TimeSpan.FromMilliseconds(seekMs);
+            Position = seekPos;
+            PositionText = FormatTime(seekPos);
+            PositionFraction = track.Duration.TotalSeconds > 0
+                ? seekPos.TotalSeconds / track.Duration.TotalSeconds
+                : 0;
+        }
+
         _audioPlayer.Play(track.FilePath);
 
         // Apply per-track EQ preset (or restore global)
         _settings?.ApplyEqPresetByName(
             string.IsNullOrEmpty(track.EqPreset) ? null : track.EqPreset);
-
-        // Seek to custom start time if set
-        if (track.StartTimeMs > 0)
-        {
-            var startPos = TimeSpan.FromMilliseconds(track.StartTimeMs);
-            if (startPos < track.Duration)
-            {
-                _audioPlayer.Seek(startPos);
-                Position = startPos;
-                PositionText = FormatTime(startPos);
-                PositionFraction = track.Duration.TotalSeconds > 0
-                    ? startPos.TotalSeconds / track.Duration.TotalSeconds
-                    : 0;
-            }
-        }
-        // Restore saved position if RememberPlaybackPosition is set and no custom start time
-        else if (track.RememberPlaybackPosition && track.SavedPositionMs > 0)
-        {
-            var savedPos = TimeSpan.FromMilliseconds(track.SavedPositionMs);
-            if (savedPos < track.Duration)
-            {
-                _audioPlayer.Seek(savedPos);
-                Position = savedPos;
-                PositionText = FormatTime(savedPos);
-                PositionFraction = track.Duration.TotalSeconds > 0
-                    ? savedPos.TotalSeconds / track.Duration.TotalSeconds
-                    : 0;
-            }
-        }
 
         // Ensure UI updates happen on UI thread and force property re-evaluation
         Dispatcher.UIThread.Post(() =>

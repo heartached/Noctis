@@ -36,6 +36,9 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Per-track volume adjustment (-100 to +100). Applied on top of the user volume.</summary>
     int VolumeAdjust { get; set; }
 
+    /// <summary>Pending seek position in ms to apply after next Play() call. -1 = disabled.</summary>
+    long PendingSeekMs { get; set; }
+
     /// <summary>Flush pending volume to VLC immediately (call on drag-end).</summary>
     void CommitVolume();
 

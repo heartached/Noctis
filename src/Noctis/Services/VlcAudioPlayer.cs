@@ -80,6 +80,9 @@ public class VlcAudioPlayer : IAudioPlayer
     private bool _crossfadeEnabled;
     private int _crossfadeDurationMs = 6000;
 
+    // Pending seek — applied inside PlayInternal after _player.Play() to avoid race
+    private long _pendingSeekMs = -1;
+
     // Skip cancellation — cancelled when a new Play() is requested so any
     // in-progress fade or parse aborts immediately for instant track switching.
     private CancellationTokenSource _skipCts = new();
@@ -202,6 +205,12 @@ public class VlcAudioPlayer : IAudioPlayer
             var target = ApplyVolumeCurve(effective);
             ScheduleVolumeWrite(target);
         }
+    }
+
+    public long PendingSeekMs
+    {
+        get => _pendingSeekMs;
+        set => _pendingSeekMs = value;
     }
 
     /// <summary>
@@ -631,7 +640,14 @@ public class VlcAudioPlayer : IAudioPlayer
                 _player.SetEqualizer(equalizerToApply);
             }
 
-            // 6. Start position timer and fire initial duration update after brief delay
+            // 6. Apply pending seek (start time / saved position) now that media is playing
+            var pendingMs = Interlocked.Exchange(ref _pendingSeekMs, -1);
+            if (pendingMs > 0)
+            {
+                _player.Time = pendingMs;
+            }
+
+            // 7. Start position timer and fire initial duration update after brief delay
             _positionTimer.Start();
 
             // Poll for accurate duration shortly after playback starts

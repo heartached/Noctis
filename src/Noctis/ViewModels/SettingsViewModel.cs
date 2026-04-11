@@ -503,8 +503,10 @@ public partial class SettingsViewModel : ViewModelBase
         var index = Array.IndexOf(EqPresetNames, presetName);
         if (index < 0) { ApplyEqualizer(); return; }
 
+        // VLC preset index: our index - 1 (index 0 = "Custom", 1 = "Flat" = VLC preset 0)
+        // Pass the preset index directly — VLC loads the preset's own bands.
         int vlcPresetIndex = index - 1;
-        _audioPlayer?.SetAdvancedEqualizer(true, vlcPresetIndex, GetEqBands());
+        _audioPlayer?.SetAdvancedEqualizer(true, vlcPresetIndex, new float[10]);
     }
 
     private void QueueEqualizerSave()
