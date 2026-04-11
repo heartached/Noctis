@@ -33,6 +33,12 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Volume level from 0 to 100.</summary>
     int Volume { get; set; }
 
+    /// <summary>Per-track volume adjustment (-100 to +100). Applied on top of the user volume.</summary>
+    int VolumeAdjust { get; set; }
+
+    /// <summary>Flush pending volume to VLC immediately (call on drag-end).</summary>
+    void CommitVolume();
+
     /// <summary>Whether audio output is muted.</summary>
     bool IsMuted { get; set; }
 
