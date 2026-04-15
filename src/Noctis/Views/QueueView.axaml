@@ -107,7 +107,7 @@
                               helpers:DragFileBehavior.EnableFileDrag="True">
                             <StackPanel Grid.Column="0">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="{Binding Title}"
+                                    <TextBlock Text="{Binding TitleDisplay}"
                                                Grid.Column="0"
                                                Classes="one-line-explicit-title"
                                                FontSize="13" />
@@ -122,7 +122,7 @@
                                                    Opacity="0.9" />
                                     </Border>
                                 </Grid>
-                                <TextBlock Text="{Binding Artist}"
+                                <TextBlock Text="{Binding ArtistDisplay}"
                                            FontSize="11"
                                            Opacity="0.6"
                                            TextTrimming="CharacterEllipsis" />
@@ -155,7 +155,7 @@
                               helpers:DragFileBehavior.EnableFileDrag="True">
                             <StackPanel Grid.Column="0">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="{Binding Title}"
+                                    <TextBlock Text="{Binding TitleDisplay}"
                                                Grid.Column="0"
                                                Classes="one-line-explicit-title"
                                                FontSize="13" />
@@ -170,7 +170,7 @@
                                                    Opacity="0.9" />
                                     </Border>
                                 </Grid>
-                                <TextBlock Text="{Binding Artist}"
+                                <TextBlock Text="{Binding ArtistDisplay}"
                                            FontSize="11"
                                            Opacity="0.6"
                                            TextTrimming="CharacterEllipsis" />

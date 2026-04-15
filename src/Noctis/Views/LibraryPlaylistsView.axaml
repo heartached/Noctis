@@ -3,6 +3,7 @@
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
+             xmlns:ctrl="using:Noctis.Controls"
              x:Class="Noctis.Views.LibraryPlaylistsView"
              x:DataType="vm:LibraryPlaylistsViewModel"
              Background="{DynamicResource AppMainBackground}">
@@ -12,9 +13,8 @@
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,*">
-        <Separator Grid.Row="0" Classes="page-top-separator" />
-        <DockPanel Grid.Row="1" Margin="16,8,16,16">
+    <Grid RowDefinitions="*">
+        <DockPanel Grid.Row="0" Margin="16,8,16,16">
 
         <!-- Content area with overlay for empty state -->
         <Grid>
@@ -24,23 +24,31 @@
                 <ItemsControl ItemsSource="{Binding FilteredPlaylists}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal" />
+                            <UniformGrid Columns="5" VerticalAlignment="Top" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="m:Playlist">
+                        <DataTemplate x:DataType="m:PlaylistNavItem">
                             <Button Classes="album-tile"
-                                    Width="270"
-                                    Margin="8"
+                                    Margin="2"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Top"
                                     Command="{Binding $parent[ItemsControl].((vm:LibraryPlaylistsViewModel)DataContext).OpenPlaylistCommand}"
                                     CommandParameter="{Binding}">
 
                                 <!-- Context menu for playlist tiles -->
                                 <Button.ContextMenu>
                                     <ContextMenu DataContext="{Binding}">
-                                        <MenuItem Header="{Binding Name, StringFormat='Play &quot;{0}&quot;'}"
-                                                  Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).PlayPlaylistCommand}"
-                                                  CommandParameter="{Binding}">
+                                        <MenuItem Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).PlayPlaylistCommand}"
+                                                  CommandParameter="{Binding}"
+                                                  MaxWidth="400">
+                                            <MenuItem.Header>
+                                                <TextBlock Text="{Binding Label, StringFormat='Play &quot;{0}&quot;'}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           FontWeight="Normal"
+                                                           FontSize="14"
+                                                           FontFamily="{Binding $parent[MenuItem].FontFamily}" />
+                                            </MenuItem.Header>
                                             <MenuItem.Icon>
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
@@ -93,68 +101,60 @@
                                 </Button.ContextMenu>
 
                                 <StackPanel Spacing="0">
-                                    <!-- Playlist artwork with color -->
-                                    <Border Width="250" Height="250"
-                                            CornerRadius="8"
+                                    <!-- Playlist artwork with layered fallback (synced with sidebar) -->
+                                    <Border CornerRadius="8"
                                             ClipToBounds="True"
                                             Background="{Binding Color, Converter={StaticResource HexColorConverter}}">
+                                        <Border.Styles>
+                                            <Style Selector="Border">
+                                                <Setter Property="Height" Value="{Binding $self.Bounds.Width}" />
+                                            </Style>
+                                        </Border.Styles>
                                         <Panel>
-                                            <!-- Manual playlist icon -->
-                                            <TextBlock Text="♪"
-                                                       FontSize="48"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       Foreground="White"
-                                                       Opacity="0.3"
-                                                       IsVisible="{Binding !IsSmartPlaylist}" />
-                                            <!-- Smart playlist icon -->
-                                            <StackPanel HorizontalAlignment="Center"
-                                                        VerticalAlignment="Center"
-                                                        IsVisible="{Binding IsSmartPlaylist}">
-                                                <PathIcon Data="{StaticResource AudioDeviceIcon}"
-                                                         Width="40" Height="40"
-                                                         HorizontalAlignment="Center"
-                                                         Foreground="White"
-                                                         Opacity="0.4" />
-                                                <TextBlock Text="Smart"
-                                                           FontSize="12"
-                                                           FontWeight="SemiBold"
-                                                           HorizontalAlignment="Center"
-                                                           Foreground="White"
-                                                           Opacity="0.5"
-                                                           Margin="0,4,0,0" />
-                                            </StackPanel>
-                                            <!-- Custom cover art -->
-                                            <Image Source="{Binding CoverArtPath, Converter={StaticResource ArtworkConverter}}"
-                                                   Stretch="UniformToFill"
-                                                   RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                   IsVisible="{Binding CoverArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            <!-- Layer 1: Fallback playlist icon -->
+                                            <PathIcon Data="{StaticResource PlaylistsIcon}"
+                                                      Width="48" Height="48"
+                                                      Foreground="#4DFFFFFF"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      IsVisible="{Binding ShowFallbackIcon}" />
+
+                                            <!-- Layer 2: Single album art (only 1 unique art) -->
+                                            <ctrl:CachedImage SourcePath="{Binding Art1}"
+                                                              Stretch="UniformToFill"
+                                                              IsVisible="{Binding HasSingleArt}" />
+
+                                            <!-- Layer 3: 2x2 collage (2+ unique arts) -->
+                                            <Grid RowDefinitions="*,*"
+                                                  ColumnDefinitions="*,*"
+                                                  IsVisible="{Binding HasCollageArt}">
+                                                <ctrl:CachedImage Grid.Row="0" Grid.Column="0"
+                                                                  SourcePath="{Binding Art1}"
+                                                                  Stretch="UniformToFill" />
+                                                <ctrl:CachedImage Grid.Row="0" Grid.Column="1"
+                                                                  SourcePath="{Binding Art2}"
+                                                                  Stretch="UniformToFill" />
+                                                <ctrl:CachedImage Grid.Row="1" Grid.Column="0"
+                                                                  SourcePath="{Binding Art3}"
+                                                                  Stretch="UniformToFill" />
+                                                <ctrl:CachedImage Grid.Row="1" Grid.Column="1"
+                                                                  SourcePath="{Binding Art4}"
+                                                                  Stretch="UniformToFill" />
+                                            </Grid>
+
+                                            <!-- Layer 4: Custom cover art (highest priority) -->
+                                            <ctrl:CachedImage SourcePath="{Binding CoverArtPath}"
+                                                              Stretch="UniformToFill"
+                                                              IsVisible="{Binding HasCustomArt}" />
                                         </Panel>
                                     </Border>
                                     <!-- Playlist name -->
-                                    <TextBlock Text="{Binding Name}"
+                                    <TextBlock Text="{Binding Label}"
                                                FontSize="14"
                                                FontWeight="SemiBold"
                                                TextTrimming="CharacterEllipsis"
                                                MaxLines="1"
                                                Margin="2,6,2,0" />
-                                    <!-- Track count (manual playlists) -->
-                                    <TextBlock FontSize="12"
-                                               Opacity="0.6"
-                                               Margin="2,2,2,0"
-                                               IsVisible="{Binding !IsSmartPlaylist}">
-                                        <TextBlock.Text>
-                                            <MultiBinding StringFormat="{}{0} tracks">
-                                                <Binding Path="TrackIds.Count" />
-                                            </MultiBinding>
-                                        </TextBlock.Text>
-                                    </TextBlock>
-                                    <!-- Smart playlist label -->
-                                    <TextBlock Text="Smart Playlist"
-                                               FontSize="12"
-                                               Opacity="0.6"
-                                               Margin="2,2,2,0"
-                                               IsVisible="{Binding IsSmartPlaylist}" />
                                 </StackPanel>
                             </Button>
                         </DataTemplate>

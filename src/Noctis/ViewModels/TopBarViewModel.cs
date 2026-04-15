@@ -58,6 +58,11 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private bool _hasArtistActions;
     [ObservableProperty] private ICommand? _pageShuffleArtistCommand;
     [ObservableProperty] private ICommand? _pagePlayArtistCommand;
+
+    // Favorites action buttons
+    [ObservableProperty] private bool _hasFavoritesActions;
+    [ObservableProperty] private ICommand? _pageShuffleFavoritesCommand;
+    [ObservableProperty] private ICommand? _pagePlayFavoritesCommand;
     [ObservableProperty] private bool _pageShowOnlyFavorites;
     [ObservableProperty] private bool _pageSortAscending = true;
     [ObservableProperty] private ICommand? _pageSetShowAllItemsCommand;
@@ -124,6 +129,20 @@ public partial class TopBarViewModel : ViewModelBase
         HasArtistActions = false;
         PageShuffleArtistCommand = null;
         PagePlayArtistCommand = null;
+    }
+
+    public void ShowFavoritesActions(ICommand shuffleCommand, ICommand playCommand)
+    {
+        PageShuffleFavoritesCommand = shuffleCommand;
+        PagePlayFavoritesCommand = playCommand;
+        HasFavoritesActions = true;
+    }
+
+    public void HideFavoritesActions()
+    {
+        HasFavoritesActions = false;
+        PageShuffleFavoritesCommand = null;
+        PagePlayFavoritesCommand = null;
     }
 
     /// <summary>Fires when the albums view mode toggle changes.</summary>

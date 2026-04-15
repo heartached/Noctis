@@ -88,6 +88,9 @@ public partial class Track : ObservableObject
     /// <summary>Total number of discs in the album.</summary>
     public int DiscCount { get; set; } = 1;
 
+    /// <summary>Beats per minute (TBPM tag). 0 = unset.</summary>
+    public int Bpm { get; set; }
+
     /// <summary>Plain/unsynced lyrics text for the track.</summary>
     public string Lyrics { get; set; } = string.Empty;
 

@@ -12,6 +12,8 @@ using Noctis.Services;
 
 namespace Noctis.ViewModels;
 
+public record ColorSwatch(string Key, string Name, IBrush Preview, bool IsAuto = false);
+
 /// <summary>
 /// ViewModel for the Lyrics view that displays synchronized lyrics
 /// alongside album art and playback controls.
@@ -24,10 +26,130 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private readonly INetEaseService _netEase;
     private readonly IMetadataService _metadata;
     private readonly IPersistenceService _persistence;
+    private readonly ILibraryService _library;
     private string? _selectedColorHex;
+    private CancellationTokenSource? _statusClearCts;
+
+    [ObservableProperty] private bool _isColorModeSolid = true;
+    [ObservableProperty] private bool _isColorModeGradient;
+    [ObservableProperty] private string _activeSwatchKey = "";
+
+    public List<ColorSwatch> SolidSwatches { get; } = BuildSolidSwatches();
+    public List<ColorSwatch> GradientSwatches { get; } = BuildGradientSwatches();
+
+    private static List<ColorSwatch> BuildSolidSwatches()
+    {
+        var auto = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+            GradientStops = new GradientStops
+            {
+                new GradientStop(Color.Parse("#8B5CF6"), 0),
+                new GradientStop(Color.Parse("#3B82F6"), 0.5),
+                new GradientStop(Color.Parse("#10B981"), 1),
+            }
+        };
+
+        return new List<ColorSwatch>
+        {
+            new("", "Auto", auto, IsAuto: true),
+            // Dark tones
+            new("#1A1A2E", "Deep Navy", new SolidColorBrush(Color.Parse("#1A1A2E"))),
+            new("#2D1B36", "Dark Plum", new SolidColorBrush(Color.Parse("#2D1B36"))),
+            new("#0D2137", "Ink Blue", new SolidColorBrush(Color.Parse("#0D2137"))),
+            new("#1B2D2A", "Forest", new SolidColorBrush(Color.Parse("#1B2D2A"))),
+            new("#040404", "Midnight", new SolidColorBrush(Color.Parse("#040404"))),
+            new("#3A1C3F", "Velvet", new SolidColorBrush(Color.Parse("#3A1C3F"))),
+            new("#2C1810", "Espresso", new SolidColorBrush(Color.Parse("#2C1810"))),
+            new("#1A0A2E", "Indigo Night", new SolidColorBrush(Color.Parse("#1A0A2E"))),
+            new("#0A1628", "Obsidian", new SolidColorBrush(Color.Parse("#0A1628"))),
+            new("#2A1A1A", "Dark Cherry", new SolidColorBrush(Color.Parse("#2A1A1A"))),
+            // Mid tones
+            new("#4A3728", "Mocha", new SolidColorBrush(Color.Parse("#4A3728"))),
+            new("#8B4513", "Saddle", new SolidColorBrush(Color.Parse("#8B4513"))),
+            new("#7C7C7C", "Slate", new SolidColorBrush(Color.Parse("#7C7C7C"))),
+            new("#6B8E9B", "Storm", new SolidColorBrush(Color.Parse("#6B8E9B"))),
+            new("#5C8A6E", "Sage", new SolidColorBrush(Color.Parse("#5C8A6E"))),
+            new("#9B7CB8", "Lavender", new SolidColorBrush(Color.Parse("#9B7CB8"))),
+            new("#C9B458", "Antique Gold", new SolidColorBrush(Color.Parse("#C9B458"))),
+            new("#7B6D8D", "Amethyst", new SolidColorBrush(Color.Parse("#7B6D8D"))),
+            new("#5B7065", "Eucalyptus", new SolidColorBrush(Color.Parse("#5B7065"))),
+            new("#8C6E5D", "Clay", new SolidColorBrush(Color.Parse("#8C6E5D"))),
+            new("#4D6A8F", "Denim", new SolidColorBrush(Color.Parse("#4D6A8F"))),
+            new("#B35A5A", "Brick", new SolidColorBrush(Color.Parse("#B35A5A"))),
+            // Light tones
+            new("#ABC1D8", "Cool Blue", new SolidColorBrush(Color.Parse("#ABC1D8"))),
+            new("#F7C8B1", "Peach", new SolidColorBrush(Color.Parse("#F7C8B1"))),
+            new("#E4ECF4", "Frost", new SolidColorBrush(Color.Parse("#E4ECF4"))),
+            new("#EF797E", "Coral", new SolidColorBrush(Color.Parse("#EF797E"))),
+            new("#B4E4AC", "Mint", new SolidColorBrush(Color.Parse("#B4E4AC"))),
+            new("#D4A0A0", "Dusty Rose", new SolidColorBrush(Color.Parse("#D4A0A0"))),
+            new("#E8C8A0", "Champagne", new SolidColorBrush(Color.Parse("#E8C8A0"))),
+            new("#A8D8EA", "Sky", new SolidColorBrush(Color.Parse("#A8D8EA"))),
+            new("#D4B8E0", "Lilac", new SolidColorBrush(Color.Parse("#D4B8E0"))),
+            new("#F5E6CC", "Cream", new SolidColorBrush(Color.Parse("#F5E6CC"))),
+        };
+    }
+
+    private static LinearGradientBrush MakePreviewGradient(string hex1, string hex2)
+    {
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+            GradientStops = new GradientStops
+            {
+                new GradientStop(Color.Parse(hex1), 0),
+                new GradientStop(Color.Parse(hex2), 1),
+            }
+        };
+    }
+
+    private static List<ColorSwatch> BuildGradientSwatches()
+    {
+        return new List<ColorSwatch>
+        {
+            // Dark atmospheric
+            new("grad:#6A0572,#1A1A2E", "Purple Night", MakePreviewGradient("#6A0572", "#1A1A2E")),
+            new("grad:#0F2027,#2C5364", "Deep Sea", MakePreviewGradient("#0F2027", "#2C5364")),
+            new("grad:#232526,#414345", "Charcoal", MakePreviewGradient("#232526", "#414345")),
+            new("grad:#1A0530,#3A1C71", "Cosmic", MakePreviewGradient("#1A0530", "#3A1C71")),
+            new("grad:#0C0C1D,#1B3A4B", "Abyss", MakePreviewGradient("#0C0C1D", "#1B3A4B")),
+            new("grad:#2C1810,#5C3D2E", "Bourbon", MakePreviewGradient("#2C1810", "#5C3D2E")),
+            new("grad:#141E30,#243B55", "Royal Blue", MakePreviewGradient("#141E30", "#243B55")),
+            new("grad:#0F0C29,#302B63", "Midnight Indigo", MakePreviewGradient("#0F0C29", "#302B63")),
+            new("grad:#1F1C2C,#928DAB", "Misty Violet", MakePreviewGradient("#1F1C2C", "#928DAB")),
+            new("grad:#2B1B17,#6D4C41", "Dark Amber", MakePreviewGradient("#2B1B17", "#6D4C41")),
+            // Vibrant
+            new("grad:#3A1C3F,#D4145A", "Berry Crush", MakePreviewGradient("#3A1C3F", "#D4145A")),
+            new("grad:#0B486B,#F56217", "Sunset Ocean", MakePreviewGradient("#0B486B", "#F56217")),
+            new("grad:#4B134F,#C94B4B", "Magenta Fire", MakePreviewGradient("#4B134F", "#C94B4B")),
+            new("grad:#134E5E,#71B280", "Emerald Dusk", MakePreviewGradient("#134E5E", "#71B280")),
+            new("grad:#0D324D,#7F5A83", "Twilight", MakePreviewGradient("#0D324D", "#7F5A83")),
+            new("grad:#1D2B64,#F8CDDA", "Dawn", MakePreviewGradient("#1D2B64", "#F8CDDA")),
+            new("grad:#642B73,#C6426E", "Orchid", MakePreviewGradient("#642B73", "#C6426E")),
+            new("grad:#373B44,#4286F4", "Steel Blue", MakePreviewGradient("#373B44", "#4286F4")),
+            new("grad:#1A2A3A,#E74856", "Red Horizon", MakePreviewGradient("#1A2A3A", "#E74856")),
+            new("grad:#0B3D0B,#2E8B57", "Deep Forest", MakePreviewGradient("#0B3D0B", "#2E8B57")),
+            // New additions
+            new("grad:#0D0D0D,#4A0E4E", "Void Purple", MakePreviewGradient("#0D0D0D", "#4A0E4E")),
+            new("grad:#1A1A2E,#E94560", "Neon Rose", MakePreviewGradient("#1A1A2E", "#E94560")),
+            new("grad:#16222A,#3A6073", "Arctic Teal", MakePreviewGradient("#16222A", "#3A6073")),
+            new("grad:#2C3E50,#FD746C", "Warm Dusk", MakePreviewGradient("#2C3E50", "#FD746C")),
+            new("grad:#0F2027,#B29F7D", "Desert Night", MakePreviewGradient("#0F2027", "#B29F7D")),
+            new("grad:#200122,#6F0000", "Blood Moon", MakePreviewGradient("#200122", "#6F0000")),
+            new("grad:#1B1B3A,#08D9D6", "Cyber", MakePreviewGradient("#1B1B3A", "#08D9D6")),
+            new("grad:#2D1B69,#F97316", "Electric Sunset", MakePreviewGradient("#2D1B69", "#F97316")),
+            new("grad:#0A2E36,#61892F", "Moss", MakePreviewGradient("#0A2E36", "#61892F")),
+            new("grad:#2E1437,#C850C0", "Fuchsia Haze", MakePreviewGradient("#2E1437", "#C850C0")),
+        };
+    }
     private LyricLine? _currentActiveLine;
     private bool _hasSyncedLyrics;
     private Track? _currentTrack;
+    private string _loadedLyrics = string.Empty;
+    private string _loadedSyncedLyrics = string.Empty;
     private LrcLibResult? _currentOnlineResult;
     private LrcLibResult? _alternateOnlineResult;
     private string? _alternateSource;
@@ -78,6 +200,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private string _albumInfoText = string.Empty;
 
+    /// <summary>Whether to show favorite heart in metadata row (reflects current track's favorite status).</summary>
+    public bool ShowMetadataFavoriteHeart => Player?.CurrentTrack?.IsFavorite ?? false;
+
     /// <summary>Adaptive gradient brush for the left panel (darker tint).</summary>
     [ObservableProperty]
     private IBrush _leftPanelBrush = CreateDefaultGradient();
@@ -89,6 +214,98 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// <summary>Unified horizontal gradient spanning both panels — removes the hard seam.</summary>
     [ObservableProperty]
     private IBrush _fullBackgroundBrush = CreateDefaultUnifiedBrush();
+
+    // ── Adaptive foreground colors (react to background luminance) ──
+
+    [ObservableProperty] private IBrush _lyricsPrimaryFg = Brushes.White;
+    [ObservableProperty] private IBrush _lyricsSecondaryFg = new SolidColorBrush(Color.Parse("#B0FFFFFF"));
+    [ObservableProperty] private IBrush _lyricsAccentFg = new SolidColorBrush(Color.Parse("#E74856"));
+    [ObservableProperty] private IBrush _lyricsSubtleFg = new SolidColorBrush(Color.Parse("#999999"));
+    [ObservableProperty] private IBrush _lyricsSliderFilled = new SolidColorBrush(Color.Parse("#CCFFFFFF"));
+    [ObservableProperty] private IBrush _lyricsSliderUnfilled = new SolidColorBrush(Color.Parse("#33FFFFFF"));
+    [ObservableProperty] private IBrush _lyricsControlFill = Brushes.White;
+    [ObservableProperty] private IBrush _lyricsBtnBg = new SolidColorBrush(Color.Parse("#33FFFFFF"));
+    [ObservableProperty] private IBrush _lyricsBtnBgHover = new SolidColorBrush(Color.Parse("#55FFFFFF"));
+    [ObservableProperty] private IBrush _lyricsSliderThumb = new SolidColorBrush(Color.Parse("#EEFFFFFF"));
+
+    private void UpdateForegroundsForBackground(IBrush bg)
+    {
+        Color bgColor;
+        if (bg is SolidColorBrush scb)
+            bgColor = scb.Color;
+        else if (bg is LinearGradientBrush lgb && lgb.GradientStops.Count > 0)
+        {
+            // Average the gradient stops for luminance check
+            double avgR = 0, avgG = 0, avgB = 0;
+            foreach (var stop in lgb.GradientStops)
+            {
+                avgR += stop.Color.R;
+                avgG += stop.Color.G;
+                avgB += stop.Color.B;
+            }
+            int count = lgb.GradientStops.Count;
+            bgColor = Color.FromRgb((byte)(avgR / count), (byte)(avgG / count), (byte)(avgB / count));
+        }
+        else
+            return;
+
+        // Relative luminance (ITU-R BT.709)
+        double lum = (0.2126 * bgColor.R + 0.7152 * bgColor.G + 0.0722 * bgColor.B) / 255.0;
+
+        if (lum > 0.65) // Light background
+        {
+            LyricsPrimaryFg = new SolidColorBrush(Color.Parse("#111111"));
+            LyricsSecondaryFg = new SolidColorBrush(Color.Parse("#55111111"));
+            LyricsAccentFg = new SolidColorBrush(Color.Parse("#B91C2C"));
+            LyricsSubtleFg = new SolidColorBrush(Color.Parse("#555555"));
+            LyricsSliderFilled = new SolidColorBrush(Color.Parse("#CC111111"));
+            LyricsSliderUnfilled = new SolidColorBrush(Color.Parse("#33111111"));
+            LyricsControlFill = new SolidColorBrush(Color.Parse("#222222"));
+            LyricsBtnBg = new SolidColorBrush(Color.Parse("#22000000"));
+            LyricsBtnBgHover = new SolidColorBrush(Color.Parse("#33000000"));
+            LyricsSliderThumb = new SolidColorBrush(Color.Parse("#DD111111"));
+        }
+        else if (lum > 0.35) // Medium background — boost contrast
+        {
+            LyricsPrimaryFg = Brushes.White;
+            LyricsSecondaryFg = new SolidColorBrush(Color.Parse("#DDFFFFFF"));
+            LyricsAccentFg = new SolidColorBrush(Color.Parse("#FF6B7A"));
+            LyricsSubtleFg = new SolidColorBrush(Color.Parse("#CCCCCC"));
+            LyricsSliderFilled = new SolidColorBrush(Color.Parse("#EEFFFFFF"));
+            LyricsSliderUnfilled = new SolidColorBrush(Color.Parse("#44FFFFFF"));
+            LyricsControlFill = Brushes.White;
+            LyricsBtnBg = new SolidColorBrush(Color.Parse("#44000000"));
+            LyricsBtnBgHover = new SolidColorBrush(Color.Parse("#55000000"));
+            LyricsSliderThumb = new SolidColorBrush(Color.Parse("#FFFFFFFF"));
+        }
+        else // Dark background
+        {
+            LyricsPrimaryFg = Brushes.White;
+            LyricsSecondaryFg = new SolidColorBrush(Color.Parse("#B0FFFFFF"));
+            LyricsAccentFg = new SolidColorBrush(Color.Parse("#E74856"));
+            LyricsSubtleFg = new SolidColorBrush(Color.Parse("#999999"));
+            LyricsSliderFilled = new SolidColorBrush(Color.Parse("#CCFFFFFF"));
+            LyricsSliderUnfilled = new SolidColorBrush(Color.Parse("#33FFFFFF"));
+            LyricsControlFill = Brushes.White;
+            LyricsBtnBg = new SolidColorBrush(Color.Parse("#33FFFFFF"));
+            LyricsBtnBgHover = new SolidColorBrush(Color.Parse("#55FFFFFF"));
+            LyricsSliderThumb = new SolidColorBrush(Color.Parse("#EEFFFFFF"));
+        }
+    }
+
+    private void ResetForegroundsToDefault()
+    {
+        LyricsPrimaryFg = Brushes.White;
+        LyricsSecondaryFg = new SolidColorBrush(Color.Parse("#B0FFFFFF"));
+        LyricsAccentFg = new SolidColorBrush(Color.Parse("#E74856"));
+        LyricsSubtleFg = new SolidColorBrush(Color.Parse("#999999"));
+        LyricsSliderFilled = new SolidColorBrush(Color.Parse("#CCFFFFFF"));
+        LyricsSliderUnfilled = new SolidColorBrush(Color.Parse("#33FFFFFF"));
+        LyricsControlFill = Brushes.White;
+        LyricsBtnBg = new SolidColorBrush(Color.Parse("#33FFFFFF"));
+        LyricsBtnBgHover = new SolidColorBrush(Color.Parse("#55FFFFFF"));
+        LyricsSliderThumb = new SolidColorBrush(Color.Parse("#EEFFFFFF"));
+    }
 
     /// <summary>Whether the "Search Lyrics" button should be shown (no local lyrics found).</summary>
     [ObservableProperty]
@@ -133,13 +350,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private Action<string>? _viewArtistAction;
     private Action<Track>? _viewAlbumAction;
 
-    public LyricsViewModel(PlayerViewModel player, ILrcLibService lrcLib, INetEaseService netEase, IMetadataService metadata, IPersistenceService persistence)
+    public LyricsViewModel(PlayerViewModel player, ILrcLibService lrcLib, INetEaseService netEase, IMetadataService metadata, IPersistenceService persistence, ILibraryService library)
     {
         _player = player;
         _lrcLib = lrcLib;
         _netEase = netEase;
         _metadata = metadata;
         _persistence = persistence;
+        _library = library;
 
         // Dedicated sync timer: reads player position directly every 16ms (~60fps).
         // This is the SOLE mechanism for lyrics highlighting — no PropertyChanged dependency.
@@ -153,6 +371,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // Subscribe to track changes to update lyrics
         _player.TrackStarted += OnTrackStarted;
 
+        // Reload lyrics when metadata is edited (e.g. synced lyrics toggled off)
+        _library.LibraryUpdated += OnLibraryUpdated;
+
         // Subscribe to state changes to start/stop the sync timer
         _player.PropertyChanged += OnPlayerPropertyChanged;
 
@@ -161,6 +382,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             LoadLyricsForTrack(_player.CurrentTrack);
             UpdateAdaptiveBackground(_player.AlbumArt);
+            _player.CurrentTrack.PropertyChanged += OnCurrentTrackPropertyChanged;
             if (_hasSyncedLyrics && IsSyncTabSelected)
                 _lyricsSyncTimer.Start();
         }
@@ -202,11 +424,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         try
         {
-            var dominant = DominantColorExtractor.ExtractDominantColor(albumArt);
-            var (left, right) = DominantColorExtractor.GenerateAdaptiveBrushes(dominant);
+            var (dominant, secondary) = DominantColorExtractor.ExtractColorPalette(albumArt);
+            var (left, right) = DominantColorExtractor.GenerateAdaptiveBrushes(dominant, secondary);
             LeftPanelBrush = left;
             LyricsBackgroundBrush = right;
-            FullBackgroundBrush = DominantColorExtractor.GenerateUnifiedBrush(dominant);
+            FullBackgroundBrush = DominantColorExtractor.GenerateUnifiedBrush(dominant, secondary);
         }
         catch
         {
@@ -223,24 +445,66 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    private void SelectColorModeSolid()
+    {
+        IsColorModeSolid = true;
+        IsColorModeGradient = false;
+    }
+
+    [RelayCommand]
+    private void SelectColorModeGradient()
+    {
+        IsColorModeSolid = false;
+        IsColorModeGradient = true;
+    }
+
+    [RelayCommand]
     private async Task SetBackgroundColor(string? hex)
     {
         if (string.IsNullOrEmpty(hex))
         {
             _selectedColorHex = null;
+            ActiveSwatchKey = "";
+            ResetForegroundsToDefault();
             UpdateAdaptiveBackground(_player.AlbumArt);
         }
-        else
+        else if (hex.StartsWith("grad:"))
         {
             _selectedColorHex = hex;
+            ActiveSwatchKey = hex;
             try
             {
-                var color = Color.Parse(hex);
-                FullBackgroundBrush = DominantColorExtractor.GenerateUnifiedBrush(color);
+                var parts = hex[5..].Split(',');
+                var c1 = Color.Parse(parts[0]);
+                var c2 = Color.Parse(parts[1]);
+                FullBackgroundBrush = DominantColorExtractor.GenerateGradientBrush(c1, c2);
+                LyricsBackgroundBrush = FullBackgroundBrush;
+                UpdateForegroundsForBackground(FullBackgroundBrush);
             }
             catch
             {
                 _selectedColorHex = null;
+                ActiveSwatchKey = "";
+                UpdateAdaptiveBackground(_player.AlbumArt);
+            }
+        }
+        else
+        {
+            _selectedColorHex = hex;
+            ActiveSwatchKey = hex;
+            try
+            {
+                var color = Color.Parse(hex);
+                var brush = new SolidColorBrush(color);
+                FullBackgroundBrush = brush;
+                LyricsBackgroundBrush = brush;
+                UpdateForegroundsForBackground(brush);
+            }
+            catch
+            {
+                _selectedColorHex = null;
+                ActiveSwatchKey = "";
+                ResetForegroundsToDefault();
                 UpdateAdaptiveBackground(_player.AlbumArt);
             }
         }
@@ -263,11 +527,40 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             if (!string.IsNullOrEmpty(settings.LyricsBackgroundColorHex))
             {
                 _selectedColorHex = settings.LyricsBackgroundColorHex;
-                var color = Color.Parse(_selectedColorHex);
-                FullBackgroundBrush = DominantColorExtractor.GenerateUnifiedBrush(color);
+                ActiveSwatchKey = _selectedColorHex;
+
+                if (_selectedColorHex.StartsWith("grad:"))
+                {
+                    var parts = _selectedColorHex[5..].Split(',');
+                    if (parts.Length >= 2)
+                    {
+                        var c1 = Color.Parse(parts[0]);
+                        var c2 = Color.Parse(parts[1]);
+                        FullBackgroundBrush = DominantColorExtractor.GenerateGradientBrush(c1, c2);
+                        LyricsBackgroundBrush = FullBackgroundBrush;
+                        IsColorModeSolid = false;
+                        IsColorModeGradient = true;
+                    }
+                    else
+                    {
+                        _selectedColorHex = null;
+                        ActiveSwatchKey = "";
+                    }
+                }
+                else
+                {
+                    var color = Color.Parse(_selectedColorHex);
+                    var brush = new SolidColorBrush(color);
+                    FullBackgroundBrush = brush;
+                    LyricsBackgroundBrush = brush;
+                    UpdateForegroundsForBackground(brush);
+                }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to load lyrics background: {ex.Message}");
+        }
     }
 
     [RelayCommand]
@@ -500,7 +793,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var lrcPath = Path.ChangeExtension(_currentTrack.FilePath, ".lrc");
             if (string.IsNullOrWhiteSpace(lrcPath))
             {
-                SaveStatusText = "Save failed";
+                ShowStatusText("Save failed", 5000);
                 return;
             }
 
@@ -511,11 +804,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             try { _metadata.WriteTrackMetadata(_currentTrack); } catch { }
 
             CanSaveToFile = false;
-            SaveStatusText = "Saved Lyrics";
+            ShowStatusText("Saved Lyrics");
         }
         catch
         {
-            SaveStatusText = "Save failed — check file permissions";
+            ShowStatusText("Save failed — check file permissions", 5000);
         }
     }
 
@@ -559,7 +852,18 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // Show "no lyrics" state with search button only
         ShowSearchButton = true;
 
-        SaveStatusText = "Lyrics removed";
+        SaveStatusText = string.Empty;
+    }
+
+    private void ShowStatusText(string text, int durationMs = 3000)
+    {
+        _statusClearCts?.Cancel();
+        _statusClearCts?.Dispose();
+        SaveStatusText = text;
+        var cts = _statusClearCts = new CancellationTokenSource();
+        Task.Delay(durationMs, cts.Token).ContinueWith(_ =>
+            Dispatcher.UIThread.Post(() => SaveStatusText = string.Empty),
+            TaskContinuationOptions.OnlyOnRanToCompletion);
     }
 
     private static string? TryLoadCachedLyrics(Guid trackId)
@@ -697,13 +1001,48 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         Dispatcher.UIThread.Post(() =>
         {
+            // Unsubscribe from previous track's IsFavorite changes
+            if (_currentTrack != null)
+                _currentTrack.PropertyChanged -= OnCurrentTrackPropertyChanged;
+
             LoadLyricsForTrack(track);
             UpdateAdaptiveBackground(_player.AlbumArt);
+
+            // Subscribe to new track's IsFavorite changes for metadata heart
+            track.PropertyChanged += OnCurrentTrackPropertyChanged;
+            OnPropertyChanged(nameof(ShowMetadataFavoriteHeart));
+
             // Start sync timer only if synced lyrics exist and sync tab is active
             if (_hasSyncedLyrics && IsSyncTabSelected)
                 _lyricsSyncTimer.Start();
             else
                 _lyricsSyncTimer.Stop();
+        });
+    }
+
+    private void OnCurrentTrackPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Track.IsFavorite))
+            OnPropertyChanged(nameof(ShowMetadataFavoriteHeart));
+    }
+
+    private void OnLibraryUpdated(object? sender, EventArgs e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_currentTrack == null) return;
+
+            // Reload lyrics only if the track's lyrics content actually changed
+            if (_currentTrack.Lyrics != _loadedLyrics ||
+                _currentTrack.SyncedLyrics != _loadedSyncedLyrics)
+            {
+                LoadLyricsForTrack(_currentTrack);
+
+                if (_hasSyncedLyrics && IsSyncTabSelected && _player.State == Models.PlaybackState.Playing)
+                    _lyricsSyncTimer.Start();
+                else
+                    _lyricsSyncTimer.Stop();
+            }
         });
     }
 
@@ -749,7 +1088,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // Clear lyrics when track becomes null (queue ended)
         if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack) && _player.CurrentTrack == null)
         {
+            // Unsubscribe from previous track
+            if (_currentTrack != null)
+                _currentTrack.PropertyChanged -= OnCurrentTrackPropertyChanged;
             ClearLyricsState();
+            OnPropertyChanged(nameof(ShowMetadataFavoriteHeart));
             return;
         }
 
@@ -782,6 +1125,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         DebugLogger.Info(DebugLogger.Category.Lyrics, "LoadLyricsForTrack", $"title={track.Title}, id={track.Id}");
         _currentTrack = track;
+        _loadedLyrics = track.Lyrics;
+        _loadedSyncedLyrics = track.SyncedLyrics;
         _currentOnlineResult = null;
         _alternateOnlineResult = null;
         _alternateSource = null;
@@ -1311,8 +1656,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // Stop and dispose timer to prevent memory leak
         _lyricsSyncTimer.Stop();
 
+        // Unsubscribe from current track's property changes
+        if (_currentTrack != null)
+            _currentTrack.PropertyChanged -= OnCurrentTrackPropertyChanged;
+
+        // Dispose status clear timer
+        _statusClearCts?.Cancel();
+        _statusClearCts?.Dispose();
+
         // Unsubscribe from player events to prevent memory leak
         _player.TrackStarted -= OnTrackStarted;
         _player.PropertyChanged -= OnPlayerPropertyChanged;
+        _library.LibraryUpdated -= OnLibraryUpdated;
     }
 }

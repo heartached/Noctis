@@ -22,6 +22,7 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
             <Setter Property="Transitions">
                 <Transitions>
                     <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12">
@@ -32,9 +33,6 @@
                     <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
                 </Transitions>
             </Setter>
-        </Style>
-        <Style Selector="Button.pill-btn:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1.1)"/>
         </Style>
         <Style Selector="Button.pill-btn:pressed">
             <Setter Property="RenderTransform" Value="scale(0.95)"/>
@@ -47,6 +45,7 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
             <Setter Property="Transitions">
                 <Transitions>
                     <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12">
@@ -57,9 +56,6 @@
                     <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
                 </Transitions>
             </Setter>
-        </Style>
-        <Style Selector="Button.pill-btn-play:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1.1)"/>
         </Style>
         <Style Selector="Button.pill-btn-play:pressed">
             <Setter Property="RenderTransform" Value="scale(0.95)"/>
@@ -216,6 +212,10 @@
             <Setter Property="Height" Value="3"/>
         </Style>
 
+        <Style Selector="Slider.seek-slider /template/ RepeatButton#PART_DecreaseButton">
+            <Setter Property="Margin" Value="0,0,-6,0"/>
+        </Style>
+
         <Style Selector="Slider.seek-slider /template/ RepeatButton /template/ Border">
             <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
             <Setter Property="Height" Value="3"/>
@@ -258,16 +258,26 @@
             ClipToBounds="True">
 
         <!-- Dynamic Island: Single unified pill-shaped container -->
-        <Border Classes="island"
+        <Border x:Name="IslandBorder"
+                Classes="island"
                 Background="{DynamicResource IslandBackground}"
                 BorderThickness="0"
                 CornerRadius="999"
-                Padding="12,0"
+                Padding="12,0,12,0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                Margin="0"
-                MaxWidth="860"
+                Height="50"
+                Width="640"
                 BoxShadow="0 2 6 0 #30000000">
+            <Border.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.2">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
+                </Transitions>
+            </Border.Transitions>
 
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -277,7 +287,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- LEFT: Playback Controls -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,0,14,0">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" Margin="0,0,14,0">
 
                     <!-- Shuffle button -->
                     <Button Classes="pill-btn"
@@ -307,7 +317,7 @@
                     <!-- Previous button -->
                     <Button Classes="pill-btn"
                             Command="{Binding PreviousCommand}"
-                            ToolTip.Tip="Previous (Ctrl+Left)"
+                            ToolTip.Tip="Previous"
                             Width="34" Height="34">
                         <Viewbox Width="18" Height="18">
                             <Canvas Width="24" Height="24">
@@ -320,7 +330,7 @@
                     <!-- Play/Pause button (prominent) -->
                     <Button Classes="pill-btn-play"
                             Command="{Binding PlayPauseCommand}"
-                            ToolTip.Tip="Play/Pause (Space)"
+                            ToolTip.Tip="{Binding PlayPauseTooltip}"
                             Margin="4,0"
                             Width="40"
                             Height="40">
@@ -347,7 +357,7 @@
                     <!-- Forward button -->
                     <Button Classes="pill-btn"
                             Command="{Binding NextCommand}"
-                            ToolTip.Tip="Forward (Ctrl+Right)"
+                            ToolTip.Tip="Forward"
                             Width="34" Height="34">
                         <Viewbox Width="18" Height="18">
                             <Canvas Width="24" Height="24">
@@ -392,18 +402,19 @@
                 </StackPanel>
 
                 <!-- CENTER: Album Art + Track Info + Seek Bar (right-click opens options) -->
-                <StackPanel x:Name="TrackInfoPanel"
-                            Grid.Column="1"
-                            Orientation="Horizontal"
-                            Spacing="12"
-                            VerticalAlignment="Center"
-                            Margin="0,0,14,0"
-                            Background="Transparent">
+                <Grid x:Name="TrackInfoPanel"
+                      Grid.Column="1"
+                      VerticalAlignment="Center"
+                      Margin="0,0,14,0"
+                      Background="Transparent"
+                      ColumnDefinitions="Auto,*">
 
                     <!-- Album art thumbnail -->
-                    <Border Width="40" Height="40"
+                    <Border Grid.Column="0"
+                            Width="36" Height="36"
                             CornerRadius="7"
                             ClipToBounds="True"
+                            Margin="0,0,12,0"
                             Background="{DynamicResource IslandAlbumArtPlaceholder}">
                         <Panel>
                             <!-- Placeholder when no art -->
@@ -423,7 +434,7 @@
                     </Border>
 
                     <!-- Track info + Seek bar -->
-                    <StackPanel VerticalAlignment="Center" MinWidth="80" MaxWidth="300" Margin="0,15,0,0">
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="80" MaxWidth="420" Margin="0,3,0,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -435,45 +446,43 @@
                             </Grid.RowDefinitions>
 
                             <!-- Track title + explicit badge -->
-                            <StackPanel Grid.Row="0"
-                                        Orientation="Horizontal"
-                                        Spacing="6"
-                                        HorizontalAlignment="Left"
-                                        VerticalAlignment="Center">
-                                <Border x:Name="TrackTitleViewport"
-                                        MaxWidth="200"
-                                        ClipToBounds="True"
-                                        VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock x:Name="TrackTitleTextBlock"
-                                                   Text="{Binding CurrentTrack, Converter={StaticResource DisplayTitle}, FallbackValue='No track selected'}"
-                                                   Classes="one-line-explicit-title"
-                                                   FontSize="12"
-                                                   FontWeight="SemiBold"
-                                                   MaxLines="1"
-                                                   VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource IslandForeground}">
-                                            <TextBlock.RenderTransform>
-                                                <TranslateTransform X="0" />
-                                            </TextBlock.RenderTransform>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="{DynamicResource IslandExplicitBadge}"
-                                        CornerRadius="2"
-                                        Padding="4,0"
-                                        Height="14"
-                                        VerticalAlignment="Center"
-                                        IsVisible="{Binding CurrentTrack.IsExplicit, FallbackValue=False}"
-                                        ToolTip.Tip="Explicit">
-                                    <TextBlock Text="E"
-                                               FontSize="9"
-                                               FontWeight="Bold"
+                            <Border x:Name="TrackTitleViewport"
+                                    Grid.Row="0"
+                                    MaxWidth="200"
+                                    ClipToBounds="True"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center">
+                                <StackPanel x:Name="TrackTitleContent"
+                                            Orientation="Horizontal"
+                                            Spacing="6">
+                                    <StackPanel.RenderTransform>
+                                        <TranslateTransform X="0" />
+                                    </StackPanel.RenderTransform>
+                                    <TextBlock x:Name="TrackTitleTextBlock"
+                                               Text="{Binding CurrentTrack, Converter={StaticResource DisplayTitle}, FallbackValue='No track selected'}"
+                                               Classes="one-line-explicit-title"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               MaxLines="1"
                                                VerticalAlignment="Center"
-                                               TextAlignment="Center"
-                                               Foreground="{DynamicResource IslandIconFill}" />
-                                </Border>
-                            </StackPanel>
+                                               Foreground="{DynamicResource IslandForeground}" />
+                                    <Border x:Name="ExplicitBadge"
+                                            Background="{DynamicResource IslandExplicitBadge}"
+                                            CornerRadius="2"
+                                            Padding="4,0"
+                                            Height="14"
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding CurrentTrack.IsExplicit, FallbackValue=False}"
+                                            ToolTip.Tip="Explicit">
+                                        <TextBlock Text="E"
+                                                   FontSize="9"
+                                                   FontWeight="Bold"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   Foreground="{DynamicResource IslandIconFill}" />
+                                    </Border>
+                                </StackPanel>
+                            </Border>
 
                             <!-- Artist name -->
                             <Button Grid.Row="1"
@@ -500,7 +509,7 @@
                             </Button>
 
                             <!-- Seek bar with timestamps -->
-                            <Grid Grid.Row="2" Margin="0,0,0,0">
+                            <Grid Grid.Row="2" Margin="0,-2,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
@@ -531,21 +540,21 @@
                             </Grid>
                         </Grid>
                     </StackPanel>
-                </StackPanel>
+                </Grid>
 
                 <!-- RIGHT: Additional Controls -->
                 <StackPanel Grid.Column="2"
                             Orientation="Horizontal"
-                            Spacing="4"
+                            Spacing="2"
                             VerticalAlignment="Center"
-                            Margin="0,0,2,0">
+                            Margin="4,0,0,0">
 
                     <!-- More options button -->
                     <Button x:Name="OptionsButton"
                             Classes="secondary-btn"
                             ToolTip.Tip="Options"
                             Width="34" Height="34">
-                        <Viewbox Width="18" Height="18">
+                        <Viewbox Width="16" Height="16">
                             <Canvas Width="24" Height="24">
                                 <Path Fill="{DynamicResource IslandIconFill}"
                                       Data="{StaticResource MoreDotsIcon}" />
@@ -576,23 +585,21 @@
                                                 </Panel>
                                             </Border>
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                                <Grid ColumnDefinitions="Auto,Auto">
-                                                    <controls:MarqueeTextBlock Grid.Column="0"
-                                                               Text="{Binding CurrentTrack.Title}"
-                                                               FontWeight="SemiBold" FontSize="13"
-                                                               MaxDisplayWidth="240"
-                                                               IsForArtist="False" />
-                                                    <Border Grid.Column="1"
-                                                            Classes="explicit-badge compact"
-                                                            Margin="4,0,0,0"
-                                                            VerticalAlignment="Center"
-                                                            IsVisible="{Binding CurrentTrack.IsExplicit}">
-                                                        <TextBlock Text="E"
-                                                                   Classes="explicit-badge-text compact"
-                                                                   FontSize="9"
-                                                                   Opacity="0.9" />
-                                                    </Border>
-                                                </Grid>
+                                                <controls:MarqueeTextBlock Text="{Binding CurrentTrack.Title}"
+                                                           FontWeight="SemiBold" FontSize="13"
+                                                           MaxDisplayWidth="240"
+                                                           IsForArtist="False">
+                                                    <controls:MarqueeTextBlock.InlineContent>
+                                                        <Border Classes="explicit-badge compact"
+                                                                VerticalAlignment="Center"
+                                                                IsVisible="{Binding CurrentTrack.IsExplicit}">
+                                                            <TextBlock Text="E"
+                                                                       Classes="explicit-badge-text compact"
+                                                                       FontSize="9"
+                                                                       Opacity="0.9" />
+                                                        </Border>
+                                                    </controls:MarqueeTextBlock.InlineContent>
+                                                </controls:MarqueeTextBlock>
                                                 <controls:MarqueeTextBlock Text="{Binding CurrentTrack.Artist}" FontSize="11"
                                                            Foreground="#E74856"
                                                            MaxDisplayWidth="240" HorizontalAlignment="Left" Margin="0,2,0,0"
@@ -607,8 +614,8 @@
                                     <MenuItem.Header>
                                         <TextBlock Text="{Binding CurrentTrack.Title, StringFormat='Play &quot;{0}&quot;'}"
                                                    TextTrimming="CharacterEllipsis"
-                                                   FontSize="14"
                                                    FontWeight="Normal"
+                                                   FontSize="14"
                                                    FontFamily="{Binding $parent[MenuItem].FontFamily}" />
                                     </MenuItem.Header>
                                     <MenuItem.Icon>
@@ -643,7 +650,8 @@
                                               Command="{Binding AddCurrentTrackToNewPlaylistCommand}" />
                                     <Separator x:Name="PlaylistSubmenuSeparator" />
                                 </MenuItem>
-                                <MenuItem Header="Add to Favorites"
+                                <Separator />
+                                <MenuItem Header="Favorites"
                                           Command="{Binding ToggleCurrentTrackFavoriteCommand}"
                                           IsVisible="{Binding CurrentTrack.IsFavorite, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
                                     <MenuItem.Icon>
@@ -657,7 +665,6 @@
                                         <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <Separator />
                                 <MenuItem Header="Metadata"
                                           Command="{Binding OpenCurrentTrackMetadataCommand}">
                                     <MenuItem.Icon>
@@ -670,24 +677,17 @@
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <MenuItem Header="Show Folder"
+                                          Command="{Binding ShowCurrentTrackInExplorerCommand}">
+                                    <MenuItem.Icon>
+                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Folder%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                                 <Separator />
                                 <MenuItem Header="View Album"
                                           Command="{Binding ViewCurrentTrackAlbumCommand}">
                                     <MenuItem.Icon>
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Albums%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="View Artist"
-                                          Command="{Binding ViewCurrentArtistCommand}">
-                                    <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Artists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <Separator />
-                                <MenuItem Header="Show in Folder"
-                                          Command="{Binding ShowCurrentTrackInExplorerCommand}">
-                                    <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Folder%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
@@ -707,11 +707,26 @@
                             Tag="QueueToggle"
                             ToolTip.Tip="Queue"
                             Width="34" Height="34">
-                        <Border Width="15" Height="15"
+                        <Border Width="16" Height="16"
                                 Background="{DynamicResource IslandIconFill}"
                                 RenderOptions.BitmapInterpolationMode="HighQuality">
                             <Border.OpacityMask>
                                 <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" />
+                            </Border.OpacityMask>
+                        </Border>
+                    </Button>
+
+                    <!-- Lyrics side panel toggle -->
+                    <Button Classes="secondary-btn"
+                            Click="OnLyricsPanelButtonClick"
+                            ToolTip.Tip="Lyrics Panel"
+                            Width="34" Height="34"
+                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsLyricsViewActive, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
+                        <Border Width="16" Height="16"
+                                Background="{DynamicResource IslandIconFill}"
+                                RenderOptions.BitmapInterpolationMode="HighQuality">
+                            <Border.OpacityMask>
+                                <ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20Panel%20ICON.png" Stretch="Uniform" />
                             </Border.OpacityMask>
                         </Border>
                     </Button>
@@ -744,7 +759,7 @@
                                 Width="34" Height="34">
                             <Panel>
                                 <!-- Muted icon -->
-                                <Viewbox Width="18" Height="18"
+                                <Viewbox Width="16" Height="16"
                                          Opacity="0.4"
                                          IsVisible="{Binding IsMuted}">
                                     <Canvas Width="24" Height="24">
@@ -753,7 +768,7 @@
                                     </Canvas>
                                 </Viewbox>
                                 <!-- Volume-level icon (not muted) -->
-                                <Viewbox Width="18" Height="18"
+                                <Viewbox Width="16" Height="16"
                                          IsVisible="{Binding !IsMuted}">
                                     <Canvas Width="24" Height="24">
                                         <Path Fill="{DynamicResource IslandIconFill}"
@@ -774,6 +789,7 @@
                                        HorizontalAlignment="Left"
                                        VerticalAlignment="Center"
                                        Opacity="0"
+                                       IsVisible="False"
                                        IsHitTestVisible="False">
                                 <TextBlock.RenderTransform>
                                     <TranslateTransform X="0" Y="-18"/>

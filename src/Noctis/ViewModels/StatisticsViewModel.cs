@@ -11,6 +11,7 @@ namespace Noctis.ViewModels;
 public partial class StatisticsViewModel : ViewModelBase
 {
     private readonly ILibraryService _library;
+    private bool _isDirty = true;
 
     // ── Overview cards ──
 
@@ -42,6 +43,7 @@ public partial class StatisticsViewModel : ViewModelBase
     public StatisticsViewModel(ILibraryService library)
     {
         _library = library;
+        _library.LibraryUpdated += (_, _) => _isDirty = true;
     }
 
     /// <summary>
@@ -50,6 +52,10 @@ public partial class StatisticsViewModel : ViewModelBase
     /// </summary>
     public void Refresh()
     {
+        if (!_isDirty && TopTracks.Count > 0)
+            return;
+        _isDirty = false;
+
         var tracks = _library.Tracks;
         if (tracks.Count == 0)
         {

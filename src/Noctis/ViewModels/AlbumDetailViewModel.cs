@@ -70,6 +70,12 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Tracks in this album, ordered by disc and track number.</summary>
     public ObservableCollection<Track> Tracks { get; } = new();
 
+    /// <summary>Tracks grouped by disc number for multi-disc display.</summary>
+    public ObservableCollection<DiscGroup> DiscGroups { get; } = new();
+
+    /// <summary>Whether the album spans multiple discs.</summary>
+    public bool HasMultipleDiscs => DiscGroups.Count > 1;
+
     /// <summary>Individual artist names parsed from the album artist field, with separator info for display.</summary>
     public ArtistTokenItem[] ArtistTokens { get; private set; } = Array.Empty<ArtistTokenItem>();
 
@@ -111,6 +117,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         // Load tracks
         foreach (var track in album.Tracks)
             Tracks.Add(track);
+        BuildDiscGroups();
 
         // Load artwork off UI thread
         var artPath = persistence.GetArtworkPath(album.Id);
@@ -240,6 +247,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         Tracks.Clear();
         foreach (var track in updatedAlbum.Tracks)
             Tracks.Add(track);
+        BuildDiscGroups();
 
         // Reload artwork in case it changed
         var oldArt = AlbumArt;
@@ -263,13 +271,35 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        // Extract dominant color off UI thread, then create gradient
+        // Extract dominant color off UI thread, then create gradient.
+        // Capture a local ref so we don't access a disposed bitmap if Dispose() races.
+        var bmp = value;
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            var color = DominantColorExtractor.ExtractDominantColor(value);
-            var brush = DominantColorExtractor.CreateAlbumDetailGradient(color);
-            Dispatcher.UIThread.Post(() => BackgroundBrush = brush);
+            try
+            {
+                var color = DominantColorExtractor.ExtractDominantColor(bmp);
+                var brush = DominantColorExtractor.CreateAlbumDetailGradient(color);
+                Dispatcher.UIThread.Post(() => BackgroundBrush = brush);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error(DebugLogger.Category.UI, "AlbumDetail.GradientBg", ex.ToString());
+                // Gracefully fall back — no gradient rather than crash
+            }
         });
+    }
+
+    private void BuildDiscGroups()
+    {
+        DiscGroups.Clear();
+        var groups = Tracks
+            .GroupBy(t => t.DiscNumber)
+            .OrderBy(g => g.Key)
+            .Select(g => new DiscGroup(g.Key, $"Disc {g.Key}", g.ToList()));
+        foreach (var g in groups)
+            DiscGroups.Add(g);
+        OnPropertyChanged(nameof(HasMultipleDiscs));
     }
 
     private void UpdateCurrentPlayingTrack()
@@ -331,14 +361,16 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void OpenAlbumDescription()
+    private async Task OpenAlbumDescription()
     {
         if (!HasAlbumDescription) return;
         AlbumDescriptionEditorText = !string.IsNullOrWhiteSpace(AlbumDescriptionFull)
             ? AlbumDescriptionFull
             : AlbumDescription;
         IsAlbumDescriptionEditing = false;
-        IsAlbumDescriptionOpen = true;
+        await Views.AlbumDescriptionDialog.ShowAsync(this);
+        // Dialog closed — clean up state
+        IsAlbumDescriptionEditing = false;
     }
 
     [RelayCommand]
@@ -394,10 +426,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void AddAlbumToQueue()
     {
         if (Tracks.Count == 0) return;
-
-        var tracks = Tracks.ToList();
-        foreach (var track in tracks)
-            _player.AddToQueue(track);
+        _player.AddRangeToQueue(Tracks.ToList());
     }
 
     [RelayCommand]
@@ -472,7 +501,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task RemoveFromLibrary(Track track)
     {
-        if (!await Views.ConfirmationDialog.ShowAsync($"Remove \"{track.Title}\" from your library?"))
+        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
             return;
         var idx = Tracks.IndexOf(track);
         if (idx >= 0)
@@ -484,7 +513,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private async Task RemoveAlbumFromLibrary()
     {
         if (Tracks.Count == 0) return;
-        if (!await Views.ConfirmationDialog.ShowAsync("Remove this entire album from your library?"))
+        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
             return;
         var trackIds = Tracks.Select(t => t.Id).ToList();
         Tracks.Clear();
@@ -532,4 +561,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
 /// <summary>Display item for an individual artist name in a multi-artist album header.</summary>
 public record ArtistTokenItem(string Name, bool IsLast);
+
+/// <summary>A group of tracks belonging to a single disc within an album.</summary>
+public record DiscGroup(int DiscNumber, string Header, List<Track> Tracks);
 

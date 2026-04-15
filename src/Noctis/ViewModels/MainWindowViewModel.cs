@@ -1286,14 +1286,13 @@ public partial class MainWindowViewModel : ViewModelBase
             // AdvanceQueueCore nulls CurrentTrack before setting State=Stopped.
             if (_discord.IsConnected)
             {
-                if (Player.State == PlaybackState.Stopped)
+                if (Player.State == PlaybackState.Stopped || Player.State == PlaybackState.Paused)
                 {
                     _ = _discord.ClearAsync();
                 }
-                else if (Player.CurrentTrack != null)
+                else if (Player.State == PlaybackState.Playing && Player.CurrentTrack != null)
                 {
-                    var isPlaying = Player.State == PlaybackState.Playing;
-                    _ = UpdateDiscordPresenceAsync(Player.CurrentTrack, Player.Position, isPlaying);
+                    _ = UpdateDiscordPresenceAsync(Player.CurrentTrack, Player.Position, true);
                 }
             }
 

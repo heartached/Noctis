@@ -57,6 +57,25 @@ public class MetadataService : IMetadataService
 
     public Track? ReadTrackMetadata(string filePath)
     {
+        if (string.IsNullOrWhiteSpace(filePath))
+            return null;
+
+        // Reject paths with invalid characters
+        if (filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return null;
+
+        // Skip very large files that are unlikely to be audio (>2GB)
+        try
+        {
+            var fi = new FileInfo(filePath);
+            if (fi.Length > 2L * 1024 * 1024 * 1024)
+                return null;
+        }
+        catch
+        {
+            return null;
+        }
+
         try
         {
             using var file = TagLib.File.Create(filePath);
@@ -109,6 +128,7 @@ public class MetadataService : IMetadataService
                 TrackCount = (int)tag.TrackCount,
                 DiscNumber = tag.Disc > 0 ? (int)tag.Disc : 1,
                 DiscCount = tag.DiscCount > 0 ? (int)tag.DiscCount : 1,
+                Bpm = (int)tag.BeatsPerMinute,
                 Year = (int)tag.Year,
                 Duration = props.Duration,
                 AlbumId = Track.ComputeAlbumId(albumArtist, album),
@@ -121,7 +141,14 @@ public class MetadataService : IMetadataService
                 Comment = tag.Comment ?? string.Empty,
                 Copyright = ReadCopyright(file),
                 ReleaseDate = ReadReleaseDate(file, tag),
-                IsCompilation = false,
+                IsCompilation = ExtendedTagIO.ReadIsCompilation(file),
+                Grouping = tag.Grouping ?? string.Empty,
+                ShowComposerInAllViews = ExtendedTagIO.ReadShowComposer(file),
+                UseWorkAndMovement = ExtendedTagIO.ReadUseWorkAndMovement(file),
+                WorkName = ExtendedTagIO.ReadWorkName(file),
+                MovementName = ExtendedTagIO.ReadMovementName(file),
+                MovementNumber = ExtendedTagIO.ReadMovementNumber(file),
+                MovementCount = ExtendedTagIO.ReadMovementCount(file),
                 // Audio quality properties
                 Bitrate = bitrate,
                 SampleRate = sampleRate,
@@ -238,10 +265,21 @@ public class MetadataService : IMetadataService
             tag.TrackCount = (uint)Math.Max(0, track.TrackCount);
             tag.Disc = (uint)Math.Max(0, track.DiscNumber);
             tag.DiscCount = (uint)Math.Max(0, track.DiscCount);
+            tag.BeatsPerMinute = (uint)Math.Max(0, track.Bpm);
             tag.Year = (uint)Math.Max(0, track.Year);
             tag.Composers = string.IsNullOrWhiteSpace(track.Composer) ? Array.Empty<string>() : new[] { track.Composer };
             tag.Lyrics = string.IsNullOrWhiteSpace(track.Lyrics) ? null : track.Lyrics;
             tag.Comment = string.IsNullOrWhiteSpace(track.Comment) ? null : track.Comment;
+            tag.Grouping = string.IsNullOrWhiteSpace(track.Grouping) ? null : track.Grouping;
+            tag.Copyright = string.IsNullOrWhiteSpace(track.Copyright) ? null : track.Copyright;
+
+            ExtendedTagIO.WriteIsCompilation(file, track.IsCompilation);
+            ExtendedTagIO.WriteShowComposer(file, track.ShowComposerInAllViews);
+            ExtendedTagIO.WriteUseWorkAndMovement(file, track.UseWorkAndMovement);
+            ExtendedTagIO.WriteWorkName(file, track.WorkName);
+            ExtendedTagIO.WriteMovementName(file, track.MovementName);
+            ExtendedTagIO.WriteMovementNumber(file, track.MovementNumber);
+            ExtendedTagIO.WriteMovementCount(file, track.MovementCount);
 
             file.Save();
             return true;

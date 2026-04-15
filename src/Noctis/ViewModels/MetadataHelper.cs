@@ -29,6 +29,18 @@ public static class MetadataHelper
         }
 
         var vm = new MetadataViewModel(track, metadata, library, persistence, albumScoped, albumTracks);
+
+        // Live-apply volume adjust and EQ preset when the edited track is currently playing.
+        vm.ChangesSaved += (_, _) =>
+        {
+            var main = App.Services!.GetService<MainWindowViewModel>();
+            if (main == null || main.Player.CurrentTrack != track) return;
+            var audio = App.Services!.GetRequiredService<IAudioPlayer>();
+            audio.VolumeAdjust = track.VolumeAdjust;
+            main.Settings.ApplyEqPresetByName(
+                string.IsNullOrEmpty(track.EqPreset) ? null : track.EqPreset);
+        };
+
         var window = new MetadataWindow(vm);
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop

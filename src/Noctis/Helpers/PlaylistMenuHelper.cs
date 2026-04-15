@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
+using Avalonia.VisualTree;
 using Noctis.Models;
 
 namespace Noctis.Helpers;
@@ -10,13 +13,20 @@ namespace Noctis.Helpers;
 /// <summary>
 /// Populates existing playlists as flat MenuItems inside an "Add to Playlist" parent MenuItem,
 /// inserted after a named Separator. Skips repopulation if playlists haven't changed.
+/// When more than 12 playlists exist, constrains the submenu height and enables scroll-wheel scrolling.
 /// </summary>
 public sealed class PlaylistMenuPopulator
 {
+    private const int MaxUnconstrainedItems = 12;
+    private const double ItemHeight = 32;
+    private const double FixedOverhead = 48; // "Create New Playlist" + separator
+    private static readonly double MaxSubmenuHeight = FixedOverhead + MaxUnconstrainedItems * ItemHeight;
+
     private readonly MenuItem _parentMenuItem;
     private readonly Separator _separator;
     private readonly List<MenuItem> _generated = new();
     private int _lastHash;
+    private bool _popupHooked;
 
     public PlaylistMenuPopulator(MenuItem parentMenuItem, Separator separator)
     {
@@ -55,6 +65,8 @@ public sealed class PlaylistMenuPopulator
             _parentMenuItem.Items.Insert(insertIndex++, item);
             _generated.Add(item);
         }
+
+        HookSubmenuIfNeeded(playlists.Count);
     }
 
     /// <summary>
@@ -90,6 +102,33 @@ public sealed class PlaylistMenuPopulator
             };
             _parentMenuItem.Items.Insert(insertIndex++, item);
             _generated.Add(item);
+        }
+
+        HookSubmenuIfNeeded(playlists.Count);
+    }
+
+    private void HookSubmenuIfNeeded(int playlistCount)
+    {
+        if (playlistCount <= MaxUnconstrainedItems || _popupHooked)
+            return;
+
+        _parentMenuItem.SubmenuOpened += OnSubmenuOpened;
+        _popupHooked = true;
+    }
+
+    private void OnSubmenuOpened(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem) return;
+
+        // Find the ScrollViewer inside the submenu popup template and constrain it
+        var popup = menuItem.FindDescendantOfType<Popup>();
+        if (popup?.Child == null) return;
+
+        var scrollViewer = popup.Child.FindDescendantOfType<ScrollViewer>();
+        if (scrollViewer != null)
+        {
+            scrollViewer.MaxHeight = MaxSubmenuHeight;
+            scrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
         }
     }
 

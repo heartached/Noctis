@@ -2,7 +2,7 @@
 
 # Noctis
 
-A sleek Windows music player with synced lyrics, equalizer, smart playlists, and a beautiful dark UI.
+A sleek Windows music player with lossless audio support, synced lyrics, equalizer, smart playlists, and a beautiful UI.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-blue.svg)]()
@@ -10,16 +10,9 @@ A sleek Windows music player with synced lyrics, equalizer, smart playlists, and
 [![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=yellowgreen)](https://github.com/heartached/Noctis/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/heartached/Noctis/dotnet.yml?label=build)](https://github.com/heartached/Noctis/actions)
 
-[Download](https://github.com/heartached/Noctis/releases) • [Features](#features) • [Build](#build)
+[Download](https://github.com/heartached/Noctis/releases) • [Features](#features) • [Build](#build) • [Feedback](#feedback)
 
 </div>
-
----
-
-> [!WARNING]
-> This app is in early development and may contain bugs. If you find issues or want to request features, please open an [issue](https://github.com/heartached/Noctis/issues).
->
-> Windows may flag the installer as untrusted because it isn't code-signed. This is normal for indie software — the app is safe to use.
 
 ---
 
@@ -47,15 +40,28 @@ A sleek Windows music player with synced lyrics, equalizer, smart playlists, and
 
 ## Features
 
-- Synced lyrics via LRCLIB with offline cache
-- 10-band equalizer with presets
-- Smart playlists & favorites
-- Lossless audio support — FLAC, WAV, AIFF, APE
-- Album art & full metadata display
-- Crossfade & volume normalization
-- Last.fm scrobbling
-- Discord Rich Presence integration
-- Library indexing with SQLite
+It packs a horizon of features including,
+
+- [x] Lossless audio support — FLAC, ALAC, WAV, AIFF, APE, WavPack (plus MP3, AAC, OGG, Opus, WMA, M4A)
+- [x] Cover Flow view for browsing albums
+- [x] Synced lyrics via LRCLIB with offline cache
+- [x] Side lyrics panel alongside any view
+- [x] Collapsible sidebar with smooth animation
+- [x] 10-band equalizer with presets
+- [x] Smart playlists & favorites
+- [x] Drag and drop import from Windows Explorer
+- [x] Multi-select with bulk actions across all library views
+- [x] In-app self-update from GitHub releases
+- [x] Dynamic ambient backgrounds on lyrics and album pages
+- [x] Playlist management with artwork, drag reorder, and real-time counts
+- [x] Replay Gain & volume normalization
+- [x] Gapless playback & crossfade
+- [x] Full metadata editor with artwork, lyrics, and per-track options
+- [x] Library statistics with play counts, genre distribution, and listening trends
+- [x] Navidrome, SMB, and WebDAV remote source support with offline cache
+- [x] Last.fm scrobbling
+- [x] Discord Rich Presence integration
+- [x] Library indexing with SQLite
 
 ---
 
@@ -76,6 +82,19 @@ dotnet run --project src/Noctis/Noctis.csproj
 
 ---
 
+## Feedback
+
+If you have any feedback about bugs, feature requests, etc. about the app, please let me know through [issues](https://github.com/heartached/Noctis/issues).
+
+Yours Truly, heartached.
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE)
+
+---
+
+> [!WARNING]
+> Windows may flag the installer as untrusted because it isn't code-signed. This is normal for indie software — the app is safe to use.

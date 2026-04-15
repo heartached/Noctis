@@ -63,6 +63,7 @@ public sealed class UpdateService
         {
             TagName = release.TagName,
             Version = tagVersion,
+            InstallerApiUrl = installerAsset?.Url,
             InstallerUrl = installerAsset?.BrowserDownloadUrl,
             InstallerSize = installerAsset?.Size ?? 0,
             ReleaseUrl = release.HtmlUrl ?? $"https://github.com/heartached/Noctis/releases/tag/{release.TagName}"
@@ -82,7 +83,11 @@ public sealed class UpdateService
 
         try
         {
-            using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Accept.Add(
+                new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/octet-stream"));
+
+            using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();
 
             var totalBytes = response.Content.Headers.ContentLength ?? expectedSize;
@@ -171,6 +176,9 @@ public sealed class UpdateService
         [JsonPropertyName("name")]
         public string? Name { get; set; }
 
+        [JsonPropertyName("url")]
+        public string? Url { get; set; }
+
         [JsonPropertyName("browser_download_url")]
         public string? BrowserDownloadUrl { get; set; }
 
@@ -183,6 +191,9 @@ public sealed class UpdateInfo
 {
     public required string TagName { get; init; }
     public required Version Version { get; init; }
+    /// <summary>GitHub API asset URL — does not increment the release download counter.</summary>
+    public string? InstallerApiUrl { get; init; }
+    /// <summary>Browser download URL — increments the download counter (used as fallback).</summary>
     public string? InstallerUrl { get; init; }
     public long InstallerSize { get; init; }
     public required string ReleaseUrl { get; init; }

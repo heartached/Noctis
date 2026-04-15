@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media;
@@ -40,12 +41,36 @@ public static class DominantColorExtractor
 
     private static readonly Color FallbackColor = Color.FromRgb(0x1A, 0x1A, 0x2E);
 
+    private const int MaxCacheSize = 500;
+    private static readonly ConcurrentDictionary<string, Color> ColorCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, (Color, Color)> PaletteCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Returns a cached dominant color for the given artwork path, or extracts and caches it.
+    /// </summary>
+    public static Color GetOrExtractDominantColor(string artworkPath, Bitmap bitmap)
+    {
+        if (ColorCache.TryGetValue(artworkPath, out var cached))
+            return cached;
+
+        var color = ExtractDominantColor(bitmap);
+
+        if (ColorCache.Count >= MaxCacheSize)
+            ColorCache.Clear();
+
+        ColorCache.TryAdd(artworkPath, color);
+        return color;
+    }
+
     /// <summary>
     /// Extracts the dominant color from a bitmap using center-weighted pixel sampling.
     /// Downscales to ~50x50 for performance and skips near-black/near-white pixels.
     /// </summary>
-    public static Color ExtractDominantColor(Bitmap bitmap)
+    public static Color ExtractDominantColor(Bitmap? bitmap)
     {
+        if (bitmap == null || bitmap.Size.Width <= 0 || bitmap.Size.Height <= 0)
+            return FallbackColor;
+
         const int sampleSize = 50;
         const int brightnessMin = 15;
         const int brightnessMax = 240;
@@ -133,6 +158,127 @@ public static class DominantColorExtractor
     }
 
     /// <summary>
+    /// Extracts dominant and secondary colors from a bitmap using simplified k-means (2 clusters).
+    /// Returns two visually distinct colors for richer gradient generation.
+    /// </summary>
+    public static (Color Dominant, Color Secondary) ExtractColorPalette(Bitmap? bitmap)
+    {
+        if (bitmap == null || bitmap.Size.Width <= 0 || bitmap.Size.Height <= 0)
+            return (FallbackColor, Color.FromRgb(0x3A, 0x1C, 0x71));
+
+        const int sampleSize = 50;
+        const int brightnessMin = 15;
+        const int brightnessMax = 240;
+
+        try
+        {
+            var pixelSize = new PixelSize(sampleSize, sampleSize);
+            using var rtb = new RenderTargetBitmap(pixelSize);
+            using (var ctx = rtb.CreateDrawingContext())
+            {
+                ctx.DrawImage(bitmap,
+                    new Rect(0, 0, bitmap.Size.Width, bitmap.Size.Height),
+                    new Rect(0, 0, sampleSize, sampleSize));
+            }
+
+            using var ms = new MemoryStream();
+            rtb.Save(ms);
+            ms.Position = 0;
+            using var decoded = WriteableBitmap.Decode(ms);
+            using var fb = decoded.Lock();
+
+            int width = fb.Size.Width;
+            int height = fb.Size.Height;
+            int rowBytes = fb.RowBytes;
+
+            int bufferSize = rowBytes * height;
+            var pixels = new byte[bufferSize];
+            Marshal.Copy(fb.Address, pixels, 0, bufferSize);
+
+            // Collect valid pixels
+            var validPixels = new List<(byte R, byte G, byte B, double Weight)>();
+            double cx = width / 2.0, cy = height / 2.0;
+            double maxDist = Math.Sqrt(cx * cx + cy * cy);
+
+            for (int y = 0; y < height; y++)
+            {
+                int rowStart = y * rowBytes;
+                for (int x = 0; x < width; x++)
+                {
+                    int offset = rowStart + x * 4;
+                    byte b = pixels[offset], g = pixels[offset + 1], r = pixels[offset + 2];
+                    int brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                    if (brightness < brightnessMin || brightness > brightnessMax) continue;
+
+                    double dx = x - cx, dy = y - cy;
+                    double dist = Math.Sqrt(dx * dx + dy * dy);
+                    double weight = 1.0 + (1.0 - dist / maxDist);
+                    validPixels.Add((r, g, b, weight));
+                }
+            }
+
+            if (validPixels.Count < 2)
+                return (FallbackColor, Color.FromRgb(0x3A, 0x1C, 0x71));
+
+            // Simple 2-means clustering (3 iterations)
+            var rng = new Random(42);
+            var idx1 = rng.Next(validPixels.Count);
+            var idx2 = rng.Next(validPixels.Count);
+            double c1R = validPixels[idx1].R, c1G = validPixels[idx1].G, c1B = validPixels[idx1].B;
+            double c2R = validPixels[idx2].R, c2G = validPixels[idx2].G, c2B = validPixels[idx2].B;
+
+            for (int iter = 0; iter < 3; iter++)
+            {
+                double s1R = 0, s1G = 0, s1B = 0, w1 = 0;
+                double s2R = 0, s2G = 0, s2B = 0, w2 = 0;
+
+                foreach (var (r, g, b, w) in validPixels)
+                {
+                    double d1 = (r - c1R) * (r - c1R) + (g - c1G) * (g - c1G) + (b - c1B) * (b - c1B);
+                    double d2 = (r - c2R) * (r - c2R) + (g - c2G) * (g - c2G) + (b - c2B) * (b - c2B);
+                    if (d1 <= d2) { s1R += r * w; s1G += g * w; s1B += b * w; w1 += w; }
+                    else          { s2R += r * w; s2G += g * w; s2B += b * w; w2 += w; }
+                }
+
+                if (w1 > 0) { c1R = s1R / w1; c1G = s1G / w1; c1B = s1B / w1; }
+                if (w2 > 0) { c2R = s2R / w2; c2G = s2G / w2; c2B = s2B / w2; }
+            }
+
+            var dominant = Color.FromRgb((byte)c1R, (byte)c1G, (byte)c1B);
+            var secondary = Color.FromRgb((byte)c2R, (byte)c2G, (byte)c2B);
+
+            // Ensure dominant is the darker one (better for backgrounds)
+            double lum1 = 0.2126 * c1R + 0.7152 * c1G + 0.0722 * c1B;
+            double lum2 = 0.2126 * c2R + 0.7152 * c2G + 0.0722 * c2B;
+            if (lum2 < lum1)
+                (dominant, secondary) = (secondary, dominant);
+
+            return (dominant, secondary);
+        }
+        catch
+        {
+            return (FallbackColor, Color.FromRgb(0x3A, 0x1C, 0x71));
+        }
+    }
+
+    /// <summary>
+    /// Returns cached palette or extracts and caches it.
+    /// </summary>
+    public static (Color Dominant, Color Secondary) GetOrExtractPalette(string artworkPath, Bitmap bitmap)
+    {
+        if (PaletteCache.TryGetValue(artworkPath, out var cached))
+            return cached;
+
+        var palette = ExtractColorPalette(bitmap);
+
+        if (PaletteCache.Count >= MaxCacheSize)
+            PaletteCache.Clear();
+
+        PaletteCache.TryAdd(artworkPath, palette);
+        return palette;
+    }
+
+    /// <summary>
     /// Generates a pair of adaptive gradient brushes from a dominant color.
     /// Left: atmospheric gradient (via CreateGradientFromColor).
     /// Right: subdued/darker variant for lyrics readability.
@@ -142,6 +288,78 @@ public static class DominantColorExtractor
         var left = CreateGradientFromColor(color);
         var right = CreateSubduedGradient(color);
         return (left, right);
+    }
+
+    /// <summary>
+    /// Generates adaptive brushes using both dominant and secondary colors for richer gradients.
+    /// </summary>
+    public static (LinearGradientBrush Left, LinearGradientBrush Right) GenerateAdaptiveBrushes(Color dominant, Color secondary)
+    {
+        var left = CreateGradientFromColor(dominant);
+        var right = CreateDualColorSubduedGradient(dominant, secondary);
+        return (left, right);
+    }
+
+    /// <summary>
+    /// Generates a unified brush using two extracted colors for more accurate art representation.
+    /// </summary>
+    public static LinearGradientBrush GenerateUnifiedBrush(Color dominant, Color secondary)
+    {
+        var (h1, s1, _) = RgbToHsl(dominant.R, dominant.G, dominant.B);
+        var (h2, s2, _) = RgbToHsl(secondary.R, secondary.G, secondary.B);
+        s1 = Math.Max(s1, 0.30);
+        s2 = Math.Max(s2, 0.30);
+
+        var stop0 = HslToColor(h1,   s1 * 0.55, 0.06);
+        var stop1 = HslToColor(h1,   s1 * 0.80, 0.14);
+        var stop2 = HslToColor(h1,   s1 * 0.90, 0.22);
+        var stop3 = HslToColor(h2,   s2 * 0.85, 0.20);
+        var stop4 = HslToColor(h2,   s2 * 0.75, 0.28);
+        var stop5 = HslToColor(h1,   s1 * 0.50, 0.10);
+
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0.85, RelativeUnit.Relative),
+            EndPoint   = new RelativePoint(1, 0.15, RelativeUnit.Relative),
+            GradientStops = new GradientStops
+            {
+                new GradientStop(stop0, 0.00),
+                new GradientStop(stop1, 0.20),
+                new GradientStop(stop2, 0.40),
+                new GradientStop(stop3, 0.60),
+                new GradientStop(stop4, 0.80),
+                new GradientStop(stop5, 1.00),
+            }
+        };
+    }
+
+    /// <summary>
+    /// Creates a subdued gradient using both dominant and secondary colors.
+    /// </summary>
+    private static LinearGradientBrush CreateDualColorSubduedGradient(Color dominant, Color secondary)
+    {
+        var (h1, s1, _) = RgbToHsl(dominant.R, dominant.G, dominant.B);
+        var (h2, s2, _) = RgbToHsl(secondary.R, secondary.G, secondary.B);
+        s1 = Math.Max(s1, 0.20);
+        s2 = Math.Max(s2, 0.20);
+
+        var darkest = HslToColor(h1, s1 * 0.45, 0.06);
+        var dark    = HslToColor(h1, s1 * 0.55, 0.12);
+        var mid     = HslToColor(h2, s2 * 0.50, 0.18);
+        var accent  = HslToColor(h2, s2 * 0.45, 0.24);
+
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+            GradientStops = new GradientStops
+            {
+                new GradientStop(accent,  0.0),
+                new GradientStop(mid,     0.30),
+                new GradientStop(dark,    0.65),
+                new GradientStop(darkest, 1.0),
+            }
+        };
     }
 
     /// <summary>
@@ -199,14 +417,14 @@ public static class DominantColorExtractor
 
         return new LinearGradientBrush
         {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+            StartPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
             GradientStops = new GradientStops
             {
-                new GradientStop(darkest, 0.0),
-                new GradientStop(dark,    0.35),
-                new GradientStop(mid,     0.70),
-                new GradientStop(accent,  1.0),
+                new GradientStop(accent,  0.0),
+                new GradientStop(mid,     0.30),
+                new GradientStop(dark,    0.65),
+                new GradientStop(darkest, 1.0),
             }
         };
     }

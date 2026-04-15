@@ -1,11 +1,14 @@
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Controls;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.ViewModels;
@@ -16,7 +19,9 @@ public partial class LibrarySongsView : UserControl
 {
     private LibrarySongsViewModel? _vm;
     private EventHandler? _pendingScrollRestore;
-    private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
+    private readonly HashSet<ListBoxItem> _selectedTrackItems = new();
+    private TrackContextMenuBuilder? _menuBuilder;
+    private ListBoxItem? _menuOwnerItem;
 
     public LibrarySongsView()
     {
@@ -24,71 +29,127 @@ public partial class LibrarySongsView : UserControl
 
         // Double-click to play from here
         TrackList.DoubleTapped += OnTrackDoubleTapped;
+        TrackList.AddHandler(PointerPressedEvent, OnTrackPointerPressed, RoutingStrategies.Tunnel);
+        AddHandler(KeyDownEvent, OnViewKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
+
+        // Attach context menu to every ListBoxItem so right-click works across the full row
+        TrackList.ContainerPrepared += OnTrackContainerPrepared;
+        TrackList.ContainerClearing += OnTrackContainerClearing;
 
         DataContextChanged += OnDataContextChanged;
     }
 
-    private void OnContextMenuOpened(object? sender, RoutedEventArgs e)
+    private void OnTrackPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (DataContext is not LibrarySongsViewModel vm) return;
-        if (sender is not ContextMenu ctx) return;
+        var source = e.Source as Control;
+        while (source != null && source is not ListBoxItem)
+            source = source.Parent as Control;
+        if (source is not ListBoxItem item) return;
 
-        if (!_playlistPopulators.TryGetValue(ctx, out var populator))
-        {
-            MenuItem? addToPlaylist = null;
-            Separator? separator = null;
-            foreach (var item in ctx.Items)
-            {
-                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
-                {
-                    addToPlaylist = mi;
-                    foreach (var sub in mi.Items)
-                    {
-                        if (sub is Separator sep) { separator = sep; break; }
-                    }
-                    break;
-                }
-            }
-            if (addToPlaylist == null || separator == null) return;
-            populator = new PlaylistMenuPopulator(addToPlaylist, separator);
-            _playlistPopulators[ctx] = populator;
-        }
-
-        var track = ctx.DataContext as Track;
-        populator.Populate(vm.Playlists, vm.AddToExistingPlaylistCommand,
-            playlist => new object[] { track!, playlist });
+        MultiSelectHelper.HandleTrackRowClick(item, e, _selectedTrackItems);
     }
 
-    private void OnTrackFlyoutOpened(object? sender, EventArgs e)
+    private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
-        if (DataContext is not LibrarySongsViewModel vm) return;
-        if (sender is not MenuFlyout flyout) return;
+        MultiSelectHelper.HandleTrackSelectAll(e, TrackList, _selectedTrackItems);
+    }
 
-        if (!_playlistPopulators.TryGetValue(flyout, out var populator))
+    private ContextMenu GetOrCreateContextMenu()
+    {
+        if (_menuBuilder != null) return _menuBuilder.Menu;
+
+        if (DataContext is not LibrarySongsViewModel) return new ContextMenu();
+
+        _menuBuilder = new TrackContextMenuBuilder();
+        return _menuBuilder.Build("Remove from Library", null, this);
+    }
+
+    private void BindContextMenuToTrack(Track track)
+    {
+        GetOrCreateContextMenu();
+        var vm = DataContext as LibrarySongsViewModel;
+        if (vm == null || _menuBuilder == null) return;
+
+        _menuBuilder.Bind(
+            track,
+            playCommand: vm.PlayFromHereCommand,
+            shuffleCommand: vm.ShuffleAllCommand,
+            playNextCommand: vm.PlayNextCommand,
+            addToQueueCommand: vm.AddToQueueCommand,
+            addToNewPlaylistCommand: vm.AddToNewPlaylistCommand,
+            toggleFavoriteCommand: vm.ToggleFavoriteCommand,
+            openMetadataCommand: vm.OpenMetadataCommand,
+            searchLyricsCommand: vm.SearchLyricsCommand,
+            showInExplorerCommand: vm.ShowInExplorerCommand,
+            removeCommand: vm.RemoveFromLibraryCommand,
+            playlists: vm.Playlists,
+            addToExistingPlaylistCommand: vm.AddToExistingPlaylistCommand);
+    }
+
+    private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)
+    {
+        if (e.Container is ListBoxItem item)
+            item.ContextRequested += OnTrackItemContextRequested;
+    }
+
+    private void OnTrackContainerClearing(object? sender, ContainerClearingEventArgs e)
+    {
+        if (e.Container is ListBoxItem item)
         {
-            MenuItem? addToPlaylist = null;
-            Separator? separator = null;
-            foreach (var item in flyout.Items)
-            {
-                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
-                {
-                    addToPlaylist = mi;
-                    foreach (var sub in mi.Items)
-                    {
-                        if (sub is Separator sep) { separator = sep; break; }
-                    }
-                    break;
-                }
-            }
-            if (addToPlaylist == null || separator == null) return;
-            populator = new PlaylistMenuPopulator(addToPlaylist, separator);
-            _playlistPopulators[flyout] = populator;
+            item.ContextRequested -= OnTrackItemContextRequested;
+            item.ContextMenu = null;
         }
+    }
 
-        // The flyout's target button has the Track as its Tag
-        var track = (flyout.Target as Button)?.Tag as Track;
-        populator.Populate(vm.Playlists, vm.AddToExistingPlaylistCommand,
-            playlist => new object[] { track!, playlist });
+    private void DetachMenuFromOwner()
+    {
+        if (_menuOwnerItem != null)
+        {
+            _menuOwnerItem.ContextMenu = null;
+            _menuOwnerItem = null;
+        }
+        // Also detach from any button that previously owned the menu
+        if (_menuBuilder?.Menu?.Parent is Control parent)
+        {
+            parent.ContextMenu = null;
+        }
+    }
+
+    private void OnTrackItemContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (sender is not ListBoxItem item) return;
+        if (item.DataContext is not Track track) return;
+        if (DataContext is LibrarySongsViewModel vm)
+            vm.CtrlSelectedTracks = MultiSelectHelper.GetSelectedTrackData<Track>(_selectedTrackItems);
+
+        BindContextMenuToTrack(track);
+        var menu = GetOrCreateContextMenu();
+        DetachMenuFromOwner();
+        _menuOwnerItem = item;
+        item.ContextMenu = menu;
+    }
+
+    private void OnOptionsButtonClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn) return;
+        if (btn.Tag is not Track track) return;
+        if (DataContext is LibrarySongsViewModel vm)
+            vm.CtrlSelectedTracks = MultiSelectHelper.GetSelectedTrackData<Track>(_selectedTrackItems);
+
+        BindContextMenuToTrack(track);
+        var menu = GetOrCreateContextMenu();
+
+        if (menu.IsOpen) { menu.Close(); return; }
+
+        // Detach from previous owner and attach to the button so Open() doesn't
+        // throw "Cannot show ContextMenu on a different control".
+        DetachMenuFromOwner();
+        btn.ContextMenu = menu;
+        _menuOwnerItem = null;
+
+        menu.Placement = PlacementMode.BottomEdgeAlignedRight;
+        menu.Open(btn);
+        e.Handled = true;
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -99,6 +160,10 @@ public partial class LibrarySongsView : UserControl
         _vm = DataContext as LibrarySongsViewModel;
         if (_vm != null)
             _vm.FilteredTracks.CollectionChanged += OnFilteredTracksChanged;
+
+        // Reset shared menu so it picks up new VM commands
+        _menuBuilder?.Reset();
+        _menuBuilder = null;
     }
 
     private void OnFilteredTracksChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
@@ -118,6 +183,9 @@ public partial class LibrarySongsView : UserControl
 
     private void OnTrackDoubleTapped(object? sender, TappedEventArgs e)
     {
+        // Ignore double-taps on the 3-dot options button — it should only open the menu
+        if (e.Source is Control source && source.FindAncestorOfType<Button>() != null)
+            return;
         if (DataContext is not LibrarySongsViewModel vm) return;
         if (TrackList.SelectedItem is Track track)
         {
@@ -127,7 +195,6 @@ public partial class LibrarySongsView : UserControl
 
     private void OnQueueButtonClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        // Walk up the logical tree to find MainWindow and navigate to queue
         var mainWindow = this.FindLogicalAncestorOfType<MainWindow>();
         if (mainWindow?.DataContext is MainWindowViewModel mainVm)
         {
@@ -156,7 +223,6 @@ public partial class LibrarySongsView : UserControl
         {
             TrackList.LayoutUpdated -= _pendingScrollRestore;
             _pendingScrollRestore = null;
-            TrackList.Opacity = 1;
         }
     }
 
@@ -164,7 +230,6 @@ public partial class LibrarySongsView : UserControl
     {
         base.OnAttachedToVisualTree(e);
 
-        // Re-subscribe to collection changes (unsubscribed in OnDetachedFromVisualTree)
         if (_vm != null)
         {
             _vm.FilteredTracks.CollectionChanged -= OnFilteredTracksChanged;
@@ -173,26 +238,20 @@ public partial class LibrarySongsView : UserControl
 
         if (DataContext is LibrarySongsViewModel vm && vm.SavedScrollOffset > 0)
         {
-            TrackList.Opacity = 0;
             var targetOffset = vm.SavedScrollOffset;
-            var attempts = 0;
 
             _pendingScrollRestore = (s, args) =>
             {
-                attempts++;
                 var sv = TrackList.FindDescendantOfType<ScrollViewer>();
                 if (sv == null) return;
 
-                if (sv.Extent.Height < targetOffset && attempts < 50)
-                    return;
-
                 var clampedOffset = Math.Min(targetOffset, Math.Max(0, sv.Extent.Height - sv.Viewport.Height));
                 sv.Offset = new Vector(0, clampedOffset);
-                TrackList.Opacity = 1;
                 CancelPendingScrollRestore();
             };
 
             TrackList.LayoutUpdated += _pendingScrollRestore;
         }
     }
+
 }

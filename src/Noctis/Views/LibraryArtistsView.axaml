@@ -7,9 +7,8 @@
              x:DataType="vm:LibraryArtistsViewModel"
              Background="{DynamicResource AppMainBackground}">
 
-    <Grid RowDefinitions="Auto,*">
-        <Separator Grid.Row="0" Classes="page-top-separator" />
-        <DockPanel Grid.Row="1" Margin="16,8,16,16">
+    <Grid RowDefinitions="*">
+        <DockPanel Grid.Row="0" Margin="16,8,16,16">
 
         <!-- Content area with overlay for empty state -->
         <Grid>
@@ -20,7 +19,13 @@
                      BorderThickness="0"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     SelectionMode="Single">
+                     SelectionMode="Single"
+                     AutoScrollToSelectedItem="False">
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Focusable" Value="False" />
+                    </Style>
+                </ListBox.Styles>
                 <ListBox.DataTemplates>
                     <!-- Letter header template -->
                     <DataTemplate DataType="{x:Type m:ArtistHeaderItem}">
@@ -34,6 +39,7 @@
                     <!-- Artist data template -->
                     <DataTemplate DataType="{x:Type m:ArtistDataItem}">
                         <Button Classes="artist-item"
+                                Focusable="False"
                                 Background="Transparent"
                                 BorderThickness="0"
                                 HorizontalAlignment="Stretch"

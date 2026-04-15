@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -33,6 +34,7 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private string _trackCount = string.Empty;
     [ObservableProperty] private string _discNumber = string.Empty;
     [ObservableProperty] private string _discCount = string.Empty;
+    [ObservableProperty] private string _bpm = string.Empty;
     [ObservableProperty] private string _year = string.Empty;
     [ObservableProperty] private bool _isCompilation;
     [ObservableProperty] private bool _showComposerInAllViews;
@@ -85,6 +87,44 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private string _dateAdded = string.Empty;
     [ObservableProperty] private string _dateModified = string.Empty;
     [ObservableProperty] private string _fileLocation = string.Empty;
+    [ObservableProperty] private string _folderName = string.Empty;
+    [ObservableProperty] private string _fullFilePath = string.Empty;
+    [ObservableProperty] private string _copyright = string.Empty;
+
+    // ── Advanced Details tab ──
+    [ObservableProperty] private string _titleSort = string.Empty;
+    [ObservableProperty] private string _artistSort = string.Empty;
+    [ObservableProperty] private string _albumSort = string.Empty;
+    [ObservableProperty] private string _albumArtistSort = string.Empty;
+    [ObservableProperty] private string _composerSort = string.Empty;
+
+    [ObservableProperty] private string _conductor = string.Empty;
+    [ObservableProperty] private string _lyricist = string.Empty;
+    [ObservableProperty] private string _publisher = string.Empty;
+    [ObservableProperty] private string _encodedBy = string.Empty;
+
+    [ObservableProperty] private string _isrc = string.Empty;
+    [ObservableProperty] private string _catalogNumber = string.Empty;
+    [ObservableProperty] private string _barcode = string.Empty;
+
+    [ObservableProperty] private string _selectedAdvisory = "None";
+    [ObservableProperty] private string _language = string.Empty;
+    [ObservableProperty] private string _mood = string.Empty;
+    [ObservableProperty] private string _advDescription = string.Empty;
+    [ObservableProperty] private string _advReleaseDate = string.Empty;
+
+    [ObservableProperty] private string _encoder = string.Empty;
+    [ObservableProperty] private string _replayGainTrackGain = string.Empty;
+    [ObservableProperty] private string _replayGainTrackPeak = string.Empty;
+    [ObservableProperty] private string _replayGainAlbumGain = string.Empty;
+    [ObservableProperty] private string _replayGainAlbumPeak = string.Empty;
+
+    public ObservableCollection<CustomTagItem> CustomTags { get; } = new();
+    private AdvancedTagIO.AdvancedFields? _originalAdvancedFields;
+
+    public static readonly string[] AdvisoryOptions = { "None", "Explicit", "Clean" };
+
+    public bool ShowAdvancedTab => !_albumScoped;
 
     /// <summary>Track title and artist for the header.</summary>
     public string HeaderTitle => _albumScoped && !string.IsNullOrWhiteSpace(_track.Album) ? _track.Album : _track.Title;
@@ -112,13 +152,16 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Genre list bound to the genre ComboBox — includes the track's current genre if it's not in the built-in list.</summary>
+    public List<string> GenreOptions { get; } = new();
+
     /// <summary>Available genres for the genre dropdown.</summary>
     public static readonly string[] AvailableGenres = new[]
     {
         "Afrobeats", "Alternative", "Baile Funk", "Blues/R&B", "Books & Spoken",
         "Children's Music", "Christian", "Classical", "Comedy", "Country",
         "Dance", "Easy Listening", "Electronic", "Folk", "Hip Hop/Rap",
-        "Hip-Hop", "Holiday", "House", "Indie Pop", "Industrial",
+        "Hip-Hop", "Hip-Hop/Rap", "Holiday", "House", "Indie Pop", "Industrial",
         "Jazz", "K-Pop", "Latin", "Latin Rap", "Música Mexicana",
         "Música tropical", "New Age", "Pop", "Pop Latino", "R&B/Soul",
         "Rap", "Reggae", "Religious", "Rock", "Rock y Alternativo",
@@ -158,6 +201,7 @@ public partial class MetadataViewModel : ViewModelBase
         LoadFromTrack();
         LoadFileInfo();
         LoadArtwork();
+        LoadAdvancedFields();
     }
 
     private void LoadFromTrack()
@@ -168,11 +212,16 @@ public partial class MetadataViewModel : ViewModelBase
         AlbumArtist = _track.AlbumArtist;
         Album = _track.Album;
         Genre = _track.Genre;
+        GenreOptions.Clear();
+        if (!string.IsNullOrWhiteSpace(_track.Genre) && !AvailableGenres.Contains(_track.Genre))
+            GenreOptions.Add(_track.Genre);
+        GenreOptions.AddRange(AvailableGenres);
         Composer = _track.Composer;
         TrackNumber = _track.TrackNumber > 0 ? _track.TrackNumber.ToString() : string.Empty;
         TrackCount = _track.TrackCount > 0 ? _track.TrackCount.ToString() : string.Empty;
         DiscNumber = _track.DiscNumber > 0 ? _track.DiscNumber.ToString() : string.Empty;
         DiscCount = _track.DiscCount > 0 ? _track.DiscCount.ToString() : string.Empty;
+        Bpm = _track.Bpm > 0 ? _track.Bpm.ToString() : string.Empty;
         Year = _track.Year > 0 ? _track.Year.ToString() : string.Empty;
         IsCompilation = _track.IsCompilation;
         ShowComposerInAllViews = _track.ShowComposerInAllViews;
@@ -245,6 +294,8 @@ public partial class MetadataViewModel : ViewModelBase
         {
             FileName = Path.GetFileName(_track.FilePath);
             FileLocation = _track.FilePath;
+            FullFilePath = _track.FilePath;
+            FolderName = Path.GetDirectoryName(_track.FilePath) ?? string.Empty;
             return;
         }
 
@@ -261,6 +312,9 @@ public partial class MetadataViewModel : ViewModelBase
         DateAdded = _track.DateAdded.ToLocalTime().ToString("M/d/yyyy, h:mm tt");
         DateModified = info.DateModified.ToString("M/d/yyyy, h:mm tt");
         FileLocation = info.FilePath;
+        FullFilePath = info.FilePath;
+        FolderName = Path.GetDirectoryName(info.FilePath) ?? string.Empty;
+        Copyright = _track.Copyright;
     }
 
     private void LoadArtwork()
@@ -437,6 +491,7 @@ public partial class MetadataViewModel : ViewModelBase
         _track.TrackCount = int.TryParse(TrackCount, out var tc) ? tc : 0;
         _track.DiscNumber = int.TryParse(DiscNumber, out var dn) ? Math.Max(1, dn) : 1;
         _track.DiscCount = int.TryParse(DiscCount, out var dc) ? Math.Max(1, dc) : 1;
+        _track.Bpm = int.TryParse(Bpm, out var bp) ? Math.Max(0, bp) : 0;
         _track.Year = int.TryParse(Year, out var yr) ? yr : 0;
         _track.IsCompilation = IsCompilation;
         _track.ShowComposerInAllViews = ShowComposerInAllViews;
@@ -448,6 +503,7 @@ public partial class MetadataViewModel : ViewModelBase
         _track.MovementCount = int.TryParse(MovementCount, out var mc) ? Math.Max(0, mc) : 0;
         _track.PlayCount = int.TryParse(PlayCount, out var pc) ? Math.Max(0, pc) : 0;
         _track.Comment = Comment;
+        _track.Copyright = Copyright ?? string.Empty;
 
         // Recalculate AlbumId if album or artist changed
         var oldAlbumId = _track.AlbumId;
@@ -483,6 +539,16 @@ public partial class MetadataViewModel : ViewModelBase
 
         // Write metadata to file tags (plain lyrics go to USLT tag)
         _metadata.WriteTrackMetadata(_track);
+
+        // Write advanced fields (sort, people, identifiers, custom tags)
+        if (!_albumScoped && _originalAdvancedFields != null)
+        {
+            var advFields = BuildAdvancedFields();
+            AdvancedTagIO.WriteAll(_track.FilePath, advFields, _originalAdvancedFields);
+
+            // Sync advisory → IsExplicit for immediate badge update
+            _track.IsExplicit = advFields.ItunesAdvisory == 1;
+        }
 
         // Write synced lyrics to sidecar .lrc file
         try
@@ -559,4 +625,108 @@ public partial class MetadataViewModel : ViewModelBase
         _track.LastPlayed = null;
         OnPropertyChanged(nameof(PlayCountDisplay));
     }
+
+    // ── Advanced Details ──
+
+    private void LoadAdvancedFields()
+    {
+        if (_albumScoped) return;
+        try
+        {
+            var fields = AdvancedTagIO.ReadAll(_track.FilePath);
+            _originalAdvancedFields = fields;
+
+            TitleSort = fields.TitleSort;
+            ArtistSort = fields.ArtistSort;
+            AlbumSort = fields.AlbumSort;
+            AlbumArtistSort = fields.AlbumArtistSort;
+            ComposerSort = fields.ComposerSort;
+
+            Conductor = fields.Conductor;
+            Lyricist = fields.Lyricist;
+            Publisher = fields.Publisher;
+            EncodedBy = fields.EncodedBy;
+
+            Isrc = fields.Isrc;
+            CatalogNumber = fields.CatalogNumber;
+            Barcode = fields.Barcode;
+
+            SelectedAdvisory = fields.ItunesAdvisory switch { 1 => "Explicit", 2 => "Clean", _ => "None" };
+            Language = fields.Language;
+            Mood = fields.Mood;
+            AdvDescription = fields.Description;
+            AdvReleaseDate = fields.ReleaseDate;
+
+            Encoder = fields.Encoder;
+            ReplayGainTrackGain = fields.ReplayGainTrackGain;
+            ReplayGainTrackPeak = fields.ReplayGainTrackPeak;
+            ReplayGainAlbumGain = fields.ReplayGainAlbumGain;
+            ReplayGainAlbumPeak = fields.ReplayGainAlbumPeak;
+
+            CustomTags.Clear();
+            foreach (var kv in fields.CustomTags)
+                CustomTags.Add(new CustomTagItem { Key = kv.Key, Value = kv.Value });
+        }
+        catch { /* Non-fatal — advanced fields are best-effort */ }
+    }
+
+    private AdvancedTagIO.AdvancedFields BuildAdvancedFields()
+    {
+        return new AdvancedTagIO.AdvancedFields
+        {
+            TitleSort = TitleSort,
+            ArtistSort = ArtistSort,
+            AlbumSort = AlbumSort,
+            AlbumArtistSort = AlbumArtistSort,
+            ComposerSort = ComposerSort,
+
+            Conductor = Conductor,
+            Lyricist = Lyricist,
+            Publisher = Publisher,
+            EncodedBy = EncodedBy,
+
+            Isrc = Isrc,
+            CatalogNumber = CatalogNumber,
+            Barcode = Barcode,
+
+            ItunesAdvisory = SelectedAdvisory switch { "Explicit" => 1, "Clean" => 2, _ => 0 },
+            Language = Language,
+            Mood = Mood,
+            Description = AdvDescription,
+            ReleaseDate = AdvReleaseDate,
+
+            Encoder = Encoder,
+            ReplayGainTrackGain = ReplayGainTrackGain,
+            ReplayGainTrackPeak = ReplayGainTrackPeak,
+            ReplayGainAlbumGain = ReplayGainAlbumGain,
+            ReplayGainAlbumPeak = ReplayGainAlbumPeak,
+
+            CustomTags = CustomTags
+                .Where(t => !string.IsNullOrWhiteSpace(t.Key))
+                .Select(t => new KeyValuePair<string, string>(t.Key, t.Value ?? string.Empty))
+                .ToList()
+        };
+    }
+
+    [RelayCommand]
+    private void AddCustomTag()
+    {
+        CustomTags.Add(new CustomTagItem());
+    }
+
+    [RelayCommand]
+    private void RemoveCustomTag(CustomTagItem? item)
+    {
+        if (item != null)
+            CustomTags.Remove(item);
+    }
+}
+
+/// <summary>
+/// Observable key-value pair for custom tag editing in the Advanced Details tab.
+/// </summary>
+public partial class CustomTagItem : ObservableObject
+{
+    [ObservableProperty] private string _key = string.Empty;
+    [ObservableProperty] private string _value = string.Empty;
 }

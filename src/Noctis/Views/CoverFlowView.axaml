@@ -23,18 +23,19 @@
 
         <!-- Blurred background: large artwork behind everything -->
         <Panel Grid.Row="0" IsHitTestVisible="False">
-            <ctrl:CachedImage SourcePath="{Binding CenterArtworkPath}"
+            <ctrl:CachedImage x:Name="BackgroundArt"
+                              SourcePath="{Binding CenterArtworkPath}"
                               Stretch="UniformToFill"
                               Opacity="0.35"
                               HorizontalAlignment="Stretch"
                               VerticalAlignment="Stretch"
                               IsVisible="{Binding CenterArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                 <ctrl:CachedImage.Effect>
-                    <BlurEffect Radius="80" />
+                    <BlurEffect Radius="40" />
                 </ctrl:CachedImage.Effect>
             </ctrl:CachedImage>
-            <!-- Dark gradient overlay for readability -->
-            <Border Background="{DynamicResource AppMainBackground}" Opacity="0.45" />
+            <!-- Gradient overlay for readability -->
+            <Border x:Name="BackgroundOverlay" Background="{DynamicResource AppMainBackground}" Opacity="0.45" />
         </Panel>
 
         <!-- Main content: carousel + text stacked vertically -->
@@ -70,7 +71,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.42" ScaleY="0.42" />
-                                    <TranslateTransform X="-820" />
+                                    <TranslateTransform X="-960" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -91,7 +92,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.46" ScaleY="0.46" />
-                                    <TranslateTransform X="-720" />
+                                    <TranslateTransform X="-840" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -112,7 +113,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.50" ScaleY="0.50" />
-                                    <TranslateTransform X="-625" />
+                                    <TranslateTransform X="-730" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -133,7 +134,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.55" ScaleY="0.55" />
-                                    <TranslateTransform X="-535" />
+                                    <TranslateTransform X="-625" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -154,7 +155,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.60" ScaleY="0.60" />
-                                    <TranslateTransform X="-445" />
+                                    <TranslateTransform X="-525" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -175,7 +176,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.68" ScaleY="0.68" />
-                                    <TranslateTransform X="-345" />
+                                    <TranslateTransform X="-400" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -196,7 +197,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.80" ScaleY="0.80" />
-                                    <TranslateTransform X="-240" />
+                                    <TranslateTransform X="-280" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -242,7 +243,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.80" ScaleY="0.80" />
-                                    <TranslateTransform X="240" />
+                                    <TranslateTransform X="280" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -263,7 +264,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.68" ScaleY="0.68" />
-                                    <TranslateTransform X="345" />
+                                    <TranslateTransform X="400" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -284,7 +285,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.60" ScaleY="0.60" />
-                                    <TranslateTransform X="445" />
+                                    <TranslateTransform X="525" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -305,7 +306,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.55" ScaleY="0.55" />
-                                    <TranslateTransform X="535" />
+                                    <TranslateTransform X="625" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -326,7 +327,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.50" ScaleY="0.50" />
-                                    <TranslateTransform X="625" />
+                                    <TranslateTransform X="730" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -347,7 +348,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.46" ScaleY="0.46" />
-                                    <TranslateTransform X="720" />
+                                    <TranslateTransform X="840" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -368,7 +369,7 @@
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.42" ScaleY="0.42" />
-                                    <TranslateTransform X="820" />
+                                    <TranslateTransform X="960" />
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Panel>
@@ -387,24 +388,24 @@
                             Margin="0,16,0,0"
                             IsVisible="{Binding HasQueue}">
                     <!-- Title row with explicit badge -->
-                    <StackPanel Orientation="Horizontal"
-                                HorizontalAlignment="Center"
-                                Spacing="6">
-                        <ctrl:MarqueeTextBlock Text="{Binding CenterTitle}"
-                                               FontSize="22"
-                                               FontWeight="Bold"
-                                               MaxDisplayWidth="480"
-                                               IsCoverFlow="True" />
-                        <Border Classes="explicit-badge compact"
-                                VerticalAlignment="Center"
-                                IsVisible="{Binding CenterIsExplicit}"
-                                ToolTip.Tip="Explicit">
-                            <TextBlock Text="E"
-                                       Classes="explicit-badge-text compact"
-                                       FontSize="9"
-                                       Opacity="0.9" />
-                        </Border>
-                    </StackPanel>
+                    <ctrl:MarqueeTextBlock Text="{Binding CenterTitle}"
+                                           FontSize="22"
+                                           FontWeight="Bold"
+                                           MaxDisplayWidth="480"
+                                           HorizontalAlignment="Center"
+                                           IsCoverFlow="True">
+                        <ctrl:MarqueeTextBlock.InlineContent>
+                            <Border Classes="explicit-badge compact"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding CenterIsExplicit}"
+                                    ToolTip.Tip="Explicit">
+                                <TextBlock Text="E"
+                                           Classes="explicit-badge-text compact"
+                                           FontSize="9"
+                                           Opacity="0.9" />
+                            </Border>
+                        </ctrl:MarqueeTextBlock.InlineContent>
+                    </ctrl:MarqueeTextBlock>
                     <Button Classes="link-btn"
                             Command="{Binding GoToArtistCommand}"
                             HorizontalAlignment="Center"
@@ -420,14 +421,20 @@
                             Command="{Binding GoToAlbumCommand}"
                             HorizontalAlignment="Center"
                             IsVisible="{Binding CenterAlbum.Length}">
-                        <TextBlock Text="{Binding CenterAlbum}"
-                                   FontSize="13"
-                                   Foreground="#E74856"
-                                   TextAlignment="Center"
-                                   TextTrimming="CharacterEllipsis"
-                                   MaxWidth="400"
-                                   MaxLines="1" />
+                        <ctrl:MarqueeTextBlock Text="{Binding CenterAlbum}"
+                                               FontSize="13"
+                                               Foreground="#E74856"
+                                               MaxDisplayWidth="400"
+                                               IsCoverFlow="True"
+                                               IsForAlbum="True" />
                     </Button>
+                    <Panel Height="18" Margin="0,4,0,0">
+                        <PathIcon Data="{StaticResource HeartFillIcon}"
+                                  Width="14" Height="14"
+                                  Foreground="#E74856"
+                                  HorizontalAlignment="Center"
+                                  IsVisible="{Binding CenterIsFavorite}" />
+                    </Panel>
                 </StackPanel>
 
             </StackPanel>
@@ -435,18 +442,20 @@
             <!-- Navigation arrows - pinned to far left/right edges, shifted up to align with covers -->
             <Button HorizontalAlignment="Left"
                     VerticalAlignment="Center"
-                    Margin="16,0,0,80"
+                    Margin="16,0,0,130"
                     Background="#B0000000"
                     BorderBrush="#40FFFFFF"
                     BorderThickness="1"
                     CornerRadius="999"
-                    Width="36" Height="36"
+                    Width="28" Height="28"
+                    Padding="0"
                     Cursor="Hand"
                     Command="{Binding GoPreviousCommand}"
                     IsVisible="{Binding PreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
                     Opacity="0.85">
                 <PathIcon Data="{StaticResource ChevronLeftIcon}"
-                         Width="14" Height="14"
+                         Width="11" Height="11"
+                         Margin="-1,0,0,0"
                          Foreground="White"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center" />
@@ -454,18 +463,20 @@
 
             <Button HorizontalAlignment="Right"
                     VerticalAlignment="Center"
-                    Margin="0,0,16,80"
+                    Margin="0,0,16,130"
                     Background="#B0000000"
                     BorderBrush="#40FFFFFF"
                     BorderThickness="1"
                     CornerRadius="999"
-                    Width="36" Height="36"
+                    Width="28" Height="28"
+                    Padding="0"
                     Cursor="Hand"
                     Command="{Binding GoNextCommand}"
                     IsVisible="{Binding NextTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
                     Opacity="0.85">
                 <PathIcon Data="{StaticResource ChevronRightIcon}"
-                         Width="14" Height="14"
+                         Width="11" Height="11"
+                         Margin="1,0,0,0"
                          Foreground="White"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center" />

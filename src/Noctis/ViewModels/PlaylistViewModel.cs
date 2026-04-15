@@ -20,10 +20,14 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     private readonly System.ComponentModel.PropertyChangedEventHandler _playerPropertyChangedHandler;
 
     private Playlist _playlist;
+    private PlaylistNavItem? _navItem;
     private string _currentFilter = string.Empty;
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
+
+    /// <summary>Tracks currently Ctrl-selected in the view. Set by code-behind.</summary>
+    public List<Track> CtrlSelectedTracks { get; set; } = new();
 
     [ObservableProperty] private string _name;
     [ObservableProperty] private int _trackCount;
@@ -57,6 +61,16 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     /// <summary>Custom cover art path (if set).</summary>
     public string? PlaylistCoverArtPath => _playlist.CoverArtPath;
 
+    /// <summary>Up to 4 unique album art paths for collage (synced from sidebar nav item).</summary>
+    public string? Art1 => _navItem?.Art1;
+    public string? Art2 => _navItem?.Art2;
+    public string? Art3 => _navItem?.Art3;
+    public string? Art4 => _navItem?.Art4;
+    public bool HasCustomArt => !string.IsNullOrEmpty(PlaylistCoverArtPath);
+    public bool HasCollageArt => !HasCustomArt && Art1 != null && Art2 != null;
+    public bool HasSingleArt => !HasCustomArt && Art1 != null && Art2 == null;
+    public bool ShowFallbackIcon => !HasCustomArt && Art1 == null;
+
     /// <summary>Resolved tracks in this playlist (order matches playlist).</summary>
     public ObservableCollection<Track> Tracks { get; } = new();
 
@@ -77,6 +91,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         _persistence = persistence;
         _sidebar = sidebar;
         _playlist = playlist;
+        _navItem = _sidebar.PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlist.Id);
         _name = playlist.Name;
         _isSmartPlaylist = playlist.IsSmartPlaylist;
         _playlistDescription = playlist.Description ?? string.Empty;
@@ -97,11 +112,19 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
         if (_isSmartPlaylist)
             _library.LibraryUpdated += OnLibraryUpdated;
+
+        _sidebar.PlaylistTracksChanged += OnPlaylistTracksChanged;
     }
 
     private void OnLibraryUpdated(object? sender, EventArgs e)
     {
         Dispatcher.UIThread.Post(() => LoadTracks());
+    }
+
+    private void OnPlaylistTracksChanged(object? sender, Guid playlistId)
+    {
+        if (playlistId == _playlist.Id)
+            Dispatcher.UIThread.Post(() => LoadTracks());
     }
 
     public void ApplyFilter(string query)
@@ -181,22 +204,40 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task RemoveTrack(Track track)
     {
-        // Remove from display collection
-        var displayIdx = Tracks.IndexOf(track);
-        if (displayIdx >= 0)
-            Tracks.RemoveAt(displayIdx);
-
-        // Remove from underlying playlist by track ID (not display index,
-        // which is wrong when a search filter is active)
-        _playlist.TrackIds.Remove(track.Id);
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        foreach (var t in tracks)
+        {
+            var displayIdx = Tracks.IndexOf(t);
+            if (displayIdx >= 0)
+                Tracks.RemoveAt(displayIdx);
+            _playlist.TrackIds.Remove(t.Id);
+        }
         _playlist.ModifiedAt = DateTime.UtcNow;
         TrackCount = Tracks.Count;
 
-        // Recalculate total duration
         var total = TimeSpan.FromTicks(Tracks.Sum(t => t.Duration.Ticks));
         TotalDuration = total.TotalHours >= 1
             ? $"{(int)total.TotalHours}h {total.Minutes}m"
             : $"{(int)total.TotalMinutes} min";
+
+        await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
+        CtrlSelectedTracks.Clear();
+    }
+
+    public async Task MoveTrack(int fromIndex, int toIndex)
+    {
+        if (IsSmartPlaylist) return;
+        if (fromIndex < 0 || fromIndex >= Tracks.Count) return;
+        if (toIndex < 0 || toIndex >= Tracks.Count) return;
+        if (fromIndex == toIndex) return;
+
+        Tracks.Move(fromIndex, toIndex);
+
+        // Rebuild TrackIds to match new order
+        _playlist.TrackIds.Clear();
+        foreach (var t in Tracks)
+            _playlist.TrackIds.Add(t.Id);
+        _playlist.ModifiedAt = DateTime.UtcNow;
 
         await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
     }
@@ -219,7 +260,9 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task AddToNewPlaylist(Track track)
     {
-        await _sidebar.CreatePlaylistWithTrackAsync(track);
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        await _sidebar.CreatePlaylistWithTracksAsync(tracks);
+        CtrlSelectedTracks.Clear();
     }
 
     [RelayCommand]
@@ -227,7 +270,9 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         if (parameters == null || parameters.Length != 2) return;
         if (parameters[0] is not Track track || parameters[1] is not Playlist playlist) return;
-        await _sidebar.AddTracksToPlaylist(playlist.Id, new[] { track });
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        await _sidebar.AddTracksToPlaylist(playlist.Id, tracks);
+        CtrlSelectedTracks.Clear();
     }
 
     [RelayCommand]
@@ -239,9 +284,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task ToggleFavorite(Track track)
     {
-        track.IsFavorite = !track.IsFavorite;
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
+        foreach (var t in tracks)
+            t.IsFavorite = !t.IsFavorite;
         await _library.SaveAsync();
         _library.NotifyFavoritesChanged();
+        CtrlSelectedTracks.Clear();
     }
 
     [RelayCommand]
@@ -287,11 +335,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     }
 
     [RelayCommand]
-    private void OpenDescription()
+    private async Task OpenDescription()
     {
         DescriptionEditorText = PlaylistDescription;
         IsDescriptionEditing = false;
-        IsDescriptionOpen = true;
+        await Views.PlaylistDescriptionDialog.ShowAsync(this);
+        IsDescriptionEditing = false;
     }
 
     [RelayCommand]
@@ -341,8 +390,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private void AddAllToQueue()
     {
-        foreach (var track in Tracks)
-            _player.AddToQueue(track);
+        _player.AddRangeToQueue(Tracks.ToList());
     }
 
     [RelayCommand]
@@ -359,7 +407,10 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [RelayCommand]
     private async Task DeletePlaylist()
     {
+        var confirmed = await Views.ConfirmationDialog.ShowAsync($"Are you sure you want to delete \"{_playlist.Name}\"? This cannot be undone.");
+        if (!confirmed) return;
         await _sidebar.DeletePlaylistAsync(_playlist.Id);
+        BackRequested?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -371,6 +422,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     public void Dispose()
     {
         _player.PropertyChanged -= _playerPropertyChangedHandler;
+        _sidebar.PlaylistTracksChanged -= OnPlaylistTracksChanged;
         if (_playlist.IsSmartPlaylist)
             _library.LibraryUpdated -= OnLibraryUpdated;
     }

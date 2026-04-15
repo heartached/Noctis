@@ -29,7 +29,6 @@
                     <Color x:Key="AppMainBackgroundColor">#252525</Color>
                     <SolidColorBrush x:Key="TrackListStripeBrush" Color="#14000000" />
                     <SolidColorBrush x:Key="TrackListHoverBrush" Color="#0AFFFFFF" />
-                    <SolidColorBrush x:Key="TrackListStripeHoverBrush" Color="#1E000000" />
 
                     <!-- Background Colors -->
                     <Color x:Key="SystemChromeMediumColor">#252525</Color>
@@ -86,7 +85,6 @@
                     <SolidColorBrush x:Key="IslandForegroundSecondary" Color="#A0A0A0" />
                     <SolidColorBrush x:Key="IslandForegroundTertiary" Color="#707070" />
                     <SolidColorBrush x:Key="IslandIconFill" Color="#FFFFFF" />
-                    <SolidColorBrush x:Key="IslandPlayButtonBackground" Color="#33FFFFFF" />
                     <SolidColorBrush x:Key="IslandSliderFilled" Color="#E8E8E8" />
                     <SolidColorBrush x:Key="IslandSliderUnfilled" Color="#4A4A4A" />
                     <SolidColorBrush x:Key="IslandAlbumArtPlaceholder" Color="#33FFFFFF" />
@@ -97,9 +95,6 @@
                     <SolidColorBrush x:Key="SidebarSelectedBrush" Color="#545454" />
                     <SolidColorBrush x:Key="SidebarSelectedHoverBrush" Color="#626262" />
                     <SolidColorBrush x:Key="SidebarHoverBrush" Color="#20FFFFFF" />
-
-                    <!-- Icon pill buttons -->
-                    <SolidColorBrush x:Key="SmartPlaylistBtnBackground" Color="#E04060" />
                 </ResourceDictionary>
 
                 <ResourceDictionary x:Key="Light">
@@ -127,7 +122,6 @@
                     <Color x:Key="AppMainBackgroundColor">#FFFFFF</Color>
                     <SolidColorBrush x:Key="TrackListStripeBrush" Color="#08000000" />
                     <SolidColorBrush x:Key="TrackListHoverBrush" Color="#08000000" />
-                    <SolidColorBrush x:Key="TrackListStripeHoverBrush" Color="#10000000" />
 
                     <!-- Background Colors -->
                     <Color x:Key="SystemChromeMediumColor">#FFFFFF</Color>
@@ -184,7 +178,6 @@
                     <SolidColorBrush x:Key="IslandForegroundSecondary" Color="#A0A0A0" />
                     <SolidColorBrush x:Key="IslandForegroundTertiary" Color="#707070" />
                     <SolidColorBrush x:Key="IslandIconFill" Color="#FFFFFF" />
-                    <SolidColorBrush x:Key="IslandPlayButtonBackground" Color="#33FFFFFF" />
                     <SolidColorBrush x:Key="IslandSliderFilled" Color="#E8E8E8" />
                     <SolidColorBrush x:Key="IslandSliderUnfilled" Color="#4A4A4A" />
                     <SolidColorBrush x:Key="IslandAlbumArtPlaceholder" Color="#33FFFFFF" />
@@ -192,12 +185,9 @@
                     <SolidColorBrush x:Key="IslandIconAccent" Color="#E74856" />
 
                     <!-- Sidebar highlight -->
-                    <SolidColorBrush x:Key="SidebarSelectedBrush" Color="#DEDEDE" />
+                    <SolidColorBrush x:Key="SidebarSelectedBrush" Color="#545454" />
                     <SolidColorBrush x:Key="SidebarSelectedHoverBrush" Color="#D0D0D0" />
-                    <SolidColorBrush x:Key="SidebarHoverBrush" Color="#12000000" />
-
-                    <!-- Icon pill buttons -->
-                    <SolidColorBrush x:Key="SmartPlaylistBtnBackground" Color="#E04060" />
+                    <SolidColorBrush x:Key="SidebarHoverBrush" Color="#20FFFFFF" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
@@ -401,6 +391,16 @@
         <!-- Removed opacity transition that caused menus to shift position on open -->
     </Style>
 
+    <!-- Full-width separators in context menus and menu flyouts -->
+    <Style Selector="ContextMenu Separator">
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="MenuFlyoutPresenter Separator">
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
     <!-- Menu Item smooth animations (no opacity transition to prevent shake) -->
     <Style Selector="MenuItem">
         <Setter Property="Transitions">
@@ -423,6 +423,16 @@
         </Setter>
     </Style>
 
+    <!-- Compact menu items (~20% tighter vertical spacing) -->
+    <Style Selector="ContextMenu > MenuItem">
+        <Setter Property="Padding" Value="11,4,11,4" />
+        <Setter Property="MinHeight" Value="30" />
+    </Style>
+    <Style Selector="MenuFlyoutPresenter > MenuItem">
+        <Setter Property="Padding" Value="11,4,11,4" />
+        <Setter Property="MinHeight" Value="30" />
+    </Style>
+
     <!-- Sidebar styling -->
     <Style Selector="ListBox.sidebar">
         <Setter Property="Background" Value="Transparent" />
@@ -431,15 +441,17 @@
     </Style>
 
     <Style Selector="ListBox.sidebar ListBoxItem">
-        <Setter Property="Padding" Value="14,10" />
+        <Setter Property="Padding" Value="6,10" />
         <Setter Property="Margin" Value="0,2" />
         <Setter Property="CornerRadius" Value="8" />
         <Setter Property="FontSize" Value="15" />
         <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource IslandForeground}" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.1"/>
             </Transitions>
         </Setter>
     </Style>
@@ -550,7 +562,7 @@
     <Style Selector="Button.album-tile">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="4" />
+        <Setter Property="Padding" Value="2" />
         <Setter Property="CornerRadius" Value="6" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Transitions">
@@ -561,7 +573,51 @@
     </Style>
 
     <Style Selector="Button.album-tile:pointerover">
-        <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <!-- Ctrl+Click multi-select highlight for album tiles (red border) -->
+    <Style Selector="Button.album-tile.ctrl-selected">
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="BorderBrush" Value="#E74856" />
+    </Style>
+    <Style Selector="Button.album-tile.ctrl-selected:pointerover">
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="BorderBrush" Value="#E74856" />
+    </Style>
+    <Style Selector="Button.album-tile.ctrl-selected /template/ ContentPresenter">
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="BorderBrush" Value="#E74856" />
+    </Style>
+    <Style Selector="Button.album-tile.ctrl-selected:pointerover /template/ ContentPresenter">
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="BorderBrush" Value="#E74856" />
+    </Style>
+
+    <!-- Ctrl+Click multi-select highlight for track rows (gray background) -->
+    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected">
+        <Setter Property="Background" Value="#3FFFFFFF" />
+    </Style>
+    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:nth-child(2n)">
+        <Setter Property="Background" Value="#3FFFFFFF" />
+    </Style>
+    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:pointerover">
+        <Setter Property="Background" Value="#3FFFFFFF" />
+    </Style>
+    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:nth-child(2n):pointerover">
+        <Setter Property="Background" Value="#3FFFFFFF" />
+    </Style>
+    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="#3FFFFFFF" />
+    </Style>
+    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#3FFFFFFF" />
+    </Style>
+    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:selected">
+        <Setter Property="Background" Value="#3FFFFFFF" />
+    </Style>
+    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="#3FFFFFFF" />
     </Style>
 
     <!-- Generic pill-shaped button (fully rounded) -->
@@ -777,6 +833,7 @@
     <Style Selector="CheckBox.metadata-pill-checkbox:disabled">
         <Setter Property="Opacity" Value="0.6" />
     </Style>
+
 
 </Styles>
 

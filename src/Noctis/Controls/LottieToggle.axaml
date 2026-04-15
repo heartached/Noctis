@@ -4,8 +4,27 @@
              Width="52" Height="26"
              Cursor="Hand">
     <Border x:Name="Track" CornerRadius="13" Background="#484C54">
+        <Border.Transitions>
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.18">
+                    <BrushTransition.Easing>
+                        <CubicEaseOut />
+                    </BrushTransition.Easing>
+                </BrushTransition>
+            </Transitions>
+        </Border.Transitions>
         <Border x:Name="Knob" Width="20" Height="20" CornerRadius="10"
                 Background="White" HorizontalAlignment="Left"
-                VerticalAlignment="Center" Margin="3,0,0,0" />
+                VerticalAlignment="Center" Margin="3,0,0,0">
+            <Border.Transitions>
+                <Transitions>
+                    <ThicknessTransition Property="Margin" Duration="0:0:0.18">
+                        <ThicknessTransition.Easing>
+                            <CubicEaseOut />
+                        </ThicknessTransition.Easing>
+                    </ThicknessTransition>
+                </Transitions>
+            </Border.Transitions>
+        </Border>
     </Border>
 </UserControl>

@@ -132,16 +132,33 @@ public class PersistenceService : IPersistenceService
 
     private static async Task<T?> LoadJsonAsync<T>(string path) where T : class
     {
+        // If the main file doesn't exist but the temp does, a previous save crashed
+        // mid-write. The temp file may be complete, so try it as a recovery path.
+        var tempPath = path + ".tmp";
+        if (!File.Exists(path) && File.Exists(tempPath))
+        {
+            try
+            {
+                File.Move(tempPath, path);
+            }
+            catch
+            {
+                // If recovery fails, we'll just return null below
+            }
+        }
+
         if (!File.Exists(path)) return null;
 
         try
         {
-            await using var stream = File.OpenRead(path);
+            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.Read, bufferSize: 65536, useAsync: true);
             return await JsonSerializer.DeserializeAsync<T>(stream, JsonOptions);
         }
-        catch
+        catch (Exception ex)
         {
-            // If the file is corrupted, return null and let the caller use defaults
+            System.Diagnostics.Debug.WriteLine(
+                $"[PersistenceService] Failed to load {Path.GetFileName(path)}: {ex.Message}");
             return null;
         }
     }
@@ -152,7 +169,8 @@ public class PersistenceService : IPersistenceService
         var tempPath = path + ".tmp";
         try
         {
-            await using (var stream = File.Create(tempPath))
+            await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write,
+                FileShare.None, bufferSize: 65536, useAsync: true))
             {
                 await JsonSerializer.SerializeAsync(stream, data, JsonOptions);
             }

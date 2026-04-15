@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Controls.Presenters;
 using Avalonia.VisualTree;
 using Noctis.Helpers;
 using Noctis.Models;
@@ -21,7 +22,74 @@ public partial class AlbumDetailView : UserControl
     {
         InitializeComponent();
 
-        TrackList.DoubleTapped += OnTrackDoubleTapped;
+        DiscGroupList.ContainerPrepared += OnDiscGroupContainerPrepared;
+        DiscGroupList.ContainerClearing += OnDiscGroupContainerClearing;
+    }
+
+    private void OnDiscGroupContainerPrepared(object? sender, ContainerPreparedEventArgs e)
+    {
+        if (e.Container is not ContentPresenter cp) return;
+        cp.Loaded += OnDiscGroupPresenterLoaded;
+    }
+
+    private void OnDiscGroupContainerClearing(object? sender, ContainerClearingEventArgs e)
+    {
+        if (e.Container is not ContentPresenter cp) return;
+        cp.Loaded -= OnDiscGroupPresenterLoaded;
+        UnwireListBox(cp);
+    }
+
+    private void OnDiscGroupPresenterLoaded(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not ContentPresenter cp) return;
+        cp.Loaded -= OnDiscGroupPresenterLoaded;
+        WireListBox(cp);
+    }
+
+    private void WireListBox(ContentPresenter cp)
+    {
+        var lb = cp.FindDescendantOfType<ListBox>();
+        if (lb == null) return;
+        lb.DoubleTapped += OnTrackDoubleTapped;
+        lb.ContainerPrepared += OnTrackContainerPrepared;
+        lb.ContainerClearing += OnTrackContainerClearing;
+    }
+
+    private void UnwireListBox(ContentPresenter cp)
+    {
+        var lb = cp.FindDescendantOfType<ListBox>();
+        if (lb == null) return;
+        lb.DoubleTapped -= OnTrackDoubleTapped;
+        lb.ContainerPrepared -= OnTrackContainerPrepared;
+        lb.ContainerClearing -= OnTrackContainerClearing;
+    }
+
+    private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)
+    {
+        if (e.Container is ListBoxItem item)
+            item.ContextRequested += OnTrackItemContextRequested;
+    }
+
+    private void OnTrackContainerClearing(object? sender, ContainerClearingEventArgs e)
+    {
+        if (e.Container is ListBoxItem item)
+            item.ContextRequested -= OnTrackItemContextRequested;
+    }
+
+    private void OnTrackItemContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (e.Handled) return;
+        if (sender is not ListBoxItem item) return;
+
+        Grid? grid = null;
+        foreach (var desc in item.GetVisualDescendants())
+        {
+            if (desc is Grid g && g.ContextMenu != null)
+            { grid = g; break; }
+        }
+        if (grid?.ContextMenu == null) return;
+        grid.ContextMenu.Open(grid);
+        e.Handled = true;
     }
 
     private void OnContextMenuOpened(object? sender, RoutedEventArgs e)
@@ -117,8 +185,10 @@ public partial class AlbumDetailView : UserControl
 
     private void OnTrackDoubleTapped(object? sender, TappedEventArgs e)
     {
+        if (e.Source is Control source && source.FindAncestorOfType<Button>() != null)
+            return;
         if (DataContext is not AlbumDetailViewModel vm) return;
-        if (TrackList.SelectedItem is Track track)
+        if (sender is ListBox lb && lb.SelectedItem is Track track)
         {
             DebugLogger.Info(DebugLogger.Category.UI, "AlbumDetail.DoubleTapped", $"track={track.Title}");
             vm.PlayFromCommand.Execute(track);
@@ -137,9 +207,7 @@ public partial class AlbumDetailView : UserControl
 
         if (DataContext is AlbumDetailViewModel vm)
         {
-            var sv = TrackList.FindDescendantOfType<ScrollViewer>();
-            if (sv != null)
-                vm.SavedScrollOffset = sv.Offset.Y;
+            vm.SavedScrollOffset = TrackScrollViewer.Offset.Y;
         }
         base.OnDetachedFromVisualTree(e);
     }
@@ -148,9 +216,9 @@ public partial class AlbumDetailView : UserControl
     {
         if (_pendingScrollRestore != null)
         {
-            TrackList.LayoutUpdated -= _pendingScrollRestore;
+            DiscGroupList.LayoutUpdated -= _pendingScrollRestore;
             _pendingScrollRestore = null;
-            TrackList.Opacity = 1;
+            DiscGroupList.Opacity = 1;
         }
     }
 
@@ -158,10 +226,8 @@ public partial class AlbumDetailView : UserControl
     {
         base.OnAttachedToVisualTree(e);
 
-        // Fade in gradient background when BackgroundBrush becomes available
         if (DataContext is AlbumDetailViewModel vm2)
         {
-            // If brush is already set (re-attach), show immediately
             if (vm2.BackgroundBrush != null)
                 AlbumGradientBg.Opacity = 1;
 
@@ -175,26 +241,25 @@ public partial class AlbumDetailView : UserControl
 
         if (DataContext is AlbumDetailViewModel vm && vm.SavedScrollOffset > 0)
         {
-            TrackList.Opacity = 0;
+            DiscGroupList.Opacity = 0;
             var targetOffset = vm.SavedScrollOffset;
             var attempts = 0;
 
             _pendingScrollRestore = (s, args) =>
             {
                 attempts++;
-                var sv = TrackList.FindDescendantOfType<ScrollViewer>();
-                if (sv == null) return;
+                var sv = TrackScrollViewer;
 
                 if (sv.Extent.Height < targetOffset && attempts < 10)
                     return;
 
                 var clampedOffset = Math.Min(targetOffset, Math.Max(0, sv.Extent.Height - sv.Viewport.Height));
                 sv.Offset = new Vector(0, clampedOffset);
-                TrackList.Opacity = 1;
+                DiscGroupList.Opacity = 1;
                 CancelPendingScrollRestore();
             };
 
-            TrackList.LayoutUpdated += _pendingScrollRestore;
+            DiscGroupList.LayoutUpdated += _pendingScrollRestore;
         }
     }
 }

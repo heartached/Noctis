@@ -24,8 +24,6 @@ public partial class LyricsView : UserControl
     private DispatcherTimer? _autoFollowResumeTimer;
     private LyricsViewModel? _subscribedVm;
     private bool _isNarrowMode;
-    private bool _isImmersiveMode;
-    private System.ComponentModel.PropertyChangedEventHandler? _mainVmImmersiveHandler;
     private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
 
     private const double NarrowBreakpoint = 900;
@@ -51,9 +49,7 @@ public partial class LyricsView : UserControl
         SeekSlider.AddHandler(InputElement.PointerReleasedEvent, OnSeekPointerReleased, RoutingStrategies.Tunnel);
         SeekSlider.PointerCaptureLost += OnSeekCaptureLost;
 
-        // Volume slider percentage badge
-        LyricsVolumeSlider.PointerEntered += OnLyricsVolumeEntered;
-        LyricsVolumeSlider.PointerExited += OnLyricsVolumeExited;
+        // Volume slider percentage badge (expand-on-hover wired via AXAML PointerEntered/Exited on LyricsVolumeContainer)
         LyricsVolumeSlider.PropertyChanged += OnLyricsVolumePropertyChanged;
 
         // Mouse wheel → horizontal scroll for color swatch pickers
@@ -61,57 +57,13 @@ public partial class LyricsView : UserControl
         GradientSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
     }
 
-    // Smooth horizontal scroll state for color swatch pickers
-    private DispatcherTimer? _swatchScrollTimer;
-    private ScrollViewer? _swatchScrollTarget;
-    private double _swatchScrollFrom;
-    private double _swatchScrollTo;
-    private Stopwatch? _swatchScrollSw;
-    private const int SwatchScrollDurationMs = 250;
-
     private void OnSwatchWheelScroll(object? sender, PointerWheelEventArgs e)
     {
         if (sender is not ScrollViewer sv) return;
         e.Handled = true;
-
         var maxX = sv.Extent.Width - sv.Viewport.Width;
         if (maxX <= 0) return;
-
-        // If already animating toward a target, extend from that target
-        var currentTarget = (_swatchScrollTarget == sv && _swatchScrollTimer != null)
-            ? _swatchScrollTo
-            : sv.Offset.X;
-
-        var newTarget = Math.Clamp(currentTarget - e.Delta.Y * 80, 0, maxX);
-
-        _swatchScrollTarget = sv;
-        _swatchScrollFrom = sv.Offset.X;
-        _swatchScrollTo = newTarget;
-        _swatchScrollSw = Stopwatch.StartNew();
-
-        if (_swatchScrollTimer != null)
-        {
-            _swatchScrollTimer.Stop();
-            _swatchScrollTimer = null;
-        }
-
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        _swatchScrollTimer = timer;
-        timer.Tick += (_, _) =>
-        {
-            if (_swatchScrollSw == null) { timer.Stop(); return; }
-            var t = Math.Min(1.0, _swatchScrollSw.Elapsed.TotalMilliseconds / SwatchScrollDurationMs);
-            var eased = 1.0 - Math.Pow(1.0 - t, 3); // ease-out cubic
-            sv.Offset = sv.Offset.WithX(_swatchScrollFrom + (_swatchScrollTo - _swatchScrollFrom) * eased);
-            if (t >= 1.0)
-            {
-                sv.Offset = sv.Offset.WithX(_swatchScrollTo);
-                timer.Stop();
-                _swatchScrollSw.Stop();
-                if (_swatchScrollTimer == timer) _swatchScrollTimer = null;
-            }
-        };
-        timer.Start();
+        sv.Offset = sv.Offset.WithX(Math.Clamp(sv.Offset.X - e.Delta.Y * 60, 0, maxX));
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -129,17 +81,6 @@ public partial class LyricsView : UserControl
                 vm.EnsureLyricsForCurrentTrack();
         }, TimeSpan.FromMilliseconds(50));
 
-        // Subscribe to sidebar hidden state for immersive scaling
-        if (this.FindAncestorOfType<Window>()?.DataContext is MainWindowViewModel mainVm)
-        {
-            ApplyImmersiveMode(mainVm.IsSidebarHidden);
-            _mainVmImmersiveHandler = (s, args) =>
-            {
-                if (args.PropertyName == nameof(MainWindowViewModel.IsSidebarHidden))
-                    Dispatcher.UIThread.Post(() => ApplyImmersiveMode(((MainWindowViewModel)s!).IsSidebarHidden));
-            };
-            mainVm.PropertyChanged += _mainVmImmersiveHandler;
-        }
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -150,14 +91,6 @@ public partial class LyricsView : UserControl
             _isSeekDragging = false;
             if (DataContext is LyricsViewModel { Player: { } player })
                 player.EndSeek();
-        }
-
-        // Unsubscribe immersive mode listener
-        if (_mainVmImmersiveHandler != null &&
-            this.FindAncestorOfType<Window>()?.DataContext is MainWindowViewModel mainVm)
-        {
-            mainVm.PropertyChanged -= _mainVmImmersiveHandler;
-            _mainVmImmersiveHandler = null;
         }
 
         base.OnDetachedFromVisualTree(e);
@@ -213,13 +146,11 @@ public partial class LyricsView : UserControl
             LeftPanel.MaxHeight = double.PositiveInfinity;
             LeftPanel.Padding = new Thickness(40, 30);
 
-            AlbumArtBorder.Width = _isImmersiveMode ? 620 : 520;
-            AlbumArtBorder.Height = _isImmersiveMode ? 620 : 520;
-            LeftContentStack.MaxWidth = _isImmersiveMode ? 680 : 560;
-            LyricsItemsControl.MaxWidth = _isImmersiveMode ? 620 : 500;
-            RightPanel.RenderTransform = _isImmersiveMode
-                ? Avalonia.Media.Transformation.TransformOperations.Parse("scale(1.1, 1.1)")
-                : Avalonia.Media.Transformation.TransformOperations.Parse("scale(1, 1)");
+            AlbumArtBorder.Width = 780;
+            AlbumArtBorder.Height = 780;
+            LeftContentStack.MaxWidth = 840;
+            LyricsItemsControl.MaxWidth = 620;
+            RightPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1.1, 1.1)");
 
             var rightPanel = MainLayoutGrid.Children.Count > 1
                 ? MainLayoutGrid.Children[1] as Grid
@@ -229,32 +160,6 @@ public partial class LyricsView : UserControl
                 Grid.SetColumn(rightPanel, 1);
                 Grid.SetRow(rightPanel, 0);
             }
-        }
-    }
-
-    private void ApplyImmersiveMode(bool immersive)
-    {
-        if (immersive == _isImmersiveMode) return;
-        _isImmersiveMode = immersive;
-
-        // Only scale up in wide mode (narrow mode has its own compact sizes)
-        if (_isNarrowMode) return;
-
-        if (_isImmersiveMode)
-        {
-            AlbumArtBorder.Width = 620;
-            AlbumArtBorder.Height = 620;
-            LeftContentStack.MaxWidth = 680;
-            LyricsItemsControl.MaxWidth = 620;
-            RightPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1.1, 1.1)");
-        }
-        else
-        {
-            AlbumArtBorder.Width = 520;
-            AlbumArtBorder.Height = 520;
-            LeftContentStack.MaxWidth = 560;
-            LyricsItemsControl.MaxWidth = 500;
-            RightPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1, 1)");
         }
     }
 
@@ -480,15 +385,21 @@ public partial class LyricsView : UserControl
 
     // ── Volume percentage badge ──
 
-    private void OnLyricsVolumeEntered(object? sender, PointerEventArgs e)
+    private const double LyricsVolumeSliderExpandedWidth = 99;
+
+    private void OnLyricsVolumeContainerEntered(object? sender, PointerEventArgs e)
     {
+        LyricsVolumeSliderContainer.Width = LyricsVolumeSliderExpandedWidth;
         UpdateLyricsVolumePosition();
+        LyricsVolumePercentage.IsVisible = true;
         LyricsVolumePercentage.Opacity = 1.0;
     }
 
-    private void OnLyricsVolumeExited(object? sender, PointerEventArgs e)
+    private void OnLyricsVolumeContainerExited(object? sender, PointerEventArgs e)
     {
+        LyricsVolumeSliderContainer.Width = 0;
         LyricsVolumePercentage.Opacity = 0;
+        LyricsVolumePercentage.IsVisible = false;
     }
 
     private void OnLyricsVolumePropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
@@ -502,14 +413,13 @@ public partial class LyricsView : UserControl
         if (LyricsVolumePercentage.RenderTransform is not Avalonia.Media.TranslateTransform transform)
             return;
 
-        // Slider width=120, thumb width=12 → travel = 120 - 12 = 108
-        // Default track margin is ~0 for this style, thumb centers at 6..114
-        const double thumbHalfWidth = 6.0;
-        const double sliderWidth = 120.0;
-        const double thumbTravel = sliderWidth - (thumbHalfWidth * 2);
+        // Slider 90px, Track Margin="7,0" → track area = 76px, thumb 14px → travel = 62px
+        const double trackMargin = 7.0;
+        const double thumbHalfWidth = 7.0;
+        const double thumbTravel = 62.0;
 
         var fraction = LyricsVolumeSlider.Value / 100.0;
-        var thumbCenterX = thumbHalfWidth + (fraction * thumbTravel);
+        var thumbCenterX = trackMargin + thumbHalfWidth + (fraction * thumbTravel);
         var textWidth = LyricsVolumePercentage.Bounds.Width;
         if (textWidth <= 0) textWidth = 18;
         transform.X = thumbCenterX - (textWidth / 2);

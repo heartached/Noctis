@@ -1,0 +1,132 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.PlaylistDescriptionDialog"
+        x:DataType="vm:PlaylistViewModel"
+        Title="Playlist Description"
+        CanResize="False"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        ShowInTaskbar="False">
+
+    <Border Background="#98000000"
+            PointerPressed="OnOverlayPointerPressed"
+            PointerWheelChanged="OnOverlayWheel">
+
+        <Border x:Name="DescriptionCard"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                PointerPressed="OnCardPointerPressed"
+                Padding="22,18"
+                Width="780"
+                MaxWidth="840"
+                MaxHeight="600"
+                CornerRadius="12"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="1"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+            <Grid RowDefinitions="Auto,*"
+                  ColumnDefinitions="*,Auto,Auto">
+                <StackPanel Grid.Row="0"
+                            Grid.Column="0"
+                            Spacing="4"
+                            Margin="0,0,18,0">
+                    <TextBlock Text="{Binding Name}"
+                               FontSize="38"
+                               FontWeight="Bold"
+                               TextWrapping="Wrap" />
+                    <TextBlock FontSize="17"
+                               Opacity="0.75"
+                               VerticalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0} · {1} tracks · {2}">
+                                <Binding Path="CreatedDateDisplay" />
+                                <Binding Path="TrackCount" />
+                                <Binding Path="TotalDuration" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="8"
+                                Margin="0,8,0,0">
+                        <Button Content="Edit description"
+                                Command="{Binding StartDescriptionEditCommand}"
+                                Padding="12,6"
+                                FontSize="12"
+                                FontWeight="Bold"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                Background="#E74856"
+                                Foreground="White"
+                                Classes="album-desc-btn"
+                                IsVisible="{Binding !IsDescriptionEditing}" />
+                        <Button Content="Save"
+                                Command="{Binding SaveDescriptionEditCommand}"
+                                Padding="12,6"
+                                FontSize="12"
+                                FontWeight="Bold"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                Background="#E74856"
+                                Foreground="White"
+                                Classes="album-desc-btn"
+                                IsVisible="{Binding IsDescriptionEditing}"
+                                IsEnabled="{Binding HasDescriptionChanges}" />
+                        <Button Content="Cancel"
+                                Command="{Binding CancelDescriptionEditCommand}"
+                                Padding="12,6"
+                                FontSize="12"
+                                FontWeight="Bold"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                Background="#E74856"
+                                Foreground="White"
+                                Classes="album-desc-btn"
+                                IsVisible="{Binding IsDescriptionEditing}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <Button Grid.Row="0"
+                        Grid.Column="2"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Cursor="Hand"
+                        Click="OnCloseClick">
+                    <PathIcon Data="{StaticResource DismissIcon}"
+                             Width="16" Height="16"
+                             Opacity="0.75"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center" />
+                </Button>
+
+                <ScrollViewer Grid.Row="1"
+                              Grid.ColumnSpan="3"
+                              Margin="0,16,0,0"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              MaxHeight="420">
+                    <Grid>
+                        <TextBlock Text="{Binding PlaylistDescription}"
+                                   FontSize="15"
+                                   LineHeight="24"
+                                   TextWrapping="Wrap"
+                                   IsVisible="{Binding !IsDescriptionEditing}" />
+                        <TextBox Text="{Binding DescriptionEditorText}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalContentAlignment="Top"
+                                 FontSize="15"
+                                 MinHeight="240"
+                                 IsVisible="{Binding IsDescriptionEditing}" />
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Border>
+</Window>

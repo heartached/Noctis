@@ -19,6 +19,7 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
 
     private List<Artist> _allArtists = new();
     private string _currentFilter = string.Empty;
+    private bool _isDirty = true;
     private DispatcherTimer? _searchDebounce;
     private DispatcherTimer? _imageRefreshDebounce;
 
@@ -40,13 +41,20 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         _library = library;
 
         // Dispatch to UI thread since scan fires LibraryUpdated from a background thread
-        _library.LibraryUpdated += (_, _) => Dispatcher.UIThread.Post(Refresh);
+        _library.LibraryUpdated += (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
     }
 
     public void SetArtistImageService(ArtistImageService service) => _artistImageService = service;
 
+    /// <summary>Forces the next Refresh() call to rebuild even if data hasn't changed.</summary>
+    public void MarkDirty() => _isDirty = true;
+
     public void Refresh()
     {
+        if (!_isDirty && FlatArtistList.Count > 0)
+            return;
+        _isDirty = false;
+
         _allArtists = _library.Artists.ToList();
         ApplyFilter(_currentFilter);
 

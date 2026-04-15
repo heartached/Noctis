@@ -52,24 +52,14 @@
         <DataTemplate DataType="{x:Type vm:HomeViewModel}">
             <views:HomeView />
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:LibrarySongsViewModel}">
-            <views:LibrarySongsView />
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:LibraryAlbumsViewModel}">
-            <views:LibraryAlbumsView />
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:AlbumDetailViewModel}">
+        <!-- Songs and Albums views are cached by CachedViewLocator (App.axaml.cs) -->
+<DataTemplate DataType="{x:Type vm:AlbumDetailViewModel}">
             <views:AlbumDetailView />
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:LibraryArtistsViewModel}">
             <views:LibraryArtistsView />
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:LibraryGenresViewModel}">
-            <views:LibraryGenresView />
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:GenreDetailViewModel}">
-            <views:GenreDetailView />
-        </DataTemplate>
+
         <DataTemplate DataType="{x:Type vm:LibraryPlaylistsViewModel}">
             <views:LibraryPlaylistsView />
         </DataTemplate>

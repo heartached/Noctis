@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Noctis.Helpers;
 
 namespace Noctis.Views;
 
@@ -29,17 +31,25 @@ public partial class ConfirmationDialog : Window
         Close();
     }
 
-    /// <summary>
-    /// Shows a confirmation dialog and returns true if the user confirmed.
-    /// </summary>
+    private void OnOverlayWheel(object? sender, PointerWheelEventArgs e)
+    {
+        e.Handled = true;
+    }
+
+    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        e.Handled = true;
+    }
+
     public static async Task<bool> ShowAsync(string message)
     {
         var dialog = new ConfirmationDialog(message);
 
         if (Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
+            && desktop.MainWindow is Window owner)
         {
-            await dialog.ShowDialog(desktop.MainWindow);
+            DialogHelper.SizeToOwner(dialog, owner);
+            await dialog.ShowDialog(owner);
         }
         else
         {
