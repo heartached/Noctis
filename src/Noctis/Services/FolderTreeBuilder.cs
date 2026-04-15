@@ -26,7 +26,7 @@ public static class FolderTreeBuilder
             r => new FolderNode
             {
                 FullPath = r,
-                DisplayName = r,
+                DisplayName = Path.GetFileName(r) is { Length: > 0 } name ? name : r,
                 IsRoot = true,
             },
             StringComparer.OrdinalIgnoreCase);
