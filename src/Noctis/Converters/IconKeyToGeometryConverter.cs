@@ -24,6 +24,7 @@ public class IconKeyToGeometryConverter : IValueConverter
             ["SongsIcon"] = "avares://Noctis/Assets/Icons/Songs%20ICON.png",
             ["AlbumsIcon"] = "avares://Noctis/Assets/Icons/Albums%20ICON.png",
             ["ArtistsIcon"] = "avares://Noctis/Assets/Icons/Artists%20ICON.png",
+            ["FoldersIcon"] = "avares://Noctis/Assets/Icons/Folder%20ICON.png",
 
             ["PlaylistsIcon"] = "avares://Noctis/Assets/Icons/Playlists%20ICON.png",
             ["FavoritesIcon"] = "avares://Noctis/Assets/Icons/Your%20Favorites%20ICON.png",

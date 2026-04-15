@@ -87,6 +87,9 @@
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
             <views:SettingsView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:LibraryFoldersViewModel}">
+            <views:LibraryFoldersView />
+        </DataTemplate>
     </Application.DataTemplates>
 
 </Application>

@@ -104,6 +104,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly LibraryArtistsViewModel _artistsVm;
     private readonly LibraryPlaylistsViewModel _playlistsVm;
     private readonly FavoritesViewModel _favoritesVm;
+    private readonly LibraryFoldersViewModel _foldersVm;
 
     private readonly QueueViewModel _queueVm;
     private readonly LyricsViewModel _lyricsVm;
@@ -156,6 +157,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _artistsVm.SetArtistImageService(artistImageService);
         _playlistsVm = new LibraryPlaylistsViewModel(Sidebar, Player, library, persistence);
 
+        _foldersVm = new LibraryFoldersViewModel(library, Player, persistence);
         _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
@@ -260,6 +262,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _albumsVm.Refresh();
         await Task.Yield();
         _artistsVm.Refresh();
+        await Task.Yield();
+        _foldersVm.Refresh();
         await Task.Yield();
         _homeVm.Refresh();
         _favoritesVm.Refresh();
@@ -748,6 +752,7 @@ public partial class MainWindowViewModel : ViewModelBase
             "songs" => RefreshAndReturnSongs(_songsVm),
             "albums" => ResetFilterAndReturnAlbums(),
             "artists" => ResetAndReturnArtists(),
+            "folders" => RefreshAndReturnFolders(_foldersVm),
 
             "playlists" => RefreshAndReturnPlaylists(_playlistsVm),
             "favorites" => RefreshAndReturnFavorites(_favoritesVm),
@@ -768,6 +773,7 @@ public partial class MainWindowViewModel : ViewModelBase
             "songs" => "Songs",
             "albums" => "Albums",
             "artists" => "Artists",
+            "folders" => "Folders",
 
             "playlists" => "Playlists",
             "favorites" => "Favorites",
@@ -826,6 +832,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Return cover flow or library view based on remembered mode
         return _isAlbumsCoverFlowMode ? _coverFlowVm : _albumsVm;
+    }
+
+    private LibraryFoldersViewModel RefreshAndReturnFolders(LibraryFoldersViewModel vm)
+    {
+        vm.Refresh();
+        return vm;
     }
 
     private LibrarySongsViewModel RefreshAndReturnSongs(LibrarySongsViewModel vm)
@@ -1057,6 +1069,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (CurrentView == _songsVm) return "songs";
         if (CurrentView == _albumsVm || CurrentView == _coverFlowVm) return "albums";
         if (CurrentView == _artistsVm) return "artists";
+        if (CurrentView == _foldersVm) return "folders";
 
         if (CurrentView == _playlistsVm) return "playlists";
         if (CurrentView == _favoritesVm) return "favorites";
