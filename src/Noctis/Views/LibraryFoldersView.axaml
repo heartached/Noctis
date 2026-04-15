@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             x:Class="Noctis.Views.LibraryFoldersView"
+             x:DataType="vm:LibraryFoldersViewModel"
+             Background="{DynamicResource AppMainBackground}">
+
+    <Grid ColumnDefinitions="280,*" Margin="16,8,16,16">
+
+        <!-- Folder tree -->
+        <Border Grid.Column="0"
+                Padding="8"
+                Background="{DynamicResource AppSidebarBackground}"
+                CornerRadius="8">
+            <TreeView ItemsSource="{Binding RootNodes}"
+                      SelectedItem="{Binding SelectedNode, Mode=TwoWay}">
+                <TreeView.ItemTemplate>
+                    <TreeDataTemplate x:DataType="m:FolderNode" ItemsSource="{Binding Children}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding TotalTrackCount, StringFormat='({0})'}" Opacity="0.6" />
+                        </StackPanel>
+                    </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+        </Border>
+
+        <!-- Right pane: header + track list -->
+        <DockPanel Grid.Column="1" Margin="16,0,0,0">
+            <StackPanel DockPanel.Dock="Top"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        Margin="0,0,0,8">
+                <Button Content="Play" Command="{Binding PlayFolderCommand}" />
+                <Button Content="Shuffle" Command="{Binding ShuffleFolderCommand}" />
+                <TextBlock Text="{Binding SelectedNode.DisplayName, FallbackValue='Select a folder'}"
+                           VerticalAlignment="Center"
+                           FontSize="14"
+                           Opacity="0.7" />
+            </StackPanel>
+
+            <ListBox Classes="track-list"
+                     ItemsSource="{Binding SelectedFolderTracks}"
+                     SelectionMode="Multiple">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="m:Track">
+                        <Grid ColumnDefinitions="*,120,*" Margin="0,2">
+                            <TextBlock Grid.Column="0" Text="{Binding TitleDisplay}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding DurationFormatted}" VerticalAlignment="Center" Opacity="0.7" />
+                            <TextBlock Grid.Column="2" Text="{Binding ArtistDisplay}" VerticalAlignment="Center" Opacity="0.7" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+    </Grid>
+</UserControl>
