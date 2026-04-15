@@ -37,6 +37,7 @@ public partial class SidebarViewModel : ViewModelBase
         new NavItem { Key = "songs", Label = "Songs", IconGlyph = "SongsIcon" },
         new NavItem { Key = "albums", Label = "Albums", IconGlyph = "AlbumsIcon" },
         new NavItem { Key = "artists", Label = "Artists", IconGlyph = "ArtistsIcon" },
+        new NavItem { Key = "folders", Label = "Folders", IconGlyph = "FoldersIcon" },
         new NavItem { Key = "playlists", Label = "Playlists", IconGlyph = "PlaylistsIcon" },
         new NavItem { Key = "settings", Label = "Settings", IconGlyph = "SettingsIcon" },
     };
