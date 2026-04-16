@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Input;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
@@ -268,11 +269,6 @@ public partial class MainWindowViewModel : ViewModelBase
         _homeVm.Refresh();
         _favoritesVm.Refresh();
 
-        // Refresh library stats now that library is loaded (fixes stats showing 0)
-        Settings.RefreshLibraryStats();
-        await Settings.RefreshPlaylistCountAsync();
-        Settings.RefreshStorageInfo();
-
         // Load playlists into sidebar
         await Sidebar.LoadPlaylistsAsync();
 
@@ -311,14 +307,17 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         });
 
-        // Pre-warm cached views so the first navigation to Songs/Albums is instant.
-        // Build creates the view once; subsequent navigations reuse the cached instance.
-        App.CachedLocator?.Build(_songsVm);
-        App.CachedLocator?.Build(_albumsVm);
-
         // Navigate to the user's preferred default page
         var defaultKey = Settings.GetDefaultPageKey();
         Navigate(defaultKey);
+
+        // Pre-warm cached views on background priority so first paint isn't blocked.
+        // Build creates the view once; subsequent navigations reuse the cached instance.
+        Dispatcher.UIThread.Post(() =>
+        {
+            App.CachedLocator?.Build(_songsVm);
+            App.CachedLocator?.Build(_albumsVm);
+        }, DispatcherPriority.Background);
 
         // Select the matching sidebar item
         var allNavItems = Sidebar.NavItems
