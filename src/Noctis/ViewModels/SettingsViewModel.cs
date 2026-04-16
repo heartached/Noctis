@@ -273,6 +273,9 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Loads settings from disk and populates the view.</summary>
     public async Task LoadAsync()
     {
+        if (_settingsLoaded)
+            return;
+
         _suspendSettingPersistence = true;
         try
         {
@@ -354,10 +357,8 @@ public partial class SettingsViewModel : ViewModelBase
                 });
             OnPropertyChanged(nameof(MediaFolderDisplay));
 
-            // Stats + storage
-            RefreshLibraryStats();
-            await RefreshPlaylistCountAsync();
-            RefreshStorageInfo();
+            // Stats/storage are refreshed on navigation to Settings; library is not
+            // loaded yet at this point, so calling them here would just report zeros.
 
             // Integrations
             DiscordRichPresenceEnabled = _settings.DiscordRichPresenceEnabled;
