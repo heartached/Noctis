@@ -21,7 +21,10 @@ public class ArtistImageService
         _http = http;
         _artistArtworkDir = Path.Combine(persistence.DataDirectory, "artwork", "artists");
         Directory.CreateDirectory(_artistArtworkDir);
-        PurgeLastFmPlaceholders();
+
+        // Defer the placeholder purge off the DI resolution path so it doesn't
+        // enumerate the artwork directory on the UI thread during startup.
+        _ = Task.Run(PurgeLastFmPlaceholders);
     }
 
     /// <summary>
