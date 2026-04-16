@@ -179,6 +179,29 @@ public class LibraryService : ILibraryService
         // If scan was cancelled, don't replace the library with partial data
         if (ct.IsCancellationRequested) return;
 
+        // Fast path: every existing track was found and unchanged, and no new or
+        // modified files were detected. Skip the destructive rebuild/persist path —
+        // previously we always wiped the SQLite index and rewrote library.json on
+        // every launch, which the user saw as re-indexing even when nothing changed.
+        if (changedCount == 0 && unchangedCount == _tracks.Count)
+        {
+            await _auditTrail.AppendAsync(new AuditEvent
+            {
+                EventType = "scan.noop",
+                EntityType = "library",
+                EntityId = "local",
+                Reason = "Library scan completed (no changes)",
+                Details = new Dictionary<string, string>
+                {
+                    ["totalFilesProcessed"] = fileCount.ToString(),
+                    ["unchanged"] = unchangedCount.ToString(),
+                    ["skipped"] = skippedCount.ToString(),
+                    ["finalTrackCount"] = _tracks.Count.ToString()
+                }
+            }, ct);
+            return;
+        }
+
         // Rebuild the library from scanned tracks.
         // DistinctBy(Id) prevents duplicates from overlapping music folders
         // (e.g., user adds /Music and /Music/Rock — files in the overlap get scanned twice).
