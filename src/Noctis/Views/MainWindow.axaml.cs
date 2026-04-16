@@ -44,8 +44,12 @@ public partial class MainWindow : Window
                 };
                 vm.Settings.ThemeChanged += _themeChangedHandler;
 
-                await vm.InitializeAsync();
+                // Load settings first so window placement is restored before the
+                // rest of init runs (avoids a visible resize jump on startup).
+                await vm.Settings.LoadAsync();
                 RestoreWindowPlacement(vm.Settings.GetSettings());
+
+                await vm.InitializeAsync();
 
                 // Wire up albums view-mode toggle visuals
                 _topBarPropertyChangedHandler = (_, e) =>
@@ -172,8 +176,13 @@ public partial class MainWindow : Window
             ? WindowState.Normal.ToString()
             : WindowState.ToString();
 
-        // Persist geometry immediately so next launch restores the latest size/state.
-        try { Task.Run(vm.Settings.SaveAsync).GetAwaiter().GetResult(); } catch { }
+        // Persist geometry in the background so window close isn't blocked on disk I/O.
+        // Closing is cooperative — this fires before the window tears down, and the
+        // write is atomic (temp file + Move) so a crash during shutdown is safe.
+        _ = Task.Run(async () =>
+        {
+            try { await vm.Settings.SaveAsync(); } catch { }
+        });
     }
 
     private void OnWindowClosed(object? sender, EventArgs e)
