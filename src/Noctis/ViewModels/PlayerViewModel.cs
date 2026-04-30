@@ -26,6 +26,7 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private Track? _currentTrack;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PlayPauseTooltip))]
+    [NotifyPropertyChangedFor(nameof(IsPlaying))]
     private PlaybackState _state = PlaybackState.Stopped;
     [ObservableProperty] private TimeSpan _position;
     [ObservableProperty] private TimeSpan _duration;
@@ -46,6 +47,9 @@ public partial class PlayerViewModel : ViewModelBase
     public bool HasContent => CurrentTrack != null || UpNext.Count > 0;
 
     public string PlayPauseTooltip => State == PlaybackState.Playing ? "Pause" : "Play";
+
+    /// <summary>True when playback is actively playing (not paused or stopped).</summary>
+    public bool IsPlaying => State == PlaybackState.Playing;
 
     // ── Queue ──
 
