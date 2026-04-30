@@ -111,7 +111,17 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly LyricsViewModel _lyricsVm;
     private readonly StatisticsViewModel _statisticsVm;
     private readonly CoverFlowViewModel _coverFlowVm;
-    private bool _isAlbumsCoverFlowMode;
+    /// <summary>True when the global Cover Flow overlay is active. Survives sidebar navigation between toggle-eligible sections; auto-exits when navigating to an ineligible section.</summary>
+    private bool _isCoverFlowMode;
+
+    /// <summary>The sidebar key for the section currently selected underneath Cover Flow (e.g. "home", "songs", "albums"). Tracked so clicking Library returns to the right section.</summary>
+    private string _currentSectionKey = "home";
+
+    /// <summary>Sidebar keys whose section is allowed to display the Library/Cover Flow toggle.</summary>
+    private static readonly HashSet<string> ToggleEligibleSections = new(StringComparer.Ordinal)
+    {
+        "home", "songs", "albums", "artists", "folders", "playlists", "favorites"
+    };
     private string? _preLyricsViewKey;
 
     public MainWindowViewModel(
@@ -609,8 +619,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             return () =>
             {
-                _isAlbumsCoverFlowMode = true;
-                TopBar.IsAlbumsCoverFlowMode = true;
+                _isCoverFlowMode = true;
+                TopBar.IsCoverFlowMode = true;
                 TopBar.IsSearchVisible = false;
             };
         }
@@ -742,30 +752,60 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void Navigate(string key)
     {
-        DebugLogger.Info(DebugLogger.Category.UI, "Navigate", $"key={key}, from={GetCurrentViewKey()}");
+        DebugLogger.Info(DebugLogger.Category.UI, "Navigate", $"key={key}, from={GetCurrentViewKey()}, coverFlow={_isCoverFlowMode}");
         ClearNavigationHistory();
 
-        CurrentView = key switch
-        {
-            "home" => RefreshAndReturn(_homeVm),
-            "songs" => RefreshAndReturnSongs(_songsVm),
-            "albums" => ResetFilterAndReturnAlbums(),
-            "artists" => ResetAndReturnArtists(),
-            "folders" => RefreshAndReturnFolders(_foldersVm),
+        var goingToEligibleSection = ToggleEligibleSections.Contains(key);
 
-            "playlists" => RefreshAndReturnPlaylists(_playlistsVm),
-            "favorites" => RefreshAndReturnFavorites(_favoritesVm),
-            "statistics" => RefreshAndReturnStatistics(_statisticsVm),
-            "queue" => _queueVm,
-            "lyrics" => EnsureLyricsAndReturn(_lyricsVm),
-            "settings" => RefreshAndReturnSettings(),
-            _ when key.StartsWith("playlist:") => CreatePlaylistView(key),
-            _ => _homeVm
-        };
+        // If we're in Cover Flow and the user clicks an ineligible destination
+        // (album detail, settings, lyrics, etc.), auto-exit Cover Flow first
+        // so the toggle hide and the destination view land in a consistent state.
+        if (_isCoverFlowMode && !goingToEligibleSection)
+        {
+            _isCoverFlowMode = false;
+            TopBar.IsCoverFlowMode = false;
+            TopBar.IsSearchVisible = true;
+        }
+
+        // Track which top-level section the user is conceptually on. While in
+        // Cover Flow this is the section "underneath" the overlay.
+        if (goingToEligibleSection)
+            _currentSectionKey = key;
+
+        // Resolve the destination view. If we're staying in Cover Flow (eligible
+        // destination + sticky mode), the visible content stays as the carousel;
+        // only the underlying section key changes.
+        if (_isCoverFlowMode && goingToEligibleSection)
+        {
+            // Touch the underlying section so its data is fresh when the user
+            // exits Cover Flow (mirrors what Navigate would normally do).
+            _ = ResolveSectionView(key);
+            // CurrentView stays as _coverFlowVm.
+        }
+        else
+        {
+            CurrentView = key switch
+            {
+                "home" => RefreshAndReturn(_homeVm),
+                "songs" => RefreshAndReturnSongs(_songsVm),
+                "albums" => ResetFilterAndReturnAlbums(),
+                "artists" => ResetAndReturnArtists(),
+                "folders" => RefreshAndReturnFolders(_foldersVm),
+                "playlists" => RefreshAndReturnPlaylists(_playlistsVm),
+                "favorites" => RefreshAndReturnFavorites(_favoritesVm),
+                "statistics" => RefreshAndReturnStatistics(_statisticsVm),
+                "queue" => _queueVm,
+                "lyrics" => EnsureLyricsAndReturn(_lyricsVm),
+                "settings" => RefreshAndReturnSettings(),
+                _ when key.StartsWith("playlist:") => CreatePlaylistView(key),
+                _ => _homeVm
+            };
+        }
 
         // Close queue popup and clear search when switching views
         Player.IsQueuePopupOpen = false;
         TopBar.SearchText = string.Empty;
+
         TopBar.CurrentTabName = key switch
         {
             "home" => "Home",
@@ -773,7 +813,6 @@ public partial class MainWindowViewModel : ViewModelBase
             "albums" => "Albums",
             "artists" => "Artists",
             "folders" => "Folders",
-
             "playlists" => "Playlists",
             "favorites" => "Favorites",
             "statistics" => "Statistics",
@@ -786,10 +825,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Clear all top bar actions, then set up the correct ones for the destination
         ClearAllTopBarActions();
+        if (goingToEligibleSection)
+            SetupGlobalViewModeToggle();
         if (key == "songs")
             SetupSongsTopBarActions();
-        else if (key == "albums")
-            SetupAlbumsViewModeToggle();
         else if (key == "playlists")
             TopBar.ShowPlaylistActions(_playlistsVm.CreateSmartPlaylistCommand);
         else if (key == "favorites")
@@ -818,19 +857,13 @@ public partial class MainWindowViewModel : ViewModelBase
         return _artistsVm;
     }
 
-    private ViewModelBase ResetFilterAndReturnAlbums()
+    private LibraryAlbumsViewModel ResetFilterAndReturnAlbums()
     {
         // Clear any stale artist filter from OnArtistOpened so the user
         // sees the full album grid when navigating via the sidebar.
         _albumsVm.ClearArtistFilter();
-
-        // Use Refresh() so the dirty check prevents unnecessary rebuilds.
-        // ApplyFilter("") was bypassing the dirty check, forcing a full
-        // rebuild on every navigation even when data hadn't changed.
         _albumsVm.Refresh();
-
-        // Return cover flow or library view based on remembered mode
-        return _isAlbumsCoverFlowMode ? _coverFlowVm : _albumsVm;
+        return _albumsVm;
     }
 
     private LibraryFoldersViewModel RefreshAndReturnFolders(LibraryFoldersViewModel vm)
@@ -932,7 +965,6 @@ public partial class MainWindowViewModel : ViewModelBase
         detail.SetViewArtistAction(ViewArtistFromAlbumDetail);
         detail.SetSearchLyricsAction(SearchLyricsForTrack);
         CurrentView = detail;
-        SetupAlbumsViewModeToggle();
     }
 
     private void OpenArtistDiscography(string artistName)
@@ -1010,55 +1042,86 @@ public partial class MainWindowViewModel : ViewModelBase
         TopBar.HidePageActions();
     }
 
-    /// <summary>Clears all page-specific, playlist, and artist top bar actions.</summary>
+    /// <summary>Clears all page-specific, playlist, artist, and view-mode top bar actions.</summary>
     private void ClearAllTopBarActions()
     {
         ClearTopBarPageActions();
         TopBar.HidePlaylistActions();
         TopBar.HideArtistActions();
         TopBar.HideFavoritesActions();
-        TopBar.HideAlbumsViewModeToggle();
+        TopBar.HideViewModeToggle();
     }
 
-    private void SetupAlbumsViewModeToggle()
+    /// <summary>
+    /// Shows the global Library/Cover Flow toggle in the top bar and reflects the current mode.
+    /// Call after navigating to a toggle-eligible section.
+    /// </summary>
+    private void SetupGlobalViewModeToggle()
     {
-        TopBar.ShowAlbumsViewModeToggle(
-            new RelayCommand(SetAlbumsLibraryMode),
-            new RelayCommand(SetAlbumsCoverFlowMode),
-            _isAlbumsCoverFlowMode);
+        TopBar.ShowViewModeToggle(
+            new RelayCommand(ExitCoverFlowMode),
+            new RelayCommand(EnterCoverFlowMode),
+            _isCoverFlowMode);
 
         // Hide search in cover flow mode (must run after CurrentTabName sets IsSearchVisible=true)
-        if (_isAlbumsCoverFlowMode)
+        if (_isCoverFlowMode)
             TopBar.IsSearchVisible = false;
     }
 
-    private void SetAlbumsLibraryMode()
+    private void EnterCoverFlowMode()
     {
-        if (!_isAlbumsCoverFlowMode) return;
-        _isAlbumsCoverFlowMode = false;
-        TopBar.IsAlbumsCoverFlowMode = false;
-        TopBar.IsSearchVisible = true;
-        CurrentView = _albumsVm;
-    }
-
-    private void SetAlbumsCoverFlowMode()
-    {
-        if (_isAlbumsCoverFlowMode) return;
-        _isAlbumsCoverFlowMode = true;
-        TopBar.IsAlbumsCoverFlowMode = true;
+        if (_isCoverFlowMode) return;
+        _isCoverFlowMode = true;
+        TopBar.IsCoverFlowMode = true;
         TopBar.IsSearchVisible = false;
         CurrentView = _coverFlowVm;
     }
 
+    private void ExitCoverFlowMode()
+    {
+        if (!_isCoverFlowMode) return;
+        _isCoverFlowMode = false;
+        TopBar.IsCoverFlowMode = false;
+        TopBar.IsSearchVisible = true;
+        // Return to the section that was selected underneath
+        CurrentView = ResolveSectionView(_currentSectionKey);
+    }
+
+    /// <summary>Resolves a sidebar section key to the cached long-lived ViewModel for that section. Refreshes content as needed (mirrors Navigate's switch).</summary>
+    private ViewModelBase ResolveSectionView(string key) => key switch
+    {
+        "home"      => RefreshAndReturn(_homeVm),
+        "songs"     => RefreshAndReturnSongs(_songsVm),
+        "albums"    => ResetFilterAndReturnAlbums(),
+        "artists"   => ResetAndReturnArtists(),
+        "folders"   => RefreshAndReturnFolders(_foldersVm),
+        "playlists" => RefreshAndReturnPlaylists(_playlistsVm),
+        "favorites" => RefreshAndReturnFavorites(_favoritesVm),
+        _           => RefreshAndReturn(_homeVm)
+    };
+
     /// <summary>Restores the correct top bar actions when navigating back to a view.</summary>
     private void RestoreTopBarActionsForView(ViewModelBase view)
     {
+        // The toggle is shown for any of the 7 long-lived section views or while in Cover Flow.
+        if (ReferenceEquals(view, _homeVm)
+            || ReferenceEquals(view, _songsVm)
+            || ReferenceEquals(view, _albumsVm)
+            || ReferenceEquals(view, _artistsVm)
+            || ReferenceEquals(view, _foldersVm)
+            || ReferenceEquals(view, _playlistsVm)
+            || ReferenceEquals(view, _favoritesVm)
+            || ReferenceEquals(view, _coverFlowVm))
+        {
+            SetupGlobalViewModeToggle();
+        }
+
         if (ReferenceEquals(view, _songsVm))
             SetupSongsTopBarActions();
-        else if (ReferenceEquals(view, _albumsVm) || ReferenceEquals(view, _coverFlowVm))
-            SetupAlbumsViewModeToggle();
         else if (ReferenceEquals(view, _playlistsVm))
             TopBar.ShowPlaylistActions(_playlistsVm.CreateSmartPlaylistCommand);
+        else if (ReferenceEquals(view, _favoritesVm))
+            TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
         // Artist actions for _albumsVm are restored in CaptureRestoreState's lambda
     }
 

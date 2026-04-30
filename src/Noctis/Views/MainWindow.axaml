@@ -204,18 +204,18 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Albums view mode toggle (Library / Cover Flow) -->
-                    <Border IsVisible="{Binding HasAlbumsViewModeToggle}"
+                    <!-- View mode toggle (Library / Cover Flow) -->
+                    <Border IsVisible="{Binding HasViewModeToggle}"
                             Background="{DynamicResource SystemControlBackgroundListLowBrush}"
                             CornerRadius="999" Padding="3" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="2">
                             <Button x:Name="AlbumsLibraryModeBtn"
-                                    Command="{Binding AlbumsSetLibraryModeCommand}"
+                                    Command="{Binding SetLibraryModeCommand}"
                                     BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
                                     Background="#30FFFFFF" ToolTip.Tip="Library"
                                     Content="Library" FontSize="12" FontWeight="SemiBold" />
                             <Button x:Name="AlbumsUpNextModeBtn"
-                                    Command="{Binding AlbumsSetCoverFlowModeCommand}"
+                                    Command="{Binding SetCoverFlowModeCommand}"
                                     BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
                                     Background="Transparent" Opacity="0.5" ToolTip.Tip="Cover Flow"
                                     Content="Cover Flow" FontSize="12" FontWeight="SemiBold" />

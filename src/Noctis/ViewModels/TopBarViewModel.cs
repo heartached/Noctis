@@ -48,11 +48,11 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private bool _hasPlaylistActions;
     [ObservableProperty] private ICommand? _pageCreateSmartPlaylistCommand;
 
-    // Albums view mode toggle (Library / Up Next)
-    [ObservableProperty] private bool _hasAlbumsViewModeToggle;
-    [ObservableProperty] private bool _isAlbumsCoverFlowMode;
-    [ObservableProperty] private ICommand? _albumsSetLibraryModeCommand;
-    [ObservableProperty] private ICommand? _albumsSetCoverFlowModeCommand;
+    // Global view mode toggle (Library / Cover Flow) — shown on Home, Songs, Albums, Artists, Folders, Playlists, Favorites
+    [ObservableProperty] private bool _hasViewModeToggle;
+    [ObservableProperty] private bool _isCoverFlowMode;
+    [ObservableProperty] private ICommand? _setLibraryModeCommand;
+    [ObservableProperty] private ICommand? _setCoverFlowModeCommand;
 
     // Artist discography action buttons
     [ObservableProperty] private bool _hasArtistActions;
@@ -145,27 +145,20 @@ public partial class TopBarViewModel : ViewModelBase
         PagePlayFavoritesCommand = null;
     }
 
-    /// <summary>Fires when the albums view mode toggle changes.</summary>
-    public event EventHandler<bool>? AlbumsViewModeChanged;
-
-    public void ShowAlbumsViewModeToggle(ICommand setLibraryMode, ICommand setCoverFlowMode, bool isCoverFlowMode)
+    public void ShowViewModeToggle(ICommand setLibraryMode, ICommand setCoverFlowMode, bool isCoverFlowMode)
     {
-        AlbumsSetLibraryModeCommand = setLibraryMode;
-        AlbumsSetCoverFlowModeCommand = setCoverFlowMode;
-        IsAlbumsCoverFlowMode = isCoverFlowMode;
-        HasAlbumsViewModeToggle = true;
+        SetLibraryModeCommand = setLibraryMode;
+        SetCoverFlowModeCommand = setCoverFlowMode;
+        IsCoverFlowMode = isCoverFlowMode;
+        HasViewModeToggle = true;
     }
 
-    public void HideAlbumsViewModeToggle()
+    public void HideViewModeToggle()
     {
-        HasAlbumsViewModeToggle = false;
-        AlbumsSetLibraryModeCommand = null;
-        AlbumsSetCoverFlowModeCommand = null;
-    }
-
-    partial void OnIsAlbumsCoverFlowModeChanged(bool value)
-    {
-        AlbumsViewModeChanged?.Invoke(this, value);
+        HasViewModeToggle = false;
+        SetLibraryModeCommand = null;
+        SetCoverFlowModeCommand = null;
+        IsCoverFlowMode = false;
     }
 
     private void UpdatePageTitleVisibility()

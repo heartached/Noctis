@@ -54,11 +54,11 @@ public partial class MainWindow : Window
                 // Wire up albums view-mode toggle visuals
                 _topBarPropertyChangedHandler = (_, e) =>
                 {
-                    if (e.PropertyName == nameof(TopBarViewModel.IsAlbumsCoverFlowMode))
-                        UpdateAlbumsToggleVisuals(vm.TopBar.IsAlbumsCoverFlowMode);
+                    if (e.PropertyName == nameof(TopBarViewModel.IsCoverFlowMode))
+                        UpdateViewModeToggleVisuals(vm.TopBar.IsCoverFlowMode);
                 };
                 vm.TopBar.PropertyChanged += _topBarPropertyChangedHandler;
-                UpdateAlbumsToggleVisuals(vm.TopBar.IsAlbumsCoverFlowMode);
+                UpdateViewModeToggleVisuals(vm.TopBar.IsCoverFlowMode);
 
                 // Wire lyrics panel + sidebar hover
                 _sidebarWrapper = this.FindControl<Border>("SidebarWrapper");
@@ -442,7 +442,7 @@ public partial class MainWindow : Window
 
     // ── Albums toggle visuals ──
 
-    private void UpdateAlbumsToggleVisuals(bool isCoverFlow)
+    private void UpdateViewModeToggleVisuals(bool isCoverFlow)
     {
         if (AlbumsLibraryModeBtn != null)
         {
