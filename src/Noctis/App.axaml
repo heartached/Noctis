@@ -45,6 +45,9 @@
 
         <!-- Global style overrides -->
         <StyleInclude Source="avares://Noctis/Assets/Styles.axaml" />
+
+        <!-- Custom controls -->
+        <StyleInclude Source="avares://Noctis/Controls/EqVisualizer.axaml" />
     </Application.Styles>
 
     <!-- Map ViewModels to Views for ContentControl binding -->
@@ -55,6 +58,9 @@
         <!-- Songs and Albums views are cached by CachedViewLocator (App.axaml.cs) -->
 <DataTemplate DataType="{x:Type vm:AlbumDetailViewModel}">
             <views:AlbumDetailView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:MoreByArtistViewModel}">
+            <views:MoreByArtistView />
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:LibraryArtistsViewModel}">
             <views:LibraryArtistsView />

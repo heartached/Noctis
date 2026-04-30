@@ -63,9 +63,15 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
   </ItemGroup>
 
+  <!-- YAML: Lyricsfile (word-level sync) parsing -->
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" Version="15.1.6" />
+  </ItemGroup>
+
   <!-- Embedded assets -->
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="Controls\EqVisualizer.axaml" />
   </ItemGroup>
 
 </Project>

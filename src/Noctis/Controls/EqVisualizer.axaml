@@ -1,0 +1,58 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctrl="using:Noctis.Controls">
+    <Style Selector="ctrl|EqVisualizer">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="14" />
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel Orientation="Horizontal"
+                            Spacing="2"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Stretch">
+                    <Rectangle x:Name="Bar1"
+                               Width="2"
+                               RadiusX="1" RadiusY="1"
+                               VerticalAlignment="Stretch"
+                               Fill="{TemplateBinding Foreground}"
+                               RenderTransformOrigin="50%,100%">
+                        <Rectangle.RenderTransform>
+                            <ScaleTransform ScaleY="0.4" />
+                        </Rectangle.RenderTransform>
+                    </Rectangle>
+                    <Rectangle x:Name="Bar2"
+                               Width="2"
+                               RadiusX="1" RadiusY="1"
+                               VerticalAlignment="Stretch"
+                               Fill="{TemplateBinding Foreground}"
+                               RenderTransformOrigin="50%,100%">
+                        <Rectangle.RenderTransform>
+                            <ScaleTransform ScaleY="0.9" />
+                        </Rectangle.RenderTransform>
+                    </Rectangle>
+                    <Rectangle x:Name="Bar3"
+                               Width="2"
+                               RadiusX="1" RadiusY="1"
+                               VerticalAlignment="Stretch"
+                               Fill="{TemplateBinding Foreground}"
+                               RenderTransformOrigin="50%,100%">
+                        <Rectangle.RenderTransform>
+                            <ScaleTransform ScaleY="0.55" />
+                        </Rectangle.RenderTransform>
+                    </Rectangle>
+                    <Rectangle x:Name="Bar4"
+                               Width="2"
+                               RadiusX="1" RadiusY="1"
+                               VerticalAlignment="Stretch"
+                               Fill="{TemplateBinding Foreground}"
+                               RenderTransformOrigin="50%,100%">
+                        <Rectangle.RenderTransform>
+                            <ScaleTransform ScaleY="0.75" />
+                        </Rectangle.RenderTransform>
+                    </Rectangle>
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+</Styles>
