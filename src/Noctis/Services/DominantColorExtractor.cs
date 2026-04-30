@@ -461,29 +461,45 @@ public static class DominantColorExtractor
     }
 
     /// <summary>
-    /// Creates a vertical gradient for album detail pages: dominant color at top, fading to dark at bottom.
-    /// Inspired by Apple Music's album page style.
+    /// Extracts the cover's ambient color — the bright/canvas hue rather than the dark subject.
+    /// Uses 2-cluster palette extraction, picks the lighter cluster, then normalizes it to a
+    /// vivid mid-lightness tone so the resulting page background reads as "the album's color"
+    /// without being too dark (loses the cover's identity) or too light (white text becomes
+    /// unreadable). Inspired by Apple Music's album page tinting.
     /// </summary>
-    public static LinearGradientBrush CreateAlbumDetailGradient(Color color)
+    public static Color ExtractAmbientColor(Bitmap? bitmap)
     {
-        var (hue, sat, _) = RgbToHsl(color.R, color.G, color.B);
-        sat = Math.Max(sat, 0.25);
+        if (bitmap == null) return FallbackColor;
 
-        var top    = HslToColor(hue, sat * 0.90, 0.32);   // rich dominant color
-        var mid    = HslToColor(hue, sat * 0.70, 0.16);   // darker mid
-        var bottom = HslToColor(hue, sat * 0.40, 0.07);   // very dark, tinted
+        var (a, b) = ExtractColorPalette(bitmap);
 
-        return new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0.5, 0, RelativeUnit.Relative),
-            EndPoint   = new RelativePoint(0.5, 1, RelativeUnit.Relative),
-            GradientStops = new GradientStops
-            {
-                new GradientStop(top,    0.0),
-                new GradientStop(mid,    0.45),
-                new GradientStop(bottom, 1.0),
-            }
-        };
+        // ExtractColorPalette returns (dominant=darker, secondary=lighter).
+        // We want the lighter cluster — that's the cover's canvas/ambient color.
+        var picked = b;
+
+        var (hue, sat, _) = RgbToHsl(picked.R, picked.G, picked.B);
+
+        // Boost saturation so the tint is unmistakably the cover's color rather than a wash.
+        // Floor at 0.45 so even fairly desaturated covers (greys, washed-out art) still read
+        // as tinted; cap at 0.85 so we don't blow out already-vivid covers into neon.
+        sat = Math.Clamp(sat * 1.25, 0.45, 0.85);
+
+        // Normalize lightness to a mid value: bright enough to clearly be "the color",
+        // dark enough that the existing white text on the album page stays readable
+        // (L=0.45 against white is ~3.4:1, acceptable for large bold headings).
+        const double targetLightness = 0.45;
+
+        return HslToColor(hue, sat, targetLightness);
+    }
+
+    /// <summary>
+    /// Creates a flat solid background brush for album detail pages, tinted by the cover's
+    /// ambient color. Apple-Music-inspired: the page reads as the album's color rather than
+    /// a generic dark theme.
+    /// </summary>
+    public static IBrush CreateAlbumDetailGradient(Color color)
+    {
+        return new SolidColorBrush(color);
     }
 
     private static (double H, double S, double L) RgbToHsl(byte r, byte g, byte b)

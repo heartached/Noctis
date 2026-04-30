@@ -388,7 +388,24 @@
 
     <!-- Context Menu (no transitions to prevent position shift) -->
     <Style Selector="ContextMenu">
-        <!-- Removed opacity transition that caused menus to shift position on open -->
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="Padding" Value="6" />
+    </Style>
+    <Style Selector="ContextMenu /template/ Border">
+        <Setter Property="CornerRadius" Value="16" />
+    </Style>
+    <Style Selector="MenuFlyoutPresenter">
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="Padding" Value="6" />
+    </Style>
+    <Style Selector="MenuFlyoutPresenter /template/ Border">
+        <Setter Property="CornerRadius" Value="16" />
+    </Style>
+    <Style Selector="MenuItem /template/ Border#PART_Popup">
+        <Setter Property="CornerRadius" Value="16" />
+    </Style>
+    <Style Selector="MenuItem /template/ Popup Border">
+        <Setter Property="CornerRadius" Value="16" />
     </Style>
 
     <!-- Full-width separators in context menus and menu flyouts -->
@@ -423,14 +440,25 @@
         </Setter>
     </Style>
 
-    <!-- Compact menu items (~20% tighter vertical spacing) -->
-    <Style Selector="ContextMenu > MenuItem">
-        <Setter Property="Padding" Value="11,4,11,4" />
-        <Setter Property="MinHeight" Value="30" />
+    <!-- Destructive menu items: red text + icon -->
+    <Style Selector="MenuItem.danger">
+        <Setter Property="Foreground" Value="#E74856" />
+        <Setter Property="Margin" Value="2,5,2,1" />
     </Style>
-    <Style Selector="MenuFlyoutPresenter > MenuItem">
-        <Setter Property="Padding" Value="11,4,11,4" />
+    <Style Selector="MenuItem.danger PathIcon">
+        <Setter Property="Foreground" Value="#E74856" />
+    </Style>
+
+    <!-- Compact menu items + pill-shaped hover highlight (applied to ALL MenuItems
+         so right-click ContextMenus, MenuFlyouts, and nested submenu items match). -->
+    <Style Selector="MenuItem">
+        <Setter Property="Padding" Value="11,4,4,4" />
         <Setter Property="MinHeight" Value="30" />
+        <Setter Property="Margin" Value="2,1" />
+        <Setter Property="CornerRadius" Value="999" />
+    </Style>
+    <Style Selector="MenuItem /template/ Border#PART_LayoutRoot">
+        <Setter Property="CornerRadius" Value="999" />
     </Style>
 
     <!-- Sidebar styling -->
@@ -441,9 +469,9 @@
     </Style>
 
     <Style Selector="ListBox.sidebar ListBoxItem">
-        <Setter Property="Padding" Value="6,10" />
+        <Setter Property="Padding" Value="8,10,16,10" />
         <Setter Property="Margin" Value="0,2" />
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="999" />
         <Setter Property="FontSize" Value="15" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource IslandForeground}" />
@@ -457,7 +485,7 @@
     </Style>
 
     <Style Selector="ListBox.sidebar ListBoxItem /template/ ContentPresenter">
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="999" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Transitions">
             <Transitions>
@@ -476,7 +504,7 @@
 
     <Style Selector="ListBox.sidebar ListBoxItem:selected /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SidebarSelectedBrush}" />
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="999" />
     </Style>
 
     <Style Selector="ListBox.sidebar ListBoxItem:selected:pointerover /template/ ContentPresenter">
@@ -779,6 +807,30 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <!-- Global crisp input outline: white 1.5px outline, focus turns #E74856 -->
+    <Style Selector="TextBox.crisp-input">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="White" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+    <Style Selector="TextBox.crisp-input /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="White" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+    <Style Selector="TextBox.crisp-input:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="White" />
+    </Style>
+    <Style Selector="TextBox.crisp-input:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="#E74856" />
+    </Style>
+    <Style Selector="TextBox.crisp-input:focus-within /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="#E74856" />
     </Style>
 
     <!-- Round circle checkbox with check mark -->

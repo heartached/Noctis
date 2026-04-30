@@ -18,10 +18,7 @@ namespace Noctis.Helpers;
 /// </summary>
 public sealed class TrackContextMenuBuilder
 {
-    private static readonly ArtworkPathConverter SharedArtworkConverter = new();
-
     // ── Named menu item references ──
-    public MenuItem Header { get; private set; } = null!;
     public MenuItem Play { get; private set; } = null!;
     public MenuItem Shuffle { get; private set; } = null!;
     public MenuItem PlayNext { get; private set; } = null!;
@@ -37,13 +34,6 @@ public sealed class TrackContextMenuBuilder
     public ContextMenu Menu { get; private set; } = null!;
     public PlaylistMenuPopulator Populator { get; private set; } = null!;
 
-    // ── Header controls (reused across binds) ──
-    private Grid? _headerGrid;
-    private TextBlock? _headerTitle;
-    private TextBlock? _headerArtist;
-    private Image? _headerArtImage;
-    private TextBlock? _headerPlaceholder;
-
     /// <summary>
     /// Builds the context menu. Call once per view lifetime.
     /// </summary>
@@ -54,23 +44,6 @@ public sealed class TrackContextMenuBuilder
     {
         Menu = new ContextMenu();
         var items = Menu.Items;
-
-        // Track header
-        Header = new MenuItem { IsHitTestVisible = false, Focusable = false };
-        Header.Template = new Avalonia.Controls.Templates.FuncControlTemplate<MenuItem>((item, _) =>
-        {
-            return new Avalonia.Controls.Border
-            {
-                Padding = new Thickness(11, 8),
-                Background = Brushes.Transparent,
-                Child = new ContentPresenter
-                {
-                    [!ContentPresenter.ContentProperty] = item[!MenuItem.HeaderProperty]
-                }
-            };
-        });
-        items.Add(Header);
-        items.Add(new Separator());
 
         Play = new MenuItem { MaxWidth = 400 };
         Play.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Play%20ICON.png");
@@ -128,6 +101,8 @@ public sealed class TrackContextMenuBuilder
         items.Add(new Separator());
 
         Remove = new MenuItem { Header = removeHeader };
+        if (removeHeader.Contains("Library", StringComparison.OrdinalIgnoreCase))
+            Remove.Classes.Add("danger");
         if (removeIconUri != null)
             Remove.Icon = CreatePngIcon(removeIconUri);
         else
@@ -159,18 +134,8 @@ public sealed class TrackContextMenuBuilder
     {
         Menu.DataContext = track;
 
-        // Header
-        if (_headerGrid == null)
-            Header.Header = BuildTrackHeader(track);
-        else
-        {
-            UpdateTrackHeader(track);
-            Header.Header = _headerGrid;
-        }
-
         // Play
-        var playTitle = track.Title.Length > 50 ? track.Title[..47] + "..." : track.Title;
-        Play.Header = $"Play \"{playTitle}\"";
+        Play.Header = "Play";
         Play.Command = playCommand;
         Play.CommandParameter = track;
 
@@ -224,11 +189,6 @@ public sealed class TrackContextMenuBuilder
     /// </summary>
     public void Reset()
     {
-        _headerGrid = null;
-        _headerTitle = null;
-        _headerArtist = null;
-        _headerArtImage = null;
-        _headerPlaceholder = null;
     }
 
     // ── Shared helpers ──
@@ -244,74 +204,5 @@ public sealed class TrackContextMenuBuilder
             Stretch = Stretch.Uniform
         };
         return border;
-    }
-
-    private Grid BuildTrackHeader(Track track)
-    {
-        if (_headerGrid != null)
-        {
-            UpdateTrackHeader(track);
-            return _headerGrid;
-        }
-
-        _headerGrid = new Grid { ColumnDefinitions = ColumnDefinitions.Parse("40,10,*") };
-
-        var artBorder = new Avalonia.Controls.Border
-        {
-            Width = 40, Height = 40, CornerRadius = new CornerRadius(4), ClipToBounds = true,
-        };
-        artBorder[!Avalonia.Controls.Border.BackgroundProperty] = artBorder.GetResourceObservable("SystemControlBackgroundBaseLowBrush").ToBinding();
-
-        var artPanel = new Panel();
-        _headerPlaceholder = new TextBlock
-        {
-            Text = "\u266A", FontSize = 14,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Opacity = 0.3
-        };
-        artPanel.Children.Add(_headerPlaceholder);
-
-        _headerArtImage = new Image { Stretch = Stretch.UniformToFill };
-        artPanel.Children.Add(_headerArtImage);
-
-        artBorder.Child = artPanel;
-        Grid.SetColumn(artBorder, 0);
-        _headerGrid.Children.Add(artBorder);
-
-        var textStack = new StackPanel
-        {
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Left
-        };
-        _headerTitle = new TextBlock { FontWeight = FontWeight.SemiBold, FontSize = 13 };
-        _headerArtist = new TextBlock { FontSize = 11, Foreground = new SolidColorBrush(Color.Parse("#E74856")), Margin = new Thickness(0, 2, 0, 0) };
-        textStack.Children.Add(_headerTitle);
-        textStack.Children.Add(_headerArtist);
-        Grid.SetColumn(textStack, 2);
-        _headerGrid.Children.Add(textStack);
-
-        UpdateTrackHeader(track);
-        return _headerGrid;
-    }
-
-    private void UpdateTrackHeader(Track track)
-    {
-        _headerTitle!.Text = track.Title;
-        _headerArtist!.Text = track.Artist;
-
-        var hasArt = !string.IsNullOrEmpty(track.AlbumArtworkPath);
-        _headerPlaceholder!.IsVisible = !hasArt;
-        _headerArtImage!.IsVisible = hasArt;
-        if (hasArt)
-        {
-            _headerArtImage.Source = SharedArtworkConverter.Convert(
-                track.AlbumArtworkPath, typeof(Avalonia.Media.IImage), null!,
-                System.Globalization.CultureInfo.InvariantCulture) as Avalonia.Media.IImage;
-        }
-        else
-        {
-            _headerArtImage.Source = null;
-        }
     }
 }

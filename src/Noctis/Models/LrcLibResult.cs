@@ -34,6 +34,11 @@ public class LrcLibResult
     [JsonPropertyName("syncedLyrics")]
     public string? SyncedLyrics { get; set; }
 
+    /// <summary>Word-level YAML Lyricsfile (LRCGET v2.0+). Null/empty when not published.</summary>
+    [JsonPropertyName("lyricsfile")]
+    public string? Lyricsfile { get; set; }
+
     public bool HasSyncedLyrics => !string.IsNullOrWhiteSpace(SyncedLyrics);
-    public bool HasLyrics => !string.IsNullOrWhiteSpace(PlainLyrics) || HasSyncedLyrics;
+    public bool HasLyricsfile => !string.IsNullOrWhiteSpace(Lyricsfile);
+    public bool HasLyrics => !string.IsNullOrWhiteSpace(PlainLyrics) || HasSyncedLyrics || HasLyricsfile;
 }

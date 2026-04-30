@@ -169,6 +169,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _playlistsVm = new LibraryPlaylistsViewModel(Sidebar, Player, library, persistence);
 
         _foldersVm = new LibraryFoldersViewModel(library, Player, persistence);
+        _foldersVm.NavigateToSettingsRequested += (_, _) => Navigate("settings");
         _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
@@ -300,6 +301,22 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
             });
         }
+
+        // Silently check GitHub for a newer release so the About page can surface
+        // a passive "Update available" badge without the user clicking anything.
+        // Deferred + fire-and-forget so it never blocks startup.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5));
+                await Settings.CheckForUpdateSilentAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Update] Silent check failed: {ex.Message}");
+            }
+        });
 
         // Connect loon client for Discord cover art
         var loonUrl = Settings.GetSettings().LoonServerUrl;
@@ -536,6 +553,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void RefreshBackButton()
     {
+        if (CurrentView is MoreByArtistViewModel mbaVm)
+        {
+            TopBar.ShowBackButton("Back", GoBackInHistoryCommand, mbaVm.Title);
+            return;
+        }
+
         if (_navigationHistory.Count > 0 && ShouldShowTopBarBackButton(CurrentView))
         {
             TopBar.ShowBackButton(_navigationHistory.Peek().BackButtonText, GoBackInHistoryCommand);
@@ -622,6 +645,14 @@ public partial class MainWindowViewModel : ViewModelBase
                 _isCoverFlowMode = true;
                 TopBar.IsCoverFlowMode = true;
                 TopBar.IsSearchVisible = false;
+            };
+        }
+
+        if (view is MoreByArtistViewModel mba)
+        {
+            return () =>
+            {
+                TopBar.ShowArtistActions(mba.ShuffleAllCommand, mba.PlayAllCommand);
             };
         }
 
@@ -959,12 +990,26 @@ public partial class MainWindowViewModel : ViewModelBase
             PushCurrentViewToHistory();
         ClearAllTopBarActions();
 
-        var detail = new AlbumDetailViewModel(album, Player, _persistence, _library, Sidebar, _lastFm);
+        var detail = new AlbumDetailViewModel(album, Player, _persistence, _library, Sidebar, _lastFm, Settings);
         detail.BackRequested += (_, _) => GoBackInHistory();
         detail.ViewAlbumRequested += OnViewAlbumFromTrack;
         detail.SetViewArtistAction(ViewArtistFromAlbumDetail);
         detail.SetSearchLyricsAction(SearchLyricsForTrack);
+        detail.SetOpenMoreByArtistAction(OpenMoreByArtistPage);
         CurrentView = detail;
+    }
+
+    private void OpenMoreByArtistPage(string artistName, System.Collections.Generic.IEnumerable<Album> albums)
+    {
+        PushCurrentViewToHistory();
+        ClearAllTopBarActions();
+
+        var page = new MoreByArtistViewModel(artistName, albums, Player, _albumsVm);
+        page.BackRequested += (_, _) => GoBackInHistory();
+        page.AlbumOpened += (_, album) => OpenAlbumDetail(album);
+        CurrentView = page;
+        TopBar.ShowArtistActions(page.ShuffleAllCommand, page.PlayAllCommand);
+        RefreshBackButton();
     }
 
     private void OpenArtistDiscography(string artistName)

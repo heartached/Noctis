@@ -13,25 +13,7 @@
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
 
-    <Window.Styles>
-        <Style Selector="TextBox /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#E74856" />
-            <Setter Property="BorderThickness" Value="1" />
-        </Style>
-        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#E74856" />
-            <Setter Property="BorderThickness" Value="1" />
-        </Style>
-        <Style Selector="TextBox:focus-within /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#E74856" />
-            <Setter Property="BorderThickness" Value="1" />
-        </Style>
-        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#E74856" />
-        </Style>
-    </Window.Styles>
-
-    <!-- Full-window dimmed overlay that captures all input -->
+<!-- Full-window dimmed overlay that captures all input -->
     <Border Background="#50000000"
             PointerPressed="OnOverlayPointerPressed"
             PointerWheelChanged="OnOverlayWheel">
@@ -94,6 +76,7 @@
                 <StackPanel Spacing="6">
                     <TextBlock Text="Playlist Name" FontSize="13" FontWeight="SemiBold" />
                     <TextBox Text="{Binding PlaylistName}"
+                             Classes="crisp-input"
                              Watermark="Enter playlist name..."
                              CornerRadius="999"
                              Padding="14,8"
@@ -108,6 +91,7 @@
                 <StackPanel Spacing="6">
                     <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" />
                     <TextBox Text="{Binding PlaylistDescription}"
+                             Classes="crisp-input"
                              Watermark="Enter description..."
                              CornerRadius="999"
                              Padding="14,8" />
@@ -155,6 +139,7 @@
                                     <!-- Value input(s) -->
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
                                         <TextBox Text="{Binding Value}"
+                                                 Classes="crisp-input"
                                                  IsVisible="{Binding ShowValueInput}"
                                                  Watermark="Value..."
                                                  MinWidth="100"
@@ -164,6 +149,7 @@
                                                  VerticalContentAlignment="Center"
                                                  HorizontalAlignment="Stretch" />
                                         <TextBox Text="{Binding Value2}"
+                                                 Classes="crisp-input"
                                                  IsVisible="{Binding ShowValue2Input}"
                                                  Watermark="To..."
                                                  Width="80"

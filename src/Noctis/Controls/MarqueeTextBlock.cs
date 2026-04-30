@@ -17,8 +17,6 @@ namespace Noctis.Controls;
 public class MarqueeTextBlock : UserControl
 {
     // ── Global enable switches (set by SettingsViewModel) ──
-    public static bool GlobalMenuTitleScrollEnabled { get; set; } = true;
-    public static bool GlobalMenuArtistScrollEnabled { get; set; } = true;
     public static bool GlobalCoverFlowScrollEnabled { get; set; } = true;
     public static bool GlobalCoverFlowArtistScrollEnabled { get; set; } = true;
     public static bool GlobalCoverFlowAlbumScrollEnabled { get; set; } = true;
@@ -244,9 +242,7 @@ public class MarqueeTextBlock : UserControl
             ? (IsForAlbum ? GlobalCoverFlowAlbumScrollEnabled
                 : IsForArtist ? GlobalCoverFlowArtistScrollEnabled
                 : GlobalCoverFlowScrollEnabled)
-            : IsForArtist
-                ? GlobalMenuArtistScrollEnabled
-                : GlobalMenuTitleScrollEnabled;
+            : true;
 
     private void ResetAndRecalc()
     {

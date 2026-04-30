@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -21,9 +22,11 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private readonly IPersistenceService _persistence;
     private readonly ILastFmService _lastFm;
     private readonly SidebarViewModel _sidebar;
+    private readonly SettingsViewModel? _settings;
     private readonly System.ComponentModel.PropertyChangedEventHandler _playerPropertyChangedHandler;
     private readonly EventHandler _libraryUpdatedHandler;
     private readonly EventHandler _favoritesChangedHandler;
+    private readonly System.ComponentModel.PropertyChangedEventHandler? _settingsPropertyChangedHandler;
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
@@ -70,6 +73,16 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Tracks in this album, ordered by disc and track number.</summary>
     public ObservableCollection<Track> Tracks { get; } = new();
 
+    /// <summary>Other versions of this album (same artist, normalized base title), excluding self.</summary>
+    public ObservableCollection<Album> OtherVersions { get; } = new();
+
+    /// <summary>Up to 20 random albums by the same artist, excluding the current album and any in OtherVersions.</summary>
+    public ObservableCollection<Album> MoreByArtist { get; } = new();
+
+    public bool HasOtherVersions => OtherVersions.Count > 0;
+    public bool HasMoreByArtist => MoreByArtist.Count > 0;
+    public string MoreByArtistTitle => $"More By {Album?.Artist}";
+
     /// <summary>Tracks grouped by disc number for multi-disc display.</summary>
     public ObservableCollection<DiscGroup> DiscGroups { get; } = new();
 
@@ -93,6 +106,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     private Action<string>? _viewArtistAction;
     private Action<Track>? _searchLyricsAction;
+    private Action<string, System.Collections.Generic.IEnumerable<Album>>? _openMoreByArtistAction;
 
     /// <summary>Sets the action to navigate to an artist's discography.</summary>
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
@@ -100,13 +114,18 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Sets the action to search lyrics for a track.</summary>
     public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
 
-    public AlbumDetailViewModel(Album album, PlayerViewModel player, IPersistenceService persistence, ILibraryService library, SidebarViewModel sidebar, ILastFmService lastFm)
+    /// <summary>Sets the action to open the dedicated "More By {Artist}" page.</summary>
+    public void SetOpenMoreByArtistAction(Action<string, System.Collections.Generic.IEnumerable<Album>> action)
+        => _openMoreByArtistAction = action;
+
+    public AlbumDetailViewModel(Album album, PlayerViewModel player, IPersistenceService persistence, ILibraryService library, SidebarViewModel sidebar, ILastFmService lastFm, SettingsViewModel? settings = null)
     {
         _player = player;
         _library = library;
         _persistence = persistence;
         _lastFm = lastFm;
         _sidebar = sidebar;
+        _settings = settings;
         _album = album;
 
         // Parse individual artist names from the album artist field
@@ -158,6 +177,20 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         });
         _library.FavoritesChanged += _favoritesChangedHandler;
 
+        // Live-toggle the cover-art tint when the user flips the setting.
+        if (_settings != null)
+        {
+            _settingsPropertyChangedHandler = (_, e) =>
+            {
+                if (e.PropertyName == nameof(SettingsViewModel.AlbumDetailColorTintEnabled))
+                    Dispatcher.UIThread.Post(RebuildBackgroundBrush);
+            };
+            _settings.PropertyChanged += _settingsPropertyChangedHandler;
+        }
+
+        // Build related-album sections from the local library.
+        BuildRelatedSections();
+
         // Fetch album description asynchronously; fail silently if unavailable.
         _ = LoadAlbumDescriptionAsync();
     }
@@ -169,6 +202,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         ArtistTokens = tokens.Select((name, i) => new ArtistTokenItem(name, IsLast: i == tokens.Length - 1)).ToArray();
         OnPropertyChanged(nameof(ArtistTokens));
         OnPropertyChanged(nameof(HasMultipleArtists));
+        OnPropertyChanged(nameof(MoreByArtistTitle));
+        BuildRelatedSections();
     }
 
     partial void OnAlbumDescriptionChanged(string value)
@@ -248,6 +283,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         foreach (var track in updatedAlbum.Tracks)
             Tracks.Add(track);
         BuildDiscGroups();
+        // OnAlbumChanged already rebuilds related sections; reaching here only when the
+        // ID actually changed, but rebuild defensively in case the same-ID path missed.
+        BuildRelatedSections();
 
         // Reload artwork in case it changed
         var oldArt = AlbumArt;
@@ -265,29 +303,113 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     partial void OnAlbumArtChanged(Bitmap? value)
     {
-        if (value == null)
+        RebuildBackgroundBrush();
+    }
+
+    private void RebuildBackgroundBrush()
+    {
+        var bmp = AlbumArt;
+        if (bmp == null || _settings?.AlbumDetailColorTintEnabled == false)
         {
             BackgroundBrush = null;
             return;
         }
 
-        // Extract dominant color off UI thread, then create gradient.
-        // Capture a local ref so we don't access a disposed bitmap if Dispose() races.
-        var bmp = value;
-        ThreadPool.QueueUserWorkItem(_ =>
+        // Extraction must run on the UI thread — DominantColorExtractor uses
+        // RenderTargetBitmap/DrawImage, which Avalonia restricts to the UI thread.
+        // The sample target is 50x50, so this is sub-millisecond and does not stutter the UI.
+        try
         {
-            try
-            {
-                var color = DominantColorExtractor.ExtractDominantColor(bmp);
-                var brush = DominantColorExtractor.CreateAlbumDetailGradient(color);
-                Dispatcher.UIThread.Post(() => BackgroundBrush = brush);
-            }
-            catch (Exception ex)
-            {
-                DebugLogger.Error(DebugLogger.Category.UI, "AlbumDetail.GradientBg", ex.ToString());
-                // Gracefully fall back — no gradient rather than crash
-            }
-        });
+            var color = DominantColorExtractor.ExtractAmbientColor(bmp);
+            BackgroundBrush = DominantColorExtractor.CreateAlbumDetailGradient(color);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.UI, "AlbumDetail.GradientBg", ex.ToString());
+            BackgroundBrush = null;
+        }
+    }
+
+    private void BuildRelatedSections()
+    {
+        var currentArtist = Album?.Artist;
+        var currentId = Album?.Id ?? Guid.Empty;
+        if (string.IsNullOrWhiteSpace(currentArtist) || currentId == Guid.Empty)
+        {
+            OtherVersions.Clear();
+            MoreByArtist.Clear();
+            OnPropertyChanged(nameof(HasOtherVersions));
+            OnPropertyChanged(nameof(HasMoreByArtist));
+            OnPropertyChanged(nameof(MoreByArtistTitle));
+            return;
+        }
+
+        var artistAlbums = _library.GetAlbumsByArtist(currentArtist)
+            .Where(a => a.Id != currentId)
+            .ToList();
+
+        var currentNormalized = NormalizeAlbumTitle(Album!.Name);
+
+        var versions = artistAlbums
+            .Where(a => string.Equals(NormalizeAlbumTitle(a.Name), currentNormalized, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        OtherVersions.Clear();
+        foreach (var a in versions)
+            OtherVersions.Add(a);
+
+        var versionIds = versions.Select(v => v.Id).ToHashSet();
+        var pool = artistAlbums.Where(a => !versionIds.Contains(a.Id)).ToList();
+        // Random sample up to 20 for a fresh "More By" mix on each open.
+        var picks = pool
+            .OrderBy(_ => Random.Shared.Next())
+            .Take(20)
+            .ToList();
+
+        MoreByArtist.Clear();
+        foreach (var a in picks)
+            MoreByArtist.Add(a);
+
+        OnPropertyChanged(nameof(HasOtherVersions));
+        OnPropertyChanged(nameof(HasMoreByArtist));
+        OnPropertyChanged(nameof(MoreByArtistTitle));
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex s_featRegex =
+        new(@"\s*[\(\[]\s*(feat\.?|ft\.?|featuring)\s+[^\)\]]+[\)\]]\s*",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static readonly System.Text.RegularExpressions.Regex s_trailingParensRegex =
+        new(@"\s*[\(\[][^\)\]]*[\)\]]\s*$",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static readonly System.Text.RegularExpressions.Regex s_trailingDashSuffixRegex =
+        new(@"\s*-\s*(single|ep)\s*$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>
+    /// Normalizes an album title for "Other Versions" matching by stripping any
+    /// trailing parenthetical/bracketed segment (e.g. "(Deluxe Edition)",
+    /// "(3am Edition)", "(Til Dawn Edition)", "(Big Machine Radio Release Special)")
+    /// plus " - Single" / " - EP" suffixes and any embedded "(feat. ...)" group.
+    /// Mirrors Apple Music's "Other Versions" grouping behavior.
+    /// </summary>
+    private static string NormalizeAlbumTitle(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return string.Empty;
+        var s = title.Trim();
+        s = s_featRegex.Replace(s, " ").Trim();
+        // Iteratively strip trailing markers so stacked suffixes like
+        // "Album (Deluxe Edition) [Remastered]" collapse to "Album".
+        for (int i = 0; i < 6; i++)
+        {
+            var prev = s;
+            s = s_trailingParensRegex.Replace(s, string.Empty).Trim();
+            s = s_trailingDashSuffixRegex.Replace(s, string.Empty).Trim();
+            s = s.TrimEnd('-', '–', '—').Trim();
+            if (s == prev) break;
+        }
+        return s;
     }
 
     private void BuildDiscGroups()
@@ -331,12 +453,32 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _player.ReplaceQueueAndPlay(tracks, idx);
     }
 
+    /// <summary>Navigates to a related album shown in Other Versions / More By Artist.</summary>
+    [RelayCommand]
+    private void OpenRelatedAlbum(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        // Reuse the existing track-driven album-navigation event so MainWindow's
+        // history/back-button wiring stays in one place.
+        ViewAlbumRequested?.Invoke(this, album.Tracks[0]);
+    }
+
     [RelayCommand]
     private void ViewArtist()
     {
         var artist = Album.Artist;
         if (!string.IsNullOrWhiteSpace(artist))
             _viewArtistAction?.Invoke(artist);
+    }
+
+    /// <summary>Opens the dedicated "More By {Artist}" grid page with the carousel's albums.</summary>
+    [RelayCommand]
+    private void OpenMoreByArtistPage()
+    {
+        var artist = Album?.Artist;
+        if (string.IsNullOrWhiteSpace(artist) || MoreByArtist.Count == 0) return;
+        // Snapshot the collection so the new page is independent of subsequent rebuilds.
+        _openMoreByArtistAction?.Invoke(artist, MoreByArtist.ToArray());
     }
 
     [RelayCommand]
@@ -549,11 +691,100 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         ViewAlbumRequested?.Invoke(this, Tracks[0]);
     }
 
+    // ----- Related album commands (Other Versions / More By Artist context menu) -----
+    // These act on a specified Album (the right-clicked tile), not the currently displayed one.
+
+    [RelayCommand]
+    private void PlayRelatedAlbum(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        _player.ReplaceQueueAndPlay(album.Tracks.ToList(), 0);
+    }
+
+    [RelayCommand]
+    private void ShuffleRelatedAlbum(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        var shuffled = album.Tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        _player.ReplaceQueueAndPlay(shuffled, 0);
+    }
+
+    [RelayCommand]
+    private void PlayNextRelatedAlbum(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        // Insert in reverse so playback order matches album order.
+        for (int i = album.Tracks.Count - 1; i >= 0; i--)
+            _player.AddNext(album.Tracks[i]);
+    }
+
+    [RelayCommand]
+    private void AddRelatedAlbumToQueue(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        _player.AddRangeToQueue(album.Tracks.ToList());
+    }
+
+    [RelayCommand]
+    private async Task AddRelatedAlbumToNewPlaylist(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        await _sidebar.CreatePlaylistWithTracksAsync(album.Tracks.ToList());
+    }
+
+    [RelayCommand]
+    private async Task AddRelatedAlbumToExistingPlaylist(object[] parameters)
+    {
+        if (parameters == null || parameters.Length != 2) return;
+        if (parameters[0] is not Album album || parameters[1] is not Playlist playlist) return;
+        if (album.Tracks.Count == 0) return;
+        await _sidebar.AddTracksToPlaylist(playlist.Id, album.Tracks.ToList());
+    }
+
+    [RelayCommand]
+    private async Task ToggleRelatedAlbumFavorites(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        var newState = !album.IsAllTracksFavorite;
+        foreach (var track in album.Tracks)
+            track.IsFavorite = newState;
+        await _library.SaveAsync();
+        _library.NotifyFavoritesChanged();
+    }
+
+    [RelayCommand]
+    private async Task OpenRelatedAlbumMetadata(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenMetadataWindow(album.Tracks[0], albumScoped: true);
+    }
+
+    [RelayCommand]
+    private void ShowRelatedAlbumInExplorer(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        var track = album.Tracks[0];
+        if (!File.Exists(track.FilePath)) return;
+        Helpers.PlatformHelper.ShowInFileManager(track.FilePath);
+    }
+
+    [RelayCommand]
+    private async Task RemoveRelatedAlbumFromLibrary(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
+            return;
+        var trackIds = album.Tracks.Select(t => t.Id).ToList();
+        await _library.RemoveTracksAsync(trackIds);
+    }
+
     public void Dispose()
     {
         _player.PropertyChanged -= _playerPropertyChangedHandler;
         _library.LibraryUpdated -= _libraryUpdatedHandler;
         _library.FavoritesChanged -= _favoritesChangedHandler;
+        if (_settings != null && _settingsPropertyChangedHandler != null)
+            _settings.PropertyChanged -= _settingsPropertyChangedHandler;
         AlbumArt?.Dispose();
         AlbumArt = null;
     }

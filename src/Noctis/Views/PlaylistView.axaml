@@ -183,57 +183,10 @@
                              VerticalAlignment="Center" />
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedRight">
-                            <!-- Playlist header -->
-                            <MenuItem IsHitTestVisible="False" Focusable="False">
-                                <MenuItem.Template>
-                                    <ControlTemplate>
-                                        <Border Padding="11,8" Background="Transparent">
-                                            <ContentPresenter Content="{TemplateBinding Header}" />
-                                        </Border>
-                                    </ControlTemplate>
-                                </MenuItem.Template>
-                                <MenuItem.Header>
-                                    <Grid ColumnDefinitions="40,10,*">
-                                        <Border Grid.Column="0" Width="40" Height="40" CornerRadius="4" ClipToBounds="True"
-                                                Background="{Binding PlaylistColor, Converter={StaticResource HexColorConverter}}">
-                                            <Panel>
-                                                <PathIcon Data="{StaticResource PlaylistsIcon}"
-                                                          Width="14" Height="14"
-                                                          Foreground="#4DFFFFFF"
-                                                          HorizontalAlignment="Center"
-                                                          VerticalAlignment="Center"
-                                                          IsVisible="{Binding ShowFallbackIcon}" />
-                                                <controls:CachedImage SourcePath="{Binding Art1}"
-                                                                      Stretch="UniformToFill"
-                                                                      IsVisible="{Binding HasSingleArt}" />
-                                                <Grid RowDefinitions="*,*" ColumnDefinitions="*,*"
-                                                      IsVisible="{Binding HasCollageArt}">
-                                                    <controls:CachedImage Grid.Row="0" Grid.Column="0" SourcePath="{Binding Art1}" Stretch="UniformToFill" />
-                                                    <controls:CachedImage Grid.Row="0" Grid.Column="1" SourcePath="{Binding Art2}" Stretch="UniformToFill" />
-                                                    <controls:CachedImage Grid.Row="1" Grid.Column="0" SourcePath="{Binding Art3}" Stretch="UniformToFill" />
-                                                    <controls:CachedImage Grid.Row="1" Grid.Column="1" SourcePath="{Binding Art4}" Stretch="UniformToFill" />
-                                                </Grid>
-                                                <controls:CachedImage SourcePath="{Binding PlaylistCoverArtPath}"
-                                                                      Stretch="UniformToFill"
-                                                                      IsVisible="{Binding HasCustomArt}" />
-                                            </Panel>
-                                        </Border>
-                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                            <controls:MarqueeTextBlock Text="{Binding Name}"
-                                                       FontWeight="SemiBold" FontSize="13"
-                                                       MaxDisplayWidth="240" IsForArtist="False" />
-                                            <controls:MarqueeTextBlock Text="{Binding CreatedDateDisplay}"
-                                                       FontSize="11" Opacity="0.6"
-                                                       MaxDisplayWidth="240" IsForArtist="True" Margin="0,2,0,0" />
-                                        </StackPanel>
-                                    </Grid>
-                                </MenuItem.Header>
-                            </MenuItem>
-                            <Separator />
                             <MenuItem Command="{Binding PlayAllCommand}"
                                       MaxWidth="400">
                                 <MenuItem.Header>
-                                    <TextBlock Text="{Binding Name, StringFormat='Play &quot;{0}&quot;'}"
+                                    <TextBlock Text="Play"
                                                TextTrimming="CharacterEllipsis"
                                                FontWeight="Normal"
                                                FontSize="14"

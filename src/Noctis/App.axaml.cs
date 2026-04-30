@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Markup.Xaml.Styling;
 using Noctis.Controls;
 using Noctis.Services;
 using Noctis.Views;
@@ -76,13 +77,46 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    // Names used for persistence and for picking the runtime overlay.
+    public const string ThemeGray = "Gray";
+    public const string ThemeDark = "Dark";
+    public const string ThemeLight = "Light";
+    public const string ThemeMidnight = "Midnight";
+    public const string ThemePaper = "Paper";
+
+    private ResourceInclude? _activeThemeOverlay;
+
     /// <summary>
-    /// Switches the application theme between Dark and Light at runtime.
+    /// Switches the application theme at runtime. Light maps to the Light variant;
+    /// every other theme runs on the Dark variant with an optional overlay merged on top
+    /// (Gray uses the base Dark dictionary as-is).
     /// </summary>
-    public void SetTheme(bool isDark)
+    public void SetTheme(string themeName)
     {
-        RequestedThemeVariant = isDark
-            ? Avalonia.Styling.ThemeVariant.Dark
-            : Avalonia.Styling.ThemeVariant.Light;
+        // Drop any prior overlay before swapping.
+        if (_activeThemeOverlay != null)
+        {
+            Resources.MergedDictionaries.Remove(_activeThemeOverlay);
+            _activeThemeOverlay = null;
+        }
+
+        RequestedThemeVariant = (themeName == ThemeLight || themeName == ThemePaper)
+            ? Avalonia.Styling.ThemeVariant.Light
+            : Avalonia.Styling.ThemeVariant.Dark;
+
+        var overlayUri = themeName switch
+        {
+            ThemeDark => "avares://Noctis/Assets/Themes/Dark.axaml",
+            ThemeMidnight => "avares://Noctis/Assets/Themes/Midnight.axaml",
+            ThemePaper => "avares://Noctis/Assets/Themes/Paper.axaml",
+            _ => null
+        };
+
+        if (overlayUri != null)
+        {
+            var include = new ResourceInclude((Uri?)null) { Source = new Uri(overlayUri) };
+            Resources.MergedDictionaries.Add(include);
+            _activeThemeOverlay = include;
+        }
     }
 }

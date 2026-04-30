@@ -1,0 +1,91 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+        Midnight theme overlay — deep blue-black with the brand red accent.
+        Merged on top of the base Dark ThemeDictionary at runtime.
+        Cool tint flatters album art; sidebar pill reads via luminance step.
+    -->
+
+    <!-- Accent palette (brand red) -->
+    <Color x:Key="SystemAccentColor">#E74856</Color>
+    <Color x:Key="SystemAccentColorDark1">#C73E4C</Color>
+    <Color x:Key="SystemAccentColorDark2">#A73441</Color>
+    <Color x:Key="SystemAccentColorDark3">#8F2C38</Color>
+    <Color x:Key="SystemAccentColorLight1">#EC5F6A</Color>
+    <Color x:Key="SystemAccentColorLight2">#F07881</Color>
+    <Color x:Key="SystemAccentColorLight3">#F4929B</Color>
+    <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="#E74856" />
+    <SolidColorBrush x:Key="SystemControlHighlightAccentBrush2" Color="#EC5F6A" />
+    <SolidColorBrush x:Key="AccentColorBrush" Color="#E74856" />
+
+    <!-- Toggle switch fill -->
+    <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#E74856" />
+    <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#EC5F6A" />
+    <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#C73E4C" />
+    <SolidColorBrush x:Key="ToggleSwitchFillOnDragging" Color="#EC5F6A" />
+
+    <!-- App backgrounds — deep blue-black -->
+    <SolidColorBrush x:Key="AppSidebarBackground" Color="#1A2238" />
+    <SolidColorBrush x:Key="AppMainBackground" Color="#0E1322" />
+    <Color x:Key="AppMainBackgroundColor">#0E1322</Color>
+    <SolidColorBrush x:Key="TrackListStripeBrush" Color="#0AFFFFFF" />
+    <SolidColorBrush x:Key="TrackListHoverBrush" Color="#16FFFFFF" />
+
+    <!-- System background palette -->
+    <Color x:Key="SystemChromeMediumColor">#0E1322</Color>
+    <Color x:Key="SystemChromeMediumLowColor">#0E1322</Color>
+    <Color x:Key="SystemChromeLowColor">#0E1322</Color>
+    <Color x:Key="SystemChromeHighColor">#0E1322</Color>
+    <Color x:Key="SystemAltHighColor">#0E1322</Color>
+    <Color x:Key="SystemAltMediumColor">#0E1322</Color>
+    <Color x:Key="SystemAltMediumHighColor">#0E1322</Color>
+    <Color x:Key="SystemAltMediumLowColor">#0E1322</Color>
+    <Color x:Key="SystemAltLowColor">#0E1322</Color>
+    <Color x:Key="SystemRegionColor">#0E1322</Color>
+    <Color x:Key="RegionColor">#0E1322</Color>
+
+    <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemControlBackgroundAltMediumBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemControlBackgroundAltMediumHighBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemControlBackgroundAltMediumLowBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#1A2236" />
+    <SolidColorBrush x:Key="SystemControlBackgroundBaseMediumBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumLowBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemControlBackgroundChromeWhiteBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemControlPageBackgroundAltHighBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemControlPageBackgroundBaseLowBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemControlPageBackgroundBaseMediumBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemControlPageBackgroundChromeLowBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemControlPageBackgroundChromeMediumLowBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemChromeMediumBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemChromeMediumLowBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemChromeLowBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemChromeHighBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemAltHighBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemAltMediumBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemAltMediumHighBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemAltMediumLowBrush" Color="#0E1322" />
+    <SolidColorBrush x:Key="SystemAltLowBrush" Color="#0E1322" />
+
+    <!-- Home card pills — slightly cooler than neutral white-alpha -->
+    <SolidColorBrush x:Key="HomeCardBackground" Color="#1AAEC4FF" />
+    <SolidColorBrush x:Key="HomeCardHoverBackground" Color="#2AAEC4FF" />
+
+    <!-- Playback Island -->
+    <SolidColorBrush x:Key="IslandBackground" Color="#F0141A2A" />
+    <SolidColorBrush x:Key="IslandForeground" Color="#F0F0F0" />
+    <SolidColorBrush x:Key="IslandForegroundSecondary" Color="#A0AABF" />
+    <SolidColorBrush x:Key="IslandForegroundTertiary" Color="#707A8E" />
+    <SolidColorBrush x:Key="IslandIconFill" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="IslandSliderFilled" Color="#E8E8E8" />
+    <SolidColorBrush x:Key="IslandSliderUnfilled" Color="#3A4258" />
+    <SolidColorBrush x:Key="IslandAlbumArtPlaceholder" Color="#33FFFFFF" />
+    <SolidColorBrush x:Key="IslandExplicitBadge" Color="#88888888" />
+    <SolidColorBrush x:Key="IslandIconAccent" Color="#E74856" />
+
+    <!-- Sidebar highlight -->
+    <SolidColorBrush x:Key="SidebarSelectedBrush" Color="#2A3450" />
+    <SolidColorBrush x:Key="SidebarSelectedHoverBrush" Color="#36406A" />
+    <SolidColorBrush x:Key="SidebarHoverBrush" Color="#16FFFFFF" />
+</ResourceDictionary>

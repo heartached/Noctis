@@ -126,7 +126,6 @@
             <Setter Property="Foreground" Value="#AAFFFFFF"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Height" Value="20"/>
-            <Setter Property="Width" Value="90"/>
             <Setter Property="Margin" Value="0,0,8,0"/>
         </Style>
         <Style Selector="Slider.lyrics-volume /template/ Track">
@@ -234,6 +233,22 @@
             <Setter Property="Background" Value="{DynamicResource LyricsSecBtnBgHoverRes}"/>
         </Style>
 
+        <!-- Lyric line (Apple Music–style active emphasis) -->
+        <Style Selector="TextBlock.lyric-line">
+            <Setter Property="RenderTransformOrigin" Value="0%,50%"/>
+            <Setter Property="RenderTransform" Value="translateY(0px)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                    <DoubleTransition Property="FontSize" Duration="0:0:0.4" Easing="CubicEaseInOut"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.45" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="TextBlock.lyric-line.active">
+            <Setter Property="RenderTransform" Value="translateY(-3px)"/>
+        </Style>
+
         <!-- Lyrics scrollbar -->
         <Style Selector="ScrollViewer#LyricsScrollViewer /template/ ScrollBar:vertical">
             <Setter Property="Width" Value="6"/>
@@ -259,6 +274,38 @@
         </Style>
         <Style Selector="ScrollViewer#LyricsScrollViewer /template/ ScrollBar:vertical /template/ Rectangle">
             <Setter Property="IsVisible" Value="False"/>
+        </Style>
+
+        <!-- Karaoke word styles (Lyricsfile word-level sync) -->
+        <Style Selector="TextBlock.word">
+            <Setter Property="Opacity" Value="0.55"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.22" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="TextBlock.word.past">
+            <Setter Property="Opacity" Value="1.0"/>
+        </Style>
+        <Style Selector="TextBlock.word.current">
+            <!-- Base layer goes invisible while the accent overlay renders on top. -->
+            <Setter Property="Opacity" Value="0.0"/>
+        </Style>
+        <Style Selector="TextBlock.word-accent">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="RenderTransform" Value="scale(1.0)"/>
+            <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="TextBlock.word-accent.current">
+            <Setter Property="Opacity" Value="1.0"/>
+            <Setter Property="RenderTransform" Value="scale(1.05)"/>
         </Style>
     </UserControl.Styles>
 
@@ -566,57 +613,10 @@
                                 <MenuFlyout Placement="TopEdgeAlignedRight"
                                             x:DataType="vm:LyricsViewModel"
                                             Opened="OnTrackFlyoutOpened">
-                                    <!-- Track header -->
-                                    <MenuItem IsHitTestVisible="False" Focusable="False">
-                                        <MenuItem.Template>
-                                            <ControlTemplate>
-                                                <Border Padding="11,8" Background="Transparent">
-                                                    <ContentPresenter Content="{TemplateBinding Header}" />
-                                                </Border>
-                                            </ControlTemplate>
-                                        </MenuItem.Template>
-                                        <MenuItem.Header>
-                                            <Grid ColumnDefinitions="40,10,*">
-                                                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="4" ClipToBounds="True"
-                                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                                    <Panel>
-                                                        <TextBlock Text="&#x266A;" FontSize="14" HorizontalAlignment="Center"
-                                                                   VerticalAlignment="Center" Opacity="0.3"
-                                                                   IsVisible="{Binding Player.CurrentTrack.AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                        <Image Source="{Binding Player.CurrentTrack.AlbumArtworkPath, Converter={StaticResource ArtworkConverter}}"
-                                                               Stretch="UniformToFill"
-                                                               IsVisible="{Binding Player.CurrentTrack.AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                                    </Panel>
-                                                </Border>
-                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                                    <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.Title}"
-                                                               FontWeight="SemiBold" FontSize="13"
-                                                               MaxDisplayWidth="240"
-                                                               IsForArtist="False">
-                                                        <controls:MarqueeTextBlock.InlineContent>
-                                                            <Border Classes="explicit-badge compact"
-                                                                    VerticalAlignment="Center"
-                                                                    IsVisible="{Binding Player.CurrentTrack.IsExplicit}">
-                                                                <TextBlock Text="E"
-                                                                           Classes="explicit-badge-text compact"
-                                                                           FontSize="9"
-                                                                           Opacity="0.9" />
-                                                            </Border>
-                                                        </controls:MarqueeTextBlock.InlineContent>
-                                                    </controls:MarqueeTextBlock>
-                                                    <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.Artist}" FontSize="11"
-                                                               Foreground="{Binding LyricsAccentFg}"
-                                                               MaxDisplayWidth="240" HorizontalAlignment="Left" Margin="0,2,0,0"
-                                                               IsForArtist="True" />
-                                                </StackPanel>
-                                            </Grid>
-                                        </MenuItem.Header>
-                                    </MenuItem>
-                                    <Separator />
                                     <MenuItem Command="{Binding Player.PlayPauseCommand}"
                                               MaxWidth="400">
                                         <MenuItem.Header>
-                                            <TextBlock Text="{Binding Player.CurrentTrack.Title, StringFormat='Play &quot;{0}&quot;'}"
+                                            <TextBlock Text="Play"
                                                        TextTrimming="CharacterEllipsis"
                                                        FontWeight="Normal"
                                                        FontSize="14"
@@ -687,7 +687,7 @@
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />
-                                    <MenuItem Header="Remove from Library"
+                                    <MenuItem Header="Remove from Library" Classes="danger"
                                               Command="{Binding Player.RemoveCurrentTrackFromLibraryCommand}">
                                         <MenuItem.Icon>
                                             <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
@@ -724,6 +724,55 @@
                                     <ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" />
                                 </Border.OpacityMask>
                             </Border>
+                        </Button>
+
+                        <!-- Synced / Plain toggle (only when synced lyrics are available) -->
+                        <Border Background="#18FFFFFF"
+                                CornerRadius="999"
+                                Padding="2"
+                                VerticalAlignment="Center"
+                                IsVisible="{Binding HasSyncedLyricsAvailable}"
+                                ToolTip.Tip="Synced / Plain lyrics">
+                            <StackPanel Orientation="Horizontal" Spacing="1">
+                                <Button Command="{Binding ToggleLyricsModeCommand}"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Padding="10,4"
+                                        CornerRadius="999"
+                                        Cursor="Hand"
+                                        Opacity="{Binding IsSyncTabSelected, Converter={StaticResource BoolToOpacity}}">
+                                    <TextBlock Text="Synced" FontSize="11" FontWeight="SemiBold"/>
+                                </Button>
+                                <Button Command="{Binding ToggleLyricsModeCommand}"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Padding="10,4"
+                                        CornerRadius="999"
+                                        Cursor="Hand"
+                                        Opacity="{Binding IsUnsyncTabSelected, Converter={StaticResource BoolToOpacity}}">
+                                    <TextBlock Text="Plain" FontSize="11" FontWeight="SemiBold"/>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Save / Remove (morphing icon-only, lyrics action) -->
+                        <Button Classes="lyrics-ctrl-btn"
+                                Width="36" Height="36"
+                                IsVisible="{Binding CanSaveToFile}"
+                                Command="{Binding SaveLyricsToFileCommand}"
+                                ToolTip.Tip="Save lyrics">
+                            <PathIcon Data="{StaticResource SaveDiskIcon}"
+                                      Width="14" Height="14"
+                                      Foreground="#FFFFFF"/>
+                        </Button>
+                        <Button Classes="lyrics-ctrl-btn"
+                                Width="36" Height="36"
+                                IsVisible="{Binding CanRemoveLyrics}"
+                                Command="{Binding RemoveLyricsCommand}"
+                                ToolTip.Tip="Remove saved lyrics">
+                            <PathIcon Data="{StaticResource TrashIcon}"
+                                      Width="14" Height="14"
+                                      Foreground="#E74856"/>
                         </Button>
 
                         <!-- Background color picker (icon only) -->
@@ -941,41 +990,11 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Save Lyrics (only for online results) -->
-                <Button Classes="pill-btn"
-                        Padding="10,5"
-                        Height="30" MinHeight="30"
-                        Margin="0,12,0,0"
-                        HorizontalAlignment="Center"
-                        IsVisible="{Binding CanSaveToFile}"
-                        Command="{Binding SaveLyricsToFileCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="5">
-                        <PathIcon Data="{StaticResource SaveDiskIcon}"
-                                 Width="12" Height="12" Foreground="{Binding LyricsPrimaryFg}"
-                                 VerticalAlignment="Center"/>
-                        <TextBlock Text="Save" FontSize="11" Foreground="{Binding LyricsPrimaryFg}" VerticalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-
-                <!-- Bottom action row: Source pill, Remove, Alternate -->
+                <!-- Bottom action row: Alternate source + save status (Save/Remove moved into player bar) -->
                 <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Center"
                             Spacing="8"
                             Margin="0,24,0,0">
-                    <!-- Remove Lyrics -->
-                    <Button Classes="pill-btn"
-                            Padding="10,5"
-                            Height="30" MinHeight="30"
-                            IsVisible="{Binding CanRemoveLyrics}"
-                            Command="{Binding RemoveLyricsCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <PathIcon Data="{StaticResource TrashIcon}"
-                                     Width="12" Height="12" Foreground="#E74856"
-                                     VerticalAlignment="Center"/>
-                            <TextBlock Text="Remove" FontSize="11" Foreground="{Binding LyricsPrimaryFg}" VerticalAlignment="Center" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Button>
-
                     <!-- Switch to alternate lyrics source -->
                     <Button Classes="pill-btn"
                             Padding="10,5"
@@ -1091,10 +1110,10 @@
                 <ScrollViewer x:Name="LyricsScrollViewer"
                               VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled"
-                              Padding="50,0,40,0">
-                    <ItemsControl ItemsSource="{Binding LyricLines}"
+                              Padding="24,0,32,0">
+                    <ItemsControl ItemsSource="{Binding ActiveLyricLines}"
                                   x:Name="LyricsItemsControl"
-                                  MaxWidth="560"
+                                  MaxWidth="640"
                                   HorizontalAlignment="Left">
                         <ItemsControl.Transitions>
                             <Transitions>
@@ -1108,7 +1127,7 @@
                                 <Button Background="Transparent"
                                         BorderThickness="0"
                                         Padding="0"
-                                        Margin="0,14"
+                                        Margin="0,10"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Stretch"
                                         Cursor="Hand"
@@ -1116,22 +1135,48 @@
                                         Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
                                         CommandParameter="{Binding}">
                                     <Panel HorizontalAlignment="Stretch">
-                                        <!-- Main text layer (hidden for intro placeholder) -->
+                                        <!-- Main text layer (hidden for intro placeholder OR when word-level karaoke is active) -->
                                         <TextBlock Text="{Binding Text}"
-                                                   FontSize="{Binding IsActive, Converter={StaticResource BoolToOpacity}, ConverterParameter=34;40}"
+                                                   Classes="lyric-line"
+                                                   Classes.active="{Binding IsActive}"
+                                                   FontSize="{Binding IsActive, Converter={StaticResource BoolToOpacity}, ConverterParameter=38;46}"
                                                    FontWeight="Bold"
                                                    Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
                                                    HorizontalAlignment="Stretch"
                                                    Opacity="{Binding LineOpacity}"
-                                                   IsVisible="{Binding !IsIntroPlaceholder}"
-                                                   TextWrapping="Wrap">
-                                            <TextBlock.Transitions>
-                                                <Transitions>
-                                                    <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
-                                                    <DoubleTransition Property="FontSize" Duration="0:0:0.4" Easing="CubicEaseInOut"/>
-                                                </Transitions>
-                                            </TextBlock.Transitions>
-                                        </TextBlock>
+                                                   IsVisible="{Binding ShowLineText}"
+                                                   TextWrapping="Wrap"/>
+
+                                        <!-- Word-level karaoke layer (Lyricsfile word timings, only on active line) -->
+                                        <ItemsControl ItemsSource="{Binding Words}"
+                                                      IsVisible="{Binding ShowWords}"
+                                                      Opacity="{Binding LineOpacity}"
+                                                      HorizontalAlignment="Stretch">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="m:WordTiming">
+                                                    <Panel>
+                                                        <TextBlock Text="{Binding Text}"
+                                                                   Classes="word"
+                                                                   Classes.past="{Binding IsPast}"
+                                                                   Classes.current="{Binding IsCurrent}"
+                                                                   FontSize="46"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                                                        <TextBlock Text="{Binding Text}"
+                                                                   Classes="word-accent"
+                                                                   Classes.current="{Binding IsCurrent}"
+                                                                   FontSize="46"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsAccentFg}"/>
+                                                    </Panel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                         <!-- Intro dots -->
                                         <StackPanel Orientation="Horizontal"
                                                     Spacing="6"

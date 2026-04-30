@@ -5,6 +5,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Views;
+using Noctis.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Noctis.ViewModels;
@@ -46,6 +47,7 @@ public static class MetadataHelper
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow != null)
         {
+            DialogHelper.SizeToOwner(window, desktop.MainWindow);
             await window.ShowDialog(desktop.MainWindow);
         }
         else

@@ -46,8 +46,8 @@
                         Height="1" Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
                         Opacity="0.08"
                         IsVisible="{Binding IsLyricsViewActive, Converter={x:Static BoolConverters.Not}}" />
-                <!-- Left: page title / back button (spans both columns for background) -->
-                <views:TopBarView Grid.Column="0" Grid.ColumnSpan="2"
+                <!-- Left: page title / back button — confined to column 0 so a long title never renders under the right action buttons -->
+                <views:TopBarView Grid.Column="0"
                                   DataContext="{Binding TopBar}"
                                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsLyricsViewActive, Converter={x:Static BoolConverters.Not}, FallbackValue=True}" />
 

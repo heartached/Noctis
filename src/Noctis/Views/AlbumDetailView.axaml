@@ -15,7 +15,6 @@
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:ArtistTokensConverter x:Key="ArtistTokens" />
         <conv:TrackPlaylistCommandParameterConverter x:Key="TrackPlaylistParamConverter" />
-        <conv:TrackIsCurrentConverter x:Key="TrackIsCurrent" />
     </UserControl.Resources>
 
     <UserControl.Styles>

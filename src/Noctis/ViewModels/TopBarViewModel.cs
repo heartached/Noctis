@@ -21,11 +21,17 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private string _backButtonText = "";
     [ObservableProperty] private ICommand? _backCommand;
 
-    public void ShowBackButton(string text, ICommand command)
+    // Optional title shown next to the Back button (e.g., "More By {Artist}")
+    [ObservableProperty] private string _backContextTitle = "";
+    [ObservableProperty] private bool _isBackContextTitleVisible;
+
+    public void ShowBackButton(string text, ICommand command, string? contextTitle = null)
     {
         BackButtonText = text;
         BackCommand = command;
         IsBackButtonVisible = true;
+        BackContextTitle = contextTitle ?? string.Empty;
+        IsBackContextTitleVisible = !string.IsNullOrWhiteSpace(contextTitle);
     }
 
     public void HideBackButton()
@@ -33,6 +39,8 @@ public partial class TopBarViewModel : ViewModelBase
         IsBackButtonVisible = false;
         BackCommand = null;
         BackButtonText = "";
+        BackContextTitle = "";
+        IsBackContextTitleVisible = false;
         UpdatePageTitleVisibility();
     }
 
@@ -164,7 +172,7 @@ public partial class TopBarViewModel : ViewModelBase
     private void UpdatePageTitleVisibility()
     {
         IsPageTitleVisible = !IsBackButtonVisible
-            && CurrentTabName is not ("Home" or "Settings" or "Lyrics" or "Queue");
+            && CurrentTabName is not ("Lyrics" or "Queue");
     }
 
     /// <summary>Fires when the debounced search text changes.</summary>

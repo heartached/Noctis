@@ -161,6 +161,14 @@ public partial class Track : ObservableObject
     [ObservableProperty]
     private bool _isFavorite;
 
+    /// <summary>UTC timestamp when this track was last favorited. Null if never favorited.</summary>
+    public DateTime? FavoritedAt { get; set; }
+
+    partial void OnIsFavoriteChanged(bool value)
+    {
+        if (value) FavoritedAt = DateTime.UtcNow;
+    }
+
     /// <summary>Cached album artwork path, populated from album data during index build. Not persisted.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public string? AlbumArtworkPath { get; set; }

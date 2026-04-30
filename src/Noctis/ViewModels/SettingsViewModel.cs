@@ -35,10 +35,15 @@ public partial class SettingsViewModel : ViewModelBase
     private AppSettings _settings;
 
     // ── Appearance ──
+    // Five theme buttons (Gray is the default) plus System (auto-pick Gray vs Light from OS).
+    // Exactly one of these is true at any time so the Settings UI can highlight the active card.
 
-    [ObservableProperty] private bool _isDarkTheme = true;
+    [ObservableProperty] private bool _isGrayTheme = true;
+    [ObservableProperty] private bool _isDarkTheme;
     [ObservableProperty] private bool _isLightTheme;
     [ObservableProperty] private bool _isSystemTheme;
+    [ObservableProperty] private bool _isMidnightTheme;
+    [ObservableProperty] private bool _isPaperTheme;
 
     // ── Audio Playback ──
 
@@ -47,13 +52,12 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _soundCheckEnabled;
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _artistMarqueeEnabled = true;
-    [ObservableProperty] private bool _menuTitleMarqueeEnabled = true;
-    [ObservableProperty] private bool _menuArtistMarqueeEnabled = true;
     [ObservableProperty] private bool _coverFlowMarqueeEnabled = true;
     [ObservableProperty] private bool _coverFlowArtistMarqueeEnabled = true;
     [ObservableProperty] private bool _coverFlowAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsArtistMarqueeEnabled = true;
+    [ObservableProperty] private bool _albumDetailColorTintEnabled = true;
 
     // ── Lyrics Providers ──
 
@@ -188,16 +192,22 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private string _updateStatusText = "";
     [ObservableProperty] private bool _isCheckingForUpdate;
-    [ObservableProperty] private bool _isUpdateAvailable;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
+    private bool _isUpdateAvailable;
     [ObservableProperty] private bool _isDownloadingUpdate;
     [ObservableProperty] private double _downloadProgress;
-    [ObservableProperty] private bool _isReadyToInstall;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
+    private bool _isReadyToInstall;
     [ObservableProperty] private string _latestVersionTag = "";
+
+    public bool ShowCheckForUpdatesButton => !IsUpdateAvailable && !IsReadyToInstall;
 
     // ── Events ──
 
-    /// <summary>Fires when the theme changes so the App can update.</summary>
-    public event EventHandler<bool>? ThemeChanged;
+    /// <summary>Fires when the theme changes so the App can update. Payload is the theme key.</summary>
+    public event EventHandler<string>? ThemeChanged;
 
     /// <summary>Fires after a full settings reset so the shell can reload playlists, etc.</summary>
     public event EventHandler? SettingsReset;
@@ -281,25 +291,22 @@ public partial class SettingsViewModel : ViewModelBase
         {
             _settings = await _persistence.LoadSettingsAsync();
 
-            // Theme
-            switch (_settings.Theme)
+            // Theme — with one-shot migration from the v1 schema where "Dark" denoted today's Gray.
+            // Also collapse any prior "MidnightBlack" choice into "Dark" since the two themes
+            // are now visually identical.
+            var storedTheme = _settings.Theme;
+            if (storedTheme == "Dark" && !_settings.ThemeV2Migrated)
             {
-                case "Light":
-                    IsLightTheme = true;
-                    IsDarkTheme = false;
-                    IsSystemTheme = false;
-                    break;
-                case "System":
-                    IsSystemTheme = true;
-                    IsDarkTheme = false;
-                    IsLightTheme = false;
-                    break;
-                default:
-                    IsDarkTheme = true;
-                    IsLightTheme = false;
-                    IsSystemTheme = false;
-                    break;
+                storedTheme = "Gray";
+                _settings.Theme = "Gray";
             }
+            else if (storedTheme == "MidnightBlack")
+            {
+                storedTheme = "Dark";
+                _settings.Theme = "Dark";
+            }
+            _settings.ThemeV2Migrated = true;
+            SetActiveThemeFlags(storedTheme);
 
             ScanOnStartup = _settings.ScanOnStartup;
 
@@ -309,13 +316,12 @@ public partial class SettingsViewModel : ViewModelBase
             SoundCheckEnabled = _settings.SoundCheckEnabled;
             TrackTitleMarqueeEnabled = _settings.TrackTitleMarqueeEnabled;
             ArtistMarqueeEnabled = _settings.ArtistMarqueeEnabled;
-            MenuTitleMarqueeEnabled = _settings.MenuTitleMarqueeEnabled;
-            MenuArtistMarqueeEnabled = _settings.MenuArtistMarqueeEnabled;
             CoverFlowMarqueeEnabled = _settings.CoverFlowMarqueeEnabled;
             CoverFlowArtistMarqueeEnabled = _settings.CoverFlowArtistMarqueeEnabled;
             CoverFlowAlbumMarqueeEnabled = _settings.CoverFlowAlbumMarqueeEnabled;
             LyricsTitleMarqueeEnabled = _settings.LyricsTitleMarqueeEnabled;
             LyricsArtistMarqueeEnabled = _settings.LyricsArtistMarqueeEnabled;
+            AlbumDetailColorTintEnabled = _settings.AlbumDetailColorTintEnabled;
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
@@ -381,8 +387,7 @@ public partial class SettingsViewModel : ViewModelBase
             ApplyAudioSettings();
 
             // Apply the persisted theme on startup
-            var isDark = IsSystemTheme ? IsSystemDarkMode() : IsDarkTheme;
-            ThemeChanged?.Invoke(this, isDark);
+            ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
 
             _settingsLoaded = true;
         }
@@ -416,9 +421,13 @@ public partial class SettingsViewModel : ViewModelBase
 
     private void SyncToSettings()
     {
-        if (IsDarkTheme) _settings.Theme = "Dark";
+        if (IsGrayTheme) _settings.Theme = "Gray";
+        else if (IsDarkTheme) _settings.Theme = "Dark";
         else if (IsLightTheme) _settings.Theme = "Light";
+        else if (IsMidnightTheme) _settings.Theme = "Midnight";
+        else if (IsPaperTheme) _settings.Theme = "Paper";
         else _settings.Theme = "System";
+        _settings.ThemeV2Migrated = true;
 
         _settings.ScanOnStartup = ScanOnStartup;
         _settings.MusicFolders = MusicFolders.ToList();
@@ -436,13 +445,12 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SoundCheckEnabled = SoundCheckEnabled;
         _settings.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _settings.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
-        _settings.MenuTitleMarqueeEnabled = MenuTitleMarqueeEnabled;
-        _settings.MenuArtistMarqueeEnabled = MenuArtistMarqueeEnabled;
         _settings.CoverFlowMarqueeEnabled = CoverFlowMarqueeEnabled;
         _settings.CoverFlowArtistMarqueeEnabled = CoverFlowArtistMarqueeEnabled;
         _settings.CoverFlowAlbumMarqueeEnabled = CoverFlowAlbumMarqueeEnabled;
         _settings.LyricsTitleMarqueeEnabled = LyricsTitleMarqueeEnabled;
         _settings.LyricsArtistMarqueeEnabled = LyricsArtistMarqueeEnabled;
+        _settings.AlbumDetailColorTintEnabled = AlbumDetailColorTintEnabled;
         _settings.LrcLibEnabled = LrcLibEnabled;
         _settings.NetEaseEnabled = NetEaseEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
@@ -474,8 +482,6 @@ public partial class SettingsViewModel : ViewModelBase
         if (_player == null) return;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
-        Controls.MarqueeTextBlock.GlobalMenuTitleScrollEnabled = MenuTitleMarqueeEnabled;
-        Controls.MarqueeTextBlock.GlobalMenuArtistScrollEnabled = MenuArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowScrollEnabled = CoverFlowMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowArtistScrollEnabled = CoverFlowArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowAlbumScrollEnabled = CoverFlowAlbumMarqueeEnabled;
@@ -547,35 +553,47 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Theme commands ──
 
-    [RelayCommand]
-    private void SetDarkTheme()
+    [RelayCommand] private void SetGrayTheme() => ApplyTheme("Gray");
+    [RelayCommand] private void SetDarkTheme() => ApplyTheme("Dark");
+    [RelayCommand] private void SetLightTheme() => ApplyTheme("Light");
+    [RelayCommand] private void SetSystemTheme() => ApplyTheme("System");
+    [RelayCommand] private void SetMidnightTheme() => ApplyTheme("Midnight");
+    [RelayCommand] private void SetPaperTheme() => ApplyTheme("Paper");
+
+    private void ApplyTheme(string themeKey)
     {
-        IsDarkTheme = true;
-        IsLightTheme = false;
-        IsSystemTheme = false;
-        ThemeChanged?.Invoke(this, true);
+        SetActiveThemeFlags(themeKey);
+        ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
         _ = SaveAsync();
     }
 
-    [RelayCommand]
-    private void SetLightTheme()
+    private void SetActiveThemeFlags(string themeKey)
     {
-        IsDarkTheme = false;
-        IsLightTheme = true;
-        IsSystemTheme = false;
-        ThemeChanged?.Invoke(this, false);
-        _ = SaveAsync();
+        IsGrayTheme = themeKey == "Gray";
+        IsDarkTheme = themeKey == "Dark";
+        IsLightTheme = themeKey == "Light";
+        IsSystemTheme = themeKey == "System";
+        IsMidnightTheme = themeKey == "Midnight";
+        IsPaperTheme = themeKey == "Paper";
+
+        // Fall back to Gray if nothing matched (e.g. unknown stored value).
+        if (!IsGrayTheme && !IsDarkTheme && !IsLightTheme && !IsSystemTheme
+            && !IsMidnightTheme && !IsPaperTheme)
+            IsGrayTheme = true;
     }
 
-    [RelayCommand]
-    private void SetSystemTheme()
+    /// <summary>
+    /// Returns the actual theme key to apply now. For "System" this resolves to either
+    /// Gray or Light depending on the OS appearance setting.
+    /// </summary>
+    private string ResolveActiveThemeKey()
     {
-        IsDarkTheme = false;
-        IsLightTheme = false;
-        IsSystemTheme = true;
-        var isDark = IsSystemDarkMode();
-        ThemeChanged?.Invoke(this, isDark);
-        _ = SaveAsync();
+        if (IsLightTheme) return "Light";
+        if (IsDarkTheme) return "Dark";
+        if (IsMidnightTheme) return "Midnight";
+        if (IsPaperTheme) return "Paper";
+        if (IsSystemTheme) return IsSystemDarkMode() ? "Gray" : "Light";
+        return "Gray";
     }
 
     private static bool IsSystemDarkMode()
@@ -628,18 +646,6 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
-    partial void OnMenuTitleMarqueeEnabledChanged(bool value)
-    {
-        ApplyPlayerSettings();
-        _ = SaveAsync();
-    }
-
-    partial void OnMenuArtistMarqueeEnabledChanged(bool value)
-    {
-        ApplyPlayerSettings();
-        _ = SaveAsync();
-    }
-
     partial void OnCoverFlowMarqueeEnabledChanged(bool value)
     {
         ApplyPlayerSettings();
@@ -667,6 +673,12 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnLyricsArtistMarqueeEnabledChanged(bool value)
     {
         ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnAlbumDetailColorTintEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
 
@@ -1320,10 +1332,8 @@ public partial class SettingsViewModel : ViewModelBase
         {
             _settings = defaultSettings;
 
-            // Theme
-            IsDarkTheme = true;
-            IsLightTheme = false;
-            IsSystemTheme = false;
+            // Theme — reset to default (Gray)
+            SetActiveThemeFlags("Gray");
 
             // Preferences
             ScanOnStartup = true;
@@ -1334,13 +1344,12 @@ public partial class SettingsViewModel : ViewModelBase
             SoundCheckEnabled = false;
             TrackTitleMarqueeEnabled = true;
             ArtistMarqueeEnabled = true;
-            MenuTitleMarqueeEnabled = true;
-            MenuArtistMarqueeEnabled = true;
             CoverFlowMarqueeEnabled = true;
             CoverFlowArtistMarqueeEnabled = true;
             CoverFlowAlbumMarqueeEnabled = true;
             LyricsTitleMarqueeEnabled = true;
             LyricsArtistMarqueeEnabled = true;
+            AlbumDetailColorTintEnabled = true;
 
             // Lyrics providers
             LrcLibEnabled = true;
@@ -1378,7 +1387,7 @@ public partial class SettingsViewModel : ViewModelBase
             ApplyAudioSettings();
 
             // Apply theme
-            ThemeChanged?.Invoke(this, true); // Dark theme
+            ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
         }
         finally
         {
@@ -1462,6 +1471,40 @@ public partial class SettingsViewModel : ViewModelBase
         {
             Debug.WriteLine($"[Settings] Failed to open data folder: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Silently checks for an update on startup. On success, sets IsUpdateAvailable
+    /// + LatestVersionTag so the UI can surface a passive "Update available" badge
+    /// without any user action. Errors are swallowed so startup is never noisy.
+    /// </summary>
+    public async Task CheckForUpdateSilentAsync()
+    {
+        if (_updateService is null) return;
+        if (IsCheckingForUpdate || IsUpdateAvailable || IsDownloadingUpdate || IsReadyToInstall) return;
+
+#if DEBUG
+        // Visual-only stub for local testing of the "Update available" button swap.
+        // Stripped from Release builds.
+        await Task.Delay(500);
+        LatestVersionTag = "v1.0.3";
+        IsUpdateAvailable = true;
+#else
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var update = await _updateService.CheckForUpdateAsync(cts.Token);
+            if (update is null) return;
+            if (update.InstallerApiUrl is null && update.InstallerUrl is null) return;
+
+            LatestVersionTag = update.TagName;
+            IsUpdateAvailable = true;
+        }
+        catch
+        {
+            // Silent: no toast, no status text, no error banner on startup.
+        }
+#endif
     }
 
     [RelayCommand]

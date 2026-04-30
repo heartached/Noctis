@@ -29,6 +29,9 @@ public partial class LibraryFoldersViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private FolderNode? _selectedNode;
 
+    /// <summary>Fires when the user clicks "Manage media folders…" — handled by MainWindowViewModel to switch views.</summary>
+    public event EventHandler? NavigateToSettingsRequested;
+
     public LibraryFoldersViewModel(ILibraryService library, PlayerViewModel player, IPersistenceService persistence)
     {
         _library = library;
@@ -126,6 +129,12 @@ public partial class LibraryFoldersViewModel : ViewModelBase, IDisposable
         if (SelectedFolderTracks.Count == 0) return;
         var shuffled = SelectedFolderTracks.OrderBy(_ => Random.Shared.Next()).ToList();
         _player.ReplaceQueueAndPlay(shuffled, 0);
+    }
+
+    [RelayCommand]
+    private void OpenMediaFolderSettings()
+    {
+        NavigateToSettingsRequested?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]

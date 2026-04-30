@@ -1,14 +1,17 @@
 <div align="center">
 
-# Noctis
+<h1>
+  <img src="src/Noctis/Assets/Icons/Noctis%20Logo%20Transparent.png" width="48" align="center" />
+  Noctis
+</h1>
 
-A sleek Windows music player with lossless audio support, synced lyrics, equalizer, smart playlists, and a beautiful UI.
+A music player that respects what's yours. Zero tracking, total control.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows-blue.svg)]()
-[![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)]()
-[![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=yellowgreen)](https://github.com/heartached/Noctis/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/heartached/Noctis/dotnet.yml?label=build)](https://github.com/heartached/Noctis/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-red.svg?style=for-the-badge)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows-blue.svg?style=for-the-badge)]()
+[![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg?style=for-the-badge)]()
+[![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=yellowgreen&style=for-the-badge&cacheSeconds=300)](https://github.com/heartached/Noctis/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/heartached/Noctis/dotnet.yml?label=build&style=for-the-badge)](https://github.com/heartached/Noctis/actions)
 
 [Download](https://github.com/heartached/Noctis/releases) • [Features](#features) • [Build](#build) • [Feedback](#feedback)
 

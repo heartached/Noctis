@@ -74,7 +74,11 @@ public partial class FavoritesViewModel : ViewModelBase
                 .Where(t => t.IsFavorite)
                 .ToList();
 
-            var items = new List<FavoriteItem>();
+            var items = new List<(FavoriteItem item, DateTime sortKey)>();
+
+            // Most recent favorite event for a track. Falls back to DateAdded so
+            // pre-existing favorites (no timestamp yet) keep a stable order.
+            static DateTime FavoriteSortKey(Track t) => t.FavoritedAt ?? t.DateAdded;
 
             // Group favorite tracks by album
             var grouped = favTracks.GroupBy(t => t.AlbumId);
@@ -83,38 +87,36 @@ public partial class FavoritesViewModel : ViewModelBase
                 var album = _library.GetAlbumById(group.Key);
                 if (album != null && album.Tracks.Count > 1 && album.IsAllTracksFavorite)
                 {
-                    // All tracks in the album are favorites → show as one album card
-                    items.Add(new FavoriteItem { Album = album });
+                    // All tracks in the album are favorites → show as one album card.
+                    // Use the most recent track favorite as the album's sort key.
+                    var key = album.Tracks.Max(FavoriteSortKey);
+                    items.Add((new FavoriteItem { Album = album }, key));
                 }
                 else
                 {
                     // Individual tracks
-                    foreach (var track in group.OrderBy(t => t.TrackNumber))
-                        items.Add(new FavoriteItem { Track = track });
+                    foreach (var track in group)
+                        items.Add((new FavoriteItem { Track = track }, FavoriteSortKey(track)));
                 }
             }
 
-            // Sort: by artist then title
-            items.Sort((a, b) =>
-            {
-                int cmp = string.Compare(a.Subtitle, b.Subtitle, StringComparison.OrdinalIgnoreCase);
-                if (cmp != 0) return cmp;
-                return string.Compare(a.Title, b.Title, StringComparison.OrdinalIgnoreCase);
-            });
+            // Newest favorites first.
+            items.Sort((a, b) => b.sortKey.CompareTo(a.sortKey));
+            var orderedItems = items.Select(x => x.item).ToList();
 
             // Build rows for the virtualized grid
             var rows = new List<FavoriteItemRow>();
-            for (int i = 0; i < items.Count; i += ColumnsPerRow)
+            for (int i = 0; i < orderedItems.Count; i += ColumnsPerRow)
             {
                 rows.Add(new FavoriteItemRow
                 {
-                    Items = items.GetRange(i, Math.Min(ColumnsPerRow, items.Count - i))
+                    Items = orderedItems.GetRange(i, Math.Min(ColumnsPerRow, orderedItems.Count - i))
                 });
             }
 
             Dispatcher.UIThread.Post(() =>
             {
-                FavoriteItems.ReplaceAll(items);
+                FavoriteItems.ReplaceAll(orderedItems);
                 FavoriteItemRows.ReplaceAll(rows);
             });
         });

@@ -3,6 +3,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -234,11 +235,11 @@ public partial class MetadataViewModel : ViewModelBase
         PlayCount = _track.PlayCount > 0 ? _track.PlayCount.ToString() : "0";
         Comment = _track.Comment;
 
-        // Lyrics — load synced from Track or sidecar .lrc file, migrate legacy data
+        // Lyrics — synced from Track.SyncedLyrics or .lrc sidecar; plain from Track.Lyrics or .txt sidecar.
+        // Plain tab must NEVER contain timestamps; if a legacy track stored synced text in Lyrics, strip it.
         var syncedFromTrack = _track.SyncedLyrics;
         if (string.IsNullOrWhiteSpace(syncedFromTrack))
         {
-            // Try sidecar .lrc file
             try
             {
                 var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
@@ -248,24 +249,29 @@ public partial class MetadataViewModel : ViewModelBase
             catch { /* Non-fatal */ }
         }
 
-        if (!string.IsNullOrWhiteSpace(syncedFromTrack))
+        var plainFromTrack = _track.Lyrics;
+        if (string.IsNullOrWhiteSpace(plainFromTrack))
         {
-            SyncedLyrics = syncedFromTrack;
-            Lyrics = _track.Lyrics;
+            try
+            {
+                var txtPath = Path.ChangeExtension(_track.FilePath, ".txt");
+                if (File.Exists(txtPath))
+                    plainFromTrack = File.ReadAllText(txtPath);
+            }
+            catch { /* Non-fatal */ }
         }
-        else if (!string.IsNullOrWhiteSpace(_track.Lyrics)
-                 && _track.Lyrics.Contains("[")
-                 && System.Text.RegularExpressions.Regex.IsMatch(_track.Lyrics, @"\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]"))
+
+        // If the plain field accidentally holds timestamped text, treat it as synced (legacy migration)
+        // and derive plain from it.
+        if (LyricsTextHelper.ContainsTimestamps(plainFromTrack))
         {
-            // Legacy: synced lyrics stored in Lyrics field — move to SyncedLyrics
-            SyncedLyrics = _track.Lyrics;
-            Lyrics = string.Empty;
+            if (string.IsNullOrWhiteSpace(syncedFromTrack))
+                syncedFromTrack = plainFromTrack;
+            plainFromTrack = LyricsTextHelper.StripTimestamps(plainFromTrack);
         }
-        else
-        {
-            Lyrics = _track.Lyrics;
-            SyncedLyrics = string.Empty;
-        }
+
+        SyncedLyrics = syncedFromTrack ?? string.Empty;
+        Lyrics = plainFromTrack ?? string.Empty;
         HasCustomLyrics = !string.IsNullOrWhiteSpace(Lyrics);
         HasCustomSyncedLyrics = !string.IsNullOrWhiteSpace(SyncedLyrics);
 
@@ -509,8 +515,11 @@ public partial class MetadataViewModel : ViewModelBase
         var oldAlbumId = _track.AlbumId;
         _track.AlbumId = Track.ComputeAlbumId(_track.AlbumArtist, _track.Album);
 
-        // Apply Lyrics (plain + synced)
-        _track.Lyrics = HasCustomLyrics ? Lyrics : string.Empty;
+        // Apply Lyrics (plain + synced) — defensively strip timestamps from plain
+        var plainToWrite = HasCustomLyrics
+            ? (LyricsTextHelper.ContainsTimestamps(Lyrics) ? LyricsTextHelper.StripTimestamps(Lyrics) : Lyrics)
+            : string.Empty;
+        _track.Lyrics = plainToWrite;
         _track.SyncedLyrics = HasCustomSyncedLyrics ? SyncedLyrics : string.Empty;
 
         // Apply Options
@@ -558,6 +567,17 @@ public partial class MetadataViewModel : ViewModelBase
                 await File.WriteAllTextAsync(lrcPath, _track.SyncedLyrics);
             else if (File.Exists(lrcPath))
                 File.Delete(lrcPath);
+        }
+        catch { /* Best effort — sidecar write is non-fatal */ }
+
+        // Write plain lyrics to sidecar .txt file
+        try
+        {
+            var txtPath = Path.ChangeExtension(_track.FilePath, ".txt");
+            if (!string.IsNullOrWhiteSpace(_track.Lyrics))
+                await File.WriteAllTextAsync(txtPath, _track.Lyrics);
+            else if (File.Exists(txtPath))
+                File.Delete(txtPath);
         }
         catch { /* Best effort — sidecar write is non-fatal */ }
 

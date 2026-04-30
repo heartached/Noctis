@@ -17,8 +17,16 @@ public class AppSettings
     /// <summary>Directory names to ignore while scanning (case-insensitive).</summary>
     public List<string> IgnoredFolderNames { get; set; } = new() { ".git", "node_modules", "$recycle.bin", "system volume information" };
 
-    /// <summary>Current theme: "Dark", "Light", or "System".</summary>
-    public string Theme { get; set; } = "Dark";
+    /// <summary>Current theme: "Gray", "Dark", "MidnightBlack", "Light", or "System".</summary>
+    public string Theme { get; set; } = "Gray";
+
+    /// <summary>
+    /// Marker for the v2 theme migration. In v1, "Dark" denoted today's Gray colours.
+    /// On first load post-upgrade, a stored "Dark" with this flag false is rewritten to "Gray"
+    /// so existing users keep their visual; future explicit "Dark" picks set this true and
+    /// are honoured as the new dark theme.
+    /// </summary>
+    public bool ThemeV2Migrated { get; set; } = false;
 
     /// <summary>Last volume level (0–100).</summary>
     public int Volume { get; set; } = 75;
@@ -62,12 +70,6 @@ public class AppSettings
     /// <summary>Whether long playback-bar artist names should scroll while playing.</summary>
     public bool ArtistMarqueeEnabled { get; set; } = true;
 
-    /// <summary>Whether long track titles in options menus should scroll.</summary>
-    public bool MenuTitleMarqueeEnabled { get; set; } = true;
-
-    /// <summary>Whether long artist names in options menus should scroll.</summary>
-    public bool MenuArtistMarqueeEnabled { get; set; } = true;
-
     /// <summary>Whether long track titles in the CoverFlow view should scroll.</summary>
     public bool CoverFlowMarqueeEnabled { get; set; } = true;
 
@@ -82,6 +84,9 @@ public class AppSettings
 
     /// <summary>Whether long artist/album names in the Lyrics page should scroll.</summary>
     public bool LyricsArtistMarqueeEnabled { get; set; } = true;
+
+    /// <summary>Whether album detail pages tint their background with the cover-art dominant color.</summary>
+    public bool AlbumDetailColorTintEnabled { get; set; } = true;
 
     // ── Equalizer settings ──
 

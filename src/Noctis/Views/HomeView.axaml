@@ -55,55 +55,11 @@
                                     </Button.Styles>
                                     <Button.ContextMenu>
                                         <ContextMenu DataContext="{Binding}" Opened="OnContextMenuOpened">
-                                            <!-- Track header -->
-                                            <MenuItem IsHitTestVisible="False" Focusable="False">
-                                                <MenuItem.Template>
-                                                    <ControlTemplate>
-                                                        <Border Padding="11,8" Background="Transparent">
-                                                            <ContentPresenter Content="{TemplateBinding Header}" />
-                                                        </Border>
-                                                    </ControlTemplate>
-                                                </MenuItem.Template>
-                                                <MenuItem.Header>
-                                                    <Grid ColumnDefinitions="40,10,*">
-                                                        <Border Grid.Column="0" Width="40" Height="40" CornerRadius="4" ClipToBounds="True"
-                                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                                            <Panel>
-                                                                <TextBlock Text="&#x266A;" FontSize="14" HorizontalAlignment="Center"
-                                                                           VerticalAlignment="Center" Opacity="0.3"
-                                                                           IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                                <Image Source="{Binding AlbumArtworkPath, Converter={StaticResource ArtworkConverter}}"
-                                                                       Stretch="UniformToFill"
-                                                                       IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                                            </Panel>
-                                                        </Border>
-                                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                                            <controls:MarqueeTextBlock Text="{Binding Title}"
-                                                                       FontWeight="SemiBold" FontSize="13"
-                                                                       MaxDisplayWidth="240" IsForArtist="False">
-                                                                <controls:MarqueeTextBlock.InlineContent>
-                                                                    <Border Classes="explicit-badge compact"
-                                                                            VerticalAlignment="Center"
-                                                                            IsVisible="{Binding IsExplicit}">
-                                                                        <TextBlock Text="E"
-                                                                                   Classes="explicit-badge-text compact"
-                                                                                   FontSize="9"
-                                                                                   Opacity="0.9" />
-                                                                    </Border>
-                                                                </controls:MarqueeTextBlock.InlineContent>
-                                                            </controls:MarqueeTextBlock>
-                                                            <controls:MarqueeTextBlock Text="{Binding Artist}" FontSize="11"
-                                                                       Foreground="#E74856" MaxDisplayWidth="240" IsForArtist="True" Margin="0,2,0,0" />
-                                                        </StackPanel>
-                                                    </Grid>
-                                                </MenuItem.Header>
-                                            </MenuItem>
-                                            <Separator />
                                             <MenuItem Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).PlayTopSongCommand}"
                                                       CommandParameter="{Binding}"
                                                       MaxWidth="400">
                                                 <MenuItem.Header>
-                                                    <TextBlock Text="{Binding Title, StringFormat='Play &quot;{0}&quot;'}"
+                                                    <TextBlock Text="Play"
                                                                TextTrimming="CharacterEllipsis"
                                                                FontWeight="Normal"
                                                                FontSize="14"
@@ -182,7 +138,7 @@
                                                 </MenuItem.Icon>
                                             </MenuItem>
                                             <Separator />
-                                            <MenuItem Header="Remove from Library"
+                                            <MenuItem Header="Remove from Library" Classes="danger"
                                                       Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).RemoveTrackFromLibraryCommand}"
                                                       CommandParameter="{Binding}">
                                                 <MenuItem.Icon>
@@ -280,54 +236,11 @@
                                         CommandParameter="{Binding}">
                                     <Button.ContextMenu>
                                         <ContextMenu DataContext="{Binding}" Opened="OnContextMenuOpened">
-                                            <MenuItem IsHitTestVisible="False" Focusable="False">
-                                                <MenuItem.Template>
-                                                    <ControlTemplate>
-                                                        <Border Padding="11,8" Background="Transparent">
-                                                            <ContentPresenter Content="{TemplateBinding Header}" />
-                                                        </Border>
-                                                    </ControlTemplate>
-                                                </MenuItem.Template>
-                                                <MenuItem.Header>
-                                                    <Grid ColumnDefinitions="40,10,*">
-                                                        <Border Grid.Column="0" Width="40" Height="40" CornerRadius="4" ClipToBounds="True"
-                                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                                            <Panel>
-                                                                <TextBlock Text="&#x266A;" FontSize="14" HorizontalAlignment="Center"
-                                                                           VerticalAlignment="Center" Opacity="0.3"
-                                                                           IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                                <Image Source="{Binding ArtworkPath, Converter={StaticResource ArtworkConverter}}"
-                                                                       Stretch="UniformToFill"
-                                                                       IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                                            </Panel>
-                                                        </Border>
-                                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                                            <controls:MarqueeTextBlock Text="{Binding Name}"
-                                                                       FontWeight="SemiBold" FontSize="13"
-                                                                       MaxDisplayWidth="240" IsForArtist="False">
-                                                                <controls:MarqueeTextBlock.InlineContent>
-                                                                    <Border Classes="explicit-badge compact"
-                                                                            VerticalAlignment="Center"
-                                                                            IsVisible="{Binding IsExplicit}">
-                                                                        <TextBlock Text="E"
-                                                                                   Classes="explicit-badge-text compact"
-                                                                                   FontSize="9"
-                                                                                   Opacity="0.9" />
-                                                                    </Border>
-                                                                </controls:MarqueeTextBlock.InlineContent>
-                                                            </controls:MarqueeTextBlock>
-                                                            <controls:MarqueeTextBlock Text="{Binding Artist}" FontSize="11"
-                                                                       Foreground="#E74856" MaxDisplayWidth="240" IsForArtist="True" Margin="0,2,0,0" />
-                                                        </StackPanel>
-                                                    </Grid>
-                                                </MenuItem.Header>
-                                            </MenuItem>
-                                            <Separator />
                                             <MenuItem Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).PlayAlbumCommand}"
                                                       CommandParameter="{Binding}"
                                                       MaxWidth="400">
                                                 <MenuItem.Header>
-                                                    <TextBlock Text="{Binding Name, StringFormat='Play &quot;{0}&quot;'}"
+                                                    <TextBlock Text="Play"
                                                                TextTrimming="CharacterEllipsis"
                                                                FontWeight="Normal"
                                                                FontSize="14"
@@ -407,7 +320,7 @@
                                                 </MenuItem.Icon>
                                             </MenuItem>
                                             <Separator />
-                                            <MenuItem Header="Remove from Library"
+                                            <MenuItem Header="Remove from Library" Classes="danger"
                                                       Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).RemoveFromLibraryCommand}"
                                                       CommandParameter="{Binding}">
                                                 <MenuItem.Icon>
@@ -438,25 +351,25 @@
                                                        IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             </Panel>
                                         </Border>
-                                        <StackPanel Orientation="Horizontal"
-                                                    Margin="0,5,0,0"
-                                                    HorizontalAlignment="Left">
-                                            <TextBlock Text="{Binding Name}"
-                                                       FontSize="13"
-                                                       FontWeight="SemiBold"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       MaxLines="1" />
-                                            <Border Classes="explicit-badge compact"
-                                                    Margin="4,0,0,0"
-                                                    VerticalAlignment="Center"
-                                                    IsVisible="{Binding IsExplicit}"
-                                                    ToolTip.Tip="Explicit">
-                                                <TextBlock Text="E"
-                                                           Classes="explicit-badge-text compact"
-                                                           FontSize="9"
-                                                           Opacity="0.9" />
-                                            </Border>
-                                        </StackPanel>
+                                        <TextBlock Margin="0,5,0,0"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   TextWrapping="Wrap"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxLines="2">
+                                            <Run Text="{Binding Name}" />
+                                            <InlineUIContainer BaselineAlignment="Center">
+                                                <Border Classes="explicit-badge compact"
+                                                        Margin="4,0,0,0"
+                                                        IsVisible="{Binding IsExplicit}"
+                                                        ToolTip.Tip="Explicit">
+                                                    <TextBlock Text="E"
+                                                               Classes="explicit-badge-text compact"
+                                                               FontSize="9"
+                                                               Opacity="0.9" />
+                                                </Border>
+                                            </InlineUIContainer>
+                                        </TextBlock>
                                         <TextBlock Text="{Binding Artist}"
                                                    FontSize="12"
                                                    Opacity="0.55"

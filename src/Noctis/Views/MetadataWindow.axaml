@@ -4,31 +4,40 @@
         x:Class="Noctis.Views.MetadataWindow"
         x:DataType="vm:MetadataViewModel"
         Title="Metadata"
-        Width="700" Height="700"
-        MinWidth="550" MinHeight="500"
-        WindowStartupLocation="CenterOwner"
-        CanResize="True"
-        Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+        CanResize="False"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        ShowInTaskbar="False">
 
     <Window.Styles>
         <Style Selector="TextBox.metadata-info-field">
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="Padding" Value="14,10" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="White" />
+            <Setter Property="UseLayoutRounding" Value="True" />
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
         </Style>
 
         <Style Selector="TextBox.metadata-info-field /template/ Border#PART_BorderElement">
             <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="White" />
+            <Setter Property="UseLayoutRounding" Value="True" />
         </Style>
 
         <Style Selector="TextBox.metadata-info-field:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="#E74856" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+        </Style>
+
+        <Style Selector="TextBox.metadata-info-field:focus-within /template/ Border#PART_BorderElement">
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="#E74856" />
+            <Setter Property="UseLayoutRounding" Value="True" />
         </Style>
 
         <Style Selector="AutoCompleteBox.metadata-info-field">
@@ -38,27 +47,37 @@
         <Style Selector="AutoCompleteBox.metadata-info-field /template/ TextBox#PART_TextBox">
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="Padding" Value="14,10" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="White" />
+            <Setter Property="UseLayoutRounding" Value="True" />
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
         </Style>
 
         <Style Selector="AutoCompleteBox.metadata-info-field /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
             <Setter Property="CornerRadius" Value="999" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="White" />
+            <Setter Property="UseLayoutRounding" Value="True" />
         </Style>
 
         <Style Selector="AutoCompleteBox.metadata-info-field /template/ TextBox#PART_TextBox:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="#E74856" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+        </Style>
+
+        <Style Selector="AutoCompleteBox.metadata-info-field:focus-within /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="#E74856" />
+            <Setter Property="UseLayoutRounding" Value="True" />
         </Style>
 
         <Style Selector="ComboBox.metadata-info-field">
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="Padding" Value="14,10" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="White" />
+            <Setter Property="UseLayoutRounding" Value="True" />
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
         </Style>
@@ -116,6 +135,20 @@
         </Style>
 
     </Window.Styles>
+
+    <!-- Full-window dimmed overlay that captures all input -->
+    <Border Background="#50000000"
+            PointerPressed="OnOverlayPointerPressed"
+            PointerWheelChanged="OnOverlayWheel">
+
+        <!-- Centered dialog card -->
+        <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                CornerRadius="16"
+                ClipToBounds="True"
+                Width="700" Height="700"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 8 32 0 #60000000">
 
     <Grid Margin="0" RowDefinitions="Auto,*,Auto">
 
@@ -387,7 +420,8 @@
 
             <!-- ═══════════ ADVANCED DETAILS TAB ═══════════ -->
             <TabItem Header="Advanced Details" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowAdvancedTab}">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="16" Margin="24,16,24,24">
 
                         <!-- ── Sorting ── -->
@@ -570,12 +604,12 @@
             <!-- ═══════════ ARTWORK TAB ═══════════ -->
             <TabItem Header="Artwork" FontSize="14" FontWeight="SemiBold">
                 <DockPanel Margin="24,16">
-                    <!-- Add Artwork button at bottom -->
+                    <!-- Artwork action buttons (centered row below preview) -->
                     <StackPanel DockPanel.Dock="Bottom"
                                 Orientation="Horizontal"
-                                HorizontalAlignment="Right"
+                                HorizontalAlignment="Center"
                                 Spacing="12"
-                                Margin="0,12,0,0">
+                                Margin="0,16,0,0">
                         <Button Content="Add Artwork"
                                 Command="{Binding AddArtworkCommand}"
                                 CommandParameter="{Binding $parent[Window]}"
@@ -627,7 +661,7 @@
             </TabItem>
 
             <!-- ═══════════ LYRICS TAB ═══════════ -->
-            <TabItem Header="Lyrics" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowLyricsTab}">
+            <TabItem Header="Plain Lyrics" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowLyricsTab}">
                 <DockPanel Margin="24,16">
                     <CheckBox DockPanel.Dock="Top"
                               Classes="metadata-pill-checkbox"
@@ -760,7 +794,8 @@
 
             <!-- ═══════════ FILE TAB ═══════════ -->
             <TabItem Header="File" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowFileTab}">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="14" Margin="24,16,24,24">
                         <!-- Kind -->
                         <StackPanel Spacing="2">
@@ -855,4 +890,6 @@
             </TabItem>
         </TabControl>
     </Grid>
+        </Border>
+    </Border>
 </Window>

@@ -113,10 +113,14 @@ public class VlcAudioPlayer : IAudioPlayer
         //                           fixing per-song variation in seek quality. Also needed
         //                           for AAC/M4A Lossless seek smoothness.
         //   NOTE: --gain=0 was removed — it multiplies audio by 0 (silence!)
-        //   --aout=waveout: Use WaveOut instead of mmdevice. mmdevice triggers
-        //   vlc_AudioSessionEvents_OnSimpleVolumeChanged callbacks on every
-        //   volume change, causing audible static/clicks during slider drag.
-        //   WaveOut doesn't have these session event callbacks.
+        //   --aout=mmdevice: WASAPI output. Required so VLC follows the
+        //   Windows default-device change at runtime — WaveOut binds to the
+        //   endpoint that was default at stream-open time and does not
+        //   re-route when the user switches output device, which caused
+        //   audible glitching and eventual silence until app restart.
+        //   The vlc_AudioSessionEvents_OnSimpleVolumeChanged static during
+        //   slider drag (the original reason WaveOut was selected) is
+        //   mitigated by the throttling + deadband in ScheduleVolumeWrite.
         _libVlc = new LibVLC(
             "--no-video",
             "--no-osd",
@@ -130,7 +134,7 @@ public class VlcAudioPlayer : IAudioPlayer
             "--audio-resampler=speex",
             "--speex-resampler-quality=10",
             "--clock-jitter=0",
-            "--aout=waveout"
+            "--aout=mmdevice"
         );
 
         _player = new MediaPlayer(_libVlc);

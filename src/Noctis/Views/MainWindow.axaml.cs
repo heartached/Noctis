@@ -18,7 +18,7 @@ public partial class MainWindow : Window
     private static readonly IBrush InactiveToggleBg = Brushes.Transparent;
 
     private TaskbarIntegrationService? _taskbar;
-    private EventHandler<bool>? _themeChangedHandler;
+    private EventHandler<string>? _themeChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _playerPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _topBarPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _mainVmPropertyChangedHandler;
@@ -37,10 +37,10 @@ public partial class MainWindow : Window
             if (DataContext is MainWindowViewModel vm)
             {
                 // Wire up theme switching
-                _themeChangedHandler = (_, isDark) =>
+                _themeChangedHandler = (_, themeKey) =>
                 {
                     if (Avalonia.Application.Current is App app)
-                        app.SetTheme(isDark);
+                        app.SetTheme(themeKey);
                 };
                 vm.Settings.ThemeChanged += _themeChangedHandler;
 

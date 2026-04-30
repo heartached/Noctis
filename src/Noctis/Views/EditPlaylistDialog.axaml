@@ -18,25 +18,7 @@
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
     </Window.Resources>
 
-    <Window.Styles>
-        <Style Selector="TextBox /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#E74856" />
-            <Setter Property="BorderThickness" Value="1" />
-        </Style>
-        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#E74856" />
-            <Setter Property="BorderThickness" Value="1" />
-        </Style>
-        <Style Selector="TextBox:focus-within /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#E74856" />
-            <Setter Property="BorderThickness" Value="1" />
-        </Style>
-        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="BorderBrush" Value="#E74856" />
-        </Style>
-    </Window.Styles>
-
-    <!-- Full-window dimmed overlay that captures all input -->
+<!-- Full-window dimmed overlay that captures all input -->
     <Border Background="#50000000"
             PointerPressed="OnOverlayPointerPressed"
             PointerWheelChanged="OnOverlayWheel">
@@ -157,6 +139,7 @@
                 <StackPanel Spacing="4">
                     <TextBlock Text="Playlist Name" FontSize="13" FontWeight="SemiBold" />
                     <TextBox Text="{Binding PlaylistName}"
+                             Classes="crisp-input"
                              Watermark="Enter playlist name..."
                              CornerRadius="999"
                              x:Name="NameTextBox" />
@@ -170,6 +153,7 @@
                 <StackPanel Spacing="4">
                     <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" />
                     <TextBox Text="{Binding PlaylistDescription}"
+                             Classes="crisp-input"
                              Watermark="Enter playlist description..."
                              AcceptsReturn="True"
                              TextWrapping="Wrap"

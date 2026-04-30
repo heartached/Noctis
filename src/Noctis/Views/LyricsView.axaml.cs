@@ -278,6 +278,15 @@ public partial class LyricsView : UserControl
         {
             if (sender is LyricsViewModel vm)
             {
+                // Plain mode: no active-line tracking — keep the list still.
+                if (!vm.IsSyncTabSelected)
+                {
+                    _lastScrolledIndex = -1;
+                    CancelScrollAnimation();
+                    CancelAutoFollowResumeTimer();
+                    return;
+                }
+
                 if (vm.ActiveLineIndex >= 0)
                     ScrollToActiveLine(vm.ActiveLineIndex);
                 else
@@ -286,6 +295,28 @@ public partial class LyricsView : UserControl
                     CancelScrollAnimation();
                     CancelAutoFollowResumeTimer();
                 }
+            }
+        }
+        else if (e.PropertyName == nameof(LyricsViewModel.IsSyncTabSelected))
+        {
+            // Switching modes: keep the visible position aligned with the current playback
+            // line on both directions, so Plain doesn't restart at the top and Sync doesn't
+            // show a blank window (LyricLines outside ±9 of active have opacity 0).
+            if (sender is LyricsViewModel vm2)
+            {
+                _lastScrolledIndex = -1;
+                CancelScrollAnimation();
+                CancelAutoFollowResumeTimer();
+                vm2.IsAutoFollowPaused = false;
+
+                var targetIndex = vm2.IsSyncTabSelected
+                    ? vm2.ActiveLineIndex
+                    : MapSyncedToUnsyncedIndex(vm2);
+
+                if (targetIndex >= 0)
+                    ScrollToActiveLine(targetIndex);
+                else if (LyricsScrollViewer != null)
+                    LyricsScrollViewer.Offset = new Avalonia.Vector(0, 0);
             }
         }
         else if (sender is LyricsViewModel v)
@@ -413,16 +444,29 @@ public partial class LyricsView : UserControl
         if (LyricsVolumePercentage.RenderTransform is not Avalonia.Media.TranslateTransform transform)
             return;
 
-        // Slider 90px, Track Margin="7,0" → track area = 76px, thumb 14px → travel = 62px
+        // Grid 99px, Slider Margin="7,0,7,0" → slider = 85px, thumb 14px → travel = 71px
         const double trackMargin = 7.0;
         const double thumbHalfWidth = 7.0;
-        const double thumbTravel = 62.0;
+        const double thumbTravel = 71.0;
 
         var fraction = LyricsVolumeSlider.Value / 100.0;
         var thumbCenterX = trackMargin + thumbHalfWidth + (fraction * thumbTravel);
         var textWidth = LyricsVolumePercentage.Bounds.Width;
         if (textWidth <= 0) textWidth = 18;
         transform.X = thumbCenterX - (textWidth / 2);
+    }
+
+    // Maps the current synced ActiveLineIndex to the corresponding row in UnsyncedLines.
+    // UnsyncedLines mirrors LyricLines minus the optional "..." intro placeholder at index 0.
+    private static int MapSyncedToUnsyncedIndex(LyricsViewModel vm)
+    {
+        if (vm.ActiveLineIndex < 0 || vm.LyricLines.Count == 0 || vm.UnsyncedLines.Count == 0)
+            return -1;
+        var hasIntro = vm.LyricLines[0].Text == "...";
+        var idx = vm.ActiveLineIndex - (hasIntro ? 1 : 0);
+        if (idx < 0) idx = 0;
+        if (idx >= vm.UnsyncedLines.Count) idx = vm.UnsyncedLines.Count - 1;
+        return idx;
     }
 
     private void ScrollToActiveLine(int index)

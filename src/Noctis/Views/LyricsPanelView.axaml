@@ -10,6 +10,35 @@
         <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
     </UserControl.Resources>
 
+    <UserControl.Styles>
+        <!-- Karaoke word styles (Lyricsfile word-level sync), panel-sized -->
+        <Style Selector="TextBlock.panel-word">
+            <Setter Property="Opacity" Value="0.55"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.22" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="TextBlock.panel-word.past">
+            <Setter Property="Opacity" Value="1.0"/>
+        </Style>
+        <Style Selector="TextBlock.panel-word.current">
+            <Setter Property="Opacity" Value="0.0"/>
+        </Style>
+        <Style Selector="TextBlock.panel-word-accent">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="TextBlock.panel-word-accent.current">
+            <Setter Property="Opacity" Value="1.0"/>
+        </Style>
+    </UserControl.Styles>
+
     <Panel>
         <!-- No track playing -->
         <TextBlock Text="No track playing"
@@ -59,7 +88,7 @@
                                     Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
                                     CommandParameter="{Binding}">
                                 <Grid ColumnDefinitions="*">
-                                    <!-- Main text layer -->
+                                    <!-- Main text layer (hidden when word-level karaoke is active) -->
                                     <TextBlock Text="{Binding Text}"
                                                FontSize="{Binding IsActive, Converter={StaticResource BoolToOpacity}, ConverterParameter=22;26}"
                                                FontWeight="Bold"
@@ -67,7 +96,7 @@
                                                HorizontalAlignment="Left"
                                                MaxWidth="306"
                                                Opacity="{Binding LineOpacity}"
-                                               IsVisible="{Binding !IsIntroPlaceholder}"
+                                               IsVisible="{Binding ShowLineText}"
                                                TextWrapping="Wrap">
                                         <TextBlock.Transitions>
                                             <Transitions>
@@ -76,6 +105,38 @@
                                             </Transitions>
                                         </TextBlock.Transitions>
                                     </TextBlock>
+
+                                    <!-- Word-level karaoke layer (Lyricsfile word timings, only on active line) -->
+                                    <ItemsControl ItemsSource="{Binding Words}"
+                                                  IsVisible="{Binding ShowWords}"
+                                                  Opacity="{Binding LineOpacity}"
+                                                  HorizontalAlignment="Left"
+                                                  MaxWidth="306">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="m:WordTiming">
+                                                <Panel>
+                                                    <TextBlock Text="{Binding Text}"
+                                                               Classes="panel-word"
+                                                               Classes.past="{Binding IsPast}"
+                                                               Classes.current="{Binding IsCurrent}"
+                                                               FontSize="26"
+                                                               FontWeight="Bold"
+                                                               Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                                                    <TextBlock Text="{Binding Text}"
+                                                               Classes="panel-word-accent"
+                                                               Classes.current="{Binding IsCurrent}"
+                                                               FontSize="26"
+                                                               FontWeight="Bold"
+                                                               Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsAccentFg}"/>
+                                                </Panel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                     <!-- Intro dots (animated, matching main lyrics view) -->
                                     <StackPanel Orientation="Horizontal"
                                                 Spacing="6"

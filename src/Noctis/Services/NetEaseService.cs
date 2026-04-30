@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Noctis.Helpers;
 using Noctis.Models;
 
 namespace Noctis.Services;
@@ -131,37 +132,10 @@ public class NetEaseService : INetEaseService
             TrackName = trackName,
             ArtistName = artist,
             SyncedLyrics = hasSyncedContent ? syncedLyrics : null,
-            PlainLyrics = StripTimestamps(syncedLyrics) ?? plainLyrics
+            PlainLyrics = !string.IsNullOrWhiteSpace(syncedLyrics)
+                ? LyricsTextHelper.StripTimestamps(syncedLyrics)
+                : plainLyrics
         };
-    }
-
-    /// <summary>
-    /// Removes LRC timestamps from lyrics text to produce plain lyrics.
-    /// </summary>
-    private static string? StripTimestamps(string? lrcContent)
-    {
-        if (string.IsNullOrWhiteSpace(lrcContent)) return null;
-
-        var lines = lrcContent.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
-        var plainLines = new List<string>();
-
-        foreach (var line in lines)
-        {
-            var trimmed = line.Trim();
-            if (string.IsNullOrEmpty(trimmed)) { plainLines.Add(""); continue; }
-
-            // Remove all [mm:ss.xx] timestamps from start of line
-            var text = System.Text.RegularExpressions.Regex.Replace(trimmed, @"\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]\s*", "");
-
-            // Skip metadata tags like [ar:], [ti:], etc.
-            if (text.StartsWith('[') && text.Contains(':')) continue;
-
-            if (!string.IsNullOrWhiteSpace(text))
-                plainLines.Add(text);
-        }
-
-        var result = string.Join("\n", plainLines).Trim();
-        return string.IsNullOrWhiteSpace(result) ? null : result;
     }
 
     // ── JSON response models ──

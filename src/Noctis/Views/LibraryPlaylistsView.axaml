@@ -43,7 +43,7 @@
                                                   CommandParameter="{Binding}"
                                                   MaxWidth="400">
                                             <MenuItem.Header>
-                                                <TextBlock Text="{Binding Label, StringFormat='Play &quot;{0}&quot;'}"
+                                                <TextBlock Text="Play"
                                                            TextTrimming="CharacterEllipsis"
                                                            FontWeight="Normal"
                                                            FontSize="14"

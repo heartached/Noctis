@@ -29,6 +29,16 @@ public partial class MetadataWindow : Window
         viewModel.CloseRequested += (_, _) => Close();
     }
 
+    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        e.Handled = true;
+    }
+
+    private void OnOverlayWheel(object? sender, PointerWheelEventArgs e)
+    {
+        e.Handled = true;
+    }
+
     private void OnVolumeAdjustSliderDoubleTapped(object? sender, TappedEventArgs e)
     {
         if (DataContext is MetadataViewModel vm)

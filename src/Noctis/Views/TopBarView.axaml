@@ -11,28 +11,38 @@
             BorderThickness="0">
       <Grid>
 
-        <!-- Back button left-aligned (shown in detail views) -->
-        <Button Command="{Binding BackCommand}"
-                IsVisible="{Binding IsBackButtonVisible}"
-                Classes="accent-btn"
-                Background="#E04060"
-                Foreground="White"
-                BorderThickness="0"
-                Padding="16,7"
-                CornerRadius="999"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Center"
-                Cursor="Hand">
-            <Button.Styles>
-                <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
-                    <Setter Property="Foreground" Value="White"/>
-                </Style>
-            </Button.Styles>
-            <TextBlock Text="{Binding BackButtonText}"
-                       FontSize="13"
-                       FontWeight="SemiBold"
+        <!-- Back button + optional context title left-aligned (shown in detail views).
+             DockPanel so the title fills remaining width and ellipsizes instead of overflowing. -->
+        <DockPanel LastChildFill="True"
+                   IsVisible="{Binding IsBackButtonVisible}">
+            <Button DockPanel.Dock="Left"
+                    Command="{Binding BackCommand}"
+                    Classes="accent-btn"
+                    Background="#E04060"
+                    Foreground="White"
+                    BorderThickness="0"
+                    Padding="16,7"
+                    Margin="0,0,14,0"
+                    CornerRadius="999"
+                    VerticalAlignment="Center"
+                    Cursor="Hand">
+                <Button.Styles>
+                    <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
+                        <Setter Property="Foreground" Value="White"/>
+                    </Style>
+                </Button.Styles>
+                <TextBlock Text="{Binding BackButtonText}"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+            </Button>
+            <TextBlock Text="{Binding BackContextTitle}"
+                       IsVisible="{Binding IsBackContextTitleVisible}"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       TextTrimming="CharacterEllipsis"
                        VerticalAlignment="Center" />
-        </Button>
+        </DockPanel>
 
         <!-- Page title left-aligned (shown when back button is hidden) -->
         <TextBlock Text="{Binding CurrentTabName}"

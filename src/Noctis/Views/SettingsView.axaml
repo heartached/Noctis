@@ -329,28 +329,53 @@
                   VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="32,24,32,40" MaxWidth="900" HorizontalAlignment="Left" Spacing="4">
 
-            <!-- Page title -->
-            <TextBlock Text="Settings" FontSize="26" FontWeight="Bold" Margin="0,0,0,24"/>
-
+            <!-- Page title moved to the topbar (matches Albums/Songs/etc.) -->
 
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- APPEARANCE                                         -->
             <!-- ═══════════════════════════════════════════════════ -->
             <TextBlock Classes="section-title" Text="APPEARANCE"/>
 
-            <Border Classes="setting-card">
-                <StackPanel Spacing="16">
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Theme" FontSize="15" FontWeight="SemiBold"/>
+            <Border Classes="setting-card" Padding="22,12">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Themes" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="Choose how Noctis looks on your device."
                                    FontSize="12" Opacity="0.5"/>
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <!-- Dark -->
+                    <WrapPanel Orientation="Horizontal">
+                        <WrapPanel.Styles>
+                            <Style Selector="Button.theme-btn">
+                                <Setter Property="Margin" Value="0,0,10,10"/>
+                            </Style>
+                        </WrapPanel.Styles>
+                        <!-- Dark (pure black, silver accents) -->
                         <Button Classes="theme-btn"
                                 Classes.active="{Binding IsDarkTheme}"
                                 Command="{Binding SetDarkThemeCommand}">
+                            <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                <Border Width="64" Height="40" CornerRadius="6"
+                                        Background="#000000"
+                                        BorderBrush="#1A1A1A" BorderThickness="1">
+                                    <StackPanel Margin="6,5" Spacing="3">
+                                        <Border Height="3" Width="30" CornerRadius="1.5"
+                                                Background="#E8E8E8" HorizontalAlignment="Left"/>
+                                        <Border Height="3" Width="20" CornerRadius="1.5"
+                                                Background="#A8A8A8" HorizontalAlignment="Left"/>
+                                        <Border Height="3" Width="36" CornerRadius="1.5"
+                                                Background="#707070" HorizontalAlignment="Left"/>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Text="Dark" FontSize="12"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Gray (default) -->
+                        <Button Classes="theme-btn"
+                                Classes.active="{Binding IsGrayTheme}"
+                                Command="{Binding SetGrayThemeCommand}">
                             <StackPanel Spacing="8" HorizontalAlignment="Center">
                                 <Border Width="64" Height="40" CornerRadius="6"
                                         Background="#1E1E1E"
@@ -364,7 +389,29 @@
                                                 Background="#333" HorizontalAlignment="Left"/>
                                     </StackPanel>
                                 </Border>
-                                <TextBlock Text="Dark" FontSize="12"
+                                <TextBlock Text="Gray" FontSize="12"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Midnight (deep blue-black) -->
+                        <Button Classes="theme-btn"
+                                Classes.active="{Binding IsMidnightTheme}"
+                                Command="{Binding SetMidnightThemeCommand}">
+                            <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                <Border Width="64" Height="40" CornerRadius="6"
+                                        Background="#0E1322"
+                                        BorderBrush="#1E2640" BorderThickness="1">
+                                    <StackPanel Margin="6,5" Spacing="3">
+                                        <Border Height="3" Width="30" CornerRadius="1.5"
+                                                Background="#7C8CFF" HorizontalAlignment="Left"/>
+                                        <Border Height="3" Width="20" CornerRadius="1.5"
+                                                Background="#5A6BB0" HorizontalAlignment="Left"/>
+                                        <Border Height="3" Width="36" CornerRadius="1.5"
+                                                Background="#3A4673" HorizontalAlignment="Left"/>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Text="Midnight" FontSize="12"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Button>
@@ -391,16 +438,38 @@
                             </StackPanel>
                         </Button>
 
+                        <!-- Paper (warm off-white) -->
+                        <Button Classes="theme-btn"
+                                Classes.active="{Binding IsPaperTheme}"
+                                Command="{Binding SetPaperThemeCommand}">
+                            <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                <Border Width="64" Height="40" CornerRadius="6"
+                                        Background="#F7F4EE"
+                                        BorderBrush="#C8C0A8" BorderThickness="1">
+                                    <StackPanel Margin="6,5" Spacing="3">
+                                        <Border Height="3" Width="30" CornerRadius="1.5"
+                                                Background="#3A352D" HorizontalAlignment="Left"/>
+                                        <Border Height="3" Width="20" CornerRadius="1.5"
+                                                Background="#6E665A" HorizontalAlignment="Left"/>
+                                        <Border Height="3" Width="36" CornerRadius="1.5"
+                                                Background="#A89F8C" HorizontalAlignment="Left"/>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Text="Paper" FontSize="12"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
                         <!-- System -->
                         <Button Classes="theme-btn"
                                 Classes.active="{Binding IsSystemTheme}"
                                 Command="{Binding SetSystemThemeCommand}">
                             <StackPanel Spacing="8" HorizontalAlignment="Center">
                                 <Border Width="64" Height="40" CornerRadius="6"
-                                        ClipToBounds="True"
                                         BorderBrush="#888" BorderThickness="1">
                                     <Grid ColumnDefinitions="*,*">
-                                        <Border Grid.Column="0" Background="#1E1E1E">
+                                        <Border Grid.Column="0" Background="#1E1E1E"
+                                                CornerRadius="5,0,0,5">
                                             <StackPanel Margin="4,5,0,0" Spacing="3">
                                                 <Border Height="3" Width="16" CornerRadius="1.5"
                                                         Background="#555" HorizontalAlignment="Left"/>
@@ -408,7 +477,8 @@
                                                         Background="#444" HorizontalAlignment="Left"/>
                                             </StackPanel>
                                         </Border>
-                                        <Border Grid.Column="1" Background="#F5F5F5">
+                                        <Border Grid.Column="1" Background="#F5F5F5"
+                                                CornerRadius="0,5,5,0">
                                             <StackPanel Margin="2,5,0,0" Spacing="3">
                                                 <Border Height="3" Width="16" CornerRadius="1.5"
                                                         Background="#CCC" HorizontalAlignment="Left"/>
@@ -422,8 +492,34 @@
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Button>
-                    </StackPanel>
+                    </WrapPanel>
                 </StackPanel>
+            </Border>
+
+            <!-- Album page cover-art tint -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="Tint album pages with cover art" FontSize="15" FontWeight="SemiBold"/>
+                            <Border Background="#E04060"
+                                    CornerRadius="999"
+                                    Padding="7,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="BETA"
+                                           FontSize="9"
+                                           FontWeight="Bold"
+                                           Foreground="White"
+                                           LetterSpacing="0.5"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="Use a gradient drawn from the album artwork as the page background. Stays the same across themes."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding AlbumDetailColorTintEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
             </Border>
 
 
@@ -538,20 +634,6 @@
                                               VerticalAlignment="Center"/>
                     </Grid>
 
-                    <!-- Sub-header: Options Menu -->
-                    <TextBlock Text="OPTIONS MENU" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding MenuTitleMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long artist names" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding MenuArtistMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
                 </StackPanel>
             </Border>
 
@@ -804,12 +886,12 @@
 
                         <!-- Connected as ... (below description, when connected) -->
                         <TextBlock Grid.Column="1" Grid.Row="1"
-                                   IsVisible="{Binding IsLastFmConnected}"
+                                   IsVisible="{Binding LastFmUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                    FontSize="12" Opacity="0.6"
                                    Margin="0,4,12,0"
                                    VerticalAlignment="Top">
                             <TextBlock.Text>
-                                <MultiBinding StringFormat="Connected as {0}">
+                                <MultiBinding StringFormat="{}{0}">
                                     <Binding Path="LastFmUsername"/>
                                 </MultiBinding>
                             </TextBlock.Text>
@@ -881,6 +963,8 @@
                                 <TextBlock Text="Media Folder Locations" FontSize="15" FontWeight="SemiBold"/>
                                 <TextBlock Text="Choose the folders where your music files are stored."
                                            FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="Browse them by hierarchy in the Folders tab."
+                                           FontSize="12" Opacity="0.4" FontStyle="Italic"/>
                             </StackPanel>
                         </StackPanel>
                         <Button Grid.Column="1"
@@ -986,84 +1070,97 @@
             <TextBlock Classes="section-title" Text="LIBRARY OVERVIEW" Margin="0,20,0,10"/>
 
             <Border Classes="setting-card">
-                <StackPanel Spacing="14">
+                <StackPanel Spacing="18">
                     <TextBlock Text="Your Music Library" FontSize="15" FontWeight="SemiBold"/>
 
-                    <UniformGrid Columns="5" Margin="0,4,0,0">
-                        <!-- Songs -->
-                        <Border CornerRadius="10" Padding="12,14" Margin="4"
+                    <!-- Primary stats: Songs · Artists · Albums · Listening Time -->
+                    <UniformGrid Columns="4" Margin="0,2,0,0">
+                        <Border CornerRadius="10" Padding="14,16" Margin="0,0,8,0"
                                 Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                             <StackPanel HorizontalAlignment="Center" Spacing="4">
                                 <TextBlock Text="{Binding TotalSongs}"
-                                           FontSize="20" FontWeight="Bold"
-                                           HorizontalAlignment="Center" />
-                                <TextBlock Text="Songs" FontSize="11" Opacity="0.5"
-                                           HorizontalAlignment="Center" />
+                                           FontSize="24" FontWeight="Bold"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Songs" FontSize="11" Opacity="0.55"
+                                           HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
-                        <!-- Artists -->
-                        <Border CornerRadius="10" Padding="12,14" Margin="4"
+                        <Border CornerRadius="10" Padding="14,16" Margin="4,0"
                                 Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                             <StackPanel HorizontalAlignment="Center" Spacing="4">
                                 <TextBlock Text="{Binding TotalArtists}"
-                                           FontSize="20" FontWeight="Bold"
-                                           HorizontalAlignment="Center" />
-                                <TextBlock Text="Artists" FontSize="11" Opacity="0.5"
-                                           HorizontalAlignment="Center" />
+                                           FontSize="24" FontWeight="Bold"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Artists" FontSize="11" Opacity="0.55"
+                                           HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
-                        <!-- Albums -->
-                        <Border CornerRadius="10" Padding="12,14" Margin="4"
+                        <Border CornerRadius="10" Padding="14,16" Margin="4,0"
                                 Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                             <StackPanel HorizontalAlignment="Center" Spacing="4">
                                 <TextBlock Text="{Binding TotalAlbums}"
-                                           FontSize="20" FontWeight="Bold"
-                                           HorizontalAlignment="Center" />
-                                <TextBlock Text="Albums" FontSize="11" Opacity="0.5"
-                                           HorizontalAlignment="Center" />
+                                           FontSize="24" FontWeight="Bold"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Albums" FontSize="11" Opacity="0.55"
+                                           HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
-                        <!-- Playlists -->
-                        <Border CornerRadius="10" Padding="12,14" Margin="4"
+                        <Border CornerRadius="10" Padding="14,16" Margin="8,0,0,0"
                                 Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                             <StackPanel HorizontalAlignment="Center" Spacing="4">
-                                <TextBlock Text="{Binding TotalPlaylists}"
+                                <TextBlock Text="{Binding TotalListeningTime}"
                                            FontSize="20" FontWeight="Bold"
-                                           HorizontalAlignment="Center" />
-                                <TextBlock Text="Playlists" FontSize="11" Opacity="0.5"
-                                           HorizontalAlignment="Center" />
+                                           HorizontalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="Listening Time" FontSize="11" Opacity="0.55"
+                                           HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
                     </UniformGrid>
 
-                    <!-- Audio Quality breakdown -->
-                    <StackPanel Spacing="10" Margin="0,12,0,0">
-                        <TextBlock Text="Audio Quality" FontSize="15" FontWeight="SemiBold"/>
-                        <WrapPanel Orientation="Horizontal">
-                            <Border CornerRadius="10" Padding="16,14" Margin="0,0,8,8" MinWidth="140"
+                    <!-- Audio Quality: smaller chips, Hi-Res accented -->
+                    <StackPanel Spacing="8" Margin="0,4,0,0">
+                        <TextBlock Text="Audio Quality" FontSize="12" Opacity="0.55"
+                                   FontWeight="SemiBold" Classes="section-title"/>
+                        <Grid ColumnDefinitions="*,*,*">
+                            <Border Grid.Column="0" CornerRadius="8" Padding="12,10" Margin="0,0,6,0"
                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                <StackPanel Spacing="4" HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding LosslessCount}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Lossless" FontSize="11" Opacity="0.5"
-                                               HorizontalAlignment="Center"
-                                               ToolTip.Tip="Lossless preserves the original audio recording without quality loss"/>
+                                <StackPanel Spacing="2" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding LosslessCount}"
+                                               FontSize="17" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Lossless" FontSize="11" Opacity="0.55"
+                                               HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
-                            <Border CornerRadius="10" Padding="16,14" Margin="0,0,8,8" MinWidth="140"
+                            <Border Grid.Column="1" CornerRadius="8" Padding="12,10" Margin="3,0"
                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                <StackPanel Spacing="4" HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding HiResCount}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Hi-Res Lossless" FontSize="11" Opacity="0.5" HorizontalAlignment="Center"/>
+                                <StackPanel Spacing="2" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding HiResCount}"
+                                               FontSize="17" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Hi-Res Lossless" FontSize="11" Opacity="0.55"
+                                               HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
-                            <Border CornerRadius="10" Padding="16,14" Margin="0,0,8,8" MinWidth="140"
+                            <Border Grid.Column="2" CornerRadius="8" Padding="12,10" Margin="6,0,0,0"
                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                <StackPanel Spacing="4" HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding LossyCount}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Lossy" FontSize="11" Opacity="0.5" HorizontalAlignment="Center"/>
+                                <StackPanel Spacing="2" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding LossyCount}"
+                                               FontSize="17" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Lossy" FontSize="11" Opacity="0.55"
+                                               HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
-                        </WrapPanel>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Playlists footer (text-only so 0 doesn't dominate) -->
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                        <TextBlock Text="{Binding TotalPlaylists}" FontSize="12"
+                                   FontWeight="SemiBold" Opacity="0.7"/>
+                        <TextBlock Text="playlists" FontSize="12" Opacity="0.55"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -1260,7 +1357,7 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <TextBlock Classes="section-title" Text="ABOUT" Margin="0,20,0,10"/>
 
-            <Border Classes="setting-card">
+            <Border Classes="setting-card" Padding="14,16">
                 <StackPanel Spacing="10">
                     <!-- Top row: logo + version on left, Update button on right -->
                     <Grid ColumnDefinitions="Auto,*,Auto">
@@ -1286,8 +1383,22 @@
                                 VerticalAlignment="Center"
                                 Padding="16,6"
                                 Background="#E74856"
-                                IsVisible="{Binding !IsReadyToInstall}">
+                                IsVisible="{Binding ShowCheckForUpdatesButton}">
                             <TextBlock Text="Check for Updates" FontSize="12" Foreground="White"/>
+                        </Button>
+
+                        <!-- Update Available button (replaces Check when a new release is detected) -->
+                        <Button Command="{Binding DownloadUpdateCommand}"
+                                Classes="pill"
+                                VerticalAlignment="Center"
+                                Padding="16,6"
+                                Background="#E74856"
+                                IsVisible="{Binding IsUpdateAvailable}">
+                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Ellipse Width="8" Height="8" Fill="White" VerticalAlignment="Center"/>
+                                <TextBlock Text="Update available"
+                                           FontSize="12" Foreground="White" VerticalAlignment="Center"/>
+                            </StackPanel>
                         </Button>
 
                         <!-- Install & Restart button (replaces Update when ready) -->
@@ -1307,16 +1418,6 @@
                         <TextBlock Text="{Binding UpdateStatusText}"
                                    FontSize="12" Opacity="0.7"
                                    VerticalAlignment="Center" />
-
-                        <!-- Download button (visible when update is available) -->
-                        <Button Command="{Binding DownloadUpdateCommand}"
-                                IsVisible="{Binding IsUpdateAvailable}"
-                                Classes="pill"
-                                Padding="16,6"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{Binding LatestVersionTag, StringFormat='Download {0}'}"
-                                       FontSize="12" />
-                        </Button>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="12"

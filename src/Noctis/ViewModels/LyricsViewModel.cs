@@ -7,6 +7,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -34,8 +35,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _isColorModeGradient;
     [ObservableProperty] private string _activeSwatchKey = "";
 
-    public List<ColorSwatch> SolidSwatches { get; } = BuildSolidSwatches();
-    public List<ColorSwatch> GradientSwatches { get; } = BuildGradientSwatches();
+    private static readonly List<ColorSwatch> _solidSwatches = BuildSolidSwatches();
+    private static readonly List<ColorSwatch> _gradientSwatches = BuildGradientSwatches();
+
+    public List<ColorSwatch> SolidSwatches => _solidSwatches;
+    public List<ColorSwatch> GradientSwatches => _gradientSwatches;
 
     private static List<ColorSwatch> BuildSolidSwatches()
     {
@@ -162,16 +166,22 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private static readonly Color DefaultAdaptiveColor = Color.FromRgb(0x0D, 0x1B, 0x2A);
 
     // Dedicated lyrics sync timer — bypasses the fragile PropertyChanged chain.
-    // The old approach (PlayerVM.PropertyChanged → UpdateActiveLine) failed because
-    // CommunityToolkit.Mvvm only fires PropertyChanged when the value actually
-    // changes, and the 4-step dispatch chain (Timer→Event→Post→Setter) has
-    // too many points where updates can be lost.
+    // Interval adapts at runtime: line-only lyrics use LineSyncIntervalMs; word-level
+    // lyrics bump to WordSyncIntervalMs only while the active line has word timings,
+    // so idle cost stays the same.
     private readonly DispatcherTimer _lyricsSyncTimer;
+
+    private const int LineSyncIntervalMs = 100;
+    private const int WordSyncIntervalMs = 33;
+
+    // Monotonic line cursor — avoids re-scanning every tick.
+    private int _lineCursor;
+    private TimeSpan _lastSyncPosition = TimeSpan.MinValue;
 
     public PlayerViewModel Player => _player;
 
     /// <summary>Lyrics lines for the current track.</summary>
-    public ObservableCollection<LyricLine> LyricLines { get; } = new();
+    public BulkObservableCollection<LyricLine> LyricLines { get; } = new();
 
     /// <summary>Whether the current lyrics have timestamp sync.</summary>
     [ObservableProperty]
@@ -190,7 +200,22 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private bool _hasSyncedLyricsAvailable;
 
     /// <summary>Plain text lyrics without timestamps for the Unsync tab.</summary>
-    public ObservableCollection<LyricLine> UnsyncedLines { get; } = new();
+    public BulkObservableCollection<LyricLine> UnsyncedLines { get; } = new();
+
+    /// <summary>Lines bound to the lyrics page — synced or plain depending on the toggle.</summary>
+    public IEnumerable<LyricLine> ActiveLyricLines =>
+        IsSyncTabSelected ? (IEnumerable<LyricLine>)LyricLines : UnsyncedLines;
+
+    partial void OnIsSyncTabSelectedChanged(bool value) =>
+        OnPropertyChanged(nameof(ActiveLyricLines));
+
+    [RelayCommand]
+    private void ToggleLyricsMode()
+    {
+        if (!HasSyncedLyricsAvailable) return;
+        IsSyncTabSelected = !IsSyncTabSelected;
+        IsUnsyncTabSelected = !IsSyncTabSelected;
+    }
 
     /// <summary>Index of the currently active lyric line (for auto-scroll).</summary>
     [ObservableProperty]
@@ -359,9 +384,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         _persistence = persistence;
         _library = library;
 
-        // Dedicated sync timer: reads player position directly every 16ms (~60fps).
-        // This is the SOLE mechanism for lyrics highlighting — no PropertyChanged dependency.
-        _lyricsSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+        // Dedicated sync timer — polls player position and drives both line and word highlighting.
+        // Default cadence is 100ms (line-level). The Tick handler adapts Interval down to ~33ms
+        // when the active line has word timings, and back to 100ms when it doesn't.
+        _lyricsSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(LineSyncIntervalMs) };
         _lyricsSyncTimer.Tick += (_, _) =>
         {
             if (_hasSyncedLyrics && _player.State == Models.PlaybackState.Playing)
@@ -640,42 +666,48 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
             if (lrcLibEnabled)
             {
-                tasks.Add(Task.Run(async () =>
-                {
-                    try
-                    {
-                        var result = await _lrcLib.GetLyricsAsync(artist, title, duration);
-                        if (result == null || !result.HasLyrics)
-                        {
-                            var results = await _lrcLib.SearchLyricsAsync(artist, title);
-                            result = results.FirstOrDefault(r => r.HasSyncedLyrics)
-                                  ?? results.FirstOrDefault(r => r.HasLyrics);
-                        }
-                        lrcLibResult = result;
-                    }
-                    catch (Exception ex)
-                    {
-                        DebugLogger.Warn(DebugLogger.Category.Lyrics, "LRCLIB:Error", ex.Message);
-                    }
-                }));
+                tasks.Add(FetchLrcLibAsync());
             }
 
             if (netEaseEnabled)
             {
-                tasks.Add(Task.Run(async () =>
-                {
-                    try
-                    {
-                        netEaseResult = await _netEase.SearchLyricsAsync(artist, title, duration);
-                    }
-                    catch (Exception ex)
-                    {
-                        DebugLogger.Warn(DebugLogger.Category.Lyrics, "NetEase:Error", ex.Message);
-                    }
-                }));
+                tasks.Add(FetchNetEaseAsync());
             }
 
             await Task.WhenAll(tasks);
+
+            async Task FetchLrcLibAsync()
+            {
+                try
+                {
+                    var result = await _lrcLib.GetLyricsAsync(artist, title, duration);
+                    if (result == null || !result.HasLyrics)
+                    {
+                        var results = await _lrcLib.SearchLyricsAsync(artist, title);
+                        // Prefer word-level (lyricsfile) > synced > any
+                        result = results.FirstOrDefault(r => r.HasLyricsfile)
+                              ?? results.FirstOrDefault(r => r.HasSyncedLyrics)
+                              ?? results.FirstOrDefault(r => r.HasLyrics);
+                    }
+                    lrcLibResult = result;
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Warn(DebugLogger.Category.Lyrics, "LRCLIB:Error", ex.Message);
+                }
+            }
+
+            async Task FetchNetEaseAsync()
+            {
+                try
+                {
+                    netEaseResult = await _netEase.SearchLyricsAsync(artist, title, duration);
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Warn(DebugLogger.Category.Lyrics, "NetEase:Error", ex.Message);
+                }
+            }
 
             // Race condition guard
             if (generation != _searchGeneration) return;
@@ -780,25 +812,39 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         if (_currentTrack == null || _currentOnlineResult == null) return;
 
-        // Prefer synced lyrics, fall back to plain
-        var lyricsToSave = _currentOnlineResult.SyncedLyrics ?? _currentOnlineResult.PlainLyrics;
-        if (string.IsNullOrWhiteSpace(lyricsToSave)) return;
+        var syncedToSave = _currentOnlineResult.SyncedLyrics;
+        var plainToSave = !string.IsNullOrWhiteSpace(_currentOnlineResult.PlainLyrics)
+            ? _currentOnlineResult.PlainLyrics
+            : LyricsTextHelper.StripTimestamps(syncedToSave);
 
-        _currentTrack.Lyrics = lyricsToSave;
+        if (string.IsNullOrWhiteSpace(syncedToSave) && string.IsNullOrWhiteSpace(plainToSave)) return;
+
+        // Route plain text into Lyrics, synced text into SyncedLyrics — never mix them.
+        _currentTrack.Lyrics = plainToSave ?? string.Empty;
+        _currentTrack.SyncedLyrics = syncedToSave ?? string.Empty;
 
         try
         {
             // Root cause fix: writing embedded tags can fail while the media file is in use.
-            // Save an LRC sidecar next to the track so it works reliably during playback.
-            var lrcPath = Path.ChangeExtension(_currentTrack.FilePath, ".lrc");
-            if (string.IsNullOrWhiteSpace(lrcPath))
+            // Save an LRC sidecar (synced) and a TXT sidecar (plain) next to the track.
+            var trackPath = _currentTrack.FilePath;
+            if (string.IsNullOrWhiteSpace(trackPath))
             {
                 ShowStatusText("Save failed", 5000);
                 return;
             }
 
-            var lrcContent = NormalizeLyricsForLrc(lyricsToSave);
-            File.WriteAllText(lrcPath, lrcContent, new UTF8Encoding(false));
+            if (!string.IsNullOrWhiteSpace(syncedToSave))
+            {
+                var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
+                File.WriteAllText(lrcPath, NormalizeLyricsForLrc(syncedToSave), new UTF8Encoding(false));
+            }
+
+            if (!string.IsNullOrWhiteSpace(plainToSave))
+            {
+                var txtPath = Path.ChangeExtension(trackPath, ".txt");
+                File.WriteAllText(txtPath, NormalizeLyricsForLrc(plainToSave), new UTF8Encoding(false));
+            }
 
             // Best-effort metadata write (non-blocking for save success).
             try { _metadata.WriteTrackMetadata(_currentTrack); } catch { }
@@ -839,12 +885,15 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         IsSynced = false;
         HasSyncedLyricsAvailable = false;
         ActiveLineIndex = -1;
+        _lineCursor = 0;
+        _lastSyncPosition = TimeSpan.MinValue;
         CanSaveToFile = false;
         CanRemoveLyrics = false;
         HasAlternateLyrics = false;
         LyricsSourceName = string.Empty;
         AlternateLyricsLabel = string.Empty;
         _lyricsSyncTimer.Stop();
+        _lyricsSyncTimer.Interval = TimeSpan.FromMilliseconds(LineSyncIntervalMs);
 
         LyricLines.Clear();
         UnsyncedLines.Clear();
@@ -866,27 +915,32 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             TaskContinuationOptions.OnlyOnRanToCompletion);
     }
 
-    private static string? TryLoadCachedLyrics(Guid trackId)
+    private static Task SaveLyricsToCacheAsync(Guid trackId, string lyrics)
     {
-        try
+        return Task.Run(() =>
         {
-            var path = Path.Combine(LyricsCacheDir, $"{trackId}.lrc");
-            if (File.Exists(path))
-                return File.ReadAllText(path);
-        }
-        catch { }
-        return null;
+            try
+            {
+                Directory.CreateDirectory(LyricsCacheDir);
+                var path = Path.Combine(LyricsCacheDir, $"{trackId}.lrc");
+                File.WriteAllText(path, NormalizeLyricsForLrc(lyrics), new UTF8Encoding(false));
+            }
+            catch { }
+        });
     }
 
-    private static void SaveLyricsToCache(Guid trackId, string lyrics)
+    private static Task SaveLyricsfileToCacheAsync(Guid trackId, string yamlContent)
     {
-        try
+        return Task.Run(() =>
         {
-            Directory.CreateDirectory(LyricsCacheDir);
-            var path = Path.Combine(LyricsCacheDir, $"{trackId}.lrc");
-            File.WriteAllText(path, NormalizeLyricsForLrc(lyrics), new UTF8Encoding(false));
-        }
-        catch { }
+            try
+            {
+                Directory.CreateDirectory(LyricsCacheDir);
+                var path = Path.Combine(LyricsCacheDir, $"{trackId}.lyricsfile");
+                File.WriteAllText(path, yamlContent, new UTF8Encoding(false));
+            }
+            catch { }
+        });
     }
 
     private static string NormalizeLyricsForLrc(string lyrics)
@@ -925,10 +979,31 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         IsSynced = false;
         HasSyncedLyricsAvailable = false;
         ActiveLineIndex = -1;
+        _lineCursor = 0;
+        _lastSyncPosition = TimeSpan.MinValue;
+        _lyricsSyncTimer.Interval = TimeSpan.FromMilliseconds(LineSyncIntervalMs);
 
-        if (result.HasSyncedLyrics)
+        List<LyricLine>? parsedLines = null;
+        string? plainForUnsync = null;
+
+        // Priority: Lyricsfile (word-level) > syncedLyrics (LRC) > plainLyrics
+        if (result.HasLyricsfile)
         {
-            var parsedLines = ParseLrcContent(result.SyncedLyrics!);
+            var (lines, plain) = LyricsfileParser.Parse(result.Lyricsfile);
+            if (lines != null && lines.Count > 0)
+            {
+                parsedLines = lines;
+                plainForUnsync = plain;
+            }
+        }
+
+        if (parsedLines == null && result.HasSyncedLyrics)
+        {
+            parsedLines = ParseLrcContent(result.SyncedLyrics!);
+        }
+
+        if (parsedLines != null)
+        {
             _hasSyncedLyrics = parsedLines.Any(l => l.IsSynced);
             IsSynced = _hasSyncedLyrics;
             HasSyncedLyricsAvailable = _hasSyncedLyrics;
@@ -936,20 +1011,24 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             if (_hasSyncedLyrics)
                 InsertIntroPlaceholderIfNeeded(parsedLines);
 
-            foreach (var line in parsedLines)
-                LyricLines.Add(line);
+            LyricLines.ReplaceAll(parsedLines);
 
-            PopulateUnsyncedLines(parsedLines);
+            if (!string.IsNullOrWhiteSpace(plainForUnsync))
+                PopulateUnsyncedFromPlainText(plainForUnsync);
+            else
+                PopulateUnsyncedLines(parsedLines);
         }
         else if (!string.IsNullOrWhiteSpace(result.PlainLyrics))
         {
+            var rendered = new List<LyricLine>();
             var lines = result.PlainLyrics.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
             foreach (var line in lines)
             {
                 var wrapped = SoftWrapText(line);
-                LyricLines.Add(new LyricLine { Text = wrapped, IsActive = true });
-                UnsyncedLines.Add(new LyricLine { Text = wrapped, IsActive = true });
+                rendered.Add(new LyricLine { Text = wrapped, IsActive = true });
             }
+            LyricLines.ReplaceAll(rendered);
+            UnsyncedLines.ReplaceAll(rendered.Select(r => new LyricLine { Text = r.Text, IsActive = true }));
         }
 
         AutoSelectTab();
@@ -957,12 +1036,16 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         CanRemoveLyrics = true;
         ShowSearchButton = false;
 
-        // Cache the downloaded lyrics for offline use
+        // Cache the downloaded lyrics for offline use. Prefer the Lyricsfile (richer);
+        // fall back to LRC/plain. Cache format is detected by content on the reload path.
         if (_currentTrack != null)
         {
-            var lyricsToCache = result.SyncedLyrics ?? result.PlainLyrics;
-            if (!string.IsNullOrWhiteSpace(lyricsToCache))
-                SaveLyricsToCache(_currentTrack.Id, lyricsToCache);
+            if (result.HasLyricsfile)
+                _ = SaveLyricsfileToCacheAsync(_currentTrack.Id, result.Lyricsfile!);
+
+            var lrcToCache = result.SyncedLyrics ?? result.PlainLyrics;
+            if (!string.IsNullOrWhiteSpace(lrcToCache))
+                _ = SaveLyricsToCacheAsync(_currentTrack.Id, lrcToCache);
         }
 
         // Start sync timer if synced lyrics and playing
@@ -982,6 +1065,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         IsSynced = false;
         HasSyncedLyricsAvailable = false;
         ActiveLineIndex = -1;
+        _lineCursor = 0;
+        _lastSyncPosition = TimeSpan.MinValue;
         CanSaveToFile = false;
         CanRemoveLyrics = false;
         HasAlternateLyrics = false;
@@ -992,6 +1077,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         SaveStatusText = string.Empty;
         AlbumInfoText = string.Empty;
         _lyricsSyncTimer.Stop();
+        _lyricsSyncTimer.Interval = TimeSpan.FromMilliseconds(LineSyncIntervalMs);
 
         LyricLines.Clear();
         UnsyncedLines.Clear();
@@ -1140,7 +1226,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         HasAlternateLyrics = false;
         LyricsSourceName = string.Empty;
         AlternateLyricsLabel = string.Empty;
-        _searchGeneration++;
+        var generation = ++_searchGeneration;
 
         LyricLines.Clear();
         UnsyncedLines.Clear();
@@ -1149,6 +1235,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         IsSynced = false;
         HasSyncedLyricsAvailable = false;
         ActiveLineIndex = -1;
+        _lineCursor = 0;
+        _lastSyncPosition = TimeSpan.MinValue;
+        _lyricsSyncTimer.Interval = TimeSpan.FromMilliseconds(LineSyncIntervalMs);
 
         // Build album info text: "Genre · Year · N tracks"
         var infoParts = new List<string>();
@@ -1157,130 +1246,155 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (track.TrackCount > 0) infoParts.Add($"{track.TrackCount} tracks");
         AlbumInfoText = string.Join(" \u00B7 ", infoParts);
 
-        // Priority 1: Try to load .lrc file with matching filename
-        var lrcLines = TryLoadLrcFile(track.FilePath);
-        if (lrcLines != null && lrcLines.Count > 0)
+        // Fire-and-forget: all file I/O runs off the UI thread, result is posted back.
+        _ = LoadLocalLyricsAsync(track, generation);
+    }
+
+    /// <summary>
+    /// Probes local lyric sources in priority order off the UI thread, applying the result
+    /// via <see cref="Dispatcher.UIThread.Post"/>. Guarded by <see cref="_searchGeneration"/>
+    /// so stale results from a previous track can't overwrite the current track's lyrics.
+    ///
+    /// Priority: .lyricsfile sidecar → .lrc sidecar → embedded tags → cache file.
+    /// </summary>
+    private async Task LoadLocalLyricsAsync(Track track, int generation)
+    {
+        var probe = await Task.Run(() => ProbeLocalLyricSources(track));
+
+        if (generation != _searchGeneration) return;
+
+        Dispatcher.UIThread.Post(() =>
         {
-            DebugLogger.Info(DebugLogger.Category.Lyrics, "Source:SidecarLrc", $"lines={lrcLines.Count}");
-            _hasSyncedLyrics = lrcLines.Any(l => l.IsSynced);
+            if (generation != _searchGeneration) return;
+            ApplyLocalLyricsResult(track, probe);
+        });
+    }
+
+    private readonly record struct LocalLyricsProbe(
+        List<LyricLine>? Lines,
+        string? UnsyncedPlain,
+        string Source,
+        bool FromCache);
+
+    /// <summary>Synchronous probe helper — must only be called off the UI thread.</summary>
+    private static LocalLyricsProbe ProbeLocalLyricSources(Track track)
+    {
+        // Priority 1: .lyricsfile sidecar (word-level, LRCGET v2.0+).
+        try
+        {
+            var sidecarYaml = TryReadSidecar(track.FilePath, new[] { ".lyricsfile", ".Lyricsfile", ".LYRICSFILE" });
+            if (sidecarYaml != null)
+            {
+                var (lines, plain) = LyricsfileParser.Parse(sidecarYaml);
+                if (lines != null && lines.Count > 0)
+                    return new LocalLyricsProbe(lines, plain, "Sidecar:Lyricsfile", FromCache: false);
+            }
+        }
+        catch { }
+
+        // Priority 2: .lrc sidecar (line-level).
+        try
+        {
+            var sidecarLrc = TryReadSidecar(track.FilePath, new[] { ".lrc", ".LRC", ".Lrc" });
+            if (sidecarLrc != null)
+            {
+                var lines = ParseLrcContent(sidecarLrc);
+                if (lines.Count > 0)
+                    return new LocalLyricsProbe(lines, null, "Sidecar:Lrc", FromCache: false);
+            }
+        }
+        catch { }
+
+        // Priority 3: embedded metadata is pure in-memory — defer to the UI-thread handler.
+        var hasSyncedField = !string.IsNullOrWhiteSpace(track.SyncedLyrics);
+        var hasPlainField = !string.IsNullOrWhiteSpace(track.Lyrics);
+        if (hasSyncedField || hasPlainField)
+            return new LocalLyricsProbe(null, null, "Embedded", FromCache: false);
+
+        // Priority 4: online cache (Lyricsfile preferred, fall back to .lrc).
+        try
+        {
+            var cachedYaml = TryReadCacheFile(track.Id, ".lyricsfile");
+            if (cachedYaml != null)
+            {
+                var (lines, plain) = LyricsfileParser.Parse(cachedYaml);
+                if (lines != null && lines.Count > 0)
+                    return new LocalLyricsProbe(lines, plain, "Cache:Lyricsfile", FromCache: true);
+            }
+
+            var cachedLrc = TryReadCacheFile(track.Id, ".lrc");
+            if (cachedLrc != null)
+            {
+                if (cachedLrc.Contains('[') && LrcTimestampRegex().IsMatch(cachedLrc))
+                {
+                    var lines = ParseLrcContent(cachedLrc);
+                    if (lines.Count > 0)
+                        return new LocalLyricsProbe(lines, null, "Cache:Lrc", FromCache: true);
+                }
+                return new LocalLyricsProbe(null, cachedLrc, "Cache:Plain", FromCache: true);
+            }
+        }
+        catch { }
+
+        return new LocalLyricsProbe(null, null, "None", FromCache: false);
+    }
+
+    private void ApplyLocalLyricsResult(Track track, LocalLyricsProbe probe)
+    {
+        if (probe.Lines != null && probe.Lines.Count > 0)
+        {
+            DebugLogger.Info(DebugLogger.Category.Lyrics, probe.Source, $"lines={probe.Lines.Count}");
+
+            _hasSyncedLyrics = probe.Lines.Any(l => l.IsSynced);
             IsSynced = _hasSyncedLyrics;
             HasSyncedLyricsAvailable = _hasSyncedLyrics;
 
             if (!_hasSyncedLyrics)
             {
-                foreach (var line in lrcLines)
+                foreach (var line in probe.Lines)
                     line.IsActive = true;
             }
             else
             {
-                InsertIntroPlaceholderIfNeeded(lrcLines);
+                InsertIntroPlaceholderIfNeeded(probe.Lines);
             }
 
-            foreach (var line in lrcLines)
-                LyricLines.Add(line);
+            LyricLines.ReplaceAll(probe.Lines);
 
-            // Populate unsynced lines (plain text of all lyrics)
-            PopulateUnsyncedLines(lrcLines);
-            AutoSelectTab();
-            LyricsSourceName = string.Empty;
-            return;
-        }
-
-        // Priority 2: Try track metadata (SyncedLyrics + Lyrics fields)
-        var hasSyncedField = !string.IsNullOrWhiteSpace(track.SyncedLyrics);
-        var hasPlainField = !string.IsNullOrWhiteSpace(track.Lyrics);
-
-        // Legacy check: plain Lyrics field may contain LRC timestamps
-        var plainIsActuallyLrc = hasPlainField
-                                 && !hasSyncedField
-                                 && track.Lyrics.Contains("[")
-                                 && LrcTimestampRegex().IsMatch(track.Lyrics);
-
-        if (hasSyncedField || plainIsActuallyLrc || hasPlainField)
-        {
-            DebugLogger.Info(DebugLogger.Category.Lyrics, "Source:Embedded", $"synced={hasSyncedField}, plain={hasPlainField}, lrcInPlain={plainIsActuallyLrc}");
-            // Load synced lyrics
-            var syncedSource = hasSyncedField ? track.SyncedLyrics
-                             : plainIsActuallyLrc ? track.Lyrics
-                             : null;
-
-            if (!string.IsNullOrWhiteSpace(syncedSource))
-            {
-                var parsedLines = ParseLrcContent(syncedSource);
-                _hasSyncedLyrics = parsedLines.Any(l => l.IsSynced);
-                IsSynced = _hasSyncedLyrics;
-                HasSyncedLyricsAvailable = _hasSyncedLyrics;
-
-                if (_hasSyncedLyrics)
-                    InsertIntroPlaceholderIfNeeded(parsedLines);
-
-                foreach (var line in parsedLines)
-                    LyricLines.Add(line);
-
-                PopulateUnsyncedLines(parsedLines);
-            }
-
-            // Load plain/unsynced lyrics (if available and not already covered by synced)
-            if (hasPlainField && !plainIsActuallyLrc)
-            {
-                var lines = track.Lyrics.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
-                if (!hasSyncedField)
-                {
-                    // No synced available — show plain in main view too
-                    foreach (var line in lines)
-                    {
-                        var wrapped = SoftWrapText(line);
-                        LyricLines.Add(new LyricLine { Text = wrapped, IsActive = true });
-                        UnsyncedLines.Add(new LyricLine { Text = wrapped, IsActive = true });
-                    }
-                }
-                else
-                {
-                    // Both synced and plain exist — plain goes to unsynced tab only
-                    UnsyncedLines.Clear();
-                    foreach (var line in lines)
-                        UnsyncedLines.Add(new LyricLine { Text = SoftWrapText(line), IsActive = true });
-                }
-            }
-
-            AutoSelectTab();
-            LyricsSourceName = string.Empty;
-            return;
-        }
-
-        // Priority 3: Try cached lyrics from previous online download
-        var cachedContent = TryLoadCachedLyrics(track.Id);
-        if (!string.IsNullOrWhiteSpace(cachedContent))
-        {
-            DebugLogger.Info(DebugLogger.Category.Lyrics, "Source:LrclibCache", $"trackId={track.Id}");
-            if (cachedContent.Contains("[") && LrcTimestampRegex().IsMatch(cachedContent))
-            {
-                var parsedLines = ParseLrcContent(cachedContent);
-                _hasSyncedLyrics = parsedLines.Any(l => l.IsSynced);
-                IsSynced = _hasSyncedLyrics;
-                HasSyncedLyricsAvailable = _hasSyncedLyrics;
-
-                if (_hasSyncedLyrics)
-                    InsertIntroPlaceholderIfNeeded(parsedLines);
-
-                foreach (var line in parsedLines)
-                    LyricLines.Add(line);
-
-                PopulateUnsyncedLines(parsedLines);
-            }
+            if (!string.IsNullOrWhiteSpace(probe.UnsyncedPlain))
+                PopulateUnsyncedFromPlainText(probe.UnsyncedPlain);
             else
-            {
-                var lines = cachedContent.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
-                foreach (var line in lines)
-                {
-                    var wrapped = SoftWrapText(line);
-                    LyricLines.Add(new LyricLine { Text = wrapped, IsActive = true });
-                    UnsyncedLines.Add(new LyricLine { Text = wrapped, IsActive = true });
-                }
-            }
+                PopulateUnsyncedLines(probe.Lines);
+
             AutoSelectTab();
             LyricsSourceName = string.Empty;
-            CanRemoveLyrics = true; // cached lyrics came from online service — allow removal
+            if (probe.FromCache) CanRemoveLyrics = true;
+
+            if (_hasSyncedLyrics && IsSyncTabSelected && _player.State == Models.PlaybackState.Playing)
+                _lyricsSyncTimer.Start();
+            return;
+        }
+
+        if (probe.Source == "Embedded")
+        {
+            LoadEmbeddedLyrics(track);
+            if (_hasSyncedLyrics && IsSyncTabSelected && _player.State == Models.PlaybackState.Playing)
+                _lyricsSyncTimer.Start();
+            return;
+        }
+
+        if (probe.Source == "Cache:Plain" && !string.IsNullOrWhiteSpace(probe.UnsyncedPlain))
+        {
+            DebugLogger.Info(DebugLogger.Category.Lyrics, "Source:CachePlain", $"trackId={track.Id}");
+            var split = probe.UnsyncedPlain.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+            var rendered = new List<LyricLine>(split.Length);
+            foreach (var line in split)
+                rendered.Add(new LyricLine { Text = SoftWrapText(line), IsActive = true });
+            LyricLines.ReplaceAll(rendered);
+            UnsyncedLines.ReplaceAll(rendered.Select(r => new LyricLine { Text = r.Text, IsActive = true }));
+            AutoSelectTab();
+            LyricsSourceName = string.Empty;
+            CanRemoveLyrics = true;
             return;
         }
 
@@ -1290,14 +1404,111 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         AutoSelectTab();
     }
 
+    /// <summary>Applies embedded SyncedLyrics / Lyrics tags to the collections (in-memory, no I/O).</summary>
+    private void LoadEmbeddedLyrics(Track track)
+    {
+        var hasSyncedField = !string.IsNullOrWhiteSpace(track.SyncedLyrics);
+        var hasPlainField = !string.IsNullOrWhiteSpace(track.Lyrics);
+
+        // Legacy check: plain Lyrics field may contain LRC timestamps
+        var plainIsActuallyLrc = hasPlainField
+                                 && !hasSyncedField
+                                 && track.Lyrics.Contains('[')
+                                 && LrcTimestampRegex().IsMatch(track.Lyrics);
+
+        DebugLogger.Info(DebugLogger.Category.Lyrics, "Source:Embedded",
+            $"synced={hasSyncedField}, plain={hasPlainField}, lrcInPlain={plainIsActuallyLrc}");
+
+        var syncedSource = hasSyncedField ? track.SyncedLyrics
+                         : plainIsActuallyLrc ? track.Lyrics
+                         : null;
+
+        if (!string.IsNullOrWhiteSpace(syncedSource))
+        {
+            var parsedLines = ParseLrcContent(syncedSource);
+            _hasSyncedLyrics = parsedLines.Any(l => l.IsSynced);
+            IsSynced = _hasSyncedLyrics;
+            HasSyncedLyricsAvailable = _hasSyncedLyrics;
+
+            if (_hasSyncedLyrics)
+                InsertIntroPlaceholderIfNeeded(parsedLines);
+
+            LyricLines.ReplaceAll(parsedLines);
+            PopulateUnsyncedLines(parsedLines);
+        }
+
+        if (hasPlainField && !plainIsActuallyLrc)
+        {
+            var split = track.Lyrics.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+            if (!hasSyncedField)
+            {
+                var rendered = new List<LyricLine>(split.Length);
+                foreach (var line in split)
+                    rendered.Add(new LyricLine { Text = SoftWrapText(line), IsActive = true });
+                LyricLines.ReplaceAll(rendered);
+                UnsyncedLines.ReplaceAll(rendered.Select(r => new LyricLine { Text = r.Text, IsActive = true }));
+            }
+            else
+            {
+                var unsynced = new List<LyricLine>(split.Length);
+                foreach (var line in split)
+                    unsynced.Add(new LyricLine { Text = SoftWrapText(line), IsActive = true });
+                UnsyncedLines.ReplaceAll(unsynced);
+            }
+        }
+
+        AutoSelectTab();
+        LyricsSourceName = string.Empty;
+    }
+
+    /// <summary>Reads the first matching sidecar file for a track; returns null on any failure or no match.</summary>
+    private static string? TryReadSidecar(string trackFilePath, string[] extensions)
+    {
+        var dir = Path.GetDirectoryName(trackFilePath);
+        var nameWithoutExt = Path.GetFileNameWithoutExtension(trackFilePath);
+        if (string.IsNullOrEmpty(dir) || string.IsNullOrEmpty(nameWithoutExt)) return null;
+
+        foreach (var ext in extensions)
+        {
+            var path = Path.Combine(dir, nameWithoutExt + ext);
+            if (File.Exists(path))
+                return File.ReadAllText(path);
+        }
+        return null;
+    }
+
+    private static string? TryReadCacheFile(Guid trackId, string extension)
+    {
+        try
+        {
+            var path = Path.Combine(LyricsCacheDir, trackId + extension);
+            if (File.Exists(path))
+                return File.ReadAllText(path);
+        }
+        catch { }
+        return null;
+    }
+
     private void PopulateUnsyncedLines(List<LyricLine> sourceLyrics)
     {
+        var batch = new List<LyricLine>(sourceLyrics.Count);
         foreach (var line in sourceLyrics)
         {
             // Skip intro placeholder "..."
             if (line.Timestamp == TimeSpan.Zero && line.Text == "...") continue;
-            UnsyncedLines.Add(new LyricLine { Text = line.Text, IsActive = true });
+            batch.Add(new LyricLine { Text = line.Text, IsActive = true });
         }
+        UnsyncedLines.ReplaceAll(batch);
+    }
+
+    /// <summary>Populates the Unsync tab from a Lyricsfile's `plain` block (preserves blank-line spacing).</summary>
+    private void PopulateUnsyncedFromPlainText(string plain)
+    {
+        var split = plain.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+        var batch = new List<LyricLine>(split.Length);
+        foreach (var line in split)
+            batch.Add(new LyricLine { Text = SoftWrapText(line), IsActive = true });
+        UnsyncedLines.ReplaceAll(batch);
     }
 
     private void AutoSelectTab()
@@ -1312,38 +1523,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             IsSyncTabSelected = false;
             IsUnsyncTabSelected = true;
         }
-    }
-
-    /// <summary>
-    /// Tries to load a .lrc file matching the track's filename.
-    /// Searches for: track.lrc, track.LRC in the same directory.
-    /// </summary>
-    private static List<LyricLine>? TryLoadLrcFile(string trackFilePath)
-    {
-        try
-        {
-            var dir = Path.GetDirectoryName(trackFilePath);
-            var nameWithoutExt = Path.GetFileNameWithoutExtension(trackFilePath);
-            if (dir == null || nameWithoutExt == null) return null;
-
-            // Try common LRC file name patterns
-            string[] extensions = { ".lrc", ".LRC", ".Lrc" };
-            foreach (var ext in extensions)
-            {
-                var lrcPath = Path.Combine(dir, nameWithoutExt + ext);
-                if (File.Exists(lrcPath))
-                {
-                    var content = File.ReadAllText(lrcPath);
-                    return ParseLrcContent(content);
-                }
-            }
-        }
-        catch
-        {
-            // Non-critical failure
-        }
-
-        return null;
     }
 
     /// <summary>
@@ -1545,41 +1724,73 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Updates the currently active (highlighted) lyric line based on playback position.
     /// Called from OnPlayerPropertyChanged which fires on UI thread, so no extra dispatch needed.
-    /// A 400ms lookahead compensates for VLC position polling latency + UI dispatch delay,
+    /// A 350ms lookahead compensates for VLC position polling latency + UI dispatch delay,
     /// ensuring lyrics highlight at the moment the vocal begins rather than after.
+    ///
+    /// Uses a monotonic cursor (_lineCursor) that advances forward per tick — O(1) amortized
+    /// instead of scanning every line on every tick. Resets to 0 on seek-backwards.
     /// </summary>
     private static readonly TimeSpan LyricsLookahead = TimeSpan.FromMilliseconds(350);
+
+    // Word-level lookahead is smaller: word timings come from real audio alignment, so we only
+    // compensate UI dispatch latency, not polling jitter as with line-level.
+    private static readonly TimeSpan WordLookahead = TimeSpan.FromMilliseconds(80);
 
     private void UpdateActiveLine(TimeSpan position)
     {
         if (LyricLines.Count == 0) return;
 
-        // Add lookahead so lyrics appear slightly early to match vocals
-        var adjustedPosition = position + LyricsLookahead;
+        // Seek-backwards detection: rewind the cursor so we don't miss earlier lines.
+        // 750ms threshold tolerates small non-monotonic jitter from the player position poll.
+        if (_lastSyncPosition != TimeSpan.MinValue &&
+            position + TimeSpan.FromMilliseconds(750) < _lastSyncPosition)
+        {
+            _lineCursor = 0;
+        }
+        _lastSyncPosition = position;
 
+        var adjusted = position + LyricsLookahead;
+
+        // Clamp cursor into range (collection may have shrunk).
+        if (_lineCursor >= LyricLines.Count) _lineCursor = LyricLines.Count - 1;
+        if (_lineCursor < 0) _lineCursor = 0;
+
+        // Advance forward while the next synced line's timestamp has been reached.
+        while (_lineCursor + 1 < LyricLines.Count)
+        {
+            var next = LyricLines[_lineCursor + 1];
+            if (next.Timestamp.HasValue && next.Timestamp.Value <= adjusted)
+                _lineCursor++;
+            else
+                break;
+        }
+
+        var candidate = LyricLines[_lineCursor];
         LyricLine? bestMatch = null;
         int bestIndex = -1;
-
-        for (int i = 0; i < LyricLines.Count; i++)
+        if (candidate.Timestamp.HasValue && candidate.Timestamp.Value <= adjusted)
         {
-            var line = LyricLines[i];
-            if (line.Timestamp.HasValue && line.Timestamp.Value <= adjustedPosition)
-            {
-                bestMatch = line;
-                bestIndex = i;
-            }
+            bestMatch = candidate;
+            bestIndex = _lineCursor;
         }
 
         // Safety: if no match found but we're past the start and have a current line,
         // keep the current line active (prevents "all dimmed" state from transient glitches).
         if (bestMatch == null && _currentActiveLine != null && position.TotalSeconds > 1)
+        {
+            UpdateActiveWord(position);
             return;
+        }
 
         if (bestMatch != _currentActiveLine)
         {
-            // Deactivate previous line
+            // Deactivate previous line — clear its word cursor so re-entry rebuilds from scratch.
             if (_currentActiveLine != null)
+            {
                 _currentActiveLine.IsActive = false;
+                if (_currentActiveLine.HasWords)
+                    _currentActiveLine.CurrentWordIndex = -1;
+            }
 
             // Activate new line
             if (bestMatch != null)
@@ -1588,12 +1799,64 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             _currentActiveLine = bestMatch;
             ActiveLineIndex = bestIndex;
             UpdateLineOpacities(bestIndex);
+            AdjustSyncCadence();
         }
         else if (bestMatch != null && !bestMatch.IsActive)
         {
             // Safety: ensure the active line stays active even if something reset it
             bestMatch.IsActive = true;
         }
+
+        UpdateActiveWord(position);
+    }
+
+    /// <summary>
+    /// Advances CurrentWordIndex on the active line when word-level timings are present.
+    /// No-op when the active line has no words — existing line-level highlight is all that renders.
+    /// </summary>
+    private void UpdateActiveWord(TimeSpan position)
+    {
+        var line = _currentActiveLine;
+        if (line == null || !line.HasWords) return;
+
+        var words = line.Words!;
+        var adjusted = position + WordLookahead;
+
+        // Past the line's end → last word remains highlighted until the line changes.
+        int target;
+        if (adjusted < words[0].Start)
+        {
+            target = -1;
+        }
+        else
+        {
+            target = words.Count - 1;
+            for (int i = 0; i < words.Count; i++)
+            {
+                var w = words[i];
+                var end = w.End ?? (i + 1 < words.Count ? words[i + 1].Start : TimeSpan.MaxValue);
+                if (adjusted < end)
+                {
+                    target = i;
+                    break;
+                }
+            }
+        }
+
+        if (line.CurrentWordIndex != target)
+            line.CurrentWordIndex = target;
+    }
+
+    /// <summary>
+    /// Bumps the sync timer cadence up when we're inside a word-synced line, back down otherwise.
+    /// Keeps cost proportional to what's actually on screen.
+    /// </summary>
+    private void AdjustSyncCadence()
+    {
+        var wantsFast = _currentActiveLine?.HasWords == true;
+        var targetMs = wantsFast ? WordSyncIntervalMs : LineSyncIntervalMs;
+        if ((int)_lyricsSyncTimer.Interval.TotalMilliseconds != targetMs)
+            _lyricsSyncTimer.Interval = TimeSpan.FromMilliseconds(targetMs);
     }
 
     /// <summary>

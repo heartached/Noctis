@@ -379,6 +379,20 @@ public class LastFmService : ILastFmService
 
     private async Task<AlbumDescriptionPayload?> FetchAlbumDescriptionFromApiAsync(string artistName, string albumName, CancellationToken ct)
     {
+        // Try the exact name, then progressively stripped variants
+        // (Deluxe / Video Deluxe / Anniversary Edition / etc.) so release-variant
+        // albums inherit the base release's description instead of being blank.
+        foreach (var candidate in BuildAlbumNameCandidates(albumName))
+        {
+            var payload = await FetchAlbumDescriptionForExactNameAsync(artistName, candidate, ct);
+            if (payload != null) return payload;
+            if (ct.IsCancellationRequested) return null;
+        }
+        return null;
+    }
+
+    private async Task<AlbumDescriptionPayload?> FetchAlbumDescriptionForExactNameAsync(string artistName, string albumName, CancellationToken ct)
+    {
         try
         {
             var url = $"{ApiBase}?method=album.getinfo&api_key={ApiKey}&artist={Uri.EscapeDataString(artistName)}&album={Uri.EscapeDataString(albumName)}&format=json";
@@ -432,6 +446,71 @@ public class LastFmService : ILastFmService
     private static string BuildAlbumDescriptionCacheKey(string artistName, string albumName)
     {
         return $"{artistName.Trim().ToLowerInvariant()}::{albumName.Trim().ToLowerInvariant()}";
+    }
+
+    // Last.fm only catalogs base releases; "(Deluxe)" / "[Video Deluxe]" / etc. variants
+    // miss otherwise. Generate progressively stripped candidates so a deluxe edition
+    // can inherit its base release's description.
+    private static IEnumerable<string> BuildAlbumNameCandidates(string albumName)
+    {
+        if (string.IsNullOrWhiteSpace(albumName)) yield break;
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var current = albumName.Trim();
+
+        if (seen.Add(current)) yield return current;
+
+        for (int i = 0; i < 4; i++)
+        {
+            var stripped = StripTrailingAlbumVariantSuffix(current);
+            if (string.IsNullOrWhiteSpace(stripped) || stripped.Equals(current, StringComparison.OrdinalIgnoreCase))
+                yield break;
+            current = stripped;
+            if (seen.Add(current)) yield return current;
+        }
+    }
+
+    private static string StripTrailingAlbumVariantSuffix(string name)
+    {
+        var trimmed = name.TrimEnd();
+
+        // Trailing parenthesized or bracketed group: "Album (Deluxe)" / "Album [Video Deluxe]"
+        if (trimmed.Length > 0 && (trimmed[^1] == ')' || trimmed[^1] == ']'))
+        {
+            char open = trimmed[^1] == ')' ? '(' : '[';
+            int depth = 0;
+            for (int i = trimmed.Length - 1; i >= 0; i--)
+            {
+                if (trimmed[i] == trimmed[^1]) depth++;
+                else if (trimmed[i] == open)
+                {
+                    depth--;
+                    if (depth == 0) return trimmed[..i].TrimEnd();
+                }
+            }
+        }
+
+        // Dash-suffixed edition tag: "Album - Deluxe Edition"
+        int dash = trimmed.LastIndexOf(" - ", StringComparison.Ordinal);
+        if (dash > 0 && IsKnownEditionTag(trimmed[(dash + 3)..]))
+            return trimmed[..dash].TrimEnd();
+
+        return trimmed;
+    }
+
+    private static bool IsKnownEditionTag(string tail)
+    {
+        var t = tail.Trim();
+        return t.Equals("Deluxe", StringComparison.OrdinalIgnoreCase)
+            || t.Equals("Deluxe Edition", StringComparison.OrdinalIgnoreCase)
+            || t.Equals("Video Deluxe", StringComparison.OrdinalIgnoreCase)
+            || t.Equals("Anniversary Edition", StringComparison.OrdinalIgnoreCase)
+            || t.Equals("Special Edition", StringComparison.OrdinalIgnoreCase)
+            || t.Equals("Expanded Edition", StringComparison.OrdinalIgnoreCase)
+            || t.Equals("Limited Edition", StringComparison.OrdinalIgnoreCase)
+            || t.Equals("Bonus Track Version", StringComparison.OrdinalIgnoreCase)
+            || t.Equals("Remastered", StringComparison.OrdinalIgnoreCase)
+            || t.Equals("Extended", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? CleanAlbumSummary(string? rawSummary)
