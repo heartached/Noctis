@@ -39,10 +39,14 @@
                                 <StackPanel Orientation="Horizontal" Spacing="14"
                                             ToolTip.Tip="{Binding Label}"
                                             HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
-                                    <Grid Width="20"
-                                          Height="20"
+                                    <Grid Width="28"
+                                          Height="28"
                                           VerticalAlignment="Center">
-                                        <Border RenderOptions.BitmapInterpolationMode="HighQuality"
+                                        <Border Width="20"
+                                                Height="20"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                RenderOptions.BitmapInterpolationMode="HighQuality"
                                                 Background="{DynamicResource IslandForeground}">
                                             <Border.OpacityMask>
                                                 <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
