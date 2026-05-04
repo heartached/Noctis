@@ -71,7 +71,7 @@
                   VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled"
                   IsHitTestVisible="{Binding !IsAlbumDescriptionOpen}">
-    <StackPanel>
+    <StackPanel TextElement.Foreground="{Binding PageForegroundBrush}">
 
         <!-- Album header -->
         <Grid ColumnDefinitions="Auto,*,40"
@@ -360,7 +360,7 @@
                         <TextBlock Text="{Binding Header}"
                                    FontSize="17" FontWeight="Bold"
                                    Margin="0,18,0,6"
-                                   Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                   Foreground="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}"
                                    IsVisible="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).HasMultipleDiscs}" />
                         <ListBox Classes="track-list"
                                  ItemsSource="{Binding Tracks}"
@@ -480,7 +480,7 @@
                                                    Width="16" Height="14"
                                                    HorizontalAlignment="Right"
                                                    VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource SystemControlHighlightAccentBrush}"
+                                                   Foreground="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}"
                                                    IsAnimating="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).IsPlayerPlaying, Mode=OneWay}">
                                 <controls:EqVisualizer.IsVisible>
                                     <MultiBinding Converter="{StaticResource GuidEquals}" Mode="OneWay">
