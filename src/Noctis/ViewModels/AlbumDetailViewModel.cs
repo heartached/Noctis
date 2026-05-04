@@ -34,6 +34,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private Album _album;
     [ObservableProperty] private Bitmap? _albumArt;
     [ObservableProperty] private IBrush? _backgroundBrush;
+    [ObservableProperty] private bool _isLightTint;
+    [ObservableProperty] private IBrush _pageForegroundBrush = Brushes.White;
+    [ObservableProperty] private IBrush _pageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
+    [ObservableProperty] private IBrush _pageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
     [ObservableProperty] private Guid? _currentPlayingTrackId;
     [ObservableProperty] private bool _isPlayerPlaying;
     [ObservableProperty] private string _albumDescription = string.Empty;
@@ -312,6 +316,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         if (bmp == null || _settings?.AlbumDetailColorTintEnabled == false)
         {
             BackgroundBrush = null;
+            IsLightTint = false;
+            PageForegroundBrush = Brushes.White;
+            PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
+            PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
             return;
         }
 
@@ -320,13 +328,34 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         // The sample target is 50x50, so this is sub-millisecond and does not stutter the UI.
         try
         {
-            var color = DominantColorExtractor.ExtractAmbientColor(bmp);
-            BackgroundBrush = DominantColorExtractor.CreateAlbumDetailGradient(color);
+            var color = DominantColorExtractor.ExtractEdgeBackgroundColor(bmp);
+            BackgroundBrush = new SolidColorBrush(color);
+
+            var luminance = DominantColorExtractor.GetRelativeLuminance(color);
+            var isLight = luminance > 0.55;
+            IsLightTint = isLight;
+
+            if (isLight)
+            {
+                PageForegroundBrush = new SolidColorBrush(Color.FromRgb(0x11, 0x11, 0x11));
+                PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0x66, 0x00, 0x00, 0x00));
+                PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0x00, 0x00, 0x00));
+            }
+            else
+            {
+                PageForegroundBrush = Brushes.White;
+                PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
+                PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
+            }
         }
         catch (Exception ex)
         {
             DebugLogger.Error(DebugLogger.Category.UI, "AlbumDetail.GradientBg", ex.ToString());
             BackgroundBrush = null;
+            IsLightTint = false;
+            PageForegroundBrush = Brushes.White;
+            PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
+            PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
         }
     }
 
