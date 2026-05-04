@@ -552,4 +552,18 @@ public static class DominantColorExtractor
         if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6;
         return p;
     }
+
+    /// <summary>
+    /// sRGB relative luminance per WCAG 2.x (0 = black, 1 = white).
+    /// Used to decide whether a tint is light enough to need dark foreground text.
+    /// </summary>
+    public static double GetRelativeLuminance(Color color)
+    {
+        static double Channel(byte c)
+        {
+            double s = c / 255.0;
+            return s <= 0.03928 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4);
+        }
+        return 0.2126 * Channel(color.R) + 0.7152 * Channel(color.G) + 0.0722 * Channel(color.B);
+    }
 }
