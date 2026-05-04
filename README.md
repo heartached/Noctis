@@ -1,7 +1,7 @@
 <div align="center">
 
 <h1>
-  <img src="src/Noctis/Assets/Icons/Noctis%20Logo.png" width="48" align="absmiddle" />&nbsp;Noctis
+  <img src="src/Noctis/Assets/Icons/Noctis.ico" width="48" align="absmiddle" />&nbsp;Noctis
 </h1>
 
 A music player that respects what's yours. Zero tracking, total control.
