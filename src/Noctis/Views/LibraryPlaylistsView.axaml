@@ -149,12 +149,13 @@
                                         </Panel>
                                     </Border>
                                     <!-- Playlist name -->
-                                    <TextBlock Text="{Binding Label}"
-                                               FontSize="14"
-                                               FontWeight="SemiBold"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1"
-                                               Margin="2,6,2,0" />
+                                    <ctrl:HighlightTextBlock DisplayText="{Binding Label}"
+                                                             HighlightText="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).SearchText}"
+                                                             FontSize="14"
+                                                             FontWeight="SemiBold"
+                                                             TextTrimming="CharacterEllipsis"
+                                                             MaxLines="1"
+                                                             Margin="2,6,2,0" />
                                 </StackPanel>
                             </Button>
                         </DataTemplate>

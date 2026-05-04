@@ -8,6 +8,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Helpers;
 using Noctis.Models;
+using Noctis.Services;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
@@ -196,6 +197,20 @@ public partial class LibraryAlbumsView : UserControl
 
                 var clampedOffset = Math.Min(targetOffset, Math.Max(0, sv.Extent.Height - sv.Viewport.Height));
                 sv.Offset = new Vector(0, clampedOffset);
+                CancelPendingScrollRestore();
+            };
+
+            AlbumListBox.LayoutUpdated += _pendingScrollRestore;
+        }
+        else if (DataContext is LibraryAlbumsViewModel activeVm
+                 && (activeVm.IsArtistFiltered || activeVm.HasActiveFilter))
+        {
+            _pendingScrollRestore = (s, args) =>
+            {
+                var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+                if (sv == null) return;
+
+                sv.Offset = new Vector(0, 0);
                 CancelPendingScrollRestore();
             };
 

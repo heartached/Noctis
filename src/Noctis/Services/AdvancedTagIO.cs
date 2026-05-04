@@ -304,14 +304,10 @@ internal static class AdvancedTagIO
 
     private static int ReadAdvisoryValue(TagFile file)
     {
-        // TXXX / Xiph / APE / Apple dash-box "ITUNESADVISORY" (case-insensitive).
-        var raw = ReadCustomField(file, "ITUNESADVISORY");
-        if (TryParseAdvisory(raw, out var parsed)) return parsed;
-
-        // MP4 atoms: rtng (standard), rate (alternate). These are stored as
-        // binary AppleDataBox entries (flag=ContainsData), NOT text — so
-        // AppleTag.GetText returns nothing. Read the raw first byte instead.
-        // Values: 0=None, 1=Explicit, 2=Clean, 4=Explicit-old.
+        // For MP4/M4A, the canonical advisory location is the binary `rtng` atom
+        // (with `rate` as an alias). Check these FIRST so reload reflects whatever
+        // the writer last persisted there — the dash-box ITUNESADVISORY may exist
+        // as a stale remnant from older saves.
         if (file.GetTag(TagTypes.Apple, false) is AppleTag apple)
         {
             foreach (var atom in new[] { "rtng", "rate" })
@@ -326,10 +322,12 @@ internal static class AdvancedTagIO
                         if (n == 2) return 2;
                         if (n == 0) return 0;
                     }
-                    // Some writers may store as text instead — try that too.
                     if (TryParseAdvisory(box.Text, out var textVal)) return textVal;
                 }
             }
+
+            var dashAdvisory = apple.GetDashBox("com.apple.iTunes", "ITUNESADVISORY");
+            if (TryParseAdvisory(dashAdvisory, out var dashParsed)) return dashParsed;
 
             var extc = apple.GetDashBox("com.apple.iTunes", "iTunEXTC");
             if (!string.IsNullOrEmpty(extc))
@@ -337,7 +335,13 @@ internal static class AdvancedTagIO
                 if (extc.Contains("Explicit", StringComparison.OrdinalIgnoreCase)) return 1;
                 if (extc.Contains("Clean", StringComparison.OrdinalIgnoreCase)) return 2;
             }
+
+            return 0;
         }
+
+        // Non-MP4 formats: TXXX / Xiph / APE custom field "ITUNESADVISORY".
+        var raw = ReadCustomField(file, "ITUNESADVISORY");
+        if (TryParseAdvisory(raw, out var parsed)) return parsed;
 
         return 0;
     }
@@ -455,6 +459,30 @@ internal static class AdvancedTagIO
     {
         var text = value > 0 ? value.ToString() : null;
         WriteCustomField(file, "ITUNESADVISORY", text);
+
+        // MP4/M4A: advisory lives in the binary `rtng` atom (canonical iTunes
+        // location). Mirror to `rtng` so the read path and other tools agree.
+        // Also clear the `rate` alias and the `iTunEXTC` dash-box so a stale
+        // value there can't override the new one on next read.
+        if (file.GetTag(TagTypes.Apple, value > 0) is AppleTag apple)
+        {
+            var rtng = ByteVector.FromString("rtng", StringType.Latin1);
+            var rate = ByteVector.FromString("rate", StringType.Latin1);
+            apple.SetDashBox("com.apple.iTunes", "iTunEXTC", null);
+            if (value <= 0)
+            {
+                apple.ClearData(rtng);
+                apple.ClearData(rate);
+            }
+            else
+            {
+                // iTunes stores rtng as a single-byte AppleDataBox with flag = 21
+                // (ContainsBeData). 1 = Explicit, 2 = Clean.
+                var payload = new ByteVector((byte)value);
+                apple.SetData(rtng, payload, 21);
+                apple.ClearData(rate);
+            }
+        }
     }
 
     // ══════════════════════════════════════════════════════════════

@@ -56,7 +56,7 @@
             </Setter>
         </Style>
         <Style Selector="Button:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1.03)"/>
+            <Setter Property="RenderTransform" Value="scale(1.045)"/>
         </Style>
         <Style Selector="Button:pressed">
             <Setter Property="RenderTransform" Value="scale(0.97)"/>
@@ -82,7 +82,7 @@
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
         </Style>
         <Style Selector="Button.theme-btn.active /template/ ContentPresenter">
-            <Setter Property="BorderBrush" Value="#E04060"/>
+            <Setter Property="BorderBrush" Value="#E74856"/>
         </Style>
 
         <!-- Danger button -->
@@ -96,11 +96,11 @@
 
         <!-- Accent button -->
         <Style Selector="Button.accent /template/ ContentPresenter">
-            <Setter Property="Background" Value="#E04060"/>
+            <Setter Property="Background" Value="#E74856"/>
             <Setter Property="Foreground" Value="White"/>
         </Style>
         <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#C03050"/>
+            <Setter Property="Background" Value="#C73E4C"/>
         </Style>
 
         <!-- Pill-shaped action buttons -->
@@ -112,6 +112,21 @@
         <Style Selector="Button.pill-action /template/ ContentPresenter">
             <Setter Property="CornerRadius" Value="18"/>
             <Setter Property="Padding" Value="16,10"/>
+        </Style>
+
+        <!-- Small beta badge -->
+        <Style Selector="Border.beta-badge">
+            <Setter Property="Background" Value="#E74856"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="7,2"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.beta-badge TextBlock">
+            <Setter Property="Text" Value="BETA"/>
+            <Setter Property="FontSize" Value="9"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="LetterSpacing" Value="0.5"/>
         </Style>
 
         <!-- Pill ComboBox -->
@@ -196,6 +211,22 @@
         </Style>
         <Style Selector="ComboBox.pill-combo ComboBoxItem:selected:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#C73E4C"/>
+        </Style>
+        <Style Selector="ComboBox.transition-pill">
+            <Setter Property="Width" Value="132"/>
+            <Setter Property="MinHeight" Value="40"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+        <Style Selector="ComboBox.transition-pill /template/ Border#Background">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="20"/>
+        </Style>
+        <Style Selector="ComboBox.transition-pill:pointerover /template/ Border#Background">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
         </Style>
 
         <!-- Accent sliders (horizontal) -->
@@ -324,7 +355,8 @@
     </UserControl.Styles>
 
     <Grid RowDefinitions="*">
-    <ScrollViewer Grid.Row="0"
+    <ScrollViewer x:Name="SettingsScrollViewer"
+                  Grid.Row="0"
                   HorizontalScrollBarVisibility="Auto"
                   VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="32,24,32,40" MaxWidth="900" HorizontalAlignment="Left" Spacing="4">
@@ -501,16 +533,9 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBlock Text="Tint album pages with cover art" FontSize="15" FontWeight="SemiBold"/>
-                            <Border Background="#E04060"
-                                    CornerRadius="999"
-                                    Padding="7,2"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="BETA"
-                                           FontSize="9"
-                                           FontWeight="Bold"
-                                           Foreground="White"
-                                           LetterSpacing="0.5"/>
+                            <TextBlock Text="Album page tint" FontSize="15" FontWeight="SemiBold"/>
+                            <Border Classes="beta-badge">
+                                <TextBlock/>
                             </Border>
                         </StackPanel>
                         <TextBlock Text="Use a gradient drawn from the album artwork as the page background. Stays the same across themes."
@@ -528,34 +553,65 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <TextBlock Classes="section-title" Text="AUDIO PLAYBACK" Margin="0,20,0,10"/>
 
-            <!-- Crossfade -->
+            <!-- Transitions -->
             <Border Classes="setting-card">
-                <StackPanel Spacing="12">
+                <StackPanel Spacing="14">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Crossfade" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Smoothly transition between tracks."
-                                       FontSize="12" Opacity="0.5"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <TextBlock Text="Transition Mode" FontSize="15" FontWeight="SemiBold"/>
+                                <Border Classes="beta-badge">
+                                    <TextBlock/>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="Choose between standard crossfade and context-aware AutoMix."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding CrossfadeEnabled}"
-                                              VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1"
+                                  Classes="pill-combo transition-pill"
+                                  ItemsSource="{Binding AutoMixTransitionModes}"
+                                  SelectedItem="{Binding AutoMixTransitionMode}"/>
                     </Grid>
 
-                    <StackPanel IsVisible="{Binding CrossfadeEnabled}" Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding AutoMixEnabled}">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="AutoMix Strength" FontSize="13" Opacity="0.75"/>
+                            <TextBlock Text="Controls how long AutoMix can lean into compatible songs."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1"
+                                  Classes="pill-combo transition-pill"
+                                  ItemsSource="{Binding AutoMixStrengthOptions}"
+                                  SelectedItem="{Binding AutoMixStrength}"/>
+                    </Grid>
+
+                    <StackPanel IsVisible="{Binding AutoMixEnabled}" Spacing="10">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="Duration" FontSize="13" Opacity="0.7"
-                                       VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" FontSize="13" Opacity="0.7"
-                                       VerticalAlignment="Center"
-                                       Text="{Binding CrossfadeDuration, StringFormat='{}{0:0.0}s'}"/>
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="Remove silence between songs" FontSize="13" Opacity="0.75"/>
+                            </StackPanel>
+                            <controls:LottieToggle Grid.Column="1"
+                                                  IsChecked="{Binding AutoMixRemoveSilence}"
+                                                  VerticalAlignment="Center"/>
                         </Grid>
-                        <Slider Minimum="1" Maximum="12"
-                                Classes="accent-slider"
-                                Value="{Binding CrossfadeDuration}"
-                                TickPlacement="None"
-                                IsSnapToTickEnabled="False"
-                                Margin="16,0"/>
+
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="Avoid AutoMix for albums" FontSize="13" Opacity="0.75"/>
+                            </StackPanel>
+                            <controls:LottieToggle Grid.Column="1"
+                                                  IsChecked="{Binding AutoMixAvoidAlbums}"
+                                                  VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="Beat-match when metadata is available" FontSize="13" Opacity="0.75"/>
+                            </StackPanel>
+                            <controls:LottieToggle Grid.Column="1"
+                                                  IsChecked="{Binding AutoMixBeatMatch}"
+                                                  VerticalAlignment="Center"/>
+                        </Grid>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -953,7 +1009,10 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- MEDIA FOLDERS                                      -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="MEDIA FOLDERS" Margin="0,20,0,10"/>
+            <TextBlock x:Name="MediaFoldersSectionAnchor"
+                       Classes="section-title"
+                       Text="MEDIA FOLDERS"
+                       Margin="0,20,0,10"/>
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">

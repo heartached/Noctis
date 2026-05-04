@@ -40,6 +40,12 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _isShuffleEnabled;
     [ObservableProperty] private RepeatMode _repeatMode = RepeatMode.Off;
     [ObservableProperty] private bool _isQueuePopupOpen;
+    [ObservableProperty] private bool _autoMixEnabled;
+    [ObservableProperty] private AutoMixTransitionMode _autoMixTransitionMode = AutoMixTransitionMode.Off;
+    [ObservableProperty] private AutoMixStrength _autoMixStrength = AutoMixStrength.Balanced;
+    [ObservableProperty] private bool _autoMixRemoveSilence = true;
+    [ObservableProperty] private bool _autoMixAvoidAlbums = true;
+    [ObservableProperty] private bool _autoMixBeatMatch = true;
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _artistMarqueeEnabled = true;
 
@@ -72,7 +78,11 @@ public partial class PlayerViewModel : ViewModelBase
     private TimeSpan _lastCommittedSeekTarget; // the position we last seeked to (for anchoring)
     private const int SeekSettleWindowMs = 300; // must be less than VLC's file-caching (500ms)
     private const int SeekDebounceMs = 60; // coalesces rapid clicks so VLC receives fewer seeks
+    private const int TrackStartStalePositionGuardMs = 9000;
+    private const int NaturalEndFallbackDelayMs = 1400;
+    private const double NaturalEndToleranceSeconds = 0.75;
     private System.Threading.Timer? _seekDebounceTimer; // debounce timer for rapid seek clicks
+    private System.Threading.Timer? _naturalEndFallbackTimer; // backup for missed VLC TrackEnded
     private volatile bool _positionUpdateQueued; // coalesces rapid VLC position dispatches
     private TimeSpan _latestVlcPosition; // latest position from VLC timer (written from timer thread)
     private List<Track> _originalQueue = new(); // stored when shuffle is enabled
@@ -82,6 +92,14 @@ public partial class PlayerViewModel : ViewModelBase
     private SidebarViewModel? _sidebar; // injected for playlist access
     private bool _suppressHasContentNotify; // prevents layout thrashing during batch queue updates
     private bool _isAdvancingQueue; // re-entrancy guard for AdvanceQueue
+    private bool _autoMixAdvanceQueued; // prevents repeated early-advance triggers
+    private long _pendingAutoMixNextStartMs = -1;
+    private DateTime _autoMixCommitGuardUntilUtc = DateTime.MinValue;
+    private DateTime _autoMixTransitionArmedUntilUtc = DateTime.MinValue;
+    private string _lastAutoMixLogKey = string.Empty;
+    private Guid _autoMixPreparedTrackId = Guid.Empty;
+    private long _queueVersion;
+    private AutoMixPreparedTransitionSnapshot? _autoMixPreparedSnapshot;
     private SettingsViewModel? _settings;
 
     public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence)
@@ -116,6 +134,7 @@ public partial class PlayerViewModel : ViewModelBase
         switch (State)
         {
             case PlaybackState.Playing:
+                CancelAutoMixTransition("user paused");
                 _audioPlayer.Pause();
                 State = PlaybackState.Paused;
                 break;
@@ -148,8 +167,9 @@ public partial class PlayerViewModel : ViewModelBase
     private void Next()
     {
         DebugLogger.Info(DebugLogger.Category.Playback, "Next", $"queueLen={UpNext.Count}");
+        CancelAutoMixTransition("user skipped");
         if (UpNext.Count == 0) return;
-        AdvanceQueue();
+        AdvanceQueue(QueueAdvanceReason.UserSkip);
     }
 
     [RelayCommand]
@@ -159,8 +179,10 @@ public partial class PlayerViewModel : ViewModelBase
         if (Position.TotalSeconds > 3)
         {
             // Restart current track
+            CancelAutoMixTransition("user skipped");
             _audioPlayer.Seek(TimeSpan.Zero);
             _lastSeekTime = DateTime.UtcNow;
+            _lastCommittedSeekTarget = TimeSpan.Zero;
             Position = TimeSpan.Zero;
             PositionFraction = 0;
             PositionText = "0:00";
@@ -169,7 +191,8 @@ public partial class PlayerViewModel : ViewModelBase
         }
         else if (History.Count > 0)
         {
-            GoBackInQueue();
+            CancelAutoMixTransition("user skipped");
+            GoBackInQueue(QueueAdvanceReason.Previous);
         }
     }
 
@@ -187,8 +210,10 @@ public partial class PlayerViewModel : ViewModelBase
         PositionText = FormatTime(target);
         PositionFraction = fraction;
         RemainingTimeText = FormatTime(remaining);
+        CancelAutoMixTransition("user seeked");
         _audioPlayer.Seek(target);
         _lastSeekTime = DateTime.UtcNow;
+        _lastCommittedSeekTarget = target;
         Seeked?.Invoke(this, target);
     }
 
@@ -202,7 +227,9 @@ public partial class PlayerViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleShuffle()
     {
+        CancelAutoMixTransition("shuffle changed");
         IsShuffleEnabled = !IsShuffleEnabled;
+        MarkQueueChanged();
         DebugLogger.Info(DebugLogger.Category.Queue, "ToggleShuffle", $"enabled={IsShuffleEnabled}, queueLen={UpNext.Count}");
 
         // Suppress HasContent notifications during batch queue update to prevent
@@ -239,6 +266,7 @@ public partial class PlayerViewModel : ViewModelBase
     private void CycleRepeat()
     {
         DebugLogger.Info(DebugLogger.Category.Queue, "CycleRepeat", $"from={RepeatMode}");
+        CancelAutoMixTransition("repeat changed");
         RepeatMode = RepeatMode switch
         {
             RepeatMode.Off => RepeatMode.All,
@@ -383,9 +411,10 @@ public partial class PlayerViewModel : ViewModelBase
 
         // Advance to next track or stop playback
         if (UpNext.Count > 0)
-            AdvanceQueue();
+            AdvanceQueue(QueueAdvanceReason.UserSkip);
         else
         {
+            CancelAutoMixTransition("track removed");
             _audioPlayer.Stop();
             State = PlaybackState.Stopped;
             CurrentTrack = null;
@@ -406,6 +435,8 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "ReplaceQueueAndPlay", $"tracks={tracks.Count}, startIdx={startIndex}");
         if (tracks.Count == 0) return;
         if (startIndex < 0 || startIndex >= tracks.Count) startIndex = 0;
+        CancelAutoMixTransition("queue changed");
+        MarkQueueChanged();
 
         // Move current to history if playing
         if (CurrentTrack != null)
@@ -432,6 +463,8 @@ public partial class PlayerViewModel : ViewModelBase
     public void AddNext(Track track)
     {
         DebugLogger.Info(DebugLogger.Category.Queue, "AddNext", $"track={track.Title}");
+        CancelAutoMixTransition("queue changed");
+        MarkQueueChanged();
         UpNext.Insert(0, track);
     }
 
@@ -439,6 +472,8 @@ public partial class PlayerViewModel : ViewModelBase
     public void AddToQueue(Track track)
     {
         DebugLogger.Info(DebugLogger.Category.Queue, "AddToQueue", $"track={track.Title}, newLen={UpNext.Count + 1}");
+        CancelAutoMixTransition("queue changed");
+        MarkQueueChanged();
         UpNext.Add(track);
     }
 
@@ -447,6 +482,8 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (tracks.Count == 0) return;
         DebugLogger.Info(DebugLogger.Category.Queue, "AddRangeToQueue", $"count={tracks.Count}, newLen={UpNext.Count + tracks.Count}");
+        CancelAutoMixTransition("queue changed");
+        MarkQueueChanged();
         _suppressHasContentNotify = true;
         try { UpNext.AddRange(tracks); }
         finally
@@ -462,6 +499,8 @@ public partial class PlayerViewModel : ViewModelBase
         if (index >= 0 && index < UpNext.Count)
         {
             DebugLogger.Info(DebugLogger.Category.Queue, "RemoveFromQueue", $"idx={index}, track={UpNext[index].Title}");
+            CancelAutoMixTransition("queue changed");
+            MarkQueueChanged();
             UpNext.RemoveAt(index);
         }
     }
@@ -470,6 +509,8 @@ public partial class PlayerViewModel : ViewModelBase
     public void ClearQueue()
     {
         DebugLogger.Info(DebugLogger.Category.Queue, "ClearQueue", $"cleared={UpNext.Count} tracks");
+        CancelAutoMixTransition("queue changed");
+        MarkQueueChanged();
         UpNext.Clear();
     }
 
@@ -481,6 +522,9 @@ public partial class PlayerViewModel : ViewModelBase
             CurrentTrack.SavedPositionMs = (long)Position.TotalMilliseconds;
         }
         _hasPendingSeekTarget = false;
+        CancelAutoMixTransition("player stopped");
+        CancelNaturalEndFallback();
+        MarkQueueChanged();
         _audioPlayer.Stop();
         State = PlaybackState.Stopped;
         CurrentTrack = null;
@@ -492,6 +536,7 @@ public partial class PlayerViewModel : ViewModelBase
         PositionFraction = 0;
         PositionText = "0:00";
         DurationText = "0:00";
+        RemainingTimeText = "0:00";
         // Set null BEFORE dispose — the property setter fires PropertyChanged,
         // and the UI must not try to render a disposed bitmap.
         var oldArt = AlbumArt;
@@ -505,6 +550,8 @@ public partial class PlayerViewModel : ViewModelBase
         if (fromIndex < 0 || fromIndex >= UpNext.Count) return;
         if (toIndex < 0 || toIndex >= UpNext.Count) return;
 
+        CancelAutoMixTransition("queue changed");
+        MarkQueueChanged();
         var track = UpNext[fromIndex];
         UpNext.RemoveAt(fromIndex);
         UpNext.Insert(toIndex, track);
@@ -514,6 +561,8 @@ public partial class PlayerViewModel : ViewModelBase
     public void PlayFromUpNextAt(int index)
     {
         if (index < 0 || index >= UpNext.Count) return;
+        CancelAutoMixTransition("queue changed");
+        MarkQueueChanged();
         var remaining = UpNext.Skip(index).ToList();
         ReplaceQueueAndPlay(remaining, 0);
     }
@@ -671,7 +720,12 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Playback, "PlayTrack", $"title={track.Title}, id={track.Id}, duration={track.Duration}");
         _seekDebounceTimer?.Dispose();
         _seekDebounceTimer = null;
+        CancelNaturalEndFallback();
         _hasPendingSeekTarget = false;
+        _autoMixAdvanceQueued = false;
+        _autoMixPreparedTrackId = Guid.Empty;
+        _autoMixCommitGuardUntilUtc = DateTime.UtcNow.AddSeconds(2);
+        _autoMixPreparedSnapshot = null;
 
         // Save playback position for the outgoing track if it has RememberPlaybackPosition
         if (CurrentTrack?.RememberPlaybackPosition == true)
@@ -705,7 +759,12 @@ public partial class PlayerViewModel : ViewModelBase
         // Set pending seek position BEFORE Play() so VlcAudioPlayer applies it
         // inside PlayInternal after the media is loaded (avoids race condition).
         long seekMs = -1;
-        if (track.StartTimeMs > 0 && TimeSpan.FromMilliseconds(track.StartTimeMs) < track.Duration)
+        var autoMixStartMs = Interlocked.Exchange(ref _pendingAutoMixNextStartMs, -1);
+        if (autoMixStartMs > 0 && TimeSpan.FromMilliseconds(autoMixStartMs) < track.Duration)
+        {
+            seekMs = autoMixStartMs;
+        }
+        else if (track.StartTimeMs > 0 && TimeSpan.FromMilliseconds(track.StartTimeMs) < track.Duration)
         {
             seekMs = track.StartTimeMs;
         }
@@ -721,6 +780,7 @@ public partial class PlayerViewModel : ViewModelBase
             var seekPos = TimeSpan.FromMilliseconds(seekMs);
             Position = seekPos;
             PositionText = FormatTime(seekPos);
+            _lastCommittedSeekTarget = seekPos;
             PositionFraction = track.Duration.TotalSeconds > 0
                 ? seekPos.TotalSeconds / track.Duration.TotalSeconds
                 : 0;
@@ -746,14 +806,23 @@ public partial class PlayerViewModel : ViewModelBase
         _ = _library.SaveAsync();
     }
 
-    private void AdvanceQueue()
+    private enum QueueAdvanceReason
+    {
+        Natural,
+        AutoMix,
+        UserSkip,
+        Previous,
+        Error
+    }
+
+    private void AdvanceQueue(QueueAdvanceReason reason = QueueAdvanceReason.Natural)
     {
         // Re-entrancy guard — if TrackEnded fires twice (VLC race), ignore the second.
         if (_isAdvancingQueue) return;
         _isAdvancingQueue = true;
         try
         {
-            AdvanceQueueCore();
+            AdvanceQueueCore(reason);
         }
         finally
         {
@@ -761,8 +830,11 @@ public partial class PlayerViewModel : ViewModelBase
         }
     }
 
-    private void AdvanceQueueCore()
+    private void AdvanceQueueCore(QueueAdvanceReason reason)
     {
+        if (reason is QueueAdvanceReason.UserSkip or QueueAdvanceReason.Previous or QueueAdvanceReason.Error)
+            CancelAutoMixTransition(reason == QueueAdvanceReason.Error ? "playback error" : "user skipped");
+
         // Handle repeat one mode — replay via PlayTrack() so PlayCount is
         // incremented, TrackStarted fires, and all state updates properly.
         if (RepeatMode == RepeatMode.One && CurrentTrack != null)
@@ -783,6 +855,10 @@ public partial class PlayerViewModel : ViewModelBase
 
         if (UpNext.Count > 0)
         {
+            DebugLogger.Info(
+                DebugLogger.Category.Queue,
+                "TrackEnded.Next",
+                $"queueCount={UpNext.Count}, historyCount={History.Count}, reason={reason}");
             var next = UpNext[0];
             UpNext.RemoveAt(0);
             PlayTrack(next);
@@ -801,30 +877,19 @@ public partial class PlayerViewModel : ViewModelBase
         }
         else
         {
-            // End of queue with repeat off — fully stop and clear all state.
-            // CurrentTrack must be nulled BEFORE State=Stopped so that no
-            // stale PlayPause path can see Stopped+CurrentTrack and replay.
-            _audioPlayer.Stop();
-            CurrentTrack = null;
-            State = PlaybackState.Stopped;
-
-            // Dispose album art and reset position/duration to prevent any
-            // stale UI state from persisting after the player bar hides.
-            var oldArt = AlbumArt;
-            AlbumArt = null;
-            oldArt?.Dispose();
-            Position = TimeSpan.Zero;
-            PositionFraction = 0;
-            PositionText = "0:00";
-            Duration = TimeSpan.Zero;
-            DurationText = "0:00";
-            RemainingTimeText = "0:00";
+            DebugLogger.Info(
+                DebugLogger.Category.Queue,
+                "TrackEnded.NoNext",
+                $"queueCount={UpNext.Count}, historyCount={History.Count}, repeat={RepeatMode}");
+            StopAndClear();
         }
     }
 
-    private void GoBackInQueue()
+    private void GoBackInQueue(QueueAdvanceReason reason = QueueAdvanceReason.Previous)
     {
         if (History.Count == 0) return;
+        CancelAutoMixTransition(reason == QueueAdvanceReason.Previous ? "user skipped" : "queue changed");
+        MarkQueueChanged();
 
         // Push current track back to front of queue
         if (CurrentTrack != null)
@@ -918,6 +983,17 @@ public partial class PlayerViewModel : ViewModelBase
             if (msSinceSeek < SeekSettleWindowMs)
                 return;
 
+            // After PlayTrack() updates CurrentTrack, the single VLC player can still
+            // report positions from the outgoing song while it fades/stops. Those old
+            // near-end positions must not drive AutoMix for the newly selected track.
+            if (msSinceSeek < TrackStartStalePositionGuardMs)
+            {
+                var expectedSeconds = _lastCommittedSeekTarget.TotalSeconds;
+                var maxPlausibleSeconds = expectedSeconds + (msSinceSeek / 1000d) + 4;
+                if (latest.TotalSeconds > maxPlausibleSeconds)
+                    return;
+            }
+
             // Extended settle: even after the base window, reject positions that are
             // clearly stale (>2s from the seek target). VLC's buffer refill can take
             // longer than SeekSettleWindowMs on some codecs/containers.
@@ -968,6 +1044,11 @@ public partial class PlayerViewModel : ViewModelBase
             PositionFraction = newPositionFraction;
             RemainingTimeText = newRemainingTimeText;
 
+            if (TryAdvanceForAutoMix(newPosition, effectiveDuration))
+                return;
+
+            ScheduleNaturalEndFallbackIfNeeded(newPosition, effectiveDuration);
+
             // Check per-track stop time
             if (CurrentTrack?.StopTimeMs > 0)
             {
@@ -982,10 +1063,240 @@ public partial class PlayerViewModel : ViewModelBase
         });
     }
 
+    private void ScheduleNaturalEndFallbackIfNeeded(TimeSpan position, TimeSpan duration)
+    {
+        if (CurrentTrack == null ||
+            State != PlaybackState.Playing ||
+            duration <= TimeSpan.Zero ||
+            position < duration - TimeSpan.FromSeconds(NaturalEndToleranceSeconds))
+        {
+            return;
+        }
+
+        // Don't reschedule if a fallback for this track is already armed — let it fire.
+        if (_naturalEndFallbackTimer != null) return;
+
+        var trackId = CurrentTrack.Id;
+        var sessionId = _audioPlayer.CurrentSessionId;
+        var armedAtPosition = position;
+        _naturalEndFallbackTimer = new System.Threading.Timer(_ =>
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (CurrentTrack?.Id != trackId ||
+                    _audioPlayer.CurrentSessionId != sessionId ||
+                    State != PlaybackState.Playing ||
+                    _isSeeking)
+                {
+                    return;
+                }
+
+                var durationNow = Duration;
+                if (durationNow <= TimeSpan.Zero ||
+                    Position < durationNow - TimeSpan.FromSeconds(NaturalEndToleranceSeconds))
+                {
+                    return;
+                }
+
+                // If position is still moving forward beyond where we armed, the
+                // track is genuinely playing past metadata-reported duration —
+                // wait for the next sample rather than advancing prematurely.
+                if (Position > armedAtPosition + TimeSpan.FromSeconds(NaturalEndToleranceSeconds))
+                {
+                    _naturalEndFallbackTimer?.Dispose();
+                    _naturalEndFallbackTimer = null;
+                    return;
+                }
+
+                DebugLogger.Info(
+                    DebugLogger.Category.Playback,
+                    "TrackEnded.Fallback",
+                    $"track={CurrentTrack?.Title}, queueCount={UpNext.Count}, repeat={RepeatMode}");
+                AdvanceQueue(QueueAdvanceReason.Natural);
+            });
+        }, null, NaturalEndFallbackDelayMs, Timeout.Infinite);
+    }
+
+    private void CancelNaturalEndFallback()
+    {
+        _naturalEndFallbackTimer?.Dispose();
+        _naturalEndFallbackTimer = null;
+    }
+
+    private bool TryAdvanceForAutoMix(TimeSpan position, TimeSpan duration)
+    {
+        if (AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.Off ||
+            _autoMixAdvanceQueued ||
+            CurrentTrack == null ||
+            UpNext.Count == 0)
+            return false;
+
+        if (State != PlaybackState.Playing || DateTime.UtcNow < _autoMixCommitGuardUntilUtc)
+            return false;
+
+        var nextTrack = UpNext[0];
+        var plan = AutoMixTransitionPlanner.CreateTransitionPlan(CurrentTrack, nextTrack, CreateAutoMixOptions());
+        LogAutoMixPlan(CurrentTrack, nextTrack, plan);
+
+        if (!plan.IsEnabled)
+        {
+            _audioPlayer.SetCrossfade(false, 6);
+            return false;
+        }
+
+        var transitionEnd = duration;
+        if (CurrentTrack.StopTimeMs > 0)
+        {
+            var stopTime = TimeSpan.FromMilliseconds(CurrentTrack.StopTimeMs);
+            if (stopTime > TimeSpan.Zero && stopTime < transitionEnd)
+                transitionEnd = stopTime;
+        }
+
+        if (plan.UseSilenceTrim && plan.CurrentSilence.EndSilence > TimeSpan.Zero)
+            transitionEnd -= plan.CurrentSilence.EndSilence;
+
+        if (transitionEnd <= TimeSpan.Zero)
+            return false;
+
+        var fadeStart = plan.Duration > TimeSpan.Zero
+            ? transitionEnd - plan.Duration
+            : plan.CurrentTrackStartFadePosition;
+        if (fadeStart < TimeSpan.Zero)
+            fadeStart = TimeSpan.Zero;
+
+        if (position < fadeStart)
+        {
+            var preloadLead = TimeSpan.FromSeconds(Math.Clamp(plan.Duration.TotalSeconds + 2, 3, 8));
+            if (position >= fadeStart - preloadLead && _autoMixPreparedTrackId != nextTrack.Id)
+            {
+                _autoMixPreparedTrackId = nextTrack.Id;
+                _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
+                    nextTrack.Id,
+                    nextTrack.FilePath,
+                    _queueVersion,
+                    IsShuffleEnabled,
+                    RepeatMode,
+                    AutoMixTransitionMode,
+                    _audioPlayer.CurrentSessionId);
+                _audioPlayer.PrepareNext(nextTrack.FilePath, (long)plan.NextTrackStartPosition.TotalMilliseconds);
+            }
+            return false;
+        }
+
+        var remaining = transitionEnd - position;
+        if (plan.Duration > TimeSpan.Zero && remaining > plan.Duration)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(nextTrack.FilePath) || !File.Exists(nextTrack.FilePath))
+        {
+            DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.PreparedInvalid", "next track unavailable");
+            CancelAutoMixTransition("next track unavailable");
+            return false;
+        }
+
+        var validation = AutoMixPreparedTransitionValidator.Validate(
+            _autoMixPreparedSnapshot,
+            nextTrack,
+            _queueVersion,
+            IsShuffleEnabled,
+            RepeatMode,
+            AutoMixTransitionMode,
+            _audioPlayer.CurrentSessionId);
+        if (!validation.IsValid)
+        {
+            DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.PreparedInvalid", validation.Reason);
+            CancelAutoMixTransition(validation.Reason);
+            return false;
+        }
+
+        _autoMixAdvanceQueued = true;
+        Interlocked.Exchange(ref _pendingAutoMixNextStartMs, (long)plan.NextTrackStartPosition.TotalMilliseconds);
+        _autoMixTransitionArmedUntilUtc = DateTime.UtcNow.AddSeconds(3);
+        _audioPlayer.SetCrossfade(
+            plan.TransitionType is AutoMixTransitionType.SimpleCrossfade or AutoMixTransitionType.BeatMatchedCrossfade or AutoMixTransitionType.SafeFade,
+            Math.Max(1, (int)Math.Round(plan.Duration.TotalSeconds)),
+            plan.FadeCurve);
+        AdvanceQueue(QueueAdvanceReason.AutoMix);
+        return true;
+    }
+
+    private AutoMixPlannerOptions CreateAutoMixOptions() =>
+        new(
+            AutoMixTransitionMode,
+            AutoMixStrength,
+            AutoMixRemoveSilence,
+            AutoMixAvoidAlbums,
+            AutoMixBeatMatch,
+            RepeatMode,
+            IsShuffleEnabled,
+            false);
+
+    partial void OnAutoMixTransitionModeChanged(AutoMixTransitionMode value)
+    {
+        CancelAutoMixTransition(value == Noctis.Models.AutoMixTransitionMode.Off
+            ? "disabled"
+            : "transition mode changed");
+    }
+
+    partial void OnAutoMixStrengthChanged(AutoMixStrength value) =>
+        CancelAutoMixTransition("settings changed");
+
+    partial void OnAutoMixRemoveSilenceChanged(bool value) =>
+        CancelAutoMixTransition("settings changed");
+
+    partial void OnAutoMixAvoidAlbumsChanged(bool value) =>
+        CancelAutoMixTransition("settings changed");
+
+    partial void OnAutoMixBeatMatchChanged(bool value) =>
+        CancelAutoMixTransition("settings changed");
+
+    partial void OnRepeatModeChanged(RepeatMode value)
+    {
+        if (value == RepeatMode.One)
+            CancelAutoMixTransition("repeat-one enabled");
+    }
+
+    private void CancelAutoMixTransition(string reason)
+    {
+        var hadPending = _autoMixAdvanceQueued ||
+                         Interlocked.Read(ref _pendingAutoMixNextStartMs) >= 0 ||
+                         DateTime.UtcNow < _autoMixTransitionArmedUntilUtc;
+        _autoMixAdvanceQueued = false;
+        Interlocked.Exchange(ref _pendingAutoMixNextStartMs, -1);
+        _autoMixTransitionArmedUntilUtc = DateTime.MinValue;
+        _autoMixPreparedTrackId = Guid.Empty;
+        _autoMixPreparedSnapshot = null;
+        _audioPlayer.CancelPreparedNext();
+        if (hadPending || AutoMixTransitionMode != Noctis.Models.AutoMixTransitionMode.Crossfade)
+            _audioPlayer.SetCrossfade(false, 6);
+        _lastAutoMixLogKey = string.Empty;
+        if (hadPending)
+            DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.Cancelled", $"reason={reason}");
+    }
+
+    private void MarkQueueChanged() => _queueVersion++;
+
+    private void LogAutoMixPlan(Track current, Track next, AutoMixTransitionPlan plan)
+    {
+        var key = $"{current.Id:N}:{next.Id:N}:{plan.TransitionType}:{plan.Reason}";
+        if (key == _lastAutoMixLogKey)
+            return;
+
+        _lastAutoMixLogKey = key;
+        DebugLogger.Info(
+            DebugLogger.Category.Playback,
+            plan.IsEnabled ? "AutoMix.Planned" : "AutoMix.Skipped",
+            $"{plan.Reason}; duration={plan.Duration.TotalSeconds:0.0}s; curve={plan.FadeCurve}; silenceTrim={plan.UseSilenceTrim}; bpmUsed={plan.UsedBpmData}; keyUsed={plan.UsedKeyData}; missingBpm={plan.MissingBpmData}; missingKey={plan.MissingKeyData}");
+    }
+
     private void OnTrackEnded(object? sender, EventArgs e)
     {
-        DebugLogger.Info(DebugLogger.Category.Playback, "TrackEnded", $"track={CurrentTrack?.Title}");
-        Dispatcher.UIThread.Post(() => AdvanceQueue());
+        DebugLogger.Info(DebugLogger.Category.Playback, "TrackEnded", $"track={CurrentTrack?.Title}, queueCount={UpNext.Count}, repeat={RepeatMode}");
+        Dispatcher.UIThread.Post(() =>
+        {
+            CancelNaturalEndFallback();
+            AdvanceQueue();
+        });
     }
 
     private void OnPlaybackError(object? sender, string message)
@@ -995,9 +1306,9 @@ public partial class PlayerViewModel : ViewModelBase
         {
             // Skip to next track on error
             if (UpNext.Count > 0)
-                AdvanceQueue();
+                AdvanceQueue(QueueAdvanceReason.Error);
             else
-                State = PlaybackState.Stopped;
+                StopAndClear();
         });
     }
 
@@ -1015,6 +1326,11 @@ public partial class PlayerViewModel : ViewModelBase
             // Clean up UpNext and History FIRST so that if we need to advance,
             // we only advance into tracks that still exist in the library.
             var deletedTracks = UpNext.Where(t => _library.GetTrackById(t.Id) == null).ToList();
+            if (deletedTracks.Count > 0)
+            {
+                CancelAutoMixTransition("queue changed");
+                MarkQueueChanged();
+            }
             foreach (var track in deletedTracks)
                 UpNext.Remove(track);
 
@@ -1053,4 +1369,3 @@ public partial class PlayerViewModel : ViewModelBase
             : ts.ToString(@"m\:ss");
     }
 }
-

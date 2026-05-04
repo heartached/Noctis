@@ -26,11 +26,18 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private bool _isDirty = true;
 
     private const int ColumnsPerRow = 5;
+    private const double TileTextHeight = 64;
 
     [ObservableProperty] private bool _isSearchVisible = false;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private double _tileArtworkSize = 180;
     [ObservableProperty] private string _artistFilterName = string.Empty;
+    public double TileRowHeight => TileArtworkSize + TileTextHeight;
+
+    partial void OnTileArtworkSizeChanged(double value)
+    {
+        OnPropertyChanged(nameof(TileRowHeight));
+    }
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter);
 
     /// <summary>Whether the view is filtered to a specific artist's discography.</summary>
@@ -41,6 +48,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
+
+    /// <summary>Last saved scroll offset for the unfiltered album grid.</summary>
+    public double SavedUnfilteredScrollOffset { get; private set; }
 
     /// <summary>Albums currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<Album> CtrlSelectedAlbums { get; set; } = new();
@@ -87,32 +97,23 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
         _isDirty = false;
 
-        // Capture state for the background task; avoid blocking UI with ToList()
-        var generation = Interlocked.Increment(ref _rebuildGeneration);
-        var artistFilter = ArtistFilterName;
-        var searchFilter = _currentFilter;
-        var columns = ColumnsPerRow;
-
-        ThreadPool.QueueUserWorkItem(_ =>
-        {
-            var albums = _library.Albums.ToList();
-            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns);
-
-            if (Volatile.Read(ref _rebuildGeneration) == generation)
-                Dispatcher.UIThread.Post(() =>
-                {
-                    if (Volatile.Read(ref _rebuildGeneration) == generation)
-                    {
-                        _allAlbums = albums;
-                        FilteredAlbumRows.ReplaceAll(rows);
-                    }
-                });
-        });
+        // Sync rebuild: this is invoked from the navigation path (e.g. sidebar
+        // "Albums" click) which sets CurrentView immediately after, so the bound
+        // FilteredAlbumRows must be current on first paint to avoid flashing the
+        // previous filter's content for a frame.
+        Interlocked.Increment(ref _rebuildGeneration);
+        var albums = _library.Albums.ToList();
+        var rows = BuildFilteredRows(albums, ArtistFilterName, _currentFilter, ColumnsPerRow);
+        _allAlbums = albums;
+        FilteredAlbumRows.ReplaceAll(rows);
     }
 
     /// <summary>Sets the artist filter for showing a specific artist's discography.</summary>
     public void SetArtistFilter(string artistName)
     {
+        if (!IsArtistFiltered && !HasActiveFilter && SavedScrollOffset > 0)
+            SavedUnfilteredScrollOffset = SavedScrollOffset;
+
         ArtistFilterName = artistName;
         _currentFilter = string.Empty;
         OnPropertyChanged(nameof(HasActiveFilter));
@@ -128,7 +129,13 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (_allAlbums.Count == 0)
             _allAlbums = _library.Albums.ToList();
 
-        RebuildFilteredRows();
+        // Rebuild synchronously: the caller (artist-link navigation) sets CurrentView
+        // immediately after this returns, so the view must already hold the filtered
+        // rows on first paint — otherwise the grid flashes the previous (unfiltered)
+        // album list for a frame before the async rebuild's UI post lands.
+        Interlocked.Increment(ref _rebuildGeneration);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow);
+        FilteredAlbumRows.ReplaceAll(rows);
     }
 
     /// <summary>Clears the artist filter (when navigating back to all albums).</summary>
@@ -142,13 +149,38 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         _currentFilter = string.Empty;
         OnPropertyChanged(nameof(HasActiveFilter));
         SearchText = string.Empty;
+
+        if (SavedUnfilteredScrollOffset > 0)
+            SavedScrollOffset = SavedUnfilteredScrollOffset;
     }
 
     public void ApplyFilter(string query)
     {
+        if (SearchText != query)
+            SearchText = query;
+
         _currentFilter = query;
         OnPropertyChanged(nameof(HasActiveFilter));
         RebuildFilteredRows();
+    }
+
+    /// <summary>
+    /// Sync variant of <see cref="ApplyFilter"/>. Used by navigation paths (back-restore,
+    /// section-restore) where CurrentView is swapped to this VM immediately after the
+    /// call returns; the async path would let the view paint the previous filter's rows
+    /// for one frame before the rebuild lands.
+    /// </summary>
+    public void ApplyFilterImmediate(string query)
+    {
+        if (SearchText != query)
+            SearchText = query;
+
+        _currentFilter = query;
+        OnPropertyChanged(nameof(HasActiveFilter));
+
+        Interlocked.Increment(ref _rebuildGeneration);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow);
+        FilteredAlbumRows.ReplaceAll(rows);
     }
 
     private void RebuildFilteredRows()
@@ -199,9 +231,18 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 a.Tracks.Any(t => MatchesSearch(t.Title, q, qNoSpaces) ||
                                   MatchesSearch(t.Artist, q, qNoSpaces)));
 
-            // Group artist matches together: sort by rank, then artist, then year
+            // In artist discographies, show the artist's own releases before feature appearances.
             filtered = filtered
-                .OrderBy(a => GetAlbumSearchRank(a, q, qNoSpaces))
+                .OrderBy(a => GetArtistDiscographyRank(a, artistFilter))
+                .ThenBy(a => GetAlbumSearchRank(a, q, qNoSpaces))
+                .ThenBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(a => a.Year)
+                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
+        }
+        else if (!string.IsNullOrEmpty(artistFilter))
+        {
+            filtered = filtered
+                .OrderBy(a => GetArtistDiscographyRank(a, artistFilter))
                 .ThenBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(a => a.Year)
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
@@ -553,6 +594,39 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 return true;
         }
         return false;
+    }
+
+    private static int GetArtistDiscographyRank(Album album, string artistFilter)
+    {
+        if (string.IsNullOrWhiteSpace(artistFilter))
+            return 0;
+
+        if (IsExactArtistCredit(album.Artist, artistFilter))
+            return 0;
+
+        if (album.Tracks.Any(t => IsExactArtistCredit(t.Artist, artistFilter)))
+            return 1;
+
+        if (ContainsArtistToken(album.Artist, artistFilter))
+            return 2;
+
+        return 3;
+    }
+
+    private static bool IsExactArtistCredit(string? artistField, string artistName)
+    {
+        if (string.IsNullOrWhiteSpace(artistField) || string.IsNullOrWhiteSpace(artistName))
+            return false;
+
+        if (artistField.Equals(artistName, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var fieldTokens = Track.ParseArtistTokens(artistField);
+        var filterTokens = Track.ParseArtistTokens(artistName);
+
+        return fieldTokens.Length > 0
+               && filterTokens.Length > 0
+               && fieldTokens.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(filterTokens);
     }
 
     public void Dispose()

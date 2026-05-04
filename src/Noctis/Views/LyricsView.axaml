@@ -41,7 +41,14 @@
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
         <Style Selector="Button.link-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22FFFFFF"/>
             <Setter Property="Opacity" Value="0.7"/>
+        </Style>
+        <Style Selector="Button.link-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#33FFFFFF"/>
+        </Style>
+        <Style Selector="Button.link-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
 
         <!-- Transport control button -->
@@ -83,40 +90,7 @@
             <Setter Property="Foreground" Value="#CCFFFFFF"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Height" Value="20"/>
-        </Style>
-        <Style Selector="Slider.lyrics-seek /template/ Track">
-            <Setter Property="Height" Value="6"/>
-        </Style>
-        <Style Selector="Slider.lyrics-seek /template/ RepeatButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource LyricsSliderFilledRes}"/>
-            <Setter Property="Height" Value="6"/>
-            <Setter Property="CornerRadius" Value="3"/>
-            <Setter Property="Margin" Value="0,0,-12,0"/>
-        </Style>
-        <Style Selector="Slider.lyrics-seek /template/ RepeatButton#PART_IncreaseButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource LyricsSliderUnfilledRes}"/>
-            <Setter Property="Opacity" Value="1.0"/>
-            <Setter Property="Height" Value="6"/>
-            <Setter Property="CornerRadius" Value="3"/>
-            <Setter Property="Margin" Value="-12,0,0,0"/>
-        </Style>
-        <Style Selector="Slider.lyrics-seek /template/ Thumb">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="12"/>
-            <Setter Property="Height" Value="12"/>
-        </Style>
-        <Style Selector="Slider.lyrics-seek:pointerover /template/ Thumb">
-            <Setter Property="Width" Value="14"/>
-            <Setter Property="Height" Value="14"/>
-        </Style>
-        <Style Selector="Slider.lyrics-seek /template/ Thumb /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource LyricsSliderThumbRes}"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="BoxShadow" Value="0 2 4 0 #40000000"/>
-        </Style>
-        <Style Selector="Slider.lyrics-seek:pointerover /template/ Thumb /template/ Border">
-            <Setter Property="CornerRadius" Value="7"/>
+            <Setter Property="Opacity" Value="0"/>
         </Style>
 
         <!-- Volume slider -->
@@ -126,11 +100,12 @@
             <Setter Property="Foreground" Value="#AAFFFFFF"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Height" Value="20"/>
+            <Setter Property="Width" Value="90"/>
             <Setter Property="Margin" Value="0,0,8,0"/>
         </Style>
         <Style Selector="Slider.lyrics-volume /template/ Track">
             <Setter Property="Height" Value="6"/>
-            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Margin" Value="7,0"/>
         </Style>
         <Style Selector="Slider.lyrics-volume /template/ RepeatButton /template/ Border">
             <Setter Property="Background" Value="{DynamicResource LyricsSliderFilledRes}"/>
@@ -138,9 +113,10 @@
             <Setter Property="CornerRadius" Value="3,0,0,3"/>
         </Style>
         <Style Selector="Slider.lyrics-volume /template/ RepeatButton#PART_IncreaseButton /template/ Border">
-            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Background" Value="{DynamicResource LyricsSliderUnfilledRes}"/>
+            <Setter Property="Opacity" Value="0.4"/>
             <Setter Property="Height" Value="6"/>
-            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="CornerRadius" Value="0,3,3,0"/>
         </Style>
         <Style Selector="Slider.lyrics-volume /template/ Thumb">
             <Setter Property="Background" Value="{DynamicResource LyricsSliderThumbRes}"/>
@@ -233,20 +209,17 @@
             <Setter Property="Background" Value="{DynamicResource LyricsSecBtnBgHoverRes}"/>
         </Style>
 
-        <!-- Lyric line (Apple Music–style active emphasis) -->
+        <Style Selector="ItemsControl#LyricsItemsControl Button:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+
+        <!-- Lyric line: keep active emphasis in opacity/color only, without size/position zoom. -->
         <Style Selector="TextBlock.lyric-line">
-            <Setter Property="RenderTransformOrigin" Value="0%,50%"/>
-            <Setter Property="RenderTransform" Value="translateY(0px)"/>
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
-                    <DoubleTransition Property="FontSize" Duration="0:0:0.4" Easing="CubicEaseInOut"/>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.45" Easing="CubicEaseOut"/>
                 </Transitions>
             </Setter>
-        </Style>
-        <Style Selector="TextBlock.lyric-line.active">
-            <Setter Property="RenderTransform" Value="translateY(-3px)"/>
         </Style>
 
         <!-- Lyrics scrollbar -->
@@ -294,18 +267,14 @@
         </Style>
         <Style Selector="TextBlock.word-accent">
             <Setter Property="Opacity" Value="0"/>
-            <Setter Property="RenderTransform" Value="scale(1.0)"/>
-            <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut"/>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut"/>
                 </Transitions>
             </Setter>
         </Style>
         <Style Selector="TextBlock.word-accent.current">
             <Setter Property="Opacity" Value="1.0"/>
-            <Setter Property="RenderTransform" Value="scale(1.05)"/>
         </Style>
     </UserControl.Styles>
 
@@ -322,10 +291,11 @@
                 Padding="40,30">
             <StackPanel x:Name="LeftContentStack" VerticalAlignment="Center"
                         HorizontalAlignment="Center"
-                        MaxWidth="670">
+                        ClipToBounds="False"
+                        Width="630">
                 <StackPanel.Transitions>
                     <Transitions>
-                        <DoubleTransition Property="MaxWidth" Duration="0:0:0.25">
+                        <DoubleTransition Property="Width" Duration="0:0:0.25">
                             <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
                         </DoubleTransition>
                     </Transitions>
@@ -417,10 +387,12 @@
                 <!-- Genre · Year · Tracks · Lossless info -->
                 <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Center"
+                            MaxWidth="560"
                             Spacing="0"
                             Margin="0,8,0,0"
+                            ClipToBounds="True"
                             IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <TextBlock FontSize="12" Foreground="{Binding LyricsSubtleFg}" VerticalAlignment="Center">
+                    <TextBlock FontSize="12" Foreground="{Binding LyricsSubtleFg}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
                         <TextBlock.Text>
                             <MultiBinding StringFormat="{}{0} · {1} · {2} tracks">
                                 <Binding Path="Player.CurrentTrack.Genre" FallbackValue=""/>
@@ -480,24 +452,54 @@
                 </StackPanel>
 
                 <!-- Seek Bar -->
-                <Grid Margin="6,8,6,0" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-                    <Slider Grid.Row="0" Grid.ColumnSpan="3"
-                            Value="{Binding Player.PositionFraction, Mode=TwoWay}"
-                            Classes="lyrics-seek"
-                            Minimum="0" Maximum="1"
-                            Focusable="False"
-                            VerticalAlignment="Center"
-                            Foreground="{Binding LyricsSliderFilled}"
-                            x:Name="SeekSlider"/>
-                    <TextBlock Grid.Row="1" Grid.Column="0"
-                               Text="{Binding Player.PositionText}"
-                               FontSize="11" Foreground="{Binding LyricsSubtleFg}"
-                               Margin="0,6,0,0"/>
-                    <TextBlock Grid.Row="1" Grid.Column="2"
-                               Text="{Binding Player.RemainingTimeText, StringFormat='-{0}'}"
-                               FontSize="11" Foreground="{Binding LyricsSubtleFg}"
-                               Margin="0,6,0,0"
-                               HorizontalAlignment="Right"/>
+                <Grid Margin="6,8,6,0" RowDefinitions="Auto,Auto">
+                    <Grid Grid.Row="0"
+                          Margin="7,0,7,4"
+                          ColumnDefinitions="64,*,64">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding Player.PositionText}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{Binding LyricsSubtleFg}"
+                                   HorizontalAlignment="Left"/>
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding Player.RemainingTimeText, StringFormat='-{0}'}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{Binding LyricsSubtleFg}"
+                                   HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Grid Grid.Row="1" Height="20" ClipToBounds="False">
+                        <Canvas x:Name="LyricsSeekVisual"
+                                Height="20"
+                                ClipToBounds="False"
+                                IsHitTestVisible="False">
+                            <Border x:Name="LyricsSeekTrackBackground"
+                                    Height="6"
+                                    CornerRadius="3"
+                                    Background="{DynamicResource LyricsSliderUnfilledRes}"
+                                    Canvas.Top="7"/>
+                            <Border x:Name="LyricsSeekTrackFill"
+                                    Height="6"
+                                    CornerRadius="3"
+                                    Background="{DynamicResource LyricsSliderFilledRes}"
+                                    Canvas.Top="7"/>
+                            <Border x:Name="LyricsSeekThumb"
+                                    Width="14"
+                                    Height="14"
+                                    CornerRadius="7"
+                                    Background="{DynamicResource LyricsSliderThumbRes}"
+                                    BoxShadow="0 2 4 0 #40000000"
+                                    Canvas.Top="3"/>
+                        </Canvas>
+                        <Slider Value="{Binding Player.PositionFraction, Mode=TwoWay}"
+                                Classes="lyrics-seek"
+                                Minimum="0" Maximum="1"
+                                Focusable="False"
+                                VerticalAlignment="Center"
+                                Foreground="{Binding LyricsSliderFilled}"
+                                x:Name="SeekSlider"/>
+                    </Grid>
                 </Grid>
 
                 <!-- Playback Pill Island -->
@@ -726,12 +728,33 @@
                             </Border>
                         </Button>
 
-                        <!-- Synced / Plain toggle (only when synced lyrics are available) -->
+                        <!-- Save searched lyrics (only for online results) -->
+                        <Button Classes="lyrics-ctrl-btn"
+                                Command="{Binding SaveLyricsToFileCommand}"
+                                IsVisible="{Binding CanSaveToFile}"
+                                Width="36" Height="36"
+                                ToolTip.Tip="Save lyrics">
+                            <PathIcon Data="{StaticResource SaveDiskIcon}"
+                                      Width="14" Height="14"
+                                      Foreground="#FFFFFF" />
+                        </Button>
+
+                        <!-- Remove saved/cached lyrics -->
+                        <Button Classes="lyrics-ctrl-btn"
+                                Command="{Binding RemoveLyricsCommand}"
+                                IsVisible="{Binding CanRemoveLyrics}"
+                                Width="36" Height="36"
+                                ToolTip.Tip="Remove lyrics">
+                            <PathIcon Data="{StaticResource TrashIcon}"
+                                      Width="14" Height="14"
+                                      Foreground="#E74856" />
+                        </Button>
+
+                        <!-- Synced / Plain toggle -->
                         <Border Background="#18FFFFFF"
                                 CornerRadius="999"
                                 Padding="2"
                                 VerticalAlignment="Center"
-                                IsVisible="{Binding HasSyncedLyricsAvailable}"
                                 ToolTip.Tip="Synced / Plain lyrics">
                             <StackPanel Orientation="Horizontal" Spacing="1">
                                 <Button Command="{Binding ToggleLyricsModeCommand}"
@@ -754,26 +777,6 @@
                                 </Button>
                             </StackPanel>
                         </Border>
-
-                        <!-- Save / Remove (morphing icon-only, lyrics action) -->
-                        <Button Classes="lyrics-ctrl-btn"
-                                Width="36" Height="36"
-                                IsVisible="{Binding CanSaveToFile}"
-                                Command="{Binding SaveLyricsToFileCommand}"
-                                ToolTip.Tip="Save lyrics">
-                            <PathIcon Data="{StaticResource SaveDiskIcon}"
-                                      Width="14" Height="14"
-                                      Foreground="#FFFFFF"/>
-                        </Button>
-                        <Button Classes="lyrics-ctrl-btn"
-                                Width="36" Height="36"
-                                IsVisible="{Binding CanRemoveLyrics}"
-                                Command="{Binding RemoveLyricsCommand}"
-                                ToolTip.Tip="Remove saved lyrics">
-                            <PathIcon Data="{StaticResource TrashIcon}"
-                                      Width="14" Height="14"
-                                      Foreground="#E74856"/>
-                        </Button>
 
                         <!-- Background color picker (icon only) -->
                         <Button Classes="lyrics-ctrl-btn"
@@ -909,11 +912,11 @@
                             </Button.Flyout>
                         </Button>
 
-                        <!-- Volume (expand-on-hover) -->
+                        <!-- Volume -->
                         <StackPanel x:Name="LyricsVolumeContainer"
-                                    Orientation="Horizontal" Spacing="0"
-                                    VerticalAlignment="Center"
-                                    PointerEntered="OnLyricsVolumeContainerEntered"
+                                     Orientation="Horizontal" Spacing="0"
+                                     VerticalAlignment="Center"
+                                     PointerEntered="OnLyricsVolumeContainerEntered"
                                     PointerExited="OnLyricsVolumeContainerExited">
                             <Button Classes="lyrics-ctrl-btn"
                                     Command="{Binding Player.ToggleMuteCommand}"
@@ -934,7 +937,7 @@
                                     </Viewbox>
                                 </Panel>
                             </Button>
-                            <Panel VerticalAlignment="Center">
+                            <Panel VerticalAlignment="Center" Margin="-9,0,0,0">
                                 <TextBlock x:Name="LyricsVolumePercentage"
                                            Text="{Binding Player.Volume}"
                                            FontSize="13"
@@ -943,6 +946,7 @@
                                            HorizontalAlignment="Left"
                                            VerticalAlignment="Center"
                                            Opacity="0"
+                                           IsVisible="False"
                                            IsHitTestVisible="False">
                                     <TextBlock.RenderTransform>
                                         <TranslateTransform X="0" Y="-18"/>
@@ -967,22 +971,15 @@
                                             </DoubleTransition>
                                         </Transitions>
                                     </Border.Transitions>
-                                    <Grid Width="99" VerticalAlignment="Center">
-                                        <!-- Pill-shaped track background (always visible) -->
-                                        <Border Height="6"
-                                                CornerRadius="3"
-                                                Background="{DynamicResource LyricsSliderUnfilledRes}"
-                                                Opacity="0.4"
-                                                Margin="7,0,7,0"
-                                                VerticalAlignment="Center"
-                                                HorizontalAlignment="Stretch"/>
+                                    <Grid Width="99" Margin="7,0,7,0"
+                                          HorizontalAlignment="Left"
+                                          VerticalAlignment="Center">
                                         <Slider x:Name="LyricsVolumeSlider"
                                                 Value="{Binding Player.Volume, Mode=TwoWay}"
                                                 Classes="lyrics-volume"
                                                 Minimum="0" Maximum="100"
                                                 Foreground="{Binding LyricsSliderFilled}"
-                                                VerticalAlignment="Center"
-                                                Margin="7,0,7,0"/>
+                                                VerticalAlignment="Center"/>
                                     </Grid>
                                 </Border>
                             </Panel>
@@ -1046,7 +1043,8 @@
                            Foreground="{Binding LyricsSubtleFg}"
                            HorizontalAlignment="Center"
                            IsVisible="{Binding SearchFailedMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                <Button Background="#E74856"
+                <Button Classes="accent-btn"
+                        Background="#E74856"
                         Foreground="{Binding LyricsPrimaryFg}"
                         BorderThickness="0"
                         Padding="16,8"
@@ -1139,7 +1137,7 @@
                                         <TextBlock Text="{Binding Text}"
                                                    Classes="lyric-line"
                                                    Classes.active="{Binding IsActive}"
-                                                   FontSize="{Binding IsActive, Converter={StaticResource BoolToOpacity}, ConverterParameter=38;46}"
+                                                   FontSize="46"
                                                    FontWeight="Bold"
                                                    Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
                                                    HorizontalAlignment="Stretch"

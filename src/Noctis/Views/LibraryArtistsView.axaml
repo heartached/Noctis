@@ -69,10 +69,14 @@
                                     </Panel>
                                 </Border>
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Artist.Name}"
-                                               FontSize="14"
-                                               LineHeight="18"
-                                               VerticalAlignment="Center" />
+                                    <ctrl:HighlightTextBlock DisplayText="{Binding Artist.Name}"
+                                                             HighlightText="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).SearchText}"
+                                                             FontSize="13"
+                                                             FontWeight="SemiBold"
+                                                             TextWrapping="NoWrap"
+                                                             MaxLines="1"
+                                                             TextTrimming="CharacterEllipsis"
+                                                             VerticalAlignment="Center" />
                                     <TextBlock FontSize="11" Opacity="0.5">
                                         <TextBlock.Text>
                                             <MultiBinding StringFormat="{}{0} albums · {1} tracks">

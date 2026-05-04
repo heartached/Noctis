@@ -3,7 +3,7 @@
 ; Compile with: ISCC.exe installer.iss
 
 #define MyAppName "Noctis"
-#define MyAppVersion "1.0.2"
+#define MyAppVersion "1.1.1"
 #define MyAppPublisher "heartached"
 #define MyAppExeName "Noctis.exe"
 #define MyAppURL "https://github.com/heartached/Noctis"

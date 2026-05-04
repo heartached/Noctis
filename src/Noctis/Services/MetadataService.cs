@@ -129,6 +129,7 @@ public class MetadataService : IMetadataService
                 DiscNumber = tag.Disc > 0 ? (int)tag.Disc : 1,
                 DiscCount = tag.DiscCount > 0 ? (int)tag.DiscCount : 1,
                 Bpm = (int)tag.BeatsPerMinute,
+                MusicalKey = ReadMusicalKey(file),
                 Year = (int)tag.Year,
                 Duration = props.Duration,
                 AlbumId = Track.ComputeAlbumId(albumArtist, album),
@@ -773,6 +774,65 @@ public class MetadataService : IMetadataService
             ".wv" => "WavPack",
             _ => ext.TrimStart('.').ToUpperInvariant()
         };
+    }
+
+    /// <summary>
+    /// Reads common musical key fields used by DJ/tagging tools.
+    /// ID3v2: TKEY. Xiph: INITIALKEY / KEY. Apple: iTunes freeform boxes.
+    /// </summary>
+    private static string ReadMusicalKey(TagLib.File file)
+    {
+        try
+        {
+            if (file.GetTag(TagLib.TagTypes.Id3v2) is TagLib.Id3v2.Tag id3v2)
+            {
+                var frame = id3v2.GetFrames<TagLib.Id3v2.TextInformationFrame>()
+                    .FirstOrDefault(f => f.FrameId == TagLib.ByteVector.FromString("TKEY", TagLib.StringType.Latin1));
+                var val = frame?.Text?.FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
+
+                foreach (var userFrame in id3v2.GetFrames<TagLib.Id3v2.UserTextInformationFrame>())
+                {
+                    var desc = userFrame.Description;
+                    if (string.Equals(desc, "INITIALKEY", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(desc, "KEY", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(desc, "MUSICALKEY", StringComparison.OrdinalIgnoreCase))
+                    {
+                        val = userFrame.Text?.FirstOrDefault();
+                        if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
+                    }
+                }
+            }
+        }
+        catch { }
+
+        try
+        {
+            if (file.GetTag(TagLib.TagTypes.Xiph) is TagLib.Ogg.XiphComment xiph)
+            {
+                foreach (var fieldName in new[] { "INITIALKEY", "KEY", "MUSICALKEY" })
+                {
+                    var val = xiph.GetField(fieldName)?.FirstOrDefault();
+                    if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
+                }
+            }
+        }
+        catch { }
+
+        try
+        {
+            if (file.GetTag(TagLib.TagTypes.Apple) is TagLib.Mpeg4.AppleTag apple)
+            {
+                foreach (var boxName in new[] { "INITIALKEY", "initialkey", "KEY", "MUSICALKEY" })
+                {
+                    var val = apple.GetDashBox("com.apple.iTunes", boxName);
+                    if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
+                }
+            }
+        }
+        catch { }
+
+        return string.Empty;
     }
 
     /// <summary>

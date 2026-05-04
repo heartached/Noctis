@@ -23,7 +23,7 @@ public sealed class UpdateService
     public static Version CurrentVersion =>
         Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
 
-    /// <summary>Current version formatted for display, e.g. "Version 1.0.2".</summary>
+    /// <summary>Current version formatted for display, e.g. "Version 1.1.1".</summary>
     public static string CurrentVersionDisplay
     {
         get
@@ -74,10 +74,21 @@ public sealed class UpdateService
     /// Downloads the installer to %TEMP%. Reports progress 0-100.
     /// Returns the path to the downloaded file.
     /// </summary>
-    public async Task<string> DownloadInstallerAsync(
-        string url, long expectedSize,
+    public Task<string> DownloadInstallerAsync(
+        UpdateInfo update,
         IProgress<double>? progress = null,
         CancellationToken ct = default)
+    {
+        if (update.InstallerApiUrl is null)
+            throw new InvalidOperationException("In-app updates require the GitHub release asset API URL.");
+
+        return DownloadInstallerAsync(update.InstallerApiUrl, update.InstallerSize, progress, ct);
+    }
+
+    private async Task<string> DownloadInstallerAsync(
+        string url, long expectedSize,
+        IProgress<double>? progress,
+        CancellationToken ct)
     {
         var tempPath = Path.Combine(Path.GetTempPath(), "Noctis-Update-Setup.exe");
 
@@ -191,9 +202,9 @@ public sealed class UpdateInfo
 {
     public required string TagName { get; init; }
     public required Version Version { get; init; }
-    /// <summary>GitHub API asset URL — does not increment the release download counter.</summary>
+    /// <summary>GitHub API asset URL used by the in-app updater.</summary>
     public string? InstallerApiUrl { get; init; }
-    /// <summary>Browser download URL — increments the download counter (used as fallback).</summary>
+    /// <summary>Browser download URL reserved for manual downloads and website links.</summary>
     public string? InstallerUrl { get; init; }
     public long InstallerSize { get; init; }
     public required string ReleaseUrl { get; init; }

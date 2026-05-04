@@ -20,10 +20,20 @@ public class VlcAudioPlayer : IAudioPlayer
     private const int VolumeDeadband = 2;
     private const int EndReachedGraceMs = 1200;
     private const int FadeStepMs = 35;
+    private const int StandbyWarmupTimeoutMs = 650;
+    private const int StandbyWarmupPollMs = 25;
+    private const int DeferredCleanupDelayMs = 1000;
+    private const double DualFadeHeadroom = 0.88;
 
     private readonly LibVLC _libVlc;
-    private readonly MediaPlayer _player;
+    private MediaPlayer _player;
+    private MediaPlayer _standbyPlayer;
     private Media? _currentMedia;
+    private Media? _standbyMedia;
+    private string? _standbyPath;
+    private long _standbyStartPositionMs = -1;
+    private long _standbyPreparedTicksUtc;
+    private bool _standbyPrepared;
     private bool _disposed;
 
     // Serializes Play/Stop operations so rapid track switching
@@ -47,10 +57,13 @@ public class VlcAudioPlayer : IAudioPlayer
     private long _lastVolumeWriteTick;
     private CancellationTokenSource? _volumeTrailingCts;
     private readonly object _volumeGate = new();
+    private long _lastDualFadeTickMs;
+    private int _slowDualFadeTicks;
 
     // EndReached can fire before the final output buffer is fully audible.
     // Keep lyrics/UI alive briefly, then raise TrackEnded once the grace window passes.
     private long _endReachedDeadlineTicksUtc;
+    private long _endReachedSessionId;
 
     // VLC's _player.Length can return 0 after EndReached (media considered "finished").
     // Store the last known good value so end-of-track position updates always reach
@@ -60,6 +73,9 @@ public class VlcAudioPlayer : IAudioPlayer
     // Track paused state ourselves because VLC's MediaPlayer
     // does not expose a reliable IsPaused property.
     private volatile bool _isPaused;
+
+    private long _playbackSessionId;
+    private long _lastPlayStartTicksUtc;
 
     // Sound enhancer state
     private readonly object _equalizerLock = new();
@@ -79,6 +95,7 @@ public class VlcAudioPlayer : IAudioPlayer
     // Crossfade state
     private bool _crossfadeEnabled;
     private int _crossfadeDurationMs = 6000;
+    private AutoMixFadeCurve _crossfadeFadeCurve = AutoMixFadeCurve.SmoothEase;
 
     // Pending seek — applied inside PlayInternal after _player.Play() to avoid race
     private long _pendingSeekMs = -1;
@@ -138,9 +155,12 @@ public class VlcAudioPlayer : IAudioPlayer
         );
 
         _player = new MediaPlayer(_libVlc);
+        _standbyPlayer = new MediaPlayer(_libVlc);
 
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnError;
+        _standbyPlayer.EndReached += OnEndReached;
+        _standbyPlayer.EncounteredError += OnError;
 
         _positionTimer = new System.Timers.Timer(100);
         _positionTimer.Elapsed += OnPositionTimerElapsed;
@@ -181,6 +201,8 @@ public class VlcAudioPlayer : IAudioPlayer
         }
     }
 
+    public long CurrentSessionId => Interlocked.Read(ref _playbackSessionId);
+
     // Store the user-facing volume (0–100) separately from VLC's internal volume,
     // because we apply a logarithmic curve to make low volumes audible.
     private int _userVolume = 75;
@@ -193,6 +215,9 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             if (_disposed) return;
             _userVolume = Math.Clamp(value, 0, 100);
+            if (_crossfadeEnabled && _currentMedia != null)
+                return;
+
             var target = ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100));
             ScheduleVolumeWrite(target);
         }
@@ -204,6 +229,9 @@ public class VlcAudioPlayer : IAudioPlayer
         set
         {
             _volumeAdjust = Math.Clamp(value, -100, 100);
+            if (_crossfadeEnabled && _currentMedia != null)
+                return;
+
             // Re-apply volume with the new adjustment
             var effective = Math.Clamp(_userVolume + _volumeAdjust, 0, 100);
             var target = ApplyVolumeCurve(effective);
@@ -224,6 +252,9 @@ public class VlcAudioPlayer : IAudioPlayer
     public void CommitVolume()
     {
         if (_disposed) return;
+        if (_crossfadeEnabled && _currentMedia != null)
+            return;
+
         var target = ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100));
         lock (_volumeGate)
         {
@@ -237,7 +268,13 @@ public class VlcAudioPlayer : IAudioPlayer
     public bool IsMuted
     {
         get => !_disposed && _player.Mute;
-        set { if (!_disposed) _player.Mute = value; }
+        set
+        {
+            if (_disposed) return;
+            _player.Mute = value;
+            if (_standbyPrepared)
+                _standbyPlayer.Mute = value;
+        }
     }
 
     /// <summary>
@@ -343,7 +380,8 @@ public class VlcAudioPlayer : IAudioPlayer
                 return;
             }
             var progress = (double)i / steps;
-            var next = (int)Math.Round(fromVolume + ((toVolume - fromVolume) * progress));
+            var eased = AutoMixFadeMath.SmoothFadeProgress(progress);
+            var next = (int)Math.Round(fromVolume + ((toVolume - fromVolume) * eased));
             _player.Volume = Math.Clamp(next, 0, 100);
 
             if (i < steps)
@@ -393,6 +431,8 @@ public class VlcAudioPlayer : IAudioPlayer
                 // Only apply to player if it's initialized
                 if (_player != null)
                     _player.SetEqualizer(_equalizer);
+                if (_standbyPrepared)
+                    _standbyPlayer.SetEqualizer(_equalizer);
             }
         }
         else
@@ -402,6 +442,8 @@ public class VlcAudioPlayer : IAudioPlayer
             {
                 if (_player != null)
                     _player.SetEqualizer(null);
+                if (_standbyPrepared)
+                    _standbyPlayer.SetEqualizer(null);
                 _equalizer?.Dispose();
                 _equalizer = null;
             }
@@ -451,6 +493,8 @@ public class VlcAudioPlayer : IAudioPlayer
 
                 if (_player != null)
                     _player.SetEqualizer(_equalizer);
+                if (_standbyPrepared)
+                    _standbyPlayer.SetEqualizer(_equalizer);
             }
         }
         else
@@ -466,6 +510,8 @@ public class VlcAudioPlayer : IAudioPlayer
                 {
                     if (_player != null)
                         _player.SetEqualizer(null);
+                    if (_standbyPrepared)
+                        _standbyPlayer.SetEqualizer(null);
                     _equalizer?.Dispose();
                     _equalizer = null;
                 }
@@ -481,11 +527,117 @@ public class VlcAudioPlayer : IAudioPlayer
         // The flag is stored here and applied in PlayInternal when creating new media.
     }
 
-    public void SetCrossfade(bool enabled, int durationSeconds)
+    public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase)
     {
         if (_disposed) return;
         _crossfadeEnabled = enabled;
         _crossfadeDurationMs = Math.Clamp(durationSeconds, 1, 12) * 1000;
+        _crossfadeFadeCurve = fadeCurve;
+    }
+
+    public void PrepareNext(string filePath, long startPositionMs = -1)
+    {
+        if (_disposed || string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            return;
+
+        var normalizedPath = Path.GetFullPath(filePath);
+        if (_standbyPrepared &&
+            string.Equals(_standbyPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
+            _standbyStartPositionMs == startPositionMs)
+            return;
+
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try { _playbackLock.Wait(); }
+            catch (ObjectDisposedException) { return; }
+
+            try
+            {
+                var prepareStart = Environment.TickCount64;
+                DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.DualPrepareStart", $"path={Path.GetFileName(normalizedPath)}, startMs={startPositionMs}");
+
+                if (_disposed || _currentMedia == null)
+                    return;
+
+                if (_standbyPrepared &&
+                    string.Equals(_standbyPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
+                    _standbyStartPositionMs == startPositionMs)
+                    return;
+
+                ReleasePreparedNext();
+
+                var media = new Media(_libVlc, normalizedPath, FromType.FromPath);
+                if (_normalizationEnabled)
+                {
+                    media.AddOption(":audio-replay-gain-mode=track");
+                    media.AddOption(":audio-replay-gain-preamp=0.0");
+                    media.AddOption(":audio-replay-gain-default=-7.0");
+                }
+
+                var parseTask = media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
+                if (!parseTask.Wait(8000) || parseTask.Result != MediaParsedStatus.Done)
+                {
+                    media.Dispose();
+                    DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.DualPrepareFailed", $"path={Path.GetFileName(normalizedPath)}");
+                    return;
+                }
+
+                _standbyMedia = media;
+                _standbyPath = normalizedPath;
+                _standbyStartPositionMs = startPositionMs;
+                Interlocked.Exchange(ref _standbyPreparedTicksUtc, DateTime.UtcNow.Ticks);
+                _standbyPrepared = true;
+                _standbyPlayer.Volume = 0;
+                _standbyPlayer.Mute = _player.Mute;
+
+                Equalizer? equalizerToApply = null;
+                lock (_equalizerLock)
+                {
+                    if ((_soundEnhancerEnabled || _advancedEqEnabled) && _equalizer != null)
+                        equalizerToApply = _equalizer;
+                }
+
+                if (equalizerToApply != null)
+                    _standbyPlayer.SetEqualizer(equalizerToApply);
+
+                DebugLogger.Info(
+                    DebugLogger.Category.Playback,
+                    "AutoMix.DualPrepared",
+                    $"path={Path.GetFileName(normalizedPath)}, startMs={startPositionMs}, elapsedMs={Environment.TickCount64 - prepareStart}");
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.DualPrepareFailed", ex.Message);
+                ReleasePreparedNext();
+            }
+            finally
+            {
+                _playbackLock.Release();
+            }
+        });
+    }
+
+    public void CancelPreparedNext()
+    {
+        if (_disposed) return;
+        CancelSkipCts();
+
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try { _playbackLock.Wait(); }
+            catch (ObjectDisposedException) { return; }
+
+            try
+            {
+                if (_standbyPrepared)
+                    DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.Cancelled", "inactive player stopped");
+                ReleasePreparedNext();
+            }
+            finally
+            {
+                _playbackLock.Release();
+            }
+        });
     }
 
     // ── Playback control ────────────────────────────────────────
@@ -521,12 +673,12 @@ public class VlcAudioPlayer : IAudioPlayer
     /// Core playback logic. Must be called under _playbackLock on a ThreadPool thread.
     ///
     /// Sequence:
-    ///   1. Stop current playback (synchronous, VLC releases all buffers)
-    ///   2. Dispose old Media (safe now that VLC isn't reading it)
-    ///   3. Create new Media + parse header (gets codec/duration/sample rate)
+    ///   1. Create new Media + parse header while current playback can continue
+    ///   2. Stop current playback (synchronous, VLC releases all buffers)
+    ///   3. Dispose old Media (safe now that VLC isn't reading it)
     ///   4. Start playback
     ///
-    /// Step 3 is critical for M4A/ALAC. Without parsing, VLC may not detect
+    /// Parsing is critical for M4A/ALAC. Without it, VLC may not detect
     /// the AAC/ALAC codec inside the MP4 container, causing silent playback
     /// or immediate EndReached.
     /// </summary>
@@ -536,6 +688,8 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             // Cancel any in-progress fade/parse from a previous PlayInternal call
             // so rapid Next/Previous skips respond instantly.
+            var sessionId = Interlocked.Increment(ref _playbackSessionId);
+            _positionTimer.Stop();
             var oldCts = _skipCts;
             _skipCts = new CancellationTokenSource();
             oldCts.Cancel();
@@ -547,7 +701,7 @@ public class VlcAudioPlayer : IAudioPlayer
             Interlocked.Exchange(ref _lastKnownLengthMs, 0);
 
             var hadPreviousMedia = _currentMedia != null;
-            var targetVolume = ApplyVolumeCurve(_userVolume);
+            var targetVolume = GetTargetVlcVolume();
             var canTransitionFade = _crossfadeEnabled && hadPreviousMedia && !_player.Mute;
             var fadeOutMs = canTransitionFade && _player.IsPlaying
                 ? Math.Clamp(_crossfadeDurationMs / 2, 100, 6000)
@@ -556,21 +710,19 @@ public class VlcAudioPlayer : IAudioPlayer
                 ? Math.Clamp(_crossfadeDurationMs - fadeOutMs, 100, 12000)
                 : 0;
 
-            // 1. Stop current playback — synchronous when off VLC's event thread
-            if (_player.IsPlaying || _isPaused)
+            if (canTransitionFade &&
+                TryStartPreparedAutoMix(filePath, targetVolume, sessionId, cancel))
             {
-                if (fadeOutMs > 0)
-                    FadePlayerVolumeBlocking(_player.Volume, 0, fadeOutMs, cancel);
-
-                _player.Stop();
+                Interlocked.Exchange(ref _pendingSeekMs, -1);
+                return;
             }
 
-            // 2. Dispose old media AFTER stop so VLC isn't reading from it
-            var oldMedia = _currentMedia;
-            _currentMedia = null;
-            oldMedia?.Dispose();
+            if (!canTransitionFade && _standbyPrepared)
+                ReleasePreparedNext();
 
-            // 3. Create and parse the new media
+            // 1. Create and parse the new media before fading/stopping the old one.
+            // This keeps AutoMix transitions clean: the next track is already picked
+            // and decoder-ready before the audible handoff starts.
             var media = new Media(_libVlc, filePath, FromType.FromPath);
 
             // Parse the file header synchronously. This reads container
@@ -599,7 +751,22 @@ public class VlcAudioPlayer : IAudioPlayer
                 return;
             }
 
+            // 2. Stop current playback — synchronous when off VLC's event thread.
+            // After EndReached, IsPlaying is already false, but VLC can still be
+            // holding the ended media. Stop whenever media exists so sequential
+            // queue playback starts the next item from a clean player state.
+            if (_currentMedia != null || _player.IsPlaying || _isPaused)
+            {
+                if (fadeOutMs > 0)
+                    FadePlayerVolumeBlocking(_player.Volume, 0, fadeOutMs, cancel);
+
+                _player.Stop();
+            }
+
+            // 3. Dispose old media AFTER stop so VLC isn't reading from it
+            var oldMedia = _currentMedia;
             _currentMedia = media;
+            oldMedia?.Dispose();
             _isPaused = false;
 
             // 4. Apply loudness normalization via ReplayGain tags (static per-track).
@@ -618,6 +785,7 @@ public class VlcAudioPlayer : IAudioPlayer
             }
 
             // 5. Start playback
+            Interlocked.Exchange(ref _lastPlayStartTicksUtc, DateTime.UtcNow.Ticks);
             _player.Play(_currentMedia);
 
             // Re-apply volume curve and equalizer after starting new media
@@ -631,6 +799,7 @@ public class VlcAudioPlayer : IAudioPlayer
             {
                 _player.Volume = targetVolume;
             }
+            _crossfadeEnabled = false;
 
             Equalizer? equalizerToApply = null;
             lock (_equalizerLock)
@@ -659,7 +828,7 @@ public class VlcAudioPlayer : IAudioPlayer
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 Thread.Sleep(150);
-                if (!_disposed && _player.IsPlaying)
+                if (!_disposed && sessionId == CurrentSessionId && _player.IsPlaying)
                 {
                     var len = _player.Length;
                     if (len > 0)
@@ -676,9 +845,240 @@ public class VlcAudioPlayer : IAudioPlayer
         }
     }
 
+    private bool TryStartPreparedAutoMix(string filePath, int targetVolume, long sessionId, CancellationToken cancel)
+    {
+        var normalizedPath = Path.GetFullPath(filePath);
+        if (!_standbyPrepared ||
+            _standbyMedia == null ||
+            string.IsNullOrWhiteSpace(_standbyPath) ||
+            !string.Equals(_standbyPath, normalizedPath, StringComparison.OrdinalIgnoreCase))
+        {
+            DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.FallbackSinglePlayer", $"path={Path.GetFileName(filePath)}");
+            return false;
+        }
+
+        try
+        {
+            ResetEndReachedPending();
+            lock (_volumeGate)
+            {
+                _volumeTrailingCts?.Cancel();
+                _pendingVolumeTarget = -1;
+            }
+
+            _standbyPlayer.Volume = 0;
+            _standbyPlayer.Mute = _player.Mute;
+
+            var preparedAgeMs = (DateTime.UtcNow.Ticks - Interlocked.Read(ref _standbyPreparedTicksUtc)) / TimeSpan.TicksPerMillisecond;
+
+            DebugLogger.Info(
+                DebugLogger.Category.Playback,
+                "AutoMix.DualStarted",
+                $"path={Path.GetFileName(filePath)}, durationMs={_crossfadeDurationMs}, curve={_crossfadeFadeCurve}, preparedAgeMs={preparedAgeMs}");
+
+            Interlocked.Exchange(ref _lastPlayStartTicksUtc, DateTime.UtcNow.Ticks);
+            _standbyPlayer.Play(_standbyMedia);
+
+            var startMs = Math.Max(_standbyStartPositionMs, Interlocked.Read(ref _pendingSeekMs));
+            if (startMs > 0)
+                _standbyPlayer.Time = startMs;
+
+            if (!WaitForStandbyPlaybackReady(_standbyPlayer, sessionId, cancel, out var warmupElapsedMs))
+            {
+                DebugLogger.Warn(
+                    DebugLogger.Category.Playback,
+                    "AutoMix.FallbackSinglePlayer",
+                    $"standby not ready; warmupElapsedMs={warmupElapsedMs}");
+                ReleasePreparedNext();
+                return false;
+            }
+
+            DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.DualWarmupReady", $"elapsedMs={warmupElapsedMs}, state={_standbyPlayer.State}");
+
+            FadeDualPlayerVolumesBlocking(
+                _player,
+                _standbyPlayer,
+                _player.Volume,
+                targetVolume,
+                _crossfadeDurationMs,
+                _crossfadeFadeCurve,
+                cancel);
+
+            var finalVolume = GetTargetVlcVolume();
+            if (cancel.IsCancellationRequested || _disposed)
+            {
+                _player.Volume = finalVolume;
+                ReleasePreparedNext();
+                return true;
+            }
+
+            var outgoingPlayer = _player;
+            var outgoingMedia = _currentMedia;
+            _player = _standbyPlayer;
+            _player.Volume = finalVolume;
+            _currentMedia = _standbyMedia;
+            _standbyPlayer = outgoingPlayer;
+            _standbyMedia = null;
+            _standbyPath = null;
+            _standbyStartPositionMs = -1;
+            Interlocked.Exchange(ref _standbyPreparedTicksUtc, 0);
+            _standbyPrepared = false;
+
+            lock (_volumeGate)
+            {
+                _volumeTrailingCts?.Cancel();
+                _pendingVolumeTarget = -1;
+                _lastAppliedVolume = finalVolume;
+                _lastVolumeWriteTick = Environment.TickCount64;
+            }
+
+            _crossfadeEnabled = false;
+            _isPaused = false;
+            _positionTimer.Start();
+
+            DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.PlayerSwapCommitted", $"session={sessionId}");
+            QueueInactivePlayerCleanup(_standbyPlayer, outgoingMedia, sessionId);
+
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                Thread.Sleep(150);
+                if (!_disposed && sessionId == CurrentSessionId && _player.IsPlaying)
+                {
+                    var len = _player.Length;
+                    if (len > 0)
+                        DurationResolved?.Invoke(this, TimeSpan.FromMilliseconds(len));
+                }
+            });
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.FallbackSinglePlayer", ex.Message);
+            ReleasePreparedNext();
+            return false;
+        }
+    }
+
+    private bool WaitForStandbyPlaybackReady(MediaPlayer standby, long sessionId, CancellationToken cancel, out long elapsedMs)
+    {
+        var start = Environment.TickCount64;
+        var deadline = start + StandbyWarmupTimeoutMs;
+        while (Environment.TickCount64 < deadline)
+        {
+            if (_disposed || cancel.IsCancellationRequested || sessionId != CurrentSessionId)
+            {
+                elapsedMs = Environment.TickCount64 - start;
+                return false;
+            }
+
+            try
+            {
+                if (standby.IsPlaying)
+                {
+                    elapsedMs = Environment.TickCount64 - start;
+                    return true;
+                }
+            }
+            catch
+            {
+                elapsedMs = Environment.TickCount64 - start;
+                return false;
+            }
+
+            Thread.Sleep(StandbyWarmupPollMs);
+        }
+
+        elapsedMs = Environment.TickCount64 - start;
+        return false;
+    }
+
+    private void QueueInactivePlayerCleanup(MediaPlayer inactivePlayer, Media? inactiveMedia, long sessionId)
+    {
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            var cleanupStart = Environment.TickCount64;
+            try
+            {
+                Thread.Sleep(DeferredCleanupDelayMs);
+                DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.CleanupStart", $"session={sessionId}");
+                inactivePlayer.Volume = 0;
+                inactivePlayer.Stop();
+                inactivePlayer.SetEqualizer(null);
+                inactiveMedia?.Dispose();
+                DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.CleanupEnd", $"session={sessionId}, elapsedMs={Environment.TickCount64 - cleanupStart}");
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupFailed", ex.Message);
+            }
+        });
+    }
+
+    private void FadeDualPlayerVolumesBlocking(
+        MediaPlayer outgoing,
+        MediaPlayer incoming,
+        int outgoingStartVolume,
+        int incomingTargetVolume,
+        int durationMs,
+        AutoMixFadeCurve fadeCurve,
+        CancellationToken cancel)
+    {
+        outgoingStartVolume = Math.Clamp(outgoingStartVolume, 0, 100);
+        incomingTargetVolume = Math.Clamp(incomingTargetVolume, 0, 100);
+        durationMs = Math.Max(0, durationMs);
+
+        if (durationMs == 0)
+        {
+            outgoing.Volume = 0;
+            incoming.Volume = incomingTargetVolume;
+            return;
+        }
+
+        var steps = Math.Max(1, durationMs / FadeStepMs);
+        var sleepMs = Math.Max(1, durationMs / steps);
+        var fadeStart = Environment.TickCount64;
+        Interlocked.Exchange(ref _lastDualFadeTickMs, fadeStart);
+        Interlocked.Exchange(ref _slowDualFadeTicks, 0);
+        DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.FadeStart", $"durationMs={durationMs}, steps={steps}, sleepMs={sleepMs}, curve={fadeCurve}");
+
+        for (var i = 1; i <= steps; i++)
+        {
+            if (_disposed || cancel.IsCancellationRequested)
+            {
+                return;
+            }
+
+            var progress = (double)i / steps;
+            var (outFactor, inFactor) = AutoMixFadeMath.GetFadeFactors(progress, fadeCurve);
+            incomingTargetVolume = GetTargetVlcVolume();
+            var headroom = 1.0 - ((1.0 - DualFadeHeadroom) * Math.Sin(Math.PI * progress));
+            outgoing.Volume = Math.Clamp((int)Math.Round(outgoingStartVolume * outFactor * headroom), 0, 100);
+            incoming.Volume = Math.Clamp((int)Math.Round(incomingTargetVolume * inFactor * headroom), 0, 100);
+
+            var now = Environment.TickCount64;
+            var lastTick = Interlocked.Exchange(ref _lastDualFadeTickMs, now);
+            if (lastTick > 0 && now - lastTick > sleepMs + 25)
+                Interlocked.Increment(ref _slowDualFadeTicks);
+
+            if (i < steps)
+                Thread.Sleep(sleepMs);
+        }
+
+        DebugLogger.Info(
+            DebugLogger.Category.Playback,
+            "AutoMix.FadeEnd",
+            $"elapsedMs={Environment.TickCount64 - fadeStart}, slowTicks={Interlocked.CompareExchange(ref _slowDualFadeTicks, 0, 0)}");
+    }
+
+    private int GetTargetVlcVolume() =>
+        ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100));
+
     public void Pause()
     {
         if (_disposed) return;
+        CancelSkipCts();
+        CancelPreparedNext();
 
         if (_player.IsPlaying)
         {
@@ -725,6 +1125,7 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         if (_disposed) return;
 
+        CancelSkipCts();
         ResetEndReachedPending();
         Interlocked.Exchange(ref _latestSeekMs, -1);
         _positionTimer.Stop();
@@ -737,6 +1138,7 @@ public class VlcAudioPlayer : IAudioPlayer
 
             try
             {
+                ReleasePreparedNext();
                 _player.Stop();
 
                 // Detach and dispose media so VLC cannot replay it.
@@ -755,6 +1157,8 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         if (_disposed || _currentMedia == null) return;
 
+        CancelSkipCts();
+        CancelPreparedNext();
         ResetEndReachedPending();
 
         var len = _player.Length;
@@ -780,7 +1184,21 @@ public class VlcAudioPlayer : IAudioPlayer
 
     private void OnEndReached(object? sender, EventArgs e)
     {
-        DebugLogger.Info(DebugLogger.Category.Playback, "VLC.EndReached");
+        if (!ReferenceEquals(sender, _player))
+        {
+            DebugLogger.Info(DebugLogger.Category.Playback, "VLC.EndReached.IgnoredInactive");
+            return;
+        }
+
+        var sessionId = CurrentSessionId;
+        var elapsedSinceStartMs = (DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastPlayStartTicksUtc)) / TimeSpan.TicksPerMillisecond;
+        if (elapsedSinceStartMs is >= 0 and < 500)
+        {
+            DebugLogger.Info(DebugLogger.Category.Playback, "VLC.EndReached.IgnoredStale", $"session={sessionId}");
+            return;
+        }
+
+        DebugLogger.Info(DebugLogger.Category.Playback, "VLC.EndReached", $"session={sessionId}");
         _isPaused = false;
 
         // Fire a final position update at the track's full duration so lyrics
@@ -802,12 +1220,19 @@ public class VlcAudioPlayer : IAudioPlayer
         catch { /* Player may be in transitional state */ }
 
         var deadline = DateTime.UtcNow.AddMilliseconds(EndReachedGraceMs).Ticks;
+        Interlocked.Exchange(ref _endReachedSessionId, sessionId);
         Interlocked.Exchange(ref _endReachedDeadlineTicksUtc, deadline);
         _positionTimer.Start();
     }
 
     private void OnError(object? sender, EventArgs e)
     {
+        if (!ReferenceEquals(sender, _player))
+        {
+            DebugLogger.Warn(DebugLogger.Category.Playback, "VLC.Error.IgnoredInactive");
+            return;
+        }
+
         DebugLogger.Error(DebugLogger.Category.Playback, "VLC.Error", "VLC encountered a playback error");
         ResetEndReachedPending();
         _positionTimer.Stop();
@@ -821,9 +1246,18 @@ public class VlcAudioPlayer : IAudioPlayer
 
         try
         {
+            var sessionId = CurrentSessionId;
             var endDeadlineTicks = Interlocked.Read(ref _endReachedDeadlineTicksUtc);
             if (endDeadlineTicks != 0)
             {
+                var pendingEndSessionId = Interlocked.Read(ref _endReachedSessionId);
+                if (pendingEndSessionId != sessionId)
+                {
+                    DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Event.IgnoredStale", $"eventSession={pendingEndSessionId}, currentSession={sessionId}");
+                    ResetEndReachedPending();
+                    return;
+                }
+
                 // During grace period, report the full track duration so lyrics/UI
                 // see the complete position. Fall back to last known good length
                 // because _player.Length can return 0 after EndReached.
@@ -837,7 +1271,8 @@ public class VlcAudioPlayer : IAudioPlayer
                     Interlocked.CompareExchange(ref _endReachedDeadlineTicksUtc, 0, endDeadlineTicks) == endDeadlineTicks)
                 {
                     _positionTimer.Stop();
-                    TrackEnded?.Invoke(this, EventArgs.Empty);
+                    if (pendingEndSessionId == CurrentSessionId)
+                        TrackEnded?.Invoke(this, EventArgs.Empty);
                 }
 
                 return;
@@ -859,7 +1294,8 @@ public class VlcAudioPlayer : IAudioPlayer
                     Interlocked.Exchange(ref _lastKnownLengthMs, len);
 
                 var pos = TimeSpan.FromMilliseconds(time);
-                PositionChanged?.Invoke(this, pos);
+                if (sessionId == CurrentSessionId)
+                    PositionChanged?.Invoke(this, pos);
             }
         }
         catch
@@ -941,6 +1377,26 @@ public class VlcAudioPlayer : IAudioPlayer
     private void ResetEndReachedPending()
     {
         Interlocked.Exchange(ref _endReachedDeadlineTicksUtc, 0);
+        Interlocked.Exchange(ref _endReachedSessionId, 0);
+    }
+
+    private void CancelSkipCts()
+    {
+        try { _skipCts.Cancel(); }
+        catch (ObjectDisposedException) { }
+    }
+
+    private void ReleasePreparedNext()
+    {
+        try { _standbyPlayer.Stop(); } catch { }
+        _standbyPlayer.Volume = 0;
+        try { _standbyPlayer.SetEqualizer(null); } catch { }
+        _standbyMedia?.Dispose();
+        _standbyMedia = null;
+        _standbyPath = null;
+        _standbyStartPositionMs = -1;
+        Interlocked.Exchange(ref _standbyPreparedTicksUtc, 0);
+        _standbyPrepared = false;
     }
 
     // ── Dispose ─────────────────────────────────────────────────
@@ -957,13 +1413,16 @@ public class VlcAudioPlayer : IAudioPlayer
 
         _player.EndReached -= OnEndReached;
         _player.EncounteredError -= OnError;
+        _standbyPlayer.EndReached -= OnEndReached;
+        _standbyPlayer.EncounteredError -= OnError;
 
-        _skipCts.Cancel();
+        CancelSkipCts();
         _skipCts.Dispose();
         _volumeTrailingCts?.Cancel();
         _volumeTrailingCts?.Dispose();
 
         try { _player.Stop(); } catch { }
+        try { _standbyPlayer.Stop(); } catch { }
 
         lock (_equalizerLock)
         {
@@ -971,7 +1430,9 @@ public class VlcAudioPlayer : IAudioPlayer
             _equalizer = null;
         }
         _currentMedia?.Dispose();
+        _standbyMedia?.Dispose();
         _player.Dispose();
+        _standbyPlayer.Dispose();
         _libVlc.Dispose();
         _playbackLock.Dispose();
     }

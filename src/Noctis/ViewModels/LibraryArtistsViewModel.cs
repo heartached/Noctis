@@ -85,6 +85,9 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
 
     public void ApplyFilter(string query)
     {
+        if (SearchText != query)
+            SearchText = query;
+
         _currentFilter = query;
         OnPropertyChanged(nameof(HasActiveFilter));
 

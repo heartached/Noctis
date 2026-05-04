@@ -16,6 +16,33 @@
         <conv:TrackPlaylistCommandParameterConverter x:Key="TrackPlaylistParamConverter" />
     </UserControl.Resources>
 
+    <UserControl.Styles>
+        <Style Selector="Button.featured-artist-tile:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.featured-artist-tile:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.featured-artist-tile:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.featured-artist-tile:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.neutral-desc-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.neutral-desc-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22FFFFFF" />
+        </Style>
+        <Style Selector="Button.neutral-desc-btn:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.neutral-desc-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#33FFFFFF" />
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="*">
         <DockPanel Grid.Row="0">
 
@@ -105,7 +132,8 @@
                     </TextBlock>
 
                     <!-- Description (clickable) -->
-                    <Button Background="Transparent"
+                    <Button Classes="neutral-desc-btn"
+                            Background="Transparent"
                             BorderThickness="0"
                             Padding="0"
                             MinHeight="0"
@@ -131,7 +159,7 @@
                                 Padding="20,10"
                                 CornerRadius="999"
                                 Classes="accent-btn"
-                            Background="#E04060"
+                            Background="#E74856"
                                 Foreground="White"
                                 BorderThickness="0"
                                 FontWeight="SemiBold"
@@ -149,7 +177,7 @@
                                 Padding="20,10"
                                 CornerRadius="999"
                                 Classes="accent-btn"
-                            Background="#E04060"
+                            Background="#E74856"
                                 Foreground="White"
                                 BorderThickness="0"
                                 FontWeight="SemiBold"
@@ -254,22 +282,23 @@
 
             <Separator DockPanel.Dock="Top" Margin="24,0,24,2" />
 
-            <!-- ═══════════════ Track List ═══════════════ -->
-            <Grid x:Name="TrackListWrapper" Margin="24,0,24,0">
-                <ListBox Classes="track-list"
-                         ItemsSource="{Binding Tracks}"
-                         x:Name="TrackList"
-                         DragDrop.AllowDrop="True">
-                    <ListBox.Styles>
-                        <Style Selector="ListBoxItem">
-                            <Setter Property="Focusable" Value="False" />
-                        </Style>
-                    </ListBox.Styles>
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="m:Track">
-                            <Grid ColumnDefinitions="48,2*,1.2*,1.2*,0.8*,70,40"
-                                  Margin="0,1" Background="Transparent"
-                                  helpers:DragFileBehavior.EnableFileDrag="True">
+            <Grid RowDefinitions="*,Auto">
+                <!-- ═══════════════ Track List ═══════════════ -->
+                <Grid Grid.Row="0" x:Name="TrackListWrapper" Margin="24,0,24,0">
+                    <ListBox Classes="track-list"
+                             ItemsSource="{Binding Tracks}"
+                             x:Name="TrackList"
+                             DragDrop.AllowDrop="True">
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Focusable" Value="False" />
+                            </Style>
+                        </ListBox.Styles>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="m:Track">
+                                <Grid ColumnDefinitions="48,2*,1.2*,1.2*,0.8*,70,40"
+                                      Margin="0,1" Background="Transparent"
+                                      helpers:DragFileBehavior.EnableFileDrag="True">
 
                                 <!-- Cover art thumbnail -->
                                 <Border Grid.Column="0"
@@ -298,10 +327,11 @@
                                             Orientation="Horizontal" Spacing="6"
                                             Margin="12,3,12,3"
                                             VerticalAlignment="Center">
-                                    <TextBlock Classes="one-line-explicit-title"
-                                               Text="{Binding TitleDisplay}"
-                                               FontSize="13"
-                                               FontWeight="SemiBold" />
+                                    <controls:HighlightTextBlock Classes="one-line-explicit-title"
+                                                                 DisplayText="{Binding TitleDisplay}"
+                                                                 HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
+                                                                 FontSize="13"
+                                                                 FontWeight="SemiBold" />
                                     <Border Classes="explicit-badge compact"
                                             IsVisible="{Binding IsExplicit}"
                                             ToolTip.Tip="Explicit">
@@ -318,11 +348,12 @@
                                         Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
                                         Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewArtistCommand}"
                                         CommandParameter="{Binding Artist}">
-                                    <TextBlock Text="{Binding ArtistDisplay}"
-                                               FontSize="12"
-                                               Foreground="#E04060"
-                                               TextTrimming="CharacterEllipsis"
-                                               VerticalAlignment="Center" />
+                                    <controls:HighlightTextBlock DisplayText="{Binding ArtistDisplay}"
+                                                                 HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
+                                                                 FontSize="12"
+                                                                 Foreground="#E74856"
+                                                                 TextTrimming="CharacterEllipsis"
+                                                                 VerticalAlignment="Center" />
                                 </Button>
 
                                 <!-- Album (clickable, red) -->
@@ -331,20 +362,22 @@
                                         Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
                                         Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewAlbumCommand}"
                                         CommandParameter="{Binding}">
-                                    <TextBlock Text="{Binding Album}"
-                                               FontSize="12"
-                                               Foreground="#E74856"
-                                               TextTrimming="CharacterEllipsis"
-                                               VerticalAlignment="Center" />
+                                    <controls:HighlightTextBlock DisplayText="{Binding Album}"
+                                                                 HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
+                                                                 FontSize="12"
+                                                                 Foreground="#E74856"
+                                                                 TextTrimming="CharacterEllipsis"
+                                                                 VerticalAlignment="Center" />
                                 </Button>
 
                                 <!-- Genre -->
-                                <TextBlock Grid.Column="4"
-                                           Text="{Binding Genre}"
-                                           FontSize="12"
-                                           Opacity="0.45"
-                                           TextTrimming="CharacterEllipsis"
-                                           VerticalAlignment="Center" />
+                                <controls:HighlightTextBlock Grid.Column="4"
+                                                             DisplayText="{Binding Genre}"
+                                                             HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
+                                                             FontSize="12"
+                                                             Opacity="0.45"
+                                                             TextTrimming="CharacterEllipsis"
+                                                             VerticalAlignment="Center" />
 
                                 <!-- Duration + favorite heart -->
                                 <StackPanel Grid.Column="5"
@@ -379,69 +412,154 @@
                                              HorizontalAlignment="Center"
                                              VerticalAlignment="Center" />
                                 </Button>
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
 
-                <!-- Drop indicator line for drag reorder -->
-                <Border x:Name="PlaylistDropIndicator"
-                        IsHitTestVisible="False"
-                        IsVisible="False"
-                        Height="2"
-                        VerticalAlignment="Top"
-                        HorizontalAlignment="Stretch"
-                        Margin="8,0"
-                        CornerRadius="1"
-                        Background="{DynamicResource AccentColorBrush}">
-                    <Border.RenderTransform>
-                        <TranslateTransform Y="0"/>
-                    </Border.RenderTransform>
+                    <!-- Drop indicator line for drag reorder -->
+                    <Border x:Name="PlaylistDropIndicator"
+                            IsHitTestVisible="False"
+                            IsVisible="False"
+                            Height="2"
+                            VerticalAlignment="Top"
+                            HorizontalAlignment="Stretch"
+                            Margin="8,0"
+                            CornerRadius="1"
+                            Background="{DynamicResource AccentColorBrush}">
+                        <Border.RenderTransform>
+                            <TranslateTransform Y="0"/>
+                        </Border.RenderTransform>
+                    </Border>
+
+                    <!-- Empty state: manual playlists -->
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="8">
+                        <StackPanel.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="!Tracks.Count" />
+                                <Binding Path="IsManualPlaylist" />
+                            </MultiBinding>
+                        </StackPanel.IsVisible>
+                        <TextBlock Text="This playlist is empty"
+                                   FontSize="16"
+                                   Opacity="0.5"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center" />
+                        <TextBlock Text="Drag tracks here from the library"
+                                   FontSize="13"
+                                   Opacity="0.3"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Empty state: smart playlists -->
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="8">
+                        <StackPanel.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="!Tracks.Count" />
+                                <Binding Path="IsSmartPlaylist" />
+                            </MultiBinding>
+                        </StackPanel.IsVisible>
+                        <TextBlock Text="No tracks match the current rules"
+                                   FontSize="16"
+                                   Opacity="0.5"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center" />
+                        <TextBlock Text="Try adjusting the smart playlist rules"
+                                   FontSize="13"
+                                   Opacity="0.3"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- ═══════════════ Featured Artists ═══════════════ -->
+                <Border Grid.Row="1"
+                        Margin="0,28,0,28"
+                        Padding="0,20,0,26"
+                        Background="#14FFFFFF"
+                        IsVisible="{Binding HasFeaturedArtists}">
+                    <StackPanel Spacing="18"
+                                HorizontalAlignment="Left"
+                                Margin="48,0,0,0">
+                        <Button Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                MinHeight="0"
+                                HorizontalAlignment="Center"
+                                HorizontalContentAlignment="Center"
+                                Cursor="Hand"
+                                Command="{Binding OpenFeaturedArtistsCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <TextBlock Text="Featured Artists"
+                                           FontSize="18"
+                                           FontWeight="Bold" />
+                                <TextBlock Text="&#xE76C;"
+                                           FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                           FontSize="13"
+                                           Opacity="0.55"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <ScrollViewer HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding FeaturedArtists}"
+                                          HorizontalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="26" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:PlaylistFeaturedArtist">
+                                        <Button Classes="featured-artist-tile"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Padding="0"
+                                                Width="118"
+                                                Cursor="Hand"
+                                                Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewArtistCommand}"
+                                                CommandParameter="{Binding Name}">
+                                            <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                                <Border Width="108"
+                                                        Height="108"
+                                                        CornerRadius="54"
+                                                        ClipToBounds="True"
+                                                        Background="#2E2E2E">
+                                                    <Panel>
+                                                        <controls:CachedImage SourcePath="{Binding ImagePath}"
+                                                                              Stretch="UniformToFill"
+                                                                              Width="108"
+                                                                              Height="108"
+                                                                              IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                        <PathIcon Data="{StaticResource ArtistsIcon}"
+                                                                  Width="34"
+                                                                  Height="34"
+                                                                  Foreground="#66FFFFFF"
+                                                                  HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"
+                                                                  IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                                    </Panel>
+                                                </Border>
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontSize="13"
+                                                           FontWeight="SemiBold"
+                                                           TextAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxWidth="118" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
                 </Border>
-
-                <!-- Empty state: manual playlists -->
-                <StackPanel HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Spacing="8">
-                    <StackPanel.IsVisible>
-                        <MultiBinding Converter="{x:Static BoolConverters.And}">
-                            <Binding Path="!Tracks.Count" />
-                            <Binding Path="IsManualPlaylist" />
-                        </MultiBinding>
-                    </StackPanel.IsVisible>
-                    <TextBlock Text="This playlist is empty"
-                               FontSize="16"
-                               Opacity="0.5"
-                               HorizontalAlignment="Center"
-                               TextAlignment="Center" />
-                    <TextBlock Text="Drag tracks here from the library"
-                               FontSize="13"
-                               Opacity="0.3"
-                               HorizontalAlignment="Center"
-                               TextAlignment="Center" />
-                </StackPanel>
-
-                <!-- Empty state: smart playlists -->
-                <StackPanel HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Spacing="8">
-                    <StackPanel.IsVisible>
-                        <MultiBinding Converter="{x:Static BoolConverters.And}">
-                            <Binding Path="!Tracks.Count" />
-                            <Binding Path="IsSmartPlaylist" />
-                        </MultiBinding>
-                    </StackPanel.IsVisible>
-                    <TextBlock Text="No tracks match the current rules"
-                               FontSize="16"
-                               Opacity="0.5"
-                               HorizontalAlignment="Center"
-                               TextAlignment="Center" />
-                    <TextBlock Text="Try adjusting the smart playlist rules"
-                               FontSize="13"
-                               Opacity="0.3"
-                               HorizontalAlignment="Center"
-                               TextAlignment="Center" />
-                </StackPanel>
             </Grid>
 
         </DockPanel>

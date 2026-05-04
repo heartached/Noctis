@@ -93,9 +93,11 @@ public partial class MainWindowViewModel : ViewModelBase
         public required string TabName { get; init; }
         public required Action RestoreState { get; init; }
         public required string SearchText { get; init; }
+        public required string SectionKey { get; init; }
     }
 
     private readonly Stack<NavigationEntry> _navigationHistory = new();
+    private string? _albumDetailBackButtonText;
 
     // ── Cached content ViewModels (created once, reused) ──
 
@@ -169,7 +171,11 @@ public partial class MainWindowViewModel : ViewModelBase
         _playlistsVm = new LibraryPlaylistsViewModel(Sidebar, Player, library, persistence);
 
         _foldersVm = new LibraryFoldersViewModel(library, Player, persistence);
-        _foldersVm.NavigateToSettingsRequested += (_, _) => Navigate("settings");
+        _foldersVm.NavigateToSettingsRequested += (_, _) =>
+        {
+            Navigate("settings");
+            Dispatcher.UIThread.Post(Settings.RequestMediaFoldersSection);
+        };
         _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
@@ -540,6 +546,9 @@ public partial class MainWindowViewModel : ViewModelBase
             IsLyricsPanelOpen = false;
         }
 
+        if (newValue is not AlbumDetailViewModel)
+            _albumDetailBackButtonText = null;
+
         RefreshBackButton();
 
         // Dispose transient ViewModels (e.g., AlbumDetailViewModel) to release
@@ -553,15 +562,41 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void RefreshBackButton()
     {
+        TopBar.SearchWatermark = CurrentView is PlaylistFeaturedArtistsViewModel
+            ? "Find in Featured Artists"
+            : $"Find in {TopBar.CurrentTabName}";
+
         if (CurrentView is MoreByArtistViewModel mbaVm)
         {
             TopBar.ShowBackButton("Back", GoBackInHistoryCommand, mbaVm.Title);
             return;
         }
 
+        if (CurrentView is PlaylistFeaturedArtistsViewModel featuredArtistsVm)
+        {
+            TopBar.ShowBackButton("Back to Playlist", GoBackInHistoryCommand, featuredArtistsVm.Title);
+            return;
+        }
+
+        if (CurrentView is AlbumDetailViewModel)
+        {
+            TopBar.ShowAlbumDetailBackButton(GetCurrentAlbumDetailBackButtonText(), GoBackInHistoryCommand);
+            return;
+        }
+
+        if (ReferenceEquals(CurrentView, _albumsVm) && _albumsVm.IsArtistFiltered)
+        {
+            TopBar.ShowBackButton("Back to Albums", GoBackInHistoryCommand, _albumsVm.HeaderText);
+            return;
+        }
+
         if (_navigationHistory.Count > 0 && ShouldShowTopBarBackButton(CurrentView))
         {
-            TopBar.ShowBackButton(_navigationHistory.Peek().BackButtonText, GoBackInHistoryCommand);
+            var backButtonText = _navigationHistory.Peek().BackButtonText;
+            if (string.IsNullOrWhiteSpace(backButtonText))
+                backButtonText = GetRootBackButtonText(CurrentView);
+
+            TopBar.ShowBackButton(backButtonText, GoBackInHistoryCommand);
             return;
         }
 
@@ -616,8 +651,9 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         var view = CurrentView;
         var tabName = TopBar.CurrentTabName;
-        var backButtonText = GetRootBackButtonText(view);
+        var backButtonText = GetNavigationEntryBackButtonText(view);
         var restoreState = CaptureRestoreState(view);
+        var sectionKey = GetNavigationEntrySectionKey(view);
 
         return new NavigationEntry
         {
@@ -625,7 +661,8 @@ public partial class MainWindowViewModel : ViewModelBase
             BackButtonText = backButtonText,
             TabName = tabName,
             RestoreState = restoreState,
-            SearchText = TopBar.SearchText
+            SearchText = TopBar.SearchText,
+            SectionKey = sectionKey
         };
     }
 
@@ -660,17 +697,21 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var artistFilterName = _albumsVm.ArtistFilterName;
             var searchQuery = TopBar.SearchText;
-            // Don't capture scroll offset eagerly — the view's OnDetachedFromVisualTree
-            // saves the actual position AFTER this method runs. Read it lazily at restore time.
+            // Read lazily because the view saves its physical scroll offset after
+            // this entry is pushed, when it detaches from the visual tree.
 
             return () =>
             {
-                var scrollOffset = _albumsVm.SavedScrollOffset;
+                var scrollOffset = string.IsNullOrWhiteSpace(artistFilterName)
+                    ? (_albumsVm.SavedUnfilteredScrollOffset > 0
+                        ? _albumsVm.SavedUnfilteredScrollOffset
+                        : _albumsVm.SavedScrollOffset)
+                    : _albumsVm.SavedScrollOffset;
 
                 if (string.IsNullOrWhiteSpace(artistFilterName))
                 {
                     _albumsVm.ClearArtistFilter();
-                    _albumsVm.ApplyFilter(searchQuery ?? string.Empty);
+                    _albumsVm.ApplyFilterImmediate(searchQuery ?? string.Empty);
                 }
                 else
                 {
@@ -703,34 +744,13 @@ public partial class MainWindowViewModel : ViewModelBase
         target.RestoreState();
         TopBar.CurrentTabName = target.TabName;
         TopBar.SearchText = target.SearchText;
+        _currentSectionKey = target.SectionKey;
+        _albumDetailBackButtonText = target.View is AlbumDetailViewModel
+            ? NormalizeAlbumDetailBackButtonText(target.BackButtonText)
+            : null;
 
         if (!ReferenceEquals(CurrentView, target.View))
             CurrentView = target.View;
-
-        // If returning to a searchable view with an active search and no further
-        // history, push an unfiltered "root" entry so the user can go back once
-        // more to clear the search and reach the clean page.
-        if (_navigationHistory.Count == 0
-            && !string.IsNullOrWhiteSpace(target.SearchText)
-            && target.View is ISearchable)
-        {
-            var rootBackText = GetRootBackButtonText(target.View);
-            var view = target.View;
-            var tabName = target.TabName;
-
-            _navigationHistory.Push(new NavigationEntry
-            {
-                View = view,
-                BackButtonText = rootBackText,
-                TabName = tabName,
-                SearchText = string.Empty,
-                RestoreState = () =>
-                {
-                    if (view is ISearchable searchable)
-                        searchable.ApplyFilter(string.Empty);
-                }
-            });
-        }
 
         // Restore page-specific top bar actions for the target view
         RestoreTopBarActionsForView(target.View);
@@ -739,22 +759,139 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private string GetRootBackButtonText(ViewModelBase view)
     {
+        if (ReferenceEquals(view, _homeVm))
+            return GetSectionBackButtonText("home");
         if (ReferenceEquals(view, _albumsVm) || ReferenceEquals(view, _coverFlowVm))
-            return "Back to Albums";
+            return _albumsVm.IsArtistFiltered ? "Back" : GetSectionBackButtonText("albums");
         if (ReferenceEquals(view, _songsVm))
-            return "Back to Songs";
-
+            return GetSectionBackButtonText("songs");
         if (ReferenceEquals(view, _artistsVm))
-            return "Back to Artists";
+            return GetSectionBackButtonText("artists");
+        if (ReferenceEquals(view, _foldersVm))
+            return GetSectionBackButtonText("folders");
         if (ReferenceEquals(view, _playlistsVm))
-            return "Back to Playlists";
+            return GetSectionBackButtonText("playlists");
         if (ReferenceEquals(view, _favoritesVm))
-            return "Back to Favorites";
+            return GetSectionBackButtonText("favorites");
+        if (ReferenceEquals(view, _queueVm))
+            return GetSectionBackButtonText("queue");
+        if (ReferenceEquals(view, _lyricsVm))
+            return GetSectionBackButtonText("lyrics");
+        if (ReferenceEquals(view, _statisticsVm))
+            return GetSectionBackButtonText("statistics");
+        if (ReferenceEquals(view, Settings))
+            return GetSectionBackButtonText("settings");
         if (view is AlbumDetailViewModel)
             return "Back to Albums";
         if (view is PlaylistViewModel)
             return "Back to Playlists";
         return "Back";
+    }
+
+    private string GetCurrentSectionBackButtonText()
+    {
+        return GetSectionBackButtonText(GetCurrentSectionKey());
+    }
+
+    private string GetCurrentSectionKey()
+    {
+        return _currentSectionKey;
+    }
+
+    private static string GetSectionBackButtonText(string? key)
+    {
+        return key switch
+        {
+            "home" => "Back to Home",
+            "songs" => "Back to Songs",
+            "albums" => "Back to Albums",
+            "artists" => "Back to Artists",
+            "folders" => "Back to Folders",
+            "playlists" => "Back to Playlists",
+            "favorites" => "Back to Favorites",
+            "queue" => "Back to Queue",
+            "lyrics" => "Back to Lyrics",
+            "statistics" => "Back to Statistics",
+            "settings" => "Back to Settings",
+            { } playlistKey when playlistKey.StartsWith("playlist:", StringComparison.Ordinal) => "Back to Playlists",
+            _ => "Back to Albums"
+        };
+    }
+
+    private string GetNavigationEntryBackButtonText(ViewModelBase view)
+    {
+        return view is AlbumDetailViewModel
+            ? GetCurrentAlbumDetailBackButtonText()
+            : GetRootBackButtonText(view);
+    }
+
+    private string GetNavigationEntrySectionKey(ViewModelBase view)
+    {
+        if (ReferenceEquals(view, _homeVm))
+            return "home";
+        if (ReferenceEquals(view, _songsVm))
+            return "songs";
+        if (ReferenceEquals(view, _albumsVm) || ReferenceEquals(view, _coverFlowVm))
+            return "albums";
+        if (ReferenceEquals(view, _artistsVm))
+            return "artists";
+        if (ReferenceEquals(view, _foldersVm))
+            return "folders";
+        if (ReferenceEquals(view, _playlistsVm))
+            return "playlists";
+        if (ReferenceEquals(view, _favoritesVm))
+            return "favorites";
+        if (ReferenceEquals(view, _queueVm))
+            return "queue";
+        if (ReferenceEquals(view, _lyricsVm))
+            return "lyrics";
+        if (ReferenceEquals(view, _statisticsVm))
+            return "statistics";
+        if (ReferenceEquals(view, Settings))
+            return "settings";
+
+        return _currentSectionKey;
+    }
+
+    private string GetCurrentAlbumDetailBackButtonText()
+    {
+        return NormalizeAlbumDetailBackButtonText(_albumDetailBackButtonText ?? GetAlbumDetailBackButtonText());
+    }
+
+    private string GetAlbumDetailBackButtonText()
+    {
+        if (_navigationHistory.Count == 0)
+            return GetCurrentSectionBackButtonText();
+
+        var entry = _navigationHistory.Peek();
+        var text = entry.BackButtonText;
+
+        if (string.IsNullOrWhiteSpace(text) || text == "Back")
+            text = GetRootBackButtonText(entry.View);
+
+        var sourceSectionKey = entry.SectionKey;
+
+        if ((string.IsNullOrWhiteSpace(text) || text == "Back" || text == "Back to Albums")
+            && !ReferenceEquals(entry.View, _albumsVm)
+            && !ReferenceEquals(entry.View, _coverFlowVm)
+            && entry.View is not AlbumDetailViewModel)
+        {
+            text = GetSectionBackButtonText(sourceSectionKey);
+        }
+        else if (text == "Back to Albums" && sourceSectionKey is not "albums")
+        {
+            text = GetSectionBackButtonText(sourceSectionKey);
+        }
+
+        return NormalizeAlbumDetailBackButtonText(text);
+    }
+
+    private static string NormalizeAlbumDetailBackButtonText(string? text)
+    {
+        // Empty/null falls back to "Back to Albums". A literal "Back" is intentional
+        // (e.g. when the previous view is an artist discography that lives on _albumsVm
+        // but isn't the Albums grid) — leave it as-is.
+        return string.IsNullOrWhiteSpace(text) ? "Back to Albums" : text;
     }
 
     private bool IsLongLivedView(ViewModelBase? view)
@@ -795,7 +932,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _isCoverFlowMode = false;
             TopBar.IsCoverFlowMode = false;
-            TopBar.IsSearchVisible = true;
+            TopBar.IsSearchVisible = _currentSectionKey != "home";
         }
 
         // Track which top-level section the user is conceptually on. While in
@@ -967,11 +1104,12 @@ public partial class MainWindowViewModel : ViewModelBase
         PushCurrentViewToHistory();
         ClearAllTopBarActions();
 
-        var detail = new PlaylistViewModel(playlist, Player, _library, _persistence, Sidebar);
+        var detail = new PlaylistViewModel(playlist, Player, _library, _persistence, Sidebar, _artistImageService);
         detail.BackRequested += (_, _) => GoBackInHistory();
         detail.ViewAlbumRequested += OnViewAlbumFromTrack;
         detail.SetSearchLyricsAction(SearchLyricsForTrack);
         detail.SetViewArtistAction(ViewArtistByName);
+        detail.SetOpenFeaturedArtistsAction(OpenPlaylistFeaturedArtistsPage);
         CurrentView = detail;
     }
 
@@ -984,10 +1122,11 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenAlbumDetail(album);
     }
 
-    private void OpenAlbumDetail(Album album, bool pushHistory = true)
+    private void OpenAlbumDetail(Album album, bool pushHistory = true, string? backButtonText = null)
     {
         if (pushHistory)
             PushCurrentViewToHistory();
+        _albumDetailBackButtonText = NormalizeAlbumDetailBackButtonText(backButtonText ?? GetAlbumDetailBackButtonText());
         ClearAllTopBarActions();
 
         var detail = new AlbumDetailViewModel(album, Player, _persistence, _library, Sidebar, _lastFm, Settings);
@@ -997,6 +1136,7 @@ public partial class MainWindowViewModel : ViewModelBase
         detail.SetSearchLyricsAction(SearchLyricsForTrack);
         detail.SetOpenMoreByArtistAction(OpenMoreByArtistPage);
         CurrentView = detail;
+        TopBar.ShowAlbumDetailBackButton(GetCurrentAlbumDetailBackButtonText(), GoBackInHistoryCommand);
     }
 
     private void OpenMoreByArtistPage(string artistName, System.Collections.Generic.IEnumerable<Album> albums)
@@ -1037,12 +1177,26 @@ public partial class MainWindowViewModel : ViewModelBase
         var playlist = Sidebar.GetPlaylist(id);
         if (playlist == null) return _homeVm;
 
-        var playlistVm = new PlaylistViewModel(playlist, Player, _library, _persistence, Sidebar);
+        var playlistVm = new PlaylistViewModel(playlist, Player, _library, _persistence, Sidebar, _artistImageService);
         playlistVm.ViewAlbumRequested += OnViewAlbumFromTrack;
         playlistVm.BackRequested += (_, _) => Navigate("playlists");
         playlistVm.SetSearchLyricsAction(SearchLyricsForTrack);
         playlistVm.SetViewArtistAction(ViewArtistByName);
+        playlistVm.SetOpenFeaturedArtistsAction(OpenPlaylistFeaturedArtistsPage);
         return playlistVm;
+    }
+
+    private void OpenPlaylistFeaturedArtistsPage(IReadOnlyList<PlaylistFeaturedArtist> artists)
+    {
+        if (artists.Count == 0) return;
+
+        PushCurrentViewToHistory();
+        ClearAllTopBarActions();
+
+        var page = new PlaylistFeaturedArtistsViewModel(artists);
+        page.SetViewArtistAction(ViewArtistByName);
+        CurrentView = page;
+        RefreshBackButton();
     }
 
     // ── Search ───────────────────────────────────────────────
@@ -1108,8 +1262,8 @@ public partial class MainWindowViewModel : ViewModelBase
             new RelayCommand(EnterCoverFlowMode),
             _isCoverFlowMode);
 
-        // Hide search in cover flow mode (must run after CurrentTabName sets IsSearchVisible=true)
-        if (_isCoverFlowMode)
+        // Home and Cover Flow do not use the top-bar search field.
+        if (_isCoverFlowMode || _currentSectionKey == "home")
             TopBar.IsSearchVisible = false;
     }
 
@@ -1127,7 +1281,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (!_isCoverFlowMode) return;
         _isCoverFlowMode = false;
         TopBar.IsCoverFlowMode = false;
-        TopBar.IsSearchVisible = true;
+        TopBar.IsSearchVisible = _currentSectionKey != "home";
         // Return to the section that was selected underneath
         CurrentView = ResolveSectionView(_currentSectionKey);
     }

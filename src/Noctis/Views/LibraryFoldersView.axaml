@@ -39,14 +39,17 @@
                            FontSize="14"
                            Opacity="0.7" />
                 <Button Grid.Column="3"
-                        Classes="link"
-                        Content="Manage media folders…"
+                        Content="Manage Media Folders"
                         Command="{Binding OpenMediaFolderSettingsCommand}"
                         ToolTip.Tip="Open Settings to add or remove the music folders that get scanned."
-                        Background="Transparent"
+                        Background="{DynamicResource SystemControlBackgroundListLowBrush}"
                         BorderThickness="0"
-                        Padding="6,4"
-                        Opacity="0.7" />
+                        CornerRadius="999"
+                        Padding="14,7"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Cursor="Hand"
+                        Opacity="0.85" />
             </Grid>
 
             <ListBox Classes="track-list"

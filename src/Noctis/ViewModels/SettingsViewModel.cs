@@ -31,8 +31,16 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _suspendSettingPersistence;
     private CancellationTokenSource? _eqSaveDebounceCts;
     private CancellationTokenSource? _scanStatusClearCts;
+    private bool _syncingTransitionMode;
+
+    [ObservableProperty] private int _mediaFoldersScrollRequest;
 
     private AppSettings _settings;
+
+    public void RequestMediaFoldersSection()
+    {
+        MediaFoldersScrollRequest++;
+    }
 
     // ── Appearance ──
     // Five theme buttons (Gray is the default) plus System (auto-pick Gray vs Light from OS).
@@ -47,7 +55,13 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Audio Playback ──
 
+    [ObservableProperty] private bool _autoMixEnabled;
     [ObservableProperty] private bool _crossfadeEnabled;
+    [ObservableProperty] private AutoMixTransitionMode _autoMixTransitionMode = Noctis.Models.AutoMixTransitionMode.Off;
+    [ObservableProperty] private AutoMixStrength _autoMixStrength = Noctis.Models.AutoMixStrength.Balanced;
+    [ObservableProperty] private bool _autoMixRemoveSilence = true;
+    [ObservableProperty] private bool _autoMixAvoidAlbums = true;
+    [ObservableProperty] private bool _autoMixBeatMatch = true;
     [ObservableProperty] private double _crossfadeDuration = 6;
     [ObservableProperty] private bool _soundCheckEnabled;
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
@@ -57,7 +71,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _coverFlowAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsArtistMarqueeEnabled = true;
-    [ObservableProperty] private bool _albumDetailColorTintEnabled = true;
+    [ObservableProperty] private bool _albumDetailColorTintEnabled;
 
     // ── Lyrics Providers ──
 
@@ -72,6 +86,19 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Preset names shown in the dropdown. "Custom" is only present while bands deviate from a preset.</summary>
     public ObservableCollection<string> VisibleEqPresets { get; } = CreateDefaultVisiblePresets();
+    public ObservableCollection<AutoMixTransitionMode> AutoMixTransitionModes { get; } = new()
+    {
+        Noctis.Models.AutoMixTransitionMode.Off,
+        Noctis.Models.AutoMixTransitionMode.Crossfade,
+        Noctis.Models.AutoMixTransitionMode.AutoMix
+    };
+
+    public ObservableCollection<AutoMixStrength> AutoMixStrengthOptions { get; } = new()
+    {
+        Noctis.Models.AutoMixStrength.Subtle,
+        Noctis.Models.AutoMixStrength.Balanced,
+        Noctis.Models.AutoMixStrength.Extended
+    };
 
     private static ObservableCollection<string> CreateDefaultVisiblePresets()
     {
@@ -311,7 +338,12 @@ public partial class SettingsViewModel : ViewModelBase
             ScanOnStartup = _settings.ScanOnStartup;
 
             // Playback
-            CrossfadeEnabled = _settings.CrossfadeEnabled;
+            AutoMixTransitionMode = ResolveTransitionMode(_settings);
+            AutoMixStrength = _settings.AutoMixStrength;
+            AutoMixRemoveSilence = _settings.AutoMixRemoveSilence;
+            AutoMixAvoidAlbums = _settings.AutoMixAvoidAlbums;
+            AutoMixBeatMatch = _settings.AutoMixBeatMatch;
+            SyncLegacyTransitionBooleans(AutoMixTransitionMode);
             CrossfadeDuration = Math.Clamp(_settings.CrossfadeDuration, 1, 12);
             SoundCheckEnabled = _settings.SoundCheckEnabled;
             TrackTitleMarqueeEnabled = _settings.TrackTitleMarqueeEnabled;
@@ -441,6 +473,12 @@ public partial class SettingsViewModel : ViewModelBase
             })
             .ToList();
         _settings.CrossfadeEnabled = CrossfadeEnabled;
+        _settings.AutoMixEnabled = AutoMixEnabled;
+        _settings.AutoMixTransitionMode = AutoMixTransitionMode;
+        _settings.AutoMixStrength = AutoMixStrength;
+        _settings.AutoMixRemoveSilence = AutoMixRemoveSilence;
+        _settings.AutoMixAvoidAlbums = AutoMixAvoidAlbums;
+        _settings.AutoMixBeatMatch = AutoMixBeatMatch;
         _settings.CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         _settings.SoundCheckEnabled = SoundCheckEnabled;
         _settings.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
@@ -466,13 +504,36 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Returns the loaded settings object.</summary>
     public AppSettings GetSettings() => _settings;
 
+    private static AutoMixTransitionMode ResolveTransitionMode(AppSettings settings)
+    {
+        if (settings.AutoMixEnabled)
+            return Noctis.Models.AutoMixTransitionMode.AutoMix;
+        if (settings.CrossfadeEnabled)
+            return Noctis.Models.AutoMixTransitionMode.Crossfade;
+        return settings.AutoMixTransitionMode;
+    }
+
+    private void SyncLegacyTransitionBooleans(AutoMixTransitionMode mode)
+    {
+        _syncingTransitionMode = true;
+        try
+        {
+            AutoMixEnabled = mode == Noctis.Models.AutoMixTransitionMode.AutoMix;
+            CrossfadeEnabled = mode == Noctis.Models.AutoMixTransitionMode.Crossfade;
+        }
+        finally
+        {
+            _syncingTransitionMode = false;
+        }
+    }
+
     /// <summary>Updates the volume setting in the internal settings object.</summary>
     public void SetVolume(int volume) => _settings.Volume = volume;
 
     private void ApplyAudioSettings()
     {
         _audioPlayer?.SetNormalization(SoundCheckEnabled);
-        _audioPlayer?.SetCrossfade(CrossfadeEnabled, (int)Math.Round(CrossfadeDuration));
+        _audioPlayer?.SetCrossfade(false, (int)Math.Round(CrossfadeDuration));
         int vlcPresetIndex = SelectedEqPresetIndex - 1;
         _audioPlayer?.SetAdvancedEqualizer(EqualizerEnabled, vlcPresetIndex, GetEqBands());
     }
@@ -480,6 +541,12 @@ public partial class SettingsViewModel : ViewModelBase
     private void ApplyPlayerSettings()
     {
         if (_player == null) return;
+        _player.AutoMixEnabled = AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.AutoMix;
+        _player.AutoMixTransitionMode = AutoMixTransitionMode;
+        _player.AutoMixStrength = AutoMixStrength;
+        _player.AutoMixRemoveSilence = AutoMixRemoveSilence;
+        _player.AutoMixAvoidAlbums = AutoMixAvoidAlbums;
+        _player.AutoMixBeatMatch = AutoMixBeatMatch;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowScrollEnabled = CoverFlowMarqueeEnabled;
@@ -609,9 +676,63 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnAutoMixEnabledChanged(bool value)
+    {
+        if (_syncingTransitionMode)
+            return;
+
+        if (value && CrossfadeEnabled)
+            CrossfadeEnabled = false;
+
+        AutoMixTransitionMode = value ? Noctis.Models.AutoMixTransitionMode.AutoMix : Noctis.Models.AutoMixTransitionMode.Off;
+        ApplyAudioSettings();
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
     partial void OnCrossfadeEnabledChanged(bool value)
     {
+        if (_syncingTransitionMode)
+            return;
+
+        if (value && AutoMixEnabled)
+            AutoMixEnabled = false;
+
+        AutoMixTransitionMode = value ? Noctis.Models.AutoMixTransitionMode.Crossfade : Noctis.Models.AutoMixTransitionMode.Off;
         ApplyAudioSettings();
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnAutoMixTransitionModeChanged(AutoMixTransitionMode value)
+    {
+        SyncLegacyTransitionBooleans(value);
+        ApplyAudioSettings();
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnAutoMixStrengthChanged(AutoMixStrength value)
+    {
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnAutoMixRemoveSilenceChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnAutoMixAvoidAlbumsChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnAutoMixBeatMatchChanged(bool value)
+    {
+        ApplyPlayerSettings();
         _ = SaveAsync();
     }
 
@@ -1339,7 +1460,12 @@ public partial class SettingsViewModel : ViewModelBase
             ScanOnStartup = true;
 
             // Playback
-            CrossfadeEnabled = false;
+            AutoMixTransitionMode = Noctis.Models.AutoMixTransitionMode.Off;
+            AutoMixStrength = Noctis.Models.AutoMixStrength.Balanced;
+            AutoMixRemoveSilence = true;
+            AutoMixAvoidAlbums = true;
+            AutoMixBeatMatch = true;
+            SyncLegacyTransitionBooleans(AutoMixTransitionMode);
             CrossfadeDuration = 6;
             SoundCheckEnabled = false;
             TrackTitleMarqueeEnabled = true;
@@ -1349,7 +1475,7 @@ public partial class SettingsViewModel : ViewModelBase
             CoverFlowAlbumMarqueeEnabled = true;
             LyricsTitleMarqueeEnabled = true;
             LyricsArtistMarqueeEnabled = true;
-            AlbumDetailColorTintEnabled = true;
+            AlbumDetailColorTintEnabled = false;
 
             // Lyrics providers
             LrcLibEnabled = true;
@@ -1495,7 +1621,7 @@ public partial class SettingsViewModel : ViewModelBase
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
             var update = await _updateService.CheckForUpdateAsync(cts.Token);
             if (update is null) return;
-            if (update.InstallerApiUrl is null && update.InstallerUrl is null) return;
+            if (update.InstallerApiUrl is null) return;
 
             LatestVersionTag = update.TagName;
             IsUpdateAvailable = true;
@@ -1534,7 +1660,7 @@ public partial class SettingsViewModel : ViewModelBase
                 UpdateStatusText = "You're on the latest version.";
                 _ = ClearUpdateStatusAfterDelay();
             }
-            else if (update.InstallerApiUrl is null && update.InstallerUrl is null)
+            else if (update.InstallerApiUrl is null)
             {
                 LatestVersionTag = update.TagName;
                 UpdateStatusText = $"{update.TagName} available — installer not found. Visit GitHub.";
@@ -1580,8 +1706,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Re-check to get fresh URL
             var update = await _updateService.CheckForUpdateAsync(_updateCts.Token);
-            var downloadUrl = update?.InstallerApiUrl ?? update?.InstallerUrl;
-            if (downloadUrl is null)
+            if (update is null || update.InstallerApiUrl is null)
             {
                 UpdateStatusText = "Update no longer available.";
                 IsDownloadingUpdate = false;
@@ -1597,7 +1722,7 @@ public partial class SettingsViewModel : ViewModelBase
                 }));
 
             _downloadedInstallerPath = await _updateService.DownloadInstallerAsync(
-                downloadUrl, update!.InstallerSize, progress, _updateCts.Token);
+                update, progress, _updateCts.Token);
 
             UpdateStatusText = "Update ready to install.";
             IsReadyToInstall = true;

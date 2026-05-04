@@ -25,8 +25,10 @@ public partial class LyricsView : UserControl
     private LyricsViewModel? _subscribedVm;
     private bool _isNarrowMode;
     private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
+    private readonly TranslateTransform _lyricsSeekThumbTransform = new();
 
     private const double NarrowBreakpoint = 900;
+    private const double SeekThumbSize = 14;
 
     // Seek slider drag state — mirrors PlaybackBarView pattern
     private bool _isSeekDragging;
@@ -48,6 +50,10 @@ public partial class LyricsView : UserControl
         SeekSlider.AddHandler(InputElement.PointerMovedEvent, OnSeekPointerMoved, RoutingStrategies.Tunnel);
         SeekSlider.AddHandler(InputElement.PointerReleasedEvent, OnSeekPointerReleased, RoutingStrategies.Tunnel);
         SeekSlider.PointerCaptureLost += OnSeekCaptureLost;
+        LyricsSeekThumb.RenderTransform = _lyricsSeekThumbTransform;
+        SeekSlider.PropertyChanged += OnSeekSliderPropertyChanged;
+        SeekSlider.SizeChanged += (_, _) => UpdateSeekSliderVisual();
+        DispatcherTimer.RunOnce(UpdateSeekSliderVisual, TimeSpan.FromMilliseconds(10));
 
         // Volume slider percentage badge (expand-on-hover wired via AXAML PointerEntered/Exited on LyricsVolumeContainer)
         LyricsVolumeSlider.PropertyChanged += OnLyricsVolumePropertyChanged;
@@ -100,6 +106,7 @@ public partial class LyricsView : UserControl
     {
         base.OnSizeChanged(e);
         UpdateResponsiveLayout(e.NewSize.Width);
+        UpdateSeekSliderVisual();
     }
 
     private void UpdateResponsiveLayout(double width)
@@ -123,6 +130,7 @@ public partial class LyricsView : UserControl
 
             AlbumArtBorder.Width = 200;
             AlbumArtBorder.Height = 200;
+            LeftContentStack.Width = 200;
 
             var rightPanel = MainLayoutGrid.Children.Count > 1
                 ? MainLayoutGrid.Children[1] as Grid
@@ -148,7 +156,7 @@ public partial class LyricsView : UserControl
 
             AlbumArtBorder.Width = 780;
             AlbumArtBorder.Height = 780;
-            LeftContentStack.MaxWidth = 840;
+            LeftContentStack.Width = 780;
             LyricsItemsControl.MaxWidth = 620;
             RightPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1.1, 1.1)");
 
@@ -238,13 +246,35 @@ public partial class LyricsView : UserControl
             player.EndSeek();
     }
 
+    private void OnSeekSliderPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == Slider.ValueProperty ||
+            e.Property.Name is nameof(Bounds) or nameof(IsEnabled))
+        {
+            UpdateSeekSliderVisual();
+        }
+    }
+
+    private void UpdateSeekSliderVisual()
+    {
+        if (SeekSlider == null ||
+            LyricsSeekTrackBackground == null ||
+            LyricsSeekTrackFill == null ||
+            LyricsSeekThumb == null)
+            return;
+
+        PillSliderVisualHelper.UpdateVisual(
+            SeekSlider,
+            LyricsSeekTrackBackground,
+            LyricsSeekTrackFill,
+            LyricsSeekThumb,
+            _lyricsSeekThumbTransform,
+            SeekThumbSize);
+    }
+
     private static double GetPercentageFromPointer(Slider slider, Point position)
     {
-        if (slider.Bounds.Width <= 0)
-            return 0;
-
-        var percentage = position.X / slider.Bounds.Width;
-        return Math.Clamp(percentage, 0, 1);
+        return PillSliderVisualHelper.GetValueFromPointer(slider, position, SeekThumbSize);
     }
 
     // ── ViewModel subscription + scroll animation ──
@@ -416,7 +446,7 @@ public partial class LyricsView : UserControl
 
     // ── Volume percentage badge ──
 
-    private const double LyricsVolumeSliderExpandedWidth = 99;
+    private const double LyricsVolumeSliderExpandedWidth = 113;
 
     private void OnLyricsVolumeContainerEntered(object? sender, PointerEventArgs e)
     {
@@ -444,10 +474,10 @@ public partial class LyricsView : UserControl
         if (LyricsVolumePercentage.RenderTransform is not Avalonia.Media.TranslateTransform transform)
             return;
 
-        // Grid 99px, Slider Margin="7,0,7,0" → slider = 85px, thumb 14px → travel = 71px
-        const double trackMargin = 7.0;
+        // Container gives the 90px slider 7px of edge room on each side.
+        const double trackMargin = 14.0;
         const double thumbHalfWidth = 7.0;
-        const double thumbTravel = 71.0;
+        const double thumbTravel = 62.0;
 
         var fraction = LyricsVolumeSlider.Value / 100.0;
         var thumbCenterX = trackMargin + thumbHalfWidth + (fraction * thumbTravel);

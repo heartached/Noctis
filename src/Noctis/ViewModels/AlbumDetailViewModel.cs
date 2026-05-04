@@ -112,6 +112,12 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private Action<Track>? _searchLyricsAction;
     private Action<string, System.Collections.Generic.IEnumerable<Album>>? _openMoreByArtistAction;
 
+    // Stable random pick of "More By Artist" for the currently-viewed album.
+    // Captured the first time we build sections for an (artist, albumId) pair,
+    // and reused on every rebuild so saves / library updates don't reshuffle.
+    private string? _moreByArtistKey;
+    private List<Guid>? _moreByArtistOrder;
+
     /// <summary>Sets the action to navigate to an artist's discography.</summary>
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
 
@@ -389,11 +395,29 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
         var versionIds = versions.Select(v => v.Id).ToHashSet();
         var pool = artistAlbums.Where(a => !versionIds.Contains(a.Id)).ToList();
-        // Random sample up to 20 for a fresh "More By" mix on each open.
-        var picks = pool
-            .OrderBy(_ => Random.Shared.Next())
-            .Take(20)
-            .ToList();
+
+        // Stable picks: sample once per (artist, albumId) and reuse on subsequent
+        // rebuilds (e.g. metadata save → LibraryUpdated) so the section doesn't
+        // reshuffle while the user is viewing the same album.
+        var key = $"{currentArtist} {currentId}";
+        var poolById = pool.ToDictionary(a => a.Id);
+        List<Album> picks;
+        if (_moreByArtistKey == key && _moreByArtistOrder != null)
+        {
+            picks = _moreByArtistOrder
+                .Where(id => poolById.ContainsKey(id))
+                .Select(id => poolById[id])
+                .ToList();
+        }
+        else
+        {
+            picks = pool
+                .OrderBy(_ => Random.Shared.Next())
+                .Take(20)
+                .ToList();
+            _moreByArtistKey = key;
+            _moreByArtistOrder = picks.Select(a => a.Id).ToList();
+        }
 
         MoreByArtist.Clear();
         foreach (var a in picks)
@@ -453,6 +477,13 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(HasMultipleDiscs));
     }
 
+    private static List<Track> InAlbumOrder(IEnumerable<Track> tracks) =>
+        tracks
+            .OrderBy(t => t.DiscNumber <= 0 ? 1 : t.DiscNumber)
+            .ThenBy(t => t.TrackNumber <= 0 ? int.MaxValue : t.TrackNumber)
+            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
     private void UpdateCurrentPlayingTrack()
     {
         CurrentPlayingTrackId = _player.CurrentTrack?.Id;
@@ -462,23 +493,26 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void PlayAll()
     {
         if (Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(Tracks.ToList(), 0);
+        var tracks = InAlbumOrder(Tracks);
+        DebugLogger.Info(DebugLogger.Category.Queue, "Album.Play", $"tracks={tracks.Count}, startIdx=0");
+        _player.ReplaceQueueAndPlay(tracks, 0);
     }
 
     [RelayCommand]
     private void ShufflePlay()
     {
         if (Tracks.Count == 0) return;
-        var shuffled = Tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = InAlbumOrder(Tracks).OrderBy(_ => Random.Shared.Next()).ToList();
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
     [RelayCommand]
     private void PlayFrom(Track track)
     {
-        var tracks = Tracks.ToList();
-        var idx = tracks.IndexOf(track);
+        var tracks = InAlbumOrder(Tracks);
+        var idx = tracks.FindIndex(t => t.Id == track.Id);
         if (idx < 0) idx = 0;
+        DebugLogger.Info(DebugLogger.Category.Queue, "Album.PlayFrom", $"tracks={tracks.Count}, startIdx={idx}, track={track.Title}");
         _player.ReplaceQueueAndPlay(tracks, idx);
     }
 
@@ -566,8 +600,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         var edited = (AlbumDescriptionEditorText ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(edited))
         {
-            await _lastFm.ClearAlbumDescriptionOverrideAsync(Album.Artist, Album.Name);
-            await LoadAlbumDescriptionAsync();
+            await _lastFm.SetAlbumDescriptionOverrideAsync(Album.Artist, Album.Name, string.Empty);
+            AlbumDescription = string.Empty;
+            AlbumDescriptionFull = string.Empty;
+            AlbumDescriptionEditorText = string.Empty;
         }
         else
         {
@@ -597,7 +633,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void AddAlbumToQueue()
     {
         if (Tracks.Count == 0) return;
-        _player.AddRangeToQueue(Tracks.ToList());
+        _player.AddRangeToQueue(InAlbumOrder(Tracks));
     }
 
     [RelayCommand]
@@ -650,7 +686,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private async Task AddAlbumToNewPlaylist()
     {
         if (Tracks.Count == 0) return;
-        await _sidebar.CreatePlaylistWithTracksAsync(Tracks.ToList());
+        await _sidebar.CreatePlaylistWithTracksAsync(InAlbumOrder(Tracks));
     }
 
     [RelayCommand]
@@ -666,7 +702,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private async Task AddAlbumToExistingPlaylist(Playlist playlist)
     {
         if (playlist == null || Tracks.Count == 0) return;
-        await _sidebar.AddTracksToPlaylist(playlist.Id, Tracks.ToList());
+        await _sidebar.AddTracksToPlaylist(playlist.Id, InAlbumOrder(Tracks));
     }
 
     [RelayCommand]
@@ -727,14 +763,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void PlayRelatedAlbum(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(album.Tracks.ToList(), 0);
+        _player.ReplaceQueueAndPlay(InAlbumOrder(album.Tracks), 0);
     }
 
     [RelayCommand]
     private void ShuffleRelatedAlbum(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        var shuffled = album.Tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = InAlbumOrder(album.Tracks).OrderBy(_ => Random.Shared.Next()).ToList();
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
@@ -743,22 +779,23 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     {
         if (album == null || album.Tracks.Count == 0) return;
         // Insert in reverse so playback order matches album order.
-        for (int i = album.Tracks.Count - 1; i >= 0; i--)
-            _player.AddNext(album.Tracks[i]);
+        var tracks = InAlbumOrder(album.Tracks);
+        for (int i = tracks.Count - 1; i >= 0; i--)
+            _player.AddNext(tracks[i]);
     }
 
     [RelayCommand]
     private void AddRelatedAlbumToQueue(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        _player.AddRangeToQueue(album.Tracks.ToList());
+        _player.AddRangeToQueue(InAlbumOrder(album.Tracks));
     }
 
     [RelayCommand]
     private async Task AddRelatedAlbumToNewPlaylist(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        await _sidebar.CreatePlaylistWithTracksAsync(album.Tracks.ToList());
+        await _sidebar.CreatePlaylistWithTracksAsync(InAlbumOrder(album.Tracks));
     }
 
     [RelayCommand]
@@ -767,7 +804,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         if (parameters == null || parameters.Length != 2) return;
         if (parameters[0] is not Album album || parameters[1] is not Playlist playlist) return;
         if (album.Tracks.Count == 0) return;
-        await _sidebar.AddTracksToPlaylist(playlist.Id, album.Tracks.ToList());
+        await _sidebar.AddTracksToPlaylist(playlist.Id, InAlbumOrder(album.Tracks));
     }
 
     [RelayCommand]
@@ -824,4 +861,3 @@ public record ArtistTokenItem(string Name, bool IsLast);
 
 /// <summary>A group of tracks belonging to a single disc within an album.</summary>
 public record DiscGroup(int DiscNumber, string Header, List<Track> Tracks);
-

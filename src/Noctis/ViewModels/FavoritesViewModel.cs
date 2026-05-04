@@ -13,7 +13,7 @@ namespace Noctis.ViewModels;
 /// <summary>
 /// ViewModel for the Favorites tab — shows favorited tracks and fully-favorited albums.
 /// </summary>
-public partial class FavoritesViewModel : ViewModelBase
+public partial class FavoritesViewModel : ViewModelBase, ISearchable
 {
     private readonly PlayerViewModel _player;
     private readonly ILibraryService _library;
@@ -22,11 +22,14 @@ public partial class FavoritesViewModel : ViewModelBase
 
     private const int ColumnsPerRow = 5;
     private bool _isDirty = true;
+    private string _currentFilter = string.Empty;
+    private List<FavoriteItem> _allFavoriteItems = new();
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
     [ObservableProperty] private double _tileArtworkSize = 180;
+    [ObservableProperty] private string _searchText = string.Empty;
 
     /// <summary>FavoriteItems currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<FavoriteItem> CtrlSelectedItems { get; set; } = new();
@@ -68,58 +71,84 @@ public partial class FavoritesViewModel : ViewModelBase
             return;
         _isDirty = false;
 
-        ThreadPool.QueueUserWorkItem(_ =>
+        // Sync rebuild: navigation sets CurrentView immediately after this
+        // returns, so the bound list must be current on first paint to avoid
+        // flashing previous content for a frame.
+        var favTracks = _library.Tracks
+            .Where(t => t.IsFavorite)
+            .ToList();
+
+        var items = new List<(FavoriteItem item, DateTime sortKey)>();
+
+        // Most recent favorite event for a track. Falls back to DateAdded so
+        // pre-existing favorites (no timestamp yet) keep a stable order.
+        static DateTime FavoriteSortKey(Track t) => t.FavoritedAt ?? t.DateAdded;
+
+        // Group favorite tracks by album
+        var grouped = favTracks.GroupBy(t => t.AlbumId);
+        foreach (var group in grouped)
         {
-            var favTracks = _library.Tracks
-                .Where(t => t.IsFavorite)
-                .ToList();
-
-            var items = new List<(FavoriteItem item, DateTime sortKey)>();
-
-            // Most recent favorite event for a track. Falls back to DateAdded so
-            // pre-existing favorites (no timestamp yet) keep a stable order.
-            static DateTime FavoriteSortKey(Track t) => t.FavoritedAt ?? t.DateAdded;
-
-            // Group favorite tracks by album
-            var grouped = favTracks.GroupBy(t => t.AlbumId);
-            foreach (var group in grouped)
+            var album = _library.GetAlbumById(group.Key);
+            if (album != null && album.Tracks.Count > 1 && album.IsAllTracksFavorite)
             {
-                var album = _library.GetAlbumById(group.Key);
-                if (album != null && album.Tracks.Count > 1 && album.IsAllTracksFavorite)
-                {
-                    // All tracks in the album are favorites → show as one album card.
-                    // Use the most recent track favorite as the album's sort key.
-                    var key = album.Tracks.Max(FavoriteSortKey);
-                    items.Add((new FavoriteItem { Album = album }, key));
-                }
-                else
-                {
-                    // Individual tracks
-                    foreach (var track in group)
-                        items.Add((new FavoriteItem { Track = track }, FavoriteSortKey(track)));
-                }
+                // All tracks in the album are favorites → show as one album card.
+                // Use the most recent track favorite as the album's sort key.
+                var key = album.Tracks.Max(FavoriteSortKey);
+                items.Add((new FavoriteItem { Album = album }, key));
             }
-
-            // Newest favorites first.
-            items.Sort((a, b) => b.sortKey.CompareTo(a.sortKey));
-            var orderedItems = items.Select(x => x.item).ToList();
-
-            // Build rows for the virtualized grid
-            var rows = new List<FavoriteItemRow>();
-            for (int i = 0; i < orderedItems.Count; i += ColumnsPerRow)
+            else
             {
-                rows.Add(new FavoriteItemRow
-                {
-                    Items = orderedItems.GetRange(i, Math.Min(ColumnsPerRow, orderedItems.Count - i))
-                });
+                // Individual tracks
+                foreach (var track in group)
+                    items.Add((new FavoriteItem { Track = track }, FavoriteSortKey(track)));
             }
+        }
 
-            Dispatcher.UIThread.Post(() =>
+        // Newest favorites first.
+        items.Sort((a, b) => b.sortKey.CompareTo(a.sortKey));
+        _allFavoriteItems = items.Select(x => x.item).ToList();
+        ApplyFilter(_currentFilter);
+    }
+
+    public void ApplyFilter(string query)
+    {
+        if (SearchText != query)
+            SearchText = query;
+
+        _currentFilter = query;
+        var filteredItems = _allFavoriteItems.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var q = query.Trim();
+            filteredItems = filteredItems.Where(item =>
+                MatchesSearch(item.Title, q) ||
+                MatchesSearch(item.Subtitle, q));
+        }
+
+        var visibleItems = filteredItems.ToList();
+        FavoriteItems.ReplaceAll(visibleItems);
+        FavoriteItemRows.ReplaceAll(BuildRows(visibleItems));
+    }
+
+    private static List<FavoriteItemRow> BuildRows(IReadOnlyList<FavoriteItem> items)
+    {
+        var rows = new List<FavoriteItemRow>();
+        for (var i = 0; i < items.Count; i += ColumnsPerRow)
+        {
+            rows.Add(new FavoriteItemRow
             {
-                FavoriteItems.ReplaceAll(orderedItems);
-                FavoriteItemRows.ReplaceAll(rows);
+                Items = items.Skip(i).Take(ColumnsPerRow).ToList()
             });
-        });
+        }
+
+        return rows;
+    }
+
+    private static bool MatchesSearch(string? source, string query)
+    {
+        return !string.IsNullOrWhiteSpace(source) &&
+               source.Contains(query, StringComparison.OrdinalIgnoreCase);
     }
 
     // ── Page-level commands ────────────────────────────────────

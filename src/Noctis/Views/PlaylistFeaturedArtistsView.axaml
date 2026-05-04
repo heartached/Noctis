@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:controls="using:Noctis.Controls"
+             x:Class="Noctis.Views.PlaylistFeaturedArtistsView"
+             x:DataType="vm:PlaylistFeaturedArtistsViewModel"
+             Background="{DynamicResource AppMainBackground}">
+
+    <UserControl.Styles>
+        <Style Selector="Button.featured-artist-large:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.featured-artist-large:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.featured-artist-large:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.featured-artist-large:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      Padding="40,40,40,80">
+            <ItemsControl ItemsSource="{Binding Artists}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PlaylistFeaturedArtist">
+                        <Button Classes="featured-artist-large"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                Margin="0,0,44,44"
+                                Width="260"
+                                Cursor="Hand"
+                                Command="{Binding $parent[UserControl].((vm:PlaylistFeaturedArtistsViewModel)DataContext).OpenArtistCommand}"
+                                CommandParameter="{Binding}">
+                            <StackPanel Spacing="12"
+                                        HorizontalAlignment="Center">
+                                <Border Width="220"
+                                        Height="220"
+                                        CornerRadius="110"
+                                        ClipToBounds="True"
+                                        Background="#2E2E2E"
+                                        HorizontalAlignment="Center">
+                                    <Panel>
+                                        <controls:CachedImage SourcePath="{Binding ImagePath}"
+                                                              Stretch="UniformToFill"
+                                                              Width="220"
+                                                              Height="220"
+                                                              IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        <PathIcon Data="{StaticResource ArtistsIcon}"
+                                                  Width="64"
+                                                  Height="64"
+                                                  Foreground="#66FFFFFF"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                    </Panel>
+                                </Border>
+                                <TextBlock Text="{Binding Name}"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"
+                                           TextAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxWidth="220"
+                                           HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

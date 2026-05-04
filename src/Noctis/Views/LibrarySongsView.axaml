@@ -21,21 +21,21 @@
         <!-- Column headers (sortable) -->
         <Grid DockPanel.Dock="Top"
               ColumnDefinitions="*,80,*,*,*,80,55,42"
-              Margin="16,0,16,8">
+              Margin="0,0,0,8">
             <Button Grid.Column="0" Content="Title" Command="{Binding SortCommand}" CommandParameter="Title"
-                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
+                    Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="1" Content="Time" Command="{Binding SortCommand}" CommandParameter="Time"
-                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
+                    Background="Transparent" BorderThickness="0" Padding="0" Margin="-4,0,0,0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             <Button Grid.Column="2" Content="Artist" Command="{Binding SortCommand}" CommandParameter="Artist"
-                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
+                    Background="Transparent" BorderThickness="0" Padding="0" Margin="-4,0,0,0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="3" Content="Album" Command="{Binding SortCommand}" CommandParameter="Album"
-                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
+                    Background="Transparent" BorderThickness="0" Padding="0" Margin="-4,0,0,0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="4" Content="Genre" Command="{Binding SortCommand}" CommandParameter="Genre"
                     Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="5" Content="Favorites" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
                     Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             <Button Grid.Column="6" Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
-                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+                    Background="Transparent" BorderThickness="0" Padding="0" Margin="-10,0,0,0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             <TextBlock Grid.Column="7" Text="" FontSize="12" />
         </Grid>
 
@@ -65,15 +65,21 @@
                         <!-- Title + Explicit badge -->
                         <Grid Grid.Column="0"
                               ColumnDefinitions="Auto,Auto"
-                              VerticalAlignment="Center">
-                            <TextBlock Grid.Column="0"
-                                       Classes="one-line-explicit-title"
-                                       Text="{Binding TitleDisplay}"
-                                       FontSize="13"
-                                       MaxWidth="300" />
+                              ClipToBounds="True"
+                              VerticalAlignment="Center"
+                              LayoutUpdated="OnTitleCellLayoutUpdated">
+                            <controls:HighlightTextBlock Grid.Column="0"
+                                                         Classes="one-line-explicit-title"
+                                                         DisplayText="{Binding TitleDisplay}"
+                                                         HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
+                                                         FontSize="13"
+                                                         FontWeight="SemiBold"
+                                                         TextWrapping="NoWrap"
+                                                         MaxLines="1"
+                                                         TextTrimming="CharacterEllipsis" />
                             <Border Grid.Column="1"
                                     Classes="explicit-badge compact"
-                                    Margin="6,0,0,0"
+                                    Margin="6,0,4,0"
                                     IsVisible="{Binding IsExplicit}"
                                     ToolTip.Tip="Explicit">
                                 <TextBlock Text="E"
@@ -87,35 +93,43 @@
                                    Text="{Binding DurationFormatted}"
                                    FontSize="12"
                                    Opacity="0.5"
+                                   HorizontalAlignment="Center"
                                    VerticalAlignment="Center" />
                         <Button Grid.Column="2"
-                                Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
+                                Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" MinHeight="0"
+                                HorizontalContentAlignment="Left"
                                 Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
                                 Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ViewArtistCommand}"
                                 CommandParameter="{Binding Artist}">
-                            <TextBlock Text="{Binding ArtistDisplay}"
-                                       FontSize="12"
-                                       Foreground="#E04060"
-                                       TextTrimming="CharacterEllipsis"
-                                       VerticalAlignment="Center" />
+                            <controls:HighlightTextBlock DisplayText="{Binding ArtistDisplay}"
+                                                         HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
+                                                         FontSize="12"
+                                                         FontWeight="SemiBold"
+                                                         Foreground="#E74856"
+                                                         TextTrimming="CharacterEllipsis"
+                                                         VerticalAlignment="Center" />
                         </Button>
                         <Button Grid.Column="3"
                                 Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                 Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
                                 Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ViewAlbumCommand}"
                                 CommandParameter="{Binding}">
-                            <TextBlock Text="{Binding Album}"
-                                       FontSize="12"
-                                       Foreground="#E74856"
-                                       TextTrimming="CharacterEllipsis"
-                                       VerticalAlignment="Center" />
+                            <controls:HighlightTextBlock DisplayText="{Binding Album}"
+                                                         HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
+                                                         FontSize="12"
+                                                         FontWeight="SemiBold"
+                                                         Foreground="#E74856"
+                                                         TextTrimming="CharacterEllipsis"
+                                                         VerticalAlignment="Center" />
                         </Button>
-                        <TextBlock Grid.Column="4"
-                                   Text="{Binding Genre}"
-                                   FontSize="12"
-                                   Opacity="0.7"
-                                   TextTrimming="CharacterEllipsis"
-                                   VerticalAlignment="Center" />
+                        <controls:HighlightTextBlock Grid.Column="4"
+                                                     DisplayText="{Binding Genre}"
+                                                     HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
+                                                     FontSize="12"
+                                                     FontWeight="SemiBold"
+                                                     Opacity="0.7"
+                                                     TextTrimming="CharacterEllipsis"
+                                                     VerticalAlignment="Center" />
                         <PathIcon Grid.Column="5"
                                  Data="{StaticResource HeartFillIcon}"
                                  Width="12" Height="12"

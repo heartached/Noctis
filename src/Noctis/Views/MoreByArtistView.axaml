@@ -13,7 +13,8 @@
         <!-- Title is rendered next to the Back button in the global top bar -->
 
         <!-- Album grid -->
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+        <ScrollViewer x:Name="AlbumScrollViewer"
+                      HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto"
                       Padding="32,16,32,32">
             <ItemsControl ItemsSource="{Binding Albums}">
@@ -27,6 +28,7 @@
                         <Button Classes="album-tile"
                                 Focusable="False"
                                 Margin="2"
+                                MinHeight="{Binding $parent[UserControl].((vm:MoreByArtistViewModel)DataContext).TileHeight}"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Top"
                                 Command="{Binding $parent[UserControl].((vm:MoreByArtistViewModel)DataContext).OpenAlbumCommand}"
@@ -122,15 +124,14 @@
                                 </ContextMenu>
                             </Button.ContextMenu>
 
-                            <StackPanel Spacing="0" HorizontalAlignment="Stretch">
-                                <Border CornerRadius="6"
+                            <Grid RowDefinitions="Auto,50"
+                                  Height="{Binding $parent[UserControl].((vm:MoreByArtistViewModel)DataContext).TileHeight}"
+                                  HorizontalAlignment="Stretch">
+                                <Border Width="{Binding $parent[UserControl].((vm:MoreByArtistViewModel)DataContext).TileArtworkSize}"
+                                        Height="{Binding $parent[UserControl].((vm:MoreByArtistViewModel)DataContext).TileArtworkSize}"
+                                        CornerRadius="6"
                                         ClipToBounds="True"
                                         Background="#1AFFFFFF">
-                                    <Border.Styles>
-                                        <Style Selector="Border">
-                                            <Setter Property="Height" Value="{Binding $self.Bounds.Width}" />
-                                        </Style>
-                                    </Border.Styles>
                                     <Panel>
                                         <TextBlock Text="&#x266A;"
                                                    FontSize="40"
@@ -144,7 +145,8 @@
                                                           IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                     </Panel>
                                 </Border>
-                                <TextBlock Margin="0,5,0,0"
+                                <TextBlock Grid.Row="1"
+                                           Margin="0,5,0,0"
                                            FontSize="13"
                                            FontWeight="SemiBold"
                                            TextWrapping="Wrap"
@@ -163,7 +165,7 @@
                                         </Border>
                                     </InlineUIContainer>
                                 </TextBlock>
-                            </StackPanel>
+                            </Grid>
                         </Button>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

@@ -78,6 +78,9 @@
         <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
             <views:PlaylistView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:PlaylistFeaturedArtistsViewModel}">
+            <views:PlaylistFeaturedArtistsView />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:NowPlayingViewModel}">
             <views:NowPlayingView />
         </DataTemplate>

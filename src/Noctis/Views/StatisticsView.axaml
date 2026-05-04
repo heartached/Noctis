@@ -79,7 +79,7 @@
                                 </StackPanel>
                                 <Border Grid.Column="1" VerticalAlignment="Center" Height="20"
                                         CornerRadius="999" ClipToBounds="True" Margin="8,0" Background="{DynamicResource SystemControlBackgroundListLowBrush}">
-                                    <Border Background="#E04060" CornerRadius="999"
+                                    <Border Background="#E74856" CornerRadius="999"
                                             HorizontalAlignment="Left"
                                             Width="{Binding Percentage, Converter={StaticResource PercentageToWidth}, ConverterParameter=400}" />
                                 </Border>

@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:presenters="using:Avalonia.Controls.Presenters"
         xmlns:vm="using:Noctis.ViewModels"
         x:Class="Noctis.Views.MetadataWindow"
         x:DataType="vm:MetadataViewModel"
@@ -89,49 +90,14 @@
             <Setter Property="CornerRadius" Value="999" />
         </Style>
 
-        <!-- Pill volume slider (mirrors PlaybackBarView.volume-horizontal) -->
+        <!-- Metadata volume slider uses custom visuals; the real Slider is transparent hit testing. -->
         <Style Selector="Slider.volume-horizontal">
             <Setter Property="Orientation" Value="Horizontal"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource IslandSliderFilled}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Height" Value="20"/>
-        </Style>
-
-        <Style Selector="Slider.volume-horizontal /template/ Track">
-            <Setter Property="Height" Value="6"/>
-            <Setter Property="Margin" Value="7,0"/>
-        </Style>
-
-        <Style Selector="Slider.volume-horizontal /template/ RepeatButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="Height" Value="6"/>
-            <Setter Property="CornerRadius" Value="3,0,0,3"/>
-        </Style>
-
-        <Style Selector="Slider.volume-horizontal /template/ RepeatButton#PART_IncreaseButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderUnfilled}"/>
-            <Setter Property="Opacity" Value="0.4"/>
-            <Setter Property="Height" Value="6"/>
-            <Setter Property="CornerRadius" Value="0,3,3,0"/>
-        </Style>
-
-        <Style Selector="Slider.volume-horizontal /template/ Thumb">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="14"/>
-            <Setter Property="Height" Value="14"/>
-            <Setter Property="Opacity" Value="1.0"/>
-        </Style>
-
-        <Style Selector="Slider.volume-horizontal /template/ Thumb /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="CornerRadius" Value="7"/>
-            <Setter Property="BoxShadow" Value="0 1 3 0 #40000000"/>
-        </Style>
-
-        <Style Selector="Slider.volume-horizontal:pointerover /template/ Thumb">
-            <Setter Property="RenderTransform" Value="scale(1.1)"/>
+            <Setter Property="Opacity" Value="0"/>
         </Style>
 
     </Window.Styles>
@@ -255,7 +221,7 @@
                         Width="100"
                         Padding="0,10"
                         Classes="accent-btn"
-                            Background="#E04060"
+                            Background="#E74856"
                         Foreground="White"
                         FontWeight="SemiBold"
                         HorizontalContentAlignment="Center"
@@ -365,7 +331,21 @@
                                       Classes="metadata-info-field"
                                       ItemsSource="{Binding GenreOptions}"
                                       SelectedItem="{Binding Genre}"
-                                      HorizontalAlignment="Stretch" />
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.SelectionBoxItemTemplate>
+                                     <DataTemplate>
+                                         <presenters:TextPresenter Text="{Binding}"
+                                                                   FontWeight="Normal"
+                                                                   VerticalAlignment="Center" />
+                                     </DataTemplate>
+                                </ComboBox.SelectionBoxItemTemplate>
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <presenters:TextPresenter Text="{Binding}"
+                                                                  FontWeight="Normal" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                         </StackPanel>
 
                         <!-- Year -->
@@ -402,6 +382,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <TextBlock Text="{Binding PlayCountDisplay}" FontSize="14" VerticalAlignment="Center" />
                                 <Button Content="Reset" Command="{Binding ResetPlayCountCommand}"
+                                        Classes="accent-btn"
                                         Padding="14,5" FontSize="12" Cursor="Hand" VerticalAlignment="Center"
                                         Foreground="White" Background="#E74856"
                                         BorderThickness="0" CornerRadius="999" />
@@ -499,7 +480,21 @@
                                       ItemsSource="{x:Static vm:MetadataViewModel.AdvisoryOptions}"
                                       SelectedItem="{Binding SelectedAdvisory}"
                                       HorizontalAlignment="Left"
-                                      MinWidth="140" />
+                                      MinWidth="140">
+                                <ComboBox.SelectionBoxItemTemplate>
+                                     <DataTemplate>
+                                         <presenters:TextPresenter Text="{Binding}"
+                                                                   FontWeight="Normal"
+                                                                   VerticalAlignment="Center" />
+                                     </DataTemplate>
+                                </ComboBox.SelectionBoxItemTemplate>
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <presenters:TextPresenter Text="{Binding}"
+                                                                  FontWeight="Normal" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                         </StackPanel>
                         <StackPanel Spacing="4">
                             <TextBlock Text="language" FontSize="12" Opacity="0.5" />
@@ -712,35 +707,39 @@
                     <Separator Opacity="0.15" Margin="0,2" />
 
                     <!-- Start / Stop Time (inline) -->
-                    <Grid ColumnDefinitions="*,24,*">
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBlock Text="start" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
+                    <Grid ColumnDefinitions="Auto,24,Auto" HorizontalAlignment="Left">
+                        <Grid Grid.Column="0" ColumnDefinitions="34,30,130" HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <TextBlock Grid.Column="0" Text="start" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
                             <CheckBox Classes="metadata-pill-checkbox"
+                                      Grid.Column="1"
                                       IsChecked="{Binding HasStartTime}"
                                       Padding="0" Margin="0" MinWidth="0"
                                       VerticalAlignment="Center" />
                             <TextBox Classes="metadata-info-field"
+                                     Grid.Column="2"
                                      Text="{Binding StartTime}"
                                      IsReadOnly="{Binding !HasStartTime}"
                                      Width="130"
                                      CornerRadius="999"
                                      Padding="14,6"
                                      VerticalAlignment="Center" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBlock Text="stop" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
+                        </Grid>
+                        <Grid Grid.Column="2" ColumnDefinitions="34,30,130" HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <TextBlock Grid.Column="0" Text="stop" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
                             <CheckBox Classes="metadata-pill-checkbox"
+                                      Grid.Column="1"
                                       IsChecked="{Binding HasStopTime}"
                                       Padding="0" Margin="0" MinWidth="0"
                                       VerticalAlignment="Center" />
                             <TextBox Classes="metadata-info-field"
+                                     Grid.Column="2"
                                      Text="{Binding StopTime}"
                                      IsReadOnly="{Binding !HasStopTime}"
                                      Width="130"
                                      CornerRadius="999"
                                      Padding="14,6"
                                      VerticalAlignment="Center" />
-                        </StackPanel>
+                        </Grid>
                     </Grid>
 
                     <Separator Opacity="0.15" Margin="0,2" />
@@ -760,19 +759,44 @@
                     <!-- Volume Adjust -->
                     <StackPanel Spacing="2">
                         <TextBlock Text="volume adjust" FontSize="12" Opacity="0.5" />
-                        <Grid ColumnDefinitions="*,Auto">
-                            <Slider Grid.Column="0"
-                                    Classes="volume-horizontal"
-                                    Value="{Binding VolumeAdjust, Mode=TwoWay}"
-                                    Minimum="-100" Maximum="100"
-                                    HorizontalAlignment="Stretch"
-                                    DoubleTapped="OnVolumeAdjustSliderDoubleTapped" />
+                        <Grid ColumnDefinitions="*,52">
+                            <Grid Grid.Column="0" Height="20" ClipToBounds="False">
+                                <Canvas x:Name="VolumeAdjustVisual"
+                                        Height="20"
+                                        ClipToBounds="False"
+                                        IsHitTestVisible="False">
+                                    <Border x:Name="VolumeAdjustTrackBackground"
+                                            Height="6"
+                                            CornerRadius="3"
+                                            Background="{DynamicResource IslandSliderUnfilled}"
+                                            Opacity="0.4"
+                                            Canvas.Top="7"/>
+                                    <Border x:Name="VolumeAdjustTrackFill"
+                                            Height="6"
+                                            CornerRadius="3"
+                                            Background="{DynamicResource IslandSliderFilled}"
+                                            Canvas.Top="7"/>
+                                    <Border x:Name="VolumeAdjustThumb"
+                                            Width="14"
+                                            Height="14"
+                                            CornerRadius="7"
+                                            Background="{DynamicResource IslandSliderFilled}"
+                                            BoxShadow="0 1 3 0 #40000000"
+                                            Canvas.Top="3"/>
+                                </Canvas>
+                                <Slider x:Name="VolumeAdjustSlider"
+                                        Classes="volume-horizontal"
+                                        Value="{Binding VolumeAdjust, Mode=TwoWay}"
+                                        Minimum="-100" Maximum="100"
+                                        HorizontalAlignment="Stretch"
+                                        DoubleTapped="OnVolumeAdjustSliderDoubleTapped" />
+                            </Grid>
                             <TextBlock Grid.Column="1"
                                        Text="{Binding VolumeAdjust, StringFormat='{}{0}%'}"
                                        FontSize="12"
                                        Opacity="0.6"
                                        VerticalAlignment="Center"
-                                       Margin="12,0,0,0" />
+                                       HorizontalAlignment="Right" />
                         </Grid>
                     </StackPanel>
 
@@ -797,9 +821,9 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="14" Margin="24,16,24,24">
-                        <!-- Kind -->
+                        <!-- Format -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="kind" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="Format" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding FileFormat}" FontSize="14" />
                         </StackPanel>
 
@@ -817,13 +841,13 @@
 
                         <!-- Bitrate -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="bit rate" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="Bitrate" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding Bitrate}" FontSize="14" />
                         </StackPanel>
 
-                        <!-- Bits Per Sample -->
+                        <!-- Bit Depth -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="sample size" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="Bit Depth" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding BitsPerSample}" FontSize="14" />
                         </StackPanel>
 
@@ -841,7 +865,7 @@
 
                         <!-- Codec -->
                         <StackPanel Spacing="2">
-                            <TextBlock Text="codec" FontSize="12" Opacity="0.5" />
+                            <TextBlock Text="Codec" FontSize="12" Opacity="0.5" />
                             <TextBlock Text="{Binding Codec}" FontSize="14" />
                         </StackPanel>
 

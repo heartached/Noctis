@@ -81,7 +81,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
                 RecentlyPlayedAlbums.Insert(0, album);
 
-                while (RecentlyPlayedAlbums.Count > 12)
+                while (RecentlyPlayedAlbums.Count > 10)
                     RecentlyPlayedAlbums.RemoveAt(RecentlyPlayedAlbums.Count - 1);
             }
         });
@@ -126,7 +126,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 .Take(50)
                 .Select(t => t.AlbumId)
                 .Distinct()
-                .Take(12)
+                .Take(10)
                 .Select(id => _library.GetAlbumById(id))
                 .OfType<Album>()
                 .ToList();

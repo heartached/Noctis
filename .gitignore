@@ -31,6 +31,10 @@ build_tmp_verify/
 tmp_frames/
 noctis_pid.txt
 
+## Release build outputs
+release-artifacts/
+installer-output/
+
 ## Internal docs (not for public repo)
 DesignNotes.md
 ICON_PLACEMENT_INSTRUCTIONS.md

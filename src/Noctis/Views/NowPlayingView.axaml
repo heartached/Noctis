@@ -11,6 +11,15 @@
         <conv:TrackMetadataConverter x:Key="TrackMetadata" />
     </UserControl.Resources>
 
+    <UserControl.Styles>
+        <Style Selector="Slider.now-playing-seek">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+    </UserControl.Styles>
+
     <DockPanel>
         <!-- Back button -->
         <Button DockPanel.Dock="Top"
@@ -85,15 +94,42 @@
 
                 <!-- Seek bar -->
                 <StackPanel Spacing="8">
-                    <Slider Value="{Binding Player.PositionFraction, Mode=TwoWay}"
-                            Minimum="0" Maximum="1"
-                            Height="36" />
-                    <Grid ColumnDefinitions="*,*">
+                    <Grid Height="24" ClipToBounds="False">
+                        <Canvas x:Name="NowPlayingSeekVisual"
+                                Height="24"
+                                ClipToBounds="False"
+                                IsHitTestVisible="False">
+                            <Border x:Name="NowPlayingSeekTrackBackground"
+                                    Height="6"
+                                    CornerRadius="3"
+                                    Background="{DynamicResource IslandSliderUnfilled}"
+                                    Canvas.Top="9"/>
+                            <Border x:Name="NowPlayingSeekTrackFill"
+                                    Height="6"
+                                    CornerRadius="3"
+                                    Background="{DynamicResource IslandSliderFilled}"
+                                    Canvas.Top="9"/>
+                            <Border x:Name="NowPlayingSeekThumb"
+                                    Width="14"
+                                    Height="14"
+                                    CornerRadius="7"
+                                    Background="{DynamicResource IslandSliderFilled}"
+                                    BoxShadow="0 2 4 0 #40000000"
+                                    Canvas.Top="5"/>
+                        </Canvas>
+                        <Slider x:Name="NowPlayingSeekSlider"
+                                Value="{Binding Player.PositionFraction, Mode=TwoWay}"
+                                Classes="now-playing-seek"
+                                Minimum="0" Maximum="1"
+                                Focusable="False"
+                                VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="64,*,64">
                         <TextBlock Grid.Column="0"
                                    Text="{Binding Player.PositionText}"
                                    FontSize="13"
                                    Opacity="0.5" />
-                        <TextBlock Grid.Column="1"
+                        <TextBlock Grid.Column="2"
                                    Text="{Binding Player.DurationText}"
                                    FontSize="13"
                                    Opacity="0.5"

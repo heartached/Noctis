@@ -30,6 +30,9 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Current playback position.</summary>
     TimeSpan Position { get; }
 
+    /// <summary>Monotonic playback session id, incremented for every Play request.</summary>
+    long CurrentSessionId { get; }
+
     /// <summary>Volume level from 0 to 100.</summary>
     int Volume { get; set; }
 
@@ -51,8 +54,14 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Enables or disables loudness normalization.</summary>
     void SetNormalization(bool enabled);
 
-    /// <summary>Enables or disables crossfade between tracks.</summary>
-    void SetCrossfade(bool enabled, int durationSeconds);
+    /// <summary>Enables or disables the next track transition fade.</summary>
+    void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase);
+
+    /// <summary>Prepares a next media item for an AutoMix transition without making it active.</summary>
+    void PrepareNext(string filePath, long startPositionMs = -1);
+
+    /// <summary>Cancels and releases any prepared inactive media item.</summary>
+    void CancelPreparedNext();
 
     /// <summary>Applies the advanced 10-band equalizer.</summary>
     /// <param name="enabled">Whether to enable the EQ.</param>

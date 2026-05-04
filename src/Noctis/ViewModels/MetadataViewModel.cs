@@ -270,6 +270,15 @@ public partial class MetadataViewModel : ViewModelBase
             plainFromTrack = LyricsTextHelper.StripTimestamps(plainFromTrack);
         }
 
+        // Synced lyrics must actually contain timestamps. Some legacy/sidecar data
+        // can put plain text into SyncedLyrics or .lrc; keep that out of the synced tab.
+        if (!LyricsTextHelper.ContainsTimestamps(syncedFromTrack))
+        {
+            if (string.IsNullOrWhiteSpace(plainFromTrack))
+                plainFromTrack = syncedFromTrack;
+            syncedFromTrack = string.Empty;
+        }
+
         SyncedLyrics = syncedFromTrack ?? string.Empty;
         Lyrics = plainFromTrack ?? string.Empty;
         HasCustomLyrics = !string.IsNullOrWhiteSpace(Lyrics);
@@ -307,7 +316,7 @@ public partial class MetadataViewModel : ViewModelBase
 
         FileName = info.FileName;
         FileFormat = info.FileFormat;
-        Codec = info.Codec;
+        Codec = FormatCodecForFileTab(info.Codec);
         LosslessOrLossy = info.IsLossless ? "Lossless" : "Lossy";
         Bitrate = info.BitrateFormatted;
         SampleRate = info.SampleRateFormatted;
@@ -321,6 +330,19 @@ public partial class MetadataViewModel : ViewModelBase
         FullFilePath = info.FilePath;
         FolderName = Path.GetDirectoryName(info.FilePath) ?? string.Empty;
         Copyright = _track.Copyright;
+    }
+
+    private static string FormatCodecForFileTab(string codec)
+    {
+        if (string.IsNullOrWhiteSpace(codec))
+            return string.Empty;
+
+        var normalized = codec.Trim();
+        var lower = normalized.ToLowerInvariant();
+
+        return lower.Contains("alac") || lower.Contains("apple lossless")
+            ? "ALAC"
+            : normalized;
     }
 
     private void LoadArtwork()
@@ -519,8 +541,11 @@ public partial class MetadataViewModel : ViewModelBase
         var plainToWrite = HasCustomLyrics
             ? (LyricsTextHelper.ContainsTimestamps(Lyrics) ? LyricsTextHelper.StripTimestamps(Lyrics) : Lyrics)
             : string.Empty;
+        var syncedToWrite = HasCustomSyncedLyrics && LyricsTextHelper.ContainsTimestamps(SyncedLyrics)
+            ? SyncedLyrics
+            : string.Empty;
         _track.Lyrics = plainToWrite;
-        _track.SyncedLyrics = HasCustomSyncedLyrics ? SyncedLyrics : string.Empty;
+        _track.SyncedLyrics = syncedToWrite;
 
         // Apply Options
         _track.SkipWhenShuffling = SkipWhenShuffling;

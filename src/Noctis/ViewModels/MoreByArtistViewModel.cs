@@ -22,6 +22,17 @@ public partial class MoreByArtistViewModel : ViewModelBase
 
     public ObservableCollection<Album> Albums { get; } = new();
 
+    private const double TileLabelHeight = 50;
+
+    [ObservableProperty] private double _tileArtworkSize = 220;
+
+    public double TileHeight => TileArtworkSize + TileLabelHeight;
+
+    partial void OnTileArtworkSizeChanged(double value)
+    {
+        OnPropertyChanged(nameof(TileHeight));
+    }
+
     /// <summary>Reused albums VM that owns context-menu commands (Play, Shuffle, Add to Queue, Metadata, etc.).</summary>
     public LibraryAlbumsViewModel? LibraryAlbumsVm { get; }
 

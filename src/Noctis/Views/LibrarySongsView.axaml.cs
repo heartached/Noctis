@@ -193,6 +193,32 @@ public partial class LibrarySongsView : UserControl
         }
     }
 
+    private static void OnTitleCellLayoutUpdated(object? sender, EventArgs e)
+    {
+        if (sender is not Grid titleCell)
+            return;
+
+        var title = titleCell.Children.OfType<TextBlock>().FirstOrDefault();
+        if (title == null)
+            return;
+
+        var explicitBadge = titleCell.Children.OfType<Border>().FirstOrDefault();
+        var reservedBadgeWidth = 0.0;
+
+        if (explicitBadge?.IsVisible == true)
+        {
+            var badgeMargin = explicitBadge.Margin;
+            var badgeWidth = explicitBadge.Bounds.Width > 0
+                ? explicitBadge.Bounds.Width
+                : explicitBadge.DesiredSize.Width;
+            reservedBadgeWidth = badgeWidth + badgeMargin.Left + badgeMargin.Right;
+        }
+
+        var maxTitleWidth = Math.Max(0, titleCell.Bounds.Width - reservedBadgeWidth);
+        if (Math.Abs(title.MaxWidth - maxTitleWidth) > 0.5)
+            title.MaxWidth = maxTitleWidth;
+    }
+
     private void OnQueueButtonClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         var mainWindow = this.FindLogicalAncestorOfType<MainWindow>();

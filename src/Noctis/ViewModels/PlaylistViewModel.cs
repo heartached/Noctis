@@ -17,6 +17,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
     private readonly SidebarViewModel _sidebar;
+    private readonly ArtistImageService? _artistImageService;
     private readonly System.ComponentModel.PropertyChangedEventHandler _playerPropertyChangedHandler;
 
     private Playlist _playlist;
@@ -41,6 +42,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [ObservableProperty] private bool _isDescriptionOpen;
     [ObservableProperty] private bool _isDescriptionEditing;
     [ObservableProperty] private string _descriptionEditorText = string.Empty;
+    [ObservableProperty] private string _searchText = string.Empty;
 
     public bool HasDescription => !string.IsNullOrWhiteSpace(PlaylistDescription);
     public bool HasDescriptionChanges =>
@@ -74,6 +76,11 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     /// <summary>Resolved tracks in this playlist (order matches playlist).</summary>
     public ObservableCollection<Track> Tracks { get; } = new();
 
+    /// <summary>Unique artists represented by tracks in this playlist.</summary>
+    public ObservableCollection<PlaylistFeaturedArtist> FeaturedArtists { get; } = new();
+    public bool HasFeaturedArtists => FeaturedArtists.Count > 0;
+    public string? FirstFeaturedArtistName => FeaturedArtists.FirstOrDefault()?.Name;
+
     /// <summary>Fires when the user wants to go back to the previous view.</summary>
     public event EventHandler? BackRequested;
 
@@ -84,12 +91,14 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     public ObservableCollection<Playlist> Playlists => _sidebar.Playlists;
 
     public PlaylistViewModel(Playlist playlist, PlayerViewModel player,
-        ILibraryService library, IPersistenceService persistence, SidebarViewModel sidebar)
+        ILibraryService library, IPersistenceService persistence, SidebarViewModel sidebar,
+        ArtistImageService? artistImageService = null)
     {
         _player = player;
         _library = library;
         _persistence = persistence;
         _sidebar = sidebar;
+        _artistImageService = artistImageService;
         _playlist = playlist;
         _navItem = _sidebar.PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlist.Id);
         _name = playlist.Name;
@@ -129,6 +138,9 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
     public void ApplyFilter(string query)
     {
+        if (SearchText != query)
+            SearchText = query;
+
         _currentFilter = query;
         LoadTracks();
     }
@@ -150,11 +162,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
                 .OfType<Track>();
         }
 
+        var allResolvedTracks = resolved.ToList();
+
         if (!string.IsNullOrWhiteSpace(_currentFilter))
         {
-            resolved = resolved.Where(t =>
+            resolved = allResolvedTracks.Where(t =>
                 t.Title.Contains(_currentFilter, StringComparison.OrdinalIgnoreCase) ||
                 t.Artist.Contains(_currentFilter, StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            resolved = allResolvedTracks;
         }
 
         foreach (var track in resolved)
@@ -182,6 +200,69 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
         // Use first track's album artwork as playlist cover
         PlaylistArtworkPath = Tracks.FirstOrDefault()?.AlbumArtworkPath;
+
+        RebuildFeaturedArtists(allResolvedTracks);
+    }
+
+    private void RebuildFeaturedArtists(IReadOnlyList<Track> tracks)
+    {
+        var artistCounts = tracks
+            .SelectMany(t => Track.ParseArtistTokens(t.Artist))
+            .Where(name => !string.Equals(name, "Unknown Artist", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new { Name = group.First(), TrackCount = group.Count() })
+            .OrderByDescending(item => item.TrackCount)
+            .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .Take(20)
+            .ToList();
+
+        FeaturedArtists.Clear();
+
+        if (artistCounts.Count == 0)
+        {
+            OnPropertyChanged(nameof(HasFeaturedArtists));
+            OnPropertyChanged(nameof(FirstFeaturedArtistName));
+            return;
+        }
+
+        var libraryArtists = _library.Artists
+            .GroupBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        var artistsToFetch = new List<Artist>();
+
+        foreach (var entry in artistCounts)
+        {
+            libraryArtists.TryGetValue(entry.Name, out var artist);
+            var item = new PlaylistFeaturedArtist(
+                entry.Name,
+                entry.TrackCount,
+                artist?.ImagePath);
+
+            FeaturedArtists.Add(item);
+
+            if (artist != null)
+            {
+                artistsToFetch.Add(artist);
+                if (_artistImageService?.HasCachedImage(artist.Id) == true)
+                    item.ImagePath = _artistImageService.GetCachedImagePath(artist.Id);
+            }
+        }
+
+        OnPropertyChanged(nameof(HasFeaturedArtists));
+        OnPropertyChanged(nameof(FirstFeaturedArtistName));
+
+        if (_artistImageService != null && artistsToFetch.Count > 0)
+        {
+            var itemsByName = FeaturedArtists.ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
+            _ = _artistImageService.FetchAndCacheAsync(artistsToFetch, (artist, path) =>
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (itemsByName.TryGetValue(artist.Name, out var item))
+                        item.ImagePath = path;
+                });
+            });
+        }
     }
 
     [RelayCommand]
@@ -219,6 +300,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         TotalDuration = total.TotalHours >= 1
             ? $"{(int)total.TotalHours}h {total.Minutes}m"
             : $"{(int)total.TotalMinutes} min";
+        RebuildFeaturedArtists(Tracks.ToList());
 
         await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
         CtrlSelectedTracks.Clear();
@@ -319,6 +401,16 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         if (!string.IsNullOrWhiteSpace(artistName))
             _viewArtistAction?.Invoke(artistName);
+    }
+
+    private Action<IReadOnlyList<PlaylistFeaturedArtist>>? _openFeaturedArtistsAction;
+    public void SetOpenFeaturedArtistsAction(Action<IReadOnlyList<PlaylistFeaturedArtist>> action) => _openFeaturedArtistsAction = action;
+
+    [RelayCommand]
+    private void OpenFeaturedArtists()
+    {
+        if (FeaturedArtists.Count > 0)
+            _openFeaturedArtistsAction?.Invoke(FeaturedArtists.ToList());
     }
 
     // ── Description ──────────────────────────────────────────
@@ -426,4 +518,18 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         if (_playlist.IsSmartPlaylist)
             _library.LibraryUpdated -= OnLibraryUpdated;
     }
+}
+
+public partial class PlaylistFeaturedArtist : ObservableObject
+{
+    public PlaylistFeaturedArtist(string name, int trackCount, string? imagePath)
+    {
+        Name = name;
+        TrackCount = trackCount;
+        ImagePath = imagePath;
+    }
+
+    public string Name { get; }
+    public int TrackCount { get; }
+    [ObservableProperty] private string? _imagePath;
 }

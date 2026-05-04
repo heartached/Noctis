@@ -23,12 +23,22 @@ public class CachedImage : Image
         set => SetValue(SourcePathProperty, value);
     }
 
+    public static readonly StyledProperty<int> DecodeWidthProperty =
+        AvaloniaProperty.Register<CachedImage, int>(nameof(DecodeWidth), 512);
+
+    public int DecodeWidth
+    {
+        get => GetValue(DecodeWidthProperty);
+        set => SetValue(DecodeWidthProperty, value);
+    }
+
     private int _loadGeneration;
     private readonly object _generationLock = new();
 
     static CachedImage()
     {
         SourcePathProperty.Changed.AddClassHandler<CachedImage>((img, _) => img.OnSourcePathChanged());
+        DecodeWidthProperty.Changed.AddClassHandler<CachedImage>((img, _) => img.OnSourcePathChanged());
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -64,8 +74,10 @@ public class CachedImage : Image
             return;
         }
 
+        var decodeWidth = DecodeWidth;
+
         // Fast path: cache hit returns immediately, no I/O
-        var cached = ArtworkCache.TryGet(path);
+        var cached = ArtworkCache.TryGet(path, decodeWidth);
         if (cached != null)
         {
             Source = cached;
@@ -77,7 +89,7 @@ public class CachedImage : Image
 
         try
         {
-            var bitmap = await Task.Run(() => ArtworkCache.LoadAndCache(path));
+            var bitmap = await Task.Run(() => ArtworkCache.LoadAndCache(path, decodeWidth));
 
             // Discard result if the control was recycled (SourcePath changed again)
             bool isCurrentGeneration;

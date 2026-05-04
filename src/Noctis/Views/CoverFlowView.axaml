@@ -412,6 +412,7 @@
                             IsVisible="{Binding CenterArtist, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                         <ctrl:MarqueeTextBlock Text="{Binding CenterArtist}"
                                                FontSize="15"
+                                               FontWeight="Bold"
                                                Foreground="#E74856"
                                                MaxDisplayWidth="400"
                                                IsCoverFlow="True"

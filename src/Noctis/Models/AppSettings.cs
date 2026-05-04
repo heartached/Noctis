@@ -52,6 +52,24 @@ public class AppSettings
     /// <summary>Whether crossfade between tracks is enabled.</summary>
     public bool CrossfadeEnabled { get; set; }
 
+    /// <summary>Whether adaptive AutoMix transitions between queued tracks are enabled.</summary>
+    public bool AutoMixEnabled { get; set; }
+
+    /// <summary>Playback transition mode: Off, Crossfade, or AutoMix.</summary>
+    public AutoMixTransitionMode AutoMixTransitionMode { get; set; } = AutoMixTransitionMode.Off;
+
+    /// <summary>How assertive AutoMix transitions should be.</summary>
+    public AutoMixStrength AutoMixStrength { get; set; } = AutoMixStrength.Balanced;
+
+    /// <summary>Whether AutoMix should trim detected or estimated silence.</summary>
+    public bool AutoMixRemoveSilence { get; set; } = true;
+
+    /// <summary>Whether sequential album tracks should avoid AutoMix by default.</summary>
+    public bool AutoMixAvoidAlbums { get; set; } = true;
+
+    /// <summary>Whether AutoMix can plan beat-matched transitions when BPM/key metadata exists.</summary>
+    public bool AutoMixBeatMatch { get; set; } = true;
+
     /// <summary>Crossfade duration in seconds (1–12, fractional allowed).</summary>
     public double CrossfadeDuration { get; set; } = 6;
 
@@ -86,7 +104,7 @@ public class AppSettings
     public bool LyricsArtistMarqueeEnabled { get; set; } = true;
 
     /// <summary>Whether album detail pages tint their background with the cover-art dominant color.</summary>
-    public bool AlbumDetailColorTintEnabled { get; set; } = true;
+    public bool AlbumDetailColorTintEnabled { get; set; }
 
     // ── Equalizer settings ──
 
@@ -146,4 +164,3 @@ public class AppSettings
     /// <summary>Whether NetEase Cloud Music online lyrics search is enabled.</summary>
     public bool NetEaseEnabled { get; set; } = true;
 }
-

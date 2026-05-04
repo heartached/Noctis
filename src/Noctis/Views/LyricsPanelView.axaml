@@ -37,6 +37,9 @@
         <Style Selector="TextBlock.panel-word-accent.current">
             <Setter Property="Opacity" Value="1.0"/>
         </Style>
+        <Style Selector="Button.panel-lyric-line:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
     </UserControl.Styles>
 
     <Panel>
@@ -78,6 +81,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="m:LyricLine">
                             <Button Background="Transparent"
+                                    Classes="panel-lyric-line"
                                     BorderThickness="0"
                                     Padding="0"
                                     Margin="0,10"
@@ -223,6 +227,7 @@
                        HorizontalAlignment="Center"
                        IsVisible="{Binding SearchFailedMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             <Button HorizontalAlignment="Center"
+                    Classes="accent-btn"
                     Background="#E74856"
                     Foreground="White"
                     Padding="16,8"

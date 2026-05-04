@@ -13,11 +13,13 @@ public static class ArtworkCache
     private sealed class CacheEntry
     {
         public readonly Bitmap Bitmap;
+        public readonly string Key;
         public readonly string Path;
         public long LastAccess; // atomic via Interlocked
 
-        public CacheEntry(string path, Bitmap bitmap, long accessCounter)
+        public CacheEntry(string key, string path, Bitmap bitmap, long accessCounter)
         {
+            Key = key;
             Path = path;
             Bitmap = bitmap;
             LastAccess = accessCounter;
@@ -39,8 +41,12 @@ public static class ArtworkCache
     /// Lock-free on the hot path.
     /// </summary>
     public static Bitmap? TryGet(string path)
+        => TryGet(path, DecodeWidth);
+
+    public static Bitmap? TryGet(string path, int decodeWidth)
     {
-        if (Cache.TryGetValue(path, out var entry))
+        var key = BuildKey(path, decodeWidth);
+        if (Cache.TryGetValue(key, out var entry))
         {
             Interlocked.Increment(ref entry.LastAccess);
             return entry.Bitmap;
@@ -54,7 +60,8 @@ public static class ArtworkCache
     /// </summary>
     public static void Invalidate(string path)
     {
-        Cache.TryRemove(path, out _);
+        foreach (var key in Cache.Keys.Where(k => k.EndsWith(path, StringComparison.OrdinalIgnoreCase)))
+            Cache.TryRemove(key, out _);
         Invalidated?.Invoke(path);
     }
 
@@ -68,14 +75,20 @@ public static class ArtworkCache
     /// Safe to call from any thread. Returns null if the file doesn't exist or can't be decoded.
     /// </summary>
     public static Bitmap? LoadAndCache(string path)
+        => LoadAndCache(path, DecodeWidth);
+
+    public static Bitmap? LoadAndCache(string path, int decodeWidth)
     {
         try
         {
             if (!File.Exists(path))
                 return null;
 
+            var width = NormalizeDecodeWidth(decodeWidth);
+            var key = BuildKey(path, width);
+
             // Double-check: another thread may have cached this while we waited for I/O to start
-            if (Cache.TryGetValue(path, out var hit))
+            if (Cache.TryGetValue(key, out var hit))
             {
                 Interlocked.Increment(ref hit.LastAccess);
                 return hit.Bitmap;
@@ -83,16 +96,16 @@ public static class ArtworkCache
 
             Bitmap bitmap;
             using (var stream = File.OpenRead(path))
-                bitmap = Bitmap.DecodeToWidth(stream, DecodeWidth, BitmapInterpolationMode.HighQuality);
+                bitmap = Bitmap.DecodeToWidth(stream, width, BitmapInterpolationMode.HighQuality);
 
             var counter = Interlocked.Increment(ref _accessCounter);
-            var newEntry = new CacheEntry(path, bitmap, counter);
+            var newEntry = new CacheEntry(key, path, bitmap, counter);
 
-            if (!Cache.TryAdd(path, newEntry))
+            if (!Cache.TryAdd(key, newEntry))
             {
                 // Another thread won the race — discard our decode
                 bitmap.Dispose();
-                if (Cache.TryGetValue(path, out var existing))
+                if (Cache.TryGetValue(key, out var existing))
                 {
                     Interlocked.Increment(ref existing.LastAccess);
                     return existing.Bitmap;
@@ -121,7 +134,13 @@ public static class ArtworkCache
         // Collect entries, sort by last access, evict the oldest batch
         var entries = Cache.Values.OrderBy(e => Interlocked.Read(ref e.LastAccess)).Take(EvictBatchSize);
         foreach (var entry in entries)
-            Cache.TryRemove(entry.Path, out _);
+            Cache.TryRemove(entry.Key, out _);
         // We intentionally do not dispose bitmaps here; UI controls may still hold references.
     }
+
+    private static string BuildKey(string path, int decodeWidth)
+        => $"{NormalizeDecodeWidth(decodeWidth)}|{path}";
+
+    private static int NormalizeDecodeWidth(int decodeWidth)
+        => decodeWidth <= 0 ? DecodeWidth : Math.Clamp(decodeWidth, 64, 1024);
 }

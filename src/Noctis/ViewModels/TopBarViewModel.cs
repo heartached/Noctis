@@ -14,11 +14,16 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private bool _isSearchFocused;
     [ObservableProperty] private string _currentTabName = "Library";
+    [ObservableProperty] private string _searchWatermark = "Find in Library";
     [ObservableProperty] private bool _isSearchVisible = true;
 
     // Back button (shown in detail views like Album Detail, Genre Detail, etc.)
     [ObservableProperty] private bool _isBackButtonVisible;
+    [ObservableProperty] private bool _isGenericBackButtonVisible;
+    [ObservableProperty] private bool _isAlbumDetailBackButtonVisible;
     [ObservableProperty] private string _backButtonText = "";
+    [ObservableProperty] private string _backButtonDisplayText = "Back";
+    [ObservableProperty] private string _albumDetailBackButtonDisplayText = "Back to Albums";
     [ObservableProperty] private ICommand? _backCommand;
 
     // Optional title shown next to the Back button (e.g., "More By {Artist}")
@@ -27,18 +32,40 @@ public partial class TopBarViewModel : ViewModelBase
 
     public void ShowBackButton(string text, ICommand command, string? contextTitle = null)
     {
-        BackButtonText = text;
+        var displayText = string.IsNullOrWhiteSpace(text) ? "Back" : text;
+        BackButtonText = displayText;
+        BackButtonDisplayText = displayText;
         BackCommand = command;
         IsBackButtonVisible = true;
+        IsGenericBackButtonVisible = true;
+        IsAlbumDetailBackButtonVisible = false;
         BackContextTitle = contextTitle ?? string.Empty;
         IsBackContextTitleVisible = !string.IsNullOrWhiteSpace(contextTitle);
+    }
+
+    public void ShowAlbumDetailBackButton(string text, ICommand command)
+    {
+        var displayText = string.IsNullOrWhiteSpace(text) ? "Back to Albums" : text;
+        AlbumDetailBackButtonDisplayText = displayText;
+        BackButtonText = displayText;
+        BackButtonDisplayText = displayText;
+        BackCommand = command;
+        IsBackButtonVisible = true;
+        IsGenericBackButtonVisible = false;
+        IsAlbumDetailBackButtonVisible = true;
+        BackContextTitle = string.Empty;
+        IsBackContextTitleVisible = false;
     }
 
     public void HideBackButton()
     {
         IsBackButtonVisible = false;
+        IsGenericBackButtonVisible = false;
+        IsAlbumDetailBackButtonVisible = false;
         BackCommand = null;
         BackButtonText = "";
+        BackButtonDisplayText = "Back";
+        AlbumDetailBackButtonDisplayText = "Back to Albums";
         BackContextTitle = "";
         IsBackContextTitleVisible = false;
         UpdatePageTitleVisibility();
@@ -183,6 +210,7 @@ public partial class TopBarViewModel : ViewModelBase
     partial void OnCurrentTabNameChanged(string value)
     {
         IsSearchVisible = value is not ("Home" or "Settings" or "Lyrics");
+        SearchWatermark = $"Find in {value}";
         UpdatePageTitleVisibility();
     }
 

@@ -59,7 +59,8 @@ public partial class Track : ObservableObject
     public DateTime LastModified { get; set; }
 
     /// <summary>Whether the track is marked as explicit (ITUNESADVISORY=1).</summary>
-    public bool IsExplicit { get; set; }
+    [ObservableProperty]
+    private bool _isExplicit;
 
     /// <summary>Source type where this track came from.</summary>
     public SourceType SourceType { get; set; } = SourceType.Local;
@@ -90,6 +91,9 @@ public partial class Track : ObservableObject
 
     /// <summary>Beats per minute (TBPM tag). 0 = unset.</summary>
     public int Bpm { get; set; }
+
+    /// <summary>Musical key tag value (TKEY / INITIALKEY / KEY). Empty = unset.</summary>
+    public string MusicalKey { get; set; } = string.Empty;
 
     /// <summary>Plain/unsynced lyrics text for the track.</summary>
     public string Lyrics { get; set; } = string.Empty;
@@ -146,7 +150,8 @@ public partial class Track : ObservableObject
     public long SavedPositionMs { get; set; }
 
     /// <summary>Number of times this track has been played.</summary>
-    public int PlayCount { get; set; }
+    [ObservableProperty]
+    private int _playCount;
 
     /// <summary>Date and time when this track was last played.</summary>
     public DateTime? LastPlayed { get; set; }

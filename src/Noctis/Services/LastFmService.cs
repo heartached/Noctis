@@ -232,7 +232,9 @@ public class LastFmService : ILastFmService
                 _albumDescriptionCache[cacheKey] = entry;
             }
 
-            entry.UserOverride = CleanAlbumContent(description) ?? string.Empty;
+            entry.UserOverride = description == null
+                ? null
+                : CleanAlbumContent(description) ?? string.Empty;
             entry.UpdatedUtc = DateTime.UtcNow;
             await SaveAlbumDescriptionCacheUnsafeAsync(ct);
         }
@@ -260,7 +262,7 @@ public class LastFmService : ILastFmService
         {
             if (_albumDescriptionCache.TryGetValue(cacheKey, out var cached))
             {
-                if (!string.IsNullOrWhiteSpace(cached.UserOverride))
+                if (cached.UserOverride != null)
                     return cached.UserOverride;
 
                 // Re-clean cached text in case earlier versions stored trailing "Read more..." fragments.
@@ -294,7 +296,7 @@ public class LastFmService : ILastFmService
         {
             var userOverride = _albumDescriptionCache.TryGetValue(cacheKey, out var existingEntry)
                 ? existingEntry.UserOverride
-                : string.Empty;
+                : null;
 
             _albumDescriptionCache[cacheKey] = new AlbumDescriptionCacheEntry
             {
@@ -304,7 +306,7 @@ public class LastFmService : ILastFmService
                 UpdatedUtc = DateTime.UtcNow
             };
             await SaveAlbumDescriptionCacheUnsafeAsync(ct);
-            if (!string.IsNullOrWhiteSpace(userOverride))
+            if (userOverride != null)
                 return userOverride;
 
             return fetched == null
@@ -675,7 +677,7 @@ public class LastFmService : ILastFmService
     {
         public string Summary { get; set; } = string.Empty;
         public string FullContent { get; set; } = string.Empty;
-        public string UserOverride { get; set; } = string.Empty;
+        public string? UserOverride { get; set; }
         public DateTime UpdatedUtc { get; set; }
     }
 

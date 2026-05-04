@@ -81,14 +81,14 @@
 
                     <!-- Page action buttons (e.g. Songs: Shuffle, Queue, Options) -->
                     <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasPageActions}">
-                        <Button Classes="accent-btn" Background="#E04060"
+                        <Button Classes="accent-btn" Background="#E74856"
                                 BorderThickness="0" Padding="12,10" CornerRadius="999" Cursor="Hand"
                                 Command="{Binding PageShuffleCommand}"
                                 ToolTip.Tip="Shuffle all songs" VerticalAlignment="Center">
                             <PathIcon Data="{StaticResource ShuffleIcon}" Width="15" Height="15"
                                      VerticalAlignment="Center" Foreground="White" />
                         </Button>
-                        <Button Classes="accent-btn" Background="#E04060"
+                        <Button Classes="accent-btn" Background="#E74856"
                                 BorderThickness="0" Padding="12,10" CornerRadius="999" Cursor="Hand"
                                 Command="{Binding PageQueueCommand}" Tag="QueueToggle"
                                 ToolTip.Tip="View Queue" VerticalAlignment="Center">
@@ -99,7 +99,7 @@
                                 </Border.OpacityMask>
                             </Border>
                         </Button>
-                        <Button Classes="accent-btn" Background="#E04060"
+                        <Button Classes="accent-btn" Background="#E74856"
                                 BorderThickness="0" Padding="12,10" CornerRadius="999" Cursor="Hand"
                                 ToolTip.Tip="Options" VerticalAlignment="Center">
                             <PathIcon Data="{StaticResource MoreDotsIcon}" Width="15" Height="15"
@@ -147,7 +147,7 @@
 
                     <!-- Playlist action buttons -->
                     <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasPlaylistActions}">
-                        <Button Classes="accent-btn" Background="#E04060"
+                        <Button Classes="accent-btn" Background="#E74856"
                                 BorderThickness="0" Padding="12,10" CornerRadius="999" Cursor="Hand"
                                 Command="{Binding PageCreateSmartPlaylistCommand}"
                                 ToolTip.Tip="Create Smart Playlist" VerticalAlignment="Center">
@@ -158,7 +158,7 @@
 
                     <!-- Artist discography action buttons -->
                     <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasArtistActions}">
-                        <Button Classes="accent-btn" Background="#E04060"
+                        <Button Classes="accent-btn" Background="#E74856"
                                 BorderThickness="0" Padding="12,10" CornerRadius="999" Cursor="Hand"
                                 Command="{Binding PageShuffleArtistCommand}"
                                 ToolTip.Tip="Shuffle All" VerticalAlignment="Center">
@@ -166,7 +166,7 @@
                                      Width="15" Height="15"
                                      VerticalAlignment="Center" Foreground="White" />
                         </Button>
-                        <Button Classes="accent-btn" Background="#E04060"
+                        <Button Classes="accent-btn" Background="#E74856"
                                 BorderThickness="0" Padding="12,10" CornerRadius="999" Cursor="Hand"
                                 Command="{Binding PagePlayArtistCommand}"
                                 ToolTip.Tip="Play All" VerticalAlignment="Center">
@@ -182,7 +182,7 @@
 
                     <!-- Favorites action buttons -->
                     <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasFavoritesActions}">
-                        <Button Classes="accent-btn" Background="#E04060"
+                        <Button Classes="accent-btn" Background="#E74856"
                                 BorderThickness="0" Padding="12,10" CornerRadius="999" Cursor="Hand"
                                 Command="{Binding PageShuffleFavoritesCommand}"
                                 ToolTip.Tip="Shuffle All" VerticalAlignment="Center">
@@ -190,7 +190,7 @@
                                      Width="15" Height="15"
                                      VerticalAlignment="Center" Foreground="White" />
                         </Button>
-                        <Button Classes="accent-btn" Background="#E04060"
+                        <Button Classes="accent-btn" Background="#E74856"
                                 BorderThickness="0" Padding="12,10" CornerRadius="999" Cursor="Hand"
                                 Command="{Binding PagePlayFavoritesCommand}"
                                 ToolTip.Tip="Play All" VerticalAlignment="Center">
@@ -238,7 +238,7 @@
                                      x:Name="SearchBox"
                                      Classes="search-box"
                                      Text="{Binding SearchText, Mode=TwoWay}"
-                                     Watermark="{Binding CurrentTabName, StringFormat='Find in {0}'}"
+                                     Watermark="{Binding SearchWatermark}"
                                      Background="Transparent" BorderThickness="0"
                                      FontSize="12" Padding="0,2"
                                      VerticalAlignment="Center" MinWidth="120"/>
@@ -448,6 +448,7 @@
                                                 </Grid>
                                                 <TextBlock Text="{Binding ArtistDisplay}"
                                                            FontSize="11"
+                                                           FontWeight="Bold"
                                                            Opacity="0.5"
                                                            TextTrimming="CharacterEllipsis"
                                                            MaxLines="1"

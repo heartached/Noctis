@@ -33,7 +33,7 @@
                             Width="100"
                             Padding="0,8"
                             Classes="accent-btn"
-                                Background="#E04060"
+                                Background="#E74856"
                             Foreground="White"
                             FontWeight="SemiBold"
                             HorizontalContentAlignment="Center"

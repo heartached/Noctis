@@ -68,6 +68,9 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
 
     public void ApplyFilter(string query)
     {
+        if (SearchText != query)
+            SearchText = query;
+
         _currentFilter = query;
 
         FilteredPlaylists.Clear();

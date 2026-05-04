@@ -25,12 +25,12 @@
             <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12">
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.06">
                         <TransformOperationsTransition.Easing>
                             <CubicEaseOut/>
                         </TransformOperationsTransition.Easing>
                     </TransformOperationsTransition>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.06"/>
                 </Transitions>
             </Setter>
         </Style>
@@ -48,12 +48,12 @@
             <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12">
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.06">
                         <TransformOperationsTransition.Easing>
                             <CubicEaseOut/>
                         </TransformOperationsTransition.Easing>
                     </TransformOperationsTransition>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.06"/>
                 </Transitions>
             </Setter>
         </Style>
@@ -71,7 +71,7 @@
             <Setter Property="Opacity" Value="1.0"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.06"/>
                 </Transitions>
             </Setter>
         </Style>
@@ -80,6 +80,10 @@
         </Style>
         <Style Selector="Button.secondary-btn:pressed">
             <Setter Property="Opacity" Value="0.7"/>
+        </Style>
+
+        <Style Selector="Button.artist-link-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
 
         <!-- Compact vertical volume slider -->
@@ -181,7 +185,7 @@
             <Setter Property="Opacity" Value="1.0"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12">
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.06">
                         <TransformOperationsTransition.Easing>
                             <CubicEaseOut/>
                         </TransformOperationsTransition.Easing>
@@ -206,50 +210,12 @@
             <Setter Property="Foreground" Value="{DynamicResource IslandSliderFilled}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Height" Value="20"/>
-        </Style>
-
-        <Style Selector="Slider.seek-slider /template/ Track">
-            <Setter Property="Height" Value="3"/>
-        </Style>
-
-        <Style Selector="Slider.seek-slider /template/ RepeatButton#PART_DecreaseButton">
-            <Setter Property="Margin" Value="0,0,-6,0"/>
-        </Style>
-
-        <Style Selector="Slider.seek-slider /template/ RepeatButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="Height" Value="3"/>
-            <Setter Property="CornerRadius" Value="2"/>
-        </Style>
-
-        <Style Selector="Slider.seek-slider /template/ RepeatButton#PART_IncreaseButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderUnfilled}"/>
-            <Setter Property="Opacity" Value="1.0"/>
-            <Setter Property="Height" Value="3"/>
-            <Setter Property="CornerRadius" Value="2"/>
-        </Style>
-
-        <Style Selector="Slider.seek-slider /template/ Thumb">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="12"/>
-            <Setter Property="Height" Value="12"/>
-            <Setter Property="Opacity" Value="1.0"/>
-        </Style>
-
-        <Style Selector="Slider.seek-slider:pointerover /template/ Thumb">
-            <Setter Property="Width" Value="14"/>
-            <Setter Property="Height" Value="14"/>
-        </Style>
-
-        <Style Selector="Slider.seek-slider /template/ Thumb /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="BoxShadow" Value="0 2 4 0 #40000000"/>
-        </Style>
-
-        <Style Selector="Slider.seek-slider:pointerover /template/ Thumb /template/ Border">
-            <Setter Property="CornerRadius" Value="7"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter>
         </Style>
     </UserControl.Styles>
 
@@ -267,7 +233,7 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Height="50"
-                Width="640"
+                Width="650"
                 BoxShadow="0 2 6 0 #30000000">
             <Border.Transitions>
                 <Transitions>
@@ -282,7 +248,7 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/> <!-- Playback controls -->
-                    <ColumnDefinition Width="*" MinWidth="200"/> <!-- Album art + track info -->
+                    <ColumnDefinition Width="Auto"/> <!-- Album art + track info -->
                     <ColumnDefinition Width="Auto"/> <!-- Right controls -->
                 </Grid.ColumnDefinitions>
 
@@ -405,7 +371,7 @@
                 <Grid x:Name="TrackInfoPanel"
                       Grid.Column="1"
                       VerticalAlignment="Center"
-                      Margin="0,0,14,0"
+                      Margin="0,0,6,0"
                       Background="Transparent"
                       ColumnDefinitions="Auto,*">
 
@@ -434,21 +400,28 @@
                     </Border>
 
                     <!-- Track info + Seek bar -->
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="80" MaxWidth="420" Margin="0,3,0,0">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
+                    <Grid Grid.Column="1"
+                          x:Name="TrackInfoContent"
+                          VerticalAlignment="Center"
+                          MinWidth="80"
+                          MaxWidth="520"
+                          Margin="0,3,0,0"
+                          ClipToBounds="False">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
                             <!-- Track title + explicit badge -->
                             <Border x:Name="TrackTitleViewport"
                                     Grid.Row="0"
-                                    MaxWidth="200"
+                                    Width="200"
                                     ClipToBounds="True"
                                     HorizontalAlignment="Left"
                                     VerticalAlignment="Center">
@@ -486,19 +459,20 @@
 
                             <!-- Artist name -->
                             <Button Grid.Row="1"
+                                    Classes="artist-link-btn"
                                     Background="Transparent" BorderThickness="0" Padding="0"
                                     Cursor="Hand" HorizontalAlignment="Left"
                                     MaxWidth="200"
                                     Command="{Binding ViewCurrentArtistCommand}">
                                 <Border x:Name="ArtistNameViewport"
-                                        MaxWidth="200"
+                                        Width="200"
                                         ClipToBounds="True">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock x:Name="ArtistNameTextBlock"
                                                    Text="{Binding CurrentTrack.Artist, FallbackValue='', TargetNullValue=''}"
                                                    FontSize="10"
                                                    MaxLines="1"
-                                                   Foreground="#E04060"
+                                                   Foreground="#E74856"
                                                    Margin="0,1,0,0">
                                             <TextBlock.RenderTransform>
                                                 <TranslateTransform X="0" />
@@ -508,38 +482,61 @@
                                 </Border>
                             </Button>
 
-                            <!-- Seek bar with timestamps -->
-                            <Grid Grid.Row="2" Margin="0,-2,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
+                            <!-- Compact seek bar: fixed side times with a long centered slider -->
+                            <Grid Grid.Row="2" Height="20" Margin="-22,-2,0,0" ClipToBounds="False"
+                                  ColumnDefinitions="Auto,*,Auto">
                                 <TextBlock Grid.Column="0"
                                            Text="{Binding PositionText}"
-                                           FontSize="9"
+                                           FontSize="10"
                                            VerticalAlignment="Center"
+                                           TextAlignment="Right"
                                            Foreground="{DynamicResource IslandForegroundTertiary}"
+                                           Width="38"
                                            Margin="0,0,6,0" />
 
-                                <Slider Grid.Column="1"
-                                        Value="{Binding PositionFraction, Mode=TwoWay}"
-                                        Classes="seek-slider"
-                                        Minimum="0" Maximum="1"
-                                        Focusable="False"
-                                        VerticalAlignment="Center"
-                                        x:Name="SeekSlider" />
+                                <Grid Grid.Column="1" Height="20" ClipToBounds="False">
+                                    <Canvas x:Name="SeekVisual"
+                                            Height="20"
+                                            ClipToBounds="False"
+                                            IsHitTestVisible="False">
+                                        <Border x:Name="SeekTrackBackground"
+                                                Height="3"
+                                                CornerRadius="2"
+                                                Background="{DynamicResource IslandSliderUnfilled}"
+                                                Canvas.Top="8.5"/>
+                                        <Border x:Name="SeekTrackFill"
+                                                Height="3"
+                                                CornerRadius="2"
+                                                Background="{DynamicResource IslandSliderFilled}"
+                                                Canvas.Top="8.5"/>
+                                        <Border x:Name="SeekThumb"
+                                                Width="12"
+                                                Height="12"
+                                                CornerRadius="6"
+                                                Background="{DynamicResource IslandSliderFilled}"
+                                                BoxShadow="0 2 4 0 #40000000"
+                                                Canvas.Top="4"/>
+                                    </Canvas>
+                                    <Slider Value="{Binding PositionFraction, Mode=TwoWay}"
+                                            Classes="seek-slider"
+                                            Minimum="0" Maximum="1"
+                                            Focusable="False"
+                                            VerticalAlignment="Center"
+                                            x:Name="SeekSlider" />
+                                </Grid>
 
                                 <TextBlock Grid.Column="2"
                                            Text="{Binding RemainingTimeText}"
-                                           FontSize="9"
+                                           FontSize="10"
                                            VerticalAlignment="Center"
+                                           TextAlignment="Left"
                                            Foreground="{DynamicResource IslandForegroundTertiary}"
-                                           Margin="6,0,0,0" />
+                                           Width="44"
+                                           Margin="8,0,0,0" />
                             </Grid>
-                        </Grid>
-                    </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
                 </Grid>
 
                 <!-- RIGHT: Additional Controls -->
@@ -547,7 +544,7 @@
                             Orientation="Horizontal"
                             Spacing="2"
                             VerticalAlignment="Center"
-                            Margin="4,0,0,0">
+                            Margin="-16,0,0,0">
 
                     <!-- More options button -->
                     <Button x:Name="OptionsButton"
@@ -732,7 +729,7 @@
                         </Button>
 
                         <!-- Expandable slider area with width animation -->
-                        <Panel VerticalAlignment="Center">
+                        <Panel VerticalAlignment="Center" Margin="-9,0,0,0">
                             <!-- Volume percentage floating above (outside clipping container) -->
                             <TextBlock x:Name="VolumePercentageBadge"
                                        Text="{Binding Volume}"
@@ -749,7 +746,7 @@
                                 </TextBlock.RenderTransform>
                                 <TextBlock.Transitions>
                                     <Transitions>
-                                        <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.06"/>
                                     </Transitions>
                                 </TextBlock.Transitions>
                             </TextBlock>

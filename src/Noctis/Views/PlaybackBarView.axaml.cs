@@ -20,6 +20,8 @@ public partial class PlaybackBarView : UserControl
 {
     private const double TrackTitleOverflowThreshold = 1.0;
     private const double TrackTitleScrollSpeed = 26.0;
+    private const double TrackTitleBadgeSpacing = 6.0;
+    private const double TrackTitleBadgeTrailingPadding = 8.0;
     private static readonly TimeSpan TrackTitleEdgePause = TimeSpan.FromMilliseconds(850);
     private PlaylistMenuPopulator? _playlistPopulator;
     private readonly DispatcherTimer _trackTitleMarqueeTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
@@ -31,6 +33,8 @@ public partial class PlaybackBarView : UserControl
     private double _trackTitlePauseRemainingMs = TrackTitleEdgePause.TotalMilliseconds;
     private bool _trackTitleUpdateScheduled;
     private bool _trackTitleResetPending;
+    private const double SeekThumbSize = 12;
+    private readonly TranslateTransform _seekThumbTransform = new();
 
     // Artist name marquee state (syncs with title marquee via same timer)
     private double _artistNameOverflow;
@@ -58,6 +62,10 @@ public partial class PlaybackBarView : UserControl
         SeekSlider.AddHandler(InputElement.PointerMovedEvent, OnSeekMove, RoutingStrategies.Tunnel);
         SeekSlider.AddHandler(InputElement.PointerReleasedEvent, OnSeekEnd, RoutingStrategies.Tunnel);
         SeekSlider.PointerCaptureLost += OnSeekCaptureLost;
+        SeekThumb.RenderTransform = _seekThumbTransform;
+        SeekSlider.PropertyChanged += OnSeekSliderPropertyChanged;
+        SeekSlider.SizeChanged += (_, _) => UpdateSeekSliderVisual();
+        DispatcherTimer.RunOnce(UpdateSeekSliderVisual, TimeSpan.FromMilliseconds(10));
 
         // Handle volume slider interaction to show/hide percentage badge
         // MUST use AddHandler with handledEventsToo:true because Slider's Thumb handles these events
@@ -86,6 +94,7 @@ public partial class PlaybackBarView : UserControl
     {
         ScheduleTrackTitleMarqueeUpdate(resetAnimation: true);
         ScheduleArtistNameMarqueeUpdate(resetAnimation: true);
+        DispatcherTimer.RunOnce(RefreshTrackInfoLayout, TimeSpan.FromMilliseconds(10));
     }
 
     private void OnPlaybackBarDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
@@ -113,6 +122,7 @@ public partial class PlaybackBarView : UserControl
 
         ScheduleTrackTitleMarqueeUpdate(resetAnimation: true);
         ScheduleArtistNameMarqueeUpdate(resetAnimation: true);
+        DispatcherTimer.RunOnce(RefreshTrackInfoLayout, TimeSpan.FromMilliseconds(10));
     }
 
     private void OnObservedPlayerViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -189,8 +199,11 @@ public partial class PlaybackBarView : UserControl
         if (textWidth <= 0)
             return;
 
-        _trackTitleOverflow = Math.Max(0, textWidth - viewportWidth);
-        var hasOverflow = _trackTitleOverflow > TrackTitleOverflowThreshold;
+        var measuredOverflow = Math.Max(0, textWidth - viewportWidth);
+        var hasOverflow = measuredOverflow > TrackTitleOverflowThreshold;
+        _trackTitleOverflow = hasOverflow && ExplicitBadge.IsVisible
+            ? measuredOverflow + TrackTitleBadgeTrailingPadding
+            : measuredOverflow;
         var shouldAnimate = vm.TrackTitleMarqueeEnabled && hasOverflow;
         if (!shouldAnimate)
         {
@@ -275,8 +288,8 @@ public partial class PlaybackBarView : UserControl
         var width = formattedText.WidthIncludingTrailingWhitespace;
 
         // Include explicit badge width + spacing when visible
-        if (ExplicitBadge.IsVisible && ExplicitBadge.Bounds.Width > 0)
-            width += 6 + ExplicitBadge.Bounds.Width; // 6 = StackPanel Spacing
+        if (ExplicitBadge.IsVisible)
+            width += TrackTitleBadgeSpacing + GetExplicitBadgeWidth();
 
         return width;
     }
@@ -284,14 +297,22 @@ public partial class PlaybackBarView : UserControl
     private void SetTrackTitleWidth(double width)
     {
         // When constraining for static truncation, reserve space for the badge
-        if (!double.IsNaN(width) && ExplicitBadge.IsVisible && ExplicitBadge.Bounds.Width > 0)
-            width = Math.Max(0, width - 6 - ExplicitBadge.Bounds.Width);
+        if (!double.IsNaN(width) && ExplicitBadge.IsVisible)
+            width = Math.Max(0, width - TrackTitleBadgeSpacing - GetExplicitBadgeWidth());
 
         var currentWidth = TrackTitleTextBlock.Width;
         var widthsMatch = (double.IsNaN(currentWidth) && double.IsNaN(width)) ||
                           (!double.IsNaN(currentWidth) && !double.IsNaN(width) && Math.Abs(currentWidth - width) < 0.5);
         if (!widthsMatch)
             TrackTitleTextBlock.Width = width;
+    }
+
+    private double GetExplicitBadgeWidth()
+    {
+        if (ExplicitBadge.Bounds.Width > 0)
+            return ExplicitBadge.Bounds.Width;
+
+        return ExplicitBadge.DesiredSize.Width;
     }
 
     private void OnTrackTitleMarqueeTick(object? sender, EventArgs e)
@@ -543,16 +564,19 @@ public partial class PlaybackBarView : UserControl
         _isSeekDragging = true;
         vm.BeginSeek();
         e.Pointer.Capture(slider);
-        slider.Value = GetPercentageFromPointer(slider, e.GetPosition(slider));
+        var position = e.GetPosition(slider);
+        slider.Value = GetPercentageFromPointer(slider, position);
         e.Handled = true; // Prevent Slider's Thumb from starting its own drag
     }
 
     private void OnSeekMove(object? sender, PointerEventArgs e)
     {
-        if (!_isSeekDragging) return; // Only process moves during OUR drag
         if (sender is not Slider slider) return;
 
-        slider.Value = GetPercentageFromPointer(slider, e.GetPosition(slider));
+        var position = e.GetPosition(slider);
+        if (!_isSeekDragging) return; // Only process seeks during OUR drag
+
+        slider.Value = GetPercentageFromPointer(slider, position);
         e.Handled = true;
     }
 
@@ -578,13 +602,37 @@ public partial class PlaybackBarView : UserControl
             vm.EndSeek();
     }
 
+    private void OnSeekSliderPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == Slider.ValueProperty ||
+            e.Property.Name is nameof(Bounds) or nameof(IsEnabled))
+        {
+            UpdateSeekSliderVisual();
+        }
+    }
+
+    private void UpdateSeekSliderVisual()
+    {
+        if (SeekSlider == null ||
+            SeekTrackBackground == null ||
+            SeekTrackFill == null ||
+            SeekThumb == null)
+            return;
+
+        PillSliderVisualHelper.UpdateVisual(
+            SeekSlider,
+            SeekTrackBackground,
+            SeekTrackFill,
+            SeekThumb,
+            _seekThumbTransform,
+            SeekThumbSize);
+
+        SeekTrackFill.Width = Math.Max(0, SeekTrackFill.Width - (SeekThumbSize / 2.0));
+    }
+
     private static double GetPercentageFromPointer(Slider slider, Point position)
     {
-        if (slider.Bounds.Width <= 0)
-            return 0;
-
-        var percentage = position.X / slider.Bounds.Width;
-        return Math.Clamp(percentage, 0, 1);
+        return PillSliderVisualHelper.GetValueFromPointer(slider, position, SeekThumbSize);
     }
 
     private void OnVolumeSliderPressed(object? sender, PointerPressedEventArgs e)
@@ -602,7 +650,7 @@ public partial class PlaybackBarView : UserControl
         (DataContext as ViewModels.PlayerViewModel)?.CommitVolume();
     }
 
-    private const double IslandBaseWidth = 620;
+    private const double IslandBaseWidth = 650;
     private const double VolumeSliderExpandedWidth = 99;
 
     private void OnVolumeContainerEntered(object? sender, PointerEventArgs e)
@@ -651,6 +699,16 @@ public partial class PlaybackBarView : UserControl
     {
         if (DataContext is not PlayerViewModel vm) return;
         _playlistPopulator?.Populate(vm.Playlists, vm.AddCurrentTrackToExistingPlaylistCommand);
+        RefreshTrackInfoLayout();
+    }
+
+    private void RefreshTrackInfoLayout()
+    {
+        ResetTrackTitleMarquee();
+        ResetArtistNameMarquee();
+        ScheduleTrackTitleMarqueeUpdate(resetAnimation: true);
+        ScheduleArtistNameMarqueeUpdate(resetAnimation: true);
+        UpdateSeekSliderVisual();
     }
 }
 

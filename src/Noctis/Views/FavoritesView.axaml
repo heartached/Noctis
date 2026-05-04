@@ -160,32 +160,24 @@
                                                 </Panel>
                                             </Border>
                                             <!-- Title + explicit badge -->
-                                            <TextBlock Margin="0,5,0,0"
-                                                       FontSize="13"
-                                                       FontWeight="SemiBold"
-                                                       TextWrapping="Wrap"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       MaxLines="2">
-                                                <Run Text="{Binding Title}" />
-                                                <InlineUIContainer BaselineAlignment="Center">
-                                                    <Border Classes="explicit-badge compact"
-                                                            Margin="4,0,0,0"
-                                                            IsVisible="{Binding IsExplicit}"
-                                                            ToolTip.Tip="Explicit">
-                                                        <TextBlock Text="E"
-                                                                   Classes="explicit-badge-text compact"
-                                                                   FontSize="9"
-                                                                   Opacity="0.9" />
-                                                    </Border>
-                                                </InlineUIContainer>
-                                            </TextBlock>
+                                            <controls:HighlightTextBlock DisplayText="{Binding Title}"
+                                                                         HighlightText="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).SearchText}"
+                                                                         IsExplicit="{Binding IsExplicit}"
+                                                                         Margin="0,5,0,0"
+                                                                         FontSize="13"
+                                                                         FontWeight="SemiBold"
+                                                                         TextWrapping="Wrap"
+                                                                         TextTrimming="CharacterEllipsis"
+                                                                         MaxLines="2" />
                                             <!-- Artist name -->
-                                            <TextBlock Text="{Binding Subtitle}"
-                                                       FontSize="12"
-                                                       Opacity="0.55"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       MaxLines="1"
-                                                       Margin="0,1,0,0" />
+                                            <controls:HighlightTextBlock DisplayText="{Binding Subtitle}"
+                                                                         HighlightText="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).SearchText}"
+                                                                         FontSize="12"
+                                                                         FontWeight="Bold"
+                                                                         Opacity="0.55"
+                                                                         TextTrimming="CharacterEllipsis"
+                                                                         MaxLines="1"
+                                                                         Margin="0,1,0,0" />
                                         </StackPanel>
                                     </Button>
                                 </DataTemplate>

@@ -36,7 +36,8 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="m:Track">
-                                <Button Background="{DynamicResource HomeCardBackground}"
+                                <Button Classes="browse-item"
+                                        Background="{DynamicResource HomeCardBackground}"
                                         BorderThickness="0"
                                         CornerRadius="6"
                                         Padding="0"
@@ -148,8 +149,8 @@
                                         </ContextMenu>
                                     </Button.ContextMenu>
 
-                                    <!-- Pill content: artwork + title + explicit badge -->
-                                    <Grid ColumnDefinitions="56,*">
+                                    <!-- Pill content: artwork + title + explicit badge + play count -->
+                                    <Grid ColumnDefinitions="56,*,Auto">
                                         <Border Grid.Column="0"
                                                 Width="56" Height="56"
                                                 CornerRadius="6,0,0,6"
@@ -168,16 +169,18 @@
                                                        IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             </Panel>
                                         </Border>
-                                        <StackPanel Grid.Column="1"
-                                                    Orientation="Horizontal"
-                                                    VerticalAlignment="Center"
-                                                    Margin="12,0,16,0">
-                                            <TextBlock Text="{Binding Title}"
+                                        <Grid Grid.Column="1"
+                                              ColumnDefinitions="*,Auto"
+                                              VerticalAlignment="Center"
+                                              Margin="12,0,8,0">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding Title}"
                                                        FontSize="13"
                                                        FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis"
                                                        MaxLines="1" />
-                                            <Border Classes="explicit-badge compact"
+                                            <Border Grid.Column="1"
+                                                    Classes="explicit-badge compact"
                                                     Margin="6,0,0,0"
                                                     IsVisible="{Binding IsExplicit}"
                                                     ToolTip.Tip="Explicit">
@@ -186,7 +189,19 @@
                                                            FontSize="9"
                                                            Opacity="0.9" />
                                             </Border>
-                                        </StackPanel>
+                                        </Grid>
+                                        <Border Grid.Column="2"
+                                                Margin="0,0,14,0"
+                                                Padding="7,3"
+                                                CornerRadius="999"
+                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                                                VerticalAlignment="Center"
+                                                ToolTip.Tip="Listen count">
+                                            <TextBlock Text="{Binding PlayCount, StringFormat='{}{0} plays'}"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       Opacity="0.75" />
+                                        </Border>
                                     </Grid>
                                 </Button>
                             </DataTemplate>
@@ -372,6 +387,7 @@
                                         </TextBlock>
                                         <TextBlock Text="{Binding Artist}"
                                                    FontSize="12"
+                                                   FontWeight="Bold"
                                                    Opacity="0.55"
                                                    TextTrimming="CharacterEllipsis"
                                                    MaxLines="1"

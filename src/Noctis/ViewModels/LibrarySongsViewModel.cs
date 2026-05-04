@@ -79,11 +79,21 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             return;
 
         _isDirty = false;
-        ApplyFilterAndSort(refreshFromLibrary: true);
+
+        // Sync rebuild: navigation sets CurrentView immediately after this returns,
+        // so FilteredTracks must be current on first paint to avoid flashing the
+        // previous list for a frame.
+        Interlocked.Increment(ref _filterGeneration);
+        _allTracks = _library.Tracks.ToList();
+        var rebuilt = BuildFilteredAndSortedTracks(_allTracks, _currentFilter, SortColumn, SortAscending, ShowOnlyFavorites);
+        FilteredTracks.ReplaceAll(rebuilt);
     }
 
     public void ApplyFilter(string query)
     {
+        if (SearchText != query)
+            SearchText = query;
+
         _currentFilter = query;
         OnPropertyChanged(nameof(HasActiveFilter));
         ApplyFilterAndSort();
@@ -293,46 +303,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
                 if (library != null)
                     tracks = library.Tracks.ToList();
 
-                var filtered = tracks.AsEnumerable();
-
-                // Apply favorites filter
-                if (favOnly)
-                    filtered = filtered.Where(t => t.IsFavorite);
-
-                // Apply search filter
-                if (!string.IsNullOrWhiteSpace(filter))
-                {
-                    var q = filter.Trim();
-                    var qNoSpaces = RemoveWhitespace(q);
-                    filtered = filtered.Where(t =>
-                        MatchesSearch(t.Title, q, qNoSpaces) ||
-                        MatchesSearch(t.Artist, q, qNoSpaces) ||
-                        MatchesSearch(t.Album, q, qNoSpaces));
-                }
-
-                var hasQuery = !string.IsNullOrWhiteSpace(filter);
-                var ranked = filtered
-                    .Select(t => new
-                    {
-                        Track = t,
-                        Rank = hasQuery ? GetTrackSearchRank(t, filter.Trim(), RemoveWhitespace(filter.Trim())) : 0
-                    });
-
-                var ordered = ranked.OrderBy(x => x.Rank);
-                ordered = sortCol switch
-                {
-                    "Title" => sortAsc ? ordered.ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Title),
-                    "Time" => sortAsc ? ordered.ThenBy(x => x.Track.Duration) : ordered.ThenByDescending(x => x.Track.Duration),
-                    "Artist" => sortAsc ? ordered.ThenBy(x => x.Track.Artist).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Artist).ThenBy(x => x.Track.Title),
-                    "Album" => sortAsc ? ordered.ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber) : ordered.ThenByDescending(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber),
-                    "Genre" => sortAsc ? ordered.ThenBy(x => x.Track.Genre).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Genre).ThenBy(x => x.Track.Title),
-                    "Plays" => sortAsc ? ordered.ThenBy(x => x.Track.PlayCount) : ordered.ThenByDescending(x => x.Track.PlayCount),
-                    "Duration" => sortAsc ? ordered.ThenBy(x => x.Track.Duration) : ordered.ThenByDescending(x => x.Track.Duration),
-                    "Date Added" => sortAsc ? ordered.ThenBy(x => x.Track.DateAdded) : ordered.ThenByDescending(x => x.Track.DateAdded),
-                    _ => ordered.ThenBy(x => x.Track.Title)
-                };
-
-                return ordered.Select(x => x.Track).ToList();
+                return BuildFilteredAndSortedTracks(tracks, filter, sortCol, sortAsc, favOnly);
             });
 
             // Discard stale results if a newer filter/sort has been requested
@@ -348,6 +319,49 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         {
             System.Diagnostics.Debug.WriteLine($"[SongsVM] Filter/sort failed: {ex.Message}");
         }
+    }
+
+    private static List<Track> BuildFilteredAndSortedTracks(
+        List<Track> tracks, string filter, string sortCol, bool sortAsc, bool favOnly)
+    {
+        var filtered = tracks.AsEnumerable();
+
+        if (favOnly)
+            filtered = filtered.Where(t => t.IsFavorite);
+
+        if (!string.IsNullOrWhiteSpace(filter))
+        {
+            var q = filter.Trim();
+            var qNoSpaces = RemoveWhitespace(q);
+            filtered = filtered.Where(t =>
+                MatchesSearch(t.Title, q, qNoSpaces) ||
+                MatchesSearch(t.Artist, q, qNoSpaces) ||
+                MatchesSearch(t.Album, q, qNoSpaces));
+        }
+
+        var hasQuery = !string.IsNullOrWhiteSpace(filter);
+        var ranked = filtered
+            .Select(t => new
+            {
+                Track = t,
+                Rank = hasQuery ? GetTrackSearchRank(t, filter.Trim(), RemoveWhitespace(filter.Trim())) : 0
+            });
+
+        var ordered = ranked.OrderBy(x => x.Rank);
+        ordered = sortCol switch
+        {
+            "Title" => sortAsc ? ordered.ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Title),
+            "Time" => sortAsc ? ordered.ThenBy(x => x.Track.Duration) : ordered.ThenByDescending(x => x.Track.Duration),
+            "Artist" => sortAsc ? ordered.ThenBy(x => x.Track.Artist).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Artist).ThenBy(x => x.Track.Title),
+            "Album" => sortAsc ? ordered.ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber) : ordered.ThenByDescending(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber),
+            "Genre" => sortAsc ? ordered.ThenBy(x => x.Track.Genre).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Genre).ThenBy(x => x.Track.Title),
+            "Plays" => sortAsc ? ordered.ThenBy(x => x.Track.PlayCount) : ordered.ThenByDescending(x => x.Track.PlayCount),
+            "Duration" => sortAsc ? ordered.ThenBy(x => x.Track.Duration) : ordered.ThenByDescending(x => x.Track.Duration),
+            "Date Added" => sortAsc ? ordered.ThenBy(x => x.Track.DateAdded) : ordered.ThenByDescending(x => x.Track.DateAdded),
+            _ => ordered.ThenBy(x => x.Track.Title)
+        };
+
+        return ordered.Select(x => x.Track).ToList();
     }
 
     public void Dispose()

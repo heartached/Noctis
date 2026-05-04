@@ -25,19 +25,19 @@ A music player that respects what's yours. Zero tracking, total control.
 
 ### Synced Lyrics
 
-![Lyrics](docs/images/lyrics.png)
+![Lyrics](docs/images/Lyrics.png)
 
 ### Cover Flow
 
-![Cover Flow](docs/images/coverflow.png)
+![Cover Flow](docs/images/Coverflow.png)
 
 ### Albums
 
-![Albums](docs/images/albums.png)
+![Albums](docs/images/Albums.png)
 
 ### Discord Rich Presence
 
-<img src="docs/images/discord.png" width="280">
+<img src="docs/images/Discord.png" width="280">
 
 ---
 

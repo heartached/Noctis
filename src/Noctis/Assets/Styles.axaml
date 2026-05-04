@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:helpers="using:Noctis.Helpers">
 
     <!--
         Global style overrides for the Noctis music player.
@@ -299,6 +300,11 @@
     <Style Selector="ScrollViewer">
         <Setter Property="AllowAutoHide" Value="True"/>
         <Setter Property="IsScrollInertiaEnabled" Value="True"/>
+        <Setter Property="helpers:MomentumScrollBehavior.IsEnabled" Value="True"/>
+        <Setter Property="helpers:MomentumScrollBehavior.Friction" Value="0.95"/>
+        <Setter Property="helpers:MomentumScrollBehavior.WheelVelocity" Value="13"/>
+        <Setter Property="helpers:MomentumScrollBehavior.FastWheelReferenceMs" Value="80"/>
+        <Setter Property="helpers:MomentumScrollBehavior.MaxWheelSpeedMultiplier" Value="2.4"/>
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
     </Style>
@@ -386,7 +392,7 @@
         <Setter Property="Margin" Value="0" />
     </Style>
 
-    <!-- Context Menu (no transitions to prevent position shift) -->
+    <!-- Context Menu / MenuFlyout popup chrome -->
     <Style Selector="ContextMenu">
         <Setter Property="CornerRadius" Value="16" />
         <Setter Property="Padding" Value="6" />
@@ -408,6 +414,14 @@
         <Setter Property="CornerRadius" Value="16" />
     </Style>
 
+    <!-- Tooltip popup chrome (matches the pill-rounded card look used by menus) -->
+    <Style Selector="ToolTip">
+        <Setter Property="CornerRadius" Value="14" />
+    </Style>
+    <Style Selector="ToolTip /template/ ContentPresenter">
+        <Setter Property="CornerRadius" Value="14" />
+    </Style>
+
     <!-- Full-width separators in context menus and menu flyouts -->
     <Style Selector="ContextMenu Separator">
         <Setter Property="Margin" Value="0" />
@@ -422,7 +436,11 @@
     <Style Selector="MenuItem">
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.08"/>
+                <BrushTransition Property="Background" Duration="0:0:0.14">
+                    <BrushTransition.Easing>
+                        <CubicEaseOut/>
+                    </BrushTransition.Easing>
+                </BrushTransition>
             </Transitions>
         </Setter>
     </Style>
@@ -469,7 +487,7 @@
     </Style>
 
     <Style Selector="ListBox.sidebar ListBoxItem">
-        <Setter Property="Padding" Value="8,10,16,10" />
+        <Setter Property="Padding" Value="10" />
         <Setter Property="Margin" Value="0,2" />
         <Setter Property="CornerRadius" Value="999" />
         <Setter Property="FontSize" Value="15" />
@@ -519,7 +537,7 @@
     </Style>
 
     <Style Selector="ListBox.track-list ListBoxItem">
-        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="Padding" Value="0,6,8,6" />
         <Setter Property="CornerRadius" Value="4" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
@@ -527,7 +545,8 @@
         <Setter Property="FocusAdorner" Value="{x:Null}" />
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="BorderBrush" Duration="0:0:0.1"/>
+                <BrushTransition Property="Background" Duration="0:0:0.04"/>
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.04"/>
             </Transitions>
         </Setter>
     </Style>
@@ -542,14 +561,14 @@
     <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n):selected">
         <Setter Property="Background" Value="{DynamicResource TrackListStripeBrush}" />
     </Style>
-    <!-- Hover: preserve stripe backgrounds, no visual change on pointer-over -->
+    <!-- Hover: Apple Music-style row highlight while browsing tracks. -->
     <Style Selector="ListBox.track-list ListBoxItem:pointerover">
-        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="1" />
     </Style>
     <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n):pointerover">
-        <Setter Property="Background" Value="{DynamicResource TrackListStripeBrush}" />
+        <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
     </Style>
 
     <!-- Note: ContentPresenter background overrides for track-list items are handled by
@@ -595,13 +614,14 @@
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.1"/>
+                <BrushTransition Property="Background" Duration="0:0:0.04"/>
             </Transitions>
         </Setter>
     </Style>
 
     <Style Selector="Button.album-tile:pointerover">
         <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="RenderTransform" Value="scale(1)"/>
     </Style>
 
     <!-- Ctrl+Click multi-select highlight for album tiles (red border) -->
@@ -612,6 +632,7 @@
     <Style Selector="Button.album-tile.ctrl-selected:pointerover">
         <Setter Property="BorderThickness" Value="2" />
         <Setter Property="BorderBrush" Value="#E74856" />
+        <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
     <Style Selector="Button.album-tile.ctrl-selected /template/ ContentPresenter">
         <Setter Property="BorderThickness" Value="2" />
@@ -620,6 +641,10 @@
     <Style Selector="Button.album-tile.ctrl-selected:pointerover /template/ ContentPresenter">
         <Setter Property="BorderThickness" Value="2" />
         <Setter Property="BorderBrush" Value="#E74856" />
+    </Style>
+
+    <Style Selector="ListBox.track-list Button:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
     <!-- Ctrl+Click multi-select highlight for track rows (gray background) -->
@@ -656,13 +681,13 @@
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Transitions">
             <Transitions>
-                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12">
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.06">
                     <TransformOperationsTransition.Easing>
                         <CubicEaseOut/>
                     </TransformOperationsTransition.Easing>
                 </TransformOperationsTransition>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
-                <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.06"/>
+                <BrushTransition Property="Background" Duration="0:0:0.06"/>
             </Transitions>
         </Setter>
     </Style>
@@ -714,17 +739,18 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
-    <!-- Artist list item hover animation -->
+    <!-- Artist list item hover highlight -->
     <Style Selector="Button.artist-item">
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                <BrushTransition Property="Background" Duration="0:0:0.04"/>
             </Transitions>
         </Setter>
     </Style>
 
     <Style Selector="Button.artist-item:pointerover">
         <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
+        <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
     <!-- Smooth fade-in for content areas -->
@@ -744,7 +770,7 @@
     <Style Selector="ToggleSwitch">
         <Setter Property="Transitions">
             <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.06"/>
             </Transitions>
         </Setter>
     </Style>
@@ -753,7 +779,7 @@
     <Style Selector="Slider /template/ Thumb">
         <Setter Property="Transitions">
             <Transitions>
-                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1">
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.06">
                     <TransformOperationsTransition.Easing>
                         <CubicEaseOut/>
                     </TransformOperationsTransition.Easing>
@@ -762,24 +788,79 @@
         </Setter>
     </Style>
 
-    <!-- Button hover transition (global) — no Opacity transition here because it
-         causes every virtualized album-tile to animate when created during scroll -->
+    <!-- Button click transition (global) - keep opacity out because it
+         causes every virtualized album-tile to animate when created during scroll. -->
     <Style Selector="Button">
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+        <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.1"/>
+                <BrushTransition Property="Background" Duration="0:0:0.06">
+                    <BrushTransition.Easing>
+                        <CubicEaseOut/>
+                    </BrushTransition.Easing>
+                </BrushTransition>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.06">
+                    <TransformOperationsTransition.Easing>
+                        <CubicEaseOut/>
+                    </TransformOperationsTransition.Easing>
+                </TransformOperationsTransition>
             </Transitions>
         </Setter>
     </Style>
 
-    <!-- Accent (pink) button — preserve background on hover/press -->
-    <Style Selector="Button.accent-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#D03858" />
-        <Setter Property="Foreground" Value="White" />
+    <Style Selector="Button:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1.045)"/>
     </Style>
-    <Style Selector="Button.accent-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#C03050" />
-        <Setter Property="Foreground" Value="White" />
+
+    <Style Selector="Button.album-tile:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+    </Style>
+
+    <Style Selector="Button.album-tile.ctrl-selected:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+
+    <Style Selector="Button.browse-item:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+
+    <Style Selector="Button.artist-item:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+
+    <Style Selector="ListBox.track-list Button:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+
+    <Style Selector="Button:pressed">
+        <Setter Property="RenderTransform" Value="scale(0.96)"/>
+    </Style>
+
+    <!-- Accent/red pill buttons: keep their red fill on hover/press instead of Fluent's dark hover chrome. -->
+    <Style Selector="Button.accent-btn:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{TemplateBinding Background}" />
+        <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />
+    </Style>
+    <Style Selector="Button.accent-btn:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{TemplateBinding Background}" />
+        <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />
+    </Style>
+    <Style Selector="Button.album-desc-btn:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{TemplateBinding Background}" />
+        <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />
+    </Style>
+    <Style Selector="Button.album-desc-btn:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{TemplateBinding Background}" />
+        <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />
+    </Style>
+    <Style Selector="Button.pill:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{TemplateBinding Background}" />
+        <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />
+    </Style>
+    <Style Selector="Button.pill:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{TemplateBinding Background}" />
+        <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />
     </Style>
 
     <!-- Search TextBox styling: strip all chrome so the pill container controls the look -->
@@ -839,15 +920,35 @@
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Template">
             <ControlTemplate>
-                <Grid ColumnDefinitions="22,*"
+                <Grid ColumnDefinitions="28,*"
                       VerticalAlignment="Center">
                     <Border x:Name="IndicatorBorder"
+                            Margin="3,0"
                             Width="22"
                             Height="22"
                             CornerRadius="11"
                             BorderThickness="1.5"
                             BorderBrush="{DynamicResource SystemControlForegroundBaseHighBrush}"
                             Background="Transparent">
+                        <Border.Transitions>
+                            <Transitions>
+                                <BrushTransition Property="Background" Duration="0:0:0.18">
+                                    <BrushTransition.Easing>
+                                        <CubicEaseOut />
+                                    </BrushTransition.Easing>
+                                </BrushTransition>
+                                <BrushTransition Property="BorderBrush" Duration="0:0:0.18">
+                                    <BrushTransition.Easing>
+                                        <CubicEaseOut />
+                                    </BrushTransition.Easing>
+                                </BrushTransition>
+                                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                                    <TransformOperationsTransition.Easing>
+                                        <CubicEaseOut />
+                                    </TransformOperationsTransition.Easing>
+                                </TransformOperationsTransition>
+                            </Transitions>
+                        </Border.Transitions>
                         <Path x:Name="IndicatorCheck"
                               Data="M 0 3.5 L 3 7 L 9 0"
                               Stroke="White"
@@ -866,6 +967,14 @@
                 </Grid>
             </ControlTemplate>
         </Setter>
+    </Style>
+
+    <Style Selector="CheckBox.metadata-pill-checkbox:pointerover /template/ Border#IndicatorBorder">
+        <Setter Property="RenderTransform" Value="scale(1.06)" />
+    </Style>
+
+    <Style Selector="CheckBox.metadata-pill-checkbox:pressed /template/ Border#IndicatorBorder">
+        <Setter Property="RenderTransform" Value="scale(0.9)" />
     </Style>
 
     <Style Selector="CheckBox.metadata-pill-checkbox:checked /template/ Border#IndicatorBorder">
