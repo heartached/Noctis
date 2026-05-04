@@ -44,6 +44,7 @@ public static class DominantColorExtractor
     private const int MaxCacheSize = 500;
     private static readonly ConcurrentDictionary<string, Color> ColorCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<string, (Color, Color)> PaletteCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, Color> EdgeBackgroundCache = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Returns a cached dominant color for the given artwork path, or extracts and caches it.
@@ -262,6 +263,23 @@ public static class DominantColorExtractor
     }
 
     /// <summary>
+    /// Returns a cached edge-background color for the given artwork path, or extracts and caches it.
+    /// </summary>
+    public static Color GetOrExtractEdgeBackgroundColor(string artworkPath, Bitmap bitmap)
+    {
+        if (EdgeBackgroundCache.TryGetValue(artworkPath, out var cached))
+            return cached;
+
+        var color = ExtractEdgeBackgroundColor(bitmap);
+
+        if (EdgeBackgroundCache.Count >= MaxCacheSize)
+            EdgeBackgroundCache.Clear();
+
+        EdgeBackgroundCache.TryAdd(artworkPath, color);
+        return color;
+    }
+
+    /// <summary>
     /// Returns cached palette or extracts and caches it.
     /// </summary>
     public static (Color Dominant, Color Secondary) GetOrExtractPalette(string artworkPath, Bitmap bitmap)
@@ -467,29 +485,115 @@ public static class DominantColorExtractor
     /// without being too dark (loses the cover's identity) or too light (white text becomes
     /// unreadable). Inspired by Apple Music's album page tinting.
     /// </summary>
-    public static Color ExtractAmbientColor(Bitmap? bitmap)
+    [Obsolete("Use ExtractEdgeBackgroundColor — Apple Music-style edge-ring sampling without lightness clamping.")]
+    public static Color ExtractAmbientColor(Bitmap? bitmap) => ExtractEdgeBackgroundColor(bitmap);
+
+    /// <summary>
+    /// Apple-Music-style background extraction: samples the outer 1-pixel ring of a
+    /// downscaled cover, picks the most common color via a coarse 6-bits-per-channel
+    /// histogram, and returns the weighted average of the winning bucket. Preserves
+    /// the cover's natural lightness — no clamping. Falls back to the cover's
+    /// dominant color if the edge ring is uninformative (e.g., near-uniform black or
+    /// white border).
+    /// </summary>
+    public static Color ExtractEdgeBackgroundColor(Bitmap? bitmap)
     {
-        if (bitmap == null) return FallbackColor;
+        if (bitmap == null || bitmap.Size.Width <= 0 || bitmap.Size.Height <= 0)
+            return FallbackColor;
 
-        var (a, b) = ExtractColorPalette(bitmap);
+        const int sampleSize = 50;
 
-        // ExtractColorPalette returns (dominant=darker, secondary=lighter).
-        // We want the lighter cluster — that's the cover's canvas/ambient color.
-        var picked = b;
+        try
+        {
+            var pixelSize = new PixelSize(sampleSize, sampleSize);
+            using var rtb = new RenderTargetBitmap(pixelSize);
+            using (var ctx = rtb.CreateDrawingContext())
+            {
+                ctx.DrawImage(bitmap,
+                    new Rect(0, 0, bitmap.Size.Width, bitmap.Size.Height),
+                    new Rect(0, 0, sampleSize, sampleSize));
+            }
 
-        var (hue, sat, _) = RgbToHsl(picked.R, picked.G, picked.B);
+            using var ms = new MemoryStream();
+            rtb.Save(ms);
+            ms.Position = 0;
+            using var decoded = WriteableBitmap.Decode(ms);
+            using var fb = decoded.Lock();
 
-        // Boost saturation so the tint is unmistakably the cover's color rather than a wash.
-        // Floor at 0.45 so even fairly desaturated covers (greys, washed-out art) still read
-        // as tinted; cap at 0.85 so we don't blow out already-vivid covers into neon.
-        sat = Math.Clamp(sat * 1.25, 0.45, 0.85);
+            int width = fb.Size.Width;
+            int height = fb.Size.Height;
+            int rowBytes = fb.RowBytes;
+            int bufferSize = rowBytes * height;
+            var pixels = new byte[bufferSize];
+            Marshal.Copy(fb.Address, pixels, 0, bufferSize);
 
-        // Normalize lightness to a mid value: bright enough to clearly be "the color",
-        // dark enough that the existing white text on the album page stays readable
-        // (L=0.45 against white is ~3.4:1, acceptable for large bold headings).
-        const double targetLightness = 0.45;
+            // Histogram: 4 bits per channel = 4096 buckets. Keys are packed RRRRGGGGBBBB.
+            var counts = new Dictionary<int, int>(256);
+            var sums = new Dictionary<int, (long R, long G, long B)>(256);
 
-        return HslToColor(hue, sat, targetLightness);
+            void Sample(int x, int y)
+            {
+                int offset = y * rowBytes + x * 4;
+                byte b = pixels[offset];
+                byte g = pixels[offset + 1];
+                byte r = pixels[offset + 2];
+                int key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+                counts[key] = counts.TryGetValue(key, out var c) ? c + 1 : 1;
+                (long R, long G, long B) s = sums.TryGetValue(key, out var v) ? v : (0L, 0L, 0L);
+                sums[key] = (s.R + r, s.G + g, s.B + b);
+            }
+
+            // Outer 1-pixel ring (top row, bottom row, left column, right column).
+            for (int x = 0; x < width; x++)
+            {
+                Sample(x, 0);
+                Sample(x, height - 1);
+            }
+            for (int y = 1; y < height - 1; y++)
+            {
+                Sample(0, y);
+                Sample(width - 1, y);
+            }
+
+            if (counts.Count == 0)
+                return FallbackColor;
+
+            // Prefer non-noise buckets (luminance 6..250). If only black/white remain,
+            // accept them — that genuinely is the cover's color.
+            int bestKey = -1;
+            int bestCount = -1;
+            int bestKeyAny = -1;
+            int bestCountAny = -1;
+            foreach (var kv in counts)
+            {
+                var (sr, sg, sb) = sums[kv.Key];
+                int n = kv.Value;
+                int ar = (int)(sr / n), ag = (int)(sg / n), ab = (int)(sb / n);
+                int luma = (ar * 299 + ag * 587 + ab * 114) / 1000;
+
+                if (n > bestCountAny) { bestCountAny = n; bestKeyAny = kv.Key; }
+                if (luma < 6 || luma > 250) continue;
+                if (n > bestCount) { bestCount = n; bestKey = kv.Key; }
+            }
+
+            int chosen = bestKey >= 0 ? bestKey : bestKeyAny;
+            var (tr, tg, tb) = sums[chosen];
+            int total = counts[chosen];
+            var rawColor = Color.FromRgb(
+                (byte)(tr / total),
+                (byte)(tg / total),
+                (byte)(tb / total));
+
+            // Gentle saturation floor so genuinely grey covers stay grey, but covers
+            // with any hue at all read as tinted rather than washed out.
+            var (h, s, l) = RgbToHsl(rawColor.R, rawColor.G, rawColor.B);
+            if (s > 0.05 && s < 0.10) s = 0.10;
+            return HslToColor(h, s, l);
+        }
+        catch
+        {
+            return FallbackColor;
+        }
     }
 
     /// <summary>
