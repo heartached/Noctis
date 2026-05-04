@@ -1,8 +1,7 @@
 <div align="center">
 
 <h1>
-  <img src="src/Noctis/Assets/Icons/Noctis%20Logo%20Transparent.png" width="48" align="center" />
-  Noctis
+  <img src="src/Noctis/Assets/Icons/Noctis%20Logo%20Transparent.png" width="48" align="middle" />&nbsp;Noctis
 </h1>
 
 A music player that respects what's yours. Zero tracking, total control.
@@ -25,19 +24,19 @@ A music player that respects what's yours. Zero tracking, total control.
 
 ### Synced Lyrics
 
-![Lyrics](docs/images/Lyrics.png)
+![Lyrics](docs/images/lyrics.png)
 
 ### Cover Flow
 
-![Cover Flow](docs/images/Coverflow.png)
+![Cover Flow](docs/images/coverflow.png)
 
 ### Albums
 
-![Albums](docs/images/Albums.png)
+![Albums](docs/images/albums.png)
 
 ### Discord Rich Presence
 
-<img src="docs/images/Discord.png" width="280">
+<img src="docs/images/discord.png" width="280">
 
 ---
 
