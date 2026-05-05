@@ -28,7 +28,7 @@ jobs:
             run-tests: false
 
           - name: macos-x64
-            runs-on: macos-13
+            runs-on: macos-14
             rid: osx-x64
             artifact: Noctis-macos-x64
             run-tests: false
