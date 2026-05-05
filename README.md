@@ -78,20 +78,44 @@ dotnet run --project src/Noctis/Noctis.csproj
 
 Supported platforms: Windows 10/11 (x64), macOS 12+ (Intel & Apple Silicon), Linux (x64 & ARM64).
 
-**Native dependency — libvlc:**
+### Native dependency — libvlc
 
-- **Windows / macOS:** bundled automatically via NuGet — nothing to install.
-- **Linux:** install via your package manager:
+- **Windows:** bundled automatically via NuGet — nothing to install.
+- **macOS:** install [VLC](https://www.videolan.org/vlc/) (Noctis loads libvlc from `/Applications/VLC.app`):
+  ```bash
+  brew install --cask vlc
+  ```
+- **Linux:** install via your package manager. The `-dev` package provides the
+  unversioned `libvlc.so` symlink that the .NET loader looks for:
   ```bash
   # Debian/Ubuntu
-  sudo apt install vlc
+  sudo apt install libvlc-dev
   # Fedora
-  sudo dnf install vlc
+  sudo dnf install vlc-devel
   # Arch
   sudo pacman -S vlc
   ```
 
-To produce a self-contained build for another OS:
+### Running a downloaded build (macOS / Linux)
+
+The macOS and Linux artifacts on the [Releases page](https://github.com/heartached/Noctis/releases)
+are unsigned self-contained builds. After unzipping:
+
+**macOS:**
+```bash
+cd Noctis-macos-arm64
+xattr -dr com.apple.quarantine .   # remove Gatekeeper quarantine flag
+./Noctis
+```
+
+**Linux:**
+```bash
+cd Noctis-linux-x64
+chmod +x Noctis
+./Noctis
+```
+
+### Build for another OS
 
 ```bash
 dotnet publish src/Noctis/Noctis.csproj -c Release -r linux-x64   --self-contained
