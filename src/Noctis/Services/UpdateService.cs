@@ -156,14 +156,28 @@ public sealed class UpdateService
         if (!File.Exists(installerPath))
             return false;
 
-        Process.Start(new ProcessStartInfo
+        try
         {
-            FileName = installerPath,
-            Arguments = "/SILENT",
-            UseShellExecute = true  // triggers UAC elevation prompt
-        });
+            var proc = Process.Start(new ProcessStartInfo
+            {
+                FileName = installerPath,
+                Arguments = "/SILENT",
+                UseShellExecute = true  // triggers UAC elevation prompt
+            });
 
-        return true;
+            if (proc is null)
+            {
+                Debug.WriteLine("[UpdateService] Process.Start returned null for installer.");
+                return false;
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // Most common cause: user declined the UAC prompt.
+            Debug.WriteLine($"[UpdateService] LaunchInstaller failed: {ex.Message}");
+            return false;
+        }
     }
 
     private static Version? ParseTag(string tag)

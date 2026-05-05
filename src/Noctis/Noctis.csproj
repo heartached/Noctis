@@ -11,7 +11,7 @@
     <RootNamespace>Noctis</RootNamespace>
     <Product>Noctis</Product>
     <Company>Noctis</Company>
-    <Version>1.1.1</Version>
+    <Version>1.1.2</Version>
 
     <!-- Avalonia requires this for XAML compilation -->
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>

@@ -3,7 +3,7 @@
 ; Compile with: ISCC.exe installer.iss
 
 #define MyAppName "Noctis"
-#define MyAppVersion "1.1.1"
+#define MyAppVersion "1.1.2"
 #define MyAppPublisher "heartached"
 #define MyAppExeName "Noctis.exe"
 #define MyAppURL "https://github.com/heartached/Noctis"
@@ -49,3 +49,16 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+// On silent installs (the in-app updater path), Inno skips every [Run] entry
+// flagged `postinstall skipifsilent`, so the app would never relaunch after
+// "Install & Restart". Launch the new exe ourselves at ssDone in that case.
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
+begin
+  if (CurStep = ssDone) and WizardSilent() then
+    Exec(ExpandConstant('{app}\{#MyAppExeName}'), '', '',
+         SW_SHOW, ewNoWait, ResultCode);
+end;

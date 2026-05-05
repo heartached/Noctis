@@ -274,17 +274,11 @@ public partial class MainWindowViewModel : ViewModelBase
         // Load persisted library
         await _library.LoadAsync();
 
-        // Refresh content ViewModels with loaded data
-        _songsVm.Refresh();
-        await Task.Yield();
-        _albumsVm.Refresh();
-        await Task.Yield();
-        _artistsVm.Refresh();
-        await Task.Yield();
-        _foldersVm.Refresh();
-        await Task.Yield();
-        _homeVm.Refresh();
-        _favoritesVm.Refresh();
+        // Don't refresh every content ViewModel up front — Navigate() below
+        // refreshes the destination page on its own, and the rest can warm
+        // up on background priority after the window is interactive.
+        // Refreshing all six VMs synchronously here was the main contributor
+        // to slow startup on large libraries.
 
         // Load playlists into sidebar
         await Sidebar.LoadPlaylistsAsync();
@@ -344,12 +338,20 @@ public partial class MainWindowViewModel : ViewModelBase
         var defaultKey = Settings.GetDefaultPageKey();
         Navigate(defaultKey);
 
-        // Pre-warm cached views on background priority so first paint isn't blocked.
-        // Build creates the view once; subsequent navigations reuse the cached instance.
+        // Pre-warm cached views and the non-visible content VMs on background
+        // priority. The visible page was already refreshed by Navigate(); this
+        // makes navigation to the other sections feel instant once the user
+        // gets there, without blocking first paint.
         Dispatcher.UIThread.Post(() =>
         {
             App.CachedLocator?.Build(_songsVm);
             App.CachedLocator?.Build(_albumsVm);
+            _songsVm.Refresh();
+            _albumsVm.Refresh();
+            _artistsVm.Refresh();
+            _foldersVm.Refresh();
+            _homeVm.Refresh();
+            _favoritesVm.Refresh();
         }, DispatcherPriority.Background);
 
         // Select the matching sidebar item
