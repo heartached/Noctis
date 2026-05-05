@@ -72,10 +72,121 @@ jobs:
           -p:PublishSingleFile=false
           -o publish/${{ matrix.rid }}
 
-      - name: Upload artifact
+      # ── macOS: bundle as Noctis.app, wrap in a .dmg ─────────────────
+      - name: Package macOS .app + .dmg
+        if: startsWith(matrix.rid, 'osx-')
+        run: |
+          set -euo pipefail
+          APP="dist/Noctis.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+
+          # Copy the published binary + all dependencies into the bundle
+          cp -R publish/${{ matrix.rid }}/. "$APP/Contents/MacOS/"
+          chmod +x "$APP/Contents/MacOS/Noctis"
+
+          # Convert PNG logo into a multi-resolution .icns
+          ICONSET=Noctis.iconset
+          mkdir -p "$ICONSET"
+          SRC_PNG="src/Noctis/Assets/Icons/Noctis Logo Transparent.png"
+          for SIZE in 16 32 64 128 256 512; do
+            DOUBLE=$((SIZE * 2))
+            sips -z $SIZE  $SIZE  "$SRC_PNG" --out "$ICONSET/icon_${SIZE}x${SIZE}.png"
+            sips -z $DOUBLE $DOUBLE "$SRC_PNG" --out "$ICONSET/icon_${SIZE}x${SIZE}@2x.png"
+          done
+          iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/Noctis.icns"
+
+          VERSION=$(grep -oE '<Version>[0-9.]+</Version>' src/Noctis/Noctis.csproj | grep -oE '[0-9.]+')
+
+          cat > "$APP/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>Noctis</string>
+            <key>CFBundleDisplayName</key><string>Noctis</string>
+            <key>CFBundleIdentifier</key><string>com.heartached.noctis</string>
+            <key>CFBundleVersion</key><string>${VERSION}</string>
+            <key>CFBundleShortVersionString</key><string>${VERSION}</string>
+            <key>CFBundleExecutable</key><string>Noctis</string>
+            <key>CFBundleIconFile</key><string>Noctis</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>LSMinimumSystemVersion</key><string>12.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+          # Build .dmg (uses macOS built-in hdiutil — no extra deps)
+          DMG_NAME="Noctis-${VERSION}-${{ matrix.rid }}.dmg"
+          mkdir -p dist/dmg-staging
+          cp -R "$APP" dist/dmg-staging/
+          ln -s /Applications dist/dmg-staging/Applications
+          hdiutil create -volname "Noctis" \
+            -srcfolder dist/dmg-staging \
+            -ov -format UDZO \
+            "dist/${DMG_NAME}"
+
+          mkdir -p packaged
+          mv "dist/${DMG_NAME}" packaged/
+
+      # ── Linux: build an AppImage ────────────────────────────────────
+      - name: Package Linux AppImage
+        if: startsWith(matrix.rid, 'linux-')
+        run: |
+          set -euo pipefail
+          # Skip ARM64 packaging on x64 host — AppImage tools are arch-specific
+          # and cross-architecture AppImage assembly is non-trivial. ARM64 ships
+          # as a self-contained tarball instead.
+          if [ "${{ matrix.rid }}" = "linux-arm64" ]; then
+            VERSION=$(grep -oE '<Version>[0-9.]+</Version>' src/Noctis/Noctis.csproj | grep -oE '[0-9.]+')
+            mkdir -p packaged
+            tar -czf "packaged/Noctis-${VERSION}-linux-arm64.tar.gz" -C publish/${{ matrix.rid }} .
+            exit 0
+          fi
+
+          VERSION=$(grep -oE '<Version>[0-9.]+</Version>' src/Noctis/Noctis.csproj | grep -oE '[0-9.]+')
+
+          # Assemble AppDir
+          APPDIR=Noctis.AppDir
+          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/256x256/apps"
+          cp -R publish/${{ matrix.rid }}/. "$APPDIR/usr/bin/"
+          chmod +x "$APPDIR/usr/bin/Noctis"
+          cp "src/Noctis/Assets/Icons/Noctis Logo Transparent.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/noctis.png"
+          cp "src/Noctis/Assets/Icons/Noctis Logo Transparent.png" "$APPDIR/noctis.png"
+          ln -sf usr/bin/Noctis "$APPDIR/AppRun"
+
+          cat > "$APPDIR/noctis.desktop" <<DESKTOP
+          [Desktop Entry]
+          Type=Application
+          Name=Noctis
+          Comment=A music player that respects what's yours
+          Exec=Noctis
+          Icon=noctis
+          Categories=AudioVideo;Audio;Player;
+          Terminal=false
+          DESKTOP
+          cp "$APPDIR/noctis.desktop" "$APPDIR/usr/share/applications/"
+
+          # Fetch appimagetool
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+
+          mkdir -p packaged
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run "$APPDIR" "packaged/Noctis-${VERSION}-x86_64.AppImage"
+
+      - name: Upload artifact (raw publish folder)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: publish/${{ matrix.rid }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload packaged artifact
+        if: hashFiles('packaged/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}-installer
+          path: packaged
           if-no-files-found: error
           retention-days: 14
