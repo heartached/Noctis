@@ -51,8 +51,11 @@
                                   DataContext="{Binding TopBar}"
                                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsLyricsViewActive, Converter={x:Static BoolConverters.Not}, FallbackValue=True}" />
 
-                <!-- Center: playback island (column 0 only — can never overlap column 1) -->
-                <views:PlaybackBarView Grid.Column="0" Grid.ColumnSpan="2"
+                <!-- Center: playback island. Stays inside column 0 so it can never
+                     overlap the right action buttons (column 1). In lyrics view the
+                     right buttons collapse, column 1 sizes to 0, and the bar
+                     re-centers within the full window width automatically. -->
+                <views:PlaybackBarView Grid.Column="0"
                                        DataContext="{Binding Player}"
                                        IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaybackBarVisible, FallbackValue=False}"
                                        HorizontalAlignment="Center"
