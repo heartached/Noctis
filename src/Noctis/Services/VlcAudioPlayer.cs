@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Noctis.Models;
 using LibVLCSharp.Shared;
 
@@ -124,7 +125,13 @@ public class VlcAudioPlayer : IAudioPlayer
             {
                 var pluginsPath = Path.Combine(Path.GetDirectoryName(macLibPath) ?? "", "plugins");
                 if (Directory.Exists(pluginsPath) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VLC_PLUGIN_PATH")))
-                    Environment.SetEnvironmentVariable("VLC_PLUGIN_PATH", pluginsPath);
+                {
+                    // libvlc reads VLC_PLUGIN_PATH via libc getenv(), and on Unix
+                    // .NET's Environment.SetEnvironmentVariable does not always
+                    // reach the C `environ` array that getenv() consults. Call
+                    // setenv() directly so libvlc actually sees the path.
+                    SetUnixEnv("VLC_PLUGIN_PATH", pluginsPath);
+                }
                 Core.Initialize(macLibPath);
             }
             else
@@ -1472,6 +1479,25 @@ public class VlcAudioPlayer : IAudioPlayer
         _standbyPlayer.Dispose();
         _libVlc.Dispose();
         _playbackLock.Dispose();
+    }
+
+    [DllImport("libc", EntryPoint = "setenv")]
+    private static extern int LibcSetenv(string name, string value, int overwrite);
+
+    private static void SetUnixEnv(string name, string value)
+    {
+        try
+        {
+            // overwrite=1 so we replace any stale value on the C side too.
+            LibcSetenv(name, value, 1);
+            // Also set via .NET so any managed code reading via Environment sees it.
+            Environment.SetEnvironmentVariable(name, value);
+        }
+        catch
+        {
+            // Best effort; fall back to managed-only set.
+            Environment.SetEnvironmentVariable(name, value);
+        }
     }
 
     private static string? TryFindMacLibVlcPath()
