@@ -84,14 +84,22 @@ jobs:
           cp -R publish/${{ matrix.rid }}/. "$APP/Contents/MacOS/"
           chmod +x "$APP/Contents/MacOS/Noctis"
 
-          # Convert PNG logo into a multi-resolution .icns
+          # Build .icns from the canonical Windows .ico so the macOS dock icon
+          # matches the Windows taskbar icon. Extract the largest frame from
+          # the .ico (sips can decode .ico but only reads the first frame, so
+          # we use ImageMagick to grab the highest-resolution frame).
+          brew install --quiet imagemagick
           ICONSET=Noctis.iconset
           mkdir -p "$ICONSET"
-          SRC_PNG="src/Noctis/Assets/Icons/Noctis Logo Transparent.png"
+          SRC_ICO="src/Noctis/Assets/Icons/Noctis.ico"
+          BASE_PNG=Noctis-base.png
+          # Pick the largest frame from the .ico for best quality at every size.
+          magick "${SRC_ICO}" -coalesce -resize 1024x1024 "${BASE_PNG}[0]" 2>/dev/null || \
+            magick "${SRC_ICO}[-1]" "${BASE_PNG}"
           for SIZE in 16 32 64 128 256 512; do
             DOUBLE=$((SIZE * 2))
-            sips -z $SIZE  $SIZE  "$SRC_PNG" --out "$ICONSET/icon_${SIZE}x${SIZE}.png"
-            sips -z $DOUBLE $DOUBLE "$SRC_PNG" --out "$ICONSET/icon_${SIZE}x${SIZE}@2x.png"
+            sips -z $SIZE  $SIZE  "$BASE_PNG" --out "$ICONSET/icon_${SIZE}x${SIZE}.png"
+            sips -z $DOUBLE $DOUBLE "$BASE_PNG" --out "$ICONSET/icon_${SIZE}x${SIZE}@2x.png"
           done
           iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/Noctis.icns"
 
@@ -151,8 +159,12 @@ jobs:
           mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/256x256/apps"
           cp -R publish/${{ matrix.rid }}/. "$APPDIR/usr/bin/"
           chmod +x "$APPDIR/usr/bin/Noctis"
-          cp "src/Noctis/Assets/Icons/Noctis Logo Transparent.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/noctis.png"
-          cp "src/Noctis/Assets/Icons/Noctis Logo Transparent.png" "$APPDIR/noctis.png"
+          # Use the canonical Windows .ico (extracted to PNG) so the Linux
+          # icon matches the Windows app icon.
+          sudo apt-get install -y --no-install-recommends imagemagick
+          magick "src/Noctis/Assets/Icons/Noctis.ico[-1]" -resize 256x256 noctis.png
+          cp noctis.png "$APPDIR/usr/share/icons/hicolor/256x256/apps/noctis.png"
+          cp noctis.png "$APPDIR/noctis.png"
           ln -sf usr/bin/Noctis "$APPDIR/AppRun"
 
           cat > "$APPDIR/noctis.desktop" <<DESKTOP
