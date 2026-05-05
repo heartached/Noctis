@@ -1,0 +1,15 @@
+# GitHub Linguist overrides — control what shows up in the Languages bar.
+# Default Linguist excludes XML/JSON-flavored files (type=data) from the bar,
+# which hides Noctis's Avalonia views. Force them to be counted as XAML so
+# the .axaml work shows up.
+*.axaml  linguist-language=XAML
+*.axaml  linguist-detectable=true
+*.xaml   linguist-language=XAML
+*.xaml   linguist-detectable=true
+
+# The Lottie equalizer animation is a 700 KB exported asset, not handwritten
+# JSON — exclude it so it doesn't drown out real source.
+src/Noctis/Assets/Icons/*.json  linguist-vendored
+
+# Generated Avalonia build-tasks output isn't authored code.
+src/Noctis/.avalonia-build-tasks/  linguist-generated
