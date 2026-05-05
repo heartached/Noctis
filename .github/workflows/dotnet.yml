@@ -85,17 +85,15 @@ jobs:
           chmod +x "$APP/Contents/MacOS/Noctis"
 
           # Build .icns from the canonical Windows .ico so the macOS dock icon
-          # matches the Windows taskbar icon. Extract the largest frame from
-          # the .ico (sips can decode .ico but only reads the first frame, so
-          # we use ImageMagick to grab the highest-resolution frame).
+          # matches the Windows taskbar icon.
           brew install --quiet imagemagick
           ICONSET=Noctis.iconset
           mkdir -p "$ICONSET"
           SRC_ICO="src/Noctis/Assets/Icons/Noctis.ico"
           BASE_PNG=Noctis-base.png
-          # Pick the largest frame from the .ico for best quality at every size.
-          magick "${SRC_ICO}" -coalesce -resize 1024x1024 "${BASE_PNG}[0]" 2>/dev/null || \
-            magick "${SRC_ICO}[-1]" "${BASE_PNG}"
+          # Extract the first frame from the .ico, upscale to 1024 so sips can
+          # downsample cleanly to every iconset size.
+          magick "${SRC_ICO}[0]" -resize 1024x1024 "${BASE_PNG}"
           for SIZE in 16 32 64 128 256 512; do
             DOUBLE=$((SIZE * 2))
             sips -z $SIZE  $SIZE  "$BASE_PNG" --out "$ICONSET/icon_${SIZE}x${SIZE}.png"
@@ -160,9 +158,11 @@ jobs:
           cp -R publish/${{ matrix.rid }}/. "$APPDIR/usr/bin/"
           chmod +x "$APPDIR/usr/bin/Noctis"
           # Use the canonical Windows .ico (extracted to PNG) so the Linux
-          # icon matches the Windows app icon.
+          # icon matches the Windows app icon. Ubuntu ships ImageMagick 6, so
+          # we use the legacy `convert` binary (the unified `magick` command
+          # is IM7+ only).
           sudo apt-get install -y --no-install-recommends imagemagick
-          magick "src/Noctis/Assets/Icons/Noctis.ico[-1]" -resize 256x256 noctis.png
+          convert "src/Noctis/Assets/Icons/Noctis.ico[0]" -resize 256x256 noctis.png
           cp noctis.png "$APPDIR/usr/share/icons/hicolor/256x256/apps/noctis.png"
           cp noctis.png "$APPDIR/noctis.png"
           ln -sf usr/bin/Noctis "$APPDIR/AppRun"
