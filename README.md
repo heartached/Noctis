@@ -9,7 +9,7 @@ A music player that respects what's yours. Zero tracking, total control.
 [![License: MIT](https://img.shields.io/badge/License-MIT-red.svg?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg?style=for-the-badge)]()
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg?style=for-the-badge)]()
-[![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=yellowgreen&style=for-the-badge&cacheSeconds=300)](https://github.com/heartached/Noctis/releases)
+[![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=yellowgreen&style=for-the-badge&cacheSeconds=600)](https://github.com/heartached/Noctis/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/heartached/Noctis/dotnet.yml?label=build&style=for-the-badge)](https://github.com/heartached/Noctis/actions)
 
 [Download](https://github.com/heartached/Noctis/releases) • [Features](#features) • [Build](#build) • [Feedback](#feedback)
