@@ -2,13 +2,48 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, cross-platform]
   pull_request:
     branches: [main]
 
 jobs:
   build:
-    runs-on: windows-latest
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runs-on }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            runs-on: windows-latest
+            rid: win-x64
+            artifact: Noctis-windows-x64
+            run-tests: true
+
+          - name: macos-arm64
+            runs-on: macos-14
+            rid: osx-arm64
+            artifact: Noctis-macos-arm64
+            run-tests: false
+
+          - name: macos-x64
+            runs-on: macos-13
+            rid: osx-x64
+            artifact: Noctis-macos-x64
+            run-tests: false
+
+          - name: linux-x64
+            runs-on: ubuntu-latest
+            rid: linux-x64
+            artifact: Noctis-linux-x64
+            run-tests: false
+
+          - name: linux-arm64
+            runs-on: ubuntu-latest
+            rid: linux-arm64
+            artifact: Noctis-linux-arm64
+            run-tests: false
 
     steps:
       - uses: actions/checkout@v4
@@ -19,7 +54,28 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore
-        run: dotnet restore src/Noctis/Noctis.csproj
+        run: dotnet restore src/Noctis/Noctis.csproj -r ${{ matrix.rid }}
 
       - name: Build
-        run: dotnet build src/Noctis/Noctis.csproj -c Release --no-restore
+        run: dotnet build src/Noctis/Noctis.csproj -c Release -r ${{ matrix.rid }} --no-restore
+
+      - name: Run tests
+        if: matrix.run-tests
+        run: dotnet test tests/Noctis.Tests/Noctis.Tests.csproj -c Release -v minimal
+
+      - name: Publish self-contained
+        run: >
+          dotnet publish src/Noctis/Noctis.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=false
+          -o publish/${{ matrix.rid }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: publish/${{ matrix.rid }}
+          if-no-files-found: error
+          retention-days: 14

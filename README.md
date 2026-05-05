@@ -7,7 +7,7 @@
 A music player that respects what's yours. Zero tracking, total control.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-red.svg?style=for-the-badge)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows-blue.svg?style=for-the-badge)]()
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg?style=for-the-badge)]()
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg?style=for-the-badge)]()
 [![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=yellowgreen&style=for-the-badge&cacheSeconds=300)](https://github.com/heartached/Noctis/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/heartached/Noctis/dotnet.yml?label=build&style=for-the-badge)](https://github.com/heartached/Noctis/actions)
@@ -74,7 +74,31 @@ git clone https://github.com/heartached/noctis
 dotnet run --project src/Noctis/Noctis.csproj
 ```
 
-**Requirements:** .NET 8 SDK · Windows 10/11 x64
+**Requirements:** .NET 8 SDK
+
+Supported platforms: Windows 10/11 (x64), macOS 12+ (Intel & Apple Silicon), Linux (x64 & ARM64).
+
+**Native dependency — libvlc:**
+
+- **Windows / macOS:** bundled automatically via NuGet — nothing to install.
+- **Linux:** install via your package manager:
+  ```bash
+  # Debian/Ubuntu
+  sudo apt install vlc
+  # Fedora
+  sudo dnf install vlc
+  # Arch
+  sudo pacman -S vlc
+  ```
+
+To produce a self-contained build for another OS:
+
+```bash
+dotnet publish src/Noctis/Noctis.csproj -c Release -r linux-x64   --self-contained
+dotnet publish src/Noctis/Noctis.csproj -c Release -r osx-arm64   --self-contained
+dotnet publish src/Noctis/Noctis.csproj -c Release -r osx-x64     --self-contained
+dotnet publish src/Noctis/Noctis.csproj -c Release -r linux-arm64 --self-contained
+```
 
 ---
 

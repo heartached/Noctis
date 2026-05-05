@@ -111,7 +111,35 @@ public class VlcAudioPlayer : IAudioPlayer
 
     public VlcAudioPlayer()
     {
-        Core.Initialize();
+        try
+        {
+            // On macOS the VideoLAN.LibVLC.Mac NuGet has shifting layouts between
+            // versions; if VLC.app is installed (recommended path), point the
+            // loader at its dylibs directly so playback works regardless of
+            // which package version restore picked. libvlc also needs to find
+            // its plugins folder, which it cannot locate on its own when loaded
+            // from outside an .app bundle — set VLC_PLUGIN_PATH explicitly.
+            var macLibPath = TryFindMacLibVlcPath();
+            if (macLibPath != null)
+            {
+                var pluginsPath = Path.Combine(Path.GetDirectoryName(macLibPath) ?? "", "plugins");
+                if (Directory.Exists(pluginsPath) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VLC_PLUGIN_PATH")))
+                    Environment.SetEnvironmentVariable("VLC_PLUGIN_PATH", pluginsPath);
+                Core.Initialize(macLibPath);
+            }
+            else
+            {
+                Core.Initialize();
+            }
+        }
+        catch (Exception ex) when (ex is DllNotFoundException
+                                   || ex is System.IO.FileNotFoundException
+                                   || ex is VLCException)
+        {
+            // libvlc native library missing. Re-throw with a platform-tailored
+            // message so users see what to install.
+            throw new InvalidOperationException(BuildLibVlcMissingMessage(), ex);
+        }
 
         // Audio-optimized flags for high-quality music playback:
         //   --audio-resampler=speex : Use Speex resampler (high quality, universally available)
@@ -138,7 +166,8 @@ public class VlcAudioPlayer : IAudioPlayer
         //   The vlc_AudioSessionEvents_OnSimpleVolumeChanged static during
         //   slider drag (the original reason WaveOut was selected) is
         //   mitigated by the throttling + deadband in ScheduleVolumeWrite.
-        _libVlc = new LibVLC(
+        var vlcArgs = new List<string>
+        {
             "--no-video",
             "--no-osd",
             "--no-spu",
@@ -148,11 +177,19 @@ public class VlcAudioPlayer : IAudioPlayer
             "--live-caching=0",
             "--disc-caching=0",
             "--no-audio-time-stretch",
-            "--audio-resampler=speex",
-            "--speex-resampler-quality=10",
             "--clock-jitter=0",
-            "--aout=mmdevice"
-        );
+        };
+        // The speex resampler module + its quality flag are not always present
+        // in third-party VLC builds (notably the macOS VLC.app distribution).
+        // mmdevice (WASAPI) is Windows-only.
+        if (OperatingSystem.IsWindows())
+        {
+            vlcArgs.Add("--audio-resampler=speex");
+            vlcArgs.Add("--speex-resampler-quality=10");
+            vlcArgs.Add("--aout=mmdevice");
+        }
+
+        _libVlc = new LibVLC(vlcArgs.ToArray());
 
         _player = new MediaPlayer(_libVlc);
         _standbyPlayer = new MediaPlayer(_libVlc);
@@ -1435,5 +1472,43 @@ public class VlcAudioPlayer : IAudioPlayer
         _standbyPlayer.Dispose();
         _libVlc.Dispose();
         _playbackLock.Dispose();
+    }
+
+    private static string? TryFindMacLibVlcPath()
+    {
+        if (!OperatingSystem.IsMacOS()) return null;
+
+        // Standard VLC.app install (covers `brew install --cask vlc` and manual installs).
+        string[] candidates =
+        {
+            "/Applications/VLC.app/Contents/MacOS/lib",
+            "/opt/homebrew/lib",
+            "/usr/local/lib",
+        };
+
+        foreach (var dir in candidates)
+        {
+            if (File.Exists(Path.Combine(dir, "libvlc.dylib")))
+                return dir;
+        }
+        return null;
+    }
+
+    private static string BuildLibVlcMissingMessage()
+    {
+        if (OperatingSystem.IsLinux())
+        {
+            return "libvlc is required but was not found. Install it with your package manager:\n" +
+                   "  Debian/Ubuntu:  sudo apt install vlc\n" +
+                   "  Fedora:         sudo dnf install vlc\n" +
+                   "  Arch:           sudo pacman -S vlc";
+        }
+        if (OperatingSystem.IsMacOS())
+        {
+            return "libvlc is required but was not found. Install VLC from https://www.videolan.org/vlc/ " +
+                   "or via Homebrew: brew install --cask vlc";
+        }
+        return "libvlc native libraries were not found in the application directory. " +
+               "Reinstall Noctis or check that the libvlc/ folder ships alongside the executable.";
     }
 }

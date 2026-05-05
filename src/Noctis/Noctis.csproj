@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <ApplicationIcon Condition="Exists('Assets\Icons\Noctis.ico')">Assets\Icons\Noctis.ico</ApplicationIcon>
+    <RuntimeIdentifiers>win-x64;osx-x64;osx-arm64;linux-x64;linux-arm64</RuntimeIdentifiers>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows')) And Exists('Assets\Icons\Noctis.ico')">Assets\Icons\Noctis.ico</ApplicationIcon>
     <AssemblyName>Noctis</AssemblyName>
     <RootNamespace>Noctis</RootNamespace>
     <Product>Noctis</Product>

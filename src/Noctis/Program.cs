@@ -54,11 +54,21 @@ internal class Program
         }
         catch (Exception ex)
         {
-            // Show a native Win32 message box so users see why the app failed to start
-            // (e.g. missing libvlc native DLLs, .NET host issues after extraction)
-            MessageBox(IntPtr.Zero,
-                $"Noctis failed to start:\n\n{ex.Message}",
-                "Noctis — Startup Error", 0x10 /* MB_ICONERROR */);
+            // Always log so we can post-mortem regardless of platform
+            LogCrash("Program.Main", ex);
+
+            // On Windows, surface a native message box (libvlc DLLs missing etc.).
+            // On macOS/Linux, the crash log + stderr is the post-mortem path.
+            if (OperatingSystem.IsWindows())
+            {
+                MessageBox(IntPtr.Zero,
+                    $"Noctis failed to start:\n\n{ex.Message}",
+                    "Noctis — Startup Error", 0x10 /* MB_ICONERROR */);
+            }
+            else
+            {
+                Console.Error.WriteLine($"Noctis failed to start: {ex}");
+            }
         }
     }
 

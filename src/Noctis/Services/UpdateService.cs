@@ -148,6 +148,11 @@ public sealed class UpdateService
     /// </summary>
     public bool LaunchInstaller(string installerPath)
     {
+        // The bundled installer is an Inno Setup .exe; only launch on Windows.
+        // On other platforms users update via package manager or by re-downloading.
+        if (!OperatingSystem.IsWindows())
+            return false;
+
         if (!File.Exists(installerPath))
             return false;
 
