@@ -140,6 +140,12 @@ jobs:
           mkdir -p packaged
           mv "dist/${DMG_NAME}" packaged/
 
+          # Also ship a portable .zip of the .app bundle. Use ditto so the
+          # executable bit, symlinks, and xattrs survive — `zip`/`tar` would
+          # strip the executable bit on Contents/MacOS/Noctis.
+          ZIP_NAME="Noctis-${VERSION}-${{ matrix.rid }}.zip"
+          ditto -c -k --keepParent "$APP" "packaged/${ZIP_NAME}"
+
       # ── Linux: build an AppImage ────────────────────────────────────
       - name: Package Linux AppImage
         if: startsWith(matrix.rid, 'linux-')
@@ -196,6 +202,11 @@ jobs:
 
           mkdir -p packaged
           ARCH=x86_64 ./appimagetool --appimage-extract-and-run "$APPDIR" "packaged/Noctis-${VERSION}-x86_64.AppImage"
+
+          # Also ship a plain tarball alongside the AppImage so users on
+          # distros without FUSE (or who prefer not to use AppImage) have a
+          # portable archive option.
+          tar -czf "packaged/Noctis-${VERSION}-linux-x64.tar.gz" -C publish/${{ matrix.rid }} .
 
       - name: Upload artifact (raw publish folder)
         uses: actions/upload-artifact@v4
