@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -47,7 +48,7 @@ public partial class HomeView : UserControl
         MultiSelectHelper.HandleAlbumSelectAll(e, allTiles, _selectedTiles);
     }
 
-    private void OnContextMenuOpened(object? sender, RoutedEventArgs e)
+    private void OnContextMenuOpening(object? sender, CancelEventArgs e)
     {
         if (DataContext is not HomeViewModel vm) return;
         if (sender is not ContextMenu contextMenu) return;

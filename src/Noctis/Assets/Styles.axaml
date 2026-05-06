@@ -396,6 +396,11 @@
     <Style Selector="ContextMenu">
         <Setter Property="CornerRadius" Value="16" />
         <Setter Property="Padding" Value="6" />
+        <Setter Property="PlacementConstraintAdjustment" Value="None" />
+        <Setter Property="RenderTransform" Value="scale(1)" />
+        <Setter Property="Transitions">
+            <Transitions />
+        </Setter>
     </Style>
     <Style Selector="ContextMenu /template/ Border">
         <Setter Property="CornerRadius" Value="16" />
@@ -403,6 +408,10 @@
     <Style Selector="MenuFlyoutPresenter">
         <Setter Property="CornerRadius" Value="16" />
         <Setter Property="Padding" Value="6" />
+        <Setter Property="RenderTransform" Value="scale(1)" />
+        <Setter Property="Transitions">
+            <Transitions />
+        </Setter>
     </Style>
     <Style Selector="MenuFlyoutPresenter /template/ Border">
         <Setter Property="CornerRadius" Value="16" />

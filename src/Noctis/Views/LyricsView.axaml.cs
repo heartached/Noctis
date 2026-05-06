@@ -61,6 +61,7 @@ public partial class LyricsView : UserControl
         // Mouse wheel → horizontal scroll for color swatch pickers
         SolidSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
         GradientSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
+        LyricsOptionsButton.AddHandler(InputElement.PointerPressedEvent, OnTrackFlyoutButtonPointerPressed, RoutingStrategies.Tunnel);
     }
 
     private void OnSwatchWheelScroll(object? sender, PointerWheelEventArgs e)
@@ -173,9 +174,13 @@ public partial class LyricsView : UserControl
 
     private void OnTrackFlyoutOpened(object? sender, EventArgs e)
     {
-        if (DataContext is not LyricsViewModel { Player: { } player }) return;
         if (sender is not MenuFlyout flyout) return;
+        PopulateTrackFlyout(flyout);
+    }
 
+    private void PopulateTrackFlyout(MenuFlyout flyout)
+    {
+        if (DataContext is not LyricsViewModel { Player: { } player }) return;
         if (!_playlistPopulators.TryGetValue(flyout, out var populator))
         {
             MenuItem? addToPlaylist = null;
@@ -198,6 +203,12 @@ public partial class LyricsView : UserControl
         }
 
         populator.Populate(player.Playlists as ObservableCollection<Playlist>, player.AddCurrentTrackToExistingPlaylistCommand);
+    }
+
+    private void OnTrackFlyoutButtonPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (LyricsOptionsButton.Flyout is MenuFlyout flyout)
+            PopulateTrackFlyout(flyout);
     }
 
     // ── Seek slider interaction ──

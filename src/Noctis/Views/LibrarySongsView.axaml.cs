@@ -124,9 +124,15 @@ public partial class LibrarySongsView : UserControl
 
         BindContextMenuToTrack(track);
         var menu = GetOrCreateContextMenu();
+        if (menu.IsOpen)
+            menu.Close();
+
         DetachMenuFromOwner();
         _menuOwnerItem = item;
         item.ContextMenu = menu;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(item);
+        e.Handled = true;
     }
 
     private void OnOptionsButtonClick(object? sender, RoutedEventArgs e)

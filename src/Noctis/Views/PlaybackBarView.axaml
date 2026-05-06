@@ -558,7 +558,8 @@
                             </Canvas>
                         </Viewbox>
                         <Button.Flyout>
-                            <MenuFlyout Placement="RightEdgeAlignedTop">
+                            <MenuFlyout Placement="RightEdgeAlignedTop"
+                                        PlacementConstraintAdjustment="None">
                                 <MenuItem Command="{Binding PlayPauseCommand}"
                                           MaxWidth="400">
                                     <MenuItem.Header>

@@ -164,9 +164,15 @@ public partial class PlaylistView : UserControl
 
         BindContextMenuToTrack(track);
         var menu = GetOrCreateContextMenu();
+        if (menu.IsOpen)
+            menu.Close();
+
         DetachMenuFromOwner();
         _menuOwnerItem = item;
         item.ContextMenu = menu;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(item);
+        e.Handled = true;
     }
 
     private void OnTrackDoubleTapped(object? sender, TappedEventArgs e)

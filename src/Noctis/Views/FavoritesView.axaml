@@ -53,7 +53,7 @@
                                             Tag="{Binding}"
                                             Click="OnFavoriteCardClick">
                                         <Button.ContextMenu>
-                                            <ContextMenu DataContext="{Binding}" x:DataType="m:FavoriteItem" Opened="OnContextMenuOpened">
+                                            <ContextMenu DataContext="{Binding}" x:DataType="m:FavoriteItem" Opening="OnContextMenuOpening">
                                                 <MenuItem Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).PlayItemCommand}"
                                                           CommandParameter="{Binding}"
                                                           MaxWidth="400">

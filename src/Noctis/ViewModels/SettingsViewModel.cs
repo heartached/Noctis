@@ -1607,13 +1607,6 @@ public partial class SettingsViewModel : ViewModelBase
         if (_updateService is null) return;
         if (IsCheckingForUpdate || IsUpdateAvailable || IsDownloadingUpdate || IsReadyToInstall) return;
 
-#if DEBUG
-        // Visual-only stub for local testing of the "Update available" button swap.
-        // Stripped from Release builds.
-        await Task.Delay(500);
-        LatestVersionTag = "v1.0.3";
-        IsUpdateAvailable = true;
-#else
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
@@ -1628,7 +1621,6 @@ public partial class SettingsViewModel : ViewModelBase
         {
             // Silent: no toast, no status text, no error banner on startup.
         }
-#endif
     }
 
     [RelayCommand]

@@ -56,7 +56,7 @@
 
                                         <!-- Context menu for album tiles -->
                                         <Button.ContextMenu>
-                                            <ContextMenu DataContext="{Binding}" Opened="OnAlbumContextMenuOpened">
+                                            <ContextMenu DataContext="{Binding}" Opening="OnAlbumContextMenuOpening">
                                                 <MenuItem Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).PlayAlbumCommand}"
                                                           CommandParameter="{Binding}"
                                                           MaxWidth="400">

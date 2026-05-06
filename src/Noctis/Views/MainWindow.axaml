@@ -108,7 +108,8 @@
                             <PathIcon Data="{StaticResource MoreDotsIcon}" Width="15" Height="15"
                                      VerticalAlignment="Center" Foreground="White" />
                             <Button.Flyout>
-                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                            PlacementConstraintAdjustment="None">
                                     <MenuItem Header="All Items" Command="{Binding PageSetShowAllItemsCommand}">
                                         <MenuItem.Icon>
                                             <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"

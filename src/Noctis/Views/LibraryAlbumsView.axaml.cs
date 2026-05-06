@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -63,7 +64,7 @@ public partial class LibraryAlbumsView : UserControl
         return new List<Album>();
     }
 
-    private void OnAlbumContextMenuOpened(object? sender, RoutedEventArgs e)
+    private void OnAlbumContextMenuOpening(object? sender, CancelEventArgs e)
     {
         if (DataContext is not LibraryAlbumsViewModel vm) return;
         if (sender is not ContextMenu ctx) return;

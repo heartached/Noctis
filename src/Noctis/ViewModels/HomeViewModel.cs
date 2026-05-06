@@ -19,6 +19,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private readonly SidebarViewModel _sidebar;
     private readonly DispatcherTimer _refreshDebounce;
     private readonly EventHandler _libraryUpdatedHandler;
+    private readonly EventHandler _favoritesChangedHandler;
     private bool _isDirty = true;
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
@@ -62,7 +63,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             _refreshDebounce.Stop();
             _refreshDebounce.Start();
         }); };
+        _favoritesChangedHandler = (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
         _library.LibraryUpdated += _libraryUpdatedHandler;
+        _library.FavoritesChanged += _favoritesChangedHandler;
     }
 
     private void OnTrackStarted(object? sender, Track track)
@@ -370,5 +373,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         _refreshDebounce.Stop();
         _player.TrackStarted -= OnTrackStarted;
         _library.LibraryUpdated -= _libraryUpdatedHandler;
+        _library.FavoritesChanged -= _favoritesChangedHandler;
     }
 }

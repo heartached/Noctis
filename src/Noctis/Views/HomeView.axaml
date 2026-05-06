@@ -55,7 +55,7 @@
                                         </Style>
                                     </Button.Styles>
                                     <Button.ContextMenu>
-                                        <ContextMenu DataContext="{Binding}" Opened="OnContextMenuOpened">
+                                        <ContextMenu DataContext="{Binding}" Opening="OnContextMenuOpening">
                                             <MenuItem Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).PlayTopSongCommand}"
                                                       CommandParameter="{Binding}"
                                                       MaxWidth="400">
@@ -250,7 +250,7 @@
                                         Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).OpenAlbumCommand}"
                                         CommandParameter="{Binding}">
                                     <Button.ContextMenu>
-                                        <ContextMenu DataContext="{Binding}" Opened="OnContextMenuOpened">
+                                        <ContextMenu DataContext="{Binding}" Opening="OnContextMenuOpening">
                                             <MenuItem Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).PlayAlbumCommand}"
                                                       CommandParameter="{Binding}"
                                                       MaxWidth="400">
@@ -360,12 +360,19 @@
                                                            VerticalAlignment="Center"
                                                            Opacity="0.2"
                                                            IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                <Image Source="{Binding ArtworkPath, Converter={StaticResource ArtworkConverter}}"
-                                                       Stretch="UniformToFill"
-                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                       IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                            </Panel>
-                                        </Border>
+                                                 <Image Source="{Binding ArtworkPath, Converter={StaticResource ArtworkConverter}}"
+                                                        Stretch="UniformToFill"
+                                                        RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                        IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                 <PathIcon Data="{StaticResource HeartFillIcon}"
+                                                           Width="16" Height="16"
+                                                           Foreground="#E74856"
+                                                           HorizontalAlignment="Right"
+                                                           VerticalAlignment="Bottom"
+                                                           Margin="0,0,8,8"
+                                                           IsVisible="{Binding HasFavoriteTrack}" />
+                                             </Panel>
+                                         </Border>
                                         <TextBlock Margin="0,5,0,0"
                                                    FontSize="13"
                                                    FontWeight="SemiBold"

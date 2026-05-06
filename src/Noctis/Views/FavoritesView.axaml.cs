@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -46,7 +47,7 @@ public partial class FavoritesView : UserControl
         MultiSelectHelper.HandleAlbumSelectAll(e, allTiles, _selectedTiles);
     }
 
-    private void OnContextMenuOpened(object? sender, RoutedEventArgs e)
+    private void OnContextMenuOpening(object? sender, CancelEventArgs e)
     {
         if (DataContext is not FavoritesViewModel vm) return;
         if (sender is not ContextMenu ctx) return;

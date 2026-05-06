@@ -86,6 +86,7 @@ public partial class PlaybackBarView : UserControl
         DataContextChanged += OnPlaybackBarDataContextChanged;
 
         _playlistPopulator = new PlaylistMenuPopulator(AddToPlaylistMenuItem, PlaylistSubmenuSeparator);
+        OptionsButton.AddHandler(InputElement.PointerPressedEvent, OnOptionsButtonPointerPressed, RoutingStrategies.Tunnel);
         if (OptionsButton.Flyout is MenuFlyout optionsFlyout)
             optionsFlyout.Opened += OnOptionsFlyoutOpened;
     }
@@ -677,8 +678,14 @@ public partial class PlaybackBarView : UserControl
         if (e.InitialPressMouseButton != MouseButton.Right) return;
         if (DataContext is not PlayerViewModel { CurrentTrack: not null }) return;
 
+        PopulateOptionsMenu();
         OptionsButton.Flyout?.ShowAt(OptionsButton);
         e.Handled = true;
+    }
+
+    private void OnOptionsButtonPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        PopulateOptionsMenu();
     }
 
     private void OnLyricsPanelButtonClick(object? sender, RoutedEventArgs e)
@@ -697,9 +704,13 @@ public partial class PlaybackBarView : UserControl
 
     private void OnOptionsFlyoutOpened(object? sender, EventArgs e)
     {
+        PopulateOptionsMenu();
+    }
+
+    private void PopulateOptionsMenu()
+    {
         if (DataContext is not PlayerViewModel vm) return;
         _playlistPopulator?.Populate(vm.Playlists, vm.AddCurrentTrackToExistingPlaylistCommand);
-        RefreshTrackInfoLayout();
     }
 
     private void RefreshTrackInfoLayout()

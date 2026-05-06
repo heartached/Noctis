@@ -180,7 +180,7 @@
                     <Border Classes="quality-pill"
                             Background="Transparent"
                             CornerRadius="999"
-                            Padding="0,3,8,3"
+                            Padding="0,3,3,3"
                             VerticalAlignment="Center"
                             IsVisible="{Binding Album.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                         <Border.Transitions>
@@ -225,16 +225,18 @@
                     </Border>
 
                     <!-- Favorite heart for singles or fully-favorited albums -->
-                    <TextBlock Text=" · "
+                    <TextBlock Text="·"
                                FontSize="13"
                                Opacity="0.5"
+                               Margin="3,0,4,0"
                                VerticalAlignment="Center"
                                IsVisible="{Binding IsAlbumFavorited}" />
                     <PathIcon Data="{StaticResource HeartFillIcon}"
-                              Width="12" Height="12"
-                              Foreground="#E74856"
-                              VerticalAlignment="Center"
-                              IsVisible="{Binding IsAlbumFavorited}"/>
+                               Width="12" Height="12"
+                               Foreground="#E74856"
+                               Margin="0,2,0,0"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding IsAlbumFavorited}"/>
                 </StackPanel>
 
                 <Button Classes="no-hover-scale"
@@ -333,6 +335,7 @@
                           VerticalAlignment="Center" />
                 <Button.Flyout>
                     <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                PlacementConstraintAdjustment="None"
                                 Opened="OnAlbumFlyoutOpened">
                         <MenuItem MaxWidth="400"
                                   Command="{Binding PlayAllCommand}">
@@ -433,7 +436,7 @@
                           Tag="{Binding}">
 
                         <Grid.ContextMenu>
-                            <ContextMenu Opened="OnContextMenuOpened">
+                            <ContextMenu Opening="OnContextMenuOpening">
                                 <MenuItem MaxWidth="400"
                                           Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayFromCommand}"
                                           CommandParameter="{Binding}">
@@ -532,7 +535,7 @@
                                                     Width="34" Height="22"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Center"
-                                                    Margin="0,0,-7,0"
+                                                    Margin="0,0,-10,0"
                                                     Foreground="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}"
                                                     IsPlaying="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).IsPlayerPlaying, Mode=OneWay}">
                                 <controls:EqVisualizer.IsVisible>
@@ -624,6 +627,7 @@
                                           VerticalAlignment="Center" />
                                 <Button.Flyout>
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                                PlacementConstraintAdjustment="None"
                                                 Opened="OnTrackFlyoutOpened">
                                         <MenuItem MaxWidth="400"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayFromCommand}"
@@ -776,7 +780,7 @@
                                     Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenRelatedAlbumCommand}"
                                     CommandParameter="{Binding}">
                                 <Button.ContextMenu>
-                                    <ContextMenu DataContext="{Binding}" Opened="OnRelatedAlbumContextMenuOpened">
+                                    <ContextMenu DataContext="{Binding}" Opening="OnRelatedAlbumContextMenuOpening">
                                         <MenuItem MaxWidth="400"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayRelatedAlbumCommand}"
                                                   CommandParameter="{Binding}">
@@ -990,7 +994,7 @@
                                     Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenRelatedAlbumCommand}"
                                     CommandParameter="{Binding}">
                                 <Button.ContextMenu>
-                                    <ContextMenu DataContext="{Binding}" Opened="OnRelatedAlbumContextMenuOpened">
+                                    <ContextMenu DataContext="{Binding}" Opening="OnRelatedAlbumContextMenuOpening">
                                         <MenuItem MaxWidth="400"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayRelatedAlbumCommand}"
                                                   CommandParameter="{Binding}">

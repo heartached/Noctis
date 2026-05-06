@@ -25,13 +25,17 @@ public static class DialogHelper
         }
         else
         {
-            // Use client area to avoid Windows 11 invisible border mismatch
+            // Use client area for width to avoid Windows 11 invisible side-border mismatch,
+            // but extend upward to cover the native title bar so the overlay dims it too.
+            var clientOrigin = owner.PointToScreen(new Point(0, 0));
+            var topInsetPx = clientOrigin.Y - owner.Position.Y;
+            if (topInsetPx < 0) topInsetPx = 0;
+
             dialog.Width = owner.ClientSize.Width;
-            dialog.Height = owner.ClientSize.Height;
+            dialog.Height = owner.ClientSize.Height + (topInsetPx / scaling);
 
             dialog.WindowStartupLocation = WindowStartupLocation.Manual;
-            var clientOrigin = owner.PointToScreen(new Point(0, 0));
-            dialog.Position = new PixelPoint(clientOrigin.X, clientOrigin.Y);
+            dialog.Position = new PixelPoint(clientOrigin.X, owner.Position.Y);
         }
     }
 }

@@ -613,6 +613,7 @@
                             </Viewbox>
                             <Button.Flyout>
                                 <MenuFlyout Placement="TopEdgeAlignedRight"
+                                            PlacementConstraintAdjustment="None"
                                             x:DataType="vm:LyricsViewModel"
                                             Opened="OnTrackFlyoutOpened">
                                     <MenuItem Command="{Binding Player.PlayPauseCommand}"

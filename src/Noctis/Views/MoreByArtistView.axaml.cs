@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -46,7 +47,7 @@ public partial class MoreByArtistView : UserControl
         }
     }
 
-    private void OnAlbumContextMenuOpened(object? sender, RoutedEventArgs e)
+    private void OnAlbumContextMenuOpening(object? sender, CancelEventArgs e)
     {
         if (DataContext is not MoreByArtistViewModel vm) return;
         if (vm.LibraryAlbumsVm is not { } albumsVm) return;

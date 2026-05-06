@@ -1453,11 +1453,8 @@
                                 Padding="16,6"
                                 Background="#E74856"
                                 IsVisible="{Binding IsUpdateAvailable}">
-                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8" Fill="White" VerticalAlignment="Center"/>
-                                <TextBlock Text="Update available"
-                                           FontSize="12" Foreground="White" VerticalAlignment="Center"/>
-                            </StackPanel>
+                            <TextBlock Text="Update available"
+                                       FontSize="12" Foreground="White" VerticalAlignment="Center"/>
                         </Button>
 
                         <!-- Install & Restart button (replaces Update when ready) -->

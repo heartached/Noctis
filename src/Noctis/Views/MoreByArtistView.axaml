@@ -36,7 +36,7 @@
 
                             <!-- Context menu mirrors LibraryAlbumsView; commands are routed through the shared LibraryAlbumsVm -->
                             <Button.ContextMenu>
-                                <ContextMenu DataContext="{Binding}" Opened="OnAlbumContextMenuOpened">
+                                <ContextMenu DataContext="{Binding}" Opening="OnAlbumContextMenuOpening">
                                     <MenuItem Command="{Binding $parent[UserControl].((vm:MoreByArtistViewModel)DataContext).LibraryAlbumsVm.PlayAlbumCommand}"
                                               CommandParameter="{Binding}"
                                               MaxWidth="400">

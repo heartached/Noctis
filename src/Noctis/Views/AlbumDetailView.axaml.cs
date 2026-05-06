@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -33,6 +34,8 @@ public partial class AlbumDetailView : UserControl
         OtherVersionsScroll.LayoutUpdated += (_, _) => UpdateHScrollArrows(OtherVersionsScroll, OtherVersionsLeft, OtherVersionsRight);
         MoreByArtistScroll.ScrollChanged += (_, _) => UpdateHScrollArrows(MoreByArtistScroll, MoreByArtistLeft, MoreByArtistRight);
         MoreByArtistScroll.LayoutUpdated += (_, _) => UpdateHScrollArrows(MoreByArtistScroll, MoreByArtistLeft, MoreByArtistRight);
+
+        AddHandler(InputElement.PointerPressedEvent, OnOptionsFlyoutButtonPointerPressed, RoutingStrategies.Tunnel);
     }
 
     private static void UpdateHScrollArrows(ScrollViewer sv, Button left, Button right)
@@ -127,7 +130,7 @@ public partial class AlbumDetailView : UserControl
         e.Handled = true;
     }
 
-    private void OnContextMenuOpened(object? sender, RoutedEventArgs e)
+    private void OnContextMenuOpening(object? sender, CancelEventArgs e)
     {
         if (DataContext is not AlbumDetailViewModel vm) return;
         if (sender is not ContextMenu ctx) return;
@@ -158,7 +161,7 @@ public partial class AlbumDetailView : UserControl
             playlist => new object[] { track!, playlist });
     }
 
-    private void OnRelatedAlbumContextMenuOpened(object? sender, RoutedEventArgs e)
+    private void OnRelatedAlbumContextMenuOpening(object? sender, CancelEventArgs e)
     {
         if (DataContext is not AlbumDetailViewModel vm) return;
         if (sender is not ContextMenu ctx) return;
@@ -191,9 +194,13 @@ public partial class AlbumDetailView : UserControl
 
     private void OnAlbumFlyoutOpened(object? sender, EventArgs e)
     {
-        if (DataContext is not AlbumDetailViewModel vm) return;
         if (sender is not MenuFlyout flyout) return;
+        PopulateAlbumFlyout(flyout);
+    }
 
+    private void PopulateAlbumFlyout(MenuFlyout flyout)
+    {
+        if (DataContext is not AlbumDetailViewModel vm) return;
         if (!_playlistPopulators.TryGetValue(flyout, out var populator))
         {
             MenuItem? addToPlaylist = null;
@@ -220,9 +227,15 @@ public partial class AlbumDetailView : UserControl
 
     private void OnTrackFlyoutOpened(object? sender, EventArgs e)
     {
-        if (DataContext is not AlbumDetailViewModel vm) return;
         if (sender is not MenuFlyout flyout) return;
+        var track = (flyout.Target as Button)?.Tag as Track;
+        PopulateTrackFlyout(flyout, track);
+    }
 
+    private void PopulateTrackFlyout(MenuFlyout flyout, Track? track)
+    {
+        if (DataContext is not AlbumDetailViewModel vm) return;
+        if (track == null) return;
         if (!_playlistPopulators.TryGetValue(flyout, out var populator))
         {
             MenuItem? addToPlaylist = null;
@@ -244,9 +257,23 @@ public partial class AlbumDetailView : UserControl
             _playlistPopulators[flyout] = populator;
         }
 
-        var track = (flyout.Target as Button)?.Tag as Track;
         populator.Populate(vm.Playlists, vm.AddToExistingPlaylistCommand,
-            playlist => new object[] { track!, playlist });
+            playlist => new object[] { track, playlist });
+    }
+
+    private void OnOptionsFlyoutButtonPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        var source = e.Source as Control;
+        while (source != null && source is not Button)
+            source = source.Parent as Control;
+
+        if (source is not Button { Flyout: MenuFlyout flyout } button)
+            return;
+
+        if (button.Tag is Track track)
+            PopulateTrackFlyout(flyout, track);
+        else
+            PopulateAlbumFlyout(flyout);
     }
 
     private void OnTrackDoubleTapped(object? sender, TappedEventArgs e)
