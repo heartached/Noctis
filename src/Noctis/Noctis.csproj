@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -11,7 +11,7 @@
     <RootNamespace>Noctis</RootNamespace>
     <Product>Noctis</Product>
     <Company>Noctis</Company>
-    <Version>1.1.2</Version>
+    <Version>1.1.3</Version>
 
     <!-- Avalonia requires this for XAML compilation -->
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
