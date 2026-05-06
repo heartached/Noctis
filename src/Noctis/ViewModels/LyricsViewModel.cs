@@ -160,8 +160,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private int _searchGeneration;
 
     private static readonly string LyricsCacheDir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Noctis", "lyrics_cache");
+        Helpers.AppPaths.DataRoot, "lyrics_cache");
 
     private static readonly Color DefaultAdaptiveColor = Color.FromRgb(0x0D, 0x1B, 0x2A);
 

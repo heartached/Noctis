@@ -1353,9 +1353,7 @@ public partial class SettingsViewModel : ViewModelBase
         // Clear lyrics cache
         try
         {
-            var lyricsDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Noctis", "lyrics_cache");
+            var lyricsDir = Path.Combine(Helpers.AppPaths.DataRoot, "lyrics_cache");
             if (Directory.Exists(lyricsDir))
             {
                 Directory.Delete(lyricsDir, true);

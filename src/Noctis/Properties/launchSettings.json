@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Noctis (Dev)": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "NOCTIS_DATA_DIR": "%LOCALAPPDATA%\\Noctis-Dev"
+      }
+    }
+  }
+}

@@ -2,6 +2,7 @@ using Avalonia;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Headers;
 using System.Threading;
+using Noctis.Helpers;
 using Noctis.Services;
 using Noctis.Services.Loon;
 using Noctis.ViewModels;
@@ -134,8 +135,7 @@ internal class Program
     {
         try
         {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var crashDir = Path.Combine(appData, "Noctis");
+            var crashDir = AppPaths.DataRoot;
             Directory.CreateDirectory(crashDir);
             var crashPath = Path.Combine(crashDir, "crash.log");
             var entry = $"[{DateTime.UtcNow:O}] {source}: {ex}\n---\n";

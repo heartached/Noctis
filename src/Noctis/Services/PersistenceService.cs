@@ -39,9 +39,9 @@ public class PersistenceService : IPersistenceService
 
     public PersistenceService()
     {
-        // Use %APPDATA%\Noctis\ as the data root
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        DataDirectory = Path.Combine(appData, "Noctis");
+        // Data root is %APPDATA%\Noctis by default; NOCTIS_DATA_DIR overrides
+        // (used by dev builds so they don't clobber a parallel install).
+        DataDirectory = Helpers.AppPaths.DataRoot;
 
         // Ensure directories exist
         Directory.CreateDirectory(DataDirectory);

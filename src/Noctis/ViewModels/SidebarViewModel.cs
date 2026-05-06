@@ -440,9 +440,7 @@ public partial class SidebarViewModel : ViewModelBase
         }
         else if (!string.IsNullOrEmpty(dialogVm.PendingCoverArtFile))
         {
-            var coversDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Noctis", "playlist_covers");
+            var coversDir = Path.Combine(Helpers.AppPaths.DataRoot, "playlist_covers");
             Directory.CreateDirectory(coversDir);
 
             var ext = Path.GetExtension(dialogVm.PendingCoverArtFile);
