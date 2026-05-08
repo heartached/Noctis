@@ -29,6 +29,18 @@ internal sealed class TestPersistenceService : IPersistenceService, IDisposable
     public string GetArtworkPath(Guid albumId) => Path.Combine(_root, "artwork", $"{albumId}.jpg");
     public void SaveArtwork(Guid albumId, byte[] imageData) { }
 
+    public string GetAnimatedCoverPath(Guid albumId, Guid? trackId, string extension)
+    {
+        var ext = string.IsNullOrWhiteSpace(extension) ? ".mp4" : (extension.StartsWith('.') ? extension : "." + extension);
+        var name = trackId.HasValue ? $"{albumId}__{trackId.Value}{ext}" : $"{albumId}{ext}";
+        return Path.Combine(_root, "animated_covers", name);
+    }
+
+    public void EnsureAnimatedCoverDir()
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "animated_covers"));
+    }
+
     public void Dispose()
     {
         try
