@@ -35,8 +35,16 @@
             </Setter>
         </Style>
         <Style Selector="Button.pill-btn:pressed">
-            <Setter Property="RenderTransform" Value="scale(0.95)"/>
-            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.pill-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.pill-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
 
         <!-- Main play button (larger, no background fill) -->
@@ -58,8 +66,16 @@
             </Setter>
         </Style>
         <Style Selector="Button.pill-btn-play:pressed">
-            <Setter Property="RenderTransform" Value="scale(0.95)"/>
-            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.pill-btn-play:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.pill-btn-play:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn-play:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
 
         <!-- Secondary controls (volume, menu) -->
@@ -76,14 +92,32 @@
             </Setter>
         </Style>
         <Style Selector="Button.secondary-btn:pointerover">
-            <Setter Property="Opacity" Value="0.8"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
         <Style Selector="Button.secondary-btn:pressed">
-            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.secondary-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.secondary-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
 
         <Style Selector="Button.artist-link-btn:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.artist-link-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.artist-link-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.artist-link-btn:pointerover Border.artist-text-hover">
+            <Setter Property="Background" Value="#22FFFFFF" />
+        </Style>
+        <Style Selector="Button.artist-link-btn:pressed Border.artist-text-hover">
+            <Setter Property="Background" Value="#33FFFFFF" />
         </Style>
 
         <!-- Compact vertical volume slider -->
@@ -396,6 +430,9 @@
                                    Stretch="UniformToFill"
                                    RenderOptions.BitmapInterpolationMode="HighQuality"
                                    IsVisible="{Binding AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <controls:AnimatedCoverView
+                                Source="{Binding CurrentAnimatedCoverPath}"
+                                IsActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}" />
                         </Panel>
                     </Border>
 
@@ -468,16 +505,20 @@
                                         Width="200"
                                         ClipToBounds="True">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock x:Name="ArtistNameTextBlock"
-                                                   Text="{Binding CurrentTrack.Artist, FallbackValue='', TargetNullValue=''}"
-                                                   FontSize="10"
-                                                   MaxLines="1"
-                                                   Foreground="#E74856"
-                                                   Margin="0,1,0,0">
-                                            <TextBlock.RenderTransform>
-                                                <TranslateTransform X="0" />
-                                            </TextBlock.RenderTransform>
-                                        </TextBlock>
+                                        <Border Classes="artist-text-hover"
+                                                CornerRadius="2"
+                                                Padding="1,0,2,1">
+                                            <TextBlock x:Name="ArtistNameTextBlock"
+                                                       Text="{Binding CurrentTrack.Artist, FallbackValue='', TargetNullValue=''}"
+                                                       FontSize="10"
+                                                       MaxLines="1"
+                                                       Foreground="#E74856"
+                                                       Margin="0,1,0,0">
+                                                <TextBlock.RenderTransform>
+                                                    <TranslateTransform X="0" />
+                                                </TextBlock.RenderTransform>
+                                            </TextBlock>
+                                        </Border>
                                     </StackPanel>
                                 </Border>
                             </Button>
@@ -489,10 +530,10 @@
                                            Text="{Binding PositionText}"
                                            FontSize="10"
                                            VerticalAlignment="Center"
-                                           TextAlignment="Right"
+                                           TextAlignment="Left"
                                            Foreground="{DynamicResource IslandForegroundTertiary}"
                                            Width="38"
-                                           Margin="0,0,6,0" />
+                                           Margin="18,0,-12,0" />
 
                                 <Grid Grid.Column="1" Height="20" ClipToBounds="False">
                                     <Canvas x:Name="SeekVisual"
