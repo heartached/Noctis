@@ -97,6 +97,9 @@ public class AppSettings
     /// <summary>Whether long album titles in the CoverFlow view should scroll.</summary>
     public bool CoverFlowAlbumMarqueeEnabled { get; set; } = true;
 
+    /// <summary>Whether animated cover art (looping MP4/WebM) plays for the currently playing track.</summary>
+    public bool EnableAnimatedCovers { get; set; } = true;
+
     /// <summary>Whether long track titles in the Lyrics page should scroll.</summary>
     public bool LyricsTitleMarqueeEnabled { get; set; } = true;
 

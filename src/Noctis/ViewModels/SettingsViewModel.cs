@@ -72,6 +72,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _lyricsTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsArtistMarqueeEnabled = true;
     [ObservableProperty] private bool _albumDetailColorTintEnabled;
+    [ObservableProperty] private bool _enableAnimatedCovers = true;
 
     // ── Lyrics Providers ──
 
@@ -354,6 +355,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsTitleMarqueeEnabled = _settings.LyricsTitleMarqueeEnabled;
             LyricsArtistMarqueeEnabled = _settings.LyricsArtistMarqueeEnabled;
             AlbumDetailColorTintEnabled = _settings.AlbumDetailColorTintEnabled;
+            EnableAnimatedCovers = _settings.EnableAnimatedCovers;
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
@@ -489,6 +491,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsTitleMarqueeEnabled = LyricsTitleMarqueeEnabled;
         _settings.LyricsArtistMarqueeEnabled = LyricsArtistMarqueeEnabled;
         _settings.AlbumDetailColorTintEnabled = AlbumDetailColorTintEnabled;
+        _settings.EnableAnimatedCovers = EnableAnimatedCovers;
         _settings.LrcLibEnabled = LrcLibEnabled;
         _settings.NetEaseEnabled = NetEaseEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
