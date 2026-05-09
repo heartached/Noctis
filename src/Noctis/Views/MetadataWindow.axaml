@@ -695,6 +695,7 @@
 
                     <Border HorizontalAlignment="Center"
                             VerticalAlignment="Center"
+                            MinWidth="380" MinHeight="240"
                             MaxWidth="450" MaxHeight="450"
                             CornerRadius="8"
                             ClipToBounds="True"
@@ -706,10 +707,30 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        IsVisible="{Binding !HasAnimatedCover}" />
-                            <controls:AnimatedCoverView
-                                Source="{Binding AnimatedCoverPath}"
-                                IsActive="{Binding HasAnimatedCover}"
-                                IsVisible="{Binding HasAnimatedCover}" />
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Spacing="10"
+                                        Margin="20"
+                                        IsVisible="{Binding HasAnimatedCover}">
+                                <TextBlock Text="✓ Animated cover assigned"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"
+                                           Foreground="#E74856" />
+                                <TextBlock Text="{Binding AnimatedCoverFileName}"
+                                           FontSize="12"
+                                           Opacity="0.7"
+                                           HorizontalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           MaxWidth="380" />
+                                <TextBlock Text="Preview plays on Now Playing while the track is selected."
+                                           FontSize="11"
+                                           Opacity="0.4"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           Margin="0,8,0,0" />
+                            </StackPanel>
                         </Panel>
                     </Border>
                 </DockPanel>

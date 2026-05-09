@@ -65,6 +65,9 @@ public partial class MetadataViewModel : ViewModelBase
     private string? _newAnimatedCoverSource;
     private bool _animatedCoverRemoved;
 
+    public string AnimatedCoverFileName => string.IsNullOrEmpty(AnimatedCoverPath) ? string.Empty : Path.GetFileName(AnimatedCoverPath);
+    partial void OnAnimatedCoverPathChanged(string? value) => OnPropertyChanged(nameof(AnimatedCoverFileName));
+
     // ── Lyrics tab ──
     [ObservableProperty] private string _lyrics = string.Empty;
     [ObservableProperty] private string _syncedLyrics = string.Empty;
@@ -464,7 +467,8 @@ public partial class MetadataViewModel : ViewModelBase
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
-                new FilePickerFileType("Video") { Patterns = new[] { "*.mp4", "*.webm" } }
+                new FilePickerFileType("Video") { Patterns = new[] { "*.mp4", "*.webm", "*.m4v", "*.mov" } },
+                new FilePickerFileType("All files") { Patterns = new[] { "*" } }
             }
         });
         if (files.Count == 0) return;
