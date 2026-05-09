@@ -1080,7 +1080,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         PushCurrentViewToHistory();
 
-        var nowPlaying = new NowPlayingViewModel(Player);
+        var nowPlaying = new NowPlayingViewModel(Player, Settings);
         nowPlaying.BackRequested += (_, _) => GoBackInHistory();
         CurrentView = nowPlaying;
     }

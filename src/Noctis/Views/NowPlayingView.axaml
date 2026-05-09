@@ -3,6 +3,7 @@
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:conv="using:Noctis.Converters"
              xmlns:m="using:Noctis.Models"
+             xmlns:controls="using:Noctis.Controls"
              x:Class="Noctis.Views.NowPlayingView"
              x:DataType="vm:NowPlayingViewModel"
              Background="{DynamicResource AppMainBackground}">
@@ -61,6 +62,9 @@
                     <Image Source="{Binding Player.AlbumArt}"
                            Stretch="UniformToFill"
                            IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <controls:AnimatedCoverView
+                        Source="{Binding Player.CurrentAnimatedCoverPath}"
+                        IsActive="{Binding Settings.EnableAnimatedCovers}" />
                 </Panel>
             </Border>
 
