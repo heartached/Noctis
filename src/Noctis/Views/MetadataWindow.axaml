@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:presenters="using:Avalonia.Controls.Presenters"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.MetadataWindow"
         x:DataType="vm:MetadataViewModel"
         Title="Metadata"
@@ -650,6 +651,65 @@
                                    Stretch="Uniform"
                                    RenderOptions.BitmapInterpolationMode="HighQuality"
                                    IsVisible="{Binding HasArtwork}" />
+                        </Panel>
+                    </Border>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═══════════ ANIMATED COVER TAB ═══════════ -->
+            <TabItem Header="Animated Cover" FontSize="14" FontWeight="SemiBold">
+                <DockPanel Margin="24,16">
+                    <StackPanel DockPanel.Dock="Bottom"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Spacing="12"
+                                Margin="0,16,0,0">
+                        <Button Content="Add Animated Cover"
+                                Command="{Binding AddAnimatedCoverCommand}"
+                                CommandParameter="{Binding $parent[Window]}"
+                                Padding="10,5"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                FontSize="11" />
+                        <Button Content="Remove"
+                                Command="{Binding RemoveAnimatedCoverCommand}"
+                                IsVisible="{Binding HasAnimatedCover}"
+                                Padding="10,5"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                FontSize="11" />
+                    </StackPanel>
+
+                    <StackPanel DockPanel.Dock="Bottom"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Spacing="20"
+                                Margin="0,12,0,0">
+                        <RadioButton Content="This track"
+                                     GroupName="AnimCoverScope"
+                                     IsChecked="{Binding !AnimatedCoverScopeIsAlbum}" />
+                        <RadioButton Content="Whole album"
+                                     GroupName="AnimCoverScope"
+                                     IsChecked="{Binding AnimatedCoverScopeIsAlbum}" />
+                    </StackPanel>
+
+                    <Border HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            MaxWidth="450" MaxHeight="450"
+                            CornerRadius="8"
+                            ClipToBounds="True"
+                            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                        <Panel>
+                            <TextBlock Text="No Animated Cover"
+                                       FontSize="18"
+                                       Opacity="0.3"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding !HasAnimatedCover}" />
+                            <controls:AnimatedCoverView
+                                Source="{Binding AnimatedCoverPath}"
+                                IsActive="{Binding HasAnimatedCover}"
+                                IsVisible="{Binding HasAnimatedCover}" />
                         </Panel>
                     </Border>
                 </DockPanel>
