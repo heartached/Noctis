@@ -20,6 +20,7 @@ public partial class PlayerViewModel : ViewModelBase
     private readonly IAudioPlayer _audioPlayer;
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
+    private readonly IAnimatedCoverService _animatedCovers;
 
     // ── Observable properties bound to the playback bar ──
 
@@ -34,6 +35,7 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private int _volume = 75;
     [ObservableProperty] private bool _isMuted;
     [ObservableProperty] private Bitmap? _albumArt;
+    [ObservableProperty] private string? _currentAnimatedCoverPath;
     [ObservableProperty] private string _positionText = "0:00";
     [ObservableProperty] private string _durationText = "0:00";
     [ObservableProperty] private string _remainingTimeText = "0:00";
@@ -102,11 +104,12 @@ public partial class PlayerViewModel : ViewModelBase
     private AutoMixPreparedTransitionSnapshot? _autoMixPreparedSnapshot;
     private SettingsViewModel? _settings;
 
-    public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence)
+    public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers)
     {
         _audioPlayer = audioPlayer;
         _library = library;
         _persistence = persistence;
+        _animatedCovers = animatedCovers;
 
         // Subscribe to audio player events
         _audioPlayer.PositionChanged += OnPositionChanged;
@@ -931,6 +934,8 @@ public partial class PlayerViewModel : ViewModelBase
                 // Corrupted image file — leave as null
             }
         }
+
+        CurrentAnimatedCoverPath = _animatedCovers.Resolve(track);
     }
 
     private void TrimHistory()

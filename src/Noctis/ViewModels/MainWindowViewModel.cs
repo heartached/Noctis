@@ -148,7 +148,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _loon = loon;
 
         // Create long-lived ViewModels
-        Player = new PlayerViewModel(audioPlayer, library, persistence);
+        Player = new PlayerViewModel(audioPlayer, library, persistence, new AnimatedCoverService(persistence));
         Sidebar = new SidebarViewModel(persistence, library);
         TopBar = new TopBarViewModel();
         Settings = new SettingsViewModel(persistence, library);
