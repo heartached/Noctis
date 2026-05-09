@@ -17,6 +17,7 @@ public partial class MetadataViewModel : ViewModelBase
     private readonly IMetadataService _metadata;
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
+    private readonly IAnimatedCoverService _animatedCovers;
     private readonly Track _track;
     private readonly bool _albumScoped;
     private readonly List<Track>? _albumTracks;
@@ -56,6 +57,13 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private bool _hasArtwork;
     private byte[]? _newArtworkData;
     private bool _artworkRemoved;
+
+    // ── Animated cover tab ──
+    [ObservableProperty] private string? _animatedCoverPath;
+    [ObservableProperty] private bool _hasAnimatedCover;
+    [ObservableProperty] private bool _animatedCoverScopeIsAlbum = true;
+    private string? _newAnimatedCoverSource;
+    private bool _animatedCoverRemoved;
 
     // ── Lyrics tab ──
     [ObservableProperty] private string _lyrics = string.Empty;
@@ -190,19 +198,27 @@ public partial class MetadataViewModel : ViewModelBase
     /// <summary>Fires when the window should close.</summary>
     public event EventHandler? CloseRequested;
 
-    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, bool albumScoped = false, List<Track>? albumTracks = null)
+    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null)
     {
         _track = track;
         _metadata = metadata;
         _library = library;
         _persistence = persistence;
+        _animatedCovers = animatedCovers;
         _albumScoped = albumScoped;
         _albumTracks = albumTracks;
 
         LoadFromTrack();
         LoadFileInfo();
         LoadArtwork();
+        LoadAnimatedCover();
         LoadAdvancedFields();
+    }
+
+    private void LoadAnimatedCover()
+    {
+        AnimatedCoverPath = _animatedCovers.Resolve(_track);
+        HasAnimatedCover = !string.IsNullOrEmpty(AnimatedCoverPath);
     }
 
     private void LoadFromTrack()
@@ -437,6 +453,41 @@ public partial class MetadataViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task AddAnimatedCover(Avalonia.Visual visual)
+    {
+        var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(visual);
+        if (topLevel == null) return;
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Select Animated Cover",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("Video") { Patterns = new[] { "*.mp4", "*.webm" } }
+            }
+        });
+        if (files.Count == 0) return;
+
+        var path = files[0].TryGetLocalPath();
+        if (string.IsNullOrEmpty(path)) return;
+
+        _newAnimatedCoverSource = path;
+        _animatedCoverRemoved = false;
+        AnimatedCoverPath = path;
+        HasAnimatedCover = true;
+    }
+
+    [RelayCommand]
+    private void RemoveAnimatedCover()
+    {
+        _newAnimatedCoverSource = null;
+        _animatedCoverRemoved = true;
+        AnimatedCoverPath = null;
+        HasAnimatedCover = false;
+    }
+
+    [RelayCommand]
     private void RemoveArtwork()
     {
         var oldArt = ArtworkPreview;
@@ -629,6 +680,30 @@ public partial class MetadataViewModel : ViewModelBase
             }
             ArtworkCache.Invalidate(oldPath);
             ArtworkCache.Invalidate(_persistence.GetArtworkPath(_track.AlbumId));
+        }
+
+        // Animated cover handling
+        var animScope = AnimatedCoverScopeIsAlbum ? AnimatedCoverScope.Album : AnimatedCoverScope.Track;
+        if (_newAnimatedCoverSource != null)
+        {
+            try { await _animatedCovers.ImportAsync(_track, _newAnimatedCoverSource, animScope); }
+            catch { /* Non-fatal — preview still showed source */ }
+        }
+        else if (_animatedCoverRemoved)
+        {
+            _animatedCovers.Remove(_track, animScope);
+        }
+        else if (oldAlbumId != _track.AlbumId)
+        {
+            foreach (var ext in new[] { ".mp4", ".webm" })
+            {
+                var oldP = _persistence.GetAnimatedCoverPath(oldAlbumId, null, ext);
+                if (File.Exists(oldP))
+                {
+                    try { File.Move(oldP, _persistence.GetAnimatedCoverPath(_track.AlbumId, null, ext), true); }
+                    catch { }
+                }
+            }
         }
 
         // Persist library changes and notify UI

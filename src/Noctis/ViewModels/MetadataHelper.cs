@@ -29,7 +29,8 @@ public static class MetadataHelper
                 .ToList();
         }
 
-        var vm = new MetadataViewModel(track, metadata, library, persistence, albumScoped, albumTracks);
+        var animatedCovers = new AnimatedCoverService(persistence);
+        var vm = new MetadataViewModel(track, metadata, library, persistence, animatedCovers, albumScoped, albumTracks);
 
         // Live-apply volume adjust and EQ preset when the edited track is currently playing.
         vm.ChangesSaved += (_, _) =>
