@@ -547,6 +547,20 @@
                 </Grid>
             </Border>
 
+            <!-- Animated cover art -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Animated cover art" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Plays looping MP4/WebM cover videos for the currently playing track on Now Playing, the album header, and the playback bar. When off, no video decoders are created."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding EnableAnimatedCovers}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
 
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- AUDIO PLAYBACK                                     -->
