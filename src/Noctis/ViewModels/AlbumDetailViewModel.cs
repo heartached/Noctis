@@ -33,6 +33,15 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private Album _album;
     [ObservableProperty] private Bitmap? _albumArt;
+
+    /// <summary>True when this album's track is currently playing AND animated covers are enabled AND a cover exists.</summary>
+    public bool IsCurrentAlbumPlaying =>
+        (_settings?.EnableAnimatedCovers ?? false)
+        && _player.CurrentTrack != null
+        && _player.CurrentTrack.AlbumId == Album.Id
+        && !string.IsNullOrEmpty(_player.CurrentAnimatedCoverPath);
+
+    public PlayerViewModel Player => _player;
     [ObservableProperty] private IBrush? _backgroundBrush;
     [ObservableProperty] private bool _isLightTint;
     [ObservableProperty] private IBrush _pageForegroundBrush = Brushes.White;
@@ -169,9 +178,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _playerPropertyChangedHandler = (_, e) =>
         {
             if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
+            {
                 UpdateCurrentPlayingTrack();
+                OnPropertyChanged(nameof(IsCurrentAlbumPlaying));
+            }
             if (e.PropertyName == nameof(PlayerViewModel.State))
                 IsPlayerPlaying = _player.State == Models.PlaybackState.Playing;
+            if (e.PropertyName == nameof(PlayerViewModel.CurrentAnimatedCoverPath))
+                OnPropertyChanged(nameof(IsCurrentAlbumPlaying));
         };
         _player.PropertyChanged += _playerPropertyChangedHandler;
 
@@ -194,6 +208,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
             {
                 if (e.PropertyName == nameof(SettingsViewModel.AlbumDetailColorTintEnabled))
                     Dispatcher.UIThread.Post(RebuildBackgroundBrush);
+                if (e.PropertyName == nameof(SettingsViewModel.EnableAnimatedCovers))
+                    Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(IsCurrentAlbumPlaying)));
             };
             _settings.PropertyChanged += _settingsPropertyChangedHandler;
         }

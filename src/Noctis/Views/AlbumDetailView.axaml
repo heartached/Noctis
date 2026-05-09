@@ -116,6 +116,9 @@
                     <Image Source="{Binding AlbumArt}"
                            Stretch="UniformToFill"
                            IsVisible="{Binding AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <controls:AnimatedCoverView
+                        Source="{Binding Player.CurrentAnimatedCoverPath}"
+                        IsActive="{Binding IsCurrentAlbumPlaying}" />
                 </Panel>
             </Border>
 
@@ -950,7 +953,8 @@
         <!-- More By {Artist}: up to 20 random albums by the same artist (excludes self + Other Versions) -->
         <StackPanel Margin="0,28,0,64" Spacing="10"
                     IsVisible="{Binding HasMoreByArtist}">
-            <Button Background="Transparent"
+            <Button Classes="no-hover-scale"
+                    Background="Transparent"
                     BorderThickness="0"
                     Padding="0"
                     MinHeight="0"
