@@ -226,6 +226,9 @@
                                                   Stretch="UniformToFill"
                                                   RenderOptions.BitmapInterpolationMode="HighQuality"
                                                   IsVisible="{Binding CenterArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                <ctrl:AnimatedCoverView
+                                    Source="{Binding Player.CurrentAnimatedCoverPath}"
+                                    IsActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}" />
                             </Panel>
                         </Border>
 

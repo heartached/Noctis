@@ -26,7 +26,27 @@ public partial class AnimatedCoverView : UserControl
         set => SetValue(IsActiveProperty, value);
     }
 
-    private LibVLC? _libVlc;
+    // One shared LibVLC instance for the whole app. Multiple LibVLC instances
+    // fight over global VLC subsystem state (notably the audio device, which
+    // breaks the main audio player). All animated-cover players share this.
+    private static LibVLC? _sharedLibVlc;
+    private static readonly object _libVlcLock = new();
+
+    private static LibVLC GetSharedLibVlc()
+    {
+        if (_sharedLibVlc != null) return _sharedLibVlc;
+        lock (_libVlcLock)
+        {
+            if (_sharedLibVlc == null)
+            {
+                Core.Initialize();
+                // --aout=none guarantees this LibVLC never opens an audio device.
+                _sharedLibVlc = new LibVLC("--quiet", "--no-video-title-show", "--aout=none");
+            }
+            return _sharedLibVlc;
+        }
+    }
+
     private MediaPlayer? _player;
     private VideoView? _videoHost;
     private Panel? _hostPanel;
@@ -59,7 +79,7 @@ public partial class AnimatedCoverView : UserControl
         try
         {
             EnsurePlayer();
-            using var media = new Media(_libVlc!, Source!, FromType.FromPath,
+            using var media = new Media(GetSharedLibVlc(), Source!, FromType.FromPath,
                 ":no-audio", ":input-repeat=65535");
             _player!.Play(media);
         }
@@ -71,14 +91,10 @@ public partial class AnimatedCoverView : UserControl
 
     private void EnsurePlayer()
     {
-        if (_libVlc == null)
-        {
-            Core.Initialize();
-            _libVlc = new LibVLC("--quiet", "--no-video-title-show");
-        }
+        var libVlc = GetSharedLibVlc();
         if (_player == null)
         {
-            _player = new MediaPlayer(_libVlc) { EnableHardwareDecoding = true, Mute = true };
+            _player = new MediaPlayer(libVlc) { EnableHardwareDecoding = true, Mute = true };
         }
         if (_videoHost == null && _hostPanel != null)
         {
@@ -100,7 +116,6 @@ public partial class AnimatedCoverView : UserControl
         try { _player?.Dispose(); } catch { }
         _player = null;
 
-        try { _libVlc?.Dispose(); } catch { }
-        _libVlc = null;
+        // NEVER dispose the shared LibVLC — it's reused across surfaces.
     }
 }

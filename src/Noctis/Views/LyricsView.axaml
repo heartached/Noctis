@@ -60,10 +60,16 @@
             <Setter Property="Opacity" Value="0.85"/>
         </Style>
         <Style Selector="Button.lyrics-ctrl-btn:pointerover">
-            <Setter Property="Opacity" Value="1.0"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
         <Style Selector="Button.lyrics-ctrl-btn:pressed">
-            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.lyrics-ctrl-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.lyrics-ctrl-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
 
         <!-- Play/Pause prominent button -->
@@ -77,11 +83,17 @@
         </Style>
         <Style Selector="Button.lyrics-play-btn:pointerover">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Opacity" Value="1.0"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
         <Style Selector="Button.lyrics-play-btn:pressed">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.lyrics-play-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.lyrics-play-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
 
         <!-- Seek slider -->
@@ -330,6 +342,9 @@
                                Stretch="UniformToFill"
                                RenderOptions.BitmapInterpolationMode="HighQuality"
                                IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <controls:AnimatedCoverView
+                            Source="{Binding Player.CurrentAnimatedCoverPath}"
+                            IsActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}" />
                     </Panel>
                 </Border>
 

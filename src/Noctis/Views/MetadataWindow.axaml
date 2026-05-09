@@ -693,14 +693,15 @@
                                      IsChecked="{Binding AnimatedCoverScopeIsAlbum}" />
                     </StackPanel>
 
-                    <Border HorizontalAlignment="Center"
+                    <Border x:Name="AnimatedCoverPreviewAnchor"
+                            HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            MinWidth="380" MinHeight="240"
-                            MaxWidth="450" MaxHeight="450"
+                            Width="400" Height="400"
                             CornerRadius="8"
                             ClipToBounds="True"
                             Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                         <Panel>
+                          <Panel>
                             <TextBlock Text="No Animated Cover"
                                        FontSize="18"
                                        Opacity="0.3"
@@ -709,28 +710,45 @@
                                        IsVisible="{Binding !HasAnimatedCover}" />
                             <StackPanel HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
-                                        Spacing="10"
+                                        Spacing="6"
                                         Margin="20"
                                         IsVisible="{Binding HasAnimatedCover}">
                                 <TextBlock Text="✓ Animated cover assigned"
-                                           FontSize="16"
+                                           FontSize="14"
                                            FontWeight="SemiBold"
                                            HorizontalAlignment="Center"
                                            Foreground="#E74856" />
                                 <TextBlock Text="{Binding AnimatedCoverFileName}"
-                                           FontSize="12"
-                                           Opacity="0.7"
+                                           FontSize="11"
+                                           Opacity="0.6"
                                            HorizontalAlignment="Center"
                                            TextWrapping="Wrap"
                                            TextAlignment="Center"
-                                           MaxWidth="380" />
-                                <TextBlock Text="Preview plays on Now Playing while the track is selected."
-                                           FontSize="11"
+                                           MaxWidth="360" />
+                                <TextBlock Text="Live preview plays in a small window beside this dialog."
+                                           FontSize="10"
                                            Opacity="0.4"
                                            HorizontalAlignment="Center"
                                            TextAlignment="Center"
-                                           Margin="0,8,0,0" />
+                                           Margin="0,6,0,0" />
                             </StackPanel>
+                        </Panel>
+
+                        <!-- Live preview in a Popup — escapes the transparent dialog window so VideoView's NativeControlHost can attach. -->
+                        <Popup PlacementTarget="{Binding #AnimatedCoverPreviewAnchor}"
+                               Placement="Center"
+                               IsOpen="{Binding HasAnimatedCover}"
+                               IsLightDismissEnabled="False"
+                               WindowManagerAddShadowHint="True">
+                            <Border Width="320" Height="320"
+                                    CornerRadius="8"
+                                    ClipToBounds="True"
+                                    Background="Black">
+                                <controls:AnimatedCoverView
+                                    Source="{Binding AnimatedCoverPath}"
+                                    IsActive="{Binding HasAnimatedCover}" />
+                            </Border>
+                        </Popup>
                         </Panel>
                     </Border>
                 </DockPanel>
