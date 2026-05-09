@@ -29,11 +29,12 @@ public partial class AnimatedCoverView : UserControl
     private LibVLC? _libVlc;
     private MediaPlayer? _player;
     private VideoView? _videoHost;
+    private Panel? _hostPanel;
 
     public AnimatedCoverView()
     {
         InitializeComponent();
-        _videoHost = this.FindControl<VideoView>("VideoHost");
+        _hostPanel = this.FindControl<Panel>("HostPanel");
         DetachedFromVisualTree += (_, _) => Teardown();
     }
 
@@ -52,7 +53,6 @@ public partial class AnimatedCoverView : UserControl
         if (!shouldPlay)
         {
             Teardown();
-            ShowVideo(false);
             return;
         }
 
@@ -62,12 +62,10 @@ public partial class AnimatedCoverView : UserControl
             using var media = new Media(_libVlc!, Source!, FromType.FromPath,
                 ":no-audio", ":input-repeat=65535");
             _player!.Play(media);
-            ShowVideo(true);
         }
         catch
         {
             Teardown();
-            ShowVideo(false);
         }
     }
 
@@ -81,28 +79,28 @@ public partial class AnimatedCoverView : UserControl
         if (_player == null)
         {
             _player = new MediaPlayer(_libVlc) { EnableHardwareDecoding = true, Mute = true };
-            if (_videoHost != null)
-                _videoHost.MediaPlayer = _player;
+        }
+        if (_videoHost == null && _hostPanel != null)
+        {
+            _videoHost = new VideoView { MediaPlayer = _player };
+            _hostPanel.Children.Add(_videoHost);
         }
     }
 
     private void Teardown()
     {
-        try { _player?.Stop(); } catch { }
-        try
+        if (_videoHost != null && _hostPanel != null)
         {
-            if (_videoHost != null) _videoHost.MediaPlayer = null;
-            _player?.Dispose();
+            try { _hostPanel.Children.Remove(_videoHost); } catch { }
+            try { _videoHost.MediaPlayer = null; } catch { }
+            _videoHost = null;
         }
-        catch { }
+
+        try { _player?.Stop(); } catch { }
+        try { _player?.Dispose(); } catch { }
         _player = null;
 
         try { _libVlc?.Dispose(); } catch { }
         _libVlc = null;
-    }
-
-    private void ShowVideo(bool visible)
-    {
-        if (_videoHost != null) _videoHost.IsVisible = visible;
     }
 }

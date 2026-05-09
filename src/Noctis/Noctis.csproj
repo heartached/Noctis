@@ -12,6 +12,7 @@
     <Product>Noctis</Product>
     <Company>Noctis</Company>
     <Version>1.1.4</Version>
+    <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
 
     <!-- Avalonia requires this for XAML compilation -->
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
