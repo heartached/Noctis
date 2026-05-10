@@ -1,0 +1,130 @@
+name: Update package managers
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g. v1.1.4). Defaults to the latest release.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    name: Resolve version and checksums
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      zip_url: ${{ steps.v.outputs.zip_url }}
+      zip_sha256: ${{ steps.v.outputs.zip_sha256 }}
+      setup_url: ${{ steps.v.outputs.setup_url }}
+      setup_sha256: ${{ steps.v.outputs.setup_sha256 }}
+    steps:
+      - name: Determine tag
+        id: tag
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG=$(gh release view --repo ${{ github.repository }} --json tagName -q .tagName)
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Resolve URLs and checksums
+        id: v
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          VERSION="${TAG#v}"
+          REPO="${{ github.repository }}"
+          ZIP_URL="https://github.com/$REPO/releases/download/$TAG/Noctis-windows-x64.zip"
+          SETUP_URL="https://github.com/$REPO/releases/download/$TAG/Noctis-v$VERSION-Setup.exe"
+          curl -fsSL -o noctis-win.zip "$ZIP_URL"
+          curl -fsSL -o noctis-setup.exe "$SETUP_URL"
+          ZIP_SHA=$(sha256sum noctis-win.zip | cut -d' ' -f1)
+          SETUP_SHA=$(sha256sum noctis-setup.exe | cut -d' ' -f1)
+          {
+            echo "version=$VERSION"
+            echo "tag=$TAG"
+            echo "zip_url=$ZIP_URL"
+            echo "zip_sha256=$ZIP_SHA"
+            echo "setup_url=$SETUP_URL"
+            echo "setup_sha256=$SETUP_SHA"
+          } >> "$GITHUB_OUTPUT"
+
+  scoop:
+    name: Update Scoop bucket
+    needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Noctis (for the manifest template)
+        uses: actions/checkout@v4
+
+      - name: Checkout scoop-bucket
+        uses: actions/checkout@v4
+        with:
+          repository: heartached/scoop-bucket
+          token: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+          path: scoop-bucket
+
+      - name: Render and write manifest
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.resolve.outputs.version }}"
+          ZIP_URL="${{ needs.resolve.outputs.zip_url }}"
+          ZIP_SHA="${{ needs.resolve.outputs.zip_sha256 }}"
+          mkdir -p scoop-bucket/bucket
+          jq \
+            --arg version "$VERSION" \
+            --arg url "$ZIP_URL" \
+            --arg hash "$ZIP_SHA" \
+            '.version=$version | .architecture."64bit".url=$url | .architecture."64bit".hash=$hash' \
+            packaging/scoop/noctis.json > scoop-bucket/bucket/noctis.json
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          cd scoop-bucket
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- bucket/noctis.json; then
+            echo "No change to noctis.json; skipping."
+            exit 0
+          fi
+          git add bucket/noctis.json
+          git commit -m "noctis: update to ${{ needs.resolve.outputs.version }}"
+          git push
+
+  winget:
+    name: Submit winget PR
+    needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install komac
+        run: |
+          set -euo pipefail
+          KOMAC_VERSION="2.11.0"
+          curl -fsSL -o komac.tar.gz "https://github.com/russellbanks/Komac/releases/download/v${KOMAC_VERSION}/komac-${KOMAC_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          tar -xzf komac.tar.gz
+          sudo install -m755 komac /usr/local/bin/komac
+          komac --version
+
+      - name: Update heartached.Noctis
+        run: |
+          set -euo pipefail
+          komac update heartached.Noctis \
+            --version "${{ needs.resolve.outputs.version }}" \
+            --urls "${{ needs.resolve.outputs.setup_url }}" \
+            --submit
+        env:
+          GITHUB_TOKEN: ${{ secrets.WINGET_PAT }}
