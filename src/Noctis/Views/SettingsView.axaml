@@ -552,7 +552,7 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="Animated Artwork" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Loops the current track's cover video on the album, lyrics, and cover-flow pages. Off = no video decoding."
+                        <TextBlock Text="Loops the current track's cover video on the album, lyrics, and cover-flow pages."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
