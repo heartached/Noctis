@@ -12,11 +12,11 @@ using LibVLCSharp.Shared;
 namespace Noctis.Controls;
 
 /// <summary>
-/// Plays a looping animated cover by decoding frames into a <see cref="WriteableBitmap"/>.
-/// Unlike <see cref="AnimatedCoverView"/> (native LibVLC <c>VideoView</c>), this is a plain
-/// <c>Image</c> element, so it composes inside transparent Avalonia windows (the metadata
-/// dialog) and is clipped by its parent. Slightly more CPU than the native path — fine for a
-/// small muted preview loop. Minor frame tearing under load is accepted (single shared buffer).
+/// Plays a looping animated cover by decoding frames (via LibVLC video callbacks) into a
+/// <see cref="WriteableBitmap"/> shown in a plain <c>Image</c> element — so it composes
+/// inside transparent windows, clips to its parent's rounded border, and never spawns a
+/// native output window. Software-decoded; fine for a small muted loop. Minor frame tearing
+/// under load is accepted (single shared buffer).
 /// </summary>
 public partial class AnimatedCoverImage : UserControl
 {
