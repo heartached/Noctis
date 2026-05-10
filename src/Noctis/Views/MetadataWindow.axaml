@@ -91,6 +91,136 @@
             <Setter Property="CornerRadius" Value="999" />
         </Style>
 
+        <Style Selector="TabItem">
+            <Setter Property="Padding" Value="0,0,0,6" />
+            <Setter Property="Margin" Value="0,0,28,0" />
+            <Setter Property="MinHeight" Value="38" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid RowDefinitions="*,3"
+                          Background="Transparent"
+                          Cursor="Hand">
+                        <TextBlock Grid.Row="0"
+                                   Text="{TemplateBinding Header}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   FontWeight="{TemplateBinding FontWeight}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,0,6" />
+                        <Border x:Name="SelectionIndicator"
+                                Grid.Row="1"
+                                Height="3"
+                                CornerRadius="2"
+                                Background="#E74856"
+                                IsVisible="False" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="TabItem:selected /template/ Border#SelectionIndicator">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <Style Selector="TabItem:selected">
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+
+        <Style Selector="TabItem:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+
+        <Style Selector="ScrollViewer.metadata-tab-strip-scroll">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <Style Selector="ScrollViewer.metadata-tab-strip-scroll /template/ Border">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <!-- Chevron arrows that appear at the tab strip edges when there's overflow -->
+        <Style Selector="Button.metadata-tab-chevron">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+        <Style Selector="Button.metadata-tab-chevron /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.metadata-tab-chevron:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22FFFFFF" />
+        </Style>
+        <Style Selector="Button.metadata-tab-chevron:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#33FFFFFF" />
+        </Style>
+
+        <!-- Tab strip: one horizontally-scrollable row, no visible scrollbar.
+             Chevron buttons + edge fades appear only when there's overflow. -->
+        <Style Selector="TabControl">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}">
+                        <DockPanel>
+                            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto">
+                                <Button Name="PART_TabStripLeft"
+                                        Grid.Column="0"
+                                        Classes="metadata-tab-chevron"
+                                        IsVisible="False"
+                                        Margin="6,0,0,6"
+                                        ToolTip.Tip="Scroll left">
+                                    <PathIcon Data="{StaticResource ChevronLeftIcon}"
+                                              Width="14" Height="14" />
+                                </Button>
+
+                                <ScrollViewer Name="PART_TabStripScroller"
+                                              Grid.Column="1"
+                                              Classes="metadata-tab-strip-scroll"
+                                              Margin="24,0,0,0"
+                                              HorizontalScrollBarVisibility="Hidden"
+                                              VerticalScrollBarVisibility="Disabled">
+                                    <ItemsPresenter Name="PART_ItemsPresenter"
+                                                    ItemsPanel="{TemplateBinding ItemsPanel}" />
+                                </ScrollViewer>
+
+<Button Name="PART_TabStripRight"
+                                        Grid.Column="2"
+                                        Classes="metadata-tab-chevron"
+                                        IsVisible="False"
+                                        Margin="0,0,8,6"
+                                        ToolTip.Tip="Scroll right">
+                                    <PathIcon Data="{StaticResource ChevronRightIcon}"
+                                              Width="14" Height="14" />
+                                </Button>
+                            </Grid>
+                            <ContentPresenter Name="PART_SelectedContentHost"
+                                              Content="{TemplateBinding SelectedContent}"
+                                              ContentTemplate="{TemplateBinding SelectedContentTemplate}"
+                                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </DockPanel>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Setter Property="ItemsPanel">
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </Setter>
+        </Style>
+
         <!-- Metadata volume slider uses custom visuals; the real Slider is transparent hit testing. -->
         <Style Selector="Slider.volume-horizontal">
             <Setter Property="Orientation" Value="Horizontal"/>
@@ -656,18 +786,28 @@
                 </DockPanel>
             </TabItem>
 
-            <!-- ═══════════ ANIMATED COVER TAB ═══════════ -->
-            <TabItem Header="Animated Cover" FontSize="14" FontWeight="SemiBold">
+            <!-- ═══════════ ANIMATED ARTWORK TAB ═══════════ -->
+            <TabItem Header="Animated Artwork" FontSize="14" FontWeight="SemiBold">
                 <DockPanel Margin="24,16">
                     <StackPanel DockPanel.Dock="Bottom"
                                 Orientation="Horizontal"
                                 HorizontalAlignment="Center"
                                 Spacing="12"
                                 Margin="0,16,0,0">
-                        <Button Content="Add Animated Cover"
+                        <Button Content="Add Animated Artwork"
                                 Command="{Binding AddAnimatedCoverCommand}"
                                 CommandParameter="{Binding $parent[Window]}"
                                 Padding="10,5"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                FontSize="11" />
+                        <Button Content="Download"
+                                Command="{Binding DownloadAnimatedCoverCommand}"
+                                CommandParameter="{Binding $parent[Window]}"
+                                IsVisible="{Binding HasAnimatedCover}"
+                                Padding="10,5"
+                                HorizontalContentAlignment="Center"
                                 CornerRadius="999"
                                 Cursor="Hand"
                                 FontSize="11" />
@@ -675,80 +815,42 @@
                                 Command="{Binding RemoveAnimatedCoverCommand}"
                                 IsVisible="{Binding HasAnimatedCover}"
                                 Padding="10,5"
+                                HorizontalContentAlignment="Center"
                                 CornerRadius="999"
                                 Cursor="Hand"
                                 FontSize="11" />
                     </StackPanel>
 
-                    <StackPanel DockPanel.Dock="Bottom"
-                                Orientation="Horizontal"
-                                HorizontalAlignment="Center"
-                                Spacing="20"
-                                Margin="0,12,0,0">
-                        <RadioButton Content="This track"
-                                     GroupName="AnimCoverScope"
-                                     IsChecked="{Binding !AnimatedCoverScopeIsAlbum}" />
-                        <RadioButton Content="Whole album"
-                                     GroupName="AnimCoverScope"
-                                     IsChecked="{Binding AnimatedCoverScopeIsAlbum}" />
-                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Bottom"
+                               Text="{Binding AnimatedCoverFileName}"
+                               IsVisible="{Binding HasAnimatedCover}"
+                               FontSize="11"
+                               Opacity="0.5"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               MaxWidth="380"
+                               Margin="0,12,0,0" />
 
                     <Border x:Name="AnimatedCoverPreviewAnchor"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            Width="400" Height="400"
+                            MaxWidth="450" MaxHeight="450"
+                            Width="420" Height="420"
                             CornerRadius="8"
                             ClipToBounds="True"
                             Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                         <Panel>
-                          <Panel>
-                            <TextBlock Text="No Animated Cover"
+                            <TextBlock Text="No Animated Artwork"
                                        FontSize="18"
                                        Opacity="0.3"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        IsVisible="{Binding !HasAnimatedCover}" />
-                            <StackPanel HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        Spacing="6"
-                                        Margin="20"
-                                        IsVisible="{Binding HasAnimatedCover}">
-                                <TextBlock Text="✓ Animated cover assigned"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           HorizontalAlignment="Center"
-                                           Foreground="#E74856" />
-                                <TextBlock Text="{Binding AnimatedCoverFileName}"
-                                           FontSize="11"
-                                           Opacity="0.6"
-                                           HorizontalAlignment="Center"
-                                           TextWrapping="Wrap"
-                                           TextAlignment="Center"
-                                           MaxWidth="360" />
-                                <TextBlock Text="Live preview plays in a small window beside this dialog."
-                                           FontSize="10"
-                                           Opacity="0.4"
-                                           HorizontalAlignment="Center"
-                                           TextAlignment="Center"
-                                           Margin="0,6,0,0" />
-                            </StackPanel>
-                        </Panel>
 
-                        <!-- Live preview in a Popup — escapes the transparent dialog window so VideoView's NativeControlHost can attach. -->
-                        <Popup PlacementTarget="{Binding #AnimatedCoverPreviewAnchor}"
-                               Placement="Center"
-                               IsOpen="{Binding HasAnimatedCover}"
-                               IsLightDismissEnabled="False"
-                               WindowManagerAddShadowHint="True">
-                            <Border Width="320" Height="320"
-                                    CornerRadius="8"
-                                    ClipToBounds="True"
-                                    Background="Black">
-                                <controls:AnimatedCoverView
-                                    Source="{Binding AnimatedCoverPath}"
-                                    IsActive="{Binding HasAnimatedCover}" />
-                            </Border>
-                        </Popup>
+                            <controls:AnimatedCoverImage Source="{Binding AnimatedCoverPath}"
+                                                         IsActive="{Binding HasAnimatedCover}"
+                                                         IsVisible="{Binding HasAnimatedCover}" />
                         </Panel>
                     </Border>
                 </DockPanel>
@@ -757,11 +859,20 @@
             <!-- ═══════════ LYRICS TAB ═══════════ -->
             <TabItem Header="Plain Lyrics" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowLyricsTab}">
                 <DockPanel Margin="24,16">
-                    <CheckBox DockPanel.Dock="Top"
-                              Classes="metadata-pill-checkbox"
-                              Content="Enable"
-                              IsChecked="{Binding HasCustomLyrics}"
-                              Margin="0,0,0,12" />
+                    <StackPanel DockPanel.Dock="Bottom"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Margin="0,12,0,0">
+                        <CheckBox Classes="metadata-pill-checkbox"
+                                  IsChecked="{Binding HasCustomLyrics}"
+                                  MinWidth="0"
+                                  Padding="0"
+                                  Margin="0" />
+                        <TextBlock Text="Enable"
+                                   FontSize="14"
+                                   VerticalAlignment="Center"
+                                   Margin="-4,0,0,0" />
+                    </StackPanel>
                     <TextBox Text="{Binding Lyrics}"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
@@ -776,11 +887,20 @@
             <!-- ═══════════ SYNCED LYRICS TAB ═══════════ -->
             <TabItem Header="Synced Lyrics" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowSyncedLyricsTab}">
                 <DockPanel Margin="24,16">
-                    <CheckBox DockPanel.Dock="Top"
-                              Classes="metadata-pill-checkbox"
-                              Content="Enable"
-                              IsChecked="{Binding HasCustomSyncedLyrics}"
-                              Margin="0,0,0,12" />
+                    <StackPanel DockPanel.Dock="Bottom"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Margin="0,12,0,0">
+                        <CheckBox Classes="metadata-pill-checkbox"
+                                  IsChecked="{Binding HasCustomSyncedLyrics}"
+                                  MinWidth="0"
+                                  Padding="0"
+                                  Margin="0" />
+                        <TextBlock Text="Enable"
+                                   FontSize="14"
+                                   VerticalAlignment="Center"
+                                   Margin="-4,0,0,0" />
+                    </StackPanel>
                     <TextBox Text="{Binding SyncedLyrics}"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
