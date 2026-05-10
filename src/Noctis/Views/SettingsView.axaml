@@ -1430,8 +1430,8 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <TextBlock Classes="section-title" Text="ABOUT" Margin="0,20,0,10"/>
 
-            <Border Classes="setting-card" Padding="14,12">
-                <StackPanel Spacing="6">
+            <Border Classes="setting-card" Padding="14,16">
+                <StackPanel Spacing="10">
                     <!-- Top row: logo + version on left, Update button on right -->
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
@@ -1507,11 +1507,11 @@
 
                     <Border Height="1"
                             Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-                            Opacity="0.2" Margin="0,1"/>
+                            Opacity="0.2" Margin="0,4"/>
 
                     <Button Command="{Binding OpenGitHubCommand}"
                             Background="Transparent" BorderThickness="0"
-                            Padding="0" Margin="0" Cursor="Hand"
+                            Padding="0" Margin="0,2,0,4" Cursor="Hand"
                             HorizontalAlignment="Left">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="{StaticResource GitHubIcon}"
@@ -1524,12 +1524,10 @@
                         </StackPanel>
                     </Button>
 
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="Modern music player for Windows."
-                                   FontSize="13" Opacity="0.6"/>
-                        <TextBlock Text="Yours Truly, heartached."
-                                   FontSize="12" Opacity="0.4"/>
-                    </StackPanel>
+                    <TextBlock Text="Modern music player for Windows."
+                               FontSize="13" Opacity="0.6"/>
+                    <TextBlock Text="Yours Truly, heartached."
+                               FontSize="12" Opacity="0.4"/>
                 </StackPanel>
             </Border>
 
