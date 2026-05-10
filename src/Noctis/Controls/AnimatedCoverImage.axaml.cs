@@ -60,6 +60,10 @@ public partial class AnimatedCoverImage : UserControl
     {
         InitializeComponent();
         _image = this.FindControl<Image>("FrameImage")!;
+        // Teardown on detach, rebuild on re-attach: a TabControl detaches the
+        // hosting tab's content when you switch tabs and re-attaches it on return,
+        // and Source/IsActive don't change across that, so nothing else restarts us.
+        AttachedToVisualTree += (_, _) => Refresh();
         DetachedFromVisualTree += (_, _) => Teardown();
     }
 
