@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>noctis</id>
+    <version>1.1.4</version>
+    <packageSourceUrl>https://github.com/heartached/Noctis/tree/main/packaging/chocolatey</packageSourceUrl>
+    <owners>heartached</owners>
+    <title>Noctis</title>
+    <authors>heartached</authors>
+    <projectUrl>https://github.com/heartached/Noctis</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/heartached/Noctis/main/src/Noctis/Assets/Icons/Noctis.ico</iconUrl>
+    <licenseUrl>https://github.com/heartached/Noctis/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/heartached/Noctis</projectSourceUrl>
+    <docsUrl>https://github.com/heartached/Noctis/blob/main/USAGE.md</docsUrl>
+    <bugTrackerUrl>https://github.com/heartached/Noctis/issues</bugTrackerUrl>
+    <tags>noctis music music-player audio player lyrics</tags>
+    <summary>A music player that respects what's yours.</summary>
+    <description>
+Noctis is a desktop music player for your local library — fast browsing, synced
+lyrics, metadata editing, EQ, and more.
+
+This package downloads the official installer from the Noctis GitHub Releases
+page and installs it per-user.
+    </description>
+    <releaseNotes>https://github.com/heartached/Noctis/releases/tag/v1.1.4</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
