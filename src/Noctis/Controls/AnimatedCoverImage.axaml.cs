@@ -106,7 +106,9 @@ public partial class AnimatedCoverImage : UserControl
         _scratch = new byte[BufferBytes];
         _bitmap = new WriteableBitmap(new PixelSize(RenderSize, RenderSize), new Vector(96, 96),
             PixelFormat.Bgra8888, AlphaFormat.Opaque);
-        _image.Source = _bitmap;
+        // Don't show the bitmap yet — it holds uninitialized pixels until the first
+        // decoded frame arrives; assigning it now flashes garbage on a tab switch.
+        // OnDisplay assigns _image.Source on the first frame.
 
         // Software decoding is required for the frame-callback path.
         _player = new MediaPlayer(SharedLibVlc.Instance) { EnableHardwareDecoding = false, Mute = true };
@@ -140,6 +142,7 @@ public partial class AnimatedCoverImage : UserControl
             Marshal.Copy(_buffer, scratch, 0, BufferBytes);
             using (var fb = bmp.Lock())
                 Marshal.Copy(scratch, 0, fb.Address, BufferBytes);
+            _image.Source = bmp; // no-op after the first frame; reveals real content
             _image.InvalidateVisual();
         }, DispatcherPriority.Render);
     }

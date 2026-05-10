@@ -837,6 +837,13 @@
                                        VerticalAlignment="Center"
                                        IsVisible="{Binding !HasAnimatedCover}" />
 
+                            <!-- Still cover sits behind the video so there's no blank
+                                 flash while the first frame decodes after a tab switch. -->
+                            <Image Source="{Binding ArtworkPreview}"
+                                   Stretch="UniformToFill"
+                                   RenderOptions.BitmapInterpolationMode="HighQuality"
+                                   IsVisible="{Binding HasAnimatedCover}" />
+
                             <controls:AnimatedCoverImage Source="{Binding AnimatedCoverPath}"
                                                          IsActive="{Binding HasAnimatedCover}"
                                                          IsVisible="{Binding HasAnimatedCover}" />
