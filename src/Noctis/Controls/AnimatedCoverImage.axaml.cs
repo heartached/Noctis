@@ -129,6 +129,9 @@ public partial class AnimatedCoverImage : UserControl
             _framePending = false;
             var bmp = _bitmap;
             var scratch = _scratch;
+            // Safe against use-after-free: Teardown() also runs on the UI thread and
+            // completes fully (stopping the player and zeroing _buffer) before any posted
+            // closure is dequeued, so _buffer is either still valid or already zero here.
             if (bmp == null || scratch == null || _buffer == IntPtr.Zero) return;
             Marshal.Copy(_buffer, scratch, 0, BufferBytes);
             using (var fb = bmp.Lock())
@@ -140,7 +143,8 @@ public partial class AnimatedCoverImage : UserControl
     private void Teardown()
     {
         // Stop() is synchronous in LibVLC 3.x — after it returns, no more callbacks fire,
-        // so it is safe to free the native buffer afterwards.
+        // so it is safe to free the native buffer afterwards. Any UI-thread frame closure
+        // already posted by OnDisplay will see _buffer == IntPtr.Zero and bail.
         var player = _player;
         _player = null;
         if (player != null)
