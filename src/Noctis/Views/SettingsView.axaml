@@ -1430,7 +1430,8 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <TextBlock Classes="section-title" Text="ABOUT" Margin="0,20,0,10"/>
 
-            <Border Classes="setting-card" Padding="14,12">
+            <Border Classes="setting-card" Padding="14,12"
+                    MaxWidth="460" HorizontalAlignment="Left">
                 <StackPanel Spacing="6">
                     <!-- Top row: logo + version on left, Update button on right -->
                     <Grid ColumnDefinitions="Auto,*,Auto">
