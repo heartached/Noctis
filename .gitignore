@@ -25,6 +25,9 @@ packages/
 CLAUDE.md
 noctis-v2/
 tools/
+# ...but the Chocolatey package's tools/ dir is intentionally tracked.
+!packaging/chocolatey/tools/
+!packaging/chocolatey/tools/**
 
 ## Temp / build scratch
 build_tmp_verify/
