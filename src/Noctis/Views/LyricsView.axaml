@@ -114,6 +114,12 @@
             <Setter Property="Height" Value="20"/>
             <Setter Property="Width" Value="90"/>
             <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter>
         </Style>
         <Style Selector="Slider.lyrics-volume /template/ Track">
             <Setter Property="Height" Value="6"/>
@@ -342,7 +348,7 @@
                                Stretch="UniformToFill"
                                RenderOptions.BitmapInterpolationMode="HighQuality"
                                IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <controls:AnimatedCoverView
+                        <controls:AnimatedCoverImage
                             Source="{Binding Player.CurrentAnimatedCoverPath}"
                             IsActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}" />
                     </Panel>
@@ -928,13 +934,18 @@
                             </Button.Flyout>
                         </Button>
 
-                        <!-- Volume -->
+                        <!-- Volume control with expandable horizontal slider (mirrors playback bar) -->
                         <StackPanel x:Name="LyricsVolumeContainer"
-                                     Orientation="Horizontal" Spacing="0"
-                                     VerticalAlignment="Center"
-                                     PointerEntered="OnLyricsVolumeContainerEntered"
+                                    Orientation="Horizontal"
+                                    Spacing="0"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,14,0"
+                                    PointerEntered="OnLyricsVolumeContainerEntered"
                                     PointerExited="OnLyricsVolumeContainerExited">
-                            <Button Classes="lyrics-ctrl-btn"
+
+                            <!-- Volume icon button -->
+                            <Button x:Name="LyricsVolumeMuteButton"
+                                    Classes="lyrics-ctrl-btn"
                                     Command="{Binding Player.ToggleMuteCommand}"
                                     Width="36" Height="36"
                                     ToolTip.Tip="Mute">
@@ -953,29 +964,34 @@
                                     </Viewbox>
                                 </Panel>
                             </Button>
-                            <Panel VerticalAlignment="Center" Margin="-9,0,0,0">
-                                <TextBlock x:Name="LyricsVolumePercentage"
-                                           Text="{Binding Player.Volume}"
-                                           FontSize="13"
-                                           FontWeight="SemiBold"
-                                           Foreground="{Binding LyricsPrimaryFg}"
-                                           HorizontalAlignment="Left"
-                                           VerticalAlignment="Center"
-                                           Opacity="0"
-                                           IsVisible="False"
-                                           IsHitTestVisible="False">
-                                    <TextBlock.RenderTransform>
-                                        <TranslateTransform X="0" Y="-18"/>
-                                    </TextBlock.RenderTransform>
-                                    <TextBlock.Transitions>
-                                        <Transitions>
-                                            <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
-                                        </Transitions>
-                                    </TextBlock.Transitions>
-                                </TextBlock>
+
+                            <!-- Expandable slider area with width animation -->
+                            <Panel VerticalAlignment="Center" Margin="-12,0,0,0">
+                                <!-- Volume percentage floating above (outside clipping container) -->
+                                <Canvas Width="94"
+                                        Height="20"
+                                        VerticalAlignment="Center"
+                                        IsHitTestVisible="False">
+                                    <TextBlock x:Name="LyricsVolumePercentage"
+                                               Text="{Binding Player.Volume}"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="White"
+                                               Opacity="0"
+                                               IsVisible="False"
+                                               Canvas.Top="-18">
+                                        <TextBlock.Transitions>
+                                            <Transitions>
+                                                <DoubleTransition Property="Opacity" Duration="0:0:0.06"/>
+                                            </Transitions>
+                                        </TextBlock.Transitions>
+                                    </TextBlock>
+                                </Canvas>
+
+                                <!-- Clipping container for slider -->
                                 <Border x:Name="LyricsVolumeSliderContainer"
                                         Width="0"
-                                        Height="36"
+                                        Height="34"
                                         ClipToBounds="True"
                                         VerticalAlignment="Center">
                                     <Border.Transitions>
@@ -987,15 +1003,41 @@
                                             </DoubleTransition>
                                         </Transitions>
                                     </Border.Transitions>
-                                    <Grid Width="99" Margin="7,0,7,0"
-                                          HorizontalAlignment="Left"
-                                          VerticalAlignment="Center">
+
+                                    <Grid Width="110" VerticalAlignment="Center">
+                                        <Canvas x:Name="LyricsVolumeVisual"
+                                                Width="94"
+                                                Height="20"
+                                                ClipToBounds="False"
+                                                IsHitTestVisible="False">
+                                            <Border x:Name="LyricsVolumeTrackBackground"
+                                                    Height="6"
+                                                    CornerRadius="3"
+                                                    Background="{DynamicResource LyricsSliderUnfilledRes}"
+                                                    Opacity="0.4"
+                                                    Canvas.Top="7"/>
+                                            <Border x:Name="LyricsVolumeTrackFill"
+                                                    Height="6"
+                                                    CornerRadius="3"
+                                                    Background="{DynamicResource LyricsSliderFilledRes}"
+                                                    Canvas.Top="7"/>
+                                            <Border x:Name="LyricsVolumeThumb"
+                                                    Width="14"
+                                                    Height="14"
+                                                    CornerRadius="7"
+                                                    Background="{DynamicResource LyricsSliderThumbRes}"
+                                                    BoxShadow="0 1 3 0 #40000000"
+                                                    Canvas.Top="3"/>
+                                        </Canvas>
+                                        <!-- Horizontal volume slider -->
                                         <Slider x:Name="LyricsVolumeSlider"
-                                                Value="{Binding Player.Volume, Mode=TwoWay}"
                                                 Classes="lyrics-volume"
+                                                Value="{Binding Player.Volume, Mode=TwoWay}"
                                                 Minimum="0" Maximum="100"
-                                                Foreground="{Binding LyricsSliderFilled}"
-                                                VerticalAlignment="Center"/>
+                                                Width="94"
+                                                VerticalAlignment="Center"
+                                                Margin="0"
+                                                Foreground="{Binding LyricsSliderFilled}"/>
                                     </Grid>
                                 </Border>
                             </Panel>

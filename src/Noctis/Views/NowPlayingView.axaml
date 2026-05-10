@@ -62,9 +62,6 @@
                     <Image Source="{Binding Player.AlbumArt}"
                            Stretch="UniformToFill"
                            IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                    <controls:AnimatedCoverView
-                        Source="{Binding Player.CurrentAnimatedCoverPath}"
-                        IsActive="{Binding Settings.EnableAnimatedCovers}" />
                 </Panel>
             </Border>
 
