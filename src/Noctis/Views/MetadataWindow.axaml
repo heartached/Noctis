@@ -821,17 +821,6 @@
                                 FontSize="11" />
                     </StackPanel>
 
-                    <TextBlock DockPanel.Dock="Bottom"
-                               Text="{Binding AnimatedCoverFileName}"
-                               IsVisible="{Binding HasAnimatedCover}"
-                               FontSize="11"
-                               Opacity="0.5"
-                               HorizontalAlignment="Center"
-                               TextAlignment="Center"
-                               TextWrapping="Wrap"
-                               MaxWidth="380"
-                               Margin="0,12,0,0" />
-
                     <Border x:Name="AnimatedCoverPreviewAnchor"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
