@@ -120,8 +120,8 @@
                          normal control, so it doesn't bleed over or jump relative to the
                          sidebar when it expands. -->
                     <controls:AnimatedCoverImage
-                        Source="{Binding Player.CurrentAnimatedCoverPath}"
-                        IsActive="{Binding IsCurrentAlbumPlaying}" />
+                        Source="{Binding AnimatedCoverPath}"
+                        IsActive="{Binding ShowAnimatedCover}" />
                 </Panel>
             </Border>
 
