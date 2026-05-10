@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using LibVLCSharp.Shared;
 using LibVLCSharp.Avalonia;
 
@@ -29,12 +30,18 @@ public partial class AnimatedCoverView : UserControl
     private MediaPlayer? _player;
     private VideoView? _videoHost;
     private Panel? _hostPanel;
+    private bool _attached;
 
     public AnimatedCoverView()
     {
         InitializeComponent();
         _hostPanel = this.FindControl<Panel>("HostPanel");
-        DetachedFromVisualTree += (_, _) => Teardown();
+        // Only drive the VideoView while we're in the visual tree. A VideoView whose
+        // native window hasn't been created yet makes libVLC spawn its own standalone
+        // output window ("VLC (Direct3D11 output)"). Rebuild on (re-)attach because
+        // Source/IsActive don't change across a parent view show/hide.
+        AttachedToVisualTree += (_, _) => { _attached = true; Refresh(); };
+        DetachedFromVisualTree += (_, _) => { _attached = false; Teardown(); };
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
@@ -48,24 +55,33 @@ public partial class AnimatedCoverView : UserControl
 
     private void Refresh()
     {
-        var shouldPlay = IsActive && !string.IsNullOrEmpty(Source) && File.Exists(Source);
+        var shouldPlay = _attached && IsActive && !string.IsNullOrEmpty(Source) && File.Exists(Source);
         if (!shouldPlay)
         {
             Teardown();
             return;
         }
 
-        try
+        EnsurePlayer();
+
+        // Start playback after a layout pass so the freshly-attached VideoView has
+        // created its native window — otherwise libVLC opens a standalone window.
+        var player = _player!;
+        var source = Source!;
+        Dispatcher.UIThread.Post(() =>
         {
-            EnsurePlayer();
-            using var media = new Media(SharedLibVlc.Instance, Source!, FromType.FromPath,
-                ":no-audio", ":input-repeat=65535");
-            _player!.Play(media);
-        }
-        catch
-        {
-            Teardown();
-        }
+            if (player != _player) return; // torn down or replaced in the meantime
+            try
+            {
+                using var media = new Media(SharedLibVlc.Instance, source, FromType.FromPath,
+                    ":no-audio", ":input-repeat=65535");
+                player.Play(media);
+            }
+            catch
+            {
+                Teardown();
+            }
+        }, DispatcherPriority.Loaded);
     }
 
     private void EnsurePlayer()
