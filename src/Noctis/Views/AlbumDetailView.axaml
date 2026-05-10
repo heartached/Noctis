@@ -116,7 +116,10 @@
                     <Image Source="{Binding AlbumArt}"
                            Stretch="UniformToFill"
                            IsVisible="{Binding AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                    <controls:AnimatedCoverView
+                    <!-- Bitmap-rendered (not a native VideoView): composes/clips like a
+                         normal control, so it doesn't bleed over or jump relative to the
+                         sidebar when it expands. -->
+                    <controls:AnimatedCoverImage
                         Source="{Binding Player.CurrentAnimatedCoverPath}"
                         IsActive="{Binding IsCurrentAlbumPlaying}" />
                 </Panel>
