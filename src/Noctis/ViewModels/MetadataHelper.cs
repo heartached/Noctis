@@ -32,11 +32,18 @@ public static class MetadataHelper
         var animatedCovers = new AnimatedCoverService(persistence);
         var vm = new MetadataViewModel(track, metadata, library, persistence, animatedCovers, albumScoped, albumTracks);
 
-        // Live-apply volume adjust and EQ preset when the edited track is currently playing.
         vm.ChangesSaved += (_, _) =>
         {
             var main = App.Services!.GetService<MainWindowViewModel>();
-            if (main == null || main.Player.CurrentTrack != track) return;
+            if (main == null) return;
+
+            // An animated cover may have been added/removed for this album — re-resolve so
+            // surfaces bound to the player (album detail header, now playing, mini-art) update.
+            if (main.Player.CurrentTrack?.AlbumId == track.AlbumId)
+                main.Player.RefreshAnimatedCover();
+
+            // Live-apply volume adjust and EQ preset when the edited track is currently playing.
+            if (main.Player.CurrentTrack != track) return;
             var audio = App.Services!.GetRequiredService<IAudioPlayer>();
             audio.VolumeAdjust = track.VolumeAdjust;
             main.Settings.ApplyEqPresetByName(

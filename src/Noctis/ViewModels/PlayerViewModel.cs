@@ -938,6 +938,14 @@ public partial class PlayerViewModel : ViewModelBase
         CurrentAnimatedCoverPath = _animatedCovers.Resolve(track);
     }
 
+    /// <summary>
+    /// Re-resolves the current track's animated cover. Call after a metadata edit
+    /// may have added or removed one, so player-bound surfaces (album detail header,
+    /// now playing, mini-art) pick it up without a track change.
+    /// </summary>
+    public void RefreshAnimatedCover()
+        => CurrentAnimatedCoverPath = CurrentTrack != null ? _animatedCovers.Resolve(CurrentTrack) : null;
+
     private void TrimHistory()
     {
         // Keep only the last 50 items
