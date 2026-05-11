@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>noctis</id>
-    <version>1.1.4</version>
+    <version>1.1.5</version>
     <packageSourceUrl>https://github.com/heartached/Noctis/tree/main/packaging/chocolatey</packageSourceUrl>
     <owners>heartached</owners>
     <title>Noctis</title>
@@ -23,7 +23,7 @@ lyrics, metadata editing, EQ, and more.
 This package downloads the official installer from the Noctis GitHub Releases
 page and installs it per-user.
     </description>
-    <releaseNotes>https://github.com/heartached/Noctis/releases/tag/v1.1.4</releaseNotes>
+    <releaseNotes>https://github.com/heartached/Noctis/releases/tag/v1.1.5</releaseNotes>
   </metadata>
   <files>
     <file src="tools\**" target="tools" />

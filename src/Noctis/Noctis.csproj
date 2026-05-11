@@ -11,7 +11,7 @@
     <RootNamespace>Noctis</RootNamespace>
     <Product>Noctis</Product>
     <Company>Noctis</Company>
-    <Version>1.1.4</Version>
+    <Version>1.1.5</Version>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
 
     <!-- Avalonia requires this for XAML compilation -->
