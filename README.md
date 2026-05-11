@@ -40,6 +40,30 @@ A music player that respects what's yours. Zero tracking, total control.
 
 ---
 
+## Install
+
+**Windows** — via a package manager:
+
+```powershell
+# winget
+winget install heartached.Noctis
+
+# Scoop (add the bucket once, then install)
+scoop bucket add noctis https://github.com/heartached/scoop-bucket
+scoop install noctis
+
+# Chocolatey
+choco install noctis
+```
+
+Or download the installer / portable zip from the
+[latest release](https://github.com/heartached/Noctis/releases/latest).
+
+**macOS / Linux** — download the `.dmg` / AppImage from the
+[latest release](https://github.com/heartached/Noctis/releases/latest).
+
+---
+
 ## Features
 
 It packs a horizon of features including,
