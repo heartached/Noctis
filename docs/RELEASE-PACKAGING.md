@@ -36,7 +36,9 @@ The Chocolatey package (`packaging/chocolatey/`) is published by hand for now
 
        Get-FileHash .\Noctis-v{ver}-Setup.exe -Algorithm SHA256
 
-2. Update `packaging/chocolatey/noctis.nuspec` `<version>` and
+2. Update `packaging/chocolatey/noctis.nuspec` `<version>` **and**
+   `<releaseNotes>` (which is version-pinned to
+   `https://github.com/heartached/Noctis/releases/tag/v{ver}`), and
    `packaging/chocolatey/tools/chocolateyInstall.ps1` `checksum64` to match.
 3. Pack:
 

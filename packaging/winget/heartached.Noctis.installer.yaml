@@ -16,7 +16,6 @@ AppsAndFeaturesEntries:
     Publisher: heartached
     DisplayVersion: 1.1.4
     ProductCode: '{E8A3B5F1-7C2D-4A9E-B6F0-1D3E5A7C9B2F}_is1'
-    UpgradeCode: '{E8A3B5F1-7C2D-4A9E-B6F0-1D3E5A7C9B2F}'
     InstallerType: inno
 Installers:
   - Architecture: x64

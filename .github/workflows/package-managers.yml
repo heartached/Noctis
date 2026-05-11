@@ -113,7 +113,7 @@ jobs:
       - name: Install komac
         run: |
           set -euo pipefail
-          KOMAC_VERSION="2.11.0"
+          KOMAC_VERSION="2.16.0"
           curl -fsSL -o komac.tar.gz "https://github.com/russellbanks/Komac/releases/download/v${KOMAC_VERSION}/komac-${KOMAC_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
           tar -xzf komac.tar.gz
           sudo install -m755 komac /usr/local/bin/komac
