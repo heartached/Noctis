@@ -119,12 +119,23 @@ jobs:
           sudo install -m755 komac /usr/local/bin/komac
           komac --version
 
-      - name: Update heartached.Noctis
+      - name: Update or create heartached.Noctis
         run: |
-          set -euo pipefail
-          komac update heartached.Noctis \
-            --version "${{ needs.resolve.outputs.version }}" \
-            --urls "${{ needs.resolve.outputs.setup_url }}" \
-            --submit
+          set -uo pipefail
+          VERSION="${{ needs.resolve.outputs.version }}"
+          URL="${{ needs.resolve.outputs.setup_url }}"
+          komac update heartached.Noctis --version "$VERSION" --urls "$URL" --submit > komac.log 2>&1
+          RC=$?
+          cat komac.log
+          if [ "$RC" -eq 0 ]; then
+            exit 0
+          fi
+          if grep -q "does not exist in microsoft/winget-pkgs" komac.log; then
+            echo "Package not yet in winget-pkgs — submitting initial manifest with 'komac new'."
+            komac new heartached.Noctis --version "$VERSION" --urls "$URL" --submit
+          else
+            echo "komac update failed for an unexpected reason."
+            exit "$RC"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.WINGET_PAT }}
