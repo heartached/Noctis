@@ -344,10 +344,11 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                         </Border>
-                        <Image Source="{Binding Player.AlbumArt}"
-                               Stretch="UniformToFill"
-                               RenderOptions.BitmapInterpolationMode="HighQuality"
-                               IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                                              DecodeWidth="1280"
+                                              Stretch="UniformToFill"
+                                              RenderOptions.BitmapInterpolationMode="HighQuality"
+                                              IsVisible="{Binding Player.CurrentTrack.AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                         <controls:AnimatedCoverImage
                             Source="{Binding Player.CurrentAnimatedCoverPath}"
                             IsActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}" />
@@ -704,6 +705,13 @@
                                             <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                         </MenuItem.Icon>
                                     </MenuItem>
+                                    <MenuItem Header="Remove Lyrics"
+                                              Command="{Binding RemoveLyricsCommand}"
+                                              IsVisible="{Binding CanRemoveLyrics}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" Foreground="#E74856" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <MenuItem Header="Show Folder"
                                               Command="{Binding Player.ShowCurrentTrackInExplorerCommand}">
                                         <MenuItem.Icon>
@@ -759,17 +767,6 @@
                             <PathIcon Data="{StaticResource SaveDiskIcon}"
                                       Width="14" Height="14"
                                       Foreground="#FFFFFF" />
-                        </Button>
-
-                        <!-- Remove saved/cached lyrics -->
-                        <Button Classes="lyrics-ctrl-btn"
-                                Command="{Binding RemoveLyricsCommand}"
-                                IsVisible="{Binding CanRemoveLyrics}"
-                                Width="36" Height="36"
-                                ToolTip.Tip="Remove lyrics">
-                            <PathIcon Data="{StaticResource TrashIcon}"
-                                      Width="14" Height="14"
-                                      Foreground="#E74856" />
                         </Button>
 
                         <!-- Synced / Plain toggle -->
@@ -947,7 +944,7 @@
                             <Button x:Name="LyricsVolumeMuteButton"
                                     Classes="lyrics-ctrl-btn"
                                     Command="{Binding Player.ToggleMuteCommand}"
-                                    Width="36" Height="36"
+                                    Width="28" Height="36"
                                     ToolTip.Tip="Mute">
                                 <Panel>
                                     <Viewbox Width="18" Height="18"
@@ -966,9 +963,22 @@
                             </Button>
 
                             <!-- Expandable slider area with width animation -->
-                            <Panel VerticalAlignment="Center" Margin="-12,0,0,0">
+                            <Panel x:Name="LyricsVolumeSliderHost"
+                                   VerticalAlignment="Center"
+                                   Margin="-10,0,0,0"
+                                   Width="0"
+                                   ClipToBounds="False">
+                                <Panel.Transitions>
+                                    <Transitions>
+                                        <DoubleTransition Property="Width" Duration="0:0:0.2">
+                                            <DoubleTransition.Easing>
+                                                <CubicEaseOut/>
+                                            </DoubleTransition.Easing>
+                                        </DoubleTransition>
+                                    </Transitions>
+                                </Panel.Transitions>
                                 <!-- Volume percentage floating above (outside clipping container) -->
-                                <Canvas Width="94"
+                                <Canvas Width="100"
                                         Height="20"
                                         VerticalAlignment="Center"
                                         IsHitTestVisible="False">
@@ -1003,8 +1013,7 @@
                                             </DoubleTransition>
                                         </Transitions>
                                     </Border.Transitions>
-
-                                    <Grid Width="110" VerticalAlignment="Center">
+                                    <Grid Width="94" VerticalAlignment="Center">
                                         <Canvas x:Name="LyricsVolumeVisual"
                                                 Width="94"
                                                 Height="20"
@@ -1112,12 +1121,7 @@
                         Cursor="Hand"
                         Command="{Binding SearchLyricsCommand}"
                         HorizontalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Data="{StaticResource SearchGlobeIcon}"
-                                 Width="13" Height="13"
-                                 VerticalAlignment="Center"/>
-                        <TextBlock Text="Search Lyrics" VerticalAlignment="Center"/>
-                    </StackPanel>
+                    <TextBlock Text="Search lyrics" VerticalAlignment="Center"/>
                 </Button>
             </StackPanel>
 

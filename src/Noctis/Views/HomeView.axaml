@@ -174,21 +174,30 @@
                                               VerticalAlignment="Center"
                                               Margin="12,0,8,0">
                                             <TextBlock Grid.Column="0"
-                                                       Text="{Binding Title}"
                                                        FontSize="13"
                                                        FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis"
-                                                       MaxLines="1" />
-                                            <Border Grid.Column="1"
-                                                    Classes="explicit-badge compact"
-                                                    Margin="6,0,0,0"
-                                                    IsVisible="{Binding IsExplicit}"
-                                                    ToolTip.Tip="Explicit">
-                                                <TextBlock Text="E"
-                                                           Classes="explicit-badge-text compact"
-                                                           FontSize="9"
-                                                           Opacity="0.9" />
-                                            </Border>
+                                                       MaxLines="1">
+                                                <Run Text="{Binding Title}" />
+                                                <InlineUIContainer BaselineAlignment="Center">
+                                                    <Border Classes="explicit-badge compact"
+                                                            Margin="6,0,0,0"
+                                                            IsVisible="{Binding IsExplicit}"
+                                                            ToolTip.Tip="Explicit">
+                                                        <TextBlock Text="E"
+                                                                   Classes="explicit-badge-text compact"
+                                                                   FontSize="9"
+                                                                   Opacity="0.9" />
+                                                    </Border>
+                                                </InlineUIContainer>
+                                            </TextBlock>
+                                            <PathIcon Grid.Column="1"
+                                                      Data="{StaticResource HeartFillIcon}"
+                                                      Width="14" Height="14"
+                                                      Foreground="#E74856"
+                                                      Margin="6,0,0,0"
+                                                      VerticalAlignment="Center"
+                                                      IsVisible="{Binding IsFavorite}" />
                                         </Grid>
                                         <Border Grid.Column="2"
                                                 Margin="0,0,14,0"

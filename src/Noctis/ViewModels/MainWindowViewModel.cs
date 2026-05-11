@@ -342,17 +342,20 @@ public partial class MainWindowViewModel : ViewModelBase
         // priority. The visible page was already refreshed by Navigate(); this
         // makes navigation to the other sections feel instant once the user
         // gets there, without blocking first paint.
-        Dispatcher.UIThread.Post(() =>
-        {
-            App.CachedLocator?.Build(_songsVm);
-            App.CachedLocator?.Build(_albumsVm);
-            _songsVm.Refresh();
-            _albumsVm.Refresh();
-            _artistsVm.Refresh();
-            _foldersVm.Refresh();
-            _homeVm.Refresh();
-            _favoritesVm.Refresh();
-        }, DispatcherPriority.Background);
+        //
+        // Each step is posted as its own work item so the dispatcher can service
+        // input/render between them — doing all of this in one callback froze the
+        // UI for ~1–2 s right after the window appeared (building a heavy view is
+        // ~1 s on its own, plus six full list rebuilds).
+        void PostWarmup(Action step) => Dispatcher.UIThread.Post(step, DispatcherPriority.Background);
+        PostWarmup(() => App.CachedLocator?.Build(_songsVm));
+        PostWarmup(() => App.CachedLocator?.Build(_albumsVm));
+        PostWarmup(_songsVm.Refresh);
+        PostWarmup(_albumsVm.Refresh);
+        PostWarmup(_artistsVm.Refresh);
+        PostWarmup(_foldersVm.Refresh);
+        PostWarmup(_homeVm.Refresh);
+        PostWarmup(_favoritesVm.Refresh);
 
         // Select the matching sidebar item
         var allNavItems = Sidebar.NavItems

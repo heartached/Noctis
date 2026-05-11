@@ -82,18 +82,8 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal"
                                 Spacing="8"
-                                Margin="0,8,0,0">
-                        <Button Content="Edit description"
-                                Command="{Binding StartAlbumDescriptionEditCommand}"
-                                Padding="12,6"
-                                FontSize="12"
-                                FontWeight="Bold"
-                                CornerRadius="999"
-                                Cursor="Hand"
-                                Background="#E74856"
-                                Foreground="White"
-                                Classes="album-desc-btn"
-                                IsVisible="{Binding !IsAlbumDescriptionEditing}" />
+                                Margin="0,8,0,0"
+                                IsVisible="{Binding IsAlbumDescriptionEditing}">
                         <Button Content="Save"
                                 Command="{Binding SaveAlbumDescriptionEditCommand}"
                                 Padding="12,6"
@@ -119,6 +109,27 @@
                                 IsVisible="{Binding IsAlbumDescriptionEditing}" />
                     </StackPanel>
                 </StackPanel>
+
+                <Button Grid.Row="0"
+                        Grid.Column="1"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        Margin="0,0,4,0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Cursor="Hand"
+                        ToolTip.Tip="Edit description"
+                        Command="{Binding StartAlbumDescriptionEditCommand}"
+                        IsVisible="{Binding !IsAlbumDescriptionEditing}">
+                    <PathIcon Data="{StaticResource EditIcon}"
+                              Width="16" Height="16"
+                              Opacity="0.75"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center" />
+                </Button>
 
                 <Button Grid.Row="0"
                         Grid.Column="2"

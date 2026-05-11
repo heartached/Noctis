@@ -540,11 +540,9 @@ public partial class PlayerViewModel : ViewModelBase
         PositionText = "0:00";
         DurationText = "0:00";
         RemainingTimeText = "0:00";
-        // Set null BEFORE dispose — the property setter fires PropertyChanged,
-        // and the UI must not try to render a disposed bitmap.
-        var oldArt = AlbumArt;
+        // AlbumArt bitmaps are owned by the shared ArtworkCache — drop the reference,
+        // don't dispose (other UI surfaces and the cache may still hold it).
         AlbumArt = null;
-        oldArt?.Dispose();
     }
 
     /// <summary>Reorders a track in the UpNext queue via drag & drop.</summary>
@@ -907,32 +905,43 @@ public partial class PlayerViewModel : ViewModelBase
 
     /// <summary>
     /// Decode width for the player-bar / now-playing artwork bitmap.
-    /// 800 px gives sharp results at both 40×40 (player bar) and 350×350 (now-playing)
-    /// while avoiding the memory cost of full-resolution decodes (often 3000+ px).
+    /// 512 px gives sharp results at both 40×40 (player bar) and 350×350 (now-playing)
+    /// while matching the shared <see cref="ArtworkCache"/> default width so the same
+    /// cover isn't decoded/cached a second time at a player-only size.
     /// </summary>
-    private const int PlayerArtDecodeWidth = 800;
+    private const int PlayerArtDecodeWidth = 512;
+
+    /// <summary>Bumped on every <see cref="LoadAlbumArt"/> call so a slow background
+    /// decode that finishes after the track changed again is discarded.</summary>
+    private int _albumArtGeneration;
 
     private void LoadAlbumArt(Track track)
     {
-        // Dispose the previous bitmap to prevent memory leaks.
-        // Each track switch was leaking the old Bitmap.
-        var oldArt = AlbumArt;
-        AlbumArt = null;
-        oldArt?.Dispose();
-
+        // Bitmaps come from the shared LRU cache, which owns their lifetime — never
+        // dispose them here. The cache de-dupes, so track switches no longer leak.
         var artPath = _persistence.GetArtworkPath(track.AlbumId);
-        if (File.Exists(artPath))
+        var generation = Interlocked.Increment(ref _albumArtGeneration);
+
+        // Fast path: a cache hit returns synchronously — no I/O or decode on the UI thread.
+        var cached = ArtworkCache.TryGet(artPath, PlayerArtDecodeWidth);
+        if (cached != null)
         {
-            try
+            AlbumArt = cached;
+        }
+        else
+        {
+            // Cache miss: decode on a background thread so click-to-play doesn't stall.
+            AlbumArt = null;
+            _ = Task.Run(() =>
             {
-                using var stream = File.OpenRead(artPath);
-                AlbumArt = Bitmap.DecodeToWidth(stream, PlayerArtDecodeWidth,
-                    BitmapInterpolationMode.HighQuality);
-            }
-            catch
-            {
-                // Corrupted image file — leave as null
-            }
+                var bitmap = ArtworkCache.LoadAndCache(artPath, PlayerArtDecodeWidth);
+                if (bitmap == null) return;
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (generation == Volatile.Read(ref _albumArtGeneration))
+                        AlbumArt = bitmap;
+                });
+            });
         }
 
         CurrentAnimatedCoverPath = _animatedCovers.Resolve(track);

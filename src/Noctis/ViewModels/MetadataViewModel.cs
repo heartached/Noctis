@@ -61,7 +61,6 @@ public partial class MetadataViewModel : ViewModelBase
     // ── Animated cover tab ──
     [ObservableProperty] private string? _animatedCoverPath;
     [ObservableProperty] private bool _hasAnimatedCover;
-    [ObservableProperty] private bool _animatedCoverScopeIsAlbum = true;
     private string? _newAnimatedCoverSource;
     private bool _animatedCoverRemoved;
 
@@ -463,7 +462,7 @@ public partial class MetadataViewModel : ViewModelBase
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select Animated Cover",
+            Title = "Select Animated Artwork",
             AllowMultiple = false,
             FileTypeFilter = new[]
             {
@@ -489,6 +488,35 @@ public partial class MetadataViewModel : ViewModelBase
         _animatedCoverRemoved = true;
         AnimatedCoverPath = null;
         HasAnimatedCover = false;
+    }
+
+    [RelayCommand]
+    private async Task DownloadAnimatedCover(Avalonia.Visual visual)
+    {
+        var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(visual);
+        if (topLevel == null || !topLevel.StorageProvider.CanSave) return;
+        if (string.IsNullOrEmpty(AnimatedCoverPath) || !File.Exists(AnimatedCoverPath)) return;
+
+        var ext = Path.GetExtension(AnimatedCoverPath);
+        if (string.IsNullOrEmpty(ext)) ext = ".mp4";
+
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Download Animated Artwork",
+            SuggestedFileName = "animated-cover" + ext,
+            DefaultExtension = ext.TrimStart('.'),
+            ShowOverwritePrompt = true,
+            FileTypeChoices = new[] { new FilePickerFileType("Video") { Patterns = new[] { "*" + ext } } }
+        });
+        if (file == null) return;
+
+        try
+        {
+            await using var src = File.OpenRead(AnimatedCoverPath);
+            await using var dst = await file.OpenWriteAsync();
+            await src.CopyToAsync(dst);
+        }
+        catch { /* Non-fatal */ }
     }
 
     [RelayCommand]
@@ -686,8 +714,9 @@ public partial class MetadataViewModel : ViewModelBase
             ArtworkCache.Invalidate(_persistence.GetArtworkPath(_track.AlbumId));
         }
 
-        // Animated cover handling
-        var animScope = AnimatedCoverScopeIsAlbum ? AnimatedCoverScope.Album : AnimatedCoverScope.Track;
+        // Animated cover handling — scope follows how the dialog was opened:
+        // album right-click → whole album; individual track right-click → that track only.
+        var animScope = _albumScoped ? AnimatedCoverScope.Album : AnimatedCoverScope.Track;
         if (_newAnimatedCoverSource != null)
         {
             try { await _animatedCovers.ImportAsync(_track, _newAnimatedCoverSource, animScope); }

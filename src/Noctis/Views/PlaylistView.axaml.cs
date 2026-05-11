@@ -37,7 +37,27 @@ public partial class PlaylistView : UserControl
         TrackList.ContainerPrepared += OnTrackContainerPrepared;
         TrackList.ContainerClearing += OnTrackContainerClearing;
 
+        // Wire any containers that were realized before this subscription.
+        // Without this, right-click on row padding/edges (outside the inner Grid's
+        // own ContextMenu) silently does nothing because ContextRequested has no
+        // listener at the ListBoxItem level.
+        foreach (var container in TrackList.GetRealizedContainers())
+        {
+            if (container is ListBoxItem item)
+                WireTrackItem(item);
+        }
+
         DataContextChanged += OnDataContextChanged;
+    }
+
+    private void WireTrackItem(ListBoxItem item)
+    {
+        item.ContextRequested -= OnTrackItemContextRequested;
+        item.ContextRequested += OnTrackItemContextRequested;
+        item.RemoveHandler(PointerPressedEvent, OnTrackRowPointerPressed);
+        item.AddHandler(PointerPressedEvent, OnTrackRowPointerPressed, RoutingStrategies.Tunnel);
+        item.RemoveHandler(PointerMovedEvent, OnTrackRowPointerMoved);
+        item.AddHandler(PointerMovedEvent, OnTrackRowPointerMoved, RoutingStrategies.Tunnel);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -137,11 +157,7 @@ public partial class PlaylistView : UserControl
     private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)
     {
         if (e.Container is ListBoxItem item)
-        {
-            item.ContextRequested += OnTrackItemContextRequested;
-            item.AddHandler(PointerPressedEvent, OnTrackRowPointerPressed, RoutingStrategies.Tunnel);
-            item.AddHandler(PointerMovedEvent, OnTrackRowPointerMoved, RoutingStrategies.Tunnel);
-        }
+            WireTrackItem(item);
     }
 
     private void OnTrackContainerClearing(object? sender, ContainerClearingEventArgs e)

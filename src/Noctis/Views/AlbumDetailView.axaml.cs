@@ -91,6 +91,19 @@ public partial class AlbumDetailView : UserControl
         lb.DoubleTapped += OnTrackDoubleTapped;
         lb.ContainerPrepared += OnTrackContainerPrepared;
         lb.ContainerClearing += OnTrackContainerClearing;
+
+        // Non-virtualizing StackPanel realizes all items before this Loaded handler
+        // runs, so ContainerPrepared has already fired for existing rows. Wire the
+        // ContextRequested handler on those existing containers so right-click works
+        // anywhere on the row (including ListBoxItem padding outside the inner Grid).
+        foreach (var container in lb.GetRealizedContainers())
+        {
+            if (container is ListBoxItem item)
+            {
+                item.ContextRequested -= OnTrackItemContextRequested;
+                item.ContextRequested += OnTrackItemContextRequested;
+            }
+        }
     }
 
     private void UnwireListBox(ContentPresenter cp)
@@ -100,6 +113,12 @@ public partial class AlbumDetailView : UserControl
         lb.DoubleTapped -= OnTrackDoubleTapped;
         lb.ContainerPrepared -= OnTrackContainerPrepared;
         lb.ContainerClearing -= OnTrackContainerClearing;
+
+        foreach (var container in lb.GetRealizedContainers())
+        {
+            if (container is ListBoxItem item)
+                item.ContextRequested -= OnTrackItemContextRequested;
+        }
     }
 
     private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)

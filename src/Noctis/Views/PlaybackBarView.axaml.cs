@@ -47,6 +47,10 @@ public partial class PlaybackBarView : UserControl
     // Seek slider drag state — only our code sets/clears this, preventing
     // stale Thumb state or stray pointer moves from triggering seeks.
     private bool _isSeekDragging;
+    private bool _isVolumeDragging;
+    private const double VolumeThumbSize = 14;
+    private const double VolumeSliderVisualWidth = 94;
+    private readonly TranslateTransform _volumeThumbTransform = new();
 
     public PlaybackBarView()
     {
@@ -68,13 +72,15 @@ public partial class PlaybackBarView : UserControl
         DispatcherTimer.RunOnce(UpdateSeekSliderVisual, TimeSpan.FromMilliseconds(10));
 
         // Handle volume slider interaction to show/hide percentage badge
-        // MUST use AddHandler with handledEventsToo:true because Slider's Thumb handles these events
-        VolumeSlider.AddHandler(InputElement.PointerPressedEvent, OnVolumeSliderPressed, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
-        VolumeSlider.AddHandler(InputElement.PointerReleasedEvent, OnVolumeSliderReleased, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
+        VolumeSlider.AddHandler(InputElement.PointerPressedEvent, OnVolumeSliderPressed, RoutingStrategies.Tunnel);
+        VolumeSlider.AddHandler(InputElement.PointerMovedEvent, OnVolumeSliderMoved, RoutingStrategies.Tunnel);
+        VolumeSlider.AddHandler(InputElement.PointerReleasedEvent, OnVolumeSliderReleased, RoutingStrategies.Tunnel);
         VolumeSlider.PointerCaptureLost += OnVolumeSliderCaptureLost;
+        VolumeThumb.RenderTransform = _volumeThumbTransform;
 
         // Track volume changes to update percentage badge position
         VolumeSlider.PropertyChanged += OnVolumeSliderPropertyChanged;
+        VolumeSlider.SizeChanged += (_, _) => UpdateVolumeSliderVisual();
 
         TrackTitleTextBlock.PropertyChanged += OnTrackTitleTextBlockPropertyChanged;
         TrackTitleViewport.PropertyChanged += OnTrackTitleViewportPropertyChanged;
@@ -528,33 +534,49 @@ public partial class PlaybackBarView : UserControl
     {
         if (e.Property == Slider.ValueProperty)
         {
+            UpdateVolumeSliderVisual();
             UpdateVolumePercentagePosition();
+            Dispatcher.UIThread.Post(UpdateVolumePercentagePosition, DispatcherPriority.Render);
+        }
+        else if (e.Property.Name is nameof(Bounds) or nameof(IsEnabled))
+        {
+            UpdateVolumeSliderVisual();
         }
     }
 
     private void UpdateVolumePercentagePosition()
     {
-        if (VolumePercentageBadge.RenderTransform is not TranslateTransform transform)
-            return;
-
-        // Track has Margin="7,0" inside 90px slider, so track area = 76px
-        // Thumb is 14px wide, travel range = 76 - 14 = 62px
-        // At 0%: thumb center at 7 (track margin) + 7 (half thumb) = 14px
-        // At 100%: thumb center at 14 + 62 = 76px
-        const double trackMargin = 7.0;
-        const double thumbHalfWidth = 7.0;
-        const double thumbTravelRange = 62.0;
-
         var volume = VolumeSlider.Value;
         var fraction = volume / 100.0;
+        var sliderWidth = VolumeSlider.Bounds.Width > 0 ? VolumeSlider.Bounds.Width : VolumeSliderVisualWidth;
+        var thumbHalfWidth = VolumeThumbSize / 2.0;
+        var thumbTravelRange = Math.Max(0, sliderWidth - VolumeThumbSize);
 
         // Calculate thumb center position, then center the text over it
-        var thumbCenterX = trackMargin + thumbHalfWidth + (fraction * thumbTravelRange);
-        var textWidth = VolumePercentageBadge.Bounds.Width;
-        if (textWidth <= 0) textWidth = 18; // Estimate if not yet measured
+        var thumbCenterX = thumbHalfWidth + (fraction * thumbTravelRange);
+        var textWidth = MeasureVolumePercentageTextWidth();
         var xPos = thumbCenterX - (textWidth / 2);
 
-        transform.X = xPos;
+        Canvas.SetLeft(VolumePercentageBadge, xPos);
+    }
+
+    private double MeasureVolumePercentageTextWidth()
+    {
+        var text = VolumePercentageBadge.Text;
+        if (string.IsNullOrEmpty(text))
+            return 18;
+
+        return new FormattedText(
+            text,
+            CultureInfo.CurrentCulture,
+            VolumePercentageBadge.FlowDirection,
+            new Typeface(
+                VolumePercentageBadge.FontFamily,
+                VolumePercentageBadge.FontStyle,
+                VolumePercentageBadge.FontWeight,
+                VolumePercentageBadge.FontStretch),
+            VolumePercentageBadge.FontSize,
+            Brushes.Transparent).WidthIncludingTrailingWhitespace;
     }
 
     private void OnSeekStart(object? sender, PointerPressedEventArgs e)
@@ -638,29 +660,82 @@ public partial class PlaybackBarView : UserControl
 
     private void OnVolumeSliderPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (sender is not Slider slider) return;
+        if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed) return;
+
+        _isVolumeDragging = true;
+        e.Pointer.Capture(slider);
+        slider.Value = GetVolumeFromPointer(slider, e.GetPosition(slider));
         UpdateVolumePercentagePosition();
+        e.Handled = true;
+    }
+
+    private void OnVolumeSliderMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isVolumeDragging || sender is not Slider slider) return;
+
+        slider.Value = GetVolumeFromPointer(slider, e.GetPosition(slider));
+        e.Handled = true;
     }
 
     private void OnVolumeSliderReleased(object? sender, PointerReleasedEventArgs e)
     {
-        (DataContext as ViewModels.PlayerViewModel)?.CommitVolume();
+        if (_isVolumeDragging)
+        {
+            _isVolumeDragging = false;
+            e.Pointer.Capture(null);
+            e.Handled = true;
+        }
+
+        (DataContext as PlayerViewModel)?.CommitVolume();
     }
 
     private void OnVolumeSliderCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
-        (DataContext as ViewModels.PlayerViewModel)?.CommitVolume();
+        if (!_isVolumeDragging) return;
+
+        _isVolumeDragging = false;
+        (DataContext as PlayerViewModel)?.CommitVolume();
+    }
+
+    private void UpdateVolumeSliderVisual()
+    {
+        if (VolumeSlider == null ||
+            VolumeTrackBackground == null ||
+            VolumeTrackFill == null ||
+            VolumeThumb == null)
+            return;
+
+        PillSliderVisualHelper.UpdateVisual(
+            VolumeSlider,
+            VolumeTrackBackground,
+            VolumeTrackFill,
+            VolumeThumb,
+            _volumeThumbTransform,
+            VolumeThumbSize,
+            enabledBackgroundOpacity: 0.4,
+            disabledBackgroundOpacity: 0.25);
+
+    }
+
+    private static double GetVolumeFromPointer(Slider slider, Point position)
+    {
+        return PillSliderVisualHelper.GetValueFromPointer(slider, position, VolumeThumbSize);
     }
 
     private const double IslandBaseWidth = 650;
-    private const double VolumeSliderExpandedWidth = 99;
+    private const double VolumeSliderExpandedWidth = 94;
+    private const double VolumeSliderSpacing = 0;
 
     private void OnVolumeContainerEntered(object? sender, PointerEventArgs e)
     {
         // Expand the island and volume slider together so the timeline doesn't shrink
-        IslandBorder.Width = IslandBaseWidth + VolumeSliderExpandedWidth;
+        IslandBorder.Width = IslandBaseWidth + VolumeSliderExpandedWidth + VolumeSliderSpacing;
         VolumeSliderContainer.Width = VolumeSliderExpandedWidth;
         VolumePercentageBadge.IsVisible = true;
+        UpdateVolumeSliderVisual();
         UpdateVolumePercentagePosition();
+        Dispatcher.UIThread.Post(UpdateVolumePercentagePosition, DispatcherPriority.Render);
         VolumePercentageBadge.Opacity = 1.0;
     }
 

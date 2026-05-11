@@ -776,7 +776,7 @@
                         </Button>
 
                         <!-- Expandable slider area with width animation -->
-                        <Panel VerticalAlignment="Center" Margin="-12,0,0,0">
+                        <Panel VerticalAlignment="Center" Margin="-14,0,0,0">
                             <!-- Volume percentage floating above (outside clipping container) -->
                             <Canvas Width="94"
                                     Height="20"
@@ -814,7 +814,7 @@
                                     </Transitions>
                                 </Border.Transitions>
 
-                                <Grid Width="110" VerticalAlignment="Center">
+                                <Grid Width="94" VerticalAlignment="Center">
                                     <Canvas x:Name="VolumeVisual"
                                             Width="94"
                                             Height="20"

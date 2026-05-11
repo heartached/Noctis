@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
@@ -26,12 +27,17 @@ public partial class LyricsView : UserControl
     private bool _isNarrowMode;
     private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
     private readonly TranslateTransform _lyricsSeekThumbTransform = new();
+    private readonly TranslateTransform _lyricsVolumeThumbTransform = new();
 
     private const double NarrowBreakpoint = 900;
     private const double SeekThumbSize = 14;
+    private const double LyricsVolumeThumbSize = 14;
 
     // Seek slider drag state — mirrors PlaybackBarView pattern
     private bool _isSeekDragging;
+    private bool _isLyricsVolumeDragging;
+    private bool _isLyricsVolumeExpanded;
+    private bool _isLyricsVolumePointerOver;
 
     public LyricsView()
     {
@@ -55,8 +61,15 @@ public partial class LyricsView : UserControl
         SeekSlider.SizeChanged += (_, _) => UpdateSeekSliderVisual();
         DispatcherTimer.RunOnce(UpdateSeekSliderVisual, TimeSpan.FromMilliseconds(10));
 
-        // Volume slider percentage badge (expand-on-hover wired via AXAML PointerEntered/Exited on LyricsVolumeContainer)
+        // Volume slider (hover wiring lives in AXAML PointerEntered/Exited handlers)
+        LyricsVolumeThumb.RenderTransform = _lyricsVolumeThumbTransform;
+        LyricsVolumeSlider.AddHandler(InputElement.PointerPressedEvent, OnLyricsVolumePointerPressed, RoutingStrategies.Tunnel);
+        LyricsVolumeSlider.AddHandler(InputElement.PointerMovedEvent, OnLyricsVolumePointerMoved, RoutingStrategies.Tunnel);
+        LyricsVolumeSlider.AddHandler(InputElement.PointerReleasedEvent, OnLyricsVolumePointerReleased, RoutingStrategies.Tunnel);
+        LyricsVolumeSlider.PointerCaptureLost += OnLyricsVolumeCaptureLost;
         LyricsVolumeSlider.PropertyChanged += OnLyricsVolumePropertyChanged;
+        LyricsVolumeSlider.SizeChanged += (_, _) => UpdateLyricsVolumeVisual();
+        DispatcherTimer.RunOnce(UpdateLyricsVolumeVisual, TimeSpan.FromMilliseconds(10));
 
         // Mouse wheel → horizontal scroll for color swatch pickers
         SolidSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
@@ -100,6 +113,13 @@ public partial class LyricsView : UserControl
                 player.EndSeek();
         }
 
+        if (_isLyricsVolumeDragging)
+        {
+            _isLyricsVolumeDragging = false;
+            if (DataContext is LyricsViewModel { Player: { } player })
+                player.CommitVolume();
+        }
+
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -108,6 +128,7 @@ public partial class LyricsView : UserControl
         base.OnSizeChanged(e);
         UpdateResponsiveLayout(e.NewSize.Width);
         UpdateSeekSliderVisual();
+        UpdateLyricsVolumeVisual();
     }
 
     private void UpdateResponsiveLayout(double width)
@@ -455,20 +476,44 @@ public partial class LyricsView : UserControl
         LyricsItemsControl.Margin = new Thickness(0, topPad, 0, bottomPad);
     }
 
-    // ── Volume percentage badge ──
+    // ── Volume slider (expands inline on hover, mirrors PlaybackBarView) ──
 
-    private const double LyricsVolumeSliderExpandedWidth = 113;
+    private const double LyricsVolumeSliderHostExpandedWidth = 110;
+    private const double LyricsVolumeSliderContainerExpandedWidth = 100;
+    private const double LyricsVolumeSliderVisualWidth = 94;
 
     private void OnLyricsVolumeContainerEntered(object? sender, PointerEventArgs e)
     {
-        LyricsVolumeSliderContainer.Width = LyricsVolumeSliderExpandedWidth;
-        UpdateLyricsVolumePosition();
+        _isLyricsVolumePointerOver = true;
+        if (_isLyricsVolumeExpanded)
+            return;
+
+        _isLyricsVolumeExpanded = true;
+        LyricsVolumeSliderHost.Width = LyricsVolumeSliderHostExpandedWidth;
+        LyricsVolumeSliderContainer.Width = LyricsVolumeSliderContainerExpandedWidth;
         LyricsVolumePercentage.IsVisible = true;
+        UpdateLyricsVolumeVisual();
+        UpdateLyricsVolumePercentagePosition();
+        Dispatcher.UIThread.Post(UpdateLyricsVolumePercentagePosition, DispatcherPriority.Render);
         LyricsVolumePercentage.Opacity = 1.0;
     }
 
     private void OnLyricsVolumeContainerExited(object? sender, PointerEventArgs e)
     {
+        _isLyricsVolumePointerOver = false;
+        if (_isLyricsVolumeDragging)
+            return;
+
+        CollapseLyricsVolumeSlider();
+    }
+
+    private void CollapseLyricsVolumeSlider()
+    {
+        if (!_isLyricsVolumeExpanded)
+            return;
+
+        _isLyricsVolumeExpanded = false;
+        LyricsVolumeSliderHost.Width = 0;
         LyricsVolumeSliderContainer.Width = 0;
         LyricsVolumePercentage.Opacity = 0;
         LyricsVolumePercentage.IsVisible = false;
@@ -477,24 +522,123 @@ public partial class LyricsView : UserControl
     private void OnLyricsVolumePropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
         if (e.Property == Slider.ValueProperty)
-            UpdateLyricsVolumePosition();
+        {
+            UpdateLyricsVolumeVisual();
+            UpdateLyricsVolumePercentagePosition();
+            if (!_isLyricsVolumeDragging)
+                Dispatcher.UIThread.Post(UpdateLyricsVolumePercentagePosition, DispatcherPriority.Render);
+        }
+        else if (e.Property.Name is nameof(Bounds) or nameof(IsEnabled))
+        {
+            UpdateLyricsVolumeVisual();
+        }
     }
 
-    private void UpdateLyricsVolumePosition()
+    private void UpdateLyricsVolumePercentagePosition()
     {
-        if (LyricsVolumePercentage.RenderTransform is not Avalonia.Media.TranslateTransform transform)
+        var volume = LyricsVolumeSlider.Value;
+        var fraction = volume / 100.0;
+        var sliderWidth = LyricsVolumeSlider.Bounds.Width > 0 ? LyricsVolumeSlider.Bounds.Width : LyricsVolumeSliderVisualWidth;
+        var thumbHalfWidth = LyricsVolumeThumbSize / 2.0;
+        var thumbTravelRange = Math.Max(0, sliderWidth - LyricsVolumeThumbSize);
+
+        // Calculate thumb center position, then center the text over it
+        var thumbCenterX = thumbHalfWidth + (fraction * thumbTravelRange);
+        var textWidth = MeasureLyricsVolumePercentageTextWidth();
+        var xPos = thumbCenterX - (textWidth / 2);
+
+        Canvas.SetLeft(LyricsVolumePercentage, xPos);
+    }
+
+    private double MeasureLyricsVolumePercentageTextWidth()
+    {
+        var text = LyricsVolumePercentage.Text;
+        if (string.IsNullOrEmpty(text))
+            return 18;
+
+        return new FormattedText(
+            text,
+            CultureInfo.CurrentCulture,
+            LyricsVolumePercentage.FlowDirection,
+            new Typeface(
+                LyricsVolumePercentage.FontFamily,
+                LyricsVolumePercentage.FontStyle,
+                LyricsVolumePercentage.FontWeight,
+                LyricsVolumePercentage.FontStretch),
+            LyricsVolumePercentage.FontSize,
+            Brushes.Transparent).WidthIncludingTrailingWhitespace;
+    }
+
+    private void OnLyricsVolumePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Slider slider) return;
+        if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed) return;
+
+        _isLyricsVolumeDragging = true;
+        e.Pointer.Capture(slider);
+        slider.Value = GetLyricsVolumeFromPointer(slider, e.GetPosition(slider));
+        e.Handled = true;
+    }
+
+    private void OnLyricsVolumePointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isLyricsVolumeDragging || sender is not Slider slider) return;
+
+        slider.Value = GetLyricsVolumeFromPointer(slider, e.GetPosition(slider));
+        e.Handled = true;
+    }
+
+    private void OnLyricsVolumePointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_isLyricsVolumeDragging)
+        {
+            _isLyricsVolumeDragging = false;
+            e.Pointer.Capture(null);
+            e.Handled = true;
+        }
+
+        if (DataContext is LyricsViewModel { Player: { } player })
+            player.CommitVolume();
+
+        if (!_isLyricsVolumePointerOver)
+            CollapseLyricsVolumeSlider();
+    }
+
+    private void OnLyricsVolumeCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (!_isLyricsVolumeDragging) return;
+
+        _isLyricsVolumeDragging = false;
+        if (DataContext is LyricsViewModel { Player: { } player })
+            player.CommitVolume();
+
+        if (!_isLyricsVolumePointerOver)
+            CollapseLyricsVolumeSlider();
+    }
+
+    private void UpdateLyricsVolumeVisual()
+    {
+        if (LyricsVolumeSlider == null ||
+            LyricsVolumeTrackBackground == null ||
+            LyricsVolumeTrackFill == null ||
+            LyricsVolumeThumb == null)
             return;
 
-        // Container gives the 90px slider 7px of edge room on each side.
-        const double trackMargin = 14.0;
-        const double thumbHalfWidth = 7.0;
-        const double thumbTravel = 62.0;
+        PillSliderVisualHelper.UpdateVisual(
+            LyricsVolumeSlider,
+            LyricsVolumeTrackBackground,
+            LyricsVolumeTrackFill,
+            LyricsVolumeThumb,
+            _lyricsVolumeThumbTransform,
+            LyricsVolumeThumbSize,
+            enabledBackgroundOpacity: 0.4,
+            disabledBackgroundOpacity: 0.25);
 
-        var fraction = LyricsVolumeSlider.Value / 100.0;
-        var thumbCenterX = trackMargin + thumbHalfWidth + (fraction * thumbTravel);
-        var textWidth = LyricsVolumePercentage.Bounds.Width;
-        if (textWidth <= 0) textWidth = 18;
-        transform.X = thumbCenterX - (textWidth / 2);
+    }
+
+    private static double GetLyricsVolumeFromPointer(Slider slider, Point position)
+    {
+        return PillSliderVisualHelper.GetValueFromPointer(slider, position, LyricsVolumeThumbSize);
     }
 
     // Maps the current synced ActiveLineIndex to the corresponding row in UnsyncedLines.

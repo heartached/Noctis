@@ -36,6 +36,17 @@ public partial class LibrarySongsView : UserControl
         TrackList.ContainerPrepared += OnTrackContainerPrepared;
         TrackList.ContainerClearing += OnTrackContainerClearing;
 
+        // Wire any containers that were realized before this subscription so
+        // right-click works on row padding/edges, not just the inner Grid.
+        foreach (var container in TrackList.GetRealizedContainers())
+        {
+            if (container is ListBoxItem item)
+            {
+                item.ContextRequested -= OnTrackItemContextRequested;
+                item.ContextRequested += OnTrackItemContextRequested;
+            }
+        }
+
         DataContextChanged += OnDataContextChanged;
     }
 
