@@ -47,4 +47,20 @@ public class CustomThemePersistenceTests
         Assert.NotNull(settings.CustomThemes);
         Assert.Empty(settings.CustomThemes);
     }
+
+    [Fact]
+    public void StaleCustomThemeReference_DeserializesCleanly()
+    {
+        var json = """
+        {
+            "Theme": "Custom:nonexistent-id",
+            "CustomThemes": []
+        }
+        """;
+        var restored = JsonSerializer.Deserialize<AppSettings>(json)!;
+        Assert.Equal("Custom:nonexistent-id", restored.Theme);
+        Assert.Empty(restored.CustomThemes);
+        // The fallback-to-Gray happens at load time in SettingsViewModel (Task 6);
+        // this test only confirms the JSON shape stays valid.
+    }
 }
