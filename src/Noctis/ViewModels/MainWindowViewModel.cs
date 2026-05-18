@@ -1036,6 +1036,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Clear all top bar actions, then set up the correct ones for the destination
         ClearAllTopBarActions();
+        if (key == "lyrics") WireLyricsPageToPlayer();
         if (goingToEligibleSection || key.StartsWith("playlist:"))
             SetupGlobalViewModeToggle();
         if (key == "songs")
@@ -1190,6 +1191,7 @@ public partial class MainWindowViewModel : ViewModelBase
             PushCurrentViewToHistory();
         _albumDetailBackButtonText = NormalizeAlbumDetailBackButtonText(backButtonText ?? GetAlbumDetailBackButtonText());
         ClearAllTopBarActions();
+        SetupGlobalViewModeToggle();
 
         var detail = new AlbumDetailViewModel(album, Player, _persistence, _library, Sidebar, _lastFm, Settings);
         detail.BackRequested += (_, _) => GoBackInHistory();
@@ -1218,6 +1220,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         PushCurrentViewToHistory();
         ClearAllTopBarActions();
+        SetupGlobalViewModeToggle();
         _albumsVm.SetArtistFilter(artistName);
 
         if (!ReferenceEquals(CurrentView, _albumsVm))
@@ -1309,11 +1312,45 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Clears all page-specific, playlist, artist, and view-mode top bar actions.</summary>
     private void ClearAllTopBarActions()
     {
+        UnwireLyricsPageFromPlayer();
         ClearTopBarPageActions();
         TopBar.HidePlaylistActions();
         TopBar.HideArtistActions();
         TopBar.HideFavoritesActions();
         TopBar.HideViewModeToggle();
+    }
+
+    private void WireLyricsPageToPlayer()
+    {
+        Player.SetLyricsPageActions(
+            selectSynced: () => _lyricsVm.SelectSyncedLyricsCommand.Execute(null),
+            selectPlain: () => _lyricsVm.SelectPlainLyricsCommand.Execute(null),
+            openBackgroundColor: () => _lyricsVm.OpenBackgroundColorPickerCommand.Execute(null),
+            isSyncedActive: _lyricsVm.IsSyncTabSelected,
+            isPlainActive: _lyricsVm.IsUnsyncTabSelected,
+            isSyncedAvailable: _lyricsVm.HasSyncedLyricsAvailable);
+
+        _lyricsVm.PropertyChanged -= OnLyricsVmPropertyChanged;
+        _lyricsVm.PropertyChanged += OnLyricsVmPropertyChanged;
+    }
+
+    private void UnwireLyricsPageFromPlayer()
+    {
+        _lyricsVm.PropertyChanged -= OnLyricsVmPropertyChanged;
+        Player.ClearLyricsPageActions();
+    }
+
+    private void OnLyricsVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LyricsViewModel.IsSyncTabSelected)
+            || e.PropertyName == nameof(LyricsViewModel.IsUnsyncTabSelected)
+            || e.PropertyName == nameof(LyricsViewModel.HasSyncedLyricsAvailable))
+        {
+            Player.UpdateLyricsPageState(
+                isSyncedActive: _lyricsVm.IsSyncTabSelected,
+                isPlainActive: _lyricsVm.IsUnsyncTabSelected,
+                isSyncedAvailable: _lyricsVm.HasSyncedLyricsAvailable);
+        }
     }
 
     /// <summary>
@@ -1587,6 +1624,7 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.SearchText = string.Empty;
             TopBar.CurrentTabName = "Lyrics";
             ClearAllTopBarActions();
+            WireLyricsPageToPlayer();
         }
     }
 
@@ -1601,6 +1639,7 @@ public partial class MainWindowViewModel : ViewModelBase
         TopBar.SearchText = string.Empty;
         TopBar.CurrentTabName = "Lyrics";
         ClearAllTopBarActions();
+        WireLyricsPageToPlayer();
         _lyricsVm.SearchLyricsForTrack(track);
     }
 
