@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Noctis.Controls.ColorPickerFlyout">
+    <!-- Filled in by Task 2 -->
+    <Button x:Name="SwatchButton" Cursor="Hand"
+            Background="Transparent" BorderThickness="0" Padding="0">
+        <Ellipse x:Name="DefaultSwatch" Width="28" Height="28"
+                 Stroke="#1FFFFFFF" StrokeThickness="1"/>
+    </Button>
+</UserControl>
