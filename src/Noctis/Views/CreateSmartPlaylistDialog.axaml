@@ -43,6 +43,7 @@
                         Command="{Binding CancelCommand}"
                         Width="100"
                         Padding="0,8"
+                        FontWeight="Bold"
                         HorizontalContentAlignment="Center"
                         CornerRadius="999"
                         Margin="0,0,8,0"
@@ -55,7 +56,7 @@
                         Classes="accent-btn"
                             Background="{DynamicResource AccentColorBrush}"
                         Foreground="White"
-                        FontWeight="SemiBold"
+                        FontWeight="Bold"
                         HorizontalContentAlignment="Center"
                         CornerRadius="999"
                         Cursor="Hand" />
