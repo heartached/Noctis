@@ -86,7 +86,14 @@ public partial class App : Application
     public const string ThemeMidnight = "Midnight";
 
     private ResourceInclude? _activeThemeOverlay;
+    private Avalonia.Controls.ResourceDictionary? _activeCustomOverlay;
     private string? _activeAccentHex;
+
+    /// <summary>
+    /// Callback the SettingsViewModel registers so App can resolve a Custom:<id> theme name
+    /// to a concrete definition without taking a hard dependency on the settings service.
+    /// </summary>
+    public Func<string, Noctis.Models.CustomThemeDefinition?>? CustomThemeResolver { get; set; }
 
     /// <summary>
     /// Switches the application theme at runtime. Light maps to the Light variant;
@@ -95,11 +102,48 @@ public partial class App : Application
     /// </summary>
     public void SetTheme(string themeName)
     {
-        // Drop any prior overlay before swapping.
         if (_activeThemeOverlay != null)
         {
             Resources.MergedDictionaries.Remove(_activeThemeOverlay);
             _activeThemeOverlay = null;
+        }
+        if (_activeCustomOverlay != null)
+        {
+            Resources.MergedDictionaries.Remove(_activeCustomOverlay);
+            _activeCustomOverlay = null;
+        }
+
+        // Custom themes
+        if (themeName != null && themeName.StartsWith("Custom:", StringComparison.Ordinal))
+        {
+            var id = themeName.Substring("Custom:".Length);
+            var def = CustomThemeResolver?.Invoke(id);
+            if (def != null)
+            {
+                var derived = Noctis.Services.ThemeDerivation.Derive(def);
+
+                RequestedThemeVariant =
+                    derived.TryGetValue("__BaseVariant", out var v) && (string)v == "Light"
+                        ? Avalonia.Styling.ThemeVariant.Light
+                        : Avalonia.Styling.ThemeVariant.Dark;
+
+                var rd = new Avalonia.Controls.ResourceDictionary();
+                foreach (var (key, value) in derived)
+                {
+                    if (key.StartsWith("__")) continue;
+                    rd[key] = value;
+                }
+                Resources.MergedDictionaries.Add(rd);
+                _activeCustomOverlay = rd;
+
+                // Custom themes drive their own accent — push it through the SetAccent
+                // path so the accent palette (Dark1/2/3, Light1/2/3, MenuFlyout hovers,
+                // etc.) is generated and overlaid the same way as for built-in themes.
+                SetAccent(def.AccentHex);
+                return;
+            }
+            // Unknown id falls through to default handling (Gray).
+            themeName = ThemeGray;
         }
 
         RequestedThemeVariant = themeName == ThemeLight
