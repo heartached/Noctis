@@ -217,6 +217,27 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         IsUnsyncTabSelected = !IsSyncTabSelected;
     }
 
+    [RelayCommand]
+    private void SelectSyncedLyrics()
+    {
+        if (!HasSyncedLyricsAvailable) return;
+        IsSyncTabSelected = true;
+        IsUnsyncTabSelected = false;
+    }
+
+    [RelayCommand]
+    private void SelectPlainLyrics()
+    {
+        IsSyncTabSelected = false;
+        IsUnsyncTabSelected = true;
+    }
+
+    [RelayCommand]
+    private void OpenBackgroundColorPicker()
+    {
+        OpenBackgroundColorRequested?.Invoke();
+    }
+
     /// <summary>Index of the currently active lyric line (for auto-scroll).</summary>
     [ObservableProperty]
     private int _activeLineIndex = -1;
@@ -396,6 +417,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     private Action<string>? _viewArtistAction;
     private Action<Track>? _viewAlbumAction;
+
+    /// <summary>
+    /// Raised when the user requests the background color picker to open from outside the
+    /// lyrics view's own bar (e.g. from the standard PlaybackBar's ⋯ menu).
+    /// The lyrics view's code-behind subscribes and calls Flyout.ShowAt on the hidden host button.
+    /// </summary>
+    public event Action? OpenBackgroundColorRequested;
 
     public LyricsViewModel(PlayerViewModel player, ILrcLibService lrcLib, INetEaseService netEase, IMetadataService metadata, IPersistenceService persistence, ILibraryService library)
     {
