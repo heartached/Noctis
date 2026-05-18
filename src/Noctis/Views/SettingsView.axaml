@@ -621,6 +621,73 @@
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+
+                        <!-- User-created themes -->
+                        <ItemsControl ItemsSource="{Binding CustomThemes}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CustomThemeTile">
+                                    <Button Classes="theme-btn"
+                                            Classes.active="{Binding IsActive}"
+                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ApplyCustomThemeCommand}"
+                                            CommandParameter="{Binding Id}"
+                                            Margin="0,0,10,10">
+                                        <Button.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Edit"
+                                                          Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenThemeEditorCommand}"
+                                                          CommandParameter="{Binding Id}"/>
+                                                <MenuItem Header="Delete"
+                                                          Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteCustomThemeCommand}"
+                                                          CommandParameter="{Binding Id}"/>
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                            <Border Width="64" Height="40" CornerRadius="6"
+                                                    BorderBrush="#33000000" BorderThickness="1"
+                                                    ClipToBounds="True">
+                                                <Grid ColumnDefinitions="22,*">
+                                                    <Border Grid.Column="0"
+                                                            Background="{Binding SidebarHex}"/>
+                                                    <Border Grid.Column="1"
+                                                            Background="{Binding MainHex}">
+                                                        <Border Height="3" Width="30" CornerRadius="1.5"
+                                                                Margin="6,6,0,0"
+                                                                Background="{Binding AccentHex}"
+                                                                HorizontalAlignment="Left"
+                                                                VerticalAlignment="Top"/>
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                            <TextBlock Text="{Binding Name}" FontSize="12"
+                                                       HorizontalAlignment="Center"
+                                                       MaxWidth="64" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- "+ Custom" add tile -->
+                        <Button Classes="theme-btn"
+                                Command="{Binding OpenThemeEditorCommand}"
+                                CommandParameter="{x:Null}"
+                                Margin="0,0,10,10"
+                                ToolTip.Tip="Create custom theme">
+                            <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                <Border Width="64" Height="40" CornerRadius="6"
+                                        BorderBrush="#55FFFFFF" BorderThickness="1">
+                                    <TextBlock Text="+" FontSize="22" Opacity="0.7"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Custom" FontSize="12"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                     </WrapPanel>
                 </StackPanel>
             </Border>
