@@ -1140,7 +1140,7 @@
                         <!-- Not connected state -->
                         <Button Grid.Column="2" Grid.Row="0"
                                 IsVisible="{Binding !IsLastFmConnected}"
-                                Content="Connect Last.fm"
+                                Content="Connect"
                                 Classes="pill-action"
                                 Command="{Binding LoginLastFmCommand}"
                                 Padding="14,8"

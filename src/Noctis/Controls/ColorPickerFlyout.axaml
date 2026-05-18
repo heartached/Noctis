@@ -91,8 +91,6 @@
                         <!-- Hex row with leading round swatch -->
                         <Grid Width="360" Height="34" UseLayoutRounding="True">
                             <Rectangle Fill="{DynamicResource SystemControlBackgroundAltHighBrush}"
-                                       Stroke="White"
-                                       StrokeThickness="1.5"
                                        RadiusX="17" RadiusY="17"/>
                             <Grid ColumnDefinitions="Auto,*" Margin="8,5">
                                 <Border x:Name="HexRowSwatch"
