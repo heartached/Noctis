@@ -58,6 +58,7 @@
                                 Command="{Binding CancelCommand}"
                                 Width="100"
                                 Padding="0,8"
+                                FontWeight="Bold"
                                 HorizontalContentAlignment="Center"
                                 CornerRadius="999"
                                 Cursor="Hand" />
@@ -120,6 +121,7 @@
                                             Command="{Binding CancelCreateCommand}"
                                             Width="90"
                                             Padding="0,7"
+                                            FontWeight="Bold"
                                             HorizontalContentAlignment="Center"
                                             CornerRadius="999"
                                             Cursor="Hand" />
@@ -130,7 +132,7 @@
                                             Classes="accent-btn"
                                             Background="{DynamicResource AccentColorBrush}"
                                             Foreground="White"
-                                            FontWeight="SemiBold"
+                                            FontWeight="Bold"
                                             HorizontalContentAlignment="Center"
                                             CornerRadius="999"
                                             Cursor="Hand" />
