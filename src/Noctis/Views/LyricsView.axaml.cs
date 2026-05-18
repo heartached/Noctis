@@ -19,7 +19,7 @@ public partial class LyricsView : UserControl
     private bool _isProgrammaticScroll;
     private DispatcherTimer? _autoFollowResumeTimer;
     private LyricsViewModel? _subscribedVm;
-    private LyricsViewModel? _subscribedLyricsVm;
+    private bool _swatchScrollersWired;
     private bool _isNarrowMode;
 
     private const double NarrowBreakpoint = 900;
@@ -35,9 +35,25 @@ public partial class LyricsView : UserControl
             LyricsScrollViewer.PropertyChanged += OnScrollViewerPropertyChanged;
         }
 
-        // Mouse wheel → horizontal scroll for color swatch pickers
-        SolidSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
-        GradientSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
+        // Mouse wheel → horizontal scroll for color swatch pickers.
+        // The scrollers live inside a Flyout and are not realized until first open,
+        // so wire them lazily on Flyout.Opened instead of at construction time.
+        if (LyricsColorPickerHost?.Flyout is Avalonia.Controls.Flyout colorPickerFlyout)
+        {
+            colorPickerFlyout.Opened += OnColorPickerFlyoutOpened;
+        }
+    }
+
+    private void OnColorPickerFlyoutOpened(object? sender, EventArgs e)
+    {
+        if (_swatchScrollersWired) return;
+
+        if (SolidSwatchScroller != null)
+            SolidSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
+        if (GradientSwatchScroller != null)
+            GradientSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
+
+        _swatchScrollersWired = true;
     }
 
     private void OnSwatchWheelScroll(object? sender, PointerWheelEventArgs e)
@@ -68,10 +84,9 @@ public partial class LyricsView : UserControl
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        if (_subscribedLyricsVm != null)
+        if (_subscribedVm != null)
         {
-            _subscribedLyricsVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
-            _subscribedLyricsVm = null;
+            _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
         }
 
         base.OnDetachedFromVisualTree(e);
@@ -155,13 +170,8 @@ public partial class LyricsView : UserControl
         if (_subscribedVm != null)
         {
             _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
             _subscribedVm = null;
-        }
-
-        if (_subscribedLyricsVm != null)
-        {
-            _subscribedLyricsVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
-            _subscribedLyricsVm = null;
         }
 
         // Reset scroll state
@@ -172,10 +182,8 @@ public partial class LyricsView : UserControl
         if (DataContext is LyricsViewModel vm)
         {
             vm.PropertyChanged += OnViewModelPropertyChanged;
-            _subscribedVm = vm;
-
             vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
-            _subscribedLyricsVm = vm;
+            _subscribedVm = vm;
         }
     }
 
