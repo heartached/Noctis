@@ -735,6 +735,38 @@
                                         <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <!-- Lyrics-mode entries (only visible when the bar is mounted inside the lyrics page) -->
+                                <Separator IsVisible="{Binding IsLyricsPageActive}"/>
+                                <MenuItem Header="Lyrics Display" IsVisible="{Binding IsLyricsPageActive}">
+                                    <MenuItem Header="Synced"
+                                              Command="{Binding SetLyricsSyncedCommand}"
+                                              IsEnabled="{Binding IsLyricsSyncedAvailable}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}"
+                                                      Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                      IsVisible="{Binding IsLyricsSyncedActive}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Plain"
+                                              Command="{Binding SetLyricsPlainCommand}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}"
+                                                      Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                      IsVisible="{Binding IsLyricsPlainActive}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuItem>
+                                <MenuItem Header="Background Color"
+                                          Command="{Binding OpenLyricsBackgroundColorCommand}"
+                                          IsVisible="{Binding IsLyricsPageActive}">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource PaletteIcon}"
+                                                  Width="14" Height="14"
+                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
