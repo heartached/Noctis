@@ -747,6 +747,67 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    [RelayCommand]
+    private async Task OpenThemeEditorAsync(string? existingId)
+    {
+        var existingTile = string.IsNullOrEmpty(existingId)
+            ? null
+            : CustomThemes.FirstOrDefault(t => t.Id == existingId);
+
+        CustomThemeDefinition? existingDef = null;
+        if (existingTile != null)
+        {
+            existingDef = new CustomThemeDefinition
+            {
+                Id = existingTile.Id,
+                Name = existingTile.Name,
+                BaseMode = existingTile.BaseMode,
+                MainBackgroundHex = existingTile.MainHex,
+                SidebarBackgroundHex = existingTile.SidebarHex,
+                AccentHex = existingTile.AccentHex,
+            };
+        }
+
+        var nameBlocklist = CustomThemes
+            .Where(t => existingTile == null || t.Id != existingTile.Id)
+            .Select(t => t.Name);
+
+        var vm = new ThemeEditorViewModel(existingDef, nameBlocklist);
+        var dialog = new Views.ThemeEditorDialog(vm);
+
+        var owner = (Avalonia.Application.Current?.ApplicationLifetime
+                      as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        if (owner != null) await dialog.ShowDialog(owner);
+        else dialog.Show();
+
+        if (dialog.Result == null) return;
+
+        var result = dialog.Result;
+        if (existingTile != null)
+        {
+            existingTile.Name = result.Name;
+            existingTile.BaseMode = result.BaseMode;
+            existingTile.MainHex = result.MainBackgroundHex;
+            existingTile.SidebarHex = result.SidebarBackgroundHex;
+            existingTile.AccentHex = result.AccentHex;
+        }
+        else
+        {
+            CustomThemes.Add(new CustomThemeTile
+            {
+                Id = result.Id,
+                Name = result.Name,
+                BaseMode = result.BaseMode,
+                MainHex = result.MainBackgroundHex,
+                SidebarHex = result.SidebarBackgroundHex,
+                AccentHex = result.AccentHex,
+            });
+        }
+
+        if (_settingsLoaded) _ = SaveAsync();
+        ApplyCustomTheme(result.Id);
+    }
+
     // ── Accent commands ──
 
     /// <summary>Re-build the swatches list from App.AccentPresets, marking the current pick as active.</summary>
