@@ -98,7 +98,7 @@
                                     Orientation="Vertical"
                                     VerticalAlignment="Center"
                                     Margin="12,0,8,0">
-                            <Grid ColumnDefinitions="*,Auto">
+                            <Grid ColumnDefinitions="Auto,Auto,*">
                                 <TextBlock Grid.Column="0"
                                            Text="{Binding Player.CurrentTrack, Converter={StaticResource DisplayTitle}, FallbackValue=''}"
                                            FontSize="14"
