@@ -31,4 +31,28 @@ public class ThemeDerivationTests
         var b = ThemeDerivation.ContrastRatio(Color.Parse("#E0E0E0"), Color.Parse("#101010"));
         Assert.Equal(a, b, 4);
     }
+
+    [Theory]
+    [InlineData("#000000", 4.5)]
+    [InlineData("#1E1E1E", 4.5)]
+    [InlineData("#0E1322", 4.5)]
+    [InlineData("#F5F5F5", 4.5)]
+    [InlineData("#888888", 4.5)]
+    public void PickReadableText_MeetsTarget(string bgHex, double minRatio)
+    {
+        var bg = Color.Parse(bgHex);
+        var fg = ThemeDerivation.PickReadableText(bg, minRatio);
+        Assert.True(
+            ThemeDerivation.ContrastRatio(bg, fg) >= minRatio,
+            $"got ratio {ThemeDerivation.ContrastRatio(bg, fg)} for bg {bgHex}");
+    }
+
+    [Fact]
+    public void PickReadableText_PrefersWhiteOnDark_BlackOnLight()
+    {
+        var onDark = ThemeDerivation.PickReadableText(Color.Parse("#101010"), 4.5);
+        var onLight = ThemeDerivation.PickReadableText(Color.Parse("#F5F5F5"), 4.5);
+        Assert.True(onDark.R > 200);
+        Assert.True(onLight.R < 80);
+    }
 }
