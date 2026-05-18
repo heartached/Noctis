@@ -92,6 +92,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnCustomAccentHexChanged(string value)
     {
+        if (_suppressCustomHexHandler) return;
         if (!_settingsLoaded || _suspendSettingPersistence)
             return;
 
@@ -844,6 +845,7 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     private bool _suppressPickerSync;
+    private bool _suppressCustomHexHandler;
 
     private void ApplyAccent(string hex, string presetName)
     {
@@ -870,6 +872,16 @@ public partial class SettingsViewModel : ViewModelBase
                 }
             }
             catch { /* invalid hex shouldn't reach here */ }
+        }
+
+        // Keep the custom picker's hex-row swatch in lockstep with the active accent,
+        // even when the change came from a preset click. Suppress the custom-hex handler
+        // so it doesn't re-enter ApplyAccent and stomp the just-set preset name.
+        if (!string.Equals(CustomAccentHex, hex, StringComparison.OrdinalIgnoreCase))
+        {
+            _suppressCustomHexHandler = true;
+            try { CustomAccentHex = hex; }
+            finally { _suppressCustomHexHandler = false; }
         }
 
         AccentChanged?.Invoke(this, hex);
