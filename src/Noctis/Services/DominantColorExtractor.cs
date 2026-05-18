@@ -419,6 +419,50 @@ public static class DominantColorExtractor
     }
 
     /// <summary>
+    /// Vertical gradient for the narrow side lyrics panel. Uses the same colors
+    /// as the full unified brush but runs straight down and skips the very dark
+    /// end stops, so the tall narrow surface stays colorful at top and bottom.
+    /// </summary>
+    public static LinearGradientBrush GeneratePanelBrush(Color dominant, Color secondary)
+    {
+        var (h1, s1, _) = RgbToHsl(dominant.R, dominant.G, dominant.B);
+        var (h2, s2, _) = RgbToHsl(secondary.R, secondary.G, secondary.B);
+        s1 = Math.Max(s1, 0.30);
+        s2 = Math.Max(s2, 0.30);
+
+        var top    = HslToColor(h1, s1 * 0.85, 0.20);
+        var upper  = HslToColor(h1, s1 * 0.90, 0.24);
+        var mid    = HslToColor(h2, s2 * 0.85, 0.22);
+        var lower  = HslToColor(h2, s2 * 0.80, 0.26);
+        var bottom = HslToColor(h1, s1 * 0.85, 0.22);
+
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0.5, 0, RelativeUnit.Relative),
+            EndPoint   = new RelativePoint(0.5, 1, RelativeUnit.Relative),
+            GradientStops = new GradientStops
+            {
+                new GradientStop(top,    0.00),
+                new GradientStop(upper,  0.25),
+                new GradientStop(mid,    0.50),
+                new GradientStop(lower,  0.75),
+                new GradientStop(bottom, 1.00),
+            }
+        };
+    }
+
+    /// <summary>Single-color variant for use when only a dominant color is known.</summary>
+    public static LinearGradientBrush GeneratePanelBrush(Color color)
+    {
+        var (hue, sat, _) = RgbToHsl(color.R, color.G, color.B);
+        sat = Math.Max(sat, 0.35);
+        var accentHue = (hue + 0.11) % 1.0;
+        return GeneratePanelBrush(
+            HslToColor(hue, sat, 0.22),
+            HslToColor(accentHue, sat, 0.22));
+    }
+
+    /// <summary>
     /// Creates a subdued but still colorful gradient for the lyrics panel.
     /// Balanced for text readability while keeping album colors visible.
     /// </summary>

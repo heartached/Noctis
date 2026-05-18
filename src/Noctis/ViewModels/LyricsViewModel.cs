@@ -240,6 +240,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private IBrush _fullBackgroundBrush = CreateDefaultUnifiedBrush();
 
+    /// <summary>Vertical gradient optimized for the narrow side lyrics panel.</summary>
+    [ObservableProperty]
+    private IBrush _panelBackgroundBrush = CreateDefaultPanelBrush();
+
     // ── Adaptive foreground colors (react to background luminance) ──
 
     [ObservableProperty] private IBrush _lyricsPrimaryFg = Brushes.White;
@@ -453,6 +457,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private static LinearGradientBrush CreateDefaultUnifiedBrush()
         => DominantColorExtractor.GenerateUnifiedBrush(DefaultAdaptiveColor);
 
+    private static LinearGradientBrush CreateDefaultPanelBrush()
+        => DominantColorExtractor.GeneratePanelBrush(DefaultAdaptiveColor);
+
     /// <summary>
     /// Extracts the dominant color from the current album art and updates
     /// both left and right panel brushes. Called on track change.
@@ -467,6 +474,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             LeftPanelBrush = CreateDefaultGradient();
             LyricsBackgroundBrush = CreateDefaultSubduedGradient();
             FullBackgroundBrush = CreateDefaultUnifiedBrush();
+            PanelBackgroundBrush = CreateDefaultPanelBrush();
             return;
         }
 
@@ -477,12 +485,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             LeftPanelBrush = left;
             LyricsBackgroundBrush = right;
             FullBackgroundBrush = DominantColorExtractor.GenerateUnifiedBrush(dominant, secondary);
+            PanelBackgroundBrush = DominantColorExtractor.GeneratePanelBrush(dominant, secondary);
         }
         catch
         {
             LeftPanelBrush = CreateDefaultGradient();
             LyricsBackgroundBrush = CreateDefaultSubduedGradient();
             FullBackgroundBrush = CreateDefaultUnifiedBrush();
+            PanelBackgroundBrush = CreateDefaultPanelBrush();
         }
     }
 
@@ -527,6 +537,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 var c2 = Color.Parse(parts[1]);
                 FullBackgroundBrush = DominantColorExtractor.GenerateGradientBrush(c1, c2);
                 LyricsBackgroundBrush = FullBackgroundBrush;
+                PanelBackgroundBrush = DominantColorExtractor.GeneratePanelBrush(c1, c2);
                 UpdateForegroundsForBackground(FullBackgroundBrush);
             }
             catch
@@ -546,6 +557,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 var brush = new SolidColorBrush(color);
                 FullBackgroundBrush = brush;
                 LyricsBackgroundBrush = brush;
+                PanelBackgroundBrush = brush;
                 UpdateForegroundsForBackground(brush);
             }
             catch
@@ -586,6 +598,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                         var c2 = Color.Parse(parts[1]);
                         FullBackgroundBrush = DominantColorExtractor.GenerateGradientBrush(c1, c2);
                         LyricsBackgroundBrush = FullBackgroundBrush;
+                        PanelBackgroundBrush = DominantColorExtractor.GeneratePanelBrush(c1, c2);
                         IsColorModeSolid = false;
                         IsColorModeGradient = true;
                     }
@@ -601,6 +614,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                     var brush = new SolidColorBrush(color);
                     FullBackgroundBrush = brush;
                     LyricsBackgroundBrush = brush;
+                    PanelBackgroundBrush = brush;
                     UpdateForegroundsForBackground(brush);
                 }
             }

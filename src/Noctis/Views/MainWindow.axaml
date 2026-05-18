@@ -327,8 +327,8 @@
                         <Grid>
                             <!-- Opaque dark base so the panel never bleeds through -->
                             <Border Background="{DynamicResource AppSidebarBackground}" CornerRadius="16" />
-                            <!-- Full album-art color (same brush as the full lyrics page) -->
-                            <Border Background="{Binding Lyrics.FullBackgroundBrush}"
+                            <!-- Vertical album-art gradient tuned for the narrow panel: colorful top-to-bottom, no dark corners -->
+                            <Border Background="{Binding Lyrics.PanelBackgroundBrush}"
                                     CornerRadius="16">
                                 <Border.Transitions>
                                     <Transitions>
@@ -337,15 +337,6 @@
                                         </DoubleTransition>
                                     </Transitions>
                                 </Border.Transitions>
-                            </Border>
-                            <!-- Y-flipped duplicate so the brush's bright middle stops also enrich the bottom -->
-                            <Border Background="{Binding Lyrics.FullBackgroundBrush}"
-                                    CornerRadius="16"
-                                    Opacity="0.6"
-                                    RenderTransformOrigin="50%,50%">
-                                <Border.RenderTransform>
-                                    <ScaleTransform ScaleY="-1"/>
-                                </Border.RenderTransform>
                             </Border>
                             <views:LyricsPanelView DataContext="{Binding Lyrics}" />
                         </Grid>
