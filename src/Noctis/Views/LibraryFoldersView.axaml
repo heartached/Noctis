@@ -31,8 +31,22 @@
             <Grid DockPanel.Dock="Top"
                   ColumnDefinitions="Auto,Auto,*,Auto"
                   Margin="0,0,0,8">
-                <Button Grid.Column="0" Content="Play" Command="{Binding PlayFolderCommand}" Margin="0,0,8,0" />
-                <Button Grid.Column="1" Content="Shuffle" Command="{Binding ShuffleFolderCommand}" Margin="0,0,8,0" />
+                <Button Grid.Column="0"
+                        Content="Play"
+                        Command="{Binding PlayFolderCommand}"
+                        CornerRadius="999"
+                        Padding="16,6"
+                        FontWeight="SemiBold"
+                        Cursor="Hand"
+                        Margin="0,0,8,0" />
+                <Button Grid.Column="1"
+                        Content="Shuffle"
+                        Command="{Binding ShuffleFolderCommand}"
+                        CornerRadius="999"
+                        Padding="16,6"
+                        FontWeight="SemiBold"
+                        Cursor="Hand"
+                        Margin="0,0,8,0" />
                 <TextBlock Grid.Column="2"
                            Text="{Binding SelectedNode.DisplayName, FallbackValue='Select a folder'}"
                            VerticalAlignment="Center"
@@ -42,14 +56,14 @@
                         Content="Manage Media Folders"
                         Command="{Binding OpenMediaFolderSettingsCommand}"
                         ToolTip.Tip="Open Settings to add or remove the music folders that get scanned."
-                        Background="{DynamicResource SystemControlBackgroundListLowBrush}"
+                        Background="#E74856"
+                        Foreground="White"
                         BorderThickness="0"
                         CornerRadius="999"
                         Padding="14,7"
                         FontSize="12"
-                        FontWeight="SemiBold"
-                        Cursor="Hand"
-                        Opacity="0.85" />
+                        FontWeight="Bold"
+                        Cursor="Hand" />
             </Grid>
 
             <ListBox Classes="track-list"

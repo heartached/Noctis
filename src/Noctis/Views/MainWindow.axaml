@@ -749,7 +749,7 @@
                             BorderThickness="0"
                             Cursor="Hand"
                             Content="Close"
-                            FontWeight="SemiBold"
+                            FontWeight="Bold"
                             Command="{Binding CloseSettingsCommand}"/>
                 </Border>
             </Grid>
