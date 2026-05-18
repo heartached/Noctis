@@ -41,6 +41,13 @@
         <Style Selector="Button.panel-lyric-line:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
+        <!-- Disable global Button hover-scale on the header buttons -->
+        <Style Selector="Button.panel-header-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.panel-header-btn:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*">
@@ -56,6 +63,7 @@
 
                 <!-- Artwork + text are inside one transparent button → navigate to album -->
                 <Button Grid.Column="0" Grid.ColumnSpan="2"
+                        Classes="panel-header-btn"
                         Background="Transparent"
                         BorderThickness="0"
                         Padding="0"
@@ -90,25 +98,45 @@
                                     Orientation="Vertical"
                                     VerticalAlignment="Center"
                                     Margin="12,0,8,0">
-                            <TextBlock Text="{Binding Player.CurrentTrack, Converter={StaticResource DisplayTitle}, FallbackValue=''}"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       MaxLines="1"
-                                       TextTrimming="CharacterEllipsis"
-                                       Foreground="{Binding LyricsPrimaryFg}"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Player.CurrentTrack, Converter={StaticResource DisplayTitle}, FallbackValue=''}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           MaxLines="1"
+                                           TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center"
+                                           Foreground="{Binding LyricsPrimaryFg}"/>
+                                <Border Grid.Column="1"
+                                        Background="{DynamicResource IslandExplicitBadge}"
+                                        CornerRadius="2"
+                                        Padding="4,0"
+                                        Height="14"
+                                        Margin="6,0,0,0"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
+                                        ToolTip.Tip="Explicit">
+                                    <TextBlock Text="E"
+                                               FontSize="9"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               Foreground="{DynamicResource IslandIconFill}"/>
+                                </Border>
+                            </Grid>
                             <TextBlock Text="{Binding Player.CurrentTrack.Artist, FallbackValue='', TargetNullValue=''}"
                                        FontSize="12"
-                                       Opacity="0.6"
                                        MaxLines="1"
                                        TextTrimming="CharacterEllipsis"
                                        Margin="0,2,0,0"
-                                       Foreground="{Binding LyricsPrimaryFg}"/>
+                                       Foreground="#E74856"/>
                         </StackPanel>
                     </Grid>
                 </Button>
 
                 <!-- 3-dots options button -->
                 <Button Grid.Column="2"
+                        Classes="panel-header-btn"
                         Width="32" Height="32"
                         CornerRadius="16"
                         Background="#1AFFFFFF"
