@@ -51,8 +51,19 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _artistMarqueeEnabled = true;
 
+    // ── Lyrics page integration (flags + pass-through commands set up by MainWindowViewModel) ──
+
+    [ObservableProperty] private bool _isLyricsPageActive;
+    [ObservableProperty] private bool _isLyricsSyncedActive;
+    [ObservableProperty] private bool _isLyricsPlainActive;
+    [ObservableProperty] private bool _isLyricsSyncedAvailable;
+
     /// <summary>True if there's any content loaded (current track or upcoming tracks in queue).</summary>
     public bool HasContent => CurrentTrack != null || UpNext.Count > 0;
+
+    private Action? _selectLyricsSynced;
+    private Action? _selectLyricsPlain;
+    private Action? _openLyricsBackgroundColor;
 
     public string PlayPauseTooltip => State == PlaybackState.Playing ? "Pause" : "Play";
 
@@ -325,6 +336,61 @@ public partial class PlayerViewModel : ViewModelBase
         var artist = CurrentTrack?.Artist;
         if (!string.IsNullOrWhiteSpace(artist))
             _viewArtistAction?.Invoke(artist);
+    }
+
+    [RelayCommand]
+    private void SetLyricsSynced() => _selectLyricsSynced?.Invoke();
+
+    [RelayCommand]
+    private void SetLyricsPlain() => _selectLyricsPlain?.Invoke();
+
+    [RelayCommand]
+    private void OpenLyricsBackgroundColor() => _openLyricsBackgroundColor?.Invoke();
+
+    /// <summary>
+    /// Called by MainWindowViewModel when the lyrics view becomes the current view.
+    /// Wires the three pass-through commands and seeds the active-state flags.
+    /// </summary>
+    public void SetLyricsPageActions(
+        Action selectSynced,
+        Action selectPlain,
+        Action openBackgroundColor,
+        bool isSyncedActive,
+        bool isPlainActive,
+        bool isSyncedAvailable)
+    {
+        _selectLyricsSynced = selectSynced;
+        _selectLyricsPlain = selectPlain;
+        _openLyricsBackgroundColor = openBackgroundColor;
+        IsLyricsSyncedActive = isSyncedActive;
+        IsLyricsPlainActive = isPlainActive;
+        IsLyricsSyncedAvailable = isSyncedAvailable;
+        IsLyricsPageActive = true;
+    }
+
+    /// <summary>
+    /// Called by MainWindowViewModel when navigating away from the lyrics view.
+    /// </summary>
+    public void ClearLyricsPageActions()
+    {
+        _selectLyricsSynced = null;
+        _selectLyricsPlain = null;
+        _openLyricsBackgroundColor = null;
+        IsLyricsPageActive = false;
+        IsLyricsSyncedActive = false;
+        IsLyricsPlainActive = false;
+        IsLyricsSyncedAvailable = false;
+    }
+
+    /// <summary>
+    /// Called by MainWindowViewModel whenever the lyrics view's Synced/Plain selection
+    /// or synced-availability changes, to keep the menu's checkmarks accurate.
+    /// </summary>
+    public void UpdateLyricsPageState(bool isSyncedActive, bool isPlainActive, bool isSyncedAvailable)
+    {
+        IsLyricsSyncedActive = isSyncedActive;
+        IsLyricsPlainActive = isPlainActive;
+        IsLyricsSyncedAvailable = isSyncedAvailable;
     }
 
     /// <summary>Sets the sidebar ViewModel for playlist access.</summary>
