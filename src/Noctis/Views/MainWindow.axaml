@@ -289,44 +289,8 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Zone C: Main Content Area + Lyrics Panel + Queue Popup -->
+            <!-- Zone C: Main Content Area + Overlay Panels -->
             <DockPanel x:Name="ContentDockPanel" Grid.Row="1">
-                <!-- Lyrics side panel (right, below top bar) -->
-                <Border x:Name="LyricsPanelWrapper" DockPanel.Dock="Right"
-                        Width="0"
-                        Margin="8,8,8,12"
-                        CornerRadius="16"
-                        ClipToBounds="True">
-                    <Border.Transitions>
-                        <Transitions>
-                            <DoubleTransition Property="Width" Duration="0:0:0.2">
-                                <DoubleTransition.Easing>
-                                    <CubicEaseOut/>
-                                </DoubleTransition.Easing>
-                            </DoubleTransition>
-                        </Transitions>
-                    </Border.Transitions>
-                    <Grid Width="340">
-                        <Grid>
-                            <!-- Base dark background -->
-                            <Border Background="{DynamicResource AppSidebarBackground}" CornerRadius="16" />
-                            <!-- Subtle color tint from album art -->
-                            <Border Background="{Binding Lyrics.LyricsBackgroundBrush}"
-                                    CornerRadius="16"
-                                    Opacity="0.85">
-                                <Border.Transitions>
-                                    <Transitions>
-                                        <DoubleTransition Property="Opacity" Duration="0:0:0.4">
-                                            <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
-                                        </DoubleTransition>
-                                    </Transitions>
-                                </Border.Transitions>
-                            </Border>
-                            <views:LyricsPanelView DataContext="{Binding Lyrics}" />
-                        </Grid>
-                    </Grid>
-                </Border>
-
                 <Grid Background="{DynamicResource AppMainBackground}">
                 <ContentControl Content="{Binding CurrentView}"
                                 Classes="page-host"
@@ -342,6 +306,43 @@
                     </ContentControl.Transitions>
                 </ContentControl>
 
+                <!-- Lyrics side panel overlays content so opening it does not resize album grids. -->
+                <Border x:Name="LyricsPanelWrapper"
+                        HorizontalAlignment="Right"
+                        Width="0"
+                        Margin="0,8,8,12"
+                        CornerRadius="16"
+                        ClipToBounds="True"
+                        ZIndex="10">
+                    <Border.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Width" Duration="0:0:0.2">
+                                <DoubleTransition.Easing>
+                                    <CubicEaseOut/>
+                                </DoubleTransition.Easing>
+                            </DoubleTransition>
+                        </Transitions>
+                    </Border.Transitions>
+                    <Grid Width="340">
+                        <Grid>
+                            <!-- Opaque dark base so the panel never bleeds through -->
+                            <Border Background="{DynamicResource AppSidebarBackground}" CornerRadius="16" />
+                            <!-- Full album-art color (same brush as the full lyrics page) -->
+                            <Border Background="{Binding Lyrics.FullBackgroundBrush}"
+                                    CornerRadius="16">
+                                <Border.Transitions>
+                                    <Transitions>
+                                        <DoubleTransition Property="Opacity" Duration="0:0:0.4">
+                                            <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
+                                        </DoubleTransition>
+                                    </Transitions>
+                                </Border.Transitions>
+                            </Border>
+                            <views:LyricsPanelView DataContext="{Binding Lyrics}" />
+                        </Grid>
+                    </Grid>
+                </Border>
+
                 <!-- Queue popup panel (right side, rounded, slightly transparent) -->
                 <Border x:Name="QueuePopupPanel"
                         HorizontalAlignment="Right"
@@ -351,7 +352,8 @@
                         ClipToBounds="True"
                         Background="#E61C1C1C"
                         IsVisible="{Binding Player.IsQueuePopupOpen}"
-                        BoxShadow="-2 0 12 0 #40000000">
+                        BoxShadow="-2 0 12 0 #40000000"
+                        ZIndex="20">
 
                     <DockPanel>
                         <!-- "Currently Playing" big header + Clear pill on the right -->
