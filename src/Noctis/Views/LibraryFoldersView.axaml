@@ -56,6 +56,7 @@
                         Content="Manage Media Folders"
                         Command="{Binding OpenMediaFolderSettingsCommand}"
                         ToolTip.Tip="Open Settings to add or remove the music folders that get scanned."
+                        Classes="accent-btn"
                         Background="#E74856"
                         Foreground="White"
                         BorderThickness="0"
