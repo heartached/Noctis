@@ -28,6 +28,9 @@ public class AppSettings
     /// </summary>
     public bool ThemeV2Migrated { get; set; } = false;
 
+    /// <summary>User-defined custom themes selectable from the Themes row.</summary>
+    public List<CustomThemeDefinition> CustomThemes { get; set; } = new();
+
     /// <summary>Last volume level (0–100).</summary>
     public int Volume { get; set; } = 75;
 
