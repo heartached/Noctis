@@ -33,28 +33,29 @@
             BoxShadow="0 8 32 0 #60000000">
         <DockPanel>
 
-            <!-- Bottom: Done / Cancel buttons -->
+            <!-- Bottom: Cancel / Save buttons -->
             <Border DockPanel.Dock="Bottom"
                     Padding="24,12,24,16">
                 <Grid ColumnDefinitions="*,Auto,Auto">
                     <Button Grid.Column="1"
-                            Content="Done"
+                            Content="Cancel"
+                            Command="{Binding CancelCommand}"
+                            Width="100"
+                            Padding="0,8"
+                            FontWeight="Bold"
+                            HorizontalContentAlignment="Center"
+                            CornerRadius="999"
+                            Margin="0,0,8,0"
+                            Cursor="Hand" />
+                    <Button Grid.Column="2"
+                            Content="Save"
                             Command="{Binding SaveCommand}"
                             Width="100"
                             Padding="0,8"
                             Classes="accent-btn"
                             Background="{DynamicResource AccentColorBrush}"
                             Foreground="White"
-                            FontWeight="SemiBold"
-                            HorizontalContentAlignment="Center"
-                            CornerRadius="999"
-                            Margin="0,0,8,0"
-                            Cursor="Hand" />
-                    <Button Grid.Column="2"
-                            Content="Cancel"
-                            Command="{Binding CancelCommand}"
-                            Width="100"
-                            Padding="0,8"
+                            FontWeight="Bold"
                             HorizontalContentAlignment="Center"
                             CornerRadius="999"
                             Cursor="Hand" />
