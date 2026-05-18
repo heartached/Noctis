@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.ThemeEditorDialog"
         x:DataType="vm:ThemeEditorViewModel"
         Title="Theme Editor"
@@ -80,22 +81,40 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <StackPanel Spacing="4">
+                        <StackPanel Spacing="6">
                             <TextBlock Text="Main background" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBox Text="{Binding MainHex, Mode=TwoWay}"
-                                     Watermark="#121212" CornerRadius="999"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <controls:ColorPickerFlyout Hex="{Binding MainHex, Mode=TwoWay}" SwatchSize="28"/>
+                                <TextBlock Text="{Binding MainHex}"
+                                           FontFamily="Consolas, Courier New, monospace"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
                         </StackPanel>
 
-                        <StackPanel Spacing="4">
+                        <StackPanel Spacing="6">
                             <TextBlock Text="Sidebar background" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBox Text="{Binding SidebarHex, Mode=TwoWay}"
-                                     Watermark="#1C1C1C" CornerRadius="999"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <controls:ColorPickerFlyout Hex="{Binding SidebarHex, Mode=TwoWay}" SwatchSize="28"/>
+                                <TextBlock Text="{Binding SidebarHex}"
+                                           FontFamily="Consolas, Courier New, monospace"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
                         </StackPanel>
 
-                        <StackPanel Spacing="4">
+                        <StackPanel Spacing="6">
                             <TextBlock Text="Accent" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBox Text="{Binding AccentHex, Mode=TwoWay}"
-                                     Watermark="#E74856" CornerRadius="999"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <controls:ColorPickerFlyout Hex="{Binding AccentHex, Mode=TwoWay}" SwatchSize="28"/>
+                                <TextBlock Text="{Binding AccentHex}"
+                                           FontFamily="Consolas, Courier New, monospace"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
 
