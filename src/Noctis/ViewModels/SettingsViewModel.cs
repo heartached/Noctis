@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -59,6 +60,11 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _isLightTheme;
     [ObservableProperty] private bool _isSystemTheme;
     [ObservableProperty] private bool _isMidnightTheme;
+
+    /// <summary>User-created themes shown in the Themes row alongside the built-ins.</summary>
+    public ObservableCollection<CustomThemeTile> CustomThemes { get; } = new();
+
+    [ObservableProperty] private string? _activeCustomThemeId;
 
     // ── Accent colour ──
 
@@ -313,6 +319,24 @@ public partial class SettingsViewModel : ViewModelBase
                 catch { }
             });
         };
+
+        if (Avalonia.Application.Current is Noctis.App app)
+        {
+            app.CustomThemeResolver = id =>
+            {
+                var t = CustomThemes.FirstOrDefault(x => x.Id == id);
+                if (t == null) return null;
+                return new CustomThemeDefinition
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+                    BaseMode = t.BaseMode,
+                    MainBackgroundHex = t.MainHex,
+                    SidebarBackgroundHex = t.SidebarHex,
+                    AccentHex = t.AccentHex,
+                };
+            };
+        }
     }
 
     /// <summary>Sets the audio player reference for applying audio settings.</summary>
@@ -372,6 +396,30 @@ public partial class SettingsViewModel : ViewModelBase
             }
             _settings.ThemeV2Migrated = true;
             SetActiveThemeFlags(storedTheme);
+
+            // Hydrate user-created themes.
+            CustomThemes.Clear();
+            foreach (var def in _settings.CustomThemes)
+                CustomThemes.Add(MapDefToTile(def));
+
+            // If active theme is Custom:<id>, mark the matching tile and clear built-in flags.
+            if (storedTheme.StartsWith("Custom:", StringComparison.Ordinal))
+            {
+                var id = storedTheme.Substring("Custom:".Length);
+                ActiveCustomThemeId = id;
+                foreach (var t in CustomThemes) t.IsActive = t.Id == id;
+                if (!CustomThemes.Any(t => t.Id == id))
+                {
+                    // Stale reference — fall back to Gray and persist.
+                    ActiveCustomThemeId = null;
+                    SetActiveThemeFlags("Gray");
+                    _settings.Theme = "Gray";
+                }
+                else
+                {
+                    SetActiveThemeFlags("__Custom"); // clears all five built-in flags
+                }
+            }
 
             // Profile
             ProfileName = _settings.ProfileName ?? string.Empty;
@@ -515,6 +563,19 @@ public partial class SettingsViewModel : ViewModelBase
         else if (IsLightTheme) _settings.Theme = "Light";
         else if (IsMidnightTheme) _settings.Theme = "Midnight";
         else _settings.Theme = "System";
+
+        if (!string.IsNullOrEmpty(ActiveCustomThemeId)) _settings.Theme = "Custom:" + ActiveCustomThemeId;
+
+        _settings.CustomThemes = CustomThemes.Select(t => new CustomThemeDefinition
+        {
+            Id = t.Id,
+            Name = t.Name,
+            BaseMode = t.BaseMode,
+            MainBackgroundHex = t.MainHex,
+            SidebarBackgroundHex = t.SidebarHex,
+            AccentHex = t.AccentHex,
+        }).ToList();
+
         _settings.ThemeV2Migrated = true;
         _settings.ProfileName = ProfileName ?? string.Empty;
         _settings.ProfileUsername = ProfileUsername ?? string.Empty;
@@ -652,6 +713,40 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand] private void SetSystemTheme() => ApplyTheme("System");
     [RelayCommand] private void SetMidnightTheme() => ApplyTheme("Midnight");
 
+    [RelayCommand]
+    private void ApplyCustomTheme(string id)
+    {
+        var tile = CustomThemes.FirstOrDefault(t => t.Id == id);
+        if (tile == null) return;
+
+        foreach (var t in CustomThemes) t.IsActive = t.Id == id;
+        ActiveCustomThemeId = id;
+        SetActiveThemeFlags("__Custom");
+
+        ActiveAccentHex = tile.AccentHex;
+        AccentChanged?.Invoke(this, tile.AccentHex);
+        ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
+
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    [RelayCommand]
+    private void DeleteCustomTheme(string id)
+    {
+        var tile = CustomThemes.FirstOrDefault(t => t.Id == id);
+        if (tile == null) return;
+        CustomThemes.Remove(tile);
+
+        if (ActiveCustomThemeId == id)
+        {
+            ActiveCustomThemeId = null;
+            SetActiveThemeFlags("Gray");
+            ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
+        }
+
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     // ── Accent commands ──
 
     /// <summary>Re-build the swatches list from App.AccentPresets, marking the current pick as active.</summary>
@@ -742,10 +837,22 @@ public partial class SettingsViewModel : ViewModelBase
         IsSystemTheme = themeKey == "System";
         IsMidnightTheme = themeKey == "Midnight";
 
-        // Fall back to Gray if nothing matched (e.g. unknown stored value).
+        if (themeKey == "__Custom") return; // custom-theme active: all built-in flags stay false
+
+        // Default-safety: if no flag matched, fall back to Gray.
         if (!IsGrayTheme && !IsDarkTheme && !IsLightTheme && !IsSystemTheme && !IsMidnightTheme)
             IsGrayTheme = true;
     }
+
+    private static CustomThemeTile MapDefToTile(CustomThemeDefinition def) => new()
+    {
+        Id = def.Id,
+        Name = def.Name,
+        AccentHex = def.AccentHex,
+        SidebarHex = def.SidebarBackgroundHex,
+        MainHex = def.MainBackgroundHex,
+        BaseMode = def.BaseMode,
+    };
 
     /// <summary>
     /// Returns the actual theme key to apply now. For "System" this resolves to either
@@ -753,6 +860,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// </summary>
     private string ResolveActiveThemeKey()
     {
+        if (!string.IsNullOrEmpty(ActiveCustomThemeId)) return "Custom:" + ActiveCustomThemeId;
         if (IsLightTheme) return "Light";
         if (IsDarkTheme) return "Dark";
         if (IsMidnightTheme) return "Midnight";
