@@ -56,6 +56,11 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         _isDirty = false;
 
         _allArtists = _library.Artists.ToList();
+        foreach (var artist in _allArtists)
+        {
+            if (!string.IsNullOrWhiteSpace(artist.ImagePath) && !File.Exists(artist.ImagePath))
+                artist.ImagePath = null;
+        }
         ApplyFilter(_currentFilter);
 
         // Trigger background artist image fetch

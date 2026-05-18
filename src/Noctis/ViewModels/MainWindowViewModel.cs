@@ -24,7 +24,24 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly ILastFmService _lastFm;
     private readonly ISyncService _syncService;
     private readonly ArtistImageService _artistImageService;
+    private readonly ArtistBioService? _artistBioService;
     private readonly LoonClient _loon;
+
+    // ── Settings modal ──
+    [ObservableProperty] private bool _isSettingsModalOpen;
+
+    /// <summary>Opens the Settings modal popup. Replaces page-based navigation to Settings.</summary>
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        Settings.RefreshLibraryStats();
+        Settings.RefreshStorageInfo();
+        IsSettingsModalOpen = true;
+    }
+
+    /// <summary>Closes the Settings modal popup.</summary>
+    [RelayCommand]
+    private void CloseSettings() => IsSettingsModalOpen = false;
 
     // ── Debug panel ──
     [ObservableProperty] private bool _isDebugPanelVisible;
@@ -119,6 +136,9 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>The sidebar key for the section currently selected underneath Cover Flow (e.g. "home", "songs", "albums"). Tracked so clicking Library returns to the right section.</summary>
     private string _currentSectionKey = "home";
 
+    /// <summary>The non-section view (e.g. a PlaylistViewModel) the user was on when entering Cover Flow. Restored on exit so clicking Library returns to the same detail page.</summary>
+    private ViewModelBase? _preCoverFlowView;
+
     /// <summary>Sidebar keys whose section is allowed to display the Library/Cover Flow toggle.</summary>
     private static readonly HashSet<string> ToggleEligibleSections = new(StringComparer.Ordinal)
     {
@@ -135,6 +155,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ILastFmService lastFm,
         ISyncService syncService,
         ArtistImageService artistImageService,
+        ArtistBioService artistBioService,
         LoonClient loon,
         ILrcLibService lrcLib,
         INetEaseService netEase)
@@ -145,6 +166,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _lastFm = lastFm;
         _syncService = syncService;
         _artistImageService = artistImageService;
+        _artistBioService = artistBioService;
         _loon = loon;
 
         // Create long-lived ViewModels
@@ -163,7 +185,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SettingsReset += async (_, _) => await Sidebar.LoadPlaylistsAsync();
 
         // Create content ViewModels
-        _homeVm = new HomeViewModel(Player, library, Sidebar);
+        _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService);
         _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence);
         _albumsVm = new LibraryAlbumsViewModel(library, Player, Sidebar);
         _artistsVm = new LibraryArtistsViewModel(library);
@@ -173,7 +195,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _foldersVm = new LibraryFoldersViewModel(library, Player, persistence);
         _foldersVm.NavigateToSettingsRequested += (_, _) =>
         {
-            Navigate("settings");
+            OpenSettings();
             Dispatcher.UIThread.Post(Settings.RequestMediaFoldersSection);
         };
         _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
@@ -919,6 +941,21 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnNavigationRequested(object? sender, string key)
     {
+        // Settings is a modal popup rather than a page — intercept and open the overlay,
+        // then restore the sidebar selection to the actual current section so the highlight
+        // doesn't lie about where the user is. Use Post so the click's selection has settled.
+        if (key == "settings")
+        {
+            OpenSettings();
+            var currentKey = GetCurrentViewKey();
+            Dispatcher.UIThread.Post(() =>
+            {
+                var item = Sidebar.NavItems.FirstOrDefault(n => n.Key == currentKey)
+                        ?? Sidebar.FavoritesItems.FirstOrDefault(n => n.Key == currentKey);
+                Sidebar.SetSelectedNavItemSilently(item);
+            });
+            return;
+        }
         Navigate(key);
     }
 
@@ -938,6 +975,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _isCoverFlowMode = false;
             TopBar.IsCoverFlowMode = false;
             TopBar.IsSearchVisible = _currentSectionKey != "home";
+            _preCoverFlowView = null;
         }
 
         // Track which top-level section the user is conceptually on. While in
@@ -975,8 +1013,8 @@ public partial class MainWindowViewModel : ViewModelBase
             };
         }
 
-        // Close queue popup and clear search when switching views
-        Player.IsQueuePopupOpen = false;
+        // Clear search when switching views. Queue popup stays open across navigation —
+        // it's only dismissed by toggling the Queue button itself or by Escape.
         TopBar.SearchText = string.Empty;
 
         TopBar.CurrentTabName = key switch
@@ -998,7 +1036,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Clear all top bar actions, then set up the correct ones for the destination
         ClearAllTopBarActions();
-        if (goingToEligibleSection)
+        if (goingToEligibleSection || key.StartsWith("playlist:"))
             SetupGlobalViewModeToggle();
         if (key == "songs")
             SetupSongsTopBarActions();
@@ -1103,11 +1141,30 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenArtistDiscography(artist.Name);
     }
 
+    private void OpenArtistDetail(Artist artist)
+    {
+        PushCurrentViewToHistory();
+        ClearAllTopBarActions();
+
+        var page = new ArtistDetailViewModel(artist, _library, Player, _artistImageService, _artistBioService, _albumsVm);
+        page.BackRequested += (_, _) => GoBackInHistory();
+        page.AlbumOpened += (_, album) => OpenAlbumDetail(album);
+        page.SeeAllAlbumsRequested += (_, _) => OpenArtistDiscography(artist.Name);
+        CurrentView = page;
+        RefreshBackButton();
+    }
+
+    private void OpenArtistDetailByName(string artistName)
+    {
+        OpenArtistDiscography(Track.GetPrimaryArtist(artistName));
+    }
+
 
     private void OnPlaylistOpened(object? sender, Playlist playlist)
     {
         PushCurrentViewToHistory();
         ClearAllTopBarActions();
+        SetupGlobalViewModeToggle();
 
         var detail = new PlaylistViewModel(playlist, Player, _library, _persistence, Sidebar, _artistImageService);
         detail.BackRequested += (_, _) => GoBackInHistory();
@@ -1223,6 +1280,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new RelayCommand(() => Player.IsQueuePopupOpen = !Player.IsQueuePopupOpen),
             _songsVm.ShowOnlyFavorites,
             _songsVm.SortAscending,
+            _songsVm.SortColumn,
             _songsVm.SetShowAllItemsCommand,
             _songsVm.SetShowOnlyFavoritesCommand,
             _songsVm.SortCommand);
@@ -1232,6 +1290,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 TopBar.PageShowOnlyFavorites = _songsVm.ShowOnlyFavorites;
             else if (e.PropertyName == nameof(LibrarySongsViewModel.SortAscending))
                 TopBar.PageSortAscending = _songsVm.SortAscending;
+            else if (e.PropertyName == nameof(LibrarySongsViewModel.SortColumn))
+                TopBar.PageSortColumn = _songsVm.SortColumn;
         };
         _songsVm.PropertyChanged += _songsVmTopBarHandler;
     }
@@ -1275,6 +1335,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private void EnterCoverFlowMode()
     {
         if (_isCoverFlowMode) return;
+        // Remember non-section views (e.g. a playlist detail) so exit returns to them
+        // instead of dumping the user back to the section list.
+        _preCoverFlowView = CurrentView is PlaylistViewModel ? CurrentView : null;
         _isCoverFlowMode = true;
         TopBar.IsCoverFlowMode = true;
         TopBar.IsSearchVisible = false;
@@ -1287,8 +1350,17 @@ public partial class MainWindowViewModel : ViewModelBase
         _isCoverFlowMode = false;
         TopBar.IsCoverFlowMode = false;
         TopBar.IsSearchVisible = _currentSectionKey != "home";
-        // Return to the section that was selected underneath
-        CurrentView = ResolveSectionView(_currentSectionKey);
+        if (_preCoverFlowView != null)
+        {
+            CurrentView = _preCoverFlowView;
+            RestoreTopBarActionsForView(_preCoverFlowView);
+            _preCoverFlowView = null;
+        }
+        else
+        {
+            // Return to the section that was selected underneath
+            CurrentView = ResolveSectionView(_currentSectionKey);
+        }
     }
 
     /// <summary>Resolves a sidebar section key to the cached long-lived ViewModel for that section. Refreshes content as needed (mirrors Navigate's switch).</summary>
@@ -1307,7 +1379,7 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Restores the correct top bar actions when navigating back to a view.</summary>
     private void RestoreTopBarActionsForView(ViewModelBase view)
     {
-        // The toggle is shown for any of the 7 long-lived section views or while in Cover Flow.
+        // The toggle is shown for any of the 7 long-lived section views, a playlist detail, or while in Cover Flow.
         if (ReferenceEquals(view, _homeVm)
             || ReferenceEquals(view, _songsVm)
             || ReferenceEquals(view, _albumsVm)
@@ -1315,7 +1387,8 @@ public partial class MainWindowViewModel : ViewModelBase
             || ReferenceEquals(view, _foldersVm)
             || ReferenceEquals(view, _playlistsVm)
             || ReferenceEquals(view, _favoritesVm)
-            || ReferenceEquals(view, _coverFlowVm))
+            || ReferenceEquals(view, _coverFlowVm)
+            || view is PlaylistViewModel)
         {
             SetupGlobalViewModeToggle();
         }
@@ -1476,18 +1549,18 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void ViewArtistFromLyrics(string artistName)
     {
-        OpenArtistDiscography(artistName);
+        OpenArtistDetailByName(artistName);
     }
 
     private void ViewArtistFromAlbumDetail(string artistName)
     {
-        OpenArtistDiscography(artistName);
+        OpenArtistDetailByName(artistName);
     }
 
-    /// <summary>Navigates to the artist-filtered albums view from any track/artist link click.</summary>
+    /// <summary>Navigates to the artist discography page from any track/artist link click.</summary>
     private void ViewArtistByName(string artistName)
     {
-        OpenArtistDiscography(artistName);
+        OpenArtistDetailByName(artistName);
     }
 
     /// <summary>Toggles between lyrics view and previous view.</summary>

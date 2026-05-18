@@ -18,7 +18,6 @@ public partial class LibraryAlbumsView : UserControl
 {
     private LibraryAlbumsViewModel? _vm;
     private EventHandler? _pendingScrollRestore;
-    private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
     private readonly HashSet<Button> _selectedTiles = new();
 
     public LibraryAlbumsView()
@@ -67,35 +66,9 @@ public partial class LibraryAlbumsView : UserControl
     private void OnAlbumContextMenuOpening(object? sender, CancelEventArgs e)
     {
         if (DataContext is not LibraryAlbumsViewModel vm) return;
-        if (sender is not ContextMenu ctx) return;
 
         // Push ctrl-selected albums to ViewModel so commands can operate on all of them
         vm.CtrlSelectedAlbums = MultiSelectHelper.GetSelectedData<Album>(_selectedTiles);
-
-        if (!_playlistPopulators.TryGetValue(ctx, out var populator))
-        {
-            MenuItem? addToPlaylist = null;
-            Separator? separator = null;
-            foreach (var item in ctx.Items)
-            {
-                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
-                {
-                    addToPlaylist = mi;
-                    foreach (var sub in mi.Items)
-                    {
-                        if (sub is Separator sep) { separator = sep; break; }
-                    }
-                    break;
-                }
-            }
-            if (addToPlaylist == null || separator == null) return;
-            populator = new PlaylistMenuPopulator(addToPlaylist, separator);
-            _playlistPopulators[ctx] = populator;
-        }
-
-        var album = ctx.DataContext as Album;
-        populator.Populate(vm.Playlists, vm.AddToExistingPlaylistCommand,
-            playlist => new object[] { album!, playlist });
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)

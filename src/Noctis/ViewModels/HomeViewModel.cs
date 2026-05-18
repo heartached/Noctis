@@ -14,9 +14,11 @@ namespace Noctis.ViewModels;
 /// </summary>
 public partial class HomeViewModel : ViewModelBase, IDisposable
 {
+    private const int MaxTopArtists = 6;
     private readonly PlayerViewModel _player;
     private readonly ILibraryService _library;
     private readonly SidebarViewModel _sidebar;
+    private readonly ArtistImageService? _artistImages;
     private readonly DispatcherTimer _refreshDebounce;
     private readonly EventHandler _libraryUpdatedHandler;
     private readonly EventHandler _favoritesChangedHandler;
@@ -34,6 +36,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// <summary>Recently played albums (grouped from playback history).</summary>
     public BulkObservableCollection<Album> RecentlyPlayedAlbums { get; } = new();
 
+    /// <summary>Top artists by total play count across all their tracks.</summary>
+    public BulkObservableCollection<Artist> TopArtists { get; } = new();
+
     [ObservableProperty] private string _greeting = GetGreeting();
 
     /// <summary>Fires when the user wants to open an album's detail view.</summary>
@@ -42,11 +47,12 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// <summary>Exposes the sidebar's playlists for the Add to Playlist submenu.</summary>
     public ObservableCollection<Playlist> Playlists => _sidebar.Playlists;
 
-    public HomeViewModel(PlayerViewModel player, ILibraryService library, SidebarViewModel sidebar)
+    public HomeViewModel(PlayerViewModel player, ILibraryService library, SidebarViewModel sidebar, ArtistImageService? artistImages = null)
     {
         _player = player;
         _library = library;
         _sidebar = sidebar;
+        _artistImages = artistImages;
 
         // Subscribe to track changes for real-time updates
         _player.TrackStarted += OnTrackStarted;
@@ -134,6 +140,47 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 .OfType<Album>()
                 .ToList();
             RecentlyPlayedAlbums.ReplaceAll(recentAlbums);
+
+            // Top Artists: aggregate play count by artist name (using album-artist
+            // grouping that the library already maintains), drop the "Unknown Artist"
+            // sentinel, and keep the top 6 for the home row.
+            var topArtists = await Task.Run(() =>
+            {
+                var plays = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+                foreach (var t in allTracks)
+                {
+                    if (t.PlayCount <= 0) continue;
+                    var name = t.PrimaryArtist;
+                    if (string.IsNullOrWhiteSpace(name) ||
+                        string.Equals(name, "Unknown Artist", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    plays.TryGetValue(name, out var c);
+                    plays[name] = c + t.PlayCount;
+                }
+
+                if (plays.Count == 0) return new List<Artist>();
+
+                // Resolve the play-count ranking back to actual Artist rows so the row
+                // benefits from the existing image-cache flow.
+                var byName = _library.Artists.ToDictionary(a => a.Name, a => a, StringComparer.OrdinalIgnoreCase);
+                return plays
+                    .OrderByDescending(kv => kv.Value)
+                    .Take(MaxTopArtists)
+                    .Select(kv => byName.TryGetValue(kv.Key, out var artist)
+                        ? artist
+                        : new Artist { Name = kv.Key, Id = ComputeArtistId(kv.Key) })
+                    .ToList();
+            });
+            ReplaceTopArtistsIfChanged(topArtists);
+
+            // Kick a background image-fetch for any artist that doesn't have a cached
+            // picture yet. Updates flow back through Artist.ImagePath, which the row's
+            // CachedImage binding watches.
+            if (_artistImages != null && topArtists.Count > 0)
+                _ = _artistImages.FetchAndCacheAsync(topArtists, (artist, _) =>
+                {
+                    Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(TopArtists)));
+                });
         }
         catch (Exception ex)
         {
@@ -151,6 +198,22 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             >= 17 and < 21 => "Good evening",
             _ => "Good night"
         };
+    }
+
+    private void ReplaceTopArtistsIfChanged(IReadOnlyList<Artist> artists)
+    {
+        if (TopArtists.Count == artists.Count &&
+            TopArtists.Zip(artists).All(pair => pair.First.Id == pair.Second.Id))
+            return;
+
+        TopArtists.ReplaceAll(artists);
+    }
+
+    private static Guid ComputeArtistId(string artistName)
+    {
+        var hash = System.Security.Cryptography.MD5.HashData(
+            System.Text.Encoding.UTF8.GetBytes(artistName.Trim().ToLowerInvariant()));
+        return new Guid(hash);
     }
 
     // ── Top Song commands ──
@@ -366,6 +429,13 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (!string.IsNullOrWhiteSpace(artistName))
             _viewArtistAction?.Invoke(artistName);
+    }
+
+    [RelayCommand]
+    private void OpenTopArtist(Artist? artist)
+    {
+        if (artist == null || string.IsNullOrWhiteSpace(artist.Name)) return;
+        _viewArtistAction?.Invoke(artist.Name);
     }
 
     public void Dispose()

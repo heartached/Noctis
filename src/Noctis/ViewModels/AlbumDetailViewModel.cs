@@ -219,8 +219,6 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         {
             _settingsPropertyChangedHandler = (_, e) =>
             {
-                if (e.PropertyName == nameof(SettingsViewModel.AlbumDetailColorTintEnabled))
-                    Dispatcher.UIThread.Post(RebuildBackgroundBrush);
                 if (e.PropertyName == nameof(SettingsViewModel.EnableAnimatedCovers))
                     Dispatcher.UIThread.Post(() =>
                     {
@@ -356,51 +354,11 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     private void RebuildBackgroundBrush()
     {
-        var bmp = AlbumArt;
-        if (bmp == null || _settings?.AlbumDetailColorTintEnabled == false)
-        {
-            BackgroundBrush = null;
-            IsLightTint = false;
-            PageForegroundBrush = Brushes.White;
-            PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
-            PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
-            return;
-        }
-
-        // Extraction must run on the UI thread — DominantColorExtractor uses
-        // RenderTargetBitmap/DrawImage, which Avalonia restricts to the UI thread.
-        // The sample target is 50x50, so this is sub-millisecond and does not stutter the UI.
-        try
-        {
-            var color = DominantColorExtractor.ExtractEdgeBackgroundColor(bmp);
-            BackgroundBrush = new SolidColorBrush(color);
-
-            var luminance = DominantColorExtractor.GetRelativeLuminance(color);
-            var isLight = luminance > 0.55;
-            IsLightTint = isLight;
-
-            if (isLight)
-            {
-                PageForegroundBrush = new SolidColorBrush(Color.FromRgb(0x11, 0x11, 0x11));
-                PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0x66, 0x00, 0x00, 0x00));
-                PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0x00, 0x00, 0x00));
-            }
-            else
-            {
-                PageForegroundBrush = Brushes.White;
-                PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
-                PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
-            }
-        }
-        catch (Exception ex)
-        {
-            DebugLogger.Error(DebugLogger.Category.UI, "AlbumDetail.GradientBg", ex.ToString());
-            BackgroundBrush = null;
-            IsLightTint = false;
-            PageForegroundBrush = Brushes.White;
-            PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
-            PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
-        }
+        BackgroundBrush = null;
+        IsLightTint = false;
+        PageForegroundBrush = Brushes.White;
+        PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
+        PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
     }
 
     private void BuildRelatedSections()

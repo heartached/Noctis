@@ -91,7 +91,7 @@
                                 FontWeight="Bold"
                                 CornerRadius="999"
                                 Cursor="Hand"
-                                Background="#E74856"
+                                Background="{DynamicResource AccentColorBrush}"
                                 Foreground="White"
                                 Classes="album-desc-btn"
                                 IsVisible="{Binding IsAlbumDescriptionEditing}"
@@ -103,7 +103,7 @@
                                 FontWeight="Bold"
                                 CornerRadius="999"
                                 Cursor="Hand"
-                                Background="#E74856"
+                                Background="{DynamicResource AccentColorBrush}"
                                 Foreground="White"
                                 Classes="album-desc-btn"
                                 IsVisible="{Binding IsAlbumDescriptionEditing}" />

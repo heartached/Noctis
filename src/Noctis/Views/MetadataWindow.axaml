@@ -32,13 +32,13 @@
 
         <Style Selector="TextBox.metadata-info-field:focus /template/ Border#PART_BorderElement">
             <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="#E74856" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
             <Setter Property="UseLayoutRounding" Value="True" />
         </Style>
 
         <Style Selector="TextBox.metadata-info-field:focus-within /template/ Border#PART_BorderElement">
             <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="#E74856" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
             <Setter Property="UseLayoutRounding" Value="True" />
         </Style>
 
@@ -64,13 +64,13 @@
 
         <Style Selector="AutoCompleteBox.metadata-info-field /template/ TextBox#PART_TextBox:focus /template/ Border#PART_BorderElement">
             <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="#E74856" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
             <Setter Property="UseLayoutRounding" Value="True" />
         </Style>
 
         <Style Selector="AutoCompleteBox.metadata-info-field:focus-within /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
             <Setter Property="BorderThickness" Value="1.5" />
-            <Setter Property="BorderBrush" Value="#E74856" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
             <Setter Property="UseLayoutRounding" Value="True" />
         </Style>
 
@@ -113,7 +113,7 @@
                                 Grid.Row="1"
                                 Height="3"
                                 CornerRadius="2"
-                                Background="#E74856"
+                                Background="{DynamicResource AccentColorBrush}"
                                 IsVisible="False" />
                     </Grid>
                 </ControlTemplate>
@@ -129,7 +129,11 @@
         </Style>
 
         <Style Selector="TabItem:pointerover">
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+
+        <Style Selector="TabItem:selected:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
         </Style>
 
         <Style Selector="ScrollViewer.metadata-tab-strip-scroll">
@@ -174,19 +178,21 @@
                             CornerRadius="{TemplateBinding CornerRadius}"
                             Padding="{TemplateBinding Padding}">
                         <DockPanel>
-                            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto">
+                            <Grid DockPanel.Dock="Top">
                                 <Button Name="PART_TabStripLeft"
                                         Grid.Column="0"
                                         Classes="metadata-tab-chevron"
                                         IsVisible="False"
                                         Margin="6,0,0,6"
+                                        HorizontalAlignment="Left"
+                                        ZIndex="1"
                                         ToolTip.Tip="Scroll left">
                                     <PathIcon Data="{StaticResource ChevronLeftIcon}"
                                               Width="14" Height="14" />
                                 </Button>
 
                                 <ScrollViewer Name="PART_TabStripScroller"
-                                              Grid.Column="1"
+                                              Grid.Column="0"
                                               Classes="metadata-tab-strip-scroll"
                                               Margin="24,0,0,0"
                                               HorizontalScrollBarVisibility="Hidden"
@@ -195,11 +201,13 @@
                                                     ItemsPanel="{TemplateBinding ItemsPanel}" />
                                 </ScrollViewer>
 
-<Button Name="PART_TabStripRight"
-                                        Grid.Column="2"
+                                <Button Name="PART_TabStripRight"
+                                        Grid.Column="0"
                                         Classes="metadata-tab-chevron"
                                         IsVisible="False"
                                         Margin="0,0,8,6"
+                                        HorizontalAlignment="Right"
+                                        ZIndex="1"
                                         ToolTip.Tip="Scroll right">
                                     <PathIcon Data="{StaticResource ChevronRightIcon}"
                                               Width="14" Height="14" />
@@ -253,9 +261,9 @@
         <Border Grid.Row="0" DockPanel.Dock="Top"
                 Padding="24,20,24,16"
                 Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
-            <Grid ColumnDefinitions="72,16,*">
+            <Grid ColumnDefinitions="104,16,*,Auto">
                 <Border Grid.Column="0"
-                        Width="72" Height="72"
+                        Width="104" Height="104"
                         CornerRadius="8"
                         ClipToBounds="True"
                         Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
@@ -333,10 +341,20 @@
                                    Opacity="0.5" />
                     </StackPanel>
                 </StackPanel>
+
+                <!-- Favorite indicator -->
+                <PathIcon Grid.Column="3"
+                          Data="{StaticResource HeartFillIcon}"
+                          Width="20" Height="20"
+                          Foreground="#E74856"
+                          VerticalAlignment="Center"
+                          HorizontalAlignment="Right"
+                          IsVisible="{Binding HeaderIsFavorite}"
+                          ToolTip.Tip="Favorited" />
             </Grid>
         </Border>
 
-        <!-- Bottom: Save / Cancel buttons -->
+        <!-- Bottom: Cancel / Save buttons -->
         <Border Grid.Row="2" DockPanel.Dock="Bottom"
                 Padding="24,12"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
@@ -347,23 +365,24 @@
                             Spacing="8">
                 </StackPanel>
                 <Button Grid.Column="1"
-                        Content="Save"
-                        Command="{Binding SaveCommand}"
+                        Content="Cancel"
+                        Command="{Binding CancelCommand}"
                         Width="100"
                         Padding="0,10"
-                        Classes="accent-btn"
-                            Background="#E74856"
-                        Foreground="White"
-                        FontWeight="SemiBold"
+                        FontWeight="Bold"
                         HorizontalContentAlignment="Center"
                         CornerRadius="999"
                         Margin="0,0,8,0"
                         Cursor="Hand" />
                 <Button Grid.Column="2"
-                        Content="Cancel"
-                        Command="{Binding CancelCommand}"
+                        Content="Save"
+                        Command="{Binding SaveCommand}"
                         Width="100"
                         Padding="0,10"
+                        Classes="accent-btn"
+                            Background="{DynamicResource AccentColorBrush}"
+                        Foreground="White"
+                        FontWeight="Bold"
                         HorizontalContentAlignment="Center"
                         CornerRadius="999"
                         Cursor="Hand" />
@@ -436,6 +455,12 @@
                         <StackPanel Spacing="4">
                             <TextBlock Text="album artist" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding AlbumArtist}" />
+                        </StackPanel>
+
+                        <!-- Performer -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="performer" FontSize="12" Opacity="0.5" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Performer}" />
                         </StackPanel>
 
                         <!-- Composer -->
@@ -514,8 +539,8 @@
                                 <TextBlock Text="{Binding PlayCountDisplay}" FontSize="14" VerticalAlignment="Center" />
                                 <Button Content="Reset" Command="{Binding ResetPlayCountCommand}"
                                         Classes="accent-btn"
-                                        Padding="14,5" FontSize="12" Cursor="Hand" VerticalAlignment="Center"
-                                        Foreground="White" Background="#E74856"
+                                        Padding="14,5" FontSize="12" FontWeight="Bold" Cursor="Hand" VerticalAlignment="Center"
+                                        Foreground="White" Background="{DynamicResource AccentColorBrush}"
                                         BorderThickness="0" CornerRadius="999" />
                             </StackPanel>
                         </StackPanel>
@@ -611,7 +636,7 @@
                                       ItemsSource="{x:Static vm:MetadataViewModel.AdvisoryOptions}"
                                       SelectedItem="{Binding SelectedAdvisory}"
                                       HorizontalAlignment="Left"
-                                      MinWidth="140">
+                                      Width="120">
                                 <ComboBox.SelectionBoxItemTemplate>
                                      <DataTemplate>
                                          <presenters:TextPresenter Text="{Binding}"
@@ -744,6 +769,86 @@
                                 CornerRadius="999"
                                 Cursor="Hand"
                                 FontSize="11" />
+                        <Button x:Name="SearchArtworkBtn"
+                                Content="Search Artwork"
+                                Command="{Binding SearchArtworkCommand}"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="White"
+                                Padding="12,5"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                FontWeight="SemiBold"
+                                FontSize="11">
+                            <Button.Flyout>
+                                <Flyout Placement="Top" ShowMode="Standard"
+                                        IsOpen="{Binding IsArtworkSearchOpen, Mode=TwoWay}">
+                                    <Border Padding="14" CornerRadius="12" MinWidth="500" MaxWidth="580"
+                                            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+                                        <StackPanel Spacing="10">
+                                            <TextBlock Text="Search Artwork — iTunes" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding ArtworkSearchStatus}" FontSize="11" Opacity="0.6"
+                                                       TextWrapping="Wrap"/>
+                                            <ProgressBar IsIndeterminate="True"
+                                                         IsVisible="{Binding IsSearchingArtwork}"
+                                                         Height="3"/>
+                                            <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled"
+                                                          IsVisible="{Binding HasArtworkSearchResults}">
+                                                <ItemsControl ItemsSource="{Binding ArtworkSearchResults}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel Orientation="Horizontal"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Padding="4" Margin="0,0,8,8"
+                                                                    ToolTip.Tip="{Binding CollectionName}">
+                                                                <StackPanel Spacing="4" Width="110">
+                                                                    <Border CornerRadius="6" ClipToBounds="True"
+                                                                            Width="100" Height="100"
+                                                                            Background="#1AFFFFFF">
+                                                                        <Image Source="{Binding Thumbnail}"
+                                                                               Stretch="UniformToFill"
+                                                                               RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                                                    </Border>
+                                                                    <TextBlock Text="{Binding CollectionName}"
+                                                                               FontSize="11" FontWeight="SemiBold"
+                                                                               TextTrimming="CharacterEllipsis"
+                                                                               MaxLines="1"/>
+                                                                    <TextBlock Text="{Binding ArtistName}"
+                                                                               FontSize="10" Opacity="0.55"
+                                                                               TextTrimming="CharacterEllipsis"
+                                                                               MaxLines="1"/>
+                                                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                        <Button Content="Standard"
+                                                                                Padding="7,3"
+                                                                                FontSize="10"
+                                                                                CornerRadius="999"
+                                                                                Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectStandardArtworkResultCommand}"
+                                                                                CommandParameter="{Binding}" />
+                                                                        <Button Content="Highest"
+                                                                                Padding="7,3"
+                                                                                FontSize="10"
+                                                                                CornerRadius="999"
+                                                                                Classes="accent-btn"
+                                                                                Background="{DynamicResource AccentColorBrush}"
+                                                                                Foreground="White"
+                                                                                Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectHighestArtworkResultCommand}"
+                                                                                CommandParameter="{Binding}" />
+                                                                    </StackPanel>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+                                        </StackPanel>
+                                    </Border>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
                         <Button Content="Download"
                                 Command="{Binding DownloadArtworkCommand}"
                                 CommandParameter="{Binding $parent[Window]}"
@@ -766,7 +871,7 @@
                     <!-- Artwork preview centered -->
                     <Border HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            MaxWidth="450" MaxHeight="450"
+                            Width="360" Height="360"
                             CornerRadius="8"
                             ClipToBounds="True"
                             Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
@@ -802,6 +907,70 @@
                                 CornerRadius="999"
                                 Cursor="Hand"
                                 FontSize="11" />
+                        <Button Content="Search Animated Artwork"
+                                Command="{Binding SearchAnimatedCoverCommand}"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="White"
+                                Padding="12,5"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                FontWeight="SemiBold"
+                                FontSize="11"
+                                ToolTip.Tip="{Binding AnimatedSearchStatus}">
+                            <Button.Flyout>
+                                <Flyout Placement="Top" ShowMode="Standard"
+                                        IsOpen="{Binding IsAnimatedArtworkSearchOpen, Mode=TwoWay}">
+                                    <Border Padding="14" CornerRadius="12" MinWidth="420" MaxWidth="520"
+                                            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+                                        <StackPanel Spacing="10">
+                                            <TextBlock Text="Search Animated Artwork — Apple Music"
+                                                       FontSize="14"
+                                                       FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding AnimatedSearchStatus}"
+                                                       FontSize="11"
+                                                       Opacity="0.6"
+                                                       TextWrapping="Wrap"/>
+                                            <ProgressBar IsIndeterminate="True"
+                                                         IsVisible="{Binding IsSearchingAnimatedCover}"
+                                                         Height="3"/>
+                                            <ItemsControl ItemsSource="{Binding AnimatedArtworkSearchResults}"
+                                                          IsVisible="{Binding HasAnimatedArtworkSearchResults}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Button Background="#22FFFFFF"
+                                                                BorderThickness="0"
+                                                                CornerRadius="8"
+                                                                Padding="10,8"
+                                                                Margin="0,0,0,8"
+                                                                HorizontalContentAlignment="Stretch"
+                                                                Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectAnimatedArtworkResultCommand}"
+                                                                CommandParameter="{Binding}">
+                                                            <Grid ColumnDefinitions="*,Auto">
+                                                                <StackPanel Grid.Column="0" Spacing="2">
+                                                                    <TextBlock Text="{Binding Label}"
+                                                                               FontSize="12"
+                                                                               FontWeight="SemiBold" />
+                                                                    <TextBlock Text="{Binding Detail}"
+                                                                               FontSize="10"
+                                                                               Opacity="0.55" />
+                                                                </StackPanel>
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="Apply"
+                                                                           FontSize="11"
+                                                                           FontWeight="SemiBold"
+                                                                           VerticalAlignment="Center" />
+                                                            </Grid>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
                         <Button Content="Download"
                                 Command="{Binding DownloadAnimatedCoverCommand}"
                                 CommandParameter="{Binding $parent[Window]}"
@@ -821,11 +990,23 @@
                                 FontSize="11" />
                     </StackPanel>
 
+                    <!-- Animated search status banner -->
+                    <Border DockPanel.Dock="Bottom" Padding="12,8"
+                            CornerRadius="8" Margin="0,8,0,0"
+                            Background="#22FFFFFF"
+                            IsVisible="{Binding AnimatedSearchStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <ProgressBar Width="14" Height="14" IsIndeterminate="True"
+                                         IsVisible="{Binding IsSearchingAnimatedCover}"/>
+                            <TextBlock Text="{Binding AnimatedSearchStatus}" FontSize="11"
+                                       TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
                     <Border x:Name="AnimatedCoverPreviewAnchor"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            MaxWidth="450" MaxHeight="450"
-                            Width="420" Height="420"
+                            Width="360" Height="360"
                             CornerRadius="8"
                             ClipToBounds="True"
                             Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
@@ -1020,12 +1201,11 @@
                     <!-- Equalizer Preset -->
                     <StackPanel Spacing="2">
                         <TextBlock Text="equalizer" FontSize="12" Opacity="0.5" Margin="8,0,0,0" />
-                        <ComboBox ItemsSource="{x:Static vm:MetadataViewModel.OptionsEqPresets}"
+                        <ComboBox Classes="metadata-info-field"
+                                  ItemsSource="{x:Static vm:MetadataViewModel.OptionsEqPresets}"
                                   SelectedItem="{Binding SelectedEqPreset}"
                                   HorizontalAlignment="Left"
-                                  MinWidth="120"
-                                  CornerRadius="999"
-                                  Padding="14,6" />
+                                  Width="104" />
                     </StackPanel>
 
                 </StackPanel>

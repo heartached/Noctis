@@ -57,15 +57,17 @@
                                         Background="#505050"
                                         ClipToBounds="True">
                                     <Panel>
+                                        <PathIcon Data="{StaticResource ArtistsIcon}"
+                                                  Width="20"
+                                                  Height="20"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Opacity="0.42" />
                                         <ctrl:CachedImage SourcePath="{Binding Artist.ImagePath}"
                                                           Stretch="UniformToFill"
-                                                          Width="40" Height="40" />
-                                        <TextBlock Text="&#x266A;"
-                                                   FontSize="16"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"
-                                                   Opacity="0.4"
-                                                   IsVisible="{Binding Artist.ImagePath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                                          Width="40"
+                                                          Height="40"
+                                                          IsVisible="{Binding Artist.ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                     </Panel>
                                 </Border>
                                 <StackPanel VerticalAlignment="Center">

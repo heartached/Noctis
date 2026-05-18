@@ -30,6 +30,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private readonly ILibraryService _library;
     private string? _selectedColorHex;
     private CancellationTokenSource? _statusClearCts;
+    private readonly EventHandler? _accentHandler;
 
     [ObservableProperty] private bool _isColorModeSolid = true;
     [ObservableProperty] private bool _isColorModeGradient;
@@ -243,7 +244,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private IBrush _lyricsPrimaryFg = Brushes.White;
     [ObservableProperty] private IBrush _lyricsSecondaryFg = new SolidColorBrush(Color.Parse("#B0FFFFFF"));
-    [ObservableProperty] private IBrush _lyricsAccentFg = new SolidColorBrush(Color.Parse("#E74856"));
+    [ObservableProperty] private IBrush _lyricsAccentFg = ResolveAccentBrush();
     [ObservableProperty] private IBrush _lyricsSubtleFg = new SolidColorBrush(Color.Parse("#999999"));
     [ObservableProperty] private IBrush _lyricsSliderFilled = new SolidColorBrush(Color.Parse("#CCFFFFFF"));
     [ObservableProperty] private IBrush _lyricsSliderUnfilled = new SolidColorBrush(Color.Parse("#33FFFFFF"));
@@ -280,7 +281,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             LyricsPrimaryFg = new SolidColorBrush(Color.Parse("#111111"));
             LyricsSecondaryFg = new SolidColorBrush(Color.Parse("#55111111"));
-            LyricsAccentFg = new SolidColorBrush(Color.Parse("#B91C2C"));
+            LyricsAccentFg = ResolveAccentBrush("AccentColorBrushDark1");
             LyricsSubtleFg = new SolidColorBrush(Color.Parse("#555555"));
             LyricsSliderFilled = new SolidColorBrush(Color.Parse("#CC111111"));
             LyricsSliderUnfilled = new SolidColorBrush(Color.Parse("#33111111"));
@@ -293,7 +294,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             LyricsPrimaryFg = Brushes.White;
             LyricsSecondaryFg = new SolidColorBrush(Color.Parse("#DDFFFFFF"));
-            LyricsAccentFg = new SolidColorBrush(Color.Parse("#FF6B7A"));
+            LyricsAccentFg = ResolveAccentBrush("AccentColorBrushLight1");
             LyricsSubtleFg = new SolidColorBrush(Color.Parse("#CCCCCC"));
             LyricsSliderFilled = new SolidColorBrush(Color.Parse("#EEFFFFFF"));
             LyricsSliderUnfilled = new SolidColorBrush(Color.Parse("#44FFFFFF"));
@@ -306,7 +307,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             LyricsPrimaryFg = Brushes.White;
             LyricsSecondaryFg = new SolidColorBrush(Color.Parse("#B0FFFFFF"));
-            LyricsAccentFg = new SolidColorBrush(Color.Parse("#E74856"));
+            LyricsAccentFg = ResolveAccentBrush();
             LyricsSubtleFg = new SolidColorBrush(Color.Parse("#999999"));
             LyricsSliderFilled = new SolidColorBrush(Color.Parse("#CCFFFFFF"));
             LyricsSliderUnfilled = new SolidColorBrush(Color.Parse("#33FFFFFF"));
@@ -317,11 +318,29 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Re-resolves the accent foreground brushes against the current background luminance.
+    /// Called whenever the global accent colour changes so the lyrics page recolours live.
+    /// </summary>
+    private void RefreshAccentForegrounds()
+    {
+        // UpdateForegroundsForBackground already picks the right shade (dark/light/medium)
+        // and is the single source of truth for these brushes, so we just replay it.
+        UpdateForegroundsForBackground(FullBackgroundBrush);
+    }
+
+    private static IBrush ResolveAccentBrush(string key = "AccentColorBrush")
+    {
+        if (Avalonia.Application.Current?.Resources.TryGetResource(key, null, out var b) == true && b is IBrush brush)
+            return brush;
+        return new SolidColorBrush(Color.Parse("#E74856"));
+    }
+
     private void ResetForegroundsToDefault()
     {
         LyricsPrimaryFg = Brushes.White;
         LyricsSecondaryFg = new SolidColorBrush(Color.Parse("#B0FFFFFF"));
-        LyricsAccentFg = new SolidColorBrush(Color.Parse("#E74856"));
+        LyricsAccentFg = ResolveAccentBrush();
         LyricsSubtleFg = new SolidColorBrush(Color.Parse("#999999"));
         LyricsSliderFilled = new SolidColorBrush(Color.Parse("#CCFFFFFF"));
         LyricsSliderUnfilled = new SolidColorBrush(Color.Parse("#33FFFFFF"));
@@ -401,6 +420,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         // Subscribe to state changes to start/stop the sync timer
         _player.PropertyChanged += OnPlayerPropertyChanged;
+
+        // React to accent colour changes so the artist/album text recolours live.
+        _accentHandler = (_, _) => Dispatcher.UIThread.Post(RefreshAccentForegrounds);
+        App.AccentApplied += _accentHandler;
 
         // Load lyrics for current track if one is playing
         if (_player.CurrentTrack != null)
@@ -1930,5 +1953,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         _player.TrackStarted -= OnTrackStarted;
         _player.PropertyChanged -= OnPlayerPropertyChanged;
         _library.LibraryUpdated -= OnLibraryUpdated;
+        if (_accentHandler != null) App.AccentApplied -= _accentHandler;
     }
 }

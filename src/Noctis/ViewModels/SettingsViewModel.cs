@@ -31,9 +31,17 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _suspendSettingPersistence;
     private CancellationTokenSource? _eqSaveDebounceCts;
     private CancellationTokenSource? _scanStatusClearCts;
-    private bool _syncingTransitionMode;
 
     [ObservableProperty] private int _mediaFoldersScrollRequest;
+
+    // ── Profile ──
+    [ObservableProperty] private string _profileName = string.Empty;
+    [ObservableProperty] private string _profileUsername = string.Empty;
+    [ObservableProperty] private string _profileAvatarPath = string.Empty;
+
+    partial void OnProfileNameChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnProfileUsernameChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnProfileAvatarPathChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     private AppSettings _settings;
 
@@ -51,17 +59,61 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _isLightTheme;
     [ObservableProperty] private bool _isSystemTheme;
     [ObservableProperty] private bool _isMidnightTheme;
-    [ObservableProperty] private bool _isPaperTheme;
+
+    // ── Accent colour ──
+
+    /// <summary>Ten curated swatches; the active one is highlighted in the UI.</summary>
+    public ObservableCollection<AccentSwatch> AccentSwatches { get; } = new();
+
+    [ObservableProperty] private string _activeAccentHex = "#E74856";
+    [ObservableProperty] private string _activeAccentName = "Crimson";
+    [ObservableProperty] private string _customAccentHex = "#E74856";
+    [ObservableProperty] private bool _isCustomAccentSelected;
+
+    /// <summary>Drives the custom colour-picker flyout.</summary>
+    [ObservableProperty] private Avalonia.Media.Color _pickerColor = Avalonia.Media.Color.Parse("#E74856");
+
+    public event EventHandler<string>? AccentChanged;
+
+    partial void OnPickerColorChanged(Avalonia.Media.Color value)
+    {
+        if (_suppressPickerSync) return;
+        // Live-preview the colour as the user drags inside the custom picker.
+        var hex = $"#{value.R:X2}{value.G:X2}{value.B:X2}";
+        if (!string.Equals(hex, ActiveAccentHex, StringComparison.OrdinalIgnoreCase))
+            CustomAccentHex = hex;
+    }
+
+    partial void OnCustomAccentHexChanged(string value)
+    {
+        if (!_settingsLoaded || _suspendSettingPersistence)
+            return;
+
+        var hex = NormalizeAccentHex(value);
+        if (hex == null)
+            return;
+
+        try
+        {
+            var parsed = Avalonia.Media.Color.Parse(hex);
+            if (!_suppressPickerSync && parsed != PickerColor)
+            {
+                _suppressPickerSync = true;
+                try { PickerColor = parsed; }
+                finally { _suppressPickerSync = false; }
+            }
+
+            ApplyAccent(hex, "Custom");
+        }
+        catch
+        {
+            // Ignore incomplete input while the user is still typing.
+        }
+    }
 
     // ── Audio Playback ──
 
-    [ObservableProperty] private bool _autoMixEnabled;
     [ObservableProperty] private bool _crossfadeEnabled;
-    [ObservableProperty] private AutoMixTransitionMode _autoMixTransitionMode = Noctis.Models.AutoMixTransitionMode.Off;
-    [ObservableProperty] private AutoMixStrength _autoMixStrength = Noctis.Models.AutoMixStrength.Balanced;
-    [ObservableProperty] private bool _autoMixRemoveSilence = true;
-    [ObservableProperty] private bool _autoMixAvoidAlbums = true;
-    [ObservableProperty] private bool _autoMixBeatMatch = true;
     [ObservableProperty] private double _crossfadeDuration = 6;
     [ObservableProperty] private bool _soundCheckEnabled;
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
@@ -71,7 +123,6 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _coverFlowAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsArtistMarqueeEnabled = true;
-    [ObservableProperty] private bool _albumDetailColorTintEnabled;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
 
     // ── Lyrics Providers ──
@@ -87,20 +138,6 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Preset names shown in the dropdown. "Custom" is only present while bands deviate from a preset.</summary>
     public ObservableCollection<string> VisibleEqPresets { get; } = CreateDefaultVisiblePresets();
-    public ObservableCollection<AutoMixTransitionMode> AutoMixTransitionModes { get; } = new()
-    {
-        Noctis.Models.AutoMixTransitionMode.Off,
-        Noctis.Models.AutoMixTransitionMode.Crossfade,
-        Noctis.Models.AutoMixTransitionMode.AutoMix
-    };
-
-    public ObservableCollection<AutoMixStrength> AutoMixStrengthOptions { get; } = new()
-    {
-        Noctis.Models.AutoMixStrength.Subtle,
-        Noctis.Models.AutoMixStrength.Balanced,
-        Noctis.Models.AutoMixStrength.Extended
-    };
-
     private static ObservableCollection<string> CreateDefaultVisiblePresets()
     {
         var list = new ObservableCollection<string>();
@@ -336,15 +373,28 @@ public partial class SettingsViewModel : ViewModelBase
             _settings.ThemeV2Migrated = true;
             SetActiveThemeFlags(storedTheme);
 
+            // Profile
+            ProfileName = _settings.ProfileName ?? string.Empty;
+            ProfileUsername = _settings.ProfileUsername ?? string.Empty;
+            ProfileAvatarPath = _settings.ProfileAvatarPath ?? string.Empty;
+
+            // Accent colour
+            ActiveAccentHex = string.IsNullOrWhiteSpace(_settings.AccentColorHex) ? "#E74856" : _settings.AccentColorHex;
+            ActiveAccentName = string.IsNullOrWhiteSpace(_settings.AccentPresetName) ? "Crimson" : _settings.AccentPresetName;
+            CustomAccentHex = ActiveAccentHex;
+            try
+            {
+                _suppressPickerSync = true;
+                PickerColor = Avalonia.Media.Color.Parse(ActiveAccentHex);
+            }
+            catch { }
+            finally { _suppressPickerSync = false; }
+            RebuildAccentSwatches();
+
             ScanOnStartup = _settings.ScanOnStartup;
 
             // Playback
-            AutoMixTransitionMode = ResolveTransitionMode(_settings);
-            AutoMixStrength = _settings.AutoMixStrength;
-            AutoMixRemoveSilence = _settings.AutoMixRemoveSilence;
-            AutoMixAvoidAlbums = _settings.AutoMixAvoidAlbums;
-            AutoMixBeatMatch = _settings.AutoMixBeatMatch;
-            SyncLegacyTransitionBooleans(AutoMixTransitionMode);
+            CrossfadeEnabled = _settings.CrossfadeEnabled;
             CrossfadeDuration = Math.Clamp(_settings.CrossfadeDuration, 1, 12);
             SoundCheckEnabled = _settings.SoundCheckEnabled;
             TrackTitleMarqueeEnabled = _settings.TrackTitleMarqueeEnabled;
@@ -354,7 +404,6 @@ public partial class SettingsViewModel : ViewModelBase
             CoverFlowAlbumMarqueeEnabled = _settings.CoverFlowAlbumMarqueeEnabled;
             LyricsTitleMarqueeEnabled = _settings.LyricsTitleMarqueeEnabled;
             LyricsArtistMarqueeEnabled = _settings.LyricsArtistMarqueeEnabled;
-            AlbumDetailColorTintEnabled = _settings.AlbumDetailColorTintEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
 
             // Lyrics providers
@@ -365,9 +414,12 @@ public partial class SettingsViewModel : ViewModelBase
             _suppressEqNotify = true;
             EqualizerEnabled = _settings.EqualizerEnabled;
             int loadedIdx = Math.Clamp(_settings.EqualizerPresetIndex + 1, 0, EqPresetNames.Length - 1);
+            // Insert "Custom" into the visible list BEFORE setting the selected name,
+            // otherwise the ComboBox SelectedItem binding silently drops a value that
+            // isn't in ItemsSource yet and the field renders empty after restart.
+            SyncCustomInVisiblePresets(loadedIdx == 0);
             SelectedEqPresetIndex = loadedIdx;
             SelectedEqPresetName = EqPresetNames[loadedIdx];
-            SyncCustomInVisiblePresets(loadedIdx == 0);
             if (_settings.EqualizerBands is { Length: 10 })
             {
                 EqBand0 = _settings.EqualizerBands[0];
@@ -423,6 +475,9 @@ public partial class SettingsViewModel : ViewModelBase
             // Apply the persisted theme on startup
             ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
 
+            // Apply the persisted accent colour on startup
+            AccentChanged?.Invoke(this, ActiveAccentHex);
+
             _settingsLoaded = true;
         }
         finally
@@ -459,9 +514,13 @@ public partial class SettingsViewModel : ViewModelBase
         else if (IsDarkTheme) _settings.Theme = "Dark";
         else if (IsLightTheme) _settings.Theme = "Light";
         else if (IsMidnightTheme) _settings.Theme = "Midnight";
-        else if (IsPaperTheme) _settings.Theme = "Paper";
         else _settings.Theme = "System";
         _settings.ThemeV2Migrated = true;
+        _settings.ProfileName = ProfileName ?? string.Empty;
+        _settings.ProfileUsername = ProfileUsername ?? string.Empty;
+        _settings.ProfileAvatarPath = ProfileAvatarPath ?? string.Empty;
+        _settings.AccentColorHex = ActiveAccentHex;
+        _settings.AccentPresetName = ActiveAccentName;
 
         _settings.ScanOnStartup = ScanOnStartup;
         _settings.MusicFolders = MusicFolders.ToList();
@@ -475,12 +534,6 @@ public partial class SettingsViewModel : ViewModelBase
             })
             .ToList();
         _settings.CrossfadeEnabled = CrossfadeEnabled;
-        _settings.AutoMixEnabled = AutoMixEnabled;
-        _settings.AutoMixTransitionMode = AutoMixTransitionMode;
-        _settings.AutoMixStrength = AutoMixStrength;
-        _settings.AutoMixRemoveSilence = AutoMixRemoveSilence;
-        _settings.AutoMixAvoidAlbums = AutoMixAvoidAlbums;
-        _settings.AutoMixBeatMatch = AutoMixBeatMatch;
         _settings.CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         _settings.SoundCheckEnabled = SoundCheckEnabled;
         _settings.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
@@ -490,7 +543,6 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.CoverFlowAlbumMarqueeEnabled = CoverFlowAlbumMarqueeEnabled;
         _settings.LyricsTitleMarqueeEnabled = LyricsTitleMarqueeEnabled;
         _settings.LyricsArtistMarqueeEnabled = LyricsArtistMarqueeEnabled;
-        _settings.AlbumDetailColorTintEnabled = AlbumDetailColorTintEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
         _settings.LrcLibEnabled = LrcLibEnabled;
         _settings.NetEaseEnabled = NetEaseEnabled;
@@ -507,29 +559,6 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Returns the loaded settings object.</summary>
     public AppSettings GetSettings() => _settings;
 
-    private static AutoMixTransitionMode ResolveTransitionMode(AppSettings settings)
-    {
-        if (settings.AutoMixEnabled)
-            return Noctis.Models.AutoMixTransitionMode.AutoMix;
-        if (settings.CrossfadeEnabled)
-            return Noctis.Models.AutoMixTransitionMode.Crossfade;
-        return settings.AutoMixTransitionMode;
-    }
-
-    private void SyncLegacyTransitionBooleans(AutoMixTransitionMode mode)
-    {
-        _syncingTransitionMode = true;
-        try
-        {
-            AutoMixEnabled = mode == Noctis.Models.AutoMixTransitionMode.AutoMix;
-            CrossfadeEnabled = mode == Noctis.Models.AutoMixTransitionMode.Crossfade;
-        }
-        finally
-        {
-            _syncingTransitionMode = false;
-        }
-    }
-
     /// <summary>Updates the volume setting in the internal settings object.</summary>
     public void SetVolume(int volume) => _settings.Volume = volume;
 
@@ -544,12 +573,6 @@ public partial class SettingsViewModel : ViewModelBase
     private void ApplyPlayerSettings()
     {
         if (_player == null) return;
-        _player.AutoMixEnabled = AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.AutoMix;
-        _player.AutoMixTransitionMode = AutoMixTransitionMode;
-        _player.AutoMixStrength = AutoMixStrength;
-        _player.AutoMixRemoveSilence = AutoMixRemoveSilence;
-        _player.AutoMixAvoidAlbums = AutoMixAvoidAlbums;
-        _player.AutoMixBeatMatch = AutoMixBeatMatch;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowScrollEnabled = CoverFlowMarqueeEnabled;
@@ -628,7 +651,81 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand] private void SetLightTheme() => ApplyTheme("Light");
     [RelayCommand] private void SetSystemTheme() => ApplyTheme("System");
     [RelayCommand] private void SetMidnightTheme() => ApplyTheme("Midnight");
-    [RelayCommand] private void SetPaperTheme() => ApplyTheme("Paper");
+
+    // ── Accent commands ──
+
+    /// <summary>Re-build the swatches list from App.AccentPresets, marking the current pick as active.</summary>
+    private void RebuildAccentSwatches()
+    {
+        AccentSwatches.Clear();
+        foreach (var p in App.AccentPresets)
+        {
+            AccentSwatches.Add(new AccentSwatch
+            {
+                Name = p.Name,
+                Hex = p.Hex,
+                IsActive = string.Equals(p.Name, ActiveAccentName, StringComparison.OrdinalIgnoreCase),
+            });
+        }
+        IsCustomAccentSelected = string.Equals(ActiveAccentName, "Custom", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [RelayCommand]
+    private void ApplyAccentPreset(AccentSwatch? swatch)
+    {
+        if (swatch == null) return;
+        ApplyAccent(swatch.Hex, swatch.Name);
+    }
+
+    [RelayCommand]
+    private void ApplyCustomAccent()
+    {
+        var hex = NormalizeAccentHex(CustomAccentHex);
+        if (hex == null) return;
+        try { _ = Avalonia.Media.Color.Parse(hex); }
+        catch { return; }
+        ApplyAccent(hex, "Custom");
+    }
+
+    private bool _suppressPickerSync;
+
+    private void ApplyAccent(string hex, string presetName)
+    {
+        ActiveAccentHex = hex;
+        ActiveAccentName = presetName;
+        _settings.AccentColorHex = hex;
+        _settings.AccentPresetName = presetName;
+        foreach (var s in AccentSwatches)
+            s.IsActive = string.Equals(s.Name, presetName, StringComparison.OrdinalIgnoreCase);
+        IsCustomAccentSelected = string.Equals(presetName, "Custom", StringComparison.OrdinalIgnoreCase);
+
+        // Keep the custom picker in sync when the change comes from a preset click,
+        // without re-entering OnPickerColorChanged and stomping the preset name.
+        if (!_suppressPickerSync)
+        {
+            try
+            {
+                var parsed = Avalonia.Media.Color.Parse(hex);
+                if (parsed != PickerColor)
+                {
+                    _suppressPickerSync = true;
+                    try { PickerColor = parsed; }
+                    finally { _suppressPickerSync = false; }
+                }
+            }
+            catch { /* invalid hex shouldn't reach here */ }
+        }
+
+        AccentChanged?.Invoke(this, hex);
+        _ = SaveAsync();
+    }
+
+    private static string? NormalizeAccentHex(string? value)
+    {
+        var hex = (value ?? string.Empty).Trim();
+        if (!hex.StartsWith('#')) hex = "#" + hex;
+        return hex.Length is 7 or 9 ? hex : null;
+    }
 
     private void ApplyTheme(string themeKey)
     {
@@ -644,11 +741,9 @@ public partial class SettingsViewModel : ViewModelBase
         IsLightTheme = themeKey == "Light";
         IsSystemTheme = themeKey == "System";
         IsMidnightTheme = themeKey == "Midnight";
-        IsPaperTheme = themeKey == "Paper";
 
         // Fall back to Gray if nothing matched (e.g. unknown stored value).
-        if (!IsGrayTheme && !IsDarkTheme && !IsLightTheme && !IsSystemTheme
-            && !IsMidnightTheme && !IsPaperTheme)
+        if (!IsGrayTheme && !IsDarkTheme && !IsLightTheme && !IsSystemTheme && !IsMidnightTheme)
             IsGrayTheme = true;
     }
 
@@ -661,7 +756,6 @@ public partial class SettingsViewModel : ViewModelBase
         if (IsLightTheme) return "Light";
         if (IsDarkTheme) return "Dark";
         if (IsMidnightTheme) return "Midnight";
-        if (IsPaperTheme) return "Paper";
         if (IsSystemTheme) return IsSystemDarkMode() ? "Gray" : "Light";
         return "Gray";
     }
@@ -679,63 +773,9 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
-    partial void OnAutoMixEnabledChanged(bool value)
-    {
-        if (_syncingTransitionMode)
-            return;
-
-        if (value && CrossfadeEnabled)
-            CrossfadeEnabled = false;
-
-        AutoMixTransitionMode = value ? Noctis.Models.AutoMixTransitionMode.AutoMix : Noctis.Models.AutoMixTransitionMode.Off;
-        ApplyAudioSettings();
-        ApplyPlayerSettings();
-        _ = SaveAsync();
-    }
-
     partial void OnCrossfadeEnabledChanged(bool value)
     {
-        if (_syncingTransitionMode)
-            return;
-
-        if (value && AutoMixEnabled)
-            AutoMixEnabled = false;
-
-        AutoMixTransitionMode = value ? Noctis.Models.AutoMixTransitionMode.Crossfade : Noctis.Models.AutoMixTransitionMode.Off;
         ApplyAudioSettings();
-        ApplyPlayerSettings();
-        _ = SaveAsync();
-    }
-
-    partial void OnAutoMixTransitionModeChanged(AutoMixTransitionMode value)
-    {
-        SyncLegacyTransitionBooleans(value);
-        ApplyAudioSettings();
-        ApplyPlayerSettings();
-        _ = SaveAsync();
-    }
-
-    partial void OnAutoMixStrengthChanged(AutoMixStrength value)
-    {
-        ApplyPlayerSettings();
-        _ = SaveAsync();
-    }
-
-    partial void OnAutoMixRemoveSilenceChanged(bool value)
-    {
-        ApplyPlayerSettings();
-        _ = SaveAsync();
-    }
-
-    partial void OnAutoMixAvoidAlbumsChanged(bool value)
-    {
-        ApplyPlayerSettings();
-        _ = SaveAsync();
-    }
-
-    partial void OnAutoMixBeatMatchChanged(bool value)
-    {
-        ApplyPlayerSettings();
         _ = SaveAsync();
     }
 
@@ -797,12 +837,6 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnLyricsArtistMarqueeEnabledChanged(bool value)
     {
         ApplyPlayerSettings();
-        _ = SaveAsync();
-    }
-
-    partial void OnAlbumDetailColorTintEnabledChanged(bool value)
-    {
-        if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
 
@@ -1457,16 +1491,24 @@ public partial class SettingsViewModel : ViewModelBase
             // Theme — reset to default (Gray)
             SetActiveThemeFlags("Gray");
 
+            // Accent colour — reset to default (Crimson)
+            ActiveAccentHex = defaultSettings.AccentColorHex;
+            ActiveAccentName = defaultSettings.AccentPresetName;
+            CustomAccentHex = ActiveAccentHex;
+            try
+            {
+                _suppressPickerSync = true;
+                PickerColor = Avalonia.Media.Color.Parse(ActiveAccentHex);
+            }
+            catch { }
+            finally { _suppressPickerSync = false; }
+            RebuildAccentSwatches();
+
             // Preferences
             ScanOnStartup = true;
 
             // Playback
-            AutoMixTransitionMode = Noctis.Models.AutoMixTransitionMode.Off;
-            AutoMixStrength = Noctis.Models.AutoMixStrength.Balanced;
-            AutoMixRemoveSilence = true;
-            AutoMixAvoidAlbums = true;
-            AutoMixBeatMatch = true;
-            SyncLegacyTransitionBooleans(AutoMixTransitionMode);
+            CrossfadeEnabled = false;
             CrossfadeDuration = 6;
             SoundCheckEnabled = false;
             TrackTitleMarqueeEnabled = true;
@@ -1476,7 +1518,6 @@ public partial class SettingsViewModel : ViewModelBase
             CoverFlowAlbumMarqueeEnabled = true;
             LyricsTitleMarqueeEnabled = true;
             LyricsArtistMarqueeEnabled = true;
-            AlbumDetailColorTintEnabled = false;
 
             // Lyrics providers
             LrcLibEnabled = true;
@@ -1515,6 +1556,9 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Apply theme
             ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
+
+            // Apply accent
+            AccentChanged?.Invoke(this, ActiveAccentHex);
         }
         finally
         {

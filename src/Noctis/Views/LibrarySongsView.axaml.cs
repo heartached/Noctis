@@ -58,6 +58,10 @@ public partial class LibrarySongsView : UserControl
         if (source is not ListBoxItem item) return;
 
         MultiSelectHelper.HandleTrackRowClick(item, e, _selectedTrackItems);
+
+        // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
+        if (_selectedTrackItems.Count > 0)
+            Focus();
     }
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
@@ -87,14 +91,12 @@ public partial class LibrarySongsView : UserControl
             shuffleCommand: vm.ShuffleAllCommand,
             playNextCommand: vm.PlayNextCommand,
             addToQueueCommand: vm.AddToQueueCommand,
-            addToNewPlaylistCommand: vm.AddToNewPlaylistCommand,
+            addToPlaylistCommand: vm.AddToNewPlaylistCommand,
             toggleFavoriteCommand: vm.ToggleFavoriteCommand,
             openMetadataCommand: vm.OpenMetadataCommand,
             searchLyricsCommand: vm.SearchLyricsCommand,
             showInExplorerCommand: vm.ShowInExplorerCommand,
-            removeCommand: vm.RemoveFromLibraryCommand,
-            playlists: vm.Playlists,
-            addToExistingPlaylistCommand: vm.AddToExistingPlaylistCommand);
+            removeCommand: vm.RemoveFromLibraryCommand);
     }
 
     private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)

@@ -16,8 +16,6 @@ public partial class HomeView : UserControl
 {
     private EventHandler? _pendingScrollRestore;
 
-    // Cache populators per ContextMenu instance (each DataTemplate item gets its own).
-    private readonly Dictionary<ContextMenu, PlaylistMenuPopulator> _populators = new();
     private readonly HashSet<Button> _selectedTiles = new();
 
     public HomeView()
@@ -35,6 +33,10 @@ public partial class HomeView : UserControl
         if (source is not Button tile) return;
 
         MultiSelectHelper.HandleAlbumTileClick(tile, e, _selectedTiles);
+
+        // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
+        if (_selectedTiles.Count > 0)
+            Focus();
     }
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
@@ -51,43 +53,9 @@ public partial class HomeView : UserControl
     private void OnContextMenuOpening(object? sender, CancelEventArgs e)
     {
         if (DataContext is not HomeViewModel vm) return;
-        if (sender is not ContextMenu contextMenu) return;
 
         // Push ctrl-selected albums to ViewModel so commands can operate on all of them
         vm.CtrlSelectedAlbums = MultiSelectHelper.GetSelectedData<Album>(_selectedTiles);
-
-        if (!_populators.TryGetValue(contextMenu, out var populator))
-        {
-            MenuItem? parentItem = null;
-            Separator? separator = null;
-
-            foreach (var item in contextMenu.Items)
-            {
-                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
-                {
-                    parentItem = mi;
-                    foreach (var sub in mi.Items)
-                    {
-                        if (sub is Separator sep) { separator = sep; break; }
-                    }
-                    break;
-                }
-            }
-
-            if (parentItem == null || separator == null)
-                return;
-
-            populator = new PlaylistMenuPopulator(parentItem, separator);
-            _populators[contextMenu] = populator;
-        }
-
-        // Determine which command to use based on DataContext type.
-        if (contextMenu.DataContext is Track track)
-            populator.Populate(vm.Playlists, vm.AddTrackToExistingPlaylistCommand,
-                playlist => new object[] { track, playlist });
-        else if (contextMenu.DataContext is Album album)
-            populator.Populate(vm.Playlists, vm.AddAlbumToExistingPlaylistCommand,
-                playlist => new object[] { album, playlist });
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)

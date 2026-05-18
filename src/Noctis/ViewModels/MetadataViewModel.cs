@@ -29,6 +29,7 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private string _title = string.Empty;
     [ObservableProperty] private string _artist = string.Empty;
     [ObservableProperty] private string _albumArtist = string.Empty;
+    [ObservableProperty] private string _performer = string.Empty;
     [ObservableProperty] private string _album = string.Empty;
     [ObservableProperty] private string _genre = string.Empty;
     [ObservableProperty] private string _composer = string.Empty;
@@ -63,6 +64,20 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private bool _hasAnimatedCover;
     private string? _newAnimatedCoverSource;
     private bool _animatedCoverRemoved;
+
+    // ── iTunes artwork search ──
+    public ObservableCollection<ArtworkSearchResult> ArtworkSearchResults { get; } = new();
+    public ObservableCollection<AnimatedArtworkSearchResult> AnimatedArtworkSearchResults { get; } = new();
+    [ObservableProperty] private bool _isSearchingArtwork;
+    [ObservableProperty] private bool _hasArtworkSearchResults;
+    [ObservableProperty] private string _artworkSearchStatus = string.Empty;
+    [ObservableProperty] private bool _isArtworkSearchOpen;
+
+    // ── iTunes animated-cover search ──
+    [ObservableProperty] private bool _isSearchingAnimatedCover;
+    [ObservableProperty] private bool _hasAnimatedArtworkSearchResults;
+    [ObservableProperty] private bool _isAnimatedArtworkSearchOpen;
+    [ObservableProperty] private string _animatedSearchStatus = string.Empty;
 
     public string AnimatedCoverFileName => string.IsNullOrEmpty(AnimatedCoverPath) ? string.Empty : Path.GetFileName(AnimatedCoverPath);
     partial void OnAnimatedCoverPathChanged(string? value) => OnPropertyChanged(nameof(AnimatedCoverFileName));
@@ -142,6 +157,7 @@ public partial class MetadataViewModel : ViewModelBase
     public string HeaderArtist => _track.Artist;
     public string HeaderAlbum => _track.Album;
     public bool HeaderIsExplicit => _track.IsExplicit;
+    public bool HeaderIsFavorite => _track.IsFavorite;
     public string HeaderAudioQualityBadge => _track.AudioQualityBadge;
     public string HeaderAudioQualityDetail => _track.AudioQualityDetailedInfo;
 
@@ -200,13 +216,14 @@ public partial class MetadataViewModel : ViewModelBase
     /// <summary>Fires when the window should close.</summary>
     public event EventHandler? CloseRequested;
 
-    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null)
+    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null, ITunesArtworkService? itunes = null)
     {
         _track = track;
         _metadata = metadata;
         _library = library;
         _persistence = persistence;
         _animatedCovers = animatedCovers;
+        _itunes = itunes;
         _albumScoped = albumScoped;
         _albumTracks = albumTracks;
 
@@ -216,6 +233,8 @@ public partial class MetadataViewModel : ViewModelBase
         LoadAnimatedCover();
         LoadAdvancedFields();
     }
+
+    private readonly ITunesArtworkService? _itunes;
 
     private void LoadAnimatedCover()
     {
@@ -486,8 +505,10 @@ public partial class MetadataViewModel : ViewModelBase
     {
         _newAnimatedCoverSource = null;
         _animatedCoverRemoved = true;
-        AnimatedCoverPath = null;
+        AnimatedCoverPath = string.Empty;
         HasAnimatedCover = false;
+        AnimatedSearchStatus = string.Empty;
+        IsAnimatedArtworkSearchOpen = false;
     }
 
     [RelayCommand]
@@ -517,6 +538,233 @@ public partial class MetadataViewModel : ViewModelBase
             await src.CopyToAsync(dst);
         }
         catch { /* Non-fatal */ }
+    }
+
+    // ── iTunes Search Artwork / Animated ───────────────────────────────
+
+    [RelayCommand]
+    private async Task SearchArtwork()
+    {
+        if (_itunes == null) { ArtworkSearchStatus = "Search service unavailable."; return; }
+        if (IsSearchingArtwork) return;
+
+        IsSearchingArtwork = true;
+        ArtworkSearchStatus = "Searching iTunes…";
+        ClearArtworkSearchResults();
+        HasArtworkSearchResults = false;
+        IsArtworkSearchOpen = true;
+        try
+        {
+            var artist = !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
+            var album = GetArtworkSearchAlbumTerm();
+            var results = await _itunes.SearchAlbumsAsync(artist, album);
+            foreach (var r in results)
+                ArtworkSearchResults.Add(await CreateArtworkSearchResultAsync(r));
+
+            HasArtworkSearchResults = ArtworkSearchResults.Count > 0;
+            ArtworkSearchStatus = HasArtworkSearchResults
+                ? $"{ArtworkSearchResults.Count} result(s). Click one to apply."
+                : "No matches found.";
+        }
+        catch (Exception ex)
+        {
+            ArtworkSearchStatus = $"Search failed: {ex.Message}";
+        }
+        finally
+        {
+            IsSearchingArtwork = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task SelectStandardArtworkResult(ArtworkSearchResult? result)
+        => await SelectArtworkResultAsync(result, useHighestResolution: false);
+
+    [RelayCommand]
+    private async Task SelectHighestArtworkResult(ArtworkSearchResult? result)
+        => await SelectArtworkResultAsync(result, useHighestResolution: true);
+
+    private async Task SelectArtworkResultAsync(ArtworkSearchResult? result, bool useHighestResolution)
+    {
+        var candidate = result?.Candidate;
+        if (candidate == null || _itunes == null) return;
+
+        ArtworkSearchStatus = "Downloading…";
+        try
+        {
+            var url = useHighestResolution ? candidate.HiResUrl : candidate.StandardUrl;
+            var data = await _itunes.DownloadAsync(url)
+                       ?? await _itunes.DownloadAsync(candidate.ThumbUrl);
+            if (data is null or { Length: 0 })
+            {
+                ArtworkSearchStatus = "Download failed.";
+                return;
+            }
+
+            _newArtworkData = data;
+            _artworkRemoved = false;
+
+            using var ms = new MemoryStream(data);
+            var oldArt = ArtworkPreview;
+            ArtworkPreview = new Bitmap(ms);
+            oldArt?.Dispose();
+            HasArtwork = true;
+            ArtworkSearchStatus = "Applied. Click Save to keep.";
+            IsArtworkSearchOpen = false;
+        }
+        catch (Exception ex)
+        {
+            ArtworkSearchStatus = $"Failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void CloseArtworkSearch() => IsArtworkSearchOpen = false;
+
+    [RelayCommand]
+    private async Task SearchAnimatedCover()
+    {
+        if (_itunes == null) { AnimatedSearchStatus = "Search service unavailable."; return; }
+        if (IsSearchingAnimatedCover) return;
+
+        IsSearchingAnimatedCover = true;
+        AnimatedSearchStatus = "Searching iTunes…";
+        AnimatedArtworkSearchResults.Clear();
+        HasAnimatedArtworkSearchResults = false;
+        IsAnimatedArtworkSearchOpen = true;
+        try
+        {
+            var artist = !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
+            var album = GetArtworkSearchAlbumTerm();
+            var results = await _itunes.SearchAlbumsAsync(artist, album, limit: 3);
+            if (results.Count == 0)
+            {
+                AnimatedSearchStatus = "No matching album on iTunes.";
+                return;
+            }
+
+            var variants = new List<ITunesArtworkService.AnimatedArtworkVariant>();
+            foreach (var r in results)
+            {
+                AnimatedSearchStatus = $"Checking {r.CollectionName}…";
+                variants.AddRange(await _itunes.SearchAnimatedArtworkVariantsAsync(r.ViewUrl));
+                if (variants.Count > 0) break;
+            }
+
+            foreach (var variant in variants)
+                AnimatedArtworkSearchResults.Add(new AnimatedArtworkSearchResult(variant));
+
+            HasAnimatedArtworkSearchResults = AnimatedArtworkSearchResults.Count > 0;
+            if (!HasAnimatedArtworkSearchResults)
+            {
+                AnimatedSearchStatus = "This album has no animated artwork on Apple Music.";
+                return;
+            }
+
+            AnimatedSearchStatus = $"{AnimatedArtworkSearchResults.Count} animated option(s). Click one to apply.";
+        }
+        catch (Exception ex)
+        {
+            AnimatedSearchStatus = $"Search failed: {ex.Message}";
+        }
+        finally
+        {
+            IsSearchingAnimatedCover = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task SelectAnimatedArtworkResult(AnimatedArtworkSearchResult? result)
+    {
+        if (result == null || _itunes == null)
+            return;
+
+        AnimatedSearchStatus = $"Downloading {result.Label}…";
+        try
+        {
+            var tempPath = await DownloadAnimatedVariantAsync(result.Variant);
+            if (string.IsNullOrWhiteSpace(tempPath))
+                return;
+
+            _newAnimatedCoverSource = tempPath;
+            _animatedCoverRemoved = false;
+            AnimatedCoverPath = string.Empty;
+            AnimatedCoverPath = tempPath;
+            HasAnimatedCover = true;
+            AnimatedSearchStatus = "Applied. Click Save to keep.";
+            IsAnimatedArtworkSearchOpen = false;
+        }
+        catch (Exception ex)
+        {
+            AnimatedSearchStatus = $"Download failed: {ex.Message}";
+        }
+    }
+
+    private async Task<string?> DownloadAnimatedVariantAsync(ITunesArtworkService.AnimatedArtworkVariant variant)
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"noctis-animatedcover-{Guid.NewGuid():N}.mp4");
+        if (!variant.IsHls)
+        {
+            var data = await _itunes!.DownloadAsync(variant.Url);
+            if (data is null or { Length: 0 })
+            {
+                AnimatedSearchStatus = "Animated cover download failed.";
+                return null;
+            }
+
+            await File.WriteAllBytesAsync(tempPath, data);
+            return tempPath;
+        }
+
+        if (!await _itunes!.DownloadHlsVariantAsMp4Async(variant, tempPath))
+        {
+            AnimatedSearchStatus = "Could not download Apple Music animated artwork.";
+            return null;
+        }
+
+        return tempPath;
+    }
+
+    private string GetArtworkSearchAlbumTerm()
+    {
+        if (!string.IsNullOrWhiteSpace(Album) &&
+            !string.Equals(Album.Trim(), "Unknown Album", StringComparison.OrdinalIgnoreCase))
+        {
+            return Album.Trim();
+        }
+
+        return Title.Trim();
+    }
+
+    private async Task<ArtworkSearchResult> CreateArtworkSearchResultAsync(ITunesArtworkService.ArtworkCandidate candidate)
+    {
+        Bitmap? thumbnail = null;
+        if (_itunes != null)
+        {
+            var data = await _itunes.DownloadAsync(candidate.ThumbUrl);
+            if (data is { Length: > 0 })
+            {
+                try
+                {
+                    using var ms = new MemoryStream(data);
+                    thumbnail = new Bitmap(ms);
+                }
+                catch
+                {
+                    thumbnail?.Dispose();
+                    thumbnail = null;
+                }
+            }
+        }
+
+        return new ArtworkSearchResult(candidate, thumbnail);
+    }
+
+    private void ClearArtworkSearchResults()
+    {
+        foreach (var result in ArtworkSearchResults)
+            result.Dispose();
+        ArtworkSearchResults.Clear();
     }
 
     [RelayCommand]
@@ -795,6 +1043,7 @@ public partial class MetadataViewModel : ViewModelBase
             AlbumArtistSort = fields.AlbumArtistSort;
             ComposerSort = fields.ComposerSort;
 
+            Performer = fields.Performer;
             Conductor = fields.Conductor;
             Lyricist = fields.Lyricist;
             Publisher = fields.Publisher;
@@ -833,6 +1082,7 @@ public partial class MetadataViewModel : ViewModelBase
             AlbumArtistSort = AlbumArtistSort,
             ComposerSort = ComposerSort,
 
+            Performer = Performer,
             Conductor = Conductor,
             Lyricist = Lyricist,
             Publisher = Publisher,
@@ -882,4 +1132,44 @@ public partial class CustomTagItem : ObservableObject
 {
     [ObservableProperty] private string _key = string.Empty;
     [ObservableProperty] private string _value = string.Empty;
+}
+
+public sealed class ArtworkSearchResult : IDisposable
+{
+    public ArtworkSearchResult(ITunesArtworkService.ArtworkCandidate candidate, Bitmap? thumbnail)
+    {
+        Candidate = candidate;
+        Thumbnail = thumbnail;
+    }
+
+    public ITunesArtworkService.ArtworkCandidate Candidate { get; }
+    public Bitmap? Thumbnail { get; }
+    public string CollectionName => Candidate.CollectionName;
+    public string ArtistName => Candidate.ArtistName;
+
+    public void Dispose() => Thumbnail?.Dispose();
+}
+
+public sealed class AnimatedArtworkSearchResult
+{
+    public AnimatedArtworkSearchResult(ITunesArtworkService.AnimatedArtworkVariant variant)
+    {
+        Variant = variant;
+    }
+
+    public ITunesArtworkService.AnimatedArtworkVariant Variant { get; }
+    public string Label => Variant.Label;
+    public string Detail
+    {
+        get
+        {
+            var resolution = Variant.Width > 0 && Variant.Height > 0
+                ? $"{Variant.Width}x{Variant.Height}"
+                : "video";
+            var mbps = Variant.Bandwidth > 0
+                ? $" · {Variant.Bandwidth / 1_000_000.0:0.#} Mbps"
+                : string.Empty;
+            return $"{resolution}{mbps}";
+        }
+    }
 }

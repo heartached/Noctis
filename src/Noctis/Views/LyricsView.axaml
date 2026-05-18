@@ -545,7 +545,7 @@
                                 <Viewbox Width="18" Height="18"
                                          IsVisible="{Binding Player.IsShuffleEnabled}">
                                     <Canvas Width="24" Height="24">
-                                        <Path Fill="#E74856" Data="{StaticResource ShuffleIcon}"/>
+                                        <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource ShuffleIcon}"/>
                                     </Canvas>
                                 </Viewbox>
                             </Panel>
@@ -611,13 +611,13 @@
                                 <Viewbox Width="18" Height="18"
                                          IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
                                     <Canvas Width="24" Height="24">
-                                        <Path Fill="#E74856" Data="{StaticResource RepeatAllIcon}"/>
+                                        <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatAllIcon}"/>
                                     </Canvas>
                                 </Viewbox>
                                 <Viewbox Width="18" Height="18"
                                          IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
                                     <Canvas Width="24" Height="24">
-                                        <Path Fill="#E74856" Data="{StaticResource RepeatOneIcon}"/>
+                                        <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatOneIcon}"/>
                                     </Canvas>
                                 </Viewbox>
                             </Panel>
@@ -670,13 +670,11 @@
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />
-                                    <MenuItem Header="Add to Playlist">
+                                    <MenuItem Header="Add to Playlist"
+                                              Command="{Binding Player.AddCurrentTrackToNewPlaylistCommand}">
                                         <MenuItem.Icon>
                                             <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                         </MenuItem.Icon>
-                                        <MenuItem Header="Create New Playlist"
-                                                  Command="{Binding Player.AddCurrentTrackToNewPlaylistCommand}" />
-                                        <Separator />
                                     </MenuItem>
                                     <Separator />
                                     <MenuItem Header="Favorites"
@@ -783,7 +781,7 @@
                                         CornerRadius="999"
                                         Cursor="Hand"
                                         Opacity="{Binding IsSyncTabSelected, Converter={StaticResource BoolToOpacity}}">
-                                    <TextBlock Text="Synced" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Synced" FontSize="11" FontWeight="SemiBold" Foreground="#FFFFFF"/>
                                 </Button>
                                 <Button Command="{Binding ToggleLyricsModeCommand}"
                                         Background="Transparent"
@@ -792,7 +790,7 @@
                                         CornerRadius="999"
                                         Cursor="Hand"
                                         Opacity="{Binding IsUnsyncTabSelected, Converter={StaticResource BoolToOpacity}}">
-                                    <TextBlock Text="Plain" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Plain" FontSize="11" FontWeight="SemiBold" Foreground="#FFFFFF"/>
                                 </Button>
                             </StackPanel>
                         </Border>
@@ -1111,7 +1109,7 @@
                            HorizontalAlignment="Center"
                            IsVisible="{Binding SearchFailedMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 <Button Classes="accent-btn"
-                        Background="#E74856"
+                        Background="{DynamicResource AccentColorBrush}"
                         Foreground="{Binding LyricsPrimaryFg}"
                         BorderThickness="0"
                         Padding="16,8"

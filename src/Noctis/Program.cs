@@ -123,6 +123,8 @@ internal class Program
         services.AddSingleton<IDiscordPresenceService, DiscordPresenceService>();
         services.AddSingleton<ILastFmService, LastFmService>();
         services.AddSingleton<ArtistImageService>();
+        services.AddSingleton<ArtistBioService>();
+        services.AddSingleton<ITunesArtworkService>();
         services.AddSingleton<UpdateService>();
         services.AddSingleton<ILrcLibService, LrcLibService>();
         services.AddSingleton<INetEaseService, NetEaseService>();

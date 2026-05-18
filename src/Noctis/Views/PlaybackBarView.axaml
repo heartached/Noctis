@@ -5,7 +5,8 @@
              xmlns:controls="using:Noctis.Controls"
              xmlns:conv="using:Noctis.Converters"
              x:Class="Noctis.Views.PlaybackBarView"
-             x:DataType="vm:PlayerViewModel">
+             x:DataType="vm:PlayerViewModel"
+             Background="Transparent">
 
     <UserControl.Resources>
         <conv:TrackDisplayTitleConverter x:Key="DisplayTitle" />
@@ -40,11 +41,26 @@
         <Style Selector="Button.pill-btn:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
-        <Style Selector="Button.pill-btn:pointerover /template/ ContentPresenter">
+        <Style Selector="Button.pill-btn /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
-        <Style Selector="Button.pill-btn:pressed /template/ ContentPresenter">
+        <Style Selector="Button.pill-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn:focus /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn:focus-within /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
 
         <!-- Main play button (larger, no background fill) -->
@@ -71,11 +87,26 @@
         <Style Selector="Button.pill-btn-play:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
-        <Style Selector="Button.pill-btn-play:pointerover /template/ ContentPresenter">
+        <Style Selector="Button.pill-btn-play /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
-        <Style Selector="Button.pill-btn-play:pressed /template/ ContentPresenter">
+        <Style Selector="Button.pill-btn-play:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn-play:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn-play:focus /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn-play:focus-within /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
 
         <!-- Secondary controls (volume, menu) -->
@@ -97,20 +128,35 @@
         <Style Selector="Button.secondary-btn:pressed">
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
-        <Style Selector="Button.secondary-btn:pointerover /template/ ContentPresenter">
+        <Style Selector="Button.secondary-btn /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
-        <Style Selector="Button.secondary-btn:pressed /template/ ContentPresenter">
+        <Style Selector="Button.secondary-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.secondary-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.secondary-btn:focus /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.secondary-btn:focus-within /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
 
         <Style Selector="Button.artist-link-btn:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
-        <Style Selector="Button.artist-link-btn:pointerover /template/ ContentPresenter">
+        <Style Selector="Button.artist-link-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
         </Style>
-        <Style Selector="Button.artist-link-btn:pressed /template/ ContentPresenter">
+        <Style Selector="Button.artist-link-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
         </Style>
         <Style Selector="Button.artist-link-btn:pointerover Border.artist-text-hover">
@@ -259,22 +305,19 @@
         </Style>
     </UserControl.Styles>
 
-    <Border Padding="0"
-            Background="Transparent"
-            ClipToBounds="True">
-
-        <!-- Dynamic Island: Single unified pill-shaped container -->
+        <!-- Dynamic Island: Single unified glass pill-shaped container -->
         <Border x:Name="IslandBorder"
                 Classes="island"
-                Background="{DynamicResource IslandBackground}"
-                BorderThickness="0"
+                Background="#66202020"
+                BorderBrush="#40FFFFFF"
+                BorderThickness="1"
                 CornerRadius="999"
                 Padding="12,0,12,0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Height="50"
                 Width="650"
-                BoxShadow="0 2 6 0 #30000000">
+                BoxShadow="0 12 30 0 #55000000, 0 1 0 0 #22FFFFFF">
             <Border.Transitions>
                 <Transitions>
                     <DoubleTransition Property="Width" Duration="0:0:0.2">
@@ -511,12 +554,13 @@
                                     <StackPanel Orientation="Horizontal">
                                         <Border Classes="artist-text-hover"
                                                 CornerRadius="2"
-                                                Padding="1,0,2,1">
+                                                Padding="1,0,2,0"
+                                                Margin="0,0,0,-2">
                                             <TextBlock x:Name="ArtistNameTextBlock"
                                                        Text="{Binding CurrentTrack.Artist, FallbackValue='', TargetNullValue=''}"
                                                        FontSize="10"
                                                        MaxLines="1"
-                                                       Foreground="#E74856"
+                                                       Foreground="{DynamicResource AccentColorBrush}"
                                                        Margin="0,1,0,0">
                                                 <TextBlock.RenderTransform>
                                                     <TranslateTransform X="0" />
@@ -603,8 +647,8 @@
                             </Canvas>
                         </Viewbox>
                         <Button.Flyout>
-                            <MenuFlyout Placement="RightEdgeAlignedTop"
-                                        PlacementConstraintAdjustment="None">
+                            <MenuFlyout Placement="TopEdgeAlignedLeft"
+                                        PlacementConstraintAdjustment="FlipY">
                                 <MenuItem Command="{Binding PlayPauseCommand}"
                                           MaxWidth="400">
                                     <MenuItem.Header>
@@ -638,13 +682,11 @@
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem x:Name="AddToPlaylistMenuItem"
-                                          Header="Add to Playlist">
+                                          Header="Add to Playlist"
+                                          Command="{Binding AddCurrentTrackToNewPlaylistCommand}">
                                     <MenuItem.Icon>
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
-                                    <MenuItem Header="Create New Playlist"
-                                              Command="{Binding AddCurrentTrackToNewPlaylistCommand}" />
-                                    <Separator x:Name="PlaylistSubmenuSeparator" />
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem Header="Favorites"
@@ -855,7 +897,6 @@
 
             </Grid>
         </Border>
-    </Border>
 
 </UserControl>
 

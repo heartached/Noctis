@@ -18,6 +18,13 @@ namespace Noctis.Helpers;
 /// </summary>
 public sealed class TrackContextMenuBuilder
 {
+    private static IBrush ResolveAccentBrush()
+    {
+        if (Application.Current?.Resources.TryGetResource("AccentColorBrush", null, out var brush) == true && brush is IBrush b)
+            return b;
+        return new SolidColorBrush(Color.Parse("#E74856"));
+    }
+
     // ── Named menu item references ──
     public MenuItem Play { get; private set; } = null!;
     public MenuItem Shuffle { get; private set; } = null!;
@@ -32,7 +39,6 @@ public sealed class TrackContextMenuBuilder
     public MenuItem Remove { get; private set; } = null!;
 
     public ContextMenu Menu { get; private set; } = null!;
-    public PlaylistMenuPopulator Populator { get; private set; } = null!;
 
     /// <summary>
     /// Builds the context menu. Call once per view lifetime.
@@ -65,10 +71,6 @@ public sealed class TrackContextMenuBuilder
 
         AddToPlaylist = new MenuItem { Header = "Add to Playlist" };
         AddToPlaylist.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Playlists%20ICON.png");
-        var createNew = new MenuItem { Header = "Create New Playlist" };
-        AddToPlaylist.Items.Add(createNew);
-        var playlistSep = new Separator();
-        AddToPlaylist.Items.Add(playlistSep);
         items.Add(AddToPlaylist);
 
         items.Add(new Separator());
@@ -101,15 +103,19 @@ public sealed class TrackContextMenuBuilder
         items.Add(new Separator());
 
         Remove = new MenuItem { Header = removeHeader };
-        if (removeHeader.Contains("Library", StringComparison.OrdinalIgnoreCase))
+        var isDanger = removeHeader.StartsWith("Remove from", StringComparison.OrdinalIgnoreCase);
+        if (isDanger)
             Remove.Classes.Add("danger");
         if (removeIconUri != null)
-            Remove.Icon = CreatePngIcon(removeIconUri);
+        {
+            var iconBorder = CreatePngIcon(removeIconUri);
+            if (isDanger)
+                iconBorder.Background = new SolidColorBrush(Color.Parse("#E74856"));
+            Remove.Icon = iconBorder;
+        }
         else
             Remove.Icon = new PathIcon { Width = 14, Height = 14, Data = (Geometry)resourceHost.FindResource("TrashIcon")! };
         items.Add(Remove);
-
-        Populator = new PlaylistMenuPopulator(AddToPlaylist, playlistSep);
 
         return Menu;
     }
@@ -123,14 +129,14 @@ public sealed class TrackContextMenuBuilder
         ICommand shuffleCommand,
         ICommand playNextCommand,
         ICommand addToQueueCommand,
-        ICommand addToNewPlaylistCommand,
+        ICommand addToPlaylistCommand,
         ICommand toggleFavoriteCommand,
         ICommand openMetadataCommand,
         ICommand searchLyricsCommand,
         ICommand showInExplorerCommand,
         ICommand removeCommand,
-        ObservableCollection<Playlist>? playlists,
-        ICommand? addToExistingPlaylistCommand)
+        ObservableCollection<Playlist>? playlists = null,
+        ICommand? addToExistingPlaylistCommand = null)
     {
         Menu.DataContext = track;
 
@@ -147,13 +153,9 @@ public sealed class TrackContextMenuBuilder
         AddToQueue.Command = addToQueueCommand;
         AddToQueue.CommandParameter = track;
 
-        // Add to Playlist > Create New
-        var createNew = AddToPlaylist.Items[0] as MenuItem;
-        if (createNew != null)
-        {
-            createNew.Command = addToNewPlaylistCommand;
-            createNew.CommandParameter = track;
-        }
+        // Add to Playlist: opens unified dialog
+        AddToPlaylist.Command = addToPlaylistCommand;
+        AddToPlaylist.CommandParameter = track;
 
         // Favorites
         Favorite.Command = toggleFavoriteCommand;
@@ -177,10 +179,6 @@ public sealed class TrackContextMenuBuilder
 
         Remove.Command = removeCommand;
         Remove.CommandParameter = track;
-
-        // Populate playlist submenu
-        Populator.Populate(playlists, addToExistingPlaylistCommand,
-            playlist => new object[] { track, playlist });
     }
 
     /// <summary>

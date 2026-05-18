@@ -192,6 +192,10 @@
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
+            <!-- Global popup chrome radius: applied by Avalonia's MenuItem submenu Border
+                 (and other flyouts) so nested submenus match the rounded ContextMenu shell. -->
+            <CornerRadius x:Key="OverlayCornerRadius">16</CornerRadius>
+
             <!-- Track-list item theme: minimal template with no inherited Fluent hover overrides.
                  Without BasedOn, there are no ControlTheme pseudo-class setters competing
                  with app-level styles for ListBoxItem.Background (stripe preservation). -->
@@ -408,6 +412,7 @@
     <Style Selector="MenuFlyoutPresenter">
         <Setter Property="CornerRadius" Value="16" />
         <Setter Property="Padding" Value="6" />
+        <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
         <Setter Property="RenderTransform" Value="scale(1)" />
         <Setter Property="Transitions">
             <Transitions />
@@ -415,6 +420,7 @@
     </Style>
     <Style Selector="MenuFlyoutPresenter /template/ Border">
         <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
     </Style>
     <Style Selector="MenuItem /template/ Border#PART_Popup">
         <Setter Property="CornerRadius" Value="16" />
@@ -467,7 +473,7 @@
         </Setter>
     </Style>
 
-    <!-- Destructive menu items: red text + icon -->
+    <!-- Destructive menu items: semantically red, not themed by accent -->
     <Style Selector="MenuItem.danger">
         <Setter Property="Foreground" Value="#E74856" />
         <Setter Property="Margin" Value="2,5,2,1" />
@@ -636,20 +642,20 @@
     <!-- Ctrl+Click multi-select highlight for album tiles (red border) -->
     <Style Selector="Button.album-tile.ctrl-selected">
         <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="BorderBrush" Value="#E74856" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
     </Style>
     <Style Selector="Button.album-tile.ctrl-selected:pointerover">
         <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="BorderBrush" Value="#E74856" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
         <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
     <Style Selector="Button.album-tile.ctrl-selected /template/ ContentPresenter">
         <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="BorderBrush" Value="#E74856" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
     </Style>
     <Style Selector="Button.album-tile.ctrl-selected:pointerover /template/ ContentPresenter">
         <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="BorderBrush" Value="#E74856" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
     </Style>
 
     <Style Selector="ListBox.track-list Button:pointerover">
@@ -846,6 +852,14 @@
         <Setter Property="RenderTransform" Value="scale(0.96)"/>
     </Style>
 
+    <Style Selector="Button.artist-item:pressed">
+        <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+
+    <Style Selector="Button.artist-item:pressed /template/ ContentPresenter">
+        <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+
     <!-- Accent/red pill buttons: keep their red fill on hover/press instead of Fluent's dark hover chrome. -->
     <Style Selector="Button.accent-btn:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{TemplateBinding Background}" />
@@ -916,11 +930,11 @@
     </Style>
     <Style Selector="TextBox.crisp-input:focus /template/ Border#PART_BorderElement">
         <Setter Property="BorderThickness" Value="1.5" />
-        <Setter Property="BorderBrush" Value="#E74856" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
     </Style>
     <Style Selector="TextBox.crisp-input:focus-within /template/ Border#PART_BorderElement">
         <Setter Property="BorderThickness" Value="1.5" />
-        <Setter Property="BorderBrush" Value="#E74856" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
     </Style>
 
     <!-- Round circle checkbox with check mark -->
@@ -987,8 +1001,8 @@
     </Style>
 
     <Style Selector="CheckBox.metadata-pill-checkbox:checked /template/ Border#IndicatorBorder">
-        <Setter Property="Background" Value="#E74856" />
-        <Setter Property="BorderBrush" Value="#E74856" />
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
     </Style>
 
     <Style Selector="CheckBox.metadata-pill-checkbox:checked /template/ Path#IndicatorCheck">
@@ -996,8 +1010,8 @@
     </Style>
 
     <Style Selector="CheckBox.metadata-pill-checkbox:indeterminate /template/ Border#IndicatorBorder">
-        <Setter Property="Background" Value="#E74856" />
-        <Setter Property="BorderBrush" Value="#E74856" />
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
     </Style>
 
     <Style Selector="CheckBox.metadata-pill-checkbox:disabled">

@@ -84,9 +84,9 @@ public class CachedImage : Image
             return;
         }
 
-        // Slow path: load on background thread to avoid blocking UI
-        Source = null;
-
+        // Slow path: load on background thread to avoid blocking UI.
+        // Keep the previous Source visible until the new bitmap is ready —
+        // clearing here causes a placeholder flash on every track switch.
         try
         {
             var bitmap = await Task.Run(() => ArtworkCache.LoadAndCache(path, decodeWidth));

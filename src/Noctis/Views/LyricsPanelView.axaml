@@ -228,7 +228,7 @@
                        IsVisible="{Binding SearchFailedMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             <Button HorizontalAlignment="Center"
                     Classes="accent-btn"
-                    Background="#E74856"
+                    Background="{DynamicResource AccentColorBrush}"
                     Foreground="White"
                     Padding="16,8"
                     FontSize="13"

@@ -186,6 +186,11 @@ public partial class MetadataWindow : Window
         var canScrollLeft = scroller.Offset.X > 1;
         var canScrollRight = scroller.Offset.X < maxOffset - 1;
 
+        scroller.Margin = new Thickness(
+            canScrollLeft ? 38 : 24,
+            0,
+            canScrollRight ? 42 : 0,
+            0);
         if (_metadataTabStripLeft is not null) _metadataTabStripLeft.IsVisible = canScrollLeft;
         if (_metadataTabStripRight is not null) _metadataTabStripRight.IsVisible = canScrollRight;
     }

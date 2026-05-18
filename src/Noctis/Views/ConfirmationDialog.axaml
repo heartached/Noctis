@@ -33,7 +33,7 @@
                             Width="100"
                             Padding="0,8"
                             Classes="accent-btn"
-                                Background="#E74856"
+                                Background="{DynamicResource AccentColorBrush}"
                             Foreground="White"
                             FontWeight="SemiBold"
                             HorizontalContentAlignment="Center"

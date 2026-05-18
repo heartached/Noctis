@@ -90,7 +90,7 @@
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
-                                        <MenuItem Header="Delete Playlist"
+                                        <MenuItem Header="Delete Playlist" Classes="danger"
                                                   Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).DeletePlaylistCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>

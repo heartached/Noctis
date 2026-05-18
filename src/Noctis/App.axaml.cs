@@ -1,7 +1,9 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Media;
 using Noctis.Controls;
 using Noctis.Services;
 using Noctis.Views;
@@ -82,9 +84,9 @@ public partial class App : Application
     public const string ThemeDark = "Dark";
     public const string ThemeLight = "Light";
     public const string ThemeMidnight = "Midnight";
-    public const string ThemePaper = "Paper";
 
     private ResourceInclude? _activeThemeOverlay;
+    private string? _activeAccentHex;
 
     /// <summary>
     /// Switches the application theme at runtime. Light maps to the Light variant;
@@ -100,7 +102,7 @@ public partial class App : Application
             _activeThemeOverlay = null;
         }
 
-        RequestedThemeVariant = (themeName == ThemeLight || themeName == ThemePaper)
+        RequestedThemeVariant = themeName == ThemeLight
             ? Avalonia.Styling.ThemeVariant.Light
             : Avalonia.Styling.ThemeVariant.Dark;
 
@@ -108,7 +110,6 @@ public partial class App : Application
         {
             ThemeDark => "avares://Noctis/Assets/Themes/Dark.axaml",
             ThemeMidnight => "avares://Noctis/Assets/Themes/Midnight.axaml",
-            ThemePaper => "avares://Noctis/Assets/Themes/Paper.axaml",
             _ => null
         };
 
@@ -118,5 +119,128 @@ public partial class App : Application
             Resources.MergedDictionaries.Add(include);
             _activeThemeOverlay = include;
         }
+
+        // Theme overlays redefine AccentColorBrush et al. — re-apply the user's accent
+        // last so it always wins, regardless of theme.
+        if (_activeAccentHex != null)
+            SetAccent(_activeAccentHex);
+    }
+
+    // ── Accent palette ────────────────────────────────────────────
+
+    public sealed record AccentPreset(string Name, string Hex);
+
+    /// <summary>
+    /// Curated accent presets. Order is meaningful — this is the order shown in Settings.
+    /// </summary>
+    public static readonly IReadOnlyList<AccentPreset> AccentPresets = new[]
+    {
+        new AccentPreset("Crimson",   "#E74856"),
+        new AccentPreset("Red",       "#FF4F57"),
+        new AccentPreset("Rose",      "#E754B5"),
+        new AccentPreset("Lavender",  "#D89BE8"),
+        new AccentPreset("Orchid",    "#C45CE0"),
+        new AccentPreset("Violet",    "#874CF2"),
+        new AccentPreset("Purple",    "#5917E8"),
+        new AccentPreset("Teal",      "#0FA3B1"),
+        new AccentPreset("Cyan",      "#19C2C2"),
+        new AccentPreset("Aqua",      "#55D4D9"),
+        new AccentPreset("Sky",       "#39B5F0"),
+        new AccentPreset("Azure",     "#4C6EF5"),
+        new AccentPreset("Cobalt",    "#0D56B3"),
+        new AccentPreset("Navy",      "#1800A8"),
+        new AccentPreset("Emerald",   "#12C76F"),
+        new AccentPreset("Lime",      "#7ED957"),
+        new AccentPreset("Mint",      "#B8FF66"),
+        new AccentPreset("Gold",      "#F4D24B"),
+        new AccentPreset("Amber",     "#FDB84D"),
+        new AccentPreset("Tangerine", "#FF8547"),
+    };
+
+    private ResourceDictionary? _activeAccentOverlay;
+
+    /// <summary>
+    /// Raised after the accent overlay is swapped, so .cs-driven controls that captured
+    /// the previous accent brush (e.g. LottieToggle) can re-resolve and update in place.
+    /// </summary>
+    public static event EventHandler? AccentApplied;
+
+    /// <summary>
+    /// Applies an accent colour at runtime by merging an override dictionary on top of
+    /// Application.Resources. Replaces SystemAccentColor (+ Dark1-3 / Light1-3 shades) and
+    /// every brush that fans out from it (toggle on-states, island accent, accent brushes).
+    /// </summary>
+    public void SetAccent(string hex)
+    {
+        if (!TryParseHex(hex, out var color))
+            color = Color.Parse("#E74856");
+
+        _activeAccentHex = hex;
+
+        if (_activeAccentOverlay != null)
+        {
+            Resources.MergedDictionaries.Remove(_activeAccentOverlay);
+            _activeAccentOverlay = null;
+        }
+
+        var dark1  = Mix(color, Colors.Black, 0.15);
+        var dark2  = Mix(color, Colors.Black, 0.30);
+        var dark3  = Mix(color, Colors.Black, 0.45);
+        var light1 = Mix(color, Colors.White, 0.15);
+        var light2 = Mix(color, Colors.White, 0.30);
+        var light3 = Mix(color, Colors.White, 0.45);
+
+        var rd = new ResourceDictionary
+        {
+            ["SystemAccentColor"] = color,
+            ["SystemAccentColorDark1"] = dark1,
+            ["SystemAccentColorDark2"] = dark2,
+            ["SystemAccentColorDark3"] = dark3,
+            ["SystemAccentColorLight1"] = light1,
+            ["SystemAccentColorLight2"] = light2,
+            ["SystemAccentColorLight3"] = light3,
+            ["SystemControlHighlightAccentBrush"]  = new SolidColorBrush(color),
+            ["SystemControlHighlightAccentBrush2"] = new SolidColorBrush(light1),
+            ["AccentColorBrush"]                   = new SolidColorBrush(color),
+            ["AccentColorBrushLight1"]             = new SolidColorBrush(light1),
+            ["AccentColorBrushDark1"]              = new SolidColorBrush(dark1),
+            ["ToggleSwitchFillOn"]                 = new SolidColorBrush(color),
+            ["ToggleSwitchFillOnPointerOver"]      = new SolidColorBrush(light1),
+            ["ToggleSwitchFillOnPressed"]          = new SolidColorBrush(dark1),
+            ["ToggleSwitchFillOnDragging"]         = new SolidColorBrush(light1),
+            ["IslandIconAccent"]                   = new SolidColorBrush(color),
+
+            // Accent-tinted hover/press for menu items so dropdowns match the active accent
+            ["MenuFlyoutItemBackgroundPointerOver"]    = new SolidColorBrush(color, 0.22),
+            ["MenuFlyoutItemBackgroundPressed"]       = new SolidColorBrush(color, 0.35),
+            ["MenuFlyoutSubItemBackgroundPointerOver"] = new SolidColorBrush(color, 0.22),
+            ["MenuFlyoutSubItemBackgroundPressed"]    = new SolidColorBrush(color, 0.35),
+            ["MenuFlyoutSubItemBackgroundSubMenuOpened"] = new SolidColorBrush(color, 0.22),
+            ["MenuBarItemBackgroundPointerOver"]      = new SolidColorBrush(color, 0.22),
+            ["MenuBarItemBackgroundPressed"]          = new SolidColorBrush(color, 0.35),
+            ["MenuBarItemBackgroundSelected"]         = new SolidColorBrush(color, 0.22),
+        };
+
+        Resources.MergedDictionaries.Add(rd);
+        _activeAccentOverlay = rd;
+
+        AccentApplied?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static Color Mix(Color a, Color b, double t)
+    {
+        t = Math.Clamp(t, 0, 1);
+        byte r = (byte)(a.R + (b.R - a.R) * t);
+        byte g = (byte)(a.G + (b.G - a.G) * t);
+        byte bl = (byte)(a.B + (b.B - a.B) * t);
+        return Color.FromRgb(r, g, bl);
+    }
+
+    private static bool TryParseHex(string? hex, out Color color)
+    {
+        color = default;
+        if (string.IsNullOrWhiteSpace(hex)) return false;
+        try { color = Color.Parse(hex.Trim()); return true; }
+        catch { return false; }
     }
 }

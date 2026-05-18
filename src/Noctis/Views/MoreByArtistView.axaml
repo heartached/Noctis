@@ -73,14 +73,12 @@
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />
-                                    <MenuItem Header="Add to Playlist">
+                                    <MenuItem Header="Add to Playlist"
+                                              Command="{Binding $parent[UserControl].((vm:MoreByArtistViewModel)DataContext).LibraryAlbumsVm.AddToNewPlaylistCommand}"
+                                              CommandParameter="{Binding}">
                                         <MenuItem.Icon>
                                             <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                         </MenuItem.Icon>
-                                        <MenuItem Header="Create New Playlist"
-                                                  Command="{Binding $parent[UserControl].((vm:MoreByArtistViewModel)DataContext).LibraryAlbumsVm.AddToNewPlaylistCommand}"
-                                                  CommandParameter="{Binding}" />
-                                        <Separator />
                                     </MenuItem>
                                     <Separator />
                                     <MenuItem Header="Favorites"

@@ -23,7 +23,6 @@ public partial class PlaybackBarView : UserControl
     private const double TrackTitleBadgeSpacing = 6.0;
     private const double TrackTitleBadgeTrailingPadding = 8.0;
     private static readonly TimeSpan TrackTitleEdgePause = TimeSpan.FromMilliseconds(850);
-    private PlaylistMenuPopulator? _playlistPopulator;
     private readonly DispatcherTimer _trackTitleMarqueeTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private readonly Stopwatch _trackTitleMarqueeClock = new();
     private PlayerViewModel? _observedPlayerViewModel;
@@ -91,10 +90,6 @@ public partial class PlaybackBarView : UserControl
         DetachedFromVisualTree += OnPlaybackBarDetachedFromVisualTree;
         DataContextChanged += OnPlaybackBarDataContextChanged;
 
-        _playlistPopulator = new PlaylistMenuPopulator(AddToPlaylistMenuItem, PlaylistSubmenuSeparator);
-        OptionsButton.AddHandler(InputElement.PointerPressedEvent, OnOptionsButtonPointerPressed, RoutingStrategies.Tunnel);
-        if (OptionsButton.Flyout is MenuFlyout optionsFlyout)
-            optionsFlyout.Opened += OnOptionsFlyoutOpened;
     }
 
     private void OnPlaybackBarAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
@@ -753,14 +748,8 @@ public partial class PlaybackBarView : UserControl
         if (e.InitialPressMouseButton != MouseButton.Right) return;
         if (DataContext is not PlayerViewModel { CurrentTrack: not null }) return;
 
-        PopulateOptionsMenu();
         OptionsButton.Flyout?.ShowAt(OptionsButton);
         e.Handled = true;
-    }
-
-    private void OnOptionsButtonPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        PopulateOptionsMenu();
     }
 
     private void OnLyricsPanelButtonClick(object? sender, RoutedEventArgs e)
@@ -775,17 +764,6 @@ public partial class PlaybackBarView : UserControl
         var mainWindow = this.FindLogicalAncestorOfType<MainWindow>();
         if (mainWindow?.DataContext is MainWindowViewModel mainVm)
             mainVm.ToggleLyricsCommand.Execute(null);
-    }
-
-    private void OnOptionsFlyoutOpened(object? sender, EventArgs e)
-    {
-        PopulateOptionsMenu();
-    }
-
-    private void PopulateOptionsMenu()
-    {
-        if (DataContext is not PlayerViewModel vm) return;
-        _playlistPopulator?.Populate(vm.Playlists, vm.AddCurrentTrackToExistingPlaylistCommand);
     }
 
     private void RefreshTrackInfoLayout()

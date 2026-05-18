@@ -8,6 +8,7 @@ namespace Noctis.Services;
 public class ArtistImageService
 {
     private const string DeezerSearchUrl = "https://api.deezer.com/search/artist";
+    private const int DeezerSearchLimit = 10;
     private readonly HttpClient _http;
     private readonly string _artistArtworkDir;
     private readonly SemaphoreSlim _fetchGate = new(1, 1);
@@ -57,11 +58,15 @@ public class ArtistImageService
     /// </summary>
     public async Task FetchAndCacheAsync(IReadOnlyList<Artist> artists, Action<Artist, string>? onImageReady = null)
     {
-        if (!await _fetchGate.WaitAsync(0))
-            return;
+        await _fetchGate.WaitAsync();
 
         try
         {
+            var artistsByName = artists
+                .Where(a => !string.IsNullOrWhiteSpace(a.Name))
+                .GroupBy(a => a.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
             foreach (var artist in artists)
             {
                 var cachedPath = GetCachedImagePath(artist.Id);
@@ -85,6 +90,7 @@ public class ArtistImageService
                 if (_failedArtistCooldownUntil.TryGetValue(artistName, out var retryAt) &&
                     DateTime.UtcNow < retryAt)
                 {
+                    TryUsePrimaryArtistImageFallback(artist, artistsByName, onImageReady);
                     continue;
                 }
 
@@ -115,6 +121,12 @@ public class ArtistImageService
                     Debug.WriteLine($"[ArtistImage] Failed for '{artist.Name}': {ex.Message}");
                 }
 
+                if (TryUsePrimaryArtistImageFallback(artist, artistsByName, onImageReady))
+                {
+                    _failedArtistCooldownUntil.Remove(artistName);
+                    continue;
+                }
+
                 _failedArtistCooldownUntil[artistName] = DateTime.UtcNow.Add(FailedArtistCooldown);
 
                 // Rate limit: Deezer allows 50 requests per 5 seconds.
@@ -135,7 +147,7 @@ public class ArtistImageService
     {
         foreach (var candidate in BuildArtistCandidates(artistName))
         {
-            var url = $"{DeezerSearchUrl}?q={Uri.EscapeDataString(candidate)}&limit=1";
+            var url = $"{DeezerSearchUrl}?q={Uri.EscapeDataString(candidate)}&limit={DeezerSearchLimit}";
             using var response = await _http.GetAsync(url);
             if (!response.IsSuccessStatusCode)
                 continue;
@@ -148,23 +160,119 @@ public class ArtistImageService
                 data.GetArrayLength() == 0)
                 continue;
 
-            var first = data[0];
-            // Prefer picture_big (500x500), fall back to picture_medium (250x250)
-            if (first.TryGetProperty("picture_big", out var bigNode))
+            string? bestImageUrl = null;
+            var bestRank = int.MaxValue;
+
+            foreach (var item in data.EnumerateArray())
             {
-                var imageUrl = bigNode.GetString();
-                if (!string.IsNullOrWhiteSpace(imageUrl))
-                    return imageUrl;
+                var imageUrl = GetBestDeezerImageUrl(item);
+                if (string.IsNullOrWhiteSpace(imageUrl))
+                    continue;
+
+                var resultName = item.TryGetProperty("name", out var nameNode)
+                    ? nameNode.GetString()
+                    : null;
+                var rank = RankDeezerArtistMatch(resultName, candidate);
+                if (rank >= bestRank)
+                    continue;
+
+                bestRank = rank;
+                bestImageUrl = imageUrl;
+                if (bestRank == 0)
+                    return bestImageUrl;
             }
-            if (first.TryGetProperty("picture_medium", out var medNode))
-            {
-                var imageUrl = medNode.GetString();
-                if (!string.IsNullOrWhiteSpace(imageUrl))
-                    return imageUrl;
-            }
+
+            if (!string.IsNullOrWhiteSpace(bestImageUrl))
+                return bestImageUrl;
         }
 
         return null;
+    }
+
+    private static string? GetBestDeezerImageUrl(JsonElement artistNode)
+    {
+        foreach (var propertyName in new[] { "picture_xl", "picture_big", "picture_medium" })
+        {
+            if (!artistNode.TryGetProperty(propertyName, out var node))
+                continue;
+
+            var imageUrl = node.GetString();
+            if (!string.IsNullOrWhiteSpace(imageUrl) && !IsDeezerPlaceholderUrl(imageUrl))
+                return imageUrl;
+        }
+
+        return null;
+    }
+
+    private static int RankDeezerArtistMatch(string? resultName, string queryName)
+    {
+        if (string.IsNullOrWhiteSpace(resultName))
+            return 100;
+
+        var result = resultName.Trim();
+        var query = queryName.Trim();
+        if (result.Equals(query, StringComparison.OrdinalIgnoreCase))
+            return 0;
+
+        var compactResult = RemoveWhitespace(result);
+        var compactQuery = RemoveWhitespace(query);
+        if (compactResult.Equals(compactQuery, StringComparison.OrdinalIgnoreCase))
+            return 1;
+
+        if (result.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+            return 2;
+
+        if (result.Contains(query, StringComparison.OrdinalIgnoreCase))
+            return 3;
+
+        return 10;
+    }
+
+    private static string RemoveWhitespace(string value)
+        => string.Concat(value.Where(c => !char.IsWhiteSpace(c)));
+
+    private static bool IsDeezerPlaceholderUrl(string url)
+        => url.Contains("/artist//", StringComparison.Ordinal)
+           || url.Contains("/images/artist//", StringComparison.Ordinal);
+
+    private bool TryUsePrimaryArtistImageFallback(
+        Artist artist,
+        IReadOnlyDictionary<string, Artist> artistsByName,
+        Action<Artist, string>? onImageReady)
+    {
+        foreach (var candidate in BuildArtistCandidates(artist.Name).Skip(1))
+        {
+            string? fallbackPath = null;
+            if (artistsByName.TryGetValue(candidate, out var primaryArtist))
+            {
+                fallbackPath = primaryArtist.ImagePath;
+                if (string.IsNullOrWhiteSpace(fallbackPath) || !File.Exists(fallbackPath))
+                    fallbackPath = GetCachedImagePath(primaryArtist.Id);
+            }
+
+            if (string.IsNullOrWhiteSpace(fallbackPath) || !File.Exists(fallbackPath))
+                fallbackPath = GetCachedImagePath(ComputeArtistId(candidate));
+
+            if (!File.Exists(fallbackPath))
+                continue;
+
+            if (!string.Equals(artist.ImagePath, fallbackPath, StringComparison.OrdinalIgnoreCase))
+            {
+                artist.ImagePath = fallbackPath;
+                onImageReady?.Invoke(artist, fallbackPath);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private static Guid ComputeArtistId(string artistName)
+    {
+        var hash = System.Security.Cryptography.MD5.HashData(
+            System.Text.Encoding.UTF8.GetBytes(artistName.Trim().ToLowerInvariant()));
+        return new Guid(hash);
     }
 
     private static IEnumerable<string> BuildArtistCandidates(string artistName)

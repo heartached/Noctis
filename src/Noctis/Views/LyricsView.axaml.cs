@@ -25,7 +25,6 @@ public partial class LyricsView : UserControl
     private DispatcherTimer? _autoFollowResumeTimer;
     private LyricsViewModel? _subscribedVm;
     private bool _isNarrowMode;
-    private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
     private readonly TranslateTransform _lyricsSeekThumbTransform = new();
     private readonly TranslateTransform _lyricsVolumeThumbTransform = new();
 
@@ -193,44 +192,9 @@ public partial class LyricsView : UserControl
         }
     }
 
-    private void OnTrackFlyoutOpened(object? sender, EventArgs e)
-    {
-        if (sender is not MenuFlyout flyout) return;
-        PopulateTrackFlyout(flyout);
-    }
+    private void OnTrackFlyoutOpened(object? sender, EventArgs e) { }
 
-    private void PopulateTrackFlyout(MenuFlyout flyout)
-    {
-        if (DataContext is not LyricsViewModel { Player: { } player }) return;
-        if (!_playlistPopulators.TryGetValue(flyout, out var populator))
-        {
-            MenuItem? addToPlaylist = null;
-            Separator? separator = null;
-            foreach (var item in flyout.Items)
-            {
-                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
-                {
-                    addToPlaylist = mi;
-                    foreach (var sub in mi.Items)
-                    {
-                        if (sub is Separator sep) { separator = sep; break; }
-                    }
-                    break;
-                }
-            }
-            if (addToPlaylist == null || separator == null) return;
-            populator = new PlaylistMenuPopulator(addToPlaylist, separator);
-            _playlistPopulators[flyout] = populator;
-        }
-
-        populator.Populate(player.Playlists as ObservableCollection<Playlist>, player.AddCurrentTrackToExistingPlaylistCommand);
-    }
-
-    private void OnTrackFlyoutButtonPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (LyricsOptionsButton.Flyout is MenuFlyout flyout)
-            PopulateTrackFlyout(flyout);
-    }
+    private void OnTrackFlyoutButtonPointerPressed(object? sender, PointerPressedEventArgs e) { }
 
     // ── Seek slider interaction ──
 

@@ -69,6 +69,7 @@ internal static class AdvancedTagIO
         public string ComposerSort { get; set; } = string.Empty;
 
         // ── People & Credits ──
+        public string Performer { get; set; } = string.Empty;
         public string Conductor { get; set; } = string.Empty;
         public string Lyricist { get; set; } = string.Empty;
         public string Publisher { get; set; } = string.Empty;
@@ -116,6 +117,10 @@ internal static class AdvancedTagIO
         fields.ComposerSort = string.Join("; ", tag.ComposersSort ?? Array.Empty<string>());
 
         // ── People ──
+        // PERFORMER is a separate "performed by" credit (e.g. orchestra/ensemble),
+        // stored in a custom TXXX/PERFORMER frame so it doesn't collide with the
+        // main Artist field (which itself maps to TagLib's tag.Performers/TPE1).
+        fields.Performer = ReadCustomField(file, "PERFORMER");
         fields.Conductor = tag.Conductor ?? string.Empty;
         fields.Lyricist = ReadField(file, "TEXT", "LYRICIST", null) ?? string.Empty;
         fields.Publisher = ReadField(file, "TPUB", "ORGANIZATION", "©pub") ?? ReadField(file, "TPUB", "PUBLISHER", "©pub") ?? string.Empty;
@@ -169,6 +174,7 @@ internal static class AdvancedTagIO
             tag.ComposersSort = SplitSemicolon(fields.ComposerSort);
 
             // ── People ──
+            WriteCustomField(file, "PERFORMER", fields.Performer);
             tag.Conductor = NullIfEmpty(fields.Conductor);
             WriteField(file, "TEXT", "LYRICIST", null, fields.Lyricist);
             WritePublisher(file, fields.Publisher);

@@ -1,3 +1,4 @@
+using System;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -100,6 +101,7 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _pagePlayFavoritesCommand;
     [ObservableProperty] private bool _pageShowOnlyFavorites;
     [ObservableProperty] private bool _pageSortAscending = true;
+    [ObservableProperty] private string _pageSortColumn = string.Empty;
     [ObservableProperty] private ICommand? _pageSetShowAllItemsCommand;
     [ObservableProperty] private ICommand? _pageSetShowOnlyFavoritesCommand;
     [ObservableProperty] private ICommand? _pageSortCommand;
@@ -108,14 +110,34 @@ public partial class TopBarViewModel : ViewModelBase
     public bool PageShowAllItems => !PageShowOnlyFavorites;
     public bool PageSortDescending => !PageSortAscending;
 
+    // Per-field active-sort flags used to render checkmarks in the Sort By submenu
+    public bool PageSortByTitle  => string.Equals(PageSortColumn, "Title",  StringComparison.OrdinalIgnoreCase);
+    public bool PageSortByAlbum  => string.Equals(PageSortColumn, "Album",  StringComparison.OrdinalIgnoreCase);
+    public bool PageSortByArtist => string.Equals(PageSortColumn, "Artist", StringComparison.OrdinalIgnoreCase);
+    public bool PageSortByGenre  => string.Equals(PageSortColumn, "Genre",  StringComparison.OrdinalIgnoreCase);
+    public bool PageSortByYear   => string.Equals(PageSortColumn, "Year",   StringComparison.OrdinalIgnoreCase);
+    public bool PageSortByTime   => string.Equals(PageSortColumn, "Time",   StringComparison.OrdinalIgnoreCase);
+    public bool PageSortByPlays  => string.Equals(PageSortColumn, "Plays",  StringComparison.OrdinalIgnoreCase);
+
     partial void OnPageShowOnlyFavoritesChanged(bool value) => OnPropertyChanged(nameof(PageShowAllItems));
     partial void OnPageSortAscendingChanged(bool value) => OnPropertyChanged(nameof(PageSortDescending));
+    partial void OnPageSortColumnChanged(string value)
+    {
+        OnPropertyChanged(nameof(PageSortByTitle));
+        OnPropertyChanged(nameof(PageSortByAlbum));
+        OnPropertyChanged(nameof(PageSortByArtist));
+        OnPropertyChanged(nameof(PageSortByGenre));
+        OnPropertyChanged(nameof(PageSortByYear));
+        OnPropertyChanged(nameof(PageSortByTime));
+        OnPropertyChanged(nameof(PageSortByPlays));
+    }
 
     public void ShowPageActions(
         ICommand shuffleCommand,
         ICommand queueCommand,
         bool showOnlyFavorites,
         bool sortAscending,
+        string sortColumn,
         ICommand setShowAllItemsCommand,
         ICommand setShowOnlyFavoritesCommand,
         ICommand sortCommand)
@@ -124,6 +146,7 @@ public partial class TopBarViewModel : ViewModelBase
         PageQueueCommand = queueCommand;
         PageShowOnlyFavorites = showOnlyFavorites;
         PageSortAscending = sortAscending;
+        PageSortColumn = sortColumn ?? string.Empty;
         PageSetShowAllItemsCommand = setShowAllItemsCommand;
         PageSetShowOnlyFavoritesCommand = setShowOnlyFavoritesCommand;
         PageSortCommand = sortCommand;

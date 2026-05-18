@@ -909,7 +909,7 @@ public partial class PlayerViewModel : ViewModelBase
     /// while matching the shared <see cref="ArtworkCache"/> default width so the same
     /// cover isn't decoded/cached a second time at a player-only size.
     /// </summary>
-    private const int PlayerArtDecodeWidth = 512;
+    private const int PlayerArtDecodeWidth = 768;
 
     /// <summary>Bumped on every <see cref="LoadAlbumArt"/> call so a slow background
     /// decode that finishes after the track changed again is discarded.</summary>
@@ -922,6 +922,15 @@ public partial class PlayerViewModel : ViewModelBase
         var artPath = _persistence.GetArtworkPath(track.AlbumId);
         var generation = Interlocked.Increment(ref _albumArtGeneration);
 
+        // No artwork available for this track — clear immediately so we don't
+        // keep showing the previous track's cover.
+        if (string.IsNullOrEmpty(artPath))
+        {
+            AlbumArt = null;
+            CurrentAnimatedCoverPath = _animatedCovers.Resolve(track);
+            return;
+        }
+
         // Fast path: a cache hit returns synchronously — no I/O or decode on the UI thread.
         var cached = ArtworkCache.TryGet(artPath, PlayerArtDecodeWidth);
         if (cached != null)
@@ -931,7 +940,8 @@ public partial class PlayerViewModel : ViewModelBase
         else
         {
             // Cache miss: decode on a background thread so click-to-play doesn't stall.
-            AlbumArt = null;
+            // Keep the previous AlbumArt visible until the new bitmap is ready —
+            // clearing here causes a placeholder flash on every track switch.
             _ = Task.Run(() =>
             {
                 var bitmap = ArtworkCache.LoadAndCache(artPath, PlayerArtDecodeWidth);

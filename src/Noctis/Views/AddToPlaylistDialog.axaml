@@ -1,0 +1,237 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:m="using:Noctis.Models"
+        xmlns:conv="using:Noctis.Converters"
+        xmlns:ctrl="using:Noctis.Controls"
+        x:Class="Noctis.Views.AddToPlaylistDialog"
+        x:DataType="vm:AddToPlaylistDialogViewModel"
+        Title="Add to Playlist"
+        CanResize="False"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Resources>
+        <conv:HexColorToBrushConverter x:Key="HexColorConverter" />
+    </Window.Resources>
+
+    <Window.Styles>
+        <!-- Disable hover/press zoom animation on dialog buttons. -->
+        <Style Selector="Button.no-zoom:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.no-zoom:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+    </Window.Styles>
+
+    <!-- Full-window dimmed overlay that captures all input -->
+    <Border Background="#50000000"
+            PointerPressed="OnOverlayPointerPressed"
+            PointerWheelChanged="OnOverlayWheel">
+
+        <!-- Centered dialog card -->
+        <Border CornerRadius="24"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="520"
+                MaxHeight="600"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 8 32 0 #60000000">
+            <DockPanel Margin="0">
+
+                <!-- Bottom bar: Cancel -->
+                <Border DockPanel.Dock="Bottom"
+                        Padding="24,12,24,16">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13" Opacity="0.6">
+                            <TextBlock.Text>
+                                <Binding Path="TrackCount" StringFormat="Adding {0} track(s)" />
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <Button Grid.Column="1"
+                                Content="Cancel"
+                                Command="{Binding CancelCommand}"
+                                Width="100"
+                                Padding="0,8"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand" />
+                    </Grid>
+                </Border>
+
+                <!-- Scrollable content -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24,20,24,16" Spacing="14">
+
+                        <!-- Title -->
+                        <TextBlock Text="Add to Playlist"
+                                   FontSize="20"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center" />
+
+                        <!-- Create new: collapsed pill -->
+                        <Button Command="{Binding ShowCreateCommand}"
+                                IsVisible="{Binding !IsCreatingNew}"
+                                Classes="accent-btn no-zoom"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="White"
+                                BorderThickness="0"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Padding="16,10"
+                                CornerRadius="999"
+                                FontWeight="SemiBold"
+                                Cursor="Hand">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <PathIcon Data="{StaticResource AddIcon}" Width="12" Height="12" VerticalAlignment="Center" />
+                                <TextBlock Text="Create Playlist" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Create new: expanded form -->
+                        <Border IsVisible="{Binding IsCreatingNew}"
+                                Background="#15FFFFFF"
+                                CornerRadius="12"
+                                Padding="14">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="New Playlist" FontSize="13" FontWeight="SemiBold" />
+                                <TextBox Text="{Binding NewPlaylistName}"
+                                         Classes="crisp-input"
+                                         Watermark="Playlist name..."
+                                         CornerRadius="999"
+                                         Padding="14,8"
+                                         x:Name="NewNameTextBox" />
+                                <TextBlock Text="Name is required"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource AccentColorBrush}"
+                                           IsVisible="{Binding ShowNameRequiredError}" />
+                                <TextBox Text="{Binding NewPlaylistDescription}"
+                                         Classes="crisp-input"
+                                         Watermark="Description (optional)..."
+                                         CornerRadius="999"
+                                         Padding="14,8" />
+                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                    <Button Content="Cancel"
+                                            Command="{Binding CancelCreateCommand}"
+                                            Width="90"
+                                            Padding="0,7"
+                                            HorizontalContentAlignment="Center"
+                                            CornerRadius="999"
+                                            Cursor="Hand" />
+                                    <Button Content="Create"
+                                            Command="{Binding ConfirmCreateCommand}"
+                                            Width="90"
+                                            Padding="0,7"
+                                            Classes="accent-btn"
+                                            Background="{DynamicResource AccentColorBrush}"
+                                            Foreground="White"
+                                            FontWeight="SemiBold"
+                                            HorizontalContentAlignment="Center"
+                                            CornerRadius="999"
+                                            Cursor="Hand" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Existing playlists header -->
+                        <TextBlock Text="Your Playlists"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Margin="0,4,0,0"
+                                   IsVisible="{Binding HasPlaylists}" />
+
+                        <!-- Empty state -->
+                        <TextBlock Text="No playlists yet — create one above."
+                                   FontSize="13"
+                                   Opacity="0.55"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,16,0,0"
+                                   IsVisible="{Binding !HasPlaylists}" />
+
+                        <!-- Existing playlists list -->
+                        <ItemsControl ItemsSource="{Binding Playlists}" IsVisible="{Binding HasPlaylists}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="m:PlaylistNavItem">
+                                    <Button Classes="no-zoom"
+                                            Background="#15FFFFFF"
+                                            BorderThickness="0"
+                                            CornerRadius="12"
+                                            Padding="14,10"
+                                            Margin="0,3"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Stretch"
+                                            Cursor="Hand"
+                                            Command="{Binding $parent[Window].((vm:AddToPlaylistDialogViewModel)DataContext).SelectPlaylistCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                                            <!-- Playlist artwork (matches sidebar visualization) -->
+                                            <Border Grid.Column="0"
+                                                    Width="36" Height="36"
+                                                    CornerRadius="6"
+                                                    ClipToBounds="True"
+                                                    Margin="0,0,12,0">
+                                                <Panel>
+                                                    <Border Background="{Binding Color, Converter={StaticResource HexColorConverter}}"
+                                                            CornerRadius="6" />
+                                                    <PathIcon Data="{StaticResource PlaylistsIcon}"
+                                                              Width="14" Height="14"
+                                                              Foreground="#80FFFFFF"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              IsVisible="{Binding ShowFallbackIcon}" />
+                                                    <ctrl:CachedImage SourcePath="{Binding Art1}"
+                                                                      Stretch="UniformToFill"
+                                                                      IsVisible="{Binding HasSingleArt}" />
+                                                    <Grid RowDefinitions="*,*"
+                                                          ColumnDefinitions="*,*"
+                                                          IsVisible="{Binding HasCollageArt}">
+                                                        <ctrl:CachedImage Grid.Row="0" Grid.Column="0"
+                                                                          SourcePath="{Binding Art1}"
+                                                                          Stretch="UniformToFill" />
+                                                        <ctrl:CachedImage Grid.Row="0" Grid.Column="1"
+                                                                          SourcePath="{Binding Art2}"
+                                                                          Stretch="UniformToFill" />
+                                                        <ctrl:CachedImage Grid.Row="1" Grid.Column="0"
+                                                                          SourcePath="{Binding Art3}"
+                                                                          Stretch="UniformToFill" />
+                                                        <ctrl:CachedImage Grid.Row="1" Grid.Column="1"
+                                                                          SourcePath="{Binding Art4}"
+                                                                          Stretch="UniformToFill" />
+                                                    </Grid>
+                                                    <ctrl:CachedImage SourcePath="{Binding CoverArtPath}"
+                                                                      Stretch="UniformToFill"
+                                                                      IsVisible="{Binding HasCustomArt}" />
+                                                </Panel>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Label}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="14"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="2"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="12"
+                                                       Opacity="0.55">
+                                                <TextBlock.Text>
+                                                    <Binding Path="TrackCount" StringFormat="{}{0} tracks" />
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>
