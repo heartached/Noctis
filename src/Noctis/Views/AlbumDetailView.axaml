@@ -137,6 +137,7 @@
                                Text="{Binding Album.Name}"
                                FontSize="36"
                                FontWeight="Bold"
+                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                HorizontalAlignment="Left"
                                MaxWidth="1320" />
                     <Border Grid.Column="1"
@@ -166,7 +167,8 @@
                                VerticalAlignment="Center"
                                Foreground="{DynamicResource AccentColorBrush}" />
                 </Button>
-                <StackPanel Orientation="Horizontal" Spacing="0" Margin="0,4,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="0" Margin="0,4,0,0"
+                            TextElement.Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
                     <TextBlock FontSize="13" Opacity="0.5" VerticalAlignment="Center">
                         <TextBlock.Text>
                             <MultiBinding StringFormat="{}{0} · {1} · {2} tracks">
@@ -536,7 +538,7 @@
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Center"
                                                     Margin="0,0,-10,0"
-                                                    Foreground="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}"
+                                                    Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                                     IsPlaying="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).IsPlayerPlaying, Mode=OneWay}">
                                 <controls:EqVisualizer.IsVisible>
                                     <MultiBinding Converter="{StaticResource GuidEquals}" Mode="OneWay">
@@ -727,7 +729,8 @@
         </ItemsControl>
 
         <!-- Album footer: release date, track count + duration, copyright (Apple Music style) -->
-        <StackPanel Margin="0,24,0,4" Spacing="3">
+        <StackPanel Margin="0,24,0,4" Spacing="3"
+                    TextElement.Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
             <TextBlock Text="{Binding Album.ReleaseDateFormatted}"
                        FontSize="13"
                        Opacity="0.45"

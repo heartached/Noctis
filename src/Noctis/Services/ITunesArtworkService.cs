@@ -147,13 +147,12 @@ public sealed class ITunesArtworkService
                 variants.AddRange(await ParseHlsMasterVariantsAsync(mediaUrl, ct));
             }
 
-            return variants
+            var deduped = variants
                 .GroupBy(v => $"{v.Width}x{v.Height}:{GetCodecFamily(v.Codec)}", StringComparer.OrdinalIgnoreCase)
                 .Select(g => g.OrderByDescending(v => v.Bandwidth).First())
-                .OrderByDescending(v => Math.Max(v.Width, v.Height))
-                .ThenBy(v => GetCodecFamily(v.Codec) == "h.265" ? 0 : 1)
-                .ThenByDescending(v => v.Bandwidth)
                 .ToList();
+
+            return PickTierVariants(deduped);
         }
         catch (Exception ex)
         {
@@ -335,20 +334,57 @@ public sealed class ITunesArtworkService
             pendingInfo = null;
         }
 
-        var preferred = list
-            .Where(v => Math.Max(v.Width, v.Height) >= 1080)
-            .ToList();
+        return PickTierVariants(list);
+    }
 
-        if (preferred.Count > 0)
-            return preferred;
+    // From every parsed HLS variant, keep at most two clean choices the UI can
+    // surface: a 1080p tier (max dimension in [900, 1600]) and a 2160p tier
+    // (max dimension >= 1900). For each tier, prefer h.265 then highest bandwidth.
+    // Labels are normalized so the UI shows "1080p" / "2160p" instead of the raw
+    // resolutions Apple ships (1438p, 2216p, 2732p, …).
+    private static IReadOnlyList<AnimatedArtworkVariant> PickTierVariants(
+        IReadOnlyList<AnimatedArtworkVariant> variants)
+    {
+        if (variants.Count == 0)
+            return Array.Empty<AnimatedArtworkVariant>();
 
-        var fallback = list
-            .OrderByDescending(v => Math.Max(v.Width, v.Height))
-            .FirstOrDefault();
+        // Prefer max-dim closest to the tier target (so the "1080p tier" actually
+        // gives us ~1080p, not a 1438p portrait crop), then prefer square aspect
+        // (the AnimatedCoverImage renders into a square buffer — non-square sources
+        // get stretched and look chunky), then h.265, then highest bandwidth.
+        AnimatedArtworkVariant? Pick(IEnumerable<AnimatedArtworkVariant> pool, int targetMaxDim)
+            => pool
+                .OrderBy(v => Math.Abs(Math.Max(v.Width, v.Height) - targetMaxDim))
+                .ThenBy(v => v.Width == v.Height ? 0 : 1)
+                .ThenBy(v => GetCodecFamily(v.Codec) == "h.265" ? 0 : 1)
+                .ThenByDescending(v => v.Bandwidth)
+                .FirstOrDefault();
 
+        var picked = new List<AnimatedArtworkVariant>(2);
+
+        var tier1080 = variants.Where(v =>
+        {
+            var p = Math.Max(v.Width, v.Height);
+            return p >= 900 && p < 1900;
+        });
+        var v1080 = Pick(tier1080, 1080);
+        if (v1080 != null)
+            picked.Add(v1080 with { Label = $"1080p · {GetCodecFamily(v1080.Codec)}" });
+
+        var tier2160 = variants.Where(v => Math.Max(v.Width, v.Height) >= 1900);
+        var v2160 = Pick(tier2160, 2160);
+        if (v2160 != null)
+            picked.Add(v2160 with { Label = $"2160p · {GetCodecFamily(v2160.Codec)}" });
+
+        if (picked.Count > 0)
+            return picked;
+
+        // Nothing reached 1080p — fall back to the single best lower-res variant
+        // so the user still sees *something* rather than an empty list.
+        var fallback = Pick(variants, 1080);
         return fallback == null
             ? Array.Empty<AnimatedArtworkVariant>()
-            : new[] { fallback };
+            : new[] { fallback with { Label = $"{Math.Max(fallback.Width, fallback.Height)}p · {GetCodecFamily(fallback.Codec)}" } };
     }
 
     private async Task<string?> GetTextAsync(string url, CancellationToken ct)

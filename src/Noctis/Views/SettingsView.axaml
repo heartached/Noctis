@@ -648,20 +648,18 @@
                                         </Button.ContextMenu>
                                         <StackPanel Spacing="8" HorizontalAlignment="Center">
                                             <Border Width="64" Height="40" CornerRadius="6"
-                                                    BorderBrush="#33000000" BorderThickness="1"
-                                                    ClipToBounds="True">
-                                                <Grid ColumnDefinitions="22,*">
-                                                    <Border Grid.Column="0"
-                                                            Background="{Binding SidebarHex}"/>
-                                                    <Border Grid.Column="1"
-                                                            Background="{Binding MainHex}">
-                                                        <Border Height="3" Width="30" CornerRadius="1.5"
-                                                                Margin="6,6,0,0"
-                                                                Background="{Binding AccentHex}"
-                                                                HorizontalAlignment="Left"
-                                                                VerticalAlignment="Top"/>
-                                                    </Border>
-                                                </Grid>
+                                                    Background="{Binding MainHex}"
+                                                    BorderBrush="{Binding SidebarHex}"
+                                                    BorderThickness="1">
+                                                <StackPanel Margin="6,5" Spacing="3">
+                                                    <Border Height="3" Width="30" CornerRadius="1.5"
+                                                            Background="{Binding AccentHex}" HorizontalAlignment="Left"/>
+                                                    <Border Height="3" Width="20" CornerRadius="1.5"
+                                                            Background="{Binding SidebarHex}" HorizontalAlignment="Left"/>
+                                                    <Border Height="3" Width="36" CornerRadius="1.5"
+                                                            Background="{Binding SidebarHex}" Opacity="0.65"
+                                                            HorizontalAlignment="Left"/>
+                                                </StackPanel>
                                             </Border>
                                             <TextBlock Text="{Binding Name}" FontSize="12"
                                                        HorizontalAlignment="Center"
@@ -769,15 +767,12 @@
                                                            FontSize="20" FontWeight="Light"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Border>
+                                            <Border Width="44" Height="44" CornerRadius="22"
+                                                    BorderBrush="White" BorderThickness="2"
+                                                    IsVisible="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).IsCustomAccentSelected}"/>
                                         </Panel>
                                     </controls:ColorPickerFlyout.SwatchContent>
                                 </controls:ColorPickerFlyout>
-
-                                <!-- Active ring when "Custom" is selected -->
-                                <Border Width="44" Height="44" CornerRadius="22"
-                                        BorderBrush="White" BorderThickness="2"
-                                        IsHitTestVisible="False"
-                                        IsVisible="{Binding IsCustomAccentSelected}"/>
                             </Panel>
                         </WrapPanel>
                     </StackPanel>

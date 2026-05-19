@@ -4,9 +4,11 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.ViewModels;
 
@@ -21,8 +23,11 @@ public partial class LyricsView : UserControl
     private LyricsViewModel? _subscribedVm;
     private bool _swatchScrollersWired;
     private bool _isNarrowMode;
+    private bool _isTimelineSeekDragging;
+    private readonly TranslateTransform _lyricsTimelineThumbTransform = new();
 
     private const double NarrowBreakpoint = 900;
+    private const double LyricsTimelineThumbSize = 16;
 
     public LyricsView()
     {
@@ -34,6 +39,15 @@ public partial class LyricsView : UserControl
             LyricsScrollViewer.PointerWheelChanged += OnLyricsPointerWheelChanged;
             LyricsScrollViewer.PropertyChanged += OnScrollViewerPropertyChanged;
         }
+
+        LyricsTimelineThumb.RenderTransform = _lyricsTimelineThumbTransform;
+        LyricsTimelineSlider.AddHandler(InputElement.PointerPressedEvent, OnTimelineSeekStart, RoutingStrategies.Tunnel);
+        LyricsTimelineSlider.AddHandler(InputElement.PointerMovedEvent, OnTimelineSeekMove, RoutingStrategies.Tunnel);
+        LyricsTimelineSlider.AddHandler(InputElement.PointerReleasedEvent, OnTimelineSeekEnd, RoutingStrategies.Tunnel);
+        LyricsTimelineSlider.PointerCaptureLost += OnTimelineSeekCaptureLost;
+        LyricsTimelineSlider.PropertyChanged += OnTimelineSliderPropertyChanged;
+        LyricsTimelineSlider.SizeChanged += (_, _) => UpdateTimelineSliderVisual();
+        DispatcherTimer.RunOnce(UpdateTimelineSliderVisual, TimeSpan.FromMilliseconds(10));
 
         // Mouse wheel → horizontal scroll for color swatch pickers.
         // The scrollers live inside a Flyout and are not realized until first open,
@@ -84,6 +98,13 @@ public partial class LyricsView : UserControl
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
+        if (_isTimelineSeekDragging)
+        {
+            _isTimelineSeekDragging = false;
+            if (DataContext is LyricsViewModel vm)
+                vm.Player.EndSeek();
+        }
+
         if (_subscribedVm != null)
         {
             _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
@@ -269,6 +290,81 @@ public partial class LyricsView : UserControl
             existing.Color = scb.Color;
     }
 
+    private void OnTimelineSliderPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == Slider.ValueProperty ||
+            e.Property.Name is nameof(Bounds) or nameof(IsEnabled))
+        {
+            UpdateTimelineSliderVisual();
+        }
+    }
+
+    private void UpdateTimelineSliderVisual()
+    {
+        if (LyricsTimelineSlider == null ||
+            LyricsTimelineTrackBackground == null ||
+            LyricsTimelineTrackFill == null ||
+            LyricsTimelineThumb == null)
+            return;
+
+        PillSliderVisualHelper.UpdateVisual(
+            LyricsTimelineSlider,
+            LyricsTimelineTrackBackground,
+            LyricsTimelineTrackFill,
+            LyricsTimelineThumb,
+            _lyricsTimelineThumbTransform,
+            LyricsTimelineThumbSize,
+            enabledBackgroundOpacity: 0.55,
+            disabledBackgroundOpacity: 0.25);
+    }
+
+    private void OnTimelineSeekStart(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not LyricsViewModel vm || sender is not Slider slider) return;
+        if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed) return;
+
+        _isTimelineSeekDragging = true;
+        vm.Player.BeginSeek();
+        e.Pointer.Capture(slider);
+        slider.Value = GetTimelineValueFromPointer(slider, e.GetPosition(slider));
+        e.Handled = true;
+    }
+
+    private void OnTimelineSeekMove(object? sender, PointerEventArgs e)
+    {
+        if (!_isTimelineSeekDragging || sender is not Slider slider) return;
+
+        slider.Value = GetTimelineValueFromPointer(slider, e.GetPosition(slider));
+        e.Handled = true;
+    }
+
+    private void OnTimelineSeekEnd(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_isTimelineSeekDragging) return;
+
+        _isTimelineSeekDragging = false;
+        e.Pointer.Capture(null);
+
+        if (DataContext is LyricsViewModel vm)
+            vm.Player.EndSeek();
+
+        e.Handled = true;
+    }
+
+    private void OnTimelineSeekCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (!_isTimelineSeekDragging) return;
+
+        _isTimelineSeekDragging = false;
+        if (DataContext is LyricsViewModel vm)
+            vm.Player.EndSeek();
+    }
+
+    private static double GetTimelineValueFromPointer(Slider slider, Point position)
+    {
+        return PillSliderVisualHelper.GetValueFromPointer(slider, position, LyricsTimelineThumbSize);
+    }
+
     private void CancelScrollAnimation()
     {
         _isProgrammaticScroll = false;
@@ -389,7 +485,7 @@ public partial class LyricsView : UserControl
                 }
 
                 var distance = Math.Abs(diff);
-                var durationMs = (int)Math.Min(800, Math.Max(500, distance * 0.7));
+                var durationMs = (int)Math.Min(1050, Math.Max(650, distance * 0.85));
                 AnimateScroll(LyricsScrollViewer, currentOffset, targetOffset, durationMs);
             }
             catch { }
@@ -398,7 +494,7 @@ public partial class LyricsView : UserControl
 
     /// <summary>
     /// Time-based scroll animation using Stopwatch for smooth, frame-accurate motion.
-    /// Uses ease-out-sine for the most natural, liquid-smooth deceleration.
+    /// Uses smootherstep easing so lyric movement glides in and out instead of jumping.
     /// </summary>
     private void AnimateScroll(ScrollViewer scrollViewer, double from, double to, int durationMs)
     {
@@ -417,8 +513,7 @@ public partial class LyricsView : UserControl
             var elapsed = sw.Elapsed.TotalMilliseconds;
             var t = Math.Min(1.0, elapsed / totalMs);
 
-            // Ease-out-sine: smooth continuous deceleration, no sudden start or stop
-            var eased = Math.Sin(t * Math.PI / 2.0);
+            var eased = SmootherStep(t);
             var value = from + (to - from) * eased;
 
             scrollViewer.Offset = new Vector(0, value);
@@ -434,6 +529,12 @@ public partial class LyricsView : UserControl
             }
         };
         timer.Start();
+    }
+
+    private static double SmootherStep(double t)
+    {
+        t = Math.Clamp(t, 0.0, 1.0);
+        return t * t * t * (t * (t * 6 - 15) + 10);
     }
 
 }

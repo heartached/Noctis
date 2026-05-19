@@ -151,10 +151,6 @@ public class VlcAudioPlayer : IAudioPlayer
         // Audio-optimized flags for high-quality music playback:
         //   --audio-resampler=speex : Use Speex resampler (high quality, universally available)
         //   --speex-resampler-quality=10 : Maximum quality resampling (0=fast, 10=best)
-        //   --file-caching=0      : Disable file read-ahead buffer. This is the
-        //                           documented fix for VLC's 13-year seek stutter bug —
-        //                           the caching delay is the root cause of audio
-        //                           glitches heard after seeking to a new position.
         //   --no-video/spu        : skip video & subtitle pipelines entirely
         //   --no-audio-time-stretch: disable time-stretching that degrades quality
         //   --demux=avformat      : Force FFmpeg avformat demuxer for all audio files.
@@ -164,7 +160,6 @@ public class VlcAudioPlayer : IAudioPlayer
         //                           Xing header and builds an O(1) seek table on open,
         //                           fixing per-song variation in seek quality. Also needed
         //                           for AAC/M4A Lossless seek smoothness.
-        //   NOTE: --gain=0 was removed — it multiplies audio by 0 (silence!)
         //   --aout=mmdevice: WASAPI output. Required so VLC follows the
         //   Windows default-device change at runtime — WaveOut binds to the
         //   endpoint that was default at stream-open time and does not
@@ -173,6 +168,14 @@ public class VlcAudioPlayer : IAudioPlayer
         //   The vlc_AudioSessionEvents_OnSimpleVolumeChanged static during
         //   slider drag (the original reason WaveOut was selected) is
         //   mitigated by the throttling + deadband in ScheduleVolumeWrite.
+        //
+        // NOTE on caching: VLC's defaults (file-caching=300ms, clock-jitter=5000ms) are
+        // intentionally kept. Earlier versions set all caching to 0 to "fix" VBR-MP3
+        // seek stutter, but that workaround was sourced from a thread that tested only
+        // on high-end SSDs with wired output. On Bluetooth / high-latency endpoints the
+        // zero-buffer settings cause output-side underruns and audible stutter (issue #1).
+        // The real seek-stutter fix is --demux=avformat above, which builds an O(1) seek
+        // index at open time regardless of caching.
         var vlcArgs = new List<string>
         {
             "--no-video",
@@ -180,11 +183,7 @@ public class VlcAudioPlayer : IAudioPlayer
             "--no-spu",
             "--input-repeat=0",
             "--demux=avformat",
-            "--file-caching=0",
-            "--live-caching=0",
-            "--disc-caching=0",
             "--no-audio-time-stretch",
-            "--clock-jitter=0",
         };
         // The speex resampler module + its quality flag are not always present
         // in third-party VLC builds (notably the macOS VLC.app distribution).

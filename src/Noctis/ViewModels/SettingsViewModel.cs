@@ -724,8 +724,7 @@ public partial class SettingsViewModel : ViewModelBase
         ActiveCustomThemeId = id;
         SetActiveThemeFlags("__Custom");
 
-        ActiveAccentHex = tile.AccentHex;
-        AccentChanged?.Invoke(this, tile.AccentHex);
+        ApplyAccent(tile.AccentHex, "Custom");
         ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
 
         if (_settingsLoaded) _ = SaveAsync();
@@ -742,6 +741,7 @@ public partial class SettingsViewModel : ViewModelBase
         {
             ActiveCustomThemeId = null;
             SetActiveThemeFlags("Gray");
+            ApplyAccent("#E74856", "Crimson");
             ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
         }
 
@@ -897,6 +897,10 @@ public partial class SettingsViewModel : ViewModelBase
 
     private void ApplyTheme(string themeKey)
     {
+        ActiveCustomThemeId = null;
+        foreach (var t in CustomThemes)
+            t.IsActive = false;
+
         SetActiveThemeFlags(themeKey);
         ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
         _ = SaveAsync();

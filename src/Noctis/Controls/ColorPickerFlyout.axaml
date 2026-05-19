@@ -3,7 +3,40 @@
              x:Class="Noctis.Controls.ColorPickerFlyout"
              x:Name="Root">
 
+    <UserControl.Styles>
+        <Style Selector="Button.color-swatch-btn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.color-swatch-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.color-swatch-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="TextBox.hex-input /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.hex-input:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="TextBox.hex-input:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="TextBox.hex-input:focus-within /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+    </UserControl.Styles>
+
     <Button x:Name="SwatchButton"
+            Classes="color-swatch-btn"
             Cursor="Hand"
             Background="Transparent"
             BorderThickness="0"
@@ -99,6 +132,7 @@
                                         VerticalAlignment="Center"
                                         Margin="0,0,8,0"/>
                                 <TextBox x:Name="HexInput"
+                                         Classes="hex-input"
                                          Grid.Column="1"
                                          Watermark="#RRGGBB"
                                          FontFamily="Consolas, Courier New, monospace"

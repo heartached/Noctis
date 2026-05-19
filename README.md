@@ -18,25 +18,15 @@ A music player that respects what's yours. Zero tracking, total control.
 
 ---
 
-### Home
+## Screenshots
 
-![Home](docs/images/Home.png)
+![](docs/images/home.png)
 
-### Synced Lyrics
+![](docs/images/lyrics.png)
 
-![Lyrics](docs/images/lyrics.png)
+![](docs/images/coverflow.png)
 
-### Cover Flow
-
-![Cover Flow](docs/images/coverflow.png)
-
-### Albums
-
-![Albums](docs/images/albums.png)
-
-### Discord Rich Presence
-
-<img src="docs/images/discord.png" width="280">
+![](docs/images/settingsxalbums.png)
 
 ---
 
