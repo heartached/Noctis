@@ -24,6 +24,7 @@ public partial class LyricsView : UserControl
     private bool _swatchScrollersWired;
     private bool _isNarrowMode;
     private bool _isTimelineSeekDragging;
+    private bool _isJumpingOnAttach;
     private readonly TranslateTransform _lyricsTimelineThumbTransform = new();
 
     private const double NarrowBreakpoint = 900;
@@ -85,14 +86,20 @@ public partial class LyricsView : UserControl
         // Reset scroll guard so re-entering the page always scrolls to the active line
         _lastScrolledIndex = -1;
 
-        // Re-sync lyrics after the view is fully laid out.
-        // EnsureLyricsForCurrentTrack may have already been called by the navigation code
-        // before the view was attached, so PropertyChanged on ActiveLineIndex was missed.
-        DispatcherTimer.RunOnce(() =>
+        if (DataContext is LyricsViewModel vm)
         {
-            if (DataContext is LyricsViewModel vm)
+            vm.IsAutoFollowPaused = false;
+            _isJumpingOnAttach = true;
+            try
+            {
                 vm.EnsureLyricsForCurrentTrack();
-        }, TimeSpan.FromMilliseconds(50));
+            }
+            finally
+            {
+                _isJumpingOnAttach = false;
+            }
+            JumpToActiveLineWhenReady(vm.ActiveLineIndex);
+        }
 
     }
 
@@ -222,6 +229,9 @@ public partial class LyricsView : UserControl
         {
             if (sender is LyricsViewModel vm)
             {
+                if (_isJumpingOnAttach)
+                    return;
+
                 // Plain mode: no active-line tracking — keep the list still.
                 if (!vm.IsSyncTabSelected)
                 {
@@ -490,6 +500,46 @@ public partial class LyricsView : UserControl
             }
             catch { }
         }, TimeSpan.FromMilliseconds(10));
+    }
+
+    private void JumpToActiveLineWhenReady(int index)
+    {
+        if (index < 0)
+            return;
+
+        _lastScrolledIndex = index;
+        CancelScrollAnimation();
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                if (LyricsItemsControl == null || index >= LyricsItemsControl.ItemCount) return;
+
+                var presenter = LyricsItemsControl.GetVisualDescendants()
+                    .OfType<ItemsPresenter>()
+                    .FirstOrDefault();
+                if (presenter == null) return;
+
+                var panel = presenter.GetVisualChildren().FirstOrDefault() as Panel;
+                if (panel == null || index >= panel.Children.Count) return;
+
+                var targetChild = panel.Children[index];
+                if (LyricsScrollViewer == null) return;
+
+                var childBounds = targetChild.TransformToVisual(panel);
+                if (childBounds == null) return;
+
+                var childTop = childBounds.Value.Transform(new Point(0, 0)).Y;
+                var childHeight = targetChild.Bounds.Height;
+                var viewportHeight = LyricsScrollViewer.Viewport.Height;
+
+                var targetOffset = childTop - (viewportHeight * 0.22) + (childHeight / 2.0);
+                targetOffset = Math.Max(0, targetOffset);
+                LyricsScrollViewer.Offset = new Vector(0, targetOffset);
+            }
+            catch { }
+        }, DispatcherPriority.Loaded);
     }
 
     /// <summary>

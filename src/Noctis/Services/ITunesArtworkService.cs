@@ -230,6 +230,56 @@ public sealed class ITunesArtworkService
 
     private static string CleanUrl(string u) => u.Replace("\\u002F", "/").Replace("\\/", "/");
 
+    /// <summary>
+    /// Resolves a single album by Apple/iTunes collection ID via the public /lookup
+    /// endpoint. Used as a manual fallback when /search fails to surface an album
+    /// (some catalog entries are reachable by ID but not by free-text search).
+    /// </summary>
+    public async Task<ArtworkCandidate?> LookupAlbumByIdAsync(long collectionId, CancellationToken ct = default)
+    {
+        if (collectionId <= 0) return null;
+
+        try
+        {
+            var url = $"{LookupUrl}?id={collectionId}&country=us";
+            using var resp = await _http.GetAsync(url, ct);
+            if (!resp.IsSuccessStatusCode) return null;
+
+            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+
+            if (!doc.RootElement.TryGetProperty("results", out var results) ||
+                results.ValueKind != JsonValueKind.Array)
+                return null;
+
+            foreach (var item in results.EnumerateArray())
+            {
+                if (!item.TryGetProperty("collectionId", out var idNode) ||
+                    !idNode.TryGetInt64(out var id))
+                    continue;
+
+                var name = item.TryGetProperty("collectionName", out var n) ? n.GetString() ?? "" : "";
+                var artistName = item.TryGetProperty("artistName", out var a) ? a.GetString() ?? "" : "";
+                var artworkUrl = item.TryGetProperty("artworkUrl100", out var t) ? t.GetString() ?? "" : "";
+                var viewUrl = item.TryGetProperty("collectionViewUrl", out var v) ? v.GetString() ?? "" : "";
+
+                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(artworkUrl))
+                    continue;
+
+                var thumb = RewriteArtworkUrl(artworkUrl, "300x300bb");
+                var standard = RewriteArtworkUrl(artworkUrl, "1000x1000bb");
+                var hiRes = BuildUncompressedArtworkUrl(artworkUrl) ?? RewriteArtworkUrl(artworkUrl, "100000x100000-999");
+                return new ArtworkCandidate(id, name, artistName, thumb, standard, hiRes, viewUrl);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[iTunes] lookup failed: {ex.Message}");
+        }
+
+        return null;
+    }
+
     private async Task AddSearchResultsAsync(
         Dictionary<long, ArtworkCandidate> candidates,
         string term,

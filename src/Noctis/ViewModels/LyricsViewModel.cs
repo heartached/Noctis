@@ -690,8 +690,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private void ViewAlbum()
     {
         var track = _player.CurrentTrack;
-        if (track != null)
-            _viewAlbumAction?.Invoke(track);
+        if (track == null) return;
+
+        Dispatcher.UIThread.Post(
+            () => _viewAlbumAction?.Invoke(track),
+            DispatcherPriority.Background);
     }
 
     [RelayCommand]
@@ -1096,6 +1099,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
 
         AutoSelectTab();
+        RefreshActiveLyricPosition();
         CanSaveToFile = true;
         CanRemoveLyrics = true;
         ShowSearchButton = false;
@@ -1220,17 +1224,35 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             // whether playing or paused.
             if (_hasSyncedLyrics && IsSyncTabSelected)
             {
-                // Force full refresh: reset tracked state so UpdateActiveLine treats the
-                // current line as a new match (fires PropertyChanged + UpdateLineOpacities).
-                _currentActiveLine = null;
-                ActiveLineIndex = -1;
-                UpdateActiveLine(_player.Position);
+                RefreshActiveLyricPosition();
 
                 // Restart sync timer if playing
                 if (_player.State == Models.PlaybackState.Playing && !_lyricsSyncTimer.IsEnabled)
                     _lyricsSyncTimer.Start();
             }
+            else
+            {
+                OnPropertyChanged(nameof(ActiveLyricLines));
+            }
         }
+    }
+
+    private void RefreshActiveLyricPosition()
+    {
+        if (_hasSyncedLyrics && IsSyncTabSelected && LyricLines.Count > 0)
+        {
+            _lineCursor = 0;
+            _lastSyncPosition = TimeSpan.MinValue;
+            UpdateActiveLine(_player.Position);
+            UpdateLineOpacities(ActiveLineIndex);
+            OnPropertyChanged(nameof(ActiveLineIndex));
+        }
+        else
+        {
+            UpdateLineOpacities(-1);
+        }
+
+        OnPropertyChanged(nameof(ActiveLyricLines));
     }
 
     private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -1433,6 +1455,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             AutoSelectTab();
             LyricsSourceName = string.Empty;
             if (probe.FromCache) CanRemoveLyrics = true;
+            RefreshActiveLyricPosition();
 
             if (_hasSyncedLyrics && IsSyncTabSelected && _player.State == Models.PlaybackState.Playing)
                 _lyricsSyncTimer.Start();
@@ -1459,6 +1482,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             AutoSelectTab();
             LyricsSourceName = string.Empty;
             CanRemoveLyrics = true;
+            RefreshActiveLyricPosition();
             return;
         }
 
@@ -1466,6 +1490,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         DebugLogger.Warn(DebugLogger.Category.Lyrics, "NoLyricsFound", $"title={track.Title}, artist={track.Artist}");
         ShowSearchButton = true;
         AutoSelectTab();
+        RefreshActiveLyricPosition();
     }
 
     /// <summary>Applies embedded SyncedLyrics / Lyrics tags to the collections (in-memory, no I/O).</summary>
@@ -1523,6 +1548,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         AutoSelectTab();
         LyricsSourceName = string.Empty;
+        RefreshActiveLyricPosition();
     }
 
     /// <summary>Reads the first matching sidecar file for a track; returns null on any failure or no match.</summary>

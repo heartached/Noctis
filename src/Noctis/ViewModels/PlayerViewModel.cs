@@ -438,8 +438,12 @@ public partial class PlayerViewModel : ViewModelBase
     [RelayCommand]
     private void ViewCurrentTrackAlbum()
     {
-        if (CurrentTrack == null) return;
-        _viewAlbumAction?.Invoke(CurrentTrack);
+        var track = CurrentTrack;
+        if (track == null) return;
+
+        Dispatcher.UIThread.Post(
+            () => _viewAlbumAction?.Invoke(track),
+            DispatcherPriority.Background);
     }
 
     [RelayCommand]
