@@ -50,6 +50,24 @@ public partial class MetadataWindow : Window
     {
         DataContext = viewModel;
         viewModel.CloseRequested += (_, _) => Close();
+
+        // Avalonia's Flyout.IsOpen binding receives state from the flyout but
+        // does NOT invoke Hide() when the source property flips to false. We
+        // bridge it manually so the VM can dismiss the flyout after the user
+        // picks a variant (download then runs in the background).
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MetadataViewModel.IsAnimatedArtworkSearchOpen) &&
+                !viewModel.IsAnimatedArtworkSearchOpen)
+            {
+                (SearchAnimatedArtworkButton?.Flyout as Avalonia.Controls.Flyout)?.Hide();
+            }
+            else if (e.PropertyName == nameof(MetadataViewModel.IsArtworkSearchOpen) &&
+                !viewModel.IsArtworkSearchOpen)
+            {
+                (SearchArtworkBtn?.Flyout as Avalonia.Controls.Flyout)?.Hide();
+            }
+        };
     }
 
     private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)

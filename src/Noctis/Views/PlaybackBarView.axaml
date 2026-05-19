@@ -316,8 +316,7 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Height="50"
-                Width="650"
-                BoxShadow="0 12 30 0 #55000000, 0 1 0 0 #22FFFFFF">
+                Width="650">
             <Border.Transitions>
                 <Transitions>
                     <DoubleTransition Property="Width" Duration="0:0:0.2">
@@ -328,7 +327,7 @@
                 </Transitions>
             </Border.Transitions>
 
-            <Grid>
+            <Grid HorizontalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/> <!-- Playback controls -->
                     <ColumnDefinition Width="Auto"/> <!-- Album art + track info -->
@@ -456,7 +455,8 @@
                       VerticalAlignment="Center"
                       Margin="0,0,6,0"
                       Background="Transparent"
-                      ColumnDefinitions="Auto,*">
+                      ColumnDefinitions="Auto,*"
+                      IsVisible="{Binding !IsLyricsPageActive}">
 
                     <!-- Album art thumbnail -->
                     <Border Grid.Column="0"
@@ -633,7 +633,7 @@
                             Orientation="Horizontal"
                             Spacing="2"
                             VerticalAlignment="Center"
-                            Margin="-16,0,8,0">
+                            Margin="-16,0,0,0">
 
                     <!-- More options button -->
                     <Button x:Name="OptionsButton"
@@ -737,7 +737,10 @@
                                 </MenuItem>
                                 <!-- Lyrics-mode entries (only visible when the bar is mounted inside the lyrics page) -->
                                 <Separator IsVisible="{Binding IsLyricsPageActive}"/>
-                                <MenuItem Header="Lyrics Display" IsVisible="{Binding IsLyricsPageActive}">
+                                <MenuItem x:Name="LyricsDisplayMenuItem"
+                                          Header="Lyrics Display"
+                                          IsVisible="{Binding IsLyricsPageActive}"
+                                          PointerEntered="OnLyricsDisplayMenuItemPointerEntered">
                                     <MenuItem Header="Synced"
                                               Command="{Binding SetLyricsSyncedCommand}"
                                               IsEnabled="{Binding IsLyricsSyncedAvailable}">
@@ -815,17 +818,15 @@
                         </Border>
                     </Button>
 
-                    <!-- Volume control with expandable horizontal slider -->
-                    <StackPanel x:Name="VolumeContainer"
-                                Orientation="Horizontal"
-                                Spacing="0"
-                                VerticalAlignment="Center"
-                                PointerEntered="OnVolumeContainerEntered"
-                                PointerExited="OnVolumeContainerExited">
-
-                        <!-- Volume icon button -->
-                        <Button Classes="secondary-btn"
-                                Command="{Binding ToggleMuteCommand}"
+                    <!-- Volume control: clicking the icon opens a small slider popup above it.
+                         Click 1 opens the popup; click 2 (while open) toggles mute and keeps the
+                         popup visible. Moving the cursor off both the icon and the popup closes it. -->
+                    <Panel x:Name="VolumeContainer" VerticalAlignment="Center">
+                        <Button x:Name="VolumeButton"
+                                Classes="secondary-btn"
+                                Click="OnVolumeIconClick"
+                                PointerEntered="OnVolumeButtonPointerEntered"
+                                PointerExited="OnVolumeButtonPointerExited"
                                 ToolTip.Tip="Volume"
                                 Width="34" Height="34">
                             <Panel>
@@ -849,48 +850,50 @@
                             </Panel>
                         </Button>
 
-                        <!-- Expandable slider area with width animation -->
-                        <Panel VerticalAlignment="Center" Margin="-14,0,0,0">
-                            <!-- Volume percentage floating above (outside clipping container) -->
-                            <Canvas Width="94"
-                                    Height="20"
-                                    VerticalAlignment="Center"
-                                    IsHitTestVisible="False">
-                                <TextBlock x:Name="VolumePercentageBadge"
-                                           Text="{Binding Volume}"
-                                           FontSize="13"
-                                           FontWeight="SemiBold"
-                                           Foreground="White"
-                                           Opacity="0"
-                                           IsVisible="False"
-                                           Canvas.Top="-18">
-                                    <TextBlock.Transitions>
-                                        <Transitions>
-                                            <DoubleTransition Property="Opacity" Duration="0:0:0.06"/>
-                                        </Transitions>
-                                    </TextBlock.Transitions>
-                                </TextBlock>
-                            </Canvas>
-
-                            <!-- Clipping container for slider -->
-                            <Border x:Name="VolumeSliderContainer"
-                                    Width="0"
-                                    Height="34"
-                                    ClipToBounds="True"
-                                    VerticalAlignment="Center">
+                        <Popup x:Name="VolumeFlyout"
+                               PlacementTarget="{Binding #VolumeButton}"
+                               Placement="Top"
+                               PlacementAnchor="Bottom"
+                               PlacementGravity="Top"
+                               VerticalOffset="-4"
+                               IsLightDismissEnabled="False">
+                            <Border x:Name="VolumeFlyoutContent"
+                                    Background="{DynamicResource IslandBackground}"
+                                    BorderBrush="{DynamicResource IslandBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="999"
+                                    Padding="10,6"
+                                    BoxShadow="0 4 14 0 #50000000"
+                                    Opacity="0"
+                                    PointerEntered="OnVolumeFlyoutPointerEntered"
+                                    PointerExited="OnVolumeFlyoutPointerExited">
+                                <Border.RenderTransform>
+                                    <TranslateTransform Y="6">
+                                        <TranslateTransform.Transitions>
+                                            <Transitions>
+                                                <DoubleTransition Property="Y" Duration="0:0:0.18">
+                                                    <DoubleTransition.Easing>
+                                                        <CubicEaseOut/>
+                                                    </DoubleTransition.Easing>
+                                                </DoubleTransition>
+                                            </Transitions>
+                                        </TranslateTransform.Transitions>
+                                    </TranslateTransform>
+                                </Border.RenderTransform>
                                 <Border.Transitions>
                                     <Transitions>
-                                        <DoubleTransition Property="Width" Duration="0:0:0.2">
+                                        <DoubleTransition Property="Opacity" Duration="0:0:0.16">
                                             <DoubleTransition.Easing>
                                                 <CubicEaseOut/>
                                             </DoubleTransition.Easing>
                                         </DoubleTransition>
                                     </Transitions>
                                 </Border.Transitions>
-
-                                <Grid Width="94" VerticalAlignment="Center">
+                                <Grid Width="84"
+                                      Height="20"
+                                      VerticalAlignment="Center">
                                     <Canvas x:Name="VolumeVisual"
-                                            Width="94"
+                                            Width="84"
                                             Height="20"
                                             ClipToBounds="False"
                                             IsHitTestVisible="False">
@@ -913,18 +916,17 @@
                                                 BoxShadow="0 1 3 0 #40000000"
                                                 Canvas.Top="3"/>
                                     </Canvas>
-                                    <!-- Horizontal volume slider -->
                                     <Slider Classes="volume-horizontal"
                                             Value="{Binding Volume, Mode=TwoWay}"
                                             Minimum="0" Maximum="100"
-                                            Width="94"
+                                            Width="84"
                                             VerticalAlignment="Center"
                                             Margin="0"
                                             x:Name="VolumeSlider"/>
                                 </Grid>
                             </Border>
-                        </Panel>
-                    </StackPanel>
+                        </Popup>
+                    </Panel>
                 </StackPanel>
 
             </Grid>

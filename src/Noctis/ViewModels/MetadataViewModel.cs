@@ -69,15 +69,20 @@ public partial class MetadataViewModel : ViewModelBase
     public ObservableCollection<ArtworkSearchResult> ArtworkSearchResults { get; } = new();
     public ObservableCollection<AnimatedArtworkSearchResult> AnimatedArtworkSearchResults { get; } = new();
     [ObservableProperty] private bool _isSearchingArtwork;
+    [ObservableProperty] private bool _isDownloadingArtwork;
     [ObservableProperty] private bool _hasArtworkSearchResults;
     [ObservableProperty] private string _artworkSearchStatus = string.Empty;
     [ObservableProperty] private bool _isArtworkSearchOpen;
 
     // ── iTunes animated-cover search ──
     [ObservableProperty] private bool _isSearchingAnimatedCover;
+    [ObservableProperty] private bool _isDownloadingAnimatedCover;
     [ObservableProperty] private bool _hasAnimatedArtworkSearchResults;
     [ObservableProperty] private bool _isAnimatedArtworkSearchOpen;
     [ObservableProperty] private string _animatedSearchStatus = string.Empty;
+    // Path to a small variant downloaded only to drive the live preview inside
+    // the search popup. Cleared/replaced on every search; deleted when no longer used.
+    [ObservableProperty] private string? _animatedPreviewPath;
 
     public string AnimatedCoverFileName => string.IsNullOrEmpty(AnimatedCoverPath) ? string.Empty : Path.GetFileName(AnimatedCoverPath);
     partial void OnAnimatedCoverPathChanged(string? value) => OnPropertyChanged(nameof(AnimatedCoverFileName));
@@ -392,22 +397,19 @@ public partial class MetadataViewModel : ViewModelBase
             try { cachedData = File.ReadAllBytes(artPath); } catch { }
         }
 
-        byte[]? extractedData = null;
-        try { extractedData = _metadata.ExtractAlbumArt(_track.FilePath); } catch { }
-
-        var preferredData = SelectPreferredArtworkData(cachedData, extractedData);
+        // The persisted cache file is the source of truth for "does this album
+        // have a cover in Noctis." If the user removed it, cachedData is null
+        // on purpose. We must not silently fall back to extracting from the
+        // audio file's embedded tag here — every track in the album still has
+        // its own embedded copy, and WriteAlbumArt() during Remove can fail
+        // silently for any one of them (file locked, AV, etc.), causing the
+        // removed cover to come right back. Library scans/imports handle
+        // initial extraction-to-cache; the dialog must not re-do that work.
+        byte[]? preferredData = cachedData;
         if (preferredData == null || preferredData.Length == 0)
         {
             HasArtwork = false;
             return;
-        }
-
-        // If extraction found a better source than the cached file, refresh the on-disk cache.
-        if (ReferenceEquals(preferredData, extractedData) &&
-            extractedData != null && extractedData.Length > 0 &&
-            (cachedData == null || extractedData.Length > cachedData.Length))
-        {
-            try { _persistence.SaveArtwork(_track.AlbumId, extractedData); } catch { }
         }
 
         try
@@ -542,14 +544,16 @@ public partial class MetadataViewModel : ViewModelBase
 
     // ── iTunes Search Artwork / Animated ───────────────────────────────
 
-    [RelayCommand]
+    private int _artworkSearchGeneration;
+
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task SearchArtwork()
     {
         if (_itunes == null) { ArtworkSearchStatus = "Search service unavailable."; return; }
-        if (IsSearchingArtwork) return;
 
+        var gen = ++_artworkSearchGeneration;
         IsSearchingArtwork = true;
-        ArtworkSearchStatus = "Searching iTunes…";
+        ArtworkSearchStatus = "Searching…";
         ClearArtworkSearchResults();
         HasArtworkSearchResults = false;
         IsArtworkSearchOpen = true;
@@ -558,8 +562,23 @@ public partial class MetadataViewModel : ViewModelBase
             var artist = !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
             var album = GetArtworkSearchAlbumTerm();
             var results = await _itunes.SearchAlbumsAsync(artist, album);
+            if (gen != _artworkSearchGeneration) return;
+
+            if (!string.IsNullOrWhiteSpace(artist))
+            {
+                results = results
+                    .Where(r => string.Equals(
+                        (r.ArtistName ?? string.Empty).Trim(),
+                        artist.Trim(),
+                        StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
             foreach (var r in results)
-                ArtworkSearchResults.Add(await CreateArtworkSearchResultAsync(r));
+            {
+                var item = await CreateArtworkSearchResultAsync(r);
+                if (gen != _artworkSearchGeneration) return;
+                ArtworkSearchResults.Add(item);
+            }
 
             HasArtworkSearchResults = ArtworkSearchResults.Count > 0;
             ArtworkSearchStatus = HasArtworkSearchResults
@@ -568,11 +587,13 @@ public partial class MetadataViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            ArtworkSearchStatus = $"Search failed: {ex.Message}";
+            if (gen == _artworkSearchGeneration)
+                ArtworkSearchStatus = $"Search failed: {ex.Message}";
         }
         finally
         {
-            IsSearchingArtwork = false;
+            if (gen == _artworkSearchGeneration)
+                IsSearchingArtwork = false;
         }
     }
 
@@ -589,6 +610,7 @@ public partial class MetadataViewModel : ViewModelBase
         var candidate = result?.Candidate;
         if (candidate == null || _itunes == null) return;
 
+        IsDownloadingArtwork = true;
         ArtworkSearchStatus = "Downloading…";
         try
         {
@@ -616,6 +638,10 @@ public partial class MetadataViewModel : ViewModelBase
         {
             ArtworkSearchStatus = $"Failed: {ex.Message}";
         }
+        finally
+        {
+            IsDownloadingArtwork = false;
+        }
     }
 
     [RelayCommand]
@@ -628,10 +654,11 @@ public partial class MetadataViewModel : ViewModelBase
         if (IsSearchingAnimatedCover) return;
 
         IsSearchingAnimatedCover = true;
-        AnimatedSearchStatus = "Searching iTunes…";
+        AnimatedSearchStatus = "Searching…";
         AnimatedArtworkSearchResults.Clear();
         HasAnimatedArtworkSearchResults = false;
         IsAnimatedArtworkSearchOpen = true;
+        ClearAnimatedPreview();
         try
         {
             var artist = !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
@@ -646,7 +673,6 @@ public partial class MetadataViewModel : ViewModelBase
             var variants = new List<ITunesArtworkService.AnimatedArtworkVariant>();
             foreach (var r in results)
             {
-                AnimatedSearchStatus = $"Checking {r.CollectionName}…";
                 variants.AddRange(await _itunes.SearchAnimatedArtworkVariantsAsync(r.ViewUrl));
                 if (variants.Count > 0) break;
             }
@@ -657,11 +683,16 @@ public partial class MetadataViewModel : ViewModelBase
             HasAnimatedArtworkSearchResults = AnimatedArtworkSearchResults.Count > 0;
             if (!HasAnimatedArtworkSearchResults)
             {
-                AnimatedSearchStatus = "This album has no animated artwork on Apple Music.";
+                AnimatedSearchStatus = "Animated cover art is not available.";
                 return;
             }
 
             AnimatedSearchStatus = $"{AnimatedArtworkSearchResults.Count} animated option(s). Click one to apply.";
+
+            // Download the lowest-bitrate variant in the background to drive the
+            // live preview inside the popup. The user keeps a snappy UI; the
+            // preview swaps in when ready.
+            _ = LoadAnimatedPreviewAsync(variants);
         }
         catch (Exception ex)
         {
@@ -673,13 +704,52 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
+    private async Task LoadAnimatedPreviewAsync(IReadOnlyList<ITunesArtworkService.AnimatedArtworkVariant> variants)
+    {
+        if (variants.Count == 0) return;
+
+        // Smallest variant by max pixel dimension, then by bandwidth — gives us
+        // the fastest download for a preview-quality loop.
+        var preview = variants
+            .OrderBy(v => Math.Max(v.Width, v.Height))
+            .ThenBy(v => v.Bandwidth)
+            .First();
+
+        try
+        {
+            var path = await DownloadAnimatedVariantAsync(preview);
+            if (string.IsNullOrWhiteSpace(path) || !IsAnimatedArtworkSearchOpen)
+            {
+                if (!string.IsNullOrWhiteSpace(path)) TryDeleteFile(path);
+                return;
+            }
+
+            ClearAnimatedPreview();
+            AnimatedPreviewPath = path;
+        }
+        catch { /* preview is optional */ }
+    }
+
+    private void ClearAnimatedPreview()
+    {
+        var old = AnimatedPreviewPath;
+        AnimatedPreviewPath = null;
+        if (!string.IsNullOrWhiteSpace(old)) TryDeleteFile(old);
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); } catch { }
+    }
+
     [RelayCommand]
     private async Task SelectAnimatedArtworkResult(AnimatedArtworkSearchResult? result)
     {
         if (result == null || _itunes == null)
             return;
 
-        AnimatedSearchStatus = $"Downloading {result.Label}…";
+        IsDownloadingAnimatedCover = true;
+        AnimatedSearchStatus = "Downloading…";
         try
         {
             var tempPath = await DownloadAnimatedVariantAsync(result.Variant);
@@ -697,6 +767,10 @@ public partial class MetadataViewModel : ViewModelBase
         catch (Exception ex)
         {
             AnimatedSearchStatus = $"Download failed: {ex.Message}";
+        }
+        finally
+        {
+            IsDownloadingAnimatedCover = false;
         }
     }
 
@@ -946,8 +1020,27 @@ public partial class MetadataViewModel : ViewModelBase
         }
         else if (_artworkRemoved)
         {
-            _metadata.WriteAlbumArt(_track.FilePath, null);
-            ArtworkCache.Invalidate(_persistence.GetArtworkPath(_track.AlbumId));
+            // Artwork in this app is per-album: the persisted PNG is keyed by
+            // AlbumId, and every track of that album carries its own embedded
+            // copy in the audio tag. Clearing only _track.FilePath leaves the
+            // other album tracks with intact embedded art, so any later load
+            // path (LoadArtwork, library import) re-extracts and resurrects
+            // the cover. Strip the tag from every track of the album.
+            var albumTracks = _albumTracks
+                ?? _library.Tracks.Where(t => t.AlbumId == _track.AlbumId).ToList();
+            if (albumTracks.Count == 0) albumTracks = new List<Track> { _track };
+            foreach (var t in albumTracks)
+            {
+                try { _metadata.WriteAlbumArt(t.FilePath, null); } catch { }
+                t.AlbumArtworkPath = null;
+            }
+
+            // Delete the persisted cache file too — invalidating the in-memory
+            // cache alone leaves the PNG on disk, so the next album load reads
+            // it back and the cover appears to "un-remove" itself.
+            var artPath = _persistence.GetArtworkPath(_track.AlbumId);
+            try { if (File.Exists(artPath)) File.Delete(artPath); } catch { }
+            ArtworkCache.Invalidate(artPath);
         }
         else if (oldAlbumId != _track.AlbumId)
         {
@@ -1160,16 +1253,7 @@ public sealed class AnimatedArtworkSearchResult
     public ITunesArtworkService.AnimatedArtworkVariant Variant { get; }
     public string Label => Variant.Label;
     public string Detail
-    {
-        get
-        {
-            var resolution = Variant.Width > 0 && Variant.Height > 0
-                ? $"{Variant.Width}x{Variant.Height}"
-                : "video";
-            var mbps = Variant.Bandwidth > 0
-                ? $" · {Variant.Bandwidth / 1_000_000.0:0.#} Mbps"
-                : string.Empty;
-            return $"{resolution}{mbps}";
-        }
-    }
+        => Variant.Bandwidth > 0
+            ? $"{Variant.Bandwidth / 1_000_000.0:0.#} Mbps"
+            : string.Empty;
 }

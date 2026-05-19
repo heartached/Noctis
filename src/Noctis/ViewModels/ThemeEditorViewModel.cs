@@ -49,6 +49,7 @@ public partial class ThemeEditorViewModel : ObservableObject
     [ObservableProperty] private IBrush? _previewIslandFg;
     [ObservableProperty] private IBrush? _previewIslandFgSecondary;
     [ObservableProperty] private IBrush? _previewSidebarHover;
+    [ObservableProperty] private IBrush? _previewOutline;
 
     // ── Validation ──
     public bool HasInvalidName => string.IsNullOrWhiteSpace(Name);
@@ -77,6 +78,7 @@ public partial class ThemeEditorViewModel : ObservableObject
         PreviewIslandFg           = (IBrush)dict["IslandForeground"];
         PreviewIslandFgSecondary  = (IBrush)dict["IslandForegroundSecondary"];
         PreviewSidebarHover       = (IBrush)dict["SidebarHoverBrush"];
+        PreviewOutline            = new SolidColorBrush(Color.Parse(IsDarkMode ? "#1FFFFFFF" : "#26000000"));
     }
 
     private CustomThemeDefinition ToDefinition() => new()

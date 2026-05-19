@@ -5,7 +5,7 @@
         x:Class="Noctis.Views.ThemeEditorDialog"
         x:DataType="vm:ThemeEditorViewModel"
         Title="Theme Editor"
-        Width="780" Height="540"
+        Width="920" Height="680"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -13,13 +13,14 @@
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
 
-    <Border Background="#50000000">
-        <Border CornerRadius="20"
-                ClipToBounds="True"
-                Background="{DynamicResource AppMainBackground}"
+    <Border Background="Transparent">
+        <Border CornerRadius="32"
                 HorizontalAlignment="Center" VerticalAlignment="Center"
                 Width="760" Height="520"
-                BoxShadow="0 8 32 0 #60000000">
+                BoxShadow="0 0 34 0 #66000000, 0 18 48 0 #80000000, 12 18 32 0 #4D000000">
+            <Border CornerRadius="32"
+                    ClipToBounds="True"
+                    Background="{DynamicResource AppMainBackground}">
             <DockPanel>
 
                 <!-- Bottom buttons (match MetadataWindow: Cancel left, accent Save right). -->
@@ -124,7 +125,7 @@
                     <!-- Right: live preview -->
                     <Border Grid.Column="1"
                             CornerRadius="14" ClipToBounds="True"
-                            BorderBrush="#1FFFFFFF" BorderThickness="1">
+                            BorderBrush="{Binding PreviewOutline}" BorderThickness="1">
                         <Grid ColumnDefinitions="120,*" RowDefinitions="*,Auto">
                             <!-- Fake sidebar -->
                             <Border Grid.Column="0" Grid.Row="0"
@@ -170,7 +171,9 @@
                             <Border Grid.ColumnSpan="2" Grid.Row="1"
                                     Margin="20,0,20,16"
                                     Padding="14,8" CornerRadius="999"
-                                    Background="{Binding PreviewIslandBg}">
+                                    Background="{Binding PreviewIslandBg}"
+                                    BorderBrush="{Binding PreviewOutline}"
+                                    BorderThickness="1">
                                 <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                     <Border Grid.Column="0" Width="28" Height="28"
                                             CornerRadius="4" Background="{Binding PreviewAccent}"/>
@@ -188,6 +191,7 @@
                     </Border>
                 </Grid>
             </DockPanel>
+            </Border>
         </Border>
     </Border>
 </Window>

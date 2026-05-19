@@ -443,13 +443,7 @@
                     CornerRadius="20"
                     Cursor="Hand"
                     Command="{Binding SearchLyricsCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Data="{StaticResource SearchGlobeIcon}"
-                             Width="13" Height="13"
-                             Foreground="White"
-                             VerticalAlignment="Center"/>
-                    <TextBlock Text="Search Lyrics" VerticalAlignment="Center"/>
-                </StackPanel>
+                <TextBlock Text="Search Lyrics" VerticalAlignment="Center"/>
             </Button>
         </StackPanel>
 

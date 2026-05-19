@@ -206,6 +206,19 @@
         <Style Selector="TextBlock.word-accent.current">
             <Setter Property="Opacity" Value="1.0"/>
         </Style>
+
+        <Style Selector="Slider.lyrics-timeline-slider">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{Binding LyricsSliderFilled}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
     </UserControl.Styles>
 
     <Grid x:Name="MainLayoutGrid" ColumnDefinitions="*,*"
@@ -222,7 +235,7 @@
             <StackPanel x:Name="LeftContentStack" VerticalAlignment="Center"
                         HorizontalAlignment="Center"
                         ClipToBounds="False"
-                        Width="630">
+                        Width="760">
                 <StackPanel.Transitions>
                     <Transitions>
                         <DoubleTransition Property="Width" Duration="0:0:0.25">
@@ -385,10 +398,64 @@
                               IsVisible="{Binding ShowMetadataFavoriteHeart}"/>
                 </StackPanel>
 
-                <!-- Standard playback bar (visually identical to the rest of the app) -->
+                <Grid x:Name="LyricsTimeline"
+                      Width="760"
+                      Margin="0,14,0,0"
+                      RowDefinitions="Auto,24"
+                      IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding Player.PositionText}"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="{Binding LyricsSubtleFg}"
+                                   VerticalAlignment="Center"
+                                   Margin="10,0,0,0"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Player.RemainingTimeText}"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="{Binding LyricsSubtleFg}"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <Grid Grid.Row="1"
+                          Height="24"
+                          ClipToBounds="False">
+                        <Canvas Height="24"
+                                ClipToBounds="False"
+                                IsHitTestVisible="False">
+                            <Border x:Name="LyricsTimelineTrackBackground"
+                                    Height="7"
+                                    CornerRadius="3.5"
+                                    Background="{Binding LyricsSliderUnfilled}"
+                                    Canvas.Top="8.5"/>
+                            <Border x:Name="LyricsTimelineTrackFill"
+                                    Height="7"
+                                    CornerRadius="3.5"
+                                    Background="{Binding LyricsSliderFilled}"
+                                    Canvas.Top="8.5"/>
+                            <Border x:Name="LyricsTimelineThumb"
+                                    Width="16"
+                                    Height="16"
+                                    CornerRadius="8"
+                                    Background="{Binding LyricsSliderThumb}"
+                                    BoxShadow="0 2 5 0 #40000000"
+                                    Canvas.Top="4"/>
+                        </Canvas>
+                        <Slider x:Name="LyricsTimelineSlider"
+                                Classes="lyrics-timeline-slider"
+                                Value="{Binding Player.PositionFraction, Mode=TwoWay}"
+                                Minimum="0"
+                                Maximum="1"
+                                Focusable="False"
+                                VerticalAlignment="Center"/>
+                    </Grid>
+                </Grid>
+
+                <!-- Lyrics-page playback controls; timeline and track metadata live above. -->
                 <views:PlaybackBarView DataContext="{Binding Player}"
-                                       HorizontalAlignment="Stretch"
-                                       Margin="0,12,0,0"/>
+                                        HorizontalAlignment="Stretch"
+                                        Margin="0,12,0,0"/>
 
                 <!-- Hidden host button anchoring the background-color flyout -->
                 <Button x:Name="LyricsColorPickerHost"
@@ -397,9 +464,9 @@
                         IsHitTestVisible="False"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Bottom"
-                        Margin="0,0,0,60">
+                        Margin="0,2,0,0">
                     <Button.Flyout>
-                        <Flyout Placement="TopEdgeAlignedRight">
+                        <Flyout Placement="Bottom">
                             <Flyout.FlyoutPresenterTheme>
                                 <ControlTheme TargetType="FlyoutPresenter" BasedOn="{StaticResource {x:Type FlyoutPresenter}}">
                                     <Setter Property="Background" Value="Transparent"/>

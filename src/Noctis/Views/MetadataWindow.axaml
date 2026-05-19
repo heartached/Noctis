@@ -783,18 +783,31 @@
                                 FontSize="11">
                             <Button.Flyout>
                                 <Flyout Placement="Top" ShowMode="Standard"
+                                        HorizontalOffset="-60"
                                         IsOpen="{Binding IsArtworkSearchOpen, Mode=TwoWay}">
-                                    <Border Padding="14" CornerRadius="12" MinWidth="500" MaxWidth="580"
-                                            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+                                    <Panel>
+                                        <!-- Compact "Searching..." pill (shown while loading, before results exist) -->
+                                        <Border CornerRadius="999"
+                                                Padding="16,8"
+                                                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                                                HorizontalAlignment="Center"
+                                                IsVisible="{Binding !HasArtworkSearchResults}">
+                                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                                <ProgressBar Width="60" Height="3" IsIndeterminate="True"
+                                                             IsVisible="{Binding IsSearchingArtwork}" />
+                                                <TextBlock Text="{Binding ArtworkSearchStatus}"
+                                                           FontSize="12"
+                                                           Opacity="0.85"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Full results card -->
+                                        <Border Padding="14" CornerRadius="12" MinWidth="500" MaxWidth="580"
+                                                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                                                IsVisible="{Binding HasArtworkSearchResults}">
                                         <StackPanel Spacing="10">
-                                            <TextBlock Text="Search Artwork — iTunes" FontSize="14" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding ArtworkSearchStatus}" FontSize="11" Opacity="0.6"
-                                                       TextWrapping="Wrap"/>
-                                            <ProgressBar IsIndeterminate="True"
-                                                         IsVisible="{Binding IsSearchingArtwork}"
-                                                         Height="3"/>
-                                            <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled"
-                                                          IsVisible="{Binding HasArtworkSearchResults}">
+                                            <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled">
                                                 <ItemsControl ItemsSource="{Binding ArtworkSearchResults}">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
@@ -844,8 +857,22 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
                                             </ScrollViewer>
+
+                                            <!-- Downloading indicator (shown after Standard/Highest is clicked) -->
+                                            <StackPanel Orientation="Horizontal"
+                                                        HorizontalAlignment="Center"
+                                                        Spacing="8"
+                                                        IsVisible="{Binding IsDownloadingArtwork}">
+                                                <ProgressBar Width="60" Height="3" IsIndeterminate="True"
+                                                             VerticalAlignment="Center"/>
+                                                <TextBlock Text="Downloading…"
+                                                           FontSize="11"
+                                                           Opacity="0.75"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
                                         </StackPanel>
-                                    </Border>
+                                        </Border>
+                                    </Panel>
                                 </Flyout>
                             </Button.Flyout>
                         </Button>
@@ -907,7 +934,8 @@
                                 CornerRadius="999"
                                 Cursor="Hand"
                                 FontSize="11" />
-                        <Button Content="Search Animated Artwork"
+                        <Button x:Name="SearchAnimatedArtworkButton"
+                                Content="Search Animated Artwork"
                                 Command="{Binding SearchAnimatedCoverCommand}"
                                 Classes="accent-btn"
                                 Background="{DynamicResource AccentColorBrush}"
@@ -921,53 +949,108 @@
                                 ToolTip.Tip="{Binding AnimatedSearchStatus}">
                             <Button.Flyout>
                                 <Flyout Placement="Top" ShowMode="Standard"
+                                        HorizontalOffset="-80"
                                         IsOpen="{Binding IsAnimatedArtworkSearchOpen, Mode=TwoWay}">
-                                    <Border Padding="14" CornerRadius="12" MinWidth="420" MaxWidth="520"
-                                            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
-                                        <StackPanel Spacing="10">
-                                            <TextBlock Text="Search Animated Artwork — Apple Music"
-                                                       FontSize="14"
-                                                       FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding AnimatedSearchStatus}"
-                                                       FontSize="11"
-                                                       Opacity="0.6"
-                                                       TextWrapping="Wrap"/>
-                                            <ProgressBar IsIndeterminate="True"
-                                                         IsVisible="{Binding IsSearchingAnimatedCover}"
-                                                         Height="3"/>
-                                            <ItemsControl ItemsSource="{Binding AnimatedArtworkSearchResults}"
-                                                          IsVisible="{Binding HasAnimatedArtworkSearchResults}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Button Background="#22FFFFFF"
-                                                                BorderThickness="0"
-                                                                CornerRadius="8"
-                                                                Padding="10,8"
-                                                                Margin="0,0,0,8"
-                                                                HorizontalContentAlignment="Stretch"
-                                                                Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectAnimatedArtworkResultCommand}"
-                                                                CommandParameter="{Binding}">
-                                                            <Grid ColumnDefinitions="*,Auto">
-                                                                <StackPanel Grid.Column="0" Spacing="2">
-                                                                    <TextBlock Text="{Binding Label}"
-                                                                               FontSize="12"
-                                                                               FontWeight="SemiBold" />
-                                                                    <TextBlock Text="{Binding Detail}"
-                                                                               FontSize="10"
-                                                                               Opacity="0.55" />
-                                                                </StackPanel>
-                                                                <TextBlock Grid.Column="1"
-                                                                           Text="Apply"
-                                                                           FontSize="11"
+                                    <Panel>
+                                        <Panel.Styles>
+                                            <!-- Kill the accent-button hover/press scale that gets clipped by the flyout border. -->
+                                            <Style Selector="Button.anim-variant:pointerover">
+                                                <Setter Property="RenderTransform" Value="scale(1)" />
+                                            </Style>
+                                            <Style Selector="Button.anim-variant:pressed">
+                                                <Setter Property="RenderTransform" Value="scale(1)" />
+                                            </Style>
+                                        </Panel.Styles>
+
+                                        <!-- Compact "Searching..." pill (shown while loading, before results exist) -->
+                                        <Border CornerRadius="999"
+                                                Padding="16,8"
+                                                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                                                HorizontalAlignment="Center"
+                                                IsVisible="{Binding !HasAnimatedArtworkSearchResults}">
+                                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                                <ProgressBar Width="60" Height="3" IsIndeterminate="True"
+                                                             IsVisible="{Binding IsSearchingAnimatedCover}" />
+                                                <TextBlock Text="{Binding AnimatedSearchStatus}"
+                                                           FontSize="12"
+                                                           Opacity="0.85"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Full results card -->
+                                        <Border Padding="18" CornerRadius="14" Width="320"
+                                                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                                                IsVisible="{Binding HasAnimatedArtworkSearchResults}">
+                                            <StackPanel Spacing="12">
+                                                <Border CornerRadius="10" ClipToBounds="True"
+                                                        HorizontalAlignment="Center"
+                                                        Width="240" Height="240"
+                                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                                    <Panel>
+                                                        <Image Source="{Binding ArtworkPreview}"
+                                                               Stretch="UniformToFill"/>
+                                                        <controls:AnimatedCoverImage
+                                                            Source="{Binding AnimatedPreviewPath}"
+                                                            IsActive="{Binding AnimatedPreviewPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                            IsVisible="{Binding AnimatedPreviewPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                    </Panel>
+                                                </Border>
+
+                                                <StackPanel Spacing="1" HorizontalAlignment="Center">
+                                                    <TextBlock Text="{Binding Album}"
+                                                               FontSize="13" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Artist}"
+                                                               FontSize="11" Opacity="0.6"
+                                                               HorizontalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+
+                                                <ItemsControl ItemsSource="{Binding AnimatedArtworkSearchResults}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal"
+                                                                        HorizontalAlignment="Center"
+                                                                        Spacing="10"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Button Classes="accent-btn anim-variant"
+                                                                    Background="{DynamicResource AccentColorBrush}"
+                                                                    Foreground="White"
+                                                                    BorderThickness="0"
+                                                                    CornerRadius="999"
+                                                                    Padding="16,7"
+                                                                    Cursor="Hand"
+                                                                    Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectAnimatedArtworkResultCommand}"
+                                                                    CommandParameter="{Binding}">
+                                                                <TextBlock Text="{Binding Label}"
+                                                                           FontSize="12"
                                                                            FontWeight="SemiBold"
-                                                                           VerticalAlignment="Center" />
-                                                            </Grid>
-                                                        </Button>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </StackPanel>
-                                    </Border>
+                                                                           HorizontalAlignment="Center"/>
+                                                            </Button>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                                <!-- Downloading indicator (shown after a variant is clicked) -->
+                                                <StackPanel Orientation="Horizontal"
+                                                            HorizontalAlignment="Center"
+                                                            Spacing="8"
+                                                            IsVisible="{Binding IsDownloadingAnimatedCover}">
+                                                    <ProgressBar Width="60" Height="3" IsIndeterminate="True"
+                                                                 VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Downloading…"
+                                                               FontSize="11"
+                                                               Opacity="0.75"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </Panel>
                                 </Flyout>
                             </Button.Flyout>
                         </Button>
@@ -989,19 +1072,6 @@
                                 Cursor="Hand"
                                 FontSize="11" />
                     </StackPanel>
-
-                    <!-- Animated search status banner -->
-                    <Border DockPanel.Dock="Bottom" Padding="12,8"
-                            CornerRadius="8" Margin="0,8,0,0"
-                            Background="#22FFFFFF"
-                            IsVisible="{Binding AnimatedSearchStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                            <ProgressBar Width="14" Height="14" IsIndeterminate="True"
-                                         IsVisible="{Binding IsSearchingAnimatedCover}"/>
-                            <TextBlock Text="{Binding AnimatedSearchStatus}" FontSize="11"
-                                       TextWrapping="Wrap" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
 
                     <Border x:Name="AnimatedCoverPreviewAnchor"
                             HorizontalAlignment="Center"
