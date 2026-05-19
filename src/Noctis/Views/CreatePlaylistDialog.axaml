@@ -36,7 +36,7 @@
                             Width="100"
                             Padding="0,8"
                             Classes="accent-btn"
-                            Background="#E74856"
+                            Background="{DynamicResource AccentColorBrush}"
                             Foreground="White"
                             FontWeight="SemiBold"
                             HorizontalContentAlignment="Center"
@@ -73,7 +73,7 @@
                              x:Name="NameTextBox" />
                     <TextBlock Text="Name is required"
                                FontSize="11"
-                               Foreground="#E74856"
+                               Foreground="{DynamicResource AccentColorBrush}"
                                IsVisible="{Binding ShowNameRequiredError}" />
                 </StackPanel>
 

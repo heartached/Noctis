@@ -19,6 +19,7 @@ public partial class MainWindow : Window
 
     private TaskbarIntegrationService? _taskbar;
     private EventHandler<string>? _themeChangedHandler;
+    private EventHandler<string>? _accentChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _playerPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _topBarPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _mainVmPropertyChangedHandler;
@@ -43,6 +44,13 @@ public partial class MainWindow : Window
                         app.SetTheme(themeKey);
                 };
                 vm.Settings.ThemeChanged += _themeChangedHandler;
+
+                _accentChangedHandler = (_, hex) =>
+                {
+                    if (Avalonia.Application.Current is App app)
+                        app.SetAccent(hex);
+                };
+                vm.Settings.AccentChanged += _accentChangedHandler;
 
                 // Load settings first so window placement is restored before the
                 // rest of init runs (avoids a visible resize jump on startup).
@@ -194,6 +202,9 @@ public partial class MainWindow : Window
         {
             if (_themeChangedHandler != null)
                 vm.Settings.ThemeChanged -= _themeChangedHandler;
+
+            if (_accentChangedHandler != null)
+                vm.Settings.AccentChanged -= _accentChangedHandler;
 
             if (_playerPropertyChangedHandler != null)
                 vm.Player.PropertyChanged -= _playerPropertyChangedHandler;
@@ -479,32 +490,8 @@ public partial class MainWindow : Window
                 Dispatcher.UIThread.Post(() => RootPanel.Focus(NavigationMethod.Pointer), DispatcherPriority.Background);
         }
 
-        if (DataContext is not MainWindowViewModel vm) return;
-
-        if (!vm.Player.IsQueuePopupOpen) return;
-        DebugLogger.Info(DebugLogger.Category.ContextMenu, "MainWindow.GlobalPointerPressed(Tunnel)",
-            $"queueOpen=true, source={e.Source?.GetType().Name}, will close queue popup");
-
-        // Don't close if click is inside the queue popup panel
-        var panel = this.FindControl<Border>("QueuePopupPanel");
-        if (panel is { IsVisible: true })
-        {
-            var pos2 = e.GetPosition(panel);
-            if (pos2.X >= 0 && pos2.Y >= 0 &&
-                pos2.X <= panel.Bounds.Width && pos2.Y <= panel.Bounds.Height)
-                return;
-        }
-
-        // Don't close if click is on the queue toggle button (let its command handle toggle)
-        var source = e.Source as Visual;
-        while (source != null)
-        {
-            if (source is Button { Tag: "QueueToggle" })
-                return;
-            source = source.GetVisualParent();
-        }
-
-        vm.Player.IsQueuePopupOpen = false;
+        // Queue popup is now sticky — it only closes via the Queue toggle button or Escape.
+        // Clicks elsewhere in the app (player controls, sidebar, content area) do not dismiss it.
     }
 
     private void OnQueueClearClick(object? sender, RoutedEventArgs e)
@@ -537,121 +524,119 @@ public partial class MainWindow : Window
             vm.Player.RemoveFromQueue(index);
     }
 
-    // ── Queue drag-to-reorder ──
+    // ── Queue drag-to-reorder (pointer-tracked, Apple Music style) ──
+    //
+    // The dragged row is rendered as a floating preview (#QueueDragPreview) that follows
+    // the pointer's Y position. The original ListBoxItem is hidden via Opacity=0 while the
+    // drag is active so its slot in the list stays reserved (no surrounding shift).
+    // On release we compute the target index and call Player.MoveInQueue.
+    //
+    // Notes:
+    // - No DragDrop.DoDragDrop. All tracking is via PointerPressed/Moved/Released on the row Border.
+    // - Pointer capture is taken only AFTER the user crosses the movement threshold, so single
+    //   clicks and double-taps continue to work normally for selection/play.
 
-    private Point _queueDragStart;
-    private bool _queueDragStarted;
+    private const double QueueDragThreshold = 6.0;
+
+    private Point _queueDragStartPos;
+    private bool _queueDragActive;
     private Track? _queueDragTrack;
-    private ListBoxItem? _dragSourceItem;
+    private int _queueDragSourceIndex = -1;
+    private double _queueDragRowOffsetY;
+    private ListBoxItem? _queueDragHiddenItem;
 
     private void OnQueueItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not Grid grid) return;
-        if (!e.GetCurrentPoint(grid).Properties.IsLeftButtonPressed) return;
+        if (sender is not Control rowControl) return;
+        if (rowControl.Tag is not Track track) return;
+        if (!e.GetCurrentPoint(rowControl).Properties.IsLeftButtonPressed) return;
+        if (DataContext is not MainWindowViewModel vm) return;
 
-        _queueDragStart = e.GetPosition(grid);
-        _queueDragStarted = false;
-        _queueDragTrack = grid.Tag as Track;
+        _queueDragTrack = track;
+        _queueDragSourceIndex = vm.Player.UpNext.IndexOf(track);
+        _queueDragRowOffsetY = e.GetPosition(rowControl).Y;
+        _queueDragStartPos = e.GetPosition(this);
+        _queueDragActive = false;
     }
 
-    private async void OnQueueItemPointerMoved(object? sender, PointerEventArgs e)
+    private void OnQueueItemPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (sender is not Grid grid) return;
-        if (_queueDragTrack == null || _queueDragStarted) return;
-        if (!e.GetCurrentPoint(grid).Properties.IsLeftButtonPressed) return;
+        if (_queueDragTrack == null) return;
+        if (sender is not Control rowControl) return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
 
-        var pos = e.GetPosition(grid);
-        if (Math.Abs(pos.X - _queueDragStart.X) < 8 && Math.Abs(pos.Y - _queueDragStart.Y) < 8)
-            return;
+        var pos = e.GetPosition(this);
+        if (!_queueDragActive)
+        {
+            if (Math.Abs(pos.X - _queueDragStartPos.X) < QueueDragThreshold &&
+                Math.Abs(pos.Y - _queueDragStartPos.Y) < QueueDragThreshold)
+                return;
 
-        _queueDragStarted = true;
+            StartQueueDrag(rowControl, e);
+        }
 
-        // Apply drag visual: reduce opacity of the source item
+        UpdateQueueDragPreviewPosition(e);
+        UpdateQueueDropIndicator(e);
+    }
+
+    private void OnQueueItemPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_queueDragActive)
+        {
+            CommitQueueDrop(e);
+        }
+        ResetQueueDragState();
+        if (sender is Control rowControl)
+            e.Pointer.Capture(null);
+    }
+
+    private void OnQueueItemPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        // Treat lost capture as a cancel — restore visuals without performing the move.
+        ResetQueueDragState();
+    }
+
+    private void StartQueueDrag(Control rowControl, PointerEventArgs e)
+    {
+        _queueDragActive = true;
+
+        // Capture the pointer so we keep receiving move/release events even if the cursor
+        // leaves the row's hit area.
+        e.Pointer.Capture(rowControl);
+
+        // Populate the floating preview with the dragged track and show it.
+        var preview = this.FindControl<Border>("QueueDragPreview");
+        if (preview != null && _queueDragTrack != null)
+        {
+            preview.DataContext = _queueDragTrack;
+            preview.IsVisible = true;
+        }
+
+        // Hide the original row container so its slot stays reserved without showing
+        // a duplicate of the dragged track.
         var listBox = this.FindControl<ListBox>("QueuePopupListBox");
-        if (listBox != null)
+        if (listBox != null && _queueDragSourceIndex >= 0)
         {
-            var idx = (DataContext as MainWindowViewModel)?.Player.UpNext.IndexOf(_queueDragTrack);
-            if (idx is >= 0)
-            {
-                _dragSourceItem = listBox.ContainerFromIndex(idx.Value) as ListBoxItem;
-                if (_dragSourceItem != null)
-                    _dragSourceItem.Opacity = 0.35;
-            }
-        }
-
-        var data = new DataObject();
-        data.Set("NoctisQueueTrack", _queueDragTrack);
-
-        try
-        {
-            await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
-        }
-        catch
-        {
-            // Drag cancelled or failed — non-critical
-        }
-        finally
-        {
-            ResetDragVisuals();
-            _queueDragTrack = null;
-            _queueDragStarted = false;
+            _queueDragHiddenItem = listBox.ContainerFromIndex(_queueDragSourceIndex) as ListBoxItem;
+            if (_queueDragHiddenItem != null)
+                _queueDragHiddenItem.Opacity = 0;
         }
     }
 
-    private void ResetDragVisuals()
+    private void UpdateQueueDragPreviewPosition(PointerEventArgs e)
     {
-        if (_dragSourceItem != null)
-        {
-            _dragSourceItem.Opacity = 1.0;
-            _dragSourceItem = null;
-        }
+        var wrapper = this.FindControl<Grid>("QueueListWrapper");
+        var preview = this.FindControl<Border>("QueueDragPreview");
+        if (wrapper == null || preview == null) return;
+        if (preview.RenderTransform is not TranslateTransform tt) return;
 
-        var indicator = this.FindControl<Border>("QueueDropIndicator");
-        if (indicator != null)
-            indicator.IsVisible = false;
+        // Track the same point inside the row that the user initially grabbed.
+        var pointerInWrapper = e.GetPosition(wrapper).Y;
+        tt.Y = pointerInWrapper - _queueDragRowOffsetY;
     }
 
-    protected override void OnLoaded(RoutedEventArgs e)
+    private void UpdateQueueDropIndicator(PointerEventArgs e)
     {
-        base.OnLoaded(e);
-
-        // Register drag-drop for file import on both the Window and root Panel.
-        // AllowDrop must be set on the actual hit-test target, not just the Window.
-        DragDrop.SetAllowDrop(this, true);
-        AddHandler(DragDrop.DragOverEvent, OnWindowDragOver, RoutingStrategies.Tunnel, handledEventsToo: true);
-        AddHandler(DragDrop.DropEvent, OnWindowDrop, RoutingStrategies.Tunnel, handledEventsToo: true);
-        AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Tunnel, handledEventsToo: true);
-
-        var rootPanel = this.FindControl<Panel>("RootPanel")?.Parent as Panel;
-        if (rootPanel != null)
-        {
-            DragDrop.SetAllowDrop(rootPanel, true);
-            rootPanel.AddHandler(DragDrop.DragOverEvent, OnWindowDragOver, RoutingStrategies.Bubble, handledEventsToo: true);
-            rootPanel.AddHandler(DragDrop.DropEvent, OnWindowDrop, RoutingStrategies.Bubble, handledEventsToo: true);
-            rootPanel.AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Bubble, handledEventsToo: true);
-        }
-
-        // Wire up drag-drop handlers on the queue popup ListBox
-        var listBox = this.FindControl<ListBox>("QueuePopupListBox");
-        if (listBox != null)
-        {
-            listBox.AddHandler(DragDrop.DragOverEvent, OnQueueDragOver);
-            listBox.AddHandler(DragDrop.DropEvent, OnQueueDrop);
-            listBox.AddHandler(DragDrop.DragLeaveEvent, OnQueueDragLeave);
-        }
-    }
-
-    private void OnQueueDragOver(object? sender, DragEventArgs e)
-    {
-        if (!e.Data.Contains("NoctisQueueTrack"))
-        {
-            e.DragEffects = DragDropEffects.None;
-            return;
-        }
-        e.DragEffects = DragDropEffects.Move;
-        e.Handled = true;
-
-        // Update drop indicator position
         var listBox = this.FindControl<ListBox>("QueuePopupListBox");
         var indicator = this.FindControl<Border>("QueueDropIndicator");
         var wrapper = this.FindControl<Grid>("QueueListWrapper");
@@ -696,61 +681,99 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnQueueDragLeave(object? sender, DragEventArgs e)
-    {
-        var indicator = this.FindControl<Border>("QueueDropIndicator");
-        if (indicator != null)
-            indicator.IsVisible = false;
-    }
-
-    private void OnQueueDrop(object? sender, DragEventArgs e)
+    private void CommitQueueDrop(PointerEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm) return;
-        if (e.Data.Get("NoctisQueueTrack") is not Track draggedTrack) return;
-
-        var fromIndex = vm.Player.UpNext.IndexOf(draggedTrack);
-        if (fromIndex < 0) return;
-
-        // Determine the drop target index from the pointer position
         var listBox = this.FindControl<ListBox>("QueuePopupListBox");
         if (listBox == null) return;
+        if (_queueDragSourceIndex < 0) return;
 
-        var toIndex = GetDropTargetIndex(listBox, e);
+        var posInListBox = e.GetPosition(listBox);
+        var toIndex = GetQueueDropTargetIndex(listBox, posInListBox);
         if (toIndex < 0) toIndex = vm.Player.UpNext.Count - 1;
         if (toIndex >= vm.Player.UpNext.Count) toIndex = vm.Player.UpNext.Count - 1;
 
-        if (fromIndex != toIndex)
-            vm.Player.MoveInQueue(fromIndex, toIndex);
-
-        ResetDragVisuals();
-        e.Handled = true;
+        if (_queueDragSourceIndex != toIndex)
+            vm.Player.MoveInQueue(_queueDragSourceIndex, toIndex);
     }
 
-    private static int GetDropTargetIndex(ListBox listBox, DragEventArgs e)
+    private void ResetQueueDragState()
     {
-        var pos = e.GetPosition(listBox);
+        var preview = this.FindControl<Border>("QueueDragPreview");
+        if (preview != null)
+        {
+            preview.IsVisible = false;
+            preview.DataContext = null;
+        }
 
-        // Walk visible ListBoxItems to find which one the pointer is over
+        if (_queueDragHiddenItem != null)
+        {
+            _queueDragHiddenItem.Opacity = 1.0;
+            _queueDragHiddenItem = null;
+        }
+
+        var indicator = this.FindControl<Border>("QueueDropIndicator");
+        if (indicator != null)
+            indicator.IsVisible = false;
+
+        _queueDragActive = false;
+        _queueDragTrack = null;
+        _queueDragSourceIndex = -1;
+    }
+
+    private static int GetQueueDropTargetIndex(ListBox listBox, Point posInListBox)
+    {
         for (int i = 0; i < listBox.ItemCount; i++)
         {
             var container = listBox.ContainerFromIndex(i);
             if (container == null) continue;
 
-            var itemBounds = container.Bounds;
             var itemPos = container.TranslatePoint(new Point(0, 0), listBox);
             if (itemPos == null) continue;
 
             var top = itemPos.Value.Y;
-            var bottom = top + itemBounds.Height;
-            var midpoint = top + itemBounds.Height / 2;
+            var bottom = top + container.Bounds.Height;
+            var midpoint = top + container.Bounds.Height / 2;
 
-            if (pos.Y < midpoint && pos.Y >= top)
+            if (posInListBox.Y < midpoint && posInListBox.Y >= top)
                 return i;
-            if (pos.Y >= midpoint && pos.Y < bottom)
+            if (posInListBox.Y >= midpoint && posInListBox.Y < bottom)
                 return i;
         }
-
-        // Below all items — drop at the end
         return listBox.ItemCount - 1;
+    }
+
+    protected override void OnLoaded(RoutedEventArgs e)
+    {
+        base.OnLoaded(e);
+
+        // Register drag-drop for file import on both the Window and root Panel.
+        // AllowDrop must be set on the actual hit-test target, not just the Window.
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DragOverEvent, OnWindowDragOver, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(DragDrop.DropEvent, OnWindowDrop, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Tunnel, handledEventsToo: true);
+
+        var rootPanel = this.FindControl<Panel>("RootPanel")?.Parent as Panel;
+        if (rootPanel != null)
+        {
+            DragDrop.SetAllowDrop(rootPanel, true);
+            rootPanel.AddHandler(DragDrop.DragOverEvent, OnWindowDragOver, RoutingStrategies.Bubble, handledEventsToo: true);
+            rootPanel.AddHandler(DragDrop.DropEvent, OnWindowDrop, RoutingStrategies.Bubble, handledEventsToo: true);
+            rootPanel.AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Bubble, handledEventsToo: true);
+        }
+
+    }
+
+    // Backdrop click closes the Settings modal; clicks inside the card are swallowed.
+    private void OnSettingsBackdropTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.IsSettingsModalOpen = false;
+    }
+
+    private void OnSettingsCardTapped(object? sender, TappedEventArgs e)
+    {
+        e.Handled = true;
     }
 }

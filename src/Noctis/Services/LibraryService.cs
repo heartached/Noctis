@@ -11,6 +11,7 @@ namespace Noctis.Services;
 public class LibraryService : ILibraryService
 {
     private const int CurrentMetadataSchemaVersion = 5;
+    private const int CurrentIndexCacheVersion = 2;
 
     private readonly IMetadataService _metadata;
     private readonly IPersistenceService _persistence;
@@ -573,44 +574,25 @@ public class LibraryService : ILibraryService
             foreach (var a in albs)
                 ai[a.Id] = a;
 
-            // Aggregate artists — split multi-artist strings so each
-            // individual collaborator gets their own entry in the Artists list.
-            // Also create a combined entry for the exact multi-artist group
-            // (e.g., "Bad Bunny, Prince Royce & J Balvin") so users can view
-            // albums by that specific collaboration.
+            // Aggregate artists by primary artist only. Collaboration credits remain
+            // on Track.Artist for rows/tags, but feature combinations do not become
+            // separate top-level artists.
             var artistBuckets = new Dictionary<string, (string Name, HashSet<Guid> TrackIds, HashSet<Guid> AlbumIds)>(
                 StringComparer.OrdinalIgnoreCase);
 
             foreach (var track in tracks)
             {
-                var tokens = Track.ParseArtistTokens(track.Artist);
-                // If parsing yields nothing (unlikely), keep the raw string
-                if (tokens.Length == 0)
-                    tokens = new[] { track.Artist };
+                var primaryArtist = track.PrimaryArtist;
+                if (string.IsNullOrWhiteSpace(primaryArtist))
+                    primaryArtist = string.IsNullOrWhiteSpace(track.Artist) ? "Unknown Artist" : track.Artist.Trim();
 
-                foreach (var token in tokens)
+                if (!artistBuckets.TryGetValue(primaryArtist, out var bucket))
                 {
-                    if (!artistBuckets.TryGetValue(token, out var bucket))
-                    {
-                        bucket = (token, new HashSet<Guid>(), new HashSet<Guid>());
-                        artistBuckets[token] = bucket;
-                    }
-                    bucket.TrackIds.Add(track.Id);
-                    bucket.AlbumIds.Add(track.AlbumId);
+                    bucket = (primaryArtist, new HashSet<Guid>(), new HashSet<Guid>());
+                    artistBuckets[primaryArtist] = bucket;
                 }
-
-                // Create a combined artist entry when the track has multiple artists
-                if (tokens.Length > 1)
-                {
-                    var combinedKey = track.Artist;
-                    if (!artistBuckets.TryGetValue(combinedKey, out var combined))
-                    {
-                        combined = (combinedKey, new HashSet<Guid>(), new HashSet<Guid>());
-                        artistBuckets[combinedKey] = combined;
-                    }
-                    combined.TrackIds.Add(track.Id);
-                    combined.AlbumIds.Add(track.AlbumId);
-                }
+                bucket.TrackIds.Add(track.Id);
+                bucket.AlbumIds.Add(track.AlbumId);
             }
 
             var arts = artistBuckets.Values
@@ -1040,7 +1022,7 @@ public class LibraryService : ILibraryService
         try
         {
             var cache = await _persistence.LoadIndexCacheAsync();
-            if (cache == null || cache.TrackCount != _tracks.Count)
+            if (cache == null || cache.Version != CurrentIndexCacheVersion || cache.TrackCount != _tracks.Count)
                 return false;
 
             var currentHash = ComputeTrackIdHash(_tracks);
@@ -1115,6 +1097,7 @@ public class LibraryService : ILibraryService
         {
             var cache = new LibraryIndexCache
             {
+                Version = CurrentIndexCacheVersion,
                 TrackCount = _tracks.Count,
                 TrackIdHash = ComputeTrackIdHash(_tracks),
                 Artists = _artists.ToList()
@@ -1161,8 +1144,7 @@ public class LibraryService : ILibraryService
     {
         if (string.IsNullOrWhiteSpace(artist))
             return string.Empty;
-        var tokens = Track.ParseArtistTokens(artist);
-        return tokens.Length > 0 ? tokens[0] : artist;
+        return Track.GetPrimaryArtist(artist);
     }
 
     private static Guid ComputeArtistId(string artistName)

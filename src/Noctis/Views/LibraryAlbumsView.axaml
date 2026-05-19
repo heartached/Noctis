@@ -56,7 +56,7 @@
 
                                         <!-- Context menu for album tiles -->
                                         <Button.ContextMenu>
-                                            <ContextMenu DataContext="{Binding}" Opened="OnAlbumContextMenuOpened">
+                                            <ContextMenu DataContext="{Binding}" Opening="OnAlbumContextMenuOpening">
                                                 <MenuItem Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).PlayAlbumCommand}"
                                                           CommandParameter="{Binding}"
                                                           MaxWidth="400">
@@ -93,14 +93,12 @@
                                                     </MenuItem.Icon>
                                                 </MenuItem>
                                                 <Separator />
-                                                <MenuItem Header="Add to Playlist">
+                                                <MenuItem Header="Add to Playlist"
+                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).AddToNewPlaylistCommand}"
+                                                          CommandParameter="{Binding}">
                                                     <MenuItem.Icon>
                                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                                     </MenuItem.Icon>
-                                                    <MenuItem Header="Create New Playlist"
-                                                              Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).AddToNewPlaylistCommand}"
-                                                              CommandParameter="{Binding}" />
-                                                    <Separator />
                                                 </MenuItem>
                                                 <Separator />
                                                 <MenuItem Header="Favorites"
@@ -161,10 +159,18 @@
                                                                IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
                                                     <!-- Async artwork loading: cache hits instant, misses load on background thread -->
                                                     <ctrl:CachedImage SourcePath="{Binding ArtworkPath}"
-                                                                      DecodeWidth="384"
+                                                                      DecodeWidth="768"
                                                                       Stretch="UniformToFill"
-                                                                      RenderOptions.BitmapInterpolationMode="MediumQuality"
+                                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
                                                                       IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                    <!-- Favorite heart overlay (visible when any track in album is favorited) -->
+                                                    <PathIcon Data="{StaticResource HeartFillIcon}"
+                                                              Width="18" Height="18"
+                                                              Foreground="#E74856"
+                                                              HorizontalAlignment="Right"
+                                                              VerticalAlignment="Bottom"
+                                                              Margin="0,0,8,8"
+                                                              IsVisible="{Binding HasFavoriteTrack}" />
                                                 </Panel>
                                             </Border>
                                             <!-- Album name + inline explicit badge -->

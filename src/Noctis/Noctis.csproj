@@ -11,7 +11,8 @@
     <RootNamespace>Noctis</RootNamespace>
     <Product>Noctis</Product>
     <Company>Noctis</Company>
-    <Version>1.1.3</Version>
+    <Version>1.1.6</Version>
+    <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
 
     <!-- Avalonia requires this for XAML compilation -->
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -44,6 +45,7 @@
   <!-- Audio playback via libVLC -->
   <ItemGroup>
     <PackageReference Include="LibVLCSharp" Version="3.9.6" />
+    <PackageReference Include="LibVLCSharp.Avalonia" Version="3.9.6" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <PackageReference Include="VideoLAN.LibVLC.Mac" Version="3.0.21" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
   </ItemGroup>

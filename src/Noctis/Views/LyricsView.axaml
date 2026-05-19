@@ -4,6 +4,7 @@
              xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
              xmlns:controls="using:Noctis.Controls"
+             xmlns:views="using:Noctis.Views"
              x:Class="Noctis.Views.LyricsView"
              x:DataType="vm:LyricsViewModel"
              x:Name="LyricsRoot"
@@ -18,9 +19,6 @@
         <SolidColorBrush x:Key="LyricsBtnBgHoverRes" Color="#55FFFFFF"/>
         <SolidColorBrush x:Key="LyricsSecBtnBgRes" Color="#22FFFFFF"/>
         <SolidColorBrush x:Key="LyricsSecBtnBgHoverRes" Color="#33FFFFFF"/>
-        <SolidColorBrush x:Key="LyricsSliderThumbRes" Color="#EEFFFFFF"/>
-        <SolidColorBrush x:Key="LyricsSliderFilledRes" Color="#CCFFFFFF"/>
-        <SolidColorBrush x:Key="LyricsSliderUnfilledRes" Color="#33FFFFFF"/>
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -51,21 +49,6 @@
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
 
-        <!-- Transport control button -->
-        <Style Selector="Button.lyrics-ctrl-btn">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Opacity" Value="0.85"/>
-        </Style>
-        <Style Selector="Button.lyrics-ctrl-btn:pointerover">
-            <Setter Property="Opacity" Value="1.0"/>
-        </Style>
-        <Style Selector="Button.lyrics-ctrl-btn:pressed">
-            <Setter Property="Opacity" Value="0.7"/>
-        </Style>
-
         <!-- Play/Pause prominent button -->
         <Style Selector="Button.lyrics-play-btn">
             <Setter Property="Background" Value="Transparent"/>
@@ -77,70 +60,17 @@
         </Style>
         <Style Selector="Button.lyrics-play-btn:pointerover">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Opacity" Value="1.0"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
         <Style Selector="Button.lyrics-play-btn:pressed">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
-
-        <!-- Seek slider -->
-        <Style Selector="Slider.lyrics-seek">
+        <Style Selector="Button.lyrics-play-btn:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#CCFFFFFF"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Height" Value="20"/>
-            <Setter Property="Opacity" Value="0"/>
         </Style>
-
-        <!-- Volume slider -->
-        <Style Selector="Slider.lyrics-volume">
-            <Setter Property="Orientation" Value="Horizontal"/>
+        <Style Selector="Button.lyrics-play-btn:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#AAFFFFFF"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Height" Value="20"/>
-            <Setter Property="Width" Value="90"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
-        </Style>
-        <Style Selector="Slider.lyrics-volume /template/ Track">
-            <Setter Property="Height" Value="6"/>
-            <Setter Property="Margin" Value="7,0"/>
-        </Style>
-        <Style Selector="Slider.lyrics-volume /template/ RepeatButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource LyricsSliderFilledRes}"/>
-            <Setter Property="Height" Value="6"/>
-            <Setter Property="CornerRadius" Value="3,0,0,3"/>
-        </Style>
-        <Style Selector="Slider.lyrics-volume /template/ RepeatButton#PART_IncreaseButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource LyricsSliderUnfilledRes}"/>
-            <Setter Property="Opacity" Value="0.4"/>
-            <Setter Property="Height" Value="6"/>
-            <Setter Property="CornerRadius" Value="0,3,3,0"/>
-        </Style>
-        <Style Selector="Slider.lyrics-volume /template/ Thumb">
-            <Setter Property="Background" Value="{DynamicResource LyricsSliderThumbRes}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="14"/>
-            <Setter Property="Height" Value="14"/>
-            <Setter Property="Opacity" Value="1.0"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Slider.lyrics-volume /template/ Thumb /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource LyricsSliderThumbRes}"/>
-            <Setter Property="CornerRadius" Value="7"/>
-            <Setter Property="BoxShadow" Value="0 1 3 0 #40000000"/>
-        </Style>
-        <Style Selector="Slider.lyrics-volume:pointerover /template/ Thumb">
-            <Setter Property="RenderTransform" Value="scale(1.1)"/>
         </Style>
 
         <!-- Pill button style -->
@@ -276,6 +206,19 @@
         <Style Selector="TextBlock.word-accent.current">
             <Setter Property="Opacity" Value="1.0"/>
         </Style>
+
+        <Style Selector="Slider.lyrics-timeline-slider">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{Binding LyricsSliderFilled}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
     </UserControl.Styles>
 
     <Grid x:Name="MainLayoutGrid" ColumnDefinitions="*,*"
@@ -292,7 +235,7 @@
             <StackPanel x:Name="LeftContentStack" VerticalAlignment="Center"
                         HorizontalAlignment="Center"
                         ClipToBounds="False"
-                        Width="630">
+                        Width="760">
                 <StackPanel.Transitions>
                     <Transitions>
                         <DoubleTransition Property="Width" Duration="0:0:0.25">
@@ -326,10 +269,14 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                         </Border>
-                        <Image Source="{Binding Player.AlbumArt}"
-                               Stretch="UniformToFill"
-                               RenderOptions.BitmapInterpolationMode="HighQuality"
-                               IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                                              DecodeWidth="1280"
+                                              Stretch="UniformToFill"
+                                              RenderOptions.BitmapInterpolationMode="HighQuality"
+                                              IsVisible="{Binding Player.CurrentTrack.AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        <controls:AnimatedCoverImage
+                            Source="{Binding Player.CurrentAnimatedCoverPath}"
+                            IsActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}" />
                     </Panel>
                 </Border>
 
@@ -451,541 +398,179 @@
                               IsVisible="{Binding ShowMetadataFavoriteHeart}"/>
                 </StackPanel>
 
-                <!-- Seek Bar -->
-                <Grid Margin="6,8,6,0" RowDefinitions="Auto,Auto">
-                    <Grid Grid.Row="0"
-                          Margin="7,0,7,4"
-                          ColumnDefinitions="64,*,64">
-                        <TextBlock Grid.Column="0"
-                                   Text="{Binding Player.PositionText}"
-                                   FontSize="12"
+                <Grid x:Name="LyricsTimeline"
+                      Width="760"
+                      Margin="0,14,0,0"
+                      RowDefinitions="Auto,24"
+                      IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding Player.PositionText}"
+                                   FontSize="14"
                                    FontWeight="SemiBold"
                                    Foreground="{Binding LyricsSubtleFg}"
-                                   HorizontalAlignment="Left"/>
-                        <TextBlock Grid.Column="2"
-                                   Text="{Binding Player.RemainingTimeText, StringFormat='-{0}'}"
-                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Margin="10,0,0,0"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Player.RemainingTimeText}"
+                                   FontSize="14"
                                    FontWeight="SemiBold"
                                    Foreground="{Binding LyricsSubtleFg}"
-                                   HorizontalAlignment="Right"/>
+                                   VerticalAlignment="Center"/>
                     </Grid>
-                    <Grid Grid.Row="1" Height="20" ClipToBounds="False">
-                        <Canvas x:Name="LyricsSeekVisual"
-                                Height="20"
+
+                    <Grid Grid.Row="1"
+                          Height="24"
+                          ClipToBounds="False">
+                        <Canvas Height="24"
                                 ClipToBounds="False"
                                 IsHitTestVisible="False">
-                            <Border x:Name="LyricsSeekTrackBackground"
-                                    Height="6"
-                                    CornerRadius="3"
-                                    Background="{DynamicResource LyricsSliderUnfilledRes}"
-                                    Canvas.Top="7"/>
-                            <Border x:Name="LyricsSeekTrackFill"
-                                    Height="6"
-                                    CornerRadius="3"
-                                    Background="{DynamicResource LyricsSliderFilledRes}"
-                                    Canvas.Top="7"/>
-                            <Border x:Name="LyricsSeekThumb"
-                                    Width="14"
-                                    Height="14"
-                                    CornerRadius="7"
-                                    Background="{DynamicResource LyricsSliderThumbRes}"
-                                    BoxShadow="0 2 4 0 #40000000"
-                                    Canvas.Top="3"/>
+                            <Border x:Name="LyricsTimelineTrackBackground"
+                                    Height="7"
+                                    CornerRadius="3.5"
+                                    Background="{Binding LyricsSliderUnfilled}"
+                                    Canvas.Top="8.5"/>
+                            <Border x:Name="LyricsTimelineTrackFill"
+                                    Height="7"
+                                    CornerRadius="3.5"
+                                    Background="{Binding LyricsSliderFilled}"
+                                    Canvas.Top="8.5"/>
+                            <Border x:Name="LyricsTimelineThumb"
+                                    Width="16"
+                                    Height="16"
+                                    CornerRadius="8"
+                                    Background="{Binding LyricsSliderThumb}"
+                                    BoxShadow="0 2 5 0 #40000000"
+                                    Canvas.Top="4"/>
                         </Canvas>
-                        <Slider Value="{Binding Player.PositionFraction, Mode=TwoWay}"
-                                Classes="lyrics-seek"
-                                Minimum="0" Maximum="1"
+                        <Slider x:Name="LyricsTimelineSlider"
+                                Classes="lyrics-timeline-slider"
+                                Value="{Binding Player.PositionFraction, Mode=TwoWay}"
+                                Minimum="0"
+                                Maximum="1"
                                 Focusable="False"
-                                VerticalAlignment="Center"
-                                Foreground="{Binding LyricsSliderFilled}"
-                                x:Name="SeekSlider"/>
+                                VerticalAlignment="Center"/>
                     </Grid>
                 </Grid>
 
-                <!-- Playback Pill Island -->
-                <Border Background="#F0181818" CornerRadius="999" Padding="6,4"
+                <!-- Lyrics-page playback controls; timeline and track metadata live above. -->
+                <views:PlaybackBarView DataContext="{Binding Player}"
+                                        HorizontalAlignment="Stretch"
+                                        Margin="0,12,0,0"/>
+
+                <!-- Hidden host button anchoring the background-color flyout -->
+                <Button x:Name="LyricsColorPickerHost"
+                        Width="1" Height="1"
+                        Opacity="0"
+                        IsHitTestVisible="False"
                         HorizontalAlignment="Center"
-                        Margin="0,12,0,0">
-                    <StackPanel Orientation="Horizontal" Spacing="4"
-                                VerticalAlignment="Center">
-                        <!-- Shuffle -->
-                        <Button Classes="lyrics-ctrl-btn"
-                                Command="{Binding Player.ToggleShuffleCommand}"
-                                Width="36" Height="36"
-                                ToolTip.Tip="Shuffle">
-                            <Panel>
-                                <Viewbox Width="18" Height="18"
-                                         IsVisible="{Binding !Player.IsShuffleEnabled}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#FFFFFF" Data="{StaticResource ShuffleIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="18" Height="18"
-                                         IsVisible="{Binding Player.IsShuffleEnabled}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#E74856" Data="{StaticResource ShuffleIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                            </Panel>
-                        </Button>
+                        VerticalAlignment="Bottom"
+                        Margin="0,2,0,0">
+                    <Button.Flyout>
+                        <Flyout Placement="Bottom">
+                            <Flyout.FlyoutPresenterTheme>
+                                <ControlTheme TargetType="FlyoutPresenter" BasedOn="{StaticResource {x:Type FlyoutPresenter}}">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="CornerRadius" Value="0"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="MinWidth" Value="0"/>
+                                    <Setter Property="MaxWidth" Value="9999"/>
+                                </ControlTheme>
+                            </Flyout.FlyoutPresenterTheme>
+                            <Border Background="#EE141414" CornerRadius="999" Padding="6,5"
+                                    BorderBrush="#22FFFFFF" BorderThickness="1">
+                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                            DataContext="{Binding #LyricsRoot.DataContext}"
+                                            x:DataType="vm:LyricsViewModel">
 
-                        <!-- Previous -->
-                        <Button Classes="lyrics-ctrl-btn"
-                                Command="{Binding Player.PreviousCommand}"
-                                Width="36" Height="36"
-                                ToolTip.Tip="Previous">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#FFFFFF" Data="{StaticResource PreviousIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Button>
-
-                        <!-- Play / Pause -->
-                        <Button Classes="lyrics-play-btn"
-                                Command="{Binding Player.PlayPauseCommand}"
-                                Width="46" Height="46"
-                                ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                            <Panel>
-                                <Viewbox Width="22" Height="22"
-                                         IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#FFFFFF" Data="{StaticResource PlayIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="22" Height="22"
-                                         IsVisible="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#FFFFFF" Data="{StaticResource PauseIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                            </Panel>
-                        </Button>
-
-                        <!-- Next -->
-                        <Button Classes="lyrics-ctrl-btn"
-                                Command="{Binding Player.NextCommand}"
-                                Width="36" Height="36"
-                                ToolTip.Tip="Forward">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#FFFFFF" Data="{StaticResource NextIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Button>
-
-                        <!-- Repeat -->
-                        <Button Classes="lyrics-ctrl-btn"
-                                Command="{Binding Player.CycleRepeatCommand}"
-                                Width="36" Height="36"
-                                ToolTip.Tip="Repeat">
-                            <Panel>
-                                <Viewbox Width="18" Height="18"
-                                         IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#FFFFFF" Data="{StaticResource RepeatAllIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="18" Height="18"
-                                         IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#E74856" Data="{StaticResource RepeatAllIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="18" Height="18"
-                                         IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#E74856" Data="{StaticResource RepeatOneIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                            </Panel>
-                        </Button>
-
-                        <!-- More Options (3-dots) -->
-                        <Button Classes="lyrics-ctrl-btn"
-                                Width="36" Height="36"
-                                ToolTip.Tip="Options"
-                                x:Name="LyricsOptionsButton">
-                            <Viewbox Width="18" Height="18">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Button.Flyout>
-                                <MenuFlyout Placement="TopEdgeAlignedRight"
-                                            x:DataType="vm:LyricsViewModel"
-                                            Opened="OnTrackFlyoutOpened">
-                                    <MenuItem Command="{Binding Player.PlayPauseCommand}"
-                                              MaxWidth="400">
-                                        <MenuItem.Header>
-                                            <TextBlock Text="Play"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       FontWeight="Normal"
-                                                       FontSize="14"
-                                                       FontFamily="{Binding $parent[MenuItem].FontFamily}" />
-                                        </MenuItem.Header>
-                                        <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="Shuffle"
-                                              Command="{Binding Player.ShuffleCurrentAlbumCommand}">
-                                        <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="Play Next"
-                                              Command="{Binding Player.PlayNextCurrentTrackCommand}">
-                                        <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="Add to Queue"
-                                              Command="{Binding Player.AddCurrentTrackToQueueCommand}">
-                                        <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <Separator />
-                                    <MenuItem Header="Add to Playlist">
-                                        <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                        </MenuItem.Icon>
-                                        <MenuItem Header="Create New Playlist"
-                                                  Command="{Binding Player.AddCurrentTrackToNewPlaylistCommand}" />
-                                        <Separator />
-                                    </MenuItem>
-                                    <Separator />
-                                    <MenuItem Header="Favorites"
-                                              Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
-                                              IsVisible="{Binding Player.CurrentTrack.IsFavorite, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
-                                        <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Your%20Favorites%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="Remove from Favorites"
-                                              Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
-                                              IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}">
-                                        <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="{Binding LyricsAccentFg}" VerticalAlignment="Center" />
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="Metadata"
-                                              Command="{Binding Player.OpenCurrentTrackMetadataCommand}">
-                                        <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="Search Lyrics"
-                                              Command="{Binding Player.SearchCurrentTrackLyricsCommand}">
-                                        <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="Show Folder"
-                                              Command="{Binding Player.ShowCurrentTrackInExplorerCommand}">
-                                        <MenuItem.Icon>
-                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Folder%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <Separator />
-                                    <MenuItem Header="Remove from Library" Classes="danger"
-                                              Command="{Binding Player.RemoveCurrentTrackFromLibraryCommand}">
-                                        <MenuItem.Icon>
-                                            <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                </MenuFlyout>
-                            </Button.Flyout>
-                        </Button>
-
-                        <!-- Queue (icon only) -->
-                        <Button Classes="lyrics-ctrl-btn"
-                                Command="{Binding Player.ShowQueueCommand}"
-                                Tag="QueueToggle"
-                                Width="36" Height="36"
-                                ToolTip.Tip="Queue">
-                            <Border Width="16" Height="16"
-                                    Background="#FFFFFF"
-                                    RenderOptions.BitmapInterpolationMode="HighQuality">
-                                <Border.OpacityMask>
-                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" />
-                                </Border.OpacityMask>
-                            </Border>
-                        </Button>
-
-                        <!-- Lyrics (icon only — click to go back) -->
-                        <Button Classes="lyrics-ctrl-btn"
-                                Command="{Binding Player.ShowLyricsCommand}"
-                                Width="36" Height="36"
-                                ToolTip.Tip="Lyrics">
-                            <Border Width="16" Height="16"
-                                    Background="#FFFFFF"
-                                    RenderOptions.BitmapInterpolationMode="HighQuality">
-                                <Border.OpacityMask>
-                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" />
-                                </Border.OpacityMask>
-                            </Border>
-                        </Button>
-
-                        <!-- Save searched lyrics (only for online results) -->
-                        <Button Classes="lyrics-ctrl-btn"
-                                Command="{Binding SaveLyricsToFileCommand}"
-                                IsVisible="{Binding CanSaveToFile}"
-                                Width="36" Height="36"
-                                ToolTip.Tip="Save lyrics">
-                            <PathIcon Data="{StaticResource SaveDiskIcon}"
-                                      Width="14" Height="14"
-                                      Foreground="#FFFFFF" />
-                        </Button>
-
-                        <!-- Remove saved/cached lyrics -->
-                        <Button Classes="lyrics-ctrl-btn"
-                                Command="{Binding RemoveLyricsCommand}"
-                                IsVisible="{Binding CanRemoveLyrics}"
-                                Width="36" Height="36"
-                                ToolTip.Tip="Remove lyrics">
-                            <PathIcon Data="{StaticResource TrashIcon}"
-                                      Width="14" Height="14"
-                                      Foreground="#E74856" />
-                        </Button>
-
-                        <!-- Synced / Plain toggle -->
-                        <Border Background="#18FFFFFF"
-                                CornerRadius="999"
-                                Padding="2"
-                                VerticalAlignment="Center"
-                                ToolTip.Tip="Synced / Plain lyrics">
-                            <StackPanel Orientation="Horizontal" Spacing="1">
-                                <Button Command="{Binding ToggleLyricsModeCommand}"
-                                        Background="Transparent"
-                                        BorderThickness="0"
-                                        Padding="10,4"
-                                        CornerRadius="999"
-                                        Cursor="Hand"
-                                        Opacity="{Binding IsSyncTabSelected, Converter={StaticResource BoolToOpacity}}">
-                                    <TextBlock Text="Synced" FontSize="11" FontWeight="SemiBold"/>
-                                </Button>
-                                <Button Command="{Binding ToggleLyricsModeCommand}"
-                                        Background="Transparent"
-                                        BorderThickness="0"
-                                        Padding="10,4"
-                                        CornerRadius="999"
-                                        Cursor="Hand"
-                                        Opacity="{Binding IsUnsyncTabSelected, Converter={StaticResource BoolToOpacity}}">
-                                    <TextBlock Text="Plain" FontSize="11" FontWeight="SemiBold"/>
-                                </Button>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Background color picker (icon only) -->
-                        <Button Classes="lyrics-ctrl-btn"
-                                Width="36" Height="36"
-                                ToolTip.Tip="Background color">
-                            <Border Width="14" Height="14"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center">
-                                <Border.Background>
-                                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                                        <GradientStop Color="#FF0000" Offset="0.0"/>
-                                        <GradientStop Color="#FF8000" Offset="0.17"/>
-                                        <GradientStop Color="#FFFF00" Offset="0.33"/>
-                                        <GradientStop Color="#00CC00" Offset="0.5"/>
-                                        <GradientStop Color="#0099FF" Offset="0.67"/>
-                                        <GradientStop Color="#6633FF" Offset="0.83"/>
-                                        <GradientStop Color="#CC00CC" Offset="1.0"/>
-                                    </LinearGradientBrush>
-                                </Border.Background>
-                                <Border.OpacityMask>
-                                    <DrawingBrush Stretch="Uniform">
-                                        <DrawingBrush.Drawing>
-                                            <GeometryDrawing Brush="Black"
-                                                             Geometry="{StaticResource PaletteIcon}"/>
-                                        </DrawingBrush.Drawing>
-                                    </DrawingBrush>
-                                </Border.OpacityMask>
-                            </Border>
-                            <Button.Flyout>
-                                <Flyout Placement="TopEdgeAlignedRight">
-                                    <Flyout.FlyoutPresenterTheme>
-                                        <ControlTheme TargetType="FlyoutPresenter" BasedOn="{StaticResource {x:Type FlyoutPresenter}}">
-                                            <Setter Property="Background" Value="Transparent"/>
-                                            <Setter Property="Padding" Value="0"/>
-                                            <Setter Property="CornerRadius" Value="0"/>
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Setter Property="MinWidth" Value="0"/>
-                                            <Setter Property="MaxWidth" Value="9999"/>
-                                        </ControlTheme>
-                                    </Flyout.FlyoutPresenterTheme>
-                                    <Border Background="#EE141414" CornerRadius="999" Padding="6,5"
-                                            BorderBrush="#22FFFFFF" BorderThickness="1">
-                                        <StackPanel Orientation="Horizontal" Spacing="6"
-                                                    DataContext="{Binding #LyricsRoot.DataContext}"
-                                                    x:DataType="vm:LyricsViewModel">
-
-                                            <!-- Solid / Gradient toggle -->
-                                            <Border Background="#18FFFFFF" CornerRadius="999" Padding="2"
-                                                    VerticalAlignment="Center">
-                                                <StackPanel Orientation="Horizontal" Spacing="1">
-                                                    <Button Command="{Binding SelectColorModeSolidCommand}"
-                                                            Background="Transparent"
-                                                            BorderThickness="0" Padding="8,3" CornerRadius="999" Cursor="Hand"
-                                                            Opacity="{Binding IsColorModeSolid, Converter={StaticResource BoolToOpacity}}">
-                                                        <TextBlock Text="Solid" FontSize="10" FontWeight="SemiBold"/>
-                                                    </Button>
-                                                    <Button Command="{Binding SelectColorModeGradientCommand}"
-                                                            Background="Transparent"
-                                                            BorderThickness="0" Padding="8,3" CornerRadius="999" Cursor="Hand"
-                                                            Opacity="{Binding IsColorModeGradient, Converter={StaticResource BoolToOpacity}}">
-                                                        <TextBlock Text="Gradient" FontSize="10" FontWeight="SemiBold"/>
-                                                    </Button>
-                                                </StackPanel>
-                                            </Border>
-
-                                            <!-- Divider -->
-                                            <Border Width="1" Height="16" Background="#30FFFFFF" VerticalAlignment="Center"/>
-
-                                            <!-- Solid swatches -->
-                                            <ScrollViewer x:Name="SolidSwatchScroller"
-                                                          HorizontalScrollBarVisibility="Hidden"
-                                                          VerticalScrollBarVisibility="Disabled"
-                                                          MaxWidth="280"
-                                                          IsVisible="{Binding IsColorModeSolid}">
-                                                <ItemsControl ItemsSource="{Binding SolidSwatches}">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate>
-                                                            <StackPanel Orientation="Horizontal" Spacing="4"/>
-                                                        </ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate x:DataType="vm:ColorSwatch">
-                                                            <Button Classes="swatch-btn"
-                                                                    Command="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).SetBackgroundColorCommand}"
-                                                                    CommandParameter="{Binding Key}"
-                                                                    ToolTip.Tip="{Binding Name}">
-                                                                <Panel>
-                                                                    <Border Width="20" Height="20" CornerRadius="10"
-                                                                            Background="{Binding Preview}"
-                                                                            BorderBrush="#33FFFFFF" BorderThickness="1"/>
-                                                                    <TextBlock Text="A" FontSize="8" FontWeight="Bold"
-                                                                               Foreground="White"
-                                                                               HorizontalAlignment="Center"
-                                                                               VerticalAlignment="Center"
-                                                                               IsVisible="{Binding IsAuto}"/>
-                                                                </Panel>
-                                                            </Button>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </ScrollViewer>
-
-                                            <!-- Gradient swatches -->
-                                            <ScrollViewer x:Name="GradientSwatchScroller"
-                                                          HorizontalScrollBarVisibility="Hidden"
-                                                          VerticalScrollBarVisibility="Disabled"
-                                                          MaxWidth="280"
-                                                          IsVisible="{Binding IsColorModeGradient}">
-                                                <ItemsControl ItemsSource="{Binding GradientSwatches}">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate>
-                                                            <StackPanel Orientation="Horizontal" Spacing="4"/>
-                                                        </ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate x:DataType="vm:ColorSwatch">
-                                                            <Button Classes="swatch-btn"
-                                                                    Command="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).SetBackgroundColorCommand}"
-                                                                    CommandParameter="{Binding Key}"
-                                                                    ToolTip.Tip="{Binding Name}">
-                                                                <Border Width="20" Height="20" CornerRadius="10"
-                                                                        Background="{Binding Preview}"
-                                                                        BorderBrush="#33FFFFFF" BorderThickness="1"/>
-                                                            </Button>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </ScrollViewer>
-
+                                    <!-- Solid / Gradient toggle -->
+                                    <Border Background="#18FFFFFF" CornerRadius="999" Padding="2"
+                                            VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="1">
+                                            <Button Command="{Binding SelectColorModeSolidCommand}"
+                                                    Background="Transparent"
+                                                    BorderThickness="0" Padding="8,3" CornerRadius="999" Cursor="Hand"
+                                                    Opacity="{Binding IsColorModeSolid, Converter={StaticResource BoolToOpacity}}">
+                                                <TextBlock Text="Solid" FontSize="10" FontWeight="SemiBold"/>
+                                            </Button>
+                                            <Button Command="{Binding SelectColorModeGradientCommand}"
+                                                    Background="Transparent"
+                                                    BorderThickness="0" Padding="8,3" CornerRadius="999" Cursor="Hand"
+                                                    Opacity="{Binding IsColorModeGradient, Converter={StaticResource BoolToOpacity}}">
+                                                <TextBlock Text="Gradient" FontSize="10" FontWeight="SemiBold"/>
+                                            </Button>
                                         </StackPanel>
                                     </Border>
-                                </Flyout>
-                            </Button.Flyout>
-                        </Button>
 
-                        <!-- Volume -->
-                        <StackPanel x:Name="LyricsVolumeContainer"
-                                     Orientation="Horizontal" Spacing="0"
-                                     VerticalAlignment="Center"
-                                     PointerEntered="OnLyricsVolumeContainerEntered"
-                                    PointerExited="OnLyricsVolumeContainerExited">
-                            <Button Classes="lyrics-ctrl-btn"
-                                    Command="{Binding Player.ToggleMuteCommand}"
-                                    Width="36" Height="36"
-                                    ToolTip.Tip="Mute">
-                                <Panel>
-                                    <Viewbox Width="18" Height="18"
-                                             IsVisible="{Binding !Player.IsMuted}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="#FFFFFF" Data="{Binding Player.Volume, Converter={StaticResource VolumeToIcon}}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                    <Viewbox Width="18" Height="18"
-                                             IsVisible="{Binding Player.IsMuted}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{Binding LyricsSubtleFg}" Data="{StaticResource SpeakerMuteIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                </Panel>
-                            </Button>
-                            <Panel VerticalAlignment="Center" Margin="-9,0,0,0">
-                                <TextBlock x:Name="LyricsVolumePercentage"
-                                           Text="{Binding Player.Volume}"
-                                           FontSize="13"
-                                           FontWeight="SemiBold"
-                                           Foreground="{Binding LyricsPrimaryFg}"
-                                           HorizontalAlignment="Left"
-                                           VerticalAlignment="Center"
-                                           Opacity="0"
-                                           IsVisible="False"
-                                           IsHitTestVisible="False">
-                                    <TextBlock.RenderTransform>
-                                        <TranslateTransform X="0" Y="-18"/>
-                                    </TextBlock.RenderTransform>
-                                    <TextBlock.Transitions>
-                                        <Transitions>
-                                            <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
-                                        </Transitions>
-                                    </TextBlock.Transitions>
-                                </TextBlock>
-                                <Border x:Name="LyricsVolumeSliderContainer"
-                                        Width="0"
-                                        Height="36"
-                                        ClipToBounds="True"
-                                        VerticalAlignment="Center">
-                                    <Border.Transitions>
-                                        <Transitions>
-                                            <DoubleTransition Property="Width" Duration="0:0:0.2">
-                                                <DoubleTransition.Easing>
-                                                    <CubicEaseOut/>
-                                                </DoubleTransition.Easing>
-                                            </DoubleTransition>
-                                        </Transitions>
-                                    </Border.Transitions>
-                                    <Grid Width="99" Margin="7,0,7,0"
-                                          HorizontalAlignment="Left"
-                                          VerticalAlignment="Center">
-                                        <Slider x:Name="LyricsVolumeSlider"
-                                                Value="{Binding Player.Volume, Mode=TwoWay}"
-                                                Classes="lyrics-volume"
-                                                Minimum="0" Maximum="100"
-                                                Foreground="{Binding LyricsSliderFilled}"
-                                                VerticalAlignment="Center"/>
-                                    </Grid>
-                                </Border>
-                            </Panel>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+                                    <!-- Divider -->
+                                    <Border Width="1" Height="16" Background="#30FFFFFF" VerticalAlignment="Center"/>
+
+                                    <!-- Solid swatches -->
+                                    <ScrollViewer x:Name="SolidSwatchScroller"
+                                                  HorizontalScrollBarVisibility="Hidden"
+                                                  VerticalScrollBarVisibility="Disabled"
+                                                  MaxWidth="280"
+                                                  IsVisible="{Binding IsColorModeSolid}">
+                                        <ItemsControl ItemsSource="{Binding SolidSwatches}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:ColorSwatch">
+                                                    <Button Classes="swatch-btn"
+                                                            Command="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).SetBackgroundColorCommand}"
+                                                            CommandParameter="{Binding Key}"
+                                                            ToolTip.Tip="{Binding Name}">
+                                                        <Panel>
+                                                            <Border Width="20" Height="20" CornerRadius="10"
+                                                                    Background="{Binding Preview}"
+                                                                    BorderBrush="#33FFFFFF" BorderThickness="1"/>
+                                                            <TextBlock Text="A" FontSize="8" FontWeight="Bold"
+                                                                       Foreground="White"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center"
+                                                                       IsVisible="{Binding IsAuto}"/>
+                                                        </Panel>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+
+                                    <!-- Gradient swatches -->
+                                    <ScrollViewer x:Name="GradientSwatchScroller"
+                                                  HorizontalScrollBarVisibility="Hidden"
+                                                  VerticalScrollBarVisibility="Disabled"
+                                                  MaxWidth="280"
+                                                  IsVisible="{Binding IsColorModeGradient}">
+                                        <ItemsControl ItemsSource="{Binding GradientSwatches}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:ColorSwatch">
+                                                    <Button Classes="swatch-btn"
+                                                            Command="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).SetBackgroundColorCommand}"
+                                                            CommandParameter="{Binding Key}"
+                                                            ToolTip.Tip="{Binding Name}">
+                                                        <Border Width="20" Height="20" CornerRadius="10"
+                                                                Background="{Binding Preview}"
+                                                                BorderBrush="#33FFFFFF" BorderThickness="1"/>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+
+                                </StackPanel>
+                            </Border>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
 
                 <!-- Bottom action row: Alternate source + save status (Save/Remove moved into player bar) -->
                 <StackPanel Orientation="Horizontal"
@@ -1044,7 +629,7 @@
                            HorizontalAlignment="Center"
                            IsVisible="{Binding SearchFailedMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 <Button Classes="accent-btn"
-                        Background="#E74856"
+                        Background="{DynamicResource AccentColorBrush}"
                         Foreground="{Binding LyricsPrimaryFg}"
                         BorderThickness="0"
                         Padding="16,8"
@@ -1054,12 +639,7 @@
                         Cursor="Hand"
                         Command="{Binding SearchLyricsCommand}"
                         HorizontalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Data="{StaticResource SearchGlobeIcon}"
-                                 Width="13" Height="13"
-                                 VerticalAlignment="Center"/>
-                        <TextBlock Text="Search Lyrics" VerticalAlignment="Center"/>
-                    </StackPanel>
+                    <TextBlock Text="Search lyrics" VerticalAlignment="Center"/>
                 </Button>
             </StackPanel>
 

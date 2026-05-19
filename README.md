@@ -18,25 +18,39 @@ A music player that respects what's yours. Zero tracking, total control.
 
 ---
 
-### Home
+## Screenshots
 
-![Home](docs/images/Home.png)
+![](docs/images/home.png)
 
-### Synced Lyrics
+![](docs/images/lyrics.png)
 
-![Lyrics](docs/images/lyrics.png)
+![](docs/images/coverflow.png)
 
-### Cover Flow
+![](docs/images/settingsxalbums.png)
 
-![Cover Flow](docs/images/coverflow.png)
+---
 
-### Albums
+## Install
 
-![Albums](docs/images/albums.png)
+**Windows** — via a package manager:
 
-### Discord Rich Presence
+```powershell
+# winget
+winget install heartached.Noctis
 
-<img src="docs/images/discord.png" width="280">
+# Scoop (add the bucket once, then install)
+scoop bucket add noctis https://github.com/heartached/scoop-bucket
+scoop install noctis
+
+# Chocolatey
+choco install noctis
+```
+
+Or download the installer / portable zip from the
+[latest release](https://github.com/heartached/Noctis/releases/latest).
+
+**macOS / Linux** — download the `.dmg` / AppImage from the
+[latest release](https://github.com/heartached/Noctis/releases/latest).
 
 ---
 

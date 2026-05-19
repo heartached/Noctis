@@ -7,6 +7,7 @@
              xmlns:helpers="using:Noctis.Helpers"
              x:Class="Noctis.Views.FavoritesView"
              x:DataType="vm:FavoritesViewModel"
+             Focusable="True"
              Background="{DynamicResource AppMainBackground}">
 
     <UserControl.Resources>
@@ -53,7 +54,7 @@
                                             Tag="{Binding}"
                                             Click="OnFavoriteCardClick">
                                         <Button.ContextMenu>
-                                            <ContextMenu DataContext="{Binding}" x:DataType="m:FavoriteItem" Opened="OnContextMenuOpened">
+                                            <ContextMenu DataContext="{Binding}" x:DataType="m:FavoriteItem" Opening="OnContextMenuOpening">
                                                 <MenuItem Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).PlayItemCommand}"
                                                           CommandParameter="{Binding}"
                                                           MaxWidth="400">
@@ -90,14 +91,12 @@
                                                     </MenuItem.Icon>
                                                 </MenuItem>
                                                 <Separator />
-                                                <MenuItem Header="Add to Playlist">
+                                                <MenuItem Header="Add to Playlist"
+                                                          Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).AddItemToNewPlaylistCommand}"
+                                                          CommandParameter="{Binding}">
                                                     <MenuItem.Icon>
                                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                                     </MenuItem.Icon>
-                                                    <MenuItem Header="Create New Playlist"
-                                                              Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).AddItemToNewPlaylistCommand}"
-                                                              CommandParameter="{Binding}" />
-                                                    <Separator />
                                                 </MenuItem>
                                                 <Separator />
                                                 <MenuItem Header="Remove from Favorites"
@@ -147,12 +146,13 @@
                                                                Opacity="0.15"
                                                                IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
                                                     <controls:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                                          DecodeWidth="768"
                                                                           Stretch="UniformToFill"
                                                                           RenderOptions.BitmapInterpolationMode="HighQuality"
                                                                           IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                                     <!-- Heart overlay -->
                                                     <PathIcon Data="{StaticResource HeartFillIcon}"
-                                                             Width="16" Height="16"
+                                                             Width="22" Height="22"
                                                              Foreground="#E74856"
                                                              HorizontalAlignment="Right"
                                                              VerticalAlignment="Bottom"

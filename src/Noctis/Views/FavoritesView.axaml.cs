@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -15,7 +16,6 @@ namespace Noctis.Views;
 public partial class FavoritesView : UserControl
 {
     private EventHandler? _pendingScrollRestore;
-    private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
     private readonly HashSet<Button> _selectedTiles = new();
 
     public FavoritesView()
@@ -33,6 +33,10 @@ public partial class FavoritesView : UserControl
         if (source is not Button tile) return;
 
         MultiSelectHelper.HandleAlbumTileClick(tile, e, _selectedTiles);
+
+        // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
+        if (_selectedTiles.Count > 0)
+            Focus();
     }
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
@@ -46,38 +50,12 @@ public partial class FavoritesView : UserControl
         MultiSelectHelper.HandleAlbumSelectAll(e, allTiles, _selectedTiles);
     }
 
-    private void OnContextMenuOpened(object? sender, RoutedEventArgs e)
+    private void OnContextMenuOpening(object? sender, CancelEventArgs e)
     {
         if (DataContext is not FavoritesViewModel vm) return;
-        if (sender is not ContextMenu ctx) return;
 
         // Push ctrl-selected items to ViewModel so commands can operate on all of them
         vm.CtrlSelectedItems = MultiSelectHelper.GetSelectedData<FavoriteItem>(_selectedTiles);
-
-        if (!_playlistPopulators.TryGetValue(ctx, out var populator))
-        {
-            MenuItem? addToPlaylist = null;
-            Separator? separator = null;
-            foreach (var item in ctx.Items)
-            {
-                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
-                {
-                    addToPlaylist = mi;
-                    foreach (var sub in mi.Items)
-                    {
-                        if (sub is Separator sep) { separator = sep; break; }
-                    }
-                    break;
-                }
-            }
-            if (addToPlaylist == null || separator == null) return;
-            populator = new PlaylistMenuPopulator(addToPlaylist, separator);
-            _playlistPopulators[ctx] = populator;
-        }
-
-        var favoriteItem = ctx.DataContext as FavoriteItem;
-        populator.Populate(vm.Playlists, vm.AddItemToExistingPlaylistCommand,
-            playlist => new object[] { favoriteItem!, playlist });
     }
 
     /// <summary>Left-click handler: play track or open album depending on item type.</summary>

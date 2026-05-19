@@ -39,6 +39,9 @@ public class Album
     /// <summary>Whether all tracks in this album are marked as favorites.</summary>
     public bool IsAllTracksFavorite => Tracks?.Count > 0 && Tracks.All(t => t.IsFavorite);
 
+    /// <summary>Whether at least one track in this album is marked as a favorite.</summary>
+    public bool HasFavoriteTrack => Tracks?.Any(t => t.IsFavorite) == true;
+
     /// <summary>Formatted total duration.</summary>
     public string TotalDurationFormatted =>
         TotalDuration.TotalHours >= 1

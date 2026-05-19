@@ -1,0 +1,8 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Noctis.Controls.AnimatedCoverImage"
+             ClipToBounds="True">
+    <Image x:Name="FrameImage"
+           Stretch="UniformToFill"
+           RenderOptions.BitmapInterpolationMode="HighQuality" />
+</UserControl>

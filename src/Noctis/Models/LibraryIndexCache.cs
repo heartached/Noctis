@@ -7,6 +7,9 @@ namespace Noctis.Models;
 /// </summary>
 public class LibraryIndexCache
 {
+    /// <summary>Schema version for derived album/artist grouping logic.</summary>
+    public int Version { get; set; }
+
     /// <summary>Number of tracks when the cache was built — quick validation check.</summary>
     public int TrackCount { get; set; }
 

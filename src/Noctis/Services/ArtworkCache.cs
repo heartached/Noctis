@@ -15,6 +15,7 @@ public static class ArtworkCache
         public readonly Bitmap Bitmap;
         public readonly string Key;
         public readonly string Path;
+        public readonly long Bytes; // approximate decoded size (W*H*4)
         public long LastAccess; // atomic via Interlocked
 
         public CacheEntry(string key, string path, Bitmap bitmap, long accessCounter)
@@ -23,6 +24,12 @@ public static class ArtworkCache
             Path = path;
             Bitmap = bitmap;
             LastAccess = accessCounter;
+            try
+            {
+                var px = bitmap.PixelSize;
+                Bytes = Math.Max(1L, (long)px.Width * px.Height * 4);
+            }
+            catch { Bytes = 1L; }
         }
     }
 
@@ -30,9 +37,15 @@ public static class ArtworkCache
         new(StringComparer.OrdinalIgnoreCase);
 
     private static long _accessCounter;
+    private static long _totalBytes; // atomic via Interlocked — approximate resident size
     private static int _evictLock; // 0 = free, 1 = held — used with Monitor.TryEnter pattern via Interlocked
 
+    // Bound the cache by resident bytes (the dominant cost on large libraries:
+    // a 512px RGBA bitmap is ~1 MB, so an entry-count cap alone let the cache
+    // grow to >1 GB during a full grid scroll). Keep a generous entry-count
+    // backstop as well.
     private const int MaxCacheSize = 2000;
+    private const long MaxCacheBytes = 256L * 1024 * 1024; // 256 MB
     private const int EvictBatchSize = 200;
     private const int DecodeWidth = 512;
 
@@ -61,7 +74,10 @@ public static class ArtworkCache
     public static void Invalidate(string path)
     {
         foreach (var key in Cache.Keys.Where(k => k.EndsWith(path, StringComparison.OrdinalIgnoreCase)))
-            Cache.TryRemove(key, out _);
+        {
+            if (Cache.TryRemove(key, out var removed))
+                Interlocked.Add(ref _totalBytes, -removed.Bytes);
+        }
         Invalidated?.Invoke(path);
     }
 
@@ -112,9 +128,10 @@ public static class ArtworkCache
                 }
                 return null;
             }
+            Interlocked.Add(ref _totalBytes, newEntry.Bytes);
 
             // Evict if over capacity — non-blocking; skip if another thread is already evicting
-            if (Cache.Count > MaxCacheSize &&
+            if ((Cache.Count > MaxCacheSize || Interlocked.Read(ref _totalBytes) > MaxCacheBytes) &&
                 Interlocked.CompareExchange(ref _evictLock, 1, 0) == 0)
             {
                 try { EvictOldest(); }
@@ -131,10 +148,24 @@ public static class ArtworkCache
 
     private static void EvictOldest()
     {
-        // Collect entries, sort by last access, evict the oldest batch
-        var entries = Cache.Values.OrderBy(e => Interlocked.Read(ref e.LastAccess)).Take(EvictBatchSize);
-        foreach (var entry in entries)
-            Cache.TryRemove(entry.Key, out _);
+        // Evict oldest-accessed entries until both the entry-count and byte budgets
+        // are satisfied (always drop at least one batch so a single huge bitmap that
+        // blew the byte budget on its own still triggers cleanup of older entries).
+        var ordered = Cache.Values.OrderBy(e => Interlocked.Read(ref e.LastAccess)).ToList();
+        var dropped = 0;
+        foreach (var entry in ordered)
+        {
+            if (dropped >= EvictBatchSize &&
+                Cache.Count <= MaxCacheSize &&
+                Interlocked.Read(ref _totalBytes) <= MaxCacheBytes)
+                break;
+
+            if (Cache.TryRemove(entry.Key, out var removed))
+            {
+                Interlocked.Add(ref _totalBytes, -removed.Bytes);
+                dropped++;
+            }
+        }
         // We intentionally do not dispose bitmaps here; UI controls may still hold references.
     }
 

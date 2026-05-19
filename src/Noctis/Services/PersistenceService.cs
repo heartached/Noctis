@@ -36,16 +36,18 @@ public class PersistenceService : IPersistenceService
     private string QueuePath => Path.Combine(DataDirectory, "queue.json");
     private string IndexCachePath => Path.Combine(DataDirectory, "indexes.json");
     private string ArtworkDirectory => Path.Combine(DataDirectory, "artwork");
+    private string AnimatedCoverDirectory => Path.Combine(DataDirectory, "animated_covers");
 
     public PersistenceService()
     {
-        // Use %APPDATA%\Noctis\ as the data root
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        DataDirectory = Path.Combine(appData, "Noctis");
+        // Data root is %APPDATA%\Noctis by default; NOCTIS_DATA_DIR overrides
+        // (used by dev builds so they don't clobber a parallel install).
+        DataDirectory = Helpers.AppPaths.DataRoot;
 
         // Ensure directories exist
         Directory.CreateDirectory(DataDirectory);
         Directory.CreateDirectory(ArtworkDirectory);
+        Directory.CreateDirectory(AnimatedCoverDirectory);
     }
 
     // ── Settings ──────────────────────────────────────────────
@@ -126,6 +128,23 @@ public class PersistenceService : IPersistenceService
         {
             // Non-critical: if artwork save fails, we just won't have a cached image
         }
+    }
+
+    // ── Animated Cover ────────────────────────────────────────
+
+    public string GetAnimatedCoverPath(Guid albumId, Guid? trackId, string extension)
+    {
+        var ext = string.IsNullOrWhiteSpace(extension) ? ".mp4" : extension;
+        if (!ext.StartsWith('.')) ext = "." + ext;
+        var fileName = trackId.HasValue
+            ? $"{albumId}__{trackId.Value}{ext}"
+            : $"{albumId}{ext}";
+        return Path.Combine(AnimatedCoverDirectory, fileName);
+    }
+
+    public void EnsureAnimatedCoverDir()
+    {
+        Directory.CreateDirectory(AnimatedCoverDirectory);
     }
 
     // ── Helpers ───────────────────────────────────────────────

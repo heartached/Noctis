@@ -41,8 +41,7 @@ public class LastFmService : ILastFmService
     public LastFmService(HttpClient http)
     {
         _http = http;
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        _albumDescriptionCachePath = Path.Combine(appData, "Noctis", "cache", "lastfm_album_descriptions.json");
+        _albumDescriptionCachePath = Path.Combine(Helpers.AppPaths.DataRoot, "cache", "lastfm_album_descriptions.json");
     }
 
     public void Configure(string? sessionKey)

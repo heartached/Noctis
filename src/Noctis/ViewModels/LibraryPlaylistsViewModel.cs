@@ -226,9 +226,7 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
         if (files.Count == 0) return;
 
         // Copy to app data covers directory
-        var coversDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Noctis", "playlist_covers");
+        var coversDir = Path.Combine(Helpers.AppPaths.DataRoot, "playlist_covers");
         Directory.CreateDirectory(coversDir);
 
         var ext = Path.GetExtension(files[0].Name);

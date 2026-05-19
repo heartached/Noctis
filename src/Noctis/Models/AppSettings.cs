@@ -28,6 +28,24 @@ public class AppSettings
     /// </summary>
     public bool ThemeV2Migrated { get; set; } = false;
 
+    /// <summary>Display name shown in the Settings profile section.</summary>
+    public string ProfileName { get; set; } = string.Empty;
+
+    /// <summary>Username/handle shown beneath the profile name.</summary>
+    public string ProfileUsername { get; set; } = string.Empty;
+
+    /// <summary>Absolute path to the user's avatar image, or empty for the default placeholder.</summary>
+    public string ProfileAvatarPath { get; set; } = string.Empty;
+
+    /// <summary>Accent preset name ("Crimson", "Sunset", ..., or "Custom").</summary>
+    public string AccentPresetName { get; set; } = "Crimson";
+
+    /// <summary>Active accent colour as #RRGGBB hex (mirrors the preset; honoured when preset is "Custom").</summary>
+    public string AccentColorHex { get; set; } = "#E74856";
+
+    /// <summary>User-defined custom themes selectable from the Themes row.</summary>
+    public List<CustomThemeDefinition> CustomThemes { get; set; } = new();
+
     /// <summary>Last volume level (0–100).</summary>
     public int Volume { get; set; } = 75;
 
@@ -51,24 +69,6 @@ public class AppSettings
 
     /// <summary>Whether crossfade between tracks is enabled.</summary>
     public bool CrossfadeEnabled { get; set; }
-
-    /// <summary>Whether adaptive AutoMix transitions between queued tracks are enabled.</summary>
-    public bool AutoMixEnabled { get; set; }
-
-    /// <summary>Playback transition mode: Off, Crossfade, or AutoMix.</summary>
-    public AutoMixTransitionMode AutoMixTransitionMode { get; set; } = AutoMixTransitionMode.Off;
-
-    /// <summary>How assertive AutoMix transitions should be.</summary>
-    public AutoMixStrength AutoMixStrength { get; set; } = AutoMixStrength.Balanced;
-
-    /// <summary>Whether AutoMix should trim detected or estimated silence.</summary>
-    public bool AutoMixRemoveSilence { get; set; } = true;
-
-    /// <summary>Whether sequential album tracks should avoid AutoMix by default.</summary>
-    public bool AutoMixAvoidAlbums { get; set; } = true;
-
-    /// <summary>Whether AutoMix can plan beat-matched transitions when BPM/key metadata exists.</summary>
-    public bool AutoMixBeatMatch { get; set; } = true;
 
     /// <summary>Crossfade duration in seconds (1–12, fractional allowed).</summary>
     public double CrossfadeDuration { get; set; } = 6;
@@ -97,14 +97,14 @@ public class AppSettings
     /// <summary>Whether long album titles in the CoverFlow view should scroll.</summary>
     public bool CoverFlowAlbumMarqueeEnabled { get; set; } = true;
 
+    /// <summary>Whether animated cover art (looping MP4/WebM) plays for the currently playing track.</summary>
+    public bool EnableAnimatedCovers { get; set; } = true;
+
     /// <summary>Whether long track titles in the Lyrics page should scroll.</summary>
     public bool LyricsTitleMarqueeEnabled { get; set; } = true;
 
     /// <summary>Whether long artist/album names in the Lyrics page should scroll.</summary>
     public bool LyricsArtistMarqueeEnabled { get; set; } = true;
-
-    /// <summary>Whether album detail pages tint their background with the cover-art dominant color.</summary>
-    public bool AlbumDetailColorTintEnabled { get; set; }
 
     // ── Equalizer settings ──
 

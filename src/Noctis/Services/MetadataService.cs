@@ -102,8 +102,9 @@ public class MetadataService : IMetadataService
                 }
             }
 
-            if (NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate))
-                TryPopulateAudioMetricsWithFfprobe(filePath, ref sampleRate, ref bitsPerSample, ref bitrate);
+            var duration = props.Duration;
+            if (NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration))
+                TryPopulateAudioMetricsWithFfprobe(filePath, ref sampleRate, ref bitsPerSample, ref bitrate, ref duration);
 
             // Preserve all credited performers so featured artists show in track rows.
             var artist = FirstNonEmpty(JoinTagValues(tag.Performers), tag.FirstPerformer, tag.FirstAlbumArtist, "Unknown Artist");
@@ -131,7 +132,7 @@ public class MetadataService : IMetadataService
                 Bpm = (int)tag.BeatsPerMinute,
                 MusicalKey = ReadMusicalKey(file),
                 Year = (int)tag.Year,
-                Duration = props.Duration,
+                Duration = duration,
                 AlbumId = Track.ComputeAlbumId(albumArtist, album),
                 FileSize = fileInfo.Length,
                 LastModified = fileInfo.LastWriteTimeUtc,
@@ -353,8 +354,9 @@ public class MetadataService : IMetadataService
                 }
             }
 
-            if (NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate))
-                TryPopulateAudioMetricsWithFfprobe(filePath, ref sampleRate, ref bitsPerSample, ref bitrate);
+            var duration = props.Duration;
+            if (NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration))
+                TryPopulateAudioMetricsWithFfprobe(filePath, ref sampleRate, ref bitsPerSample, ref bitrate, ref duration);
 
             return new AudioFileInfo
             {
@@ -375,7 +377,7 @@ public class MetadataService : IMetadataService
                     8 => "7.1 Surround",
                     _ => $"{props.AudioChannels} channels"
                 },
-                Duration = props.Duration,
+                Duration = duration,
                 FileSize = fileInfo.Length,
                 DateModified = fileInfo.LastWriteTime,
                 DateAdded = fileInfo.CreationTime
@@ -552,12 +554,12 @@ public class MetadataService : IMetadataService
         return estimated > 0 ? estimated : 0;
     }
 
-    private static bool NeedsFfprobeFallback(int sampleRate, int bitsPerSample, int bitrate)
+    private static bool NeedsFfprobeFallback(int sampleRate, int bitsPerSample, int bitrate, TimeSpan duration)
     {
-        return sampleRate < 8000 || bitsPerSample <= 0 || bitrate <= 0;
+        return sampleRate < 8000 || bitsPerSample <= 0 || bitrate <= 0 || duration <= TimeSpan.Zero;
     }
 
-    private static void TryPopulateAudioMetricsWithFfprobe(string filePath, ref int sampleRate, ref int bitsPerSample, ref int bitrate)
+    private static void TryPopulateAudioMetricsWithFfprobe(string filePath, ref int sampleRate, ref int bitsPerSample, ref int bitrate, ref TimeSpan duration)
     {
         if (!FfprobeAvailable.Value)
             return;
@@ -568,7 +570,7 @@ public class MetadataService : IMetadataService
             var psi = new ProcessStartInfo
             {
                 FileName = "ffprobe",
-                Arguments = $"-v error -select_streams a:0 -show_entries stream=sample_rate,bits_per_sample,bits_per_raw_sample,bit_rate:format=bit_rate -of json \"{escapedPath}\"",
+                Arguments = $"-v error -select_streams a:0 -show_entries stream=sample_rate,bits_per_sample,bits_per_raw_sample,bit_rate,duration:format=bit_rate,duration -of json \"{escapedPath}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -616,14 +618,30 @@ public class MetadataService : IMetadataService
                     if (streamBitrate > 0)
                         bitrate = (int)Math.Round(streamBitrate / 1000d);
                 }
+
+                if (duration <= TimeSpan.Zero)
+                {
+                    var streamDuration = ParseJsonDouble(stream, "duration");
+                    if (streamDuration > 0)
+                        duration = TimeSpan.FromSeconds(streamDuration);
+                }
             }
 
-            if (bitrate <= 0 &&
-                root.TryGetProperty("format", out var format))
+            if (root.TryGetProperty("format", out var format))
             {
-                var formatBitrate = ParseJsonInt(format, "bit_rate");
-                if (formatBitrate > 0)
-                    bitrate = (int)Math.Round(formatBitrate / 1000d);
+                if (bitrate <= 0)
+                {
+                    var formatBitrate = ParseJsonInt(format, "bit_rate");
+                    if (formatBitrate > 0)
+                        bitrate = (int)Math.Round(formatBitrate / 1000d);
+                }
+
+                if (duration <= TimeSpan.Zero)
+                {
+                    var formatDuration = ParseJsonDouble(format, "duration");
+                    if (formatDuration > 0)
+                        duration = TimeSpan.FromSeconds(formatDuration);
+                }
             }
         }
         catch
@@ -642,6 +660,19 @@ public class MetadataService : IMetadataService
             JsonValueKind.Number => value.TryGetInt32(out var number) ? number : 0,
             JsonValueKind.String => int.TryParse(value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0,
             _ => 0
+        };
+    }
+
+    private static double ParseJsonDouble(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value))
+            return 0d;
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number => value.TryGetDouble(out var number) ? number : 0d,
+            JsonValueKind.String => double.TryParse(value.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0d,
+            _ => 0d
         };
     }
 

@@ -7,6 +7,7 @@
              xmlns:controls="using:Noctis.Controls"
              x:Class="Noctis.Views.HomeView"
              x:DataType="vm:HomeViewModel"
+             Focusable="True"
              Background="{DynamicResource AppMainBackground}">
 
     <UserControl.Resources>
@@ -22,7 +23,8 @@
                 <!-- Section title -->
                 <TextBlock Text="Most Listened To"
                            FontSize="30"
-                           FontWeight="Bold" />
+                           FontWeight="Bold"
+                           IsVisible="{Binding TopSongs.Count}" />
 
                 <!-- Top Songs (pill grid) -->
                 <StackPanel Spacing="14"
@@ -55,7 +57,7 @@
                                         </Style>
                                     </Button.Styles>
                                     <Button.ContextMenu>
-                                        <ContextMenu DataContext="{Binding}" Opened="OnContextMenuOpened">
+                                        <ContextMenu DataContext="{Binding}" Opening="OnContextMenuOpening">
                                             <MenuItem Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).PlayTopSongCommand}"
                                                       CommandParameter="{Binding}"
                                                       MaxWidth="400">
@@ -91,14 +93,12 @@
                                                 </MenuItem.Icon>
                                             </MenuItem>
                                             <Separator />
-                                            <MenuItem x:Name="AddToPlaylistMenuItem1" Header="Add to Playlist">
+                                            <MenuItem x:Name="AddToPlaylistMenuItem1" Header="Add to Playlist"
+                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).AddTrackToNewPlaylistCommand}"
+                                                      CommandParameter="{Binding}">
                                                 <MenuItem.Icon>
                                                     <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                                 </MenuItem.Icon>
-                                                <MenuItem Header="Create New Playlist"
-                                                          Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).AddTrackToNewPlaylistCommand}"
-                                                          CommandParameter="{Binding}" />
-                                                <Separator x:Name="PlaylistSeparator1" />
                                             </MenuItem>
                                             <Separator />
                                             <MenuItem Header="Favorites"
@@ -174,21 +174,30 @@
                                               VerticalAlignment="Center"
                                               Margin="12,0,8,0">
                                             <TextBlock Grid.Column="0"
-                                                       Text="{Binding Title}"
                                                        FontSize="13"
                                                        FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis"
-                                                       MaxLines="1" />
-                                            <Border Grid.Column="1"
-                                                    Classes="explicit-badge compact"
-                                                    Margin="6,0,0,0"
-                                                    IsVisible="{Binding IsExplicit}"
-                                                    ToolTip.Tip="Explicit">
-                                                <TextBlock Text="E"
-                                                           Classes="explicit-badge-text compact"
-                                                           FontSize="9"
-                                                           Opacity="0.9" />
-                                            </Border>
+                                                       MaxLines="1">
+                                                <Run Text="{Binding Title}" />
+                                                <InlineUIContainer BaselineAlignment="Center">
+                                                    <Border Classes="explicit-badge compact"
+                                                            Margin="6,0,0,0"
+                                                            IsVisible="{Binding IsExplicit}"
+                                                            ToolTip.Tip="Explicit">
+                                                        <TextBlock Text="E"
+                                                                   Classes="explicit-badge-text compact"
+                                                                   FontSize="9"
+                                                                   Opacity="0.9" />
+                                                    </Border>
+                                                </InlineUIContainer>
+                                            </TextBlock>
+                                            <PathIcon Grid.Column="1"
+                                                      Data="{StaticResource HeartFillIcon}"
+                                                      Width="14" Height="14"
+                                                      Foreground="#E74856"
+                                                      Margin="6,0,0,0"
+                                                      VerticalAlignment="Center"
+                                                      IsVisible="{Binding IsFavorite}" />
                                         </Grid>
                                         <Border Grid.Column="2"
                                                 Margin="0,0,14,0"
@@ -197,10 +206,19 @@
                                                 Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
                                                 VerticalAlignment="Center"
                                                 ToolTip.Tip="Listen count">
-                                            <TextBlock Text="{Binding PlayCount, StringFormat='{}{0} plays'}"
-                                                       FontSize="11"
-                                                       FontWeight="SemiBold"
-                                                       Opacity="0.75" />
+                                            <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding PlayCount}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Opacity="0.75"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Text="plays"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Opacity="0.75"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,0,2" />
+                                            </StackPanel>
                                         </Border>
                                     </Grid>
                                 </Button>
@@ -209,8 +227,74 @@
                     </ItemsControl>
                 </StackPanel>
 
+                <!-- Top Artists -->
+                <StackPanel Spacing="14"
+                            IsVisible="{Binding TopArtists.Count}">
+                    <TextBlock Text="Top Artists"
+                               FontSize="22"
+                               FontWeight="Bold" />
+                    <ItemsControl ItemsSource="{Binding TopArtists}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="6" VerticalAlignment="Top" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="m:Artist">
+                                <Button Background="Transparent" BorderThickness="0" Padding="6"
+                                        Margin="2" Cursor="Hand"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"
+                                        Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).OpenTopArtistCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Button.Styles>
+                                        <Style Selector="Button:pointerover Border#ArtistAvatar">
+                                            <Setter Property="RenderTransform" Value="scale(1.04)" />
+                                        </Style>
+                                    </Button.Styles>
+                                    <StackPanel Spacing="10" HorizontalAlignment="Center">
+                                        <Border x:Name="ArtistAvatar"
+                                                Width="140" Height="140"
+                                                CornerRadius="70"
+                                                ClipToBounds="True"
+                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                                                RenderTransformOrigin="50%,50%">
+                                            <Border.Transitions>
+                                                <Transitions>
+                                                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15"/>
+                                                </Transitions>
+                                            </Border.Transitions>
+                                            <Panel>
+                                                <PathIcon Data="{StaticResource ArtistsIcon}"
+                                                          Width="58"
+                                                          Height="58"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          Opacity="0.22" />
+                                                <controls:CachedImage SourcePath="{Binding ImagePath}"
+                                                                      DecodeWidth="320"
+                                                                      Stretch="UniformToFill"
+                                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                      IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            </Panel>
+                                        </Border>
+                                        <TextBlock Text="{Binding Name}"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   HorizontalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxLines="2" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
                 <!-- Recently Played -->
-                <StackPanel Spacing="14">
+                <StackPanel Spacing="14"
+                            IsVisible="{Binding RecentlyPlayedAlbums.Count}">
                     <TextBlock Text="Recently Played"
                                FontSize="22"
                                FontWeight="Bold" />
@@ -250,7 +334,7 @@
                                         Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).OpenAlbumCommand}"
                                         CommandParameter="{Binding}">
                                     <Button.ContextMenu>
-                                        <ContextMenu DataContext="{Binding}" Opened="OnContextMenuOpened">
+                                        <ContextMenu DataContext="{Binding}" Opening="OnContextMenuOpening">
                                             <MenuItem Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).PlayAlbumCommand}"
                                                       CommandParameter="{Binding}"
                                                       MaxWidth="400">
@@ -287,14 +371,12 @@
                                                 </MenuItem.Icon>
                                             </MenuItem>
                                             <Separator />
-                                            <MenuItem x:Name="AddToPlaylistMenuItem2" Header="Add to Playlist">
+                                            <MenuItem x:Name="AddToPlaylistMenuItem2" Header="Add to Playlist"
+                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).AddAlbumToNewPlaylistCommand}"
+                                                      CommandParameter="{Binding}">
                                                 <MenuItem.Icon>
                                                     <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                                 </MenuItem.Icon>
-                                                <MenuItem Header="Create New Playlist"
-                                                          Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).AddAlbumToNewPlaylistCommand}"
-                                                          CommandParameter="{Binding}" />
-                                                <Separator x:Name="PlaylistSeparator2" />
                                             </MenuItem>
                                             <Separator />
                                             <MenuItem Header="Favorites"
@@ -360,12 +442,20 @@
                                                            VerticalAlignment="Center"
                                                            Opacity="0.2"
                                                            IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                <Image Source="{Binding ArtworkPath, Converter={StaticResource ArtworkConverter}}"
-                                                       Stretch="UniformToFill"
-                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                       IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                            </Panel>
-                                        </Border>
+                                                 <controls:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                                       DecodeWidth="768"
+                                                                       Stretch="UniformToFill"
+                                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                       IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                 <PathIcon Data="{StaticResource HeartFillIcon}"
+                                                           Width="18" Height="18"
+                                                           Foreground="#E74856"
+                                                           HorizontalAlignment="Right"
+                                                           VerticalAlignment="Bottom"
+                                                           Margin="0,0,8,8"
+                                                           IsVisible="{Binding HasFavoriteTrack}" />
+                                             </Panel>
+                                         </Border>
                                         <TextBlock Margin="0,5,0,0"
                                                    FontSize="13"
                                                    FontWeight="SemiBold"

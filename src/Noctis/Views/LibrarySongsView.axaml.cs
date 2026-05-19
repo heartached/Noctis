@@ -36,6 +36,17 @@ public partial class LibrarySongsView : UserControl
         TrackList.ContainerPrepared += OnTrackContainerPrepared;
         TrackList.ContainerClearing += OnTrackContainerClearing;
 
+        // Wire any containers that were realized before this subscription so
+        // right-click works on row padding/edges, not just the inner Grid.
+        foreach (var container in TrackList.GetRealizedContainers())
+        {
+            if (container is ListBoxItem item)
+            {
+                item.ContextRequested -= OnTrackItemContextRequested;
+                item.ContextRequested += OnTrackItemContextRequested;
+            }
+        }
+
         DataContextChanged += OnDataContextChanged;
     }
 
@@ -47,6 +58,10 @@ public partial class LibrarySongsView : UserControl
         if (source is not ListBoxItem item) return;
 
         MultiSelectHelper.HandleTrackRowClick(item, e, _selectedTrackItems);
+
+        // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
+        if (_selectedTrackItems.Count > 0)
+            Focus();
     }
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
@@ -76,14 +91,12 @@ public partial class LibrarySongsView : UserControl
             shuffleCommand: vm.ShuffleAllCommand,
             playNextCommand: vm.PlayNextCommand,
             addToQueueCommand: vm.AddToQueueCommand,
-            addToNewPlaylistCommand: vm.AddToNewPlaylistCommand,
+            addToPlaylistCommand: vm.AddToNewPlaylistCommand,
             toggleFavoriteCommand: vm.ToggleFavoriteCommand,
             openMetadataCommand: vm.OpenMetadataCommand,
             searchLyricsCommand: vm.SearchLyricsCommand,
             showInExplorerCommand: vm.ShowInExplorerCommand,
-            removeCommand: vm.RemoveFromLibraryCommand,
-            playlists: vm.Playlists,
-            addToExistingPlaylistCommand: vm.AddToExistingPlaylistCommand);
+            removeCommand: vm.RemoveFromLibraryCommand);
     }
 
     private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)
@@ -124,9 +137,15 @@ public partial class LibrarySongsView : UserControl
 
         BindContextMenuToTrack(track);
         var menu = GetOrCreateContextMenu();
+        if (menu.IsOpen)
+            menu.Close();
+
         DetachMenuFromOwner();
         _menuOwnerItem = item;
         item.ContextMenu = menu;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(item);
+        e.Handled = true;
     }
 
     private void OnOptionsButtonClick(object? sender, RoutedEventArgs e)

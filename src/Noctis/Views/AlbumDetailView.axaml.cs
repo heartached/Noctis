@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -17,7 +18,6 @@ public partial class AlbumDetailView : UserControl
 {
     private EventHandler? _pendingScrollRestore;
     private System.ComponentModel.PropertyChangedEventHandler? _bgHandler;
-    private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
     private AlbumDetailViewModel? _trackedVm;
 
     public AlbumDetailView()
@@ -33,6 +33,8 @@ public partial class AlbumDetailView : UserControl
         OtherVersionsScroll.LayoutUpdated += (_, _) => UpdateHScrollArrows(OtherVersionsScroll, OtherVersionsLeft, OtherVersionsRight);
         MoreByArtistScroll.ScrollChanged += (_, _) => UpdateHScrollArrows(MoreByArtistScroll, MoreByArtistLeft, MoreByArtistRight);
         MoreByArtistScroll.LayoutUpdated += (_, _) => UpdateHScrollArrows(MoreByArtistScroll, MoreByArtistLeft, MoreByArtistRight);
+
+        AddHandler(InputElement.PointerPressedEvent, OnOptionsFlyoutButtonPointerPressed, RoutingStrategies.Tunnel);
     }
 
     private static void UpdateHScrollArrows(ScrollViewer sv, Button left, Button right)
@@ -88,6 +90,19 @@ public partial class AlbumDetailView : UserControl
         lb.DoubleTapped += OnTrackDoubleTapped;
         lb.ContainerPrepared += OnTrackContainerPrepared;
         lb.ContainerClearing += OnTrackContainerClearing;
+
+        // Non-virtualizing StackPanel realizes all items before this Loaded handler
+        // runs, so ContainerPrepared has already fired for existing rows. Wire the
+        // ContextRequested handler on those existing containers so right-click works
+        // anywhere on the row (including ListBoxItem padding outside the inner Grid).
+        foreach (var container in lb.GetRealizedContainers())
+        {
+            if (container is ListBoxItem item)
+            {
+                item.ContextRequested -= OnTrackItemContextRequested;
+                item.ContextRequested += OnTrackItemContextRequested;
+            }
+        }
     }
 
     private void UnwireListBox(ContentPresenter cp)
@@ -97,6 +112,12 @@ public partial class AlbumDetailView : UserControl
         lb.DoubleTapped -= OnTrackDoubleTapped;
         lb.ContainerPrepared -= OnTrackContainerPrepared;
         lb.ContainerClearing -= OnTrackContainerClearing;
+
+        foreach (var container in lb.GetRealizedContainers())
+        {
+            if (container is ListBoxItem item)
+                item.ContextRequested -= OnTrackItemContextRequested;
+        }
     }
 
     private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)
@@ -127,127 +148,15 @@ public partial class AlbumDetailView : UserControl
         e.Handled = true;
     }
 
-    private void OnContextMenuOpened(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is not AlbumDetailViewModel vm) return;
-        if (sender is not ContextMenu ctx) return;
+    private void OnContextMenuOpening(object? sender, CancelEventArgs e) { }
 
-        if (!_playlistPopulators.TryGetValue(ctx, out var populator))
-        {
-            MenuItem? addToPlaylist = null;
-            Separator? separator = null;
-            foreach (var item in ctx.Items)
-            {
-                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
-                {
-                    addToPlaylist = mi;
-                    foreach (var sub in mi.Items)
-                    {
-                        if (sub is Separator sep) { separator = sep; break; }
-                    }
-                    break;
-                }
-            }
-            if (addToPlaylist == null || separator == null) return;
-            populator = new PlaylistMenuPopulator(addToPlaylist, separator);
-            _playlistPopulators[ctx] = populator;
-        }
+    private void OnRelatedAlbumContextMenuOpening(object? sender, CancelEventArgs e) { }
 
-        var track = ctx.DataContext as Track;
-        populator.Populate(vm.Playlists, vm.AddToExistingPlaylistCommand,
-            playlist => new object[] { track!, playlist });
-    }
+    private void OnAlbumFlyoutOpened(object? sender, EventArgs e) { }
 
-    private void OnRelatedAlbumContextMenuOpened(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is not AlbumDetailViewModel vm) return;
-        if (sender is not ContextMenu ctx) return;
+    private void OnTrackFlyoutOpened(object? sender, EventArgs e) { }
 
-        if (!_playlistPopulators.TryGetValue(ctx, out var populator))
-        {
-            MenuItem? addToPlaylist = null;
-            Separator? separator = null;
-            foreach (var item in ctx.Items)
-            {
-                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
-                {
-                    addToPlaylist = mi;
-                    foreach (var sub in mi.Items)
-                    {
-                        if (sub is Separator sep) { separator = sep; break; }
-                    }
-                    break;
-                }
-            }
-            if (addToPlaylist == null || separator == null) return;
-            populator = new PlaylistMenuPopulator(addToPlaylist, separator);
-            _playlistPopulators[ctx] = populator;
-        }
-
-        var album = ctx.DataContext as Album;
-        populator.Populate(vm.Playlists, vm.AddRelatedAlbumToExistingPlaylistCommand,
-            playlist => new object[] { album!, playlist });
-    }
-
-    private void OnAlbumFlyoutOpened(object? sender, EventArgs e)
-    {
-        if (DataContext is not AlbumDetailViewModel vm) return;
-        if (sender is not MenuFlyout flyout) return;
-
-        if (!_playlistPopulators.TryGetValue(flyout, out var populator))
-        {
-            MenuItem? addToPlaylist = null;
-            Separator? separator = null;
-            foreach (var item in flyout.Items)
-            {
-                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
-                {
-                    addToPlaylist = mi;
-                    foreach (var sub in mi.Items)
-                    {
-                        if (sub is Separator sep) { separator = sep; break; }
-                    }
-                    break;
-                }
-            }
-            if (addToPlaylist == null || separator == null) return;
-            populator = new PlaylistMenuPopulator(addToPlaylist, separator);
-            _playlistPopulators[flyout] = populator;
-        }
-
-        populator.Populate(vm.Playlists, vm.AddAlbumToExistingPlaylistCommand);
-    }
-
-    private void OnTrackFlyoutOpened(object? sender, EventArgs e)
-    {
-        if (DataContext is not AlbumDetailViewModel vm) return;
-        if (sender is not MenuFlyout flyout) return;
-
-        if (!_playlistPopulators.TryGetValue(flyout, out var populator))
-        {
-            MenuItem? addToPlaylist = null;
-            Separator? separator = null;
-            foreach (var item in flyout.Items)
-            {
-                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
-                {
-                    addToPlaylist = mi;
-                    foreach (var sub in mi.Items)
-                    {
-                        if (sub is Separator sep) { separator = sep; break; }
-                    }
-                    break;
-                }
-            }
-            if (addToPlaylist == null || separator == null) return;
-            populator = new PlaylistMenuPopulator(addToPlaylist, separator);
-            _playlistPopulators[flyout] = populator;
-        }
-
-        var track = (flyout.Target as Button)?.Tag as Track;
-        populator.Populate(vm.Playlists, vm.AddToExistingPlaylistCommand,
-            playlist => new object[] { track!, playlist });
-    }
+    private void OnOptionsFlyoutButtonPointerPressed(object? sender, PointerPressedEventArgs e) { }
 
     private void OnTrackDoubleTapped(object? sender, TappedEventArgs e)
     {

@@ -66,10 +66,22 @@ public partial class SidebarViewModel : ViewModelBase
         _library.FavoritesChanged += (_, _) => RefreshFavoritesCount();
     }
 
+    private bool _suppressNavigationRequest;
+
     partial void OnSelectedNavItemChanged(NavItem? value)
     {
+        if (_suppressNavigationRequest) return;
         if (value != null)
             NavigationRequested?.Invoke(this, value.Key);
+    }
+
+    /// <summary>Sets SelectedNavItem without firing NavigationRequested. Used to restore the
+    /// highlighted item when a sidebar click triggers a modal (e.g. Settings) instead of a page nav.</summary>
+    public void SetSelectedNavItemSilently(NavItem? value)
+    {
+        _suppressNavigationRequest = true;
+        try { SelectedNavItem = value; }
+        finally { _suppressNavigationRequest = false; }
     }
 
     /// <summary>Recalculates the number of favorited tracks off the UI thread.</summary>
@@ -274,26 +286,38 @@ public partial class SidebarViewModel : ViewModelBase
         PlaylistTracksChanged?.Invoke(this, playlistId);
     }
 
-    /// <summary>Creates a new playlist containing a single track.</summary>
-    public async Task CreatePlaylistWithTrackAsync(Track track)
+    /// <summary>Opens the unified "Add to Playlist" dialog for a single track.</summary>
+    public Task CreatePlaylistWithTrackAsync(Track track)
+        => OpenAddToPlaylistAsync(new List<Track> { track });
+
+    /// <summary>Opens the unified "Add to Playlist" dialog for multiple tracks.</summary>
+    public Task CreatePlaylistWithTracksAsync(IList<Track> tracks)
+        => OpenAddToPlaylistAsync(tracks);
+
+    /// <summary>
+    /// Shows the combined "Add to Playlist" dialog: the user can pick an existing
+    /// playlist (tracks added immediately) or inline-create a new one (tracks added
+    /// to the new playlist on creation).
+    /// </summary>
+    public async Task OpenAddToPlaylistAsync(IList<Track> tracks)
     {
-        var dialogVm = new CreatePlaylistDialogViewModel();
-        var dialog = new CreatePlaylistDialog
+        if (tracks == null || tracks.Count == 0) return;
+
+        var dialogVm = new AddToPlaylistDialogViewModel(PlaylistItems, tracks.Count);
+        var dialog = new AddToPlaylistDialog { DataContext = dialogVm };
+
+        Guid? selectedExistingId = null;
+        bool createRequested = false;
+        string newName = string.Empty;
+        string newDescription = string.Empty;
+
+        dialogVm.PlaylistSelected += (_, navItem) => selectedExistingId = navItem.PlaylistId;
+        dialogVm.NewPlaylistRequested += (_, args) =>
         {
-            DataContext = dialogVm
+            createRequested = true;
+            newName = args.Name;
+            newDescription = args.Description;
         };
-
-        bool playlistCreated = false;
-        string playlistName = string.Empty;
-        string playlistDescription = string.Empty;
-
-        dialogVm.PlaylistCreated += (_, args) =>
-        {
-            playlistCreated = true;
-            playlistName = args.Name;
-            playlistDescription = args.Description;
-        };
-
         dialogVm.CloseRequested += (_, _) => dialog.Close();
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
@@ -308,72 +332,23 @@ public partial class SidebarViewModel : ViewModelBase
             return;
         }
 
-        if (!playlistCreated)
+        if (selectedExistingId is Guid id)
+        {
+            await AddTracksToPlaylist(id, tracks);
             return;
+        }
+
+        if (!createRequested) return;
 
         var playlist = new Playlist
         {
-            Name = playlistName,
-            Description = playlistDescription,
+            Name = newName,
+            Description = newDescription,
             Color = Playlist.GetRandomColor()
         };
-        playlist.TrackIds.Add(track.Id);
-        Playlists.Add(playlist);
-        PlaylistItems.Add(BuildPlaylistNavItem(playlist));
-        RefreshVisiblePlaylists();
+        foreach (var t in tracks)
+            playlist.TrackIds.Add(t.Id);
 
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
-    }
-
-    /// <summary>Creates a new playlist containing multiple tracks.</summary>
-    public async Task CreatePlaylistWithTracksAsync(IList<Track> tracks)
-    {
-        if (tracks.Count == 0) return;
-
-        var dialogVm = new CreatePlaylistDialogViewModel();
-        var dialog = new CreatePlaylistDialog
-        {
-            DataContext = dialogVm
-        };
-
-        bool playlistCreated = false;
-        string playlistName = string.Empty;
-        string playlistDescription = string.Empty;
-
-        dialogVm.PlaylistCreated += (_, args) =>
-        {
-            playlistCreated = true;
-            playlistName = args.Name;
-            playlistDescription = args.Description;
-        };
-
-        dialogVm.CloseRequested += (_, _) => dialog.Close();
-
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow is Window owner)
-        {
-            DialogHelper.SizeToOwner(dialog, owner);
-            await dialog.ShowDialog(owner);
-        }
-        else
-        {
-            dialog.Show();
-            return;
-        }
-
-        if (!playlistCreated)
-            return;
-
-        var playlist = new Playlist
-        {
-            Name = playlistName,
-            Description = playlistDescription,
-            Color = Playlist.GetRandomColor()
-        };
-        foreach (var track in tracks)
-        {
-            playlist.TrackIds.Add(track.Id);
-        }
         Playlists.Add(playlist);
         PlaylistItems.Add(BuildPlaylistNavItem(playlist));
         RefreshVisiblePlaylists();
@@ -440,9 +415,7 @@ public partial class SidebarViewModel : ViewModelBase
         }
         else if (!string.IsNullOrEmpty(dialogVm.PendingCoverArtFile))
         {
-            var coversDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Noctis", "playlist_covers");
+            var coversDir = Path.Combine(Helpers.AppPaths.DataRoot, "playlist_covers");
             Directory.CreateDirectory(coversDir);
 
             var ext = Path.GetExtension(dialogVm.PendingCoverArtFile);

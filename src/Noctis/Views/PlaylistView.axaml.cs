@@ -20,11 +20,14 @@ public partial class PlaylistView : UserControl
     private TrackContextMenuBuilder? _menuBuilder;
     private ListBoxItem? _menuOwnerItem;
 
-    // ── Drag-reorder state ──
-    private Point _dragStartPoint;
-    private bool _dragStarted;
+    // ── Drag-reorder state (pointer-tracked, mirrors Queue's pill preview) ──
+    private const double PlaylistDragThreshold = 6.0;
+    private Point _dragStartPos;
+    private bool _dragActive;
     private Track? _dragTrack;
-    private ListBoxItem? _dragSourceItem;
+    private int _dragSourceIndex = -1;
+    private double _dragRowOffsetY;
+    private ListBoxItem? _dragHiddenItem;
 
     public PlaylistView()
     {
@@ -37,7 +40,31 @@ public partial class PlaylistView : UserControl
         TrackList.ContainerPrepared += OnTrackContainerPrepared;
         TrackList.ContainerClearing += OnTrackContainerClearing;
 
+        // Wire any containers that were realized before this subscription.
+        // Without this, right-click on row padding/edges (outside the inner Grid's
+        // own ContextMenu) silently does nothing because ContextRequested has no
+        // listener at the ListBoxItem level.
+        foreach (var container in TrackList.GetRealizedContainers())
+        {
+            if (container is ListBoxItem item)
+                WireTrackItem(item);
+        }
+
         DataContextChanged += OnDataContextChanged;
+    }
+
+    private void WireTrackItem(ListBoxItem item)
+    {
+        item.ContextRequested -= OnTrackItemContextRequested;
+        item.ContextRequested += OnTrackItemContextRequested;
+        item.RemoveHandler(PointerPressedEvent, OnTrackRowPointerPressed);
+        item.AddHandler(PointerPressedEvent, OnTrackRowPointerPressed, RoutingStrategies.Tunnel);
+        item.RemoveHandler(PointerMovedEvent, OnTrackRowPointerMoved);
+        item.AddHandler(PointerMovedEvent, OnTrackRowPointerMoved, RoutingStrategies.Tunnel);
+        item.RemoveHandler(PointerReleasedEvent, OnTrackRowPointerReleased);
+        item.AddHandler(PointerReleasedEvent, OnTrackRowPointerReleased, RoutingStrategies.Tunnel);
+        item.RemoveHandler(PointerCaptureLostEvent, OnTrackRowPointerCaptureLost);
+        item.AddHandler(PointerCaptureLostEvent, OnTrackRowPointerCaptureLost, RoutingStrategies.Tunnel);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -55,6 +82,10 @@ public partial class PlaylistView : UserControl
         if (source is not ListBoxItem item) return;
 
         MultiSelectHelper.HandleTrackRowClick(item, e, _selectedTrackItems);
+
+        // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
+        if (_selectedTrackItems.Count > 0)
+            Focus();
     }
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
@@ -87,14 +118,12 @@ public partial class PlaylistView : UserControl
             shuffleCommand: vm.ShuffleAllCommand,
             playNextCommand: vm.PlayNextCommand,
             addToQueueCommand: vm.AddToQueueCommand,
-            addToNewPlaylistCommand: vm.AddToNewPlaylistCommand,
+            addToPlaylistCommand: vm.AddToNewPlaylistCommand,
             toggleFavoriteCommand: vm.ToggleFavoriteCommand,
             openMetadataCommand: vm.OpenMetadataCommand,
             searchLyricsCommand: vm.SearchLyricsCommand,
             showInExplorerCommand: vm.ShowInExplorerCommand,
-            removeCommand: vm.RemoveTrackCommand,
-            playlists: vm.Playlists,
-            addToExistingPlaylistCommand: vm.AddToExistingPlaylistCommand);
+            removeCommand: vm.RemoveTrackCommand);
     }
 
     private void DetachMenuFromOwner()
@@ -137,11 +166,7 @@ public partial class PlaylistView : UserControl
     private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)
     {
         if (e.Container is ListBoxItem item)
-        {
-            item.ContextRequested += OnTrackItemContextRequested;
-            item.AddHandler(PointerPressedEvent, OnTrackRowPointerPressed, RoutingStrategies.Tunnel);
-            item.AddHandler(PointerMovedEvent, OnTrackRowPointerMoved, RoutingStrategies.Tunnel);
-        }
+            WireTrackItem(item);
     }
 
     private void OnTrackContainerClearing(object? sender, ContainerClearingEventArgs e)
@@ -152,6 +177,8 @@ public partial class PlaylistView : UserControl
             item.ContextMenu = null;
             item.RemoveHandler(PointerPressedEvent, OnTrackRowPointerPressed);
             item.RemoveHandler(PointerMovedEvent, OnTrackRowPointerMoved);
+            item.RemoveHandler(PointerReleasedEvent, OnTrackRowPointerReleased);
+            item.RemoveHandler(PointerCaptureLostEvent, OnTrackRowPointerCaptureLost);
         }
     }
 
@@ -164,9 +191,15 @@ public partial class PlaylistView : UserControl
 
         BindContextMenuToTrack(track);
         var menu = GetOrCreateContextMenu();
+        if (menu.IsOpen)
+            menu.Close();
+
         DetachMenuFromOwner();
         _menuOwnerItem = item;
         item.ContextMenu = menu;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(item);
+        e.Handled = true;
     }
 
     private void OnTrackDoubleTapped(object? sender, TappedEventArgs e)
@@ -181,90 +214,100 @@ public partial class PlaylistView : UserControl
         }
     }
 
-    // ── Drag-reorder handlers ──────────────────────────────────
+    // ── Drag-reorder handlers (pointer-tracked, mirrors Queue's pill preview) ──
+    //
+    // The dragged row is rendered as a floating preview (#PlaylistDragPreview) that
+    // follows the pointer Y. The original row's Opacity is set to 0 while the drag
+    // is active so its slot stays reserved. On release we compute the target index
+    // and call vm.MoveTrack. No DragDrop.DoDragDrop is used.
 
     private void OnTrackRowPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is not ListBoxItem item) return;
         if (!e.GetCurrentPoint(item).Properties.IsLeftButtonPressed) return;
-        if (DataContext is PlaylistViewModel vm && vm.IsSmartPlaylist) return;
+        if (DataContext is not PlaylistViewModel vm) return;
+        if (vm.IsSmartPlaylist) return;
+        if (item.DataContext is not Track track) return;
 
-        _dragStartPoint = e.GetPosition(item);
-        _dragStarted = false;
-        _dragTrack = item.DataContext as Track;
+        _dragTrack = track;
+        _dragSourceIndex = vm.Tracks.IndexOf(track);
+        _dragRowOffsetY = e.GetPosition(item).Y;
+        _dragStartPos = e.GetPosition(this);
+        _dragActive = false;
     }
 
-    private async void OnTrackRowPointerMoved(object? sender, PointerEventArgs e)
+    private void OnTrackRowPointerMoved(object? sender, PointerEventArgs e)
     {
+        if (_dragTrack == null) return;
         if (sender is not ListBoxItem item) return;
-        if (_dragTrack == null || _dragStarted) return;
-        if (!e.GetCurrentPoint(item).Properties.IsLeftButtonPressed) return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
 
-        var pos = e.GetPosition(item);
-        if (Math.Abs(pos.Y - _dragStartPoint.Y) < 4 && Math.Abs(pos.X - _dragStartPoint.X) < 4)
-            return;
-
-        _dragStarted = true;
-
-        // Apply drag visual
-        var vm = DataContext as PlaylistViewModel;
-        if (vm != null)
+        var pos = e.GetPosition(this);
+        if (!_dragActive)
         {
-            var idx = vm.Tracks.IndexOf(_dragTrack);
-            if (idx >= 0)
-            {
-                _dragSourceItem = TrackList.ContainerFromIndex(idx) as ListBoxItem;
-                if (_dragSourceItem != null)
-                    _dragSourceItem.Opacity = 0.35;
-            }
+            if (Math.Abs(pos.X - _dragStartPos.X) < PlaylistDragThreshold &&
+                Math.Abs(pos.Y - _dragStartPos.Y) < PlaylistDragThreshold)
+                return;
+
+            StartPlaylistDrag(item, e);
         }
 
-        var data = new DataObject();
-        data.Set("NoctisPlaylistTrack", _dragTrack);
-        data.Set(DragFileBehavior.InternalDragFormat, true);
+        UpdatePlaylistDragPreviewPosition(e);
+        UpdatePlaylistDropIndicator(e);
+    }
 
-        try
+    private async void OnTrackRowPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_dragActive)
         {
-            await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+            await CommitPlaylistDropAsync(e);
         }
-        catch
+        ResetPlaylistDragState();
+        e.Pointer.Capture(null);
+    }
+
+    private void OnTrackRowPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        // Treat lost capture as a cancel — restore visuals without performing the move.
+        ResetPlaylistDragState();
+    }
+
+    private void StartPlaylistDrag(ListBoxItem rowItem, PointerEventArgs e)
+    {
+        _dragActive = true;
+        e.Pointer.Capture(rowItem);
+
+        var preview = this.FindControl<Border>("PlaylistDragPreview");
+        if (preview != null && _dragTrack != null)
         {
-            // Drag cancelled — non-critical
+            preview.DataContext = _dragTrack;
+            preview.IsVisible = true;
         }
-        finally
+
+        if (_dragSourceIndex >= 0)
         {
-            ResetPlaylistDragVisuals();
-            _dragTrack = null;
-            _dragStarted = false;
+            _dragHiddenItem = TrackList.ContainerFromIndex(_dragSourceIndex) as ListBoxItem;
+            if (_dragHiddenItem != null)
+                _dragHiddenItem.Opacity = 0;
         }
     }
 
-    private void ResetPlaylistDragVisuals()
+    private void UpdatePlaylistDragPreviewPosition(PointerEventArgs e)
     {
-        if (_dragSourceItem != null)
-        {
-            _dragSourceItem.Opacity = 1.0;
-            _dragSourceItem = null;
-        }
-
-        var indicator = this.FindControl<Border>("PlaylistDropIndicator");
-        if (indicator != null)
-            indicator.IsVisible = false;
-    }
-
-    private void OnPlaylistDragOver(object? sender, DragEventArgs e)
-    {
-        if (!e.Data.Contains("NoctisPlaylistTrack"))
-        {
-            e.DragEffects = DragDropEffects.None;
-            return;
-        }
-        e.DragEffects = DragDropEffects.Move;
-        e.Handled = true;
-
         var wrapper = this.FindControl<Grid>("TrackListWrapper");
+        var preview = this.FindControl<Border>("PlaylistDragPreview");
+        if (wrapper == null || preview == null) return;
+        if (preview.RenderTransform is not TranslateTransform tt) return;
+
+        var pointerInWrapper = e.GetPosition(wrapper).Y;
+        tt.Y = pointerInWrapper - _dragRowOffsetY;
+    }
+
+    private void UpdatePlaylistDropIndicator(PointerEventArgs e)
+    {
         var indicator = this.FindControl<Border>("PlaylistDropIndicator");
-        if (wrapper == null || indicator == null) return;
+        var wrapper = this.FindControl<Grid>("TrackListWrapper");
+        if (indicator == null || wrapper == null) return;
 
         var pointerInWrapper = e.GetPosition(wrapper);
         double? indicatorY = null;
@@ -305,36 +348,22 @@ public partial class PlaylistView : UserControl
         }
     }
 
-    private void OnPlaylistDragLeave(object? sender, DragEventArgs e)
-    {
-        var indicator = this.FindControl<Border>("PlaylistDropIndicator");
-        if (indicator != null)
-            indicator.IsVisible = false;
-    }
-
-    private async void OnPlaylistDrop(object? sender, DragEventArgs e)
+    private async System.Threading.Tasks.Task CommitPlaylistDropAsync(PointerEventArgs e)
     {
         if (DataContext is not PlaylistViewModel vm) return;
-        if (e.Data.Get("NoctisPlaylistTrack") is not Track draggedTrack) return;
+        if (_dragSourceIndex < 0) return;
 
-        var fromIndex = vm.Tracks.IndexOf(draggedTrack);
-        if (fromIndex < 0) return;
-
-        var toIndex = GetPlaylistDropTargetIndex(e);
+        var posInList = e.GetPosition(TrackList);
+        var toIndex = GetPlaylistDropTargetIndex(posInList);
         if (toIndex < 0) toIndex = vm.Tracks.Count - 1;
         if (toIndex >= vm.Tracks.Count) toIndex = vm.Tracks.Count - 1;
 
-        if (fromIndex != toIndex)
-            await vm.MoveTrack(fromIndex, toIndex);
-
-        ResetPlaylistDragVisuals();
-        e.Handled = true;
+        if (_dragSourceIndex != toIndex)
+            await vm.MoveTrack(_dragSourceIndex, toIndex);
     }
 
-    private int GetPlaylistDropTargetIndex(DragEventArgs e)
+    private int GetPlaylistDropTargetIndex(Point posInList)
     {
-        var pos = e.GetPosition(TrackList);
-
         for (int i = 0; i < TrackList.ItemCount; i++)
         {
             var container = TrackList.ContainerFromIndex(i);
@@ -347,23 +376,43 @@ public partial class PlaylistView : UserControl
             var bottom = top + container.Bounds.Height;
             var midpoint = top + container.Bounds.Height / 2;
 
-            if (pos.Y < midpoint && pos.Y >= top)
+            if (posInList.Y < midpoint && posInList.Y >= top)
                 return i;
-            if (pos.Y >= midpoint && pos.Y < bottom)
+            if (posInList.Y >= midpoint && posInList.Y < bottom)
                 return i;
         }
 
         return TrackList.ItemCount - 1;
     }
 
+    private void ResetPlaylistDragState()
+    {
+        var preview = this.FindControl<Border>("PlaylistDragPreview");
+        if (preview != null)
+        {
+            preview.IsVisible = false;
+            preview.DataContext = null;
+        }
+
+        if (_dragHiddenItem != null)
+        {
+            _dragHiddenItem.Opacity = 1.0;
+            _dragHiddenItem = null;
+        }
+
+        var indicator = this.FindControl<Border>("PlaylistDropIndicator");
+        if (indicator != null)
+            indicator.IsVisible = false;
+
+        _dragActive = false;
+        _dragTrack = null;
+        _dragSourceIndex = -1;
+    }
+
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         CancelPendingScrollRestore();
-        ResetPlaylistDragVisuals();
-
-        TrackList.RemoveHandler(DragDrop.DragOverEvent, OnPlaylistDragOver);
-        TrackList.RemoveHandler(DragDrop.DropEvent, OnPlaylistDrop);
-        TrackList.RemoveHandler(DragDrop.DragLeaveEvent, OnPlaylistDragLeave);
+        ResetPlaylistDragState();
 
         if (DataContext is PlaylistViewModel vm)
         {
@@ -386,11 +435,6 @@ public partial class PlaylistView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-
-        // Wire drag-drop handlers for reorder (handledEventsToo to bypass window-level handlers)
-        TrackList.AddHandler(DragDrop.DragOverEvent, OnPlaylistDragOver, RoutingStrategies.Bubble, handledEventsToo: true);
-        TrackList.AddHandler(DragDrop.DropEvent, OnPlaylistDrop, RoutingStrategies.Bubble, handledEventsToo: true);
-        TrackList.AddHandler(DragDrop.DragLeaveEvent, OnPlaylistDragLeave, RoutingStrategies.Bubble, handledEventsToo: true);
 
         if (DataContext is PlaylistViewModel vm && vm.SavedScrollOffset > 0)
         {

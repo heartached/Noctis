@@ -17,6 +17,9 @@ public partial class MetadataWindow : Window
     private bool _isVolumeAdjustDragging;
     private DateTime _lastVolumeAdjustPressAt = DateTime.MinValue;
     private Point _lastVolumeAdjustPressPosition;
+    private ScrollViewer? _metadataTabStripScroller;
+    private Button? _metadataTabStripLeft;
+    private Button? _metadataTabStripRight;
 
     public MetadataWindow()
     {
@@ -38,13 +41,33 @@ public partial class MetadataWindow : Window
         VolumeAdjustSlider.PointerCaptureLost += OnVolumeAdjustCaptureLost;
         VolumeAdjustSlider.PropertyChanged += OnVolumeAdjustSliderPropertyChanged;
         VolumeAdjustSlider.SizeChanged += (_, _) => UpdateVolumeAdjustVisual();
+        Loaded += (_, _) => HookMetadataTabStripScroller();
         DispatcherTimer.RunOnce(UpdateVolumeAdjustVisual, TimeSpan.FromMilliseconds(10));
+        DispatcherTimer.RunOnce(HookMetadataTabStripScroller, TimeSpan.FromMilliseconds(10));
     }
 
     public MetadataWindow(MetadataViewModel viewModel) : this()
     {
         DataContext = viewModel;
         viewModel.CloseRequested += (_, _) => Close();
+
+        // Avalonia's Flyout.IsOpen binding receives state from the flyout but
+        // does NOT invoke Hide() when the source property flips to false. We
+        // bridge it manually so the VM can dismiss the flyout after the user
+        // picks a variant (download then runs in the background).
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MetadataViewModel.IsAnimatedArtworkSearchOpen) &&
+                !viewModel.IsAnimatedArtworkSearchOpen)
+            {
+                (SearchAnimatedArtworkButton?.Flyout as Avalonia.Controls.Flyout)?.Hide();
+            }
+            else if (e.PropertyName == nameof(MetadataViewModel.IsArtworkSearchOpen) &&
+                !viewModel.IsArtworkSearchOpen)
+            {
+                (SearchArtworkBtn?.Flyout as Avalonia.Controls.Flyout)?.Hide();
+            }
+        };
     }
 
     private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -137,6 +160,86 @@ public partial class MetadataWindow : Window
     private void OnVolumeAdjustCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
         _isVolumeAdjustDragging = false;
+    }
+
+    private void HookMetadataTabStripScroller()
+    {
+        if (_metadataTabStripScroller is not null)
+            return;
+
+        var tabControl = this.GetVisualDescendants().OfType<TabControl>().FirstOrDefault();
+        if (tabControl is null)
+            return;
+
+        _metadataTabStripScroller = tabControl.GetVisualDescendants()
+            .OfType<ScrollViewer>()
+            .FirstOrDefault(sv => sv.Name == "PART_TabStripScroller");
+
+        if (_metadataTabStripScroller is null)
+            return;
+
+        _metadataTabStripLeft = tabControl.GetVisualDescendants()
+            .OfType<Button>().FirstOrDefault(b => b.Name == "PART_TabStripLeft");
+        _metadataTabStripRight = tabControl.GetVisualDescendants()
+            .OfType<Button>().FirstOrDefault(b => b.Name == "PART_TabStripRight");
+
+        if (_metadataTabStripLeft is not null)
+            _metadataTabStripLeft.Click += OnMetadataTabStripLeftClick;
+        if (_metadataTabStripRight is not null)
+            _metadataTabStripRight.Click += OnMetadataTabStripRightClick;
+
+        _metadataTabStripScroller.ScrollChanged += (_, _) => UpdateMetadataTabStripOverflow();
+        _metadataTabStripScroller.LayoutUpdated += (_, _) => UpdateMetadataTabStripOverflow();
+        _metadataTabStripScroller.AddHandler(InputElement.PointerWheelChangedEvent, OnMetadataTabStripWheel, RoutingStrategies.Tunnel, handledEventsToo: true);
+
+        UpdateMetadataTabStripOverflow();
+    }
+
+    private void UpdateMetadataTabStripOverflow()
+    {
+        var scroller = _metadataTabStripScroller;
+        if (scroller is null) return;
+
+        var maxOffset = Math.Max(0, scroller.Extent.Width - scroller.Viewport.Width);
+        var canScrollLeft = scroller.Offset.X > 1;
+        var canScrollRight = scroller.Offset.X < maxOffset - 1;
+
+        scroller.Margin = new Thickness(
+            canScrollLeft ? 38 : 24,
+            0,
+            canScrollRight ? 42 : 0,
+            0);
+        if (_metadataTabStripLeft is not null) _metadataTabStripLeft.IsVisible = canScrollLeft;
+        if (_metadataTabStripRight is not null) _metadataTabStripRight.IsVisible = canScrollRight;
+    }
+
+    private void ScrollMetadataTabStrip(double delta)
+    {
+        var scroller = _metadataTabStripScroller;
+        if (scroller is null) return;
+        var maxOffset = Math.Max(0, scroller.Extent.Width - scroller.Viewport.Width);
+        var target = Math.Clamp(scroller.Offset.X + delta, 0, maxOffset);
+        scroller.Offset = new Vector(target, scroller.Offset.Y);
+    }
+
+    private void OnMetadataTabStripLeftClick(object? sender, RoutedEventArgs e)
+    {
+        if (_metadataTabStripScroller is null) return;
+        ScrollMetadataTabStrip(-_metadataTabStripScroller.Viewport.Width * 0.8);
+    }
+
+    private void OnMetadataTabStripRightClick(object? sender, RoutedEventArgs e)
+    {
+        if (_metadataTabStripScroller is null) return;
+        ScrollMetadataTabStrip(_metadataTabStripScroller.Viewport.Width * 0.8);
+    }
+
+    private void OnMetadataTabStripWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (_metadataTabStripScroller is null) return;
+        const double WheelStep = 60.0;
+        ScrollMetadataTabStrip(-e.Delta.Y * WheelStep);
+        e.Handled = true;
     }
 
     private bool IsVolumeAdjustDoublePress(Point position)

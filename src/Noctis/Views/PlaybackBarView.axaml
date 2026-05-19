@@ -5,7 +5,8 @@
              xmlns:controls="using:Noctis.Controls"
              xmlns:conv="using:Noctis.Converters"
              x:Class="Noctis.Views.PlaybackBarView"
-             x:DataType="vm:PlayerViewModel">
+             x:DataType="vm:PlayerViewModel"
+             Background="Transparent">
 
     <UserControl.Resources>
         <conv:TrackDisplayTitleConverter x:Key="DisplayTitle" />
@@ -35,8 +36,31 @@
             </Setter>
         </Style>
         <Style Selector="Button.pill-btn:pressed">
-            <Setter Property="RenderTransform" Value="scale(0.95)"/>
-            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.pill-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.pill-btn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.pill-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn:focus /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn:focus-within /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
 
         <!-- Main play button (larger, no background fill) -->
@@ -58,8 +82,31 @@
             </Setter>
         </Style>
         <Style Selector="Button.pill-btn-play:pressed">
-            <Setter Property="RenderTransform" Value="scale(0.95)"/>
-            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.pill-btn-play:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.pill-btn-play /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.pill-btn-play:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn-play:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn-play:focus /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.pill-btn-play:focus-within /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
 
         <!-- Secondary controls (volume, menu) -->
@@ -76,14 +123,47 @@
             </Setter>
         </Style>
         <Style Selector="Button.secondary-btn:pointerover">
-            <Setter Property="Opacity" Value="0.8"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
         <Style Selector="Button.secondary-btn:pressed">
-            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.secondary-btn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.secondary-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.secondary-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.secondary-btn:focus /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.secondary-btn:focus-within /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
 
         <Style Selector="Button.artist-link-btn:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.artist-link-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.artist-link-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.artist-link-btn:pointerover Border.artist-text-hover">
+            <Setter Property="Background" Value="#22FFFFFF" />
+        </Style>
+        <Style Selector="Button.artist-link-btn:pressed Border.artist-text-hover">
+            <Setter Property="Background" Value="#33FFFFFF" />
         </Style>
 
         <!-- Compact vertical volume slider -->
@@ -157,6 +237,12 @@
             <Setter Property="Height" Value="20"/>
             <Setter Property="Width" Value="90"/>
             <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter>
         </Style>
 
         <Style Selector="Slider.volume-horizontal /template/ Track">
@@ -219,22 +305,18 @@
         </Style>
     </UserControl.Styles>
 
-    <Border Padding="0"
-            Background="Transparent"
-            ClipToBounds="True">
-
-        <!-- Dynamic Island: Single unified pill-shaped container -->
+        <!-- Dynamic Island: Single unified glass pill-shaped container -->
         <Border x:Name="IslandBorder"
                 Classes="island"
-                Background="{DynamicResource IslandBackground}"
-                BorderThickness="0"
+                Background="#66202020"
+                BorderBrush="#40FFFFFF"
+                BorderThickness="1"
                 CornerRadius="999"
                 Padding="12,0,12,0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Height="50"
-                Width="650"
-                BoxShadow="0 2 6 0 #30000000">
+                Width="650">
             <Border.Transitions>
                 <Transitions>
                     <DoubleTransition Property="Width" Duration="0:0:0.2">
@@ -245,7 +327,7 @@
                 </Transitions>
             </Border.Transitions>
 
-            <Grid>
+            <Grid HorizontalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/> <!-- Playback controls -->
                     <ColumnDefinition Width="Auto"/> <!-- Album art + track info -->
@@ -373,7 +455,8 @@
                       VerticalAlignment="Center"
                       Margin="0,0,6,0"
                       Background="Transparent"
-                      ColumnDefinitions="Auto,*">
+                      ColumnDefinitions="Auto,*"
+                      IsVisible="{Binding !IsLyricsPageActive}">
 
                     <!-- Album art thumbnail -->
                     <Border Grid.Column="0"
@@ -391,7 +474,8 @@
                                        Opacity="0.3"
                                        Foreground="{DynamicResource IslandForegroundTertiary}"
                                        IsVisible="{Binding AlbumArt, Converter={x:Static ObjectConverters.IsNull}}" />
-                            <!-- Actual artwork -->
+                            <!-- Actual artwork — always the still cover here; the animated
+                                 cover is shown on the album, lyrics and cover-flow pages only. -->
                             <Image Source="{Binding AlbumArt}"
                                    Stretch="UniformToFill"
                                    RenderOptions.BitmapInterpolationMode="HighQuality"
@@ -468,16 +552,21 @@
                                         Width="200"
                                         ClipToBounds="True">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock x:Name="ArtistNameTextBlock"
-                                                   Text="{Binding CurrentTrack.Artist, FallbackValue='', TargetNullValue=''}"
-                                                   FontSize="10"
-                                                   MaxLines="1"
-                                                   Foreground="#E74856"
-                                                   Margin="0,1,0,0">
-                                            <TextBlock.RenderTransform>
-                                                <TranslateTransform X="0" />
-                                            </TextBlock.RenderTransform>
-                                        </TextBlock>
+                                        <Border Classes="artist-text-hover"
+                                                CornerRadius="2"
+                                                Padding="1,0,2,0"
+                                                Margin="0,0,0,-2">
+                                            <TextBlock x:Name="ArtistNameTextBlock"
+                                                       Text="{Binding CurrentTrack.Artist, FallbackValue='', TargetNullValue=''}"
+                                                       FontSize="10"
+                                                       MaxLines="1"
+                                                       Foreground="{DynamicResource AccentColorBrush}"
+                                                       Margin="0,1,0,0">
+                                                <TextBlock.RenderTransform>
+                                                    <TranslateTransform X="0" />
+                                                </TextBlock.RenderTransform>
+                                            </TextBlock>
+                                        </Border>
                                     </StackPanel>
                                 </Border>
                             </Button>
@@ -489,10 +578,10 @@
                                            Text="{Binding PositionText}"
                                            FontSize="10"
                                            VerticalAlignment="Center"
-                                           TextAlignment="Right"
+                                           TextAlignment="Left"
                                            Foreground="{DynamicResource IslandForegroundTertiary}"
                                            Width="38"
-                                           Margin="0,0,6,0" />
+                                           Margin="18,0,-12,0" />
 
                                 <Grid Grid.Column="1" Height="20" ClipToBounds="False">
                                     <Canvas x:Name="SeekVisual"
@@ -558,7 +647,8 @@
                             </Canvas>
                         </Viewbox>
                         <Button.Flyout>
-                            <MenuFlyout Placement="RightEdgeAlignedTop">
+                            <MenuFlyout Placement="TopEdgeAlignedLeft"
+                                        PlacementConstraintAdjustment="FlipY">
                                 <MenuItem Command="{Binding PlayPauseCommand}"
                                           MaxWidth="400">
                                     <MenuItem.Header>
@@ -592,13 +682,11 @@
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem x:Name="AddToPlaylistMenuItem"
-                                          Header="Add to Playlist">
+                                          Header="Add to Playlist"
+                                          Command="{Binding AddCurrentTrackToNewPlaylistCommand}">
                                     <MenuItem.Icon>
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
-                                    <MenuItem Header="Create New Playlist"
-                                              Command="{Binding AddCurrentTrackToNewPlaylistCommand}" />
-                                    <Separator x:Name="PlaylistSubmenuSeparator" />
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem Header="Favorites"
@@ -645,6 +733,41 @@
                                           Command="{Binding RemoveCurrentTrackFromLibraryCommand}">
                                     <MenuItem.Icon>
                                         <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <!-- Lyrics-mode entries (only visible when the bar is mounted inside the lyrics page) -->
+                                <Separator IsVisible="{Binding IsLyricsPageActive}"/>
+                                <MenuItem x:Name="LyricsDisplayMenuItem"
+                                          Header="Lyrics Display"
+                                          IsVisible="{Binding IsLyricsPageActive}"
+                                          PointerEntered="OnLyricsDisplayMenuItemPointerEntered">
+                                    <MenuItem Header="Synced"
+                                              Command="{Binding SetLyricsSyncedCommand}"
+                                              IsEnabled="{Binding IsLyricsSyncedAvailable}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}"
+                                                      Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                      IsVisible="{Binding IsLyricsSyncedActive}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Plain"
+                                              Command="{Binding SetLyricsPlainCommand}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}"
+                                                      Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                      IsVisible="{Binding IsLyricsPlainActive}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuItem>
+                                <MenuItem Header="Background Color"
+                                          Command="{Binding OpenLyricsBackgroundColorCommand}"
+                                          IsVisible="{Binding IsLyricsPageActive}">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource PaletteIcon}"
+                                                  Width="14" Height="14"
+                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </MenuFlyout>
@@ -695,16 +818,15 @@
                         </Border>
                     </Button>
 
-                    <!-- Volume control with expandable horizontal slider -->
-                    <StackPanel x:Name="VolumeContainer"
-                                Orientation="Horizontal"
-                                VerticalAlignment="Center"
-                                PointerEntered="OnVolumeContainerEntered"
-                                PointerExited="OnVolumeContainerExited">
-
-                        <!-- Volume icon button -->
-                        <Button Classes="secondary-btn"
-                                Command="{Binding ToggleMuteCommand}"
+                    <!-- Volume control: clicking the icon opens a small slider popup above it.
+                         Click 1 opens the popup; click 2 (while open) toggles mute and keeps the
+                         popup visible. Moving the cursor off both the icon and the popup closes it. -->
+                    <Panel x:Name="VolumeContainer" VerticalAlignment="Center">
+                        <Button x:Name="VolumeButton"
+                                Classes="secondary-btn"
+                                Click="OnVolumeIconClick"
+                                PointerEntered="OnVolumeButtonPointerEntered"
+                                PointerExited="OnVolumeButtonPointerExited"
                                 ToolTip.Tip="Volume"
                                 Width="34" Height="34">
                             <Panel>
@@ -728,62 +850,87 @@
                             </Panel>
                         </Button>
 
-                        <!-- Expandable slider area with width animation -->
-                        <Panel VerticalAlignment="Center" Margin="-9,0,0,0">
-                            <!-- Volume percentage floating above (outside clipping container) -->
-                            <TextBlock x:Name="VolumePercentageBadge"
-                                       Text="{Binding Volume}"
-                                       FontSize="13"
-                                       FontWeight="SemiBold"
-                                       Foreground="White"
-                                       HorizontalAlignment="Left"
-                                       VerticalAlignment="Center"
-                                       Opacity="0"
-                                       IsVisible="False"
-                                       IsHitTestVisible="False">
-                                <TextBlock.RenderTransform>
-                                    <TranslateTransform X="0" Y="-18"/>
-                                </TextBlock.RenderTransform>
-                                <TextBlock.Transitions>
-                                    <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.06"/>
-                                    </Transitions>
-                                </TextBlock.Transitions>
-                            </TextBlock>
-
-                            <!-- Clipping container for slider -->
-                            <Border x:Name="VolumeSliderContainer"
-                                    Width="0"
-                                    Height="34"
-                                    ClipToBounds="True"
-                                    VerticalAlignment="Center">
+                        <Popup x:Name="VolumeFlyout"
+                               PlacementTarget="{Binding #VolumeButton}"
+                               Placement="Top"
+                               PlacementAnchor="Bottom"
+                               PlacementGravity="Top"
+                               VerticalOffset="-4"
+                               IsLightDismissEnabled="False">
+                            <Border x:Name="VolumeFlyoutContent"
+                                    Background="{DynamicResource IslandBackground}"
+                                    BorderBrush="{DynamicResource IslandBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="999"
+                                    Padding="10,6"
+                                    BoxShadow="0 4 14 0 #50000000"
+                                    Opacity="0"
+                                    PointerEntered="OnVolumeFlyoutPointerEntered"
+                                    PointerExited="OnVolumeFlyoutPointerExited">
+                                <Border.RenderTransform>
+                                    <TranslateTransform Y="6">
+                                        <TranslateTransform.Transitions>
+                                            <Transitions>
+                                                <DoubleTransition Property="Y" Duration="0:0:0.18">
+                                                    <DoubleTransition.Easing>
+                                                        <CubicEaseOut/>
+                                                    </DoubleTransition.Easing>
+                                                </DoubleTransition>
+                                            </Transitions>
+                                        </TranslateTransform.Transitions>
+                                    </TranslateTransform>
+                                </Border.RenderTransform>
                                 <Border.Transitions>
                                     <Transitions>
-                                        <DoubleTransition Property="Width" Duration="0:0:0.2">
+                                        <DoubleTransition Property="Opacity" Duration="0:0:0.16">
                                             <DoubleTransition.Easing>
                                                 <CubicEaseOut/>
                                             </DoubleTransition.Easing>
                                         </DoubleTransition>
                                     </Transitions>
                                 </Border.Transitions>
-
-                                <Grid Width="99" VerticalAlignment="Center">
-                                    <!-- Horizontal volume slider with margin for thumb room -->
+                                <Grid Width="84"
+                                      Height="20"
+                                      VerticalAlignment="Center">
+                                    <Canvas x:Name="VolumeVisual"
+                                            Width="84"
+                                            Height="20"
+                                            ClipToBounds="False"
+                                            IsHitTestVisible="False">
+                                        <Border x:Name="VolumeTrackBackground"
+                                                Height="6"
+                                                CornerRadius="3"
+                                                Background="{DynamicResource IslandSliderUnfilled}"
+                                                Opacity="0.4"
+                                                Canvas.Top="7"/>
+                                        <Border x:Name="VolumeTrackFill"
+                                                Height="6"
+                                                CornerRadius="3"
+                                                Background="{DynamicResource IslandSliderFilled}"
+                                                Canvas.Top="7"/>
+                                        <Border x:Name="VolumeThumb"
+                                                Width="14"
+                                                Height="14"
+                                                CornerRadius="7"
+                                                Background="{DynamicResource IslandSliderFilled}"
+                                                BoxShadow="0 1 3 0 #40000000"
+                                                Canvas.Top="3"/>
+                                    </Canvas>
                                     <Slider Classes="volume-horizontal"
                                             Value="{Binding Volume, Mode=TwoWay}"
                                             Minimum="0" Maximum="100"
+                                            Width="84"
                                             VerticalAlignment="Center"
-                                            Margin="0,0,9,0"
+                                            Margin="0"
                                             x:Name="VolumeSlider"/>
                                 </Grid>
                             </Border>
-                        </Panel>
-                    </StackPanel>
+                        </Popup>
+                    </Panel>
                 </StackPanel>
 
             </Grid>
         </Border>
-    </Border>
 
 </UserControl>
 

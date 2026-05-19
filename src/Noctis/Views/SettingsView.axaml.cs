@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -68,6 +69,60 @@ public partial class SettingsView : UserControl
         base.OnDetachedFromVisualTree(e);
     }
 
+    private async void OnPickAvatarClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (DataContext is not SettingsViewModel vm) return;
+
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel == null) return;
+
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Choose Profile Picture",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Images")
+                    {
+                        Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif" }
+                    }
+                }
+            });
+
+            if (files.Count == 0) return;
+
+            var sourcePath = files[0].Path.LocalPath;
+            if (string.IsNullOrWhiteSpace(sourcePath) || !System.IO.File.Exists(sourcePath))
+                return;
+
+            // Copy the picked image into %APPDATA%\Noctis\profile so the avatar survives the
+            // source being moved or deleted later.
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var dir = System.IO.Path.Combine(appData, "Noctis", "profile");
+            System.IO.Directory.CreateDirectory(dir);
+            var ext = System.IO.Path.GetExtension(sourcePath);
+            var target = System.IO.Path.Combine(dir, "avatar" + ext);
+
+            // Remove stale avatars with a different extension so only one file is kept.
+            foreach (var existing in System.IO.Directory.EnumerateFiles(dir, "avatar.*"))
+            {
+                if (!string.Equals(existing, target, StringComparison.OrdinalIgnoreCase))
+                {
+                    try { System.IO.File.Delete(existing); } catch { }
+                }
+            }
+
+            System.IO.File.Copy(sourcePath, target, overwrite: true);
+            vm.ProfileAvatarPath = target;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SettingsView] Avatar pick failed: {ex.Message}");
+        }
+    }
+
     private async void OnAddFolderClicked(object? sender, RoutedEventArgs e)
     {
         try
@@ -95,4 +150,5 @@ public partial class SettingsView : UserControl
             System.Diagnostics.Debug.WriteLine($"[Settings] Failed to add folder: {ex.Message}");
         }
     }
+
 }

@@ -39,23 +39,24 @@
                     </TextBlock.Text>
                 </TextBlock>
                 <Button Grid.Column="2"
-                        Content="Create"
-                        Command="{Binding CreateCommand}"
+                        Content="Cancel"
+                        Command="{Binding CancelCommand}"
                         Width="100"
                         Padding="0,8"
-                        Classes="accent-btn"
-                            Background="#E74856"
-                        Foreground="White"
-                        FontWeight="SemiBold"
+                        FontWeight="Bold"
                         HorizontalContentAlignment="Center"
                         CornerRadius="999"
                         Margin="0,0,8,0"
                         Cursor="Hand" />
                 <Button Grid.Column="3"
-                        Content="Cancel"
-                        Command="{Binding CancelCommand}"
+                        Content="Create"
+                        Command="{Binding CreateCommand}"
                         Width="100"
                         Padding="0,8"
+                        Classes="accent-btn"
+                            Background="{DynamicResource AccentColorBrush}"
+                        Foreground="White"
+                        FontWeight="Bold"
                         HorizontalContentAlignment="Center"
                         CornerRadius="999"
                         Cursor="Hand" />
@@ -83,7 +84,7 @@
                              x:Name="NameTextBox" />
                     <TextBlock Text="Name is required"
                                FontSize="11"
-                               Foreground="#E74856"
+                               Foreground="{DynamicResource AccentColorBrush}"
                                IsVisible="{Binding ShowNameRequiredError}" />
                 </StackPanel>
 
@@ -181,7 +182,7 @@
                 <!-- Add Rule button -->
                 <Button Command="{Binding AddRuleCommand}"
                         Classes="accent-btn"
-                            Background="#E74856"
+                            Background="{DynamicResource AccentColorBrush}"
                         Foreground="White"
                         BorderThickness="0"
                         HorizontalAlignment="Left"

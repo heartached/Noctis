@@ -39,11 +39,11 @@
             <Setter Property="BorderBrush" Value="#80FFFFFF" />
         </Style>
         <Style Selector="Button.album-desc-btn:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#E74856" />
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
             <Setter Property="Foreground" Value="White" />
         </Style>
         <Style Selector="Button.album-desc-btn:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="#E74856" />
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
             <Setter Property="Foreground" Value="White" />
         </Style>
         <Style Selector="Button.album-desc-btn:disabled /template/ ContentPresenter">
@@ -116,6 +116,12 @@
                     <Image Source="{Binding AlbumArt}"
                            Stretch="UniformToFill"
                            IsVisible="{Binding AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <!-- Bitmap-rendered (not a native VideoView): composes/clips like a
+                         normal control, so it doesn't bleed over or jump relative to the
+                         sidebar when it expands. -->
+                    <controls:AnimatedCoverImage
+                        Source="{Binding AnimatedCoverPath}"
+                        IsActive="{Binding ShowAnimatedCover}" />
                 </Panel>
             </Border>
 
@@ -131,6 +137,7 @@
                                Text="{Binding Album.Name}"
                                FontSize="36"
                                FontWeight="Bold"
+                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                HorizontalAlignment="Left"
                                MaxWidth="1320" />
                     <Border Grid.Column="1"
@@ -158,9 +165,10 @@
                                FontSize="20"
                                LineHeight="24"
                                VerticalAlignment="Center"
-                               Foreground="#E74856" />
+                               Foreground="{DynamicResource AccentColorBrush}" />
                 </Button>
-                <StackPanel Orientation="Horizontal" Spacing="0" Margin="0,4,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="0" Margin="0,4,0,0"
+                            TextElement.Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
                     <TextBlock FontSize="13" Opacity="0.5" VerticalAlignment="Center">
                         <TextBlock.Text>
                             <MultiBinding StringFormat="{}{0} · {1} · {2} tracks">
@@ -180,7 +188,7 @@
                     <Border Classes="quality-pill"
                             Background="Transparent"
                             CornerRadius="999"
-                            Padding="0,3,8,3"
+                            Padding="0,3,3,3"
                             VerticalAlignment="Center"
                             IsVisible="{Binding Album.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                         <Border.Transitions>
@@ -225,16 +233,18 @@
                     </Border>
 
                     <!-- Favorite heart for singles or fully-favorited albums -->
-                    <TextBlock Text=" · "
+                    <TextBlock Text="·"
                                FontSize="13"
                                Opacity="0.5"
+                               Margin="3,0,4,0"
                                VerticalAlignment="Center"
                                IsVisible="{Binding IsAlbumFavorited}" />
                     <PathIcon Data="{StaticResource HeartFillIcon}"
-                              Width="12" Height="12"
-                              Foreground="#E74856"
-                              VerticalAlignment="Center"
-                              IsVisible="{Binding IsAlbumFavorited}"/>
+                               Width="12" Height="12"
+                               Foreground="#E74856"
+                               Margin="0,2,0,0"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding IsAlbumFavorited}"/>
                 </StackPanel>
 
                 <Button Classes="no-hover-scale"
@@ -258,57 +268,55 @@
                                TextTrimming="CharacterEllipsis" />
                 </Button>
 
-                <!-- Shuffle (icon) + Play (pill) + Add to Playlist (icon) -->
-                <StackPanel Orientation="Horizontal" Spacing="14" Margin="0,16,0,0" VerticalAlignment="Center">
-                    <Button Command="{Binding ShufflePlayCommand}"
-                            Classes="accent-btn album-header-action"
-                            Width="48" Height="48"
-                            CornerRadius="24"
-                            Background="#E74856"
-                            BorderThickness="0"
-                            Padding="0"
-                            Cursor="Hand"
-                            ToolTip.Tip="Shuffle"
-                            HorizontalContentAlignment="Center"
-                            VerticalContentAlignment="Center">
-                        <PathIcon Data="{StaticResource ShuffleIcon}"
-                                  Width="20" Height="20"
-                                  Foreground="White" />
-                    </Button>
+                <!-- Play (pill) + Shuffle (pill) -->
+                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,28,0,0" VerticalAlignment="Center">
                     <Button Command="{Binding PlayAllCommand}"
                             Classes="accent-btn album-header-action"
-                            Padding="44,12"
+                            Padding="26,8"
                             CornerRadius="999"
-                            Background="#E74856"
+                            Background="{DynamicResource AccentColorBrush}"
                             Foreground="White"
                             BorderThickness="0"
-                            FontWeight="SemiBold"
-                            Cursor="Hand">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            FontWeight="Bold"
+                            Cursor="Hand"
+                            ToolTip.Tip="Play">
+                        <StackPanel Orientation="Horizontal" Spacing="3">
                             <PathIcon Data="{StaticResource PlaySolidIcon}"
-                                     Width="18" Height="18"
+                                     Width="13" Height="13"
                                      Foreground="White"
                                      VerticalAlignment="Center" />
                             <TextBlock Text="Play"
-                                       FontSize="16"
+                                       FontSize="14"
+                                       FontWeight="Bold"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
-                    <Button x:Name="AddToPlaylistButton"
-                            Command="{Binding AddAlbumToNewPlaylistCommand}"
+                    <Button Command="{Binding ShufflePlayCommand}"
                             Classes="accent-btn album-header-action"
-                            Width="48" Height="48"
-                            CornerRadius="24"
-                            Background="#E74856"
+                            Padding="22,8"
+                            CornerRadius="999"
+                            Background="{DynamicResource AccentColorBrush}"
+                            Foreground="White"
                             BorderThickness="0"
-                            Padding="0"
+                            FontWeight="Bold"
                             Cursor="Hand"
-                            ToolTip.Tip="Add to Playlist"
-                            HorizontalContentAlignment="Center"
-                            VerticalContentAlignment="Center">
-                        <PathIcon Data="{StaticResource AddIcon}"
-                                  Width="20" Height="20"
-                                  Foreground="White" />
+                            ToolTip.Tip="Shuffle">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Grid Width="16" Height="16" VerticalAlignment="Center">
+                                <PathIcon Data="{StaticResource ShuffleIcon}"
+                                          Width="16" Height="16"
+                                          Foreground="White" />
+                                <PathIcon Data="{StaticResource ShuffleIcon}"
+                                          Width="16" Height="16"
+                                          Foreground="White"
+                                          Opacity="0.85"
+                                          Margin="0.6,0,0,0" />
+                            </Grid>
+                            <TextBlock Text="Shuffle"
+                                       FontSize="14"
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
                     </Button>
                 </StackPanel>
 
@@ -328,11 +336,12 @@
                     ToolTip.Tip="Options">
                 <PathIcon Data="{StaticResource MoreDotsIcon}"
                           Width="14" Height="14"
-                          Foreground="#E74856"
+                          Foreground="{DynamicResource AccentColorBrush}"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center" />
                 <Button.Flyout>
                     <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                PlacementConstraintAdjustment="None"
                                 Opened="OnAlbumFlyoutOpened">
                         <MenuItem MaxWidth="400"
                                   Command="{Binding PlayAllCommand}">
@@ -356,13 +365,11 @@
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator />
-                        <MenuItem Header="Add to Playlist">
+                        <MenuItem Header="Add to Playlist"
+                                  Command="{Binding AddAlbumToNewPlaylistCommand}">
                             <MenuItem.Icon>
                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                             </MenuItem.Icon>
-                            <MenuItem Header="Create New Playlist"
-                                      Command="{Binding AddAlbumToNewPlaylistCommand}" />
-                            <Separator />
                         </MenuItem>
                         <Separator />
                         <MenuItem Header="Favorites"
@@ -433,7 +440,7 @@
                           Tag="{Binding}">
 
                         <Grid.ContextMenu>
-                            <ContextMenu Opened="OnContextMenuOpened">
+                            <ContextMenu Opening="OnContextMenuOpening">
                                 <MenuItem MaxWidth="400"
                                           Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayFromCommand}"
                                           CommandParameter="{Binding}">
@@ -465,14 +472,12 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
-                                <MenuItem Header="Add to Playlist">
+                                <MenuItem Header="Add to Playlist"
+                                          Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).AddToNewPlaylistCommand}"
+                                          CommandParameter="{Binding}">
                                     <MenuItem.Icon>
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
-                                    <MenuItem Header="Create New Playlist"
-                                              Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).AddToNewPlaylistCommand}"
-                                              CommandParameter="{Binding}" />
-                                    <Separator />
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem Header="Favorites"
@@ -532,8 +537,8 @@
                                                     Width="34" Height="22"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Center"
-                                                    Margin="0,0,-7,0"
-                                                    Foreground="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}"
+                                                    Margin="0,0,-10,0"
+                                                    Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                                     IsPlaying="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).IsPlayerPlaying, Mode=OneWay}">
                                 <controls:EqVisualizer.IsVisible>
                                     <MultiBinding Converter="{StaticResource GuidEquals}" Mode="OneWay">
@@ -619,11 +624,12 @@
                                     Tag="{Binding}">
                                 <PathIcon Data="{StaticResource MoreDotsIcon}"
                                           Width="14" Height="14"
-                                          Foreground="#E74856"
+                                          Foreground="{DynamicResource AccentColorBrush}"
                                           HorizontalAlignment="Center"
                                           VerticalAlignment="Center" />
                                 <Button.Flyout>
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                                PlacementConstraintAdjustment="None"
                                                 Opened="OnTrackFlyoutOpened">
                                         <MenuItem MaxWidth="400"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayFromCommand}"
@@ -656,14 +662,12 @@
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
-                                        <MenuItem Header="Add to Playlist">
+                                        <MenuItem Header="Add to Playlist"
+                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).AddToNewPlaylistCommand}"
+                                                  CommandParameter="{Binding}">
                                             <MenuItem.Icon>
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
-                                            <MenuItem Header="Create New Playlist"
-                                                      Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).AddToNewPlaylistCommand}"
-                                                      CommandParameter="{Binding}" />
-                                            <Separator />
                                         </MenuItem>
                                         <Separator />
                                         <MenuItem Header="Favorites"
@@ -725,7 +729,8 @@
         </ItemsControl>
 
         <!-- Album footer: release date, track count + duration, copyright (Apple Music style) -->
-        <StackPanel Margin="0,24,0,4" Spacing="3">
+        <StackPanel Margin="0,24,0,4" Spacing="3"
+                    TextElement.Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
             <TextBlock Text="{Binding Album.ReleaseDateFormatted}"
                        FontSize="13"
                        Opacity="0.45"
@@ -776,7 +781,7 @@
                                     Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenRelatedAlbumCommand}"
                                     CommandParameter="{Binding}">
                                 <Button.ContextMenu>
-                                    <ContextMenu DataContext="{Binding}" Opened="OnRelatedAlbumContextMenuOpened">
+                                    <ContextMenu DataContext="{Binding}" Opening="OnRelatedAlbumContextMenuOpening">
                                         <MenuItem MaxWidth="400"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayRelatedAlbumCommand}"
                                                   CommandParameter="{Binding}">
@@ -809,14 +814,12 @@
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
-                                        <MenuItem Header="Add to Playlist">
+                                        <MenuItem Header="Add to Playlist"
+                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).AddRelatedAlbumToNewPlaylistCommand}"
+                                                  CommandParameter="{Binding}">
                                             <MenuItem.Icon>
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
-                                            <MenuItem Header="Create New Playlist"
-                                                      Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).AddRelatedAlbumToNewPlaylistCommand}"
-                                                      CommandParameter="{Binding}" />
-                                            <Separator />
                                         </MenuItem>
                                         <Separator />
                                         <MenuItem Header="Favorites"
@@ -946,7 +949,8 @@
         <!-- More By {Artist}: up to 20 random albums by the same artist (excludes self + Other Versions) -->
         <StackPanel Margin="0,28,0,64" Spacing="10"
                     IsVisible="{Binding HasMoreByArtist}">
-            <Button Background="Transparent"
+            <Button Classes="no-hover-scale"
+                    Background="Transparent"
                     BorderThickness="0"
                     Padding="0"
                     MinHeight="0"
@@ -990,7 +994,7 @@
                                     Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenRelatedAlbumCommand}"
                                     CommandParameter="{Binding}">
                                 <Button.ContextMenu>
-                                    <ContextMenu DataContext="{Binding}" Opened="OnRelatedAlbumContextMenuOpened">
+                                    <ContextMenu DataContext="{Binding}" Opening="OnRelatedAlbumContextMenuOpening">
                                         <MenuItem MaxWidth="400"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayRelatedAlbumCommand}"
                                                   CommandParameter="{Binding}">
@@ -1023,14 +1027,12 @@
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
-                                        <MenuItem Header="Add to Playlist">
+                                        <MenuItem Header="Add to Playlist"
+                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).AddRelatedAlbumToNewPlaylistCommand}"
+                                                  CommandParameter="{Binding}">
                                             <MenuItem.Icon>
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
-                                            <MenuItem Header="Create New Playlist"
-                                                      Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).AddRelatedAlbumToNewPlaylistCommand}"
-                                                      CommandParameter="{Binding}" />
-                                            <Separator />
                                         </MenuItem>
                                         <Separator />
                                         <MenuItem Header="Favorites"

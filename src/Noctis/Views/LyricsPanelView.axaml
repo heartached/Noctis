@@ -8,6 +8,7 @@
 
     <UserControl.Resources>
         <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
+        <conv:TrackDisplayTitleConverter x:Key="DisplayTitle"/>
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -40,15 +41,221 @@
         <Style Selector="Button.panel-lyric-line:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
+        <!-- Disable global Button hover-scale on the header buttons -->
+        <Style Selector="Button.panel-header-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.panel-header-btn:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
     </UserControl.Styles>
 
-    <Panel>
-        <!-- No track playing -->
-        <TextBlock Text="No track playing"
-                   IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNull}}"
-                   Foreground="{Binding LyricsPrimaryFg}" Opacity="0.3"
-                   FontSize="13" HorizontalAlignment="Center"
-                   Margin="0,40,0,0"/>
+    <Grid RowDefinitions="Auto,*">
+        <!-- ── HEADER ──────────────────────────────────────────────────── -->
+        <Grid Grid.Row="0"
+              IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
+              RowDefinitions="Auto,Auto">
+
+            <!-- Row 0: artwork + title/artist (clickable) + 3-dots -->
+            <Grid Grid.Row="0"
+                  ColumnDefinitions="Auto,*,Auto"
+                  Margin="16,14,12,12">
+
+                <!-- Artwork + text are inside one transparent button → navigate to album -->
+                <Button Grid.Column="0" Grid.ColumnSpan="2"
+                        Classes="panel-header-btn"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="0"
+                        Cursor="Hand"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        Command="{Binding Player.ViewCurrentTrackAlbumCommand}">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <!-- Album art thumbnail -->
+                        <Border Grid.Column="0"
+                                Width="44" Height="44"
+                                CornerRadius="8"
+                                ClipToBounds="True"
+                                Background="#22FFFFFF">
+                            <Panel>
+                                <TextBlock Text="♪"
+                                           FontSize="22"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Opacity="0.3"
+                                           Foreground="{Binding LyricsPrimaryFg}"
+                                           IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                <Image Source="{Binding Player.AlbumArt}"
+                                       Stretch="UniformToFill"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality"
+                                       IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                            </Panel>
+                        </Border>
+
+                        <!-- Title + artist -->
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Vertical"
+                                    VerticalAlignment="Center"
+                                    Margin="12,0,8,0">
+                            <Grid ColumnDefinitions="Auto,Auto,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Player.CurrentTrack, Converter={StaticResource DisplayTitle}, FallbackValue=''}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold"
+                                           MaxLines="1"
+                                           TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center"
+                                           Foreground="{Binding LyricsPrimaryFg}"/>
+                                <Border Grid.Column="1"
+                                        Background="{DynamicResource IslandExplicitBadge}"
+                                        CornerRadius="2"
+                                        Padding="4,0"
+                                        Height="14"
+                                        Margin="6,0,0,0"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
+                                        ToolTip.Tip="Explicit">
+                                    <TextBlock Text="E"
+                                               FontSize="9"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               Foreground="{DynamicResource IslandIconFill}"/>
+                                </Border>
+                            </Grid>
+                            <TextBlock Text="{Binding Player.CurrentTrack.Artist, FallbackValue='', TargetNullValue=''}"
+                                       FontSize="12"
+                                       MaxLines="1"
+                                       TextTrimming="CharacterEllipsis"
+                                       Margin="0,2,0,0"
+                                       Foreground="#E74856"/>
+                        </StackPanel>
+                    </Grid>
+                </Button>
+
+                <!-- 3-dots options button -->
+                <Button Grid.Column="2"
+                        Classes="panel-header-btn"
+                        Width="32" Height="32"
+                        CornerRadius="16"
+                        Background="#1AFFFFFF"
+                        BorderThickness="0"
+                        Padding="0"
+                        Cursor="Hand"
+                        VerticalAlignment="Center"
+                        ToolTip.Tip="Options">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#26FFFFFF"/>
+                        </Style>
+                    </Button.Styles>
+                    <Viewbox Width="16" Height="16">
+                        <Canvas Width="24" Height="24">
+                            <Path Fill="{Binding LyricsPrimaryFg}" Data="{StaticResource MoreDotsIcon}"/>
+                        </Canvas>
+                    </Viewbox>
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                    PlacementConstraintAdjustment="None">
+                            <MenuItem Command="{Binding Player.PlayPauseCommand}" MaxWidth="400">
+                                <MenuItem.Header>
+                                    <TextBlock Text="Play"
+                                               TextTrimming="CharacterEllipsis"
+                                               FontWeight="Normal"
+                                               FontSize="14"
+                                               FontFamily="{Binding $parent[MenuItem].FontFamily}"/>
+                                </MenuItem.Header>
+                                <MenuItem.Icon>
+                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform"/></Border.OpacityMask></Border>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Shuffle" Command="{Binding Player.ShuffleCurrentAlbumCommand}">
+                                <MenuItem.Icon>
+                                    <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Play Next" Command="{Binding Player.PlayNextCurrentTrackCommand}">
+                                <MenuItem.Icon>
+                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Forward%20ICON.png" Stretch="Uniform"/></Border.OpacityMask></Border>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Add to Queue" Command="{Binding Player.AddCurrentTrackToQueueCommand}">
+                                <MenuItem.Icon>
+                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform"/></Border.OpacityMask></Border>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator/>
+                            <MenuItem Header="Add to Playlist" Command="{Binding Player.AddCurrentTrackToNewPlaylistCommand}">
+                                <MenuItem.Icon>
+                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform"/></Border.OpacityMask></Border>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator/>
+                            <MenuItem Header="Favorites"
+                                      Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
+                                      IsVisible="{Binding Player.CurrentTrack.IsFavorite, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
+                                <MenuItem.Icon>
+                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Your%20Favorites%20ICON.png" Stretch="Uniform"/></Border.OpacityMask></Border>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Remove from Favorites"
+                                      Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
+                                      IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}">
+                                <MenuItem.Icon>
+                                    <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="{Binding LyricsAccentFg}" VerticalAlignment="Center"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Metadata" Command="{Binding Player.OpenCurrentTrackMetadataCommand}">
+                                <MenuItem.Icon>
+                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform"/></Border.OpacityMask></Border>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Search Lyrics" Command="{Binding Player.SearchCurrentTrackLyricsCommand}">
+                                <MenuItem.Icon>
+                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform"/></Border.OpacityMask></Border>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Remove Lyrics"
+                                      Command="{Binding RemoveLyricsCommand}"
+                                      IsVisible="{Binding CanRemoveLyrics}">
+                                <MenuItem.Icon>
+                                    <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" Foreground="#E74856"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Show Folder" Command="{Binding Player.ShowCurrentTrackInExplorerCommand}">
+                                <MenuItem.Icon>
+                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Folder%20ICON.png" Stretch="Uniform"/></Border.OpacityMask></Border>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator/>
+                            <MenuItem Header="Remove from Library" Classes="danger"
+                                      Command="{Binding Player.RemoveCurrentTrackFromLibraryCommand}">
+                                <MenuItem.Icon>
+                                    <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </Grid>
+
+            <!-- Row 1: hairline divider -->
+            <Rectangle Grid.Row="1"
+                       Height="1"
+                       Fill="White"
+                       Opacity="0.08"
+                       HorizontalAlignment="Stretch"/>
+        </Grid>
+
+        <!-- Content row with lyrics and status messages -->
+        <Panel Grid.Row="1">
+            <!-- No track playing -->
+            <TextBlock Text="No track playing"
+                       IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNull}}"
+                       Foreground="{Binding LyricsPrimaryFg}" Opacity="0.3"
+                       FontSize="13" HorizontalAlignment="Center"
+                       Margin="0,40,0,0"/>
 
         <!-- Opacity-masked lyrics container -->
         <Border ClipToBounds="True"
@@ -228,7 +435,7 @@
                        IsVisible="{Binding SearchFailedMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             <Button HorizontalAlignment="Center"
                     Classes="accent-btn"
-                    Background="#E74856"
+                    Background="{DynamicResource AccentColorBrush}"
                     Foreground="White"
                     Padding="16,8"
                     FontSize="13"
@@ -236,40 +443,35 @@
                     CornerRadius="20"
                     Cursor="Hand"
                     Command="{Binding SearchLyricsCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Data="{StaticResource SearchGlobeIcon}"
-                             Width="13" Height="13"
-                             Foreground="White"
-                             VerticalAlignment="Center"/>
-                    <TextBlock Text="Search Lyrics" VerticalAlignment="Center"/>
-                </StackPanel>
+                <TextBlock Text="Search Lyrics" VerticalAlignment="Center"/>
             </Button>
         </StackPanel>
 
-        <!-- Searching indicator with pulse animation -->
-        <TextBlock x:Name="PanelSearchingText"
-                   Text="Searching for Lyrics..."
-                   FontSize="14"
-                   Foreground="{Binding LyricsPrimaryFg}"
-                   Opacity="0.5"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"
-                   IsVisible="{Binding IsSearching}">
-            <TextBlock.Styles>
-                <Style Selector="TextBlock#PanelSearchingText[IsVisible=True]">
-                    <Style.Animations>
-                        <Animation Duration="0:0:1.5" IterationCount="INFINITE"
-                                   Easing="SineEaseInOut" PlaybackDirection="Alternate">
-                            <KeyFrame Cue="0%">
-                                <Setter Property="Opacity" Value="0.3"/>
-                            </KeyFrame>
-                            <KeyFrame Cue="100%">
-                                <Setter Property="Opacity" Value="1.0"/>
-                            </KeyFrame>
-                        </Animation>
-                    </Style.Animations>
-                </Style>
-            </TextBlock.Styles>
-        </TextBlock>
-    </Panel>
+            <!-- Searching indicator with pulse animation -->
+            <TextBlock x:Name="PanelSearchingText"
+                       Text="Searching for Lyrics..."
+                       FontSize="14"
+                       Foreground="{Binding LyricsPrimaryFg}"
+                       Opacity="0.5"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding IsSearching}">
+                <TextBlock.Styles>
+                    <Style Selector="TextBlock#PanelSearchingText[IsVisible=True]">
+                        <Style.Animations>
+                            <Animation Duration="0:0:1.5" IterationCount="INFINITE"
+                                       Easing="SineEaseInOut" PlaybackDirection="Alternate">
+                                <KeyFrame Cue="0%">
+                                    <Setter Property="Opacity" Value="0.3"/>
+                                </KeyFrame>
+                                <KeyFrame Cue="100%">
+                                    <Setter Property="Opacity" Value="1.0"/>
+                                </KeyFrame>
+                            </Animation>
+                        </Style.Animations>
+                    </Style>
+                </TextBlock.Styles>
+            </TextBlock>
+        </Panel>
+    </Grid>
 </UserControl>

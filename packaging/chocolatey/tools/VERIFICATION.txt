@@ -1,0 +1,22 @@
+VERIFICATION
+
+Verification is intended to assist the Chocolatey moderators and any user in
+verifying that this package's contents are trustworthy.
+
+This package downloads the official installer published by the Noctis author on
+GitHub Releases:
+
+  https://github.com/heartached/Noctis/releases
+
+The installer URL embedded in tools\chocolateyInstall.ps1 is:
+
+  https://github.com/heartached/Noctis/releases/download/v<version>/Noctis-v<version>-Setup.exe
+
+To verify the SHA256 checksum of the downloaded installer:
+
+  PowerShell:  Get-FileHash .\Noctis-v<version>-Setup.exe -Algorithm SHA256
+
+Compare the result with the `checksum64` value in tools\chocolateyInstall.ps1.
+
+The file tools\LICENSE.txt is a verbatim copy of the project's MIT license,
+also available at https://github.com/heartached/Noctis/blob/main/LICENSE

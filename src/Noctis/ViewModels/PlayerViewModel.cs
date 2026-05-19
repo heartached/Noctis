@@ -20,6 +20,7 @@ public partial class PlayerViewModel : ViewModelBase
     private readonly IAudioPlayer _audioPlayer;
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
+    private readonly IAnimatedCoverService _animatedCovers;
 
     // ── Observable properties bound to the playback bar ──
 
@@ -34,6 +35,7 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private int _volume = 75;
     [ObservableProperty] private bool _isMuted;
     [ObservableProperty] private Bitmap? _albumArt;
+    [ObservableProperty] private string? _currentAnimatedCoverPath;
     [ObservableProperty] private string _positionText = "0:00";
     [ObservableProperty] private string _durationText = "0:00";
     [ObservableProperty] private string _remainingTimeText = "0:00";
@@ -49,8 +51,19 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _artistMarqueeEnabled = true;
 
+    // ── Lyrics page integration (flags + pass-through commands set up by MainWindowViewModel) ──
+
+    [ObservableProperty] private bool _isLyricsPageActive;
+    [ObservableProperty] private bool _isLyricsSyncedActive;
+    [ObservableProperty] private bool _isLyricsPlainActive;
+    [ObservableProperty] private bool _isLyricsSyncedAvailable;
+
     /// <summary>True if there's any content loaded (current track or upcoming tracks in queue).</summary>
     public bool HasContent => CurrentTrack != null || UpNext.Count > 0;
+
+    private Action? _selectLyricsSynced;
+    private Action? _selectLyricsPlain;
+    private Action? _openLyricsBackgroundColor;
 
     public string PlayPauseTooltip => State == PlaybackState.Playing ? "Pause" : "Play";
 
@@ -102,11 +115,12 @@ public partial class PlayerViewModel : ViewModelBase
     private AutoMixPreparedTransitionSnapshot? _autoMixPreparedSnapshot;
     private SettingsViewModel? _settings;
 
-    public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence)
+    public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers)
     {
         _audioPlayer = audioPlayer;
         _library = library;
         _persistence = persistence;
+        _animatedCovers = animatedCovers;
 
         // Subscribe to audio player events
         _audioPlayer.PositionChanged += OnPositionChanged;
@@ -324,6 +338,61 @@ public partial class PlayerViewModel : ViewModelBase
             _viewArtistAction?.Invoke(artist);
     }
 
+    [RelayCommand]
+    private void SetLyricsSynced() => _selectLyricsSynced?.Invoke();
+
+    [RelayCommand]
+    private void SetLyricsPlain() => _selectLyricsPlain?.Invoke();
+
+    [RelayCommand]
+    private void OpenLyricsBackgroundColor() => _openLyricsBackgroundColor?.Invoke();
+
+    /// <summary>
+    /// Called by MainWindowViewModel when the lyrics view becomes the current view.
+    /// Wires the three pass-through commands and seeds the active-state flags.
+    /// </summary>
+    public void SetLyricsPageActions(
+        Action selectSynced,
+        Action selectPlain,
+        Action openBackgroundColor,
+        bool isSyncedActive,
+        bool isPlainActive,
+        bool isSyncedAvailable)
+    {
+        _selectLyricsSynced = selectSynced;
+        _selectLyricsPlain = selectPlain;
+        _openLyricsBackgroundColor = openBackgroundColor;
+        IsLyricsSyncedActive = isSyncedActive;
+        IsLyricsPlainActive = isPlainActive;
+        IsLyricsSyncedAvailable = isSyncedAvailable;
+        IsLyricsPageActive = true;
+    }
+
+    /// <summary>
+    /// Called by MainWindowViewModel when navigating away from the lyrics view.
+    /// </summary>
+    public void ClearLyricsPageActions()
+    {
+        _selectLyricsSynced = null;
+        _selectLyricsPlain = null;
+        _openLyricsBackgroundColor = null;
+        IsLyricsPageActive = false;
+        IsLyricsSyncedActive = false;
+        IsLyricsPlainActive = false;
+        IsLyricsSyncedAvailable = false;
+    }
+
+    /// <summary>
+    /// Called by MainWindowViewModel whenever the lyrics view's Synced/Plain selection
+    /// or synced-availability changes, to keep the menu's checkmarks accurate.
+    /// </summary>
+    public void UpdateLyricsPageState(bool isSyncedActive, bool isPlainActive, bool isSyncedAvailable)
+    {
+        IsLyricsSyncedActive = isSyncedActive;
+        IsLyricsPlainActive = isPlainActive;
+        IsLyricsSyncedAvailable = isSyncedAvailable;
+    }
+
     /// <summary>Sets the sidebar ViewModel for playlist access.</summary>
     public void SetSidebar(SidebarViewModel sidebar)
     {
@@ -537,11 +606,9 @@ public partial class PlayerViewModel : ViewModelBase
         PositionText = "0:00";
         DurationText = "0:00";
         RemainingTimeText = "0:00";
-        // Set null BEFORE dispose — the property setter fires PropertyChanged,
-        // and the UI must not try to render a disposed bitmap.
-        var oldArt = AlbumArt;
+        // AlbumArt bitmaps are owned by the shared ArtworkCache — drop the reference,
+        // don't dispose (other UI surfaces and the cache may still hold it).
         AlbumArt = null;
-        oldArt?.Dispose();
     }
 
     /// <summary>Reorders a track in the UpNext queue via drag & drop.</summary>
@@ -904,34 +971,65 @@ public partial class PlayerViewModel : ViewModelBase
 
     /// <summary>
     /// Decode width for the player-bar / now-playing artwork bitmap.
-    /// 800 px gives sharp results at both 40×40 (player bar) and 350×350 (now-playing)
-    /// while avoiding the memory cost of full-resolution decodes (often 3000+ px).
+    /// 512 px gives sharp results at both 40×40 (player bar) and 350×350 (now-playing)
+    /// while matching the shared <see cref="ArtworkCache"/> default width so the same
+    /// cover isn't decoded/cached a second time at a player-only size.
     /// </summary>
-    private const int PlayerArtDecodeWidth = 800;
+    private const int PlayerArtDecodeWidth = 768;
+
+    /// <summary>Bumped on every <see cref="LoadAlbumArt"/> call so a slow background
+    /// decode that finishes after the track changed again is discarded.</summary>
+    private int _albumArtGeneration;
 
     private void LoadAlbumArt(Track track)
     {
-        // Dispose the previous bitmap to prevent memory leaks.
-        // Each track switch was leaking the old Bitmap.
-        var oldArt = AlbumArt;
-        AlbumArt = null;
-        oldArt?.Dispose();
-
+        // Bitmaps come from the shared LRU cache, which owns their lifetime — never
+        // dispose them here. The cache de-dupes, so track switches no longer leak.
         var artPath = _persistence.GetArtworkPath(track.AlbumId);
-        if (File.Exists(artPath))
+        var generation = Interlocked.Increment(ref _albumArtGeneration);
+
+        // No artwork available for this track — clear immediately so we don't
+        // keep showing the previous track's cover.
+        if (string.IsNullOrEmpty(artPath))
         {
-            try
-            {
-                using var stream = File.OpenRead(artPath);
-                AlbumArt = Bitmap.DecodeToWidth(stream, PlayerArtDecodeWidth,
-                    BitmapInterpolationMode.HighQuality);
-            }
-            catch
-            {
-                // Corrupted image file — leave as null
-            }
+            AlbumArt = null;
+            CurrentAnimatedCoverPath = _animatedCovers.Resolve(track);
+            return;
         }
+
+        // Fast path: a cache hit returns synchronously — no I/O or decode on the UI thread.
+        var cached = ArtworkCache.TryGet(artPath, PlayerArtDecodeWidth);
+        if (cached != null)
+        {
+            AlbumArt = cached;
+        }
+        else
+        {
+            // Cache miss: decode on a background thread so click-to-play doesn't stall.
+            // Keep the previous AlbumArt visible until the new bitmap is ready —
+            // clearing here causes a placeholder flash on every track switch.
+            _ = Task.Run(() =>
+            {
+                var bitmap = ArtworkCache.LoadAndCache(artPath, PlayerArtDecodeWidth);
+                if (bitmap == null) return;
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (generation == Volatile.Read(ref _albumArtGeneration))
+                        AlbumArt = bitmap;
+                });
+            });
+        }
+
+        CurrentAnimatedCoverPath = _animatedCovers.Resolve(track);
     }
+
+    /// <summary>
+    /// Re-resolves the current track's animated cover. Call after a metadata edit
+    /// may have added or removed one, so player-bound surfaces (album detail header,
+    /// now playing, mini-art) pick it up without a track change.
+    /// </summary>
+    public void RefreshAnimatedCover()
+        => CurrentAnimatedCoverPath = CurrentTrack != null ? _animatedCovers.Resolve(CurrentTrack) : null;
 
     private void TrimHistory()
     {

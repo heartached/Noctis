@@ -1,13 +1,11 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
-using Avalonia.Media;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Helpers;
@@ -23,15 +21,13 @@ public partial class LyricsView : UserControl
     private bool _isProgrammaticScroll;
     private DispatcherTimer? _autoFollowResumeTimer;
     private LyricsViewModel? _subscribedVm;
+    private bool _swatchScrollersWired;
     private bool _isNarrowMode;
-    private readonly Dictionary<object, PlaylistMenuPopulator> _playlistPopulators = new();
-    private readonly TranslateTransform _lyricsSeekThumbTransform = new();
+    private bool _isTimelineSeekDragging;
+    private readonly TranslateTransform _lyricsTimelineThumbTransform = new();
 
     private const double NarrowBreakpoint = 900;
-    private const double SeekThumbSize = 14;
-
-    // Seek slider drag state — mirrors PlaybackBarView pattern
-    private bool _isSeekDragging;
+    private const double LyricsTimelineThumbSize = 16;
 
     public LyricsView()
     {
@@ -44,23 +40,34 @@ public partial class LyricsView : UserControl
             LyricsScrollViewer.PropertyChanged += OnScrollViewerPropertyChanged;
         }
 
-        // Seek slider: Tunnel routing prevents the Slider's Thumb from
-        // starting its own drag, avoiding capture conflicts and stuck state.
-        SeekSlider.AddHandler(InputElement.PointerPressedEvent, OnSeekPointerPressed, RoutingStrategies.Tunnel);
-        SeekSlider.AddHandler(InputElement.PointerMovedEvent, OnSeekPointerMoved, RoutingStrategies.Tunnel);
-        SeekSlider.AddHandler(InputElement.PointerReleasedEvent, OnSeekPointerReleased, RoutingStrategies.Tunnel);
-        SeekSlider.PointerCaptureLost += OnSeekCaptureLost;
-        LyricsSeekThumb.RenderTransform = _lyricsSeekThumbTransform;
-        SeekSlider.PropertyChanged += OnSeekSliderPropertyChanged;
-        SeekSlider.SizeChanged += (_, _) => UpdateSeekSliderVisual();
-        DispatcherTimer.RunOnce(UpdateSeekSliderVisual, TimeSpan.FromMilliseconds(10));
+        LyricsTimelineThumb.RenderTransform = _lyricsTimelineThumbTransform;
+        LyricsTimelineSlider.AddHandler(InputElement.PointerPressedEvent, OnTimelineSeekStart, RoutingStrategies.Tunnel);
+        LyricsTimelineSlider.AddHandler(InputElement.PointerMovedEvent, OnTimelineSeekMove, RoutingStrategies.Tunnel);
+        LyricsTimelineSlider.AddHandler(InputElement.PointerReleasedEvent, OnTimelineSeekEnd, RoutingStrategies.Tunnel);
+        LyricsTimelineSlider.PointerCaptureLost += OnTimelineSeekCaptureLost;
+        LyricsTimelineSlider.PropertyChanged += OnTimelineSliderPropertyChanged;
+        LyricsTimelineSlider.SizeChanged += (_, _) => UpdateTimelineSliderVisual();
+        DispatcherTimer.RunOnce(UpdateTimelineSliderVisual, TimeSpan.FromMilliseconds(10));
 
-        // Volume slider percentage badge (expand-on-hover wired via AXAML PointerEntered/Exited on LyricsVolumeContainer)
-        LyricsVolumeSlider.PropertyChanged += OnLyricsVolumePropertyChanged;
+        // Mouse wheel → horizontal scroll for color swatch pickers.
+        // The scrollers live inside a Flyout and are not realized until first open,
+        // so wire them lazily on Flyout.Opened instead of at construction time.
+        if (LyricsColorPickerHost?.Flyout is Avalonia.Controls.Flyout colorPickerFlyout)
+        {
+            colorPickerFlyout.Opened += OnColorPickerFlyoutOpened;
+        }
+    }
 
-        // Mouse wheel → horizontal scroll for color swatch pickers
-        SolidSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
-        GradientSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
+    private void OnColorPickerFlyoutOpened(object? sender, EventArgs e)
+    {
+        if (_swatchScrollersWired) return;
+
+        if (SolidSwatchScroller != null)
+            SolidSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
+        if (GradientSwatchScroller != null)
+            GradientSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
+
+        _swatchScrollersWired = true;
     }
 
     private void OnSwatchWheelScroll(object? sender, PointerWheelEventArgs e)
@@ -91,12 +98,16 @@ public partial class LyricsView : UserControl
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        // Safety: ensure seek drag state is fully cleared on detach
-        if (_isSeekDragging)
+        if (_isTimelineSeekDragging)
         {
-            _isSeekDragging = false;
-            if (DataContext is LyricsViewModel { Player: { } player })
-                player.EndSeek();
+            _isTimelineSeekDragging = false;
+            if (DataContext is LyricsViewModel vm)
+                vm.Player.EndSeek();
+        }
+
+        if (_subscribedVm != null)
+        {
+            _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
         }
 
         base.OnDetachedFromVisualTree(e);
@@ -106,7 +117,6 @@ public partial class LyricsView : UserControl
     {
         base.OnSizeChanged(e);
         UpdateResponsiveLayout(e.NewSize.Width);
-        UpdateSeekSliderVisual();
     }
 
     private void UpdateResponsiveLayout(double width)
@@ -171,112 +181,6 @@ public partial class LyricsView : UserControl
         }
     }
 
-    private void OnTrackFlyoutOpened(object? sender, EventArgs e)
-    {
-        if (DataContext is not LyricsViewModel { Player: { } player }) return;
-        if (sender is not MenuFlyout flyout) return;
-
-        if (!_playlistPopulators.TryGetValue(flyout, out var populator))
-        {
-            MenuItem? addToPlaylist = null;
-            Separator? separator = null;
-            foreach (var item in flyout.Items)
-            {
-                if (item is MenuItem mi && mi.Header is string h && h == "Add to Playlist")
-                {
-                    addToPlaylist = mi;
-                    foreach (var sub in mi.Items)
-                    {
-                        if (sub is Separator sep) { separator = sep; break; }
-                    }
-                    break;
-                }
-            }
-            if (addToPlaylist == null || separator == null) return;
-            populator = new PlaylistMenuPopulator(addToPlaylist, separator);
-            _playlistPopulators[flyout] = populator;
-        }
-
-        populator.Populate(player.Playlists as ObservableCollection<Playlist>, player.AddCurrentTrackToExistingPlaylistCommand);
-    }
-
-    // ── Seek slider interaction ──
-
-    private void OnSeekPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (DataContext is not LyricsViewModel { Player: { } player }) return;
-        if (sender is not Slider slider) return;
-        if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed) return;
-
-        _isSeekDragging = true;
-        player.BeginSeek();
-        e.Pointer.Capture(slider);
-        slider.Value = GetPercentageFromPointer(slider, e.GetPosition(slider));
-        e.Handled = true;
-    }
-
-    private void OnSeekPointerMoved(object? sender, PointerEventArgs e)
-    {
-        if (!_isSeekDragging) return;
-        if (sender is not Slider slider) return;
-
-        slider.Value = GetPercentageFromPointer(slider, e.GetPosition(slider));
-        e.Handled = true;
-    }
-
-    private void OnSeekPointerReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        if (!_isSeekDragging) return;
-        _isSeekDragging = false;
-
-        e.Pointer.Capture(null);
-
-        if (DataContext is LyricsViewModel { Player: { } player })
-            player.EndSeek();
-
-        e.Handled = true;
-    }
-
-    private void OnSeekCaptureLost(object? sender, PointerCaptureLostEventArgs e)
-    {
-        if (!_isSeekDragging) return;
-        _isSeekDragging = false;
-
-        if (DataContext is LyricsViewModel { Player: { } player })
-            player.EndSeek();
-    }
-
-    private void OnSeekSliderPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
-    {
-        if (e.Property == Slider.ValueProperty ||
-            e.Property.Name is nameof(Bounds) or nameof(IsEnabled))
-        {
-            UpdateSeekSliderVisual();
-        }
-    }
-
-    private void UpdateSeekSliderVisual()
-    {
-        if (SeekSlider == null ||
-            LyricsSeekTrackBackground == null ||
-            LyricsSeekTrackFill == null ||
-            LyricsSeekThumb == null)
-            return;
-
-        PillSliderVisualHelper.UpdateVisual(
-            SeekSlider,
-            LyricsSeekTrackBackground,
-            LyricsSeekTrackFill,
-            LyricsSeekThumb,
-            _lyricsSeekThumbTransform,
-            SeekThumbSize);
-    }
-
-    private static double GetPercentageFromPointer(Slider slider, Point position)
-    {
-        return PillSliderVisualHelper.GetValueFromPointer(slider, position, SeekThumbSize);
-    }
-
     // ── ViewModel subscription + scroll animation ──
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -287,6 +191,7 @@ public partial class LyricsView : UserControl
         if (_subscribedVm != null)
         {
             _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
             _subscribedVm = null;
         }
 
@@ -298,8 +203,17 @@ public partial class LyricsView : UserControl
         if (DataContext is LyricsViewModel vm)
         {
             vm.PropertyChanged += OnViewModelPropertyChanged;
+            vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
             _subscribedVm = vm;
         }
+    }
+
+    private void OnOpenBackgroundColorRequested()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            LyricsColorPickerHost?.Flyout?.ShowAt(LyricsColorPickerHost);
+        });
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -367,15 +281,6 @@ public partial class LyricsView : UserControl
                 SetResourceBrush("LyricsBtnBgHoverRes", vm.LyricsBtnBgHover);
                 SetResourceBrush("LyricsSecBtnBgHoverRes", vm.LyricsBtnBgHover);
                 break;
-            case nameof(LyricsViewModel.LyricsSliderThumb):
-                SetResourceBrush("LyricsSliderThumbRes", vm.LyricsSliderThumb);
-                break;
-            case nameof(LyricsViewModel.LyricsSliderFilled):
-                SetResourceBrush("LyricsSliderFilledRes", vm.LyricsSliderFilled);
-                break;
-            case nameof(LyricsViewModel.LyricsSliderUnfilled):
-                SetResourceBrush("LyricsSliderUnfilledRes", vm.LyricsSliderUnfilled);
-                break;
         }
     }
 
@@ -383,6 +288,81 @@ public partial class LyricsView : UserControl
     {
         if (brush is SolidColorBrush scb && Resources[key] is SolidColorBrush existing)
             existing.Color = scb.Color;
+    }
+
+    private void OnTimelineSliderPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == Slider.ValueProperty ||
+            e.Property.Name is nameof(Bounds) or nameof(IsEnabled))
+        {
+            UpdateTimelineSliderVisual();
+        }
+    }
+
+    private void UpdateTimelineSliderVisual()
+    {
+        if (LyricsTimelineSlider == null ||
+            LyricsTimelineTrackBackground == null ||
+            LyricsTimelineTrackFill == null ||
+            LyricsTimelineThumb == null)
+            return;
+
+        PillSliderVisualHelper.UpdateVisual(
+            LyricsTimelineSlider,
+            LyricsTimelineTrackBackground,
+            LyricsTimelineTrackFill,
+            LyricsTimelineThumb,
+            _lyricsTimelineThumbTransform,
+            LyricsTimelineThumbSize,
+            enabledBackgroundOpacity: 0.55,
+            disabledBackgroundOpacity: 0.25);
+    }
+
+    private void OnTimelineSeekStart(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not LyricsViewModel vm || sender is not Slider slider) return;
+        if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed) return;
+
+        _isTimelineSeekDragging = true;
+        vm.Player.BeginSeek();
+        e.Pointer.Capture(slider);
+        slider.Value = GetTimelineValueFromPointer(slider, e.GetPosition(slider));
+        e.Handled = true;
+    }
+
+    private void OnTimelineSeekMove(object? sender, PointerEventArgs e)
+    {
+        if (!_isTimelineSeekDragging || sender is not Slider slider) return;
+
+        slider.Value = GetTimelineValueFromPointer(slider, e.GetPosition(slider));
+        e.Handled = true;
+    }
+
+    private void OnTimelineSeekEnd(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_isTimelineSeekDragging) return;
+
+        _isTimelineSeekDragging = false;
+        e.Pointer.Capture(null);
+
+        if (DataContext is LyricsViewModel vm)
+            vm.Player.EndSeek();
+
+        e.Handled = true;
+    }
+
+    private void OnTimelineSeekCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (!_isTimelineSeekDragging) return;
+
+        _isTimelineSeekDragging = false;
+        if (DataContext is LyricsViewModel vm)
+            vm.Player.EndSeek();
+    }
+
+    private static double GetTimelineValueFromPointer(Slider slider, Point position)
+    {
+        return PillSliderVisualHelper.GetValueFromPointer(slider, position, LyricsTimelineThumbSize);
     }
 
     private void CancelScrollAnimation()
@@ -442,48 +422,6 @@ public partial class LyricsView : UserControl
         var topPad = viewportHeight * 0.10;
         var bottomPad = viewportHeight * 0.78;
         LyricsItemsControl.Margin = new Thickness(0, topPad, 0, bottomPad);
-    }
-
-    // ── Volume percentage badge ──
-
-    private const double LyricsVolumeSliderExpandedWidth = 113;
-
-    private void OnLyricsVolumeContainerEntered(object? sender, PointerEventArgs e)
-    {
-        LyricsVolumeSliderContainer.Width = LyricsVolumeSliderExpandedWidth;
-        UpdateLyricsVolumePosition();
-        LyricsVolumePercentage.IsVisible = true;
-        LyricsVolumePercentage.Opacity = 1.0;
-    }
-
-    private void OnLyricsVolumeContainerExited(object? sender, PointerEventArgs e)
-    {
-        LyricsVolumeSliderContainer.Width = 0;
-        LyricsVolumePercentage.Opacity = 0;
-        LyricsVolumePercentage.IsVisible = false;
-    }
-
-    private void OnLyricsVolumePropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
-    {
-        if (e.Property == Slider.ValueProperty)
-            UpdateLyricsVolumePosition();
-    }
-
-    private void UpdateLyricsVolumePosition()
-    {
-        if (LyricsVolumePercentage.RenderTransform is not Avalonia.Media.TranslateTransform transform)
-            return;
-
-        // Container gives the 90px slider 7px of edge room on each side.
-        const double trackMargin = 14.0;
-        const double thumbHalfWidth = 7.0;
-        const double thumbTravel = 62.0;
-
-        var fraction = LyricsVolumeSlider.Value / 100.0;
-        var thumbCenterX = trackMargin + thumbHalfWidth + (fraction * thumbTravel);
-        var textWidth = LyricsVolumePercentage.Bounds.Width;
-        if (textWidth <= 0) textWidth = 18;
-        transform.X = thumbCenterX - (textWidth / 2);
     }
 
     // Maps the current synced ActiveLineIndex to the corresponding row in UnsyncedLines.
@@ -547,7 +485,7 @@ public partial class LyricsView : UserControl
                 }
 
                 var distance = Math.Abs(diff);
-                var durationMs = (int)Math.Min(800, Math.Max(500, distance * 0.7));
+                var durationMs = (int)Math.Min(1050, Math.Max(650, distance * 0.85));
                 AnimateScroll(LyricsScrollViewer, currentOffset, targetOffset, durationMs);
             }
             catch { }
@@ -556,7 +494,7 @@ public partial class LyricsView : UserControl
 
     /// <summary>
     /// Time-based scroll animation using Stopwatch for smooth, frame-accurate motion.
-    /// Uses ease-out-sine for the most natural, liquid-smooth deceleration.
+    /// Uses smootherstep easing so lyric movement glides in and out instead of jumping.
     /// </summary>
     private void AnimateScroll(ScrollViewer scrollViewer, double from, double to, int durationMs)
     {
@@ -575,8 +513,7 @@ public partial class LyricsView : UserControl
             var elapsed = sw.Elapsed.TotalMilliseconds;
             var t = Math.Min(1.0, elapsed / totalMs);
 
-            // Ease-out-sine: smooth continuous deceleration, no sudden start or stop
-            var eased = Math.Sin(t * Math.PI / 2.0);
+            var eased = SmootherStep(t);
             var value = from + (to - from) * eased;
 
             scrollViewer.Offset = new Vector(0, value);
@@ -592,6 +529,12 @@ public partial class LyricsView : UserControl
             }
         };
         timer.Start();
+    }
+
+    private static double SmootherStep(double t)
+    {
+        t = Math.Clamp(t, 0.0, 1.0);
+        return t * t * t * (t * (t * 6 - 15) + 10);
     }
 
 }

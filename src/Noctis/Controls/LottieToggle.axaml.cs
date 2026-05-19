@@ -25,10 +25,32 @@ public partial class LottieToggle : UserControl
         InitializeComponent();
     }
 
+    private static IBrush ResolveAccentBrush()
+    {
+        if (Application.Current?.Resources.TryGetResource("AccentColorBrush", null, out var b) == true && b is IBrush brush)
+            return brush;
+        return new SolidColorBrush(Color.Parse("#E74856"));
+    }
+
+    private EventHandler? _accentHandler;
+
     protected override void OnLoaded(RoutedEventArgs e)
     {
         base.OnLoaded(e);
         UpdateVisualState();
+
+        _accentHandler = (_, _) => UpdateVisualState();
+        App.AccentApplied += _accentHandler;
+    }
+
+    protected override void OnUnloaded(RoutedEventArgs e)
+    {
+        if (_accentHandler != null)
+        {
+            App.AccentApplied -= _accentHandler;
+            _accentHandler = null;
+        }
+        base.OnUnloaded(e);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -56,7 +78,7 @@ public partial class LottieToggle : UserControl
 
         if (IsChecked)
         {
-            Track.Background = new SolidColorBrush(Color.Parse("#E74856"));
+            Track.Background = ResolveAccentBrush();
             Knob.Margin = new Thickness(29, 0, 0, 0);
         }
         else

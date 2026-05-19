@@ -1,0 +1,197 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
+        x:Class="Noctis.Views.ThemeEditorDialog"
+        x:DataType="vm:ThemeEditorViewModel"
+        Title="Theme Editor"
+        Width="920" Height="680"
+        CanResize="False"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Border Background="Transparent">
+        <Border CornerRadius="32"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Width="760" Height="520"
+                BoxShadow="0 0 34 0 #66000000, 0 18 48 0 #80000000, 12 18 32 0 #4D000000">
+            <Border CornerRadius="32"
+                    ClipToBounds="True"
+                    Background="{DynamicResource AppMainBackground}">
+            <DockPanel>
+
+                <!-- Bottom buttons (match MetadataWindow: Cancel left, accent Save right). -->
+                <Border DockPanel.Dock="Bottom"
+                        Padding="24,12"
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                        BorderThickness="0,1,0,0">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <Button Grid.Column="1"
+                                Content="Cancel"
+                                Command="{Binding CancelCommand}"
+                                Width="100"
+                                Padding="0,10"
+                                FontWeight="Bold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Margin="0,0,8,0"
+                                Cursor="Hand"/>
+                        <Button Grid.Column="2"
+                                Content="Save"
+                                Command="{Binding SaveCommand}"
+                                Width="100"
+                                Padding="0,10"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="White"
+                                FontWeight="Bold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand"/>
+                    </Grid>
+                </Border>
+
+                <Grid ColumnDefinitions="320,*" Margin="20,16">
+
+                    <!-- Left: inputs -->
+                    <StackPanel Grid.Column="0" Spacing="14" Margin="0,0,20,0">
+                        <TextBlock Text="Custom Theme" FontSize="20" FontWeight="Bold"/>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Name" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding Name, Mode=TwoWay}"
+                                     Watermark="My Theme" CornerRadius="999"/>
+                            <TextBlock Text="A theme with this name already exists"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource AccentColorBrush}"
+                                       IsVisible="{Binding HasDuplicateName}"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Base mode" FontSize="13" FontWeight="SemiBold"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <ToggleButton Content="Dark"
+                                              IsChecked="{Binding IsDarkMode, Mode=TwoWay}"
+                                              CornerRadius="999" Padding="16,6"/>
+                                <ToggleButton Content="Light"
+                                              IsChecked="{Binding !IsDarkMode, Mode=TwoWay}"
+                                              CornerRadius="999" Padding="16,6"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Main background" FontSize="13" FontWeight="SemiBold"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <controls:ColorPickerFlyout Hex="{Binding MainHex, Mode=TwoWay}" SwatchSize="28"/>
+                                <TextBlock Text="{Binding MainHex}"
+                                           FontFamily="Consolas, Courier New, monospace"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Sidebar background" FontSize="13" FontWeight="SemiBold"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <controls:ColorPickerFlyout Hex="{Binding SidebarHex, Mode=TwoWay}" SwatchSize="28"/>
+                                <TextBlock Text="{Binding SidebarHex}"
+                                           FontFamily="Consolas, Courier New, monospace"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Accent" FontSize="13" FontWeight="SemiBold"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <controls:ColorPickerFlyout Hex="{Binding AccentHex, Mode=TwoWay}" SwatchSize="28"/>
+                                <TextBlock Text="{Binding AccentHex}"
+                                           FontFamily="Consolas, Courier New, monospace"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Right: live preview -->
+                    <Border Grid.Column="1"
+                            CornerRadius="14" ClipToBounds="True"
+                            BorderBrush="{Binding PreviewOutline}" BorderThickness="1">
+                        <Grid ColumnDefinitions="120,*" RowDefinitions="*,Auto">
+                            <!-- Fake sidebar -->
+                            <Border Grid.Column="0" Grid.Row="0"
+                                    Background="{Binding PreviewSidebar}">
+                                <StackPanel Margin="10,16" Spacing="8">
+                                    <Border CornerRadius="8" Padding="10,8"
+                                            Background="{Binding PreviewSidebarHover}">
+                                        <TextBlock Text="Home" FontSize="12"
+                                                   Foreground="{Binding PreviewPrimaryText}"/>
+                                    </Border>
+                                    <TextBlock Text="Library" FontSize="12" Margin="10,0"
+                                               Foreground="{Binding PreviewSecondaryText}"/>
+                                    <TextBlock Text="Playlists" FontSize="12" Margin="10,0"
+                                               Foreground="{Binding PreviewSecondaryText}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Fake main -->
+                            <Border Grid.Column="1" Grid.Row="0"
+                                    Background="{Binding PreviewMain}">
+                                <StackPanel Margin="20,18" Spacing="12">
+                                    <TextBlock Text="Preview" FontSize="18" FontWeight="Bold"
+                                               Foreground="{Binding PreviewPrimaryText}"/>
+                                    <Border CornerRadius="8" Padding="12,10"
+                                            Background="{Binding PreviewSidebarHover}">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" >
+                                            <Border Grid.Column="0" Width="34" Height="34"
+                                                    CornerRadius="4" Background="{Binding PreviewAccent}"/>
+                                            <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+                                                <TextBlock Text="Track title"
+                                                           Foreground="{Binding PreviewPrimaryText}" FontWeight="SemiBold"/>
+                                                <TextBlock Text="Artist · Album"
+                                                           Foreground="{Binding PreviewSecondaryText}" FontSize="12"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="3:24"
+                                                       Foreground="{Binding PreviewSecondaryText}" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Fake Island -->
+                            <Border Grid.ColumnSpan="2" Grid.Row="1"
+                                    Margin="20,0,20,16"
+                                    Padding="14,8" CornerRadius="999"
+                                    Background="{Binding PreviewIslandBg}"
+                                    BorderBrush="{Binding PreviewOutline}"
+                                    BorderThickness="1">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                    <Border Grid.Column="0" Width="28" Height="28"
+                                            CornerRadius="4" Background="{Binding PreviewAccent}"/>
+                                    <StackPanel Grid.Column="1" Margin="10,0">
+                                        <TextBlock Text="Now Playing"
+                                                   Foreground="{Binding PreviewIslandFg}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Artist"
+                                                   Foreground="{Binding PreviewIslandFgSecondary}" FontSize="11"/>
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Width="28" Height="28" CornerRadius="14"
+                                            Background="{Binding PreviewIslandFg}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </DockPanel>
+            </Border>
+        </Border>
+    </Border>
+</Window>

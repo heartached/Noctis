@@ -20,6 +20,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private readonly PlayerViewModel _player;
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
+    private readonly IAnimatedCoverService _animatedCovers;
     private readonly ILastFmService _lastFm;
     private readonly SidebarViewModel _sidebar;
     private readonly SettingsViewModel? _settings;
@@ -33,6 +34,25 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private Album _album;
     [ObservableProperty] private Bitmap? _albumArt;
+
+    /// <summary>True when this album's track is currently playing AND animated covers are enabled AND a cover exists.</summary>
+    public bool IsCurrentAlbumPlaying =>
+        (_settings?.EnableAnimatedCovers ?? false)
+        && _player.CurrentTrack != null
+        && _player.CurrentTrack.AlbumId == Album.Id
+        && !string.IsNullOrEmpty(_player.CurrentAnimatedCoverPath);
+
+    /// <summary>This album's own animated cover, if any — shown in the header whenever the
+    /// album is being viewed, regardless of whether it's playing.</summary>
+    [ObservableProperty] private string? _animatedCoverPath;
+
+    /// <summary>True when the header should animate (an animated cover exists and the feature is on).</summary>
+    public bool ShowAnimatedCover =>
+        (_settings?.EnableAnimatedCovers ?? false) && !string.IsNullOrEmpty(AnimatedCoverPath);
+
+    partial void OnAnimatedCoverPathChanged(string? value) => OnPropertyChanged(nameof(ShowAnimatedCover));
+
+    public PlayerViewModel Player => _player;
     [ObservableProperty] private IBrush? _backgroundBrush;
     [ObservableProperty] private bool _isLightTint;
     [ObservableProperty] private IBrush _pageForegroundBrush = Brushes.White;
@@ -133,6 +153,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _player = player;
         _library = library;
         _persistence = persistence;
+        _animatedCovers = new AnimatedCoverService(persistence);
         _lastFm = lastFm;
         _sidebar = sidebar;
         _settings = settings;
@@ -147,6 +168,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         foreach (var track in album.Tracks)
             Tracks.Add(track);
         BuildDiscGroups();
+        AnimatedCoverPath = ResolveAlbumAnimatedCover();
 
         // Load artwork off UI thread
         var artPath = persistence.GetArtworkPath(album.Id);
@@ -169,9 +191,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _playerPropertyChangedHandler = (_, e) =>
         {
             if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
+            {
                 UpdateCurrentPlayingTrack();
+                OnPropertyChanged(nameof(IsCurrentAlbumPlaying));
+            }
             if (e.PropertyName == nameof(PlayerViewModel.State))
                 IsPlayerPlaying = _player.State == Models.PlaybackState.Playing;
+            if (e.PropertyName == nameof(PlayerViewModel.CurrentAnimatedCoverPath))
+                OnPropertyChanged(nameof(IsCurrentAlbumPlaying));
         };
         _player.PropertyChanged += _playerPropertyChangedHandler;
 
@@ -192,8 +219,12 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         {
             _settingsPropertyChangedHandler = (_, e) =>
             {
-                if (e.PropertyName == nameof(SettingsViewModel.AlbumDetailColorTintEnabled))
-                    Dispatcher.UIThread.Post(RebuildBackgroundBrush);
+                if (e.PropertyName == nameof(SettingsViewModel.EnableAnimatedCovers))
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        OnPropertyChanged(nameof(IsCurrentAlbumPlaying));
+                        OnPropertyChanged(nameof(ShowAnimatedCover));
+                    });
             };
             _settings.PropertyChanged += _settingsPropertyChangedHandler;
         }
@@ -266,6 +297,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>Resolves this album's animated cover from its first track (sidecar or managed cache).</summary>
+    private string? ResolveAlbumAnimatedCover()
+        => Tracks.Count > 0 ? _animatedCovers.Resolve(Tracks[0]) : null;
+
     private void RefreshFromLibrary()
     {
         // Try to find album by current ID first
@@ -293,6 +328,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         foreach (var track in updatedAlbum.Tracks)
             Tracks.Add(track);
         BuildDiscGroups();
+        AnimatedCoverPath = ResolveAlbumAnimatedCover();
         // OnAlbumChanged already rebuilds related sections; reaching here only when the
         // ID actually changed, but rebuild defensively in case the same-ID path missed.
         BuildRelatedSections();
@@ -318,51 +354,11 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     private void RebuildBackgroundBrush()
     {
-        var bmp = AlbumArt;
-        if (bmp == null || _settings?.AlbumDetailColorTintEnabled == false)
-        {
-            BackgroundBrush = null;
-            IsLightTint = false;
-            PageForegroundBrush = Brushes.White;
-            PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
-            PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
-            return;
-        }
-
-        // Extraction must run on the UI thread — DominantColorExtractor uses
-        // RenderTargetBitmap/DrawImage, which Avalonia restricts to the UI thread.
-        // The sample target is 50x50, so this is sub-millisecond and does not stutter the UI.
-        try
-        {
-            var color = DominantColorExtractor.ExtractEdgeBackgroundColor(bmp);
-            BackgroundBrush = new SolidColorBrush(color);
-
-            var luminance = DominantColorExtractor.GetRelativeLuminance(color);
-            var isLight = luminance > 0.55;
-            IsLightTint = isLight;
-
-            if (isLight)
-            {
-                PageForegroundBrush = new SolidColorBrush(Color.FromRgb(0x11, 0x11, 0x11));
-                PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0x66, 0x00, 0x00, 0x00));
-                PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0x00, 0x00, 0x00));
-            }
-            else
-            {
-                PageForegroundBrush = Brushes.White;
-                PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
-                PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
-            }
-        }
-        catch (Exception ex)
-        {
-            DebugLogger.Error(DebugLogger.Category.UI, "AlbumDetail.GradientBg", ex.ToString());
-            BackgroundBrush = null;
-            IsLightTint = false;
-            PageForegroundBrush = Brushes.White;
-            PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
-            PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
-        }
+        BackgroundBrush = null;
+        IsLightTint = false;
+        PageForegroundBrush = Brushes.White;
+        PageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
+        PageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
     }
 
     private void BuildRelatedSections()

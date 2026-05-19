@@ -38,4 +38,14 @@ public interface IPersistenceService
 
     /// <summary>Saves raw image bytes as the cached artwork for an album.</summary>
     void SaveArtwork(Guid albumId, byte[] imageData);
+
+    /// <summary>
+    /// Returns the cache path for an animated cover.
+    /// Album scope: <DataRoot>/animated_covers/<albumId>.<ext>
+    /// Track scope: <DataRoot>/animated_covers/<albumId>__<trackId>.<ext>
+    /// </summary>
+    string GetAnimatedCoverPath(Guid albumId, Guid? trackId, string extension);
+
+    /// <summary>Ensures the animated_covers directory exists. Idempotent.</summary>
+    void EnsureAnimatedCoverDir();
 }

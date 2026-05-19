@@ -85,7 +85,7 @@
                                             CornerRadius="14"
                                             ClipToBounds="True"
                                             VerticalAlignment="Center"
-                                            Background="#E74856">
+                                            Background="{DynamicResource AccentColorBrush}">
                                         <PathIcon Data="{StaticResource HeartFillIcon}"
                                                   Width="14" Height="14"
                                                   Foreground="White"
@@ -116,33 +116,14 @@
                             Opacity="0.1"
                             Margin="8,2,8,8" />
 
-                    <!-- Playlists header with + button (only visible when expanded) -->
-                    <Grid Margin="18,4,12,4"
-                          IsVisible="{Binding IsExpanded}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0"
-                                   Text="PLAYLISTS"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   Opacity="0.5"
-                                   VerticalAlignment="Center" />
-                        <Button Grid.Column="1"
-                                Command="{Binding CreatePlaylistCommand}"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Padding="4"
-                                Cursor="Hand"
-                                CornerRadius="4"
-                                ToolTip.Tip="Create new playlist">
-                            <PathIcon Data="{StaticResource AddIcon}"
-                                      Width="16" Height="16"
-                                      Foreground="{DynamicResource IslandForeground}"
-                                      Opacity="0.6" />
-                        </Button>
-                    </Grid>
+                    <!-- Playlists header (only visible when expanded) -->
+                    <TextBlock Margin="18,4,12,4"
+                               IsVisible="{Binding IsExpanded}"
+                               Text="PLAYLISTS"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Opacity="0.5"
+                               VerticalAlignment="Center" />
 
                     <!-- User playlists with artwork thumbnails (scrolls when >12) -->
                     <ListBox Classes="sidebar"

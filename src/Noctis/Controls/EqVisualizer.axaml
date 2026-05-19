@@ -4,7 +4,7 @@
     <Style Selector="ctrl|EqVisualizer">
         <Setter Property="Width" Value="34" />
         <Setter Property="Height" Value="22" />
-        <Setter Property="Foreground" Value="#E74856" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
         <Setter Property="Template">
             <ControlTemplate>
                 <Grid ClipToBounds="True">

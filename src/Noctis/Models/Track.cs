@@ -214,6 +214,10 @@ public partial class Track : ObservableObject
         return new Guid(hash);
     }
 
+    /// <summary>Primary display artist derived from the first credited artist token.</summary>
+    [JsonIgnore]
+    public string PrimaryArtist => GetPrimaryArtist(Artist);
+
     /// <summary>Formatted duration string (m:ss or h:mm:ss).</summary>
     public string DurationFormatted =>
         Duration.TotalHours >= 1
@@ -371,6 +375,15 @@ public partial class Track : ObservableObject
 
     /// <summary>Available media kind values for the Options tab dropdown.</summary>
     public static readonly string[] AvailableMediaKinds = { "Music", "Podcast", "Audiobook", "Voice Memo", "Music Video" };
+
+    public static string GetPrimaryArtist(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var tokens = ParseArtistTokens(value);
+        return tokens.Length > 0 ? tokens[0] : value.Trim();
+    }
 
     internal static string[] ParseArtistTokens(string? value)
     {

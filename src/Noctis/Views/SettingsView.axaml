@@ -29,6 +29,18 @@
             <Setter Property="Padding" Value="22,16"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
+        <Style Selector="Border.setting-card.advanced-first">
+            <Setter Property="CornerRadius" Value="24,24,0,0"/>
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+        <Style Selector="Border.setting-card.advanced-middle">
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+        <Style Selector="Border.setting-card.advanced-last">
+            <Setter Property="CornerRadius" Value="0,0,24,24"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
 
 
         <!-- Setting row: label left, control right -->
@@ -58,6 +70,14 @@
         <Style Selector="Button:pointerover">
             <Setter Property="RenderTransform" Value="scale(1.045)"/>
         </Style>
+        <Style Selector="Button.accent-swatch:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.accent-swatch:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
         <Style Selector="Button:pressed">
             <Setter Property="RenderTransform" Value="scale(0.97)"/>
             <Setter Property="Opacity" Value="0.9"/>
@@ -79,28 +99,81 @@
             <Setter Property="CornerRadius" Value="10"/>
         </Style>
         <Style Selector="Button.theme-btn:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+        </Style>
+
+        <!-- Profile avatar button: round, no rectangular hover overlay -->
+        <Style Selector="Button.profile-avatar-btn /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Button.profile-avatar-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.profile-avatar-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+
+        <!-- Profile name TextBox: no chrome on any state -->
+        <Style Selector="TextBox.profile-input /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.profile-input:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="TextBox.profile-input:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="TextBox.profile-input:focus-within /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
         <Style Selector="Button.theme-btn.active /template/ ContentPresenter">
-            <Setter Property="BorderBrush" Value="#E74856"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
         </Style>
 
         <!-- Danger button -->
         <Style Selector="Button.danger /template/ ContentPresenter">
-            <Setter Property="Background" Value="#E74856"/>
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
             <Setter Property="Foreground" Value="White"/>
         </Style>
         <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#C73E4C"/>
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
         </Style>
 
         <!-- Accent button -->
         <Style Selector="Button.accent /template/ ContentPresenter">
-            <Setter Property="Background" Value="#E74856"/>
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
             <Setter Property="Foreground" Value="White"/>
         </Style>
         <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#C73E4C"/>
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
+        </Style>
+
+        <Style Selector="TextBox.accent-hex-input /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+        </Style>
+        <Style Selector="TextBox.accent-hex-input:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="TextBox.accent-hex-input:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="TextBox.accent-hex-input:focus-within /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
 
         <!-- Pill-shaped action buttons -->
@@ -116,7 +189,7 @@
 
         <!-- Small beta badge -->
         <Style Selector="Border.beta-badge">
-            <Setter Property="Background" Value="#E74856"/>
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Padding" Value="7,2"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -207,10 +280,10 @@
         </Style>
         <!-- Selected item highlight: #E74856 -->
         <Style Selector="ComboBox.pill-combo ComboBoxItem:selected /template/ ContentPresenter">
-            <Setter Property="Background" Value="#E74856"/>
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
         </Style>
         <Style Selector="ComboBox.pill-combo ComboBoxItem:selected:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#C73E4C"/>
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
         </Style>
         <Style Selector="ComboBox.transition-pill">
             <Setter Property="Width" Value="132"/>
@@ -357,11 +430,57 @@
     <Grid RowDefinitions="*">
     <ScrollViewer x:Name="SettingsScrollViewer"
                   Grid.Row="0"
-                  HorizontalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="32,24,32,40" MaxWidth="900" HorizontalAlignment="Left" Spacing="4">
+        <StackPanel Margin="28,8,40,28" HorizontalAlignment="Stretch" Spacing="4">
 
-            <!-- Page title moved to the topbar (matches Albums/Songs/etc.) -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- PROFILE                                            -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <Border Classes="setting-card" Padding="18,16" Margin="0,0,0,16">
+                <Grid ColumnDefinitions="Auto,*">
+                    <!-- Round avatar (click to change) -->
+                    <Button Grid.Column="0"
+                            Classes="profile-avatar-btn"
+                            Background="Transparent" BorderThickness="0"
+                            Padding="0" Cursor="Hand"
+                            Width="64" Height="64"
+                            CornerRadius="999"
+                            VerticalAlignment="Center"
+                            ToolTip.Tip="Change avatar"
+                            Click="OnPickAvatarClick">
+                        <Border Width="64" Height="64" CornerRadius="32"
+                                ClipToBounds="True"
+                                Background="{DynamicResource AccentColorBrush}">
+                            <Panel>
+                                <!-- Default initials/glyph when no avatar set -->
+                                <TextBlock Text="?"
+                                           FontSize="28" FontWeight="SemiBold"
+                                           Foreground="White"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                                <!-- Picked avatar overlay -->
+                                <controls:CachedImage SourcePath="{Binding ProfileAvatarPath}"
+                                                      Stretch="UniformToFill"
+                                                      IsVisible="{Binding ProfileAvatarPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            </Panel>
+                        </Border>
+                    </Button>
+
+                    <!-- Display name -->
+                    <TextBox Grid.Column="1"
+                             Classes="profile-input"
+                             Text="{Binding ProfileName, Mode=TwoWay}"
+                             Watermark="Your name"
+                             FontSize="16" FontWeight="SemiBold"
+                             Margin="16,0,0,0"
+                             VerticalAlignment="Center"
+                             Background="Transparent"
+                             BorderThickness="0" Padding="0"
+                             MinHeight="0"
+                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                </Grid>
+            </Border>
 
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- APPEARANCE                                         -->
@@ -470,28 +589,6 @@
                             </StackPanel>
                         </Button>
 
-                        <!-- Paper (warm off-white) -->
-                        <Button Classes="theme-btn"
-                                Classes.active="{Binding IsPaperTheme}"
-                                Command="{Binding SetPaperThemeCommand}">
-                            <StackPanel Spacing="8" HorizontalAlignment="Center">
-                                <Border Width="64" Height="40" CornerRadius="6"
-                                        Background="#F7F4EE"
-                                        BorderBrush="#C8C0A8" BorderThickness="1">
-                                    <StackPanel Margin="6,5" Spacing="3">
-                                        <Border Height="3" Width="30" CornerRadius="1.5"
-                                                Background="#3A352D" HorizontalAlignment="Left"/>
-                                        <Border Height="3" Width="20" CornerRadius="1.5"
-                                                Background="#6E665A" HorizontalAlignment="Left"/>
-                                        <Border Height="3" Width="36" CornerRadius="1.5"
-                                                Background="#A89F8C" HorizontalAlignment="Left"/>
-                                    </StackPanel>
-                                </Border>
-                                <TextBlock Text="Paper" FontSize="12"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
                         <!-- System -->
                         <Button Classes="theme-btn"
                                 Classes.active="{Binding IsSystemTheme}"
@@ -524,25 +621,174 @@
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+
+                        <!-- User-created themes -->
+                        <ItemsControl ItemsSource="{Binding CustomThemes}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CustomThemeTile">
+                                    <Button Classes="theme-btn"
+                                            Classes.active="{Binding IsActive}"
+                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ApplyCustomThemeCommand}"
+                                            CommandParameter="{Binding Id}"
+                                            Margin="0,0,10,10">
+                                        <Button.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Edit"
+                                                          Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenThemeEditorCommand}"
+                                                          CommandParameter="{Binding Id}"/>
+                                                <MenuItem Header="Delete"
+                                                          Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).DeleteCustomThemeCommand}"
+                                                          CommandParameter="{Binding Id}"/>
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                            <Border Width="64" Height="40" CornerRadius="6"
+                                                    Background="{Binding MainHex}"
+                                                    BorderBrush="{Binding SidebarHex}"
+                                                    BorderThickness="1">
+                                                <StackPanel Margin="6,5" Spacing="3">
+                                                    <Border Height="3" Width="30" CornerRadius="1.5"
+                                                            Background="{Binding AccentHex}" HorizontalAlignment="Left"/>
+                                                    <Border Height="3" Width="20" CornerRadius="1.5"
+                                                            Background="{Binding SidebarHex}" HorizontalAlignment="Left"/>
+                                                    <Border Height="3" Width="36" CornerRadius="1.5"
+                                                            Background="{Binding SidebarHex}" Opacity="0.65"
+                                                            HorizontalAlignment="Left"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <TextBlock Text="{Binding Name}" FontSize="12"
+                                                       HorizontalAlignment="Center"
+                                                       MaxWidth="64" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- "+ Custom" add tile -->
+                        <Button Classes="theme-btn"
+                                Command="{Binding OpenThemeEditorCommand}"
+                                CommandParameter="{x:Null}"
+                                Margin="0,0,10,10"
+                                ToolTip.Tip="Create custom theme">
+                            <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                <Border Width="64" Height="40" CornerRadius="6"
+                                        BorderBrush="#55FFFFFF" BorderThickness="1">
+                                    <TextBlock Text="+" FontSize="22" Opacity="0.7"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Custom" FontSize="12"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                     </WrapPanel>
                 </StackPanel>
             </Border>
 
-            <!-- Album page cover-art tint -->
+            <!-- Accent colour -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="16">
+
+                    <!-- Header row -->
+                    <Grid>
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Accent Color" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Pick a preset or open the picker for any custom color."
+                                       FontSize="12" Opacity="0.55" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Preset grid + custom-picker tile -->
+                    <StackPanel Spacing="8">
+                        <WrapPanel Orientation="Horizontal">
+                            <!-- Preset swatches -->
+                            <ItemsControl ItemsSource="{Binding AccentSwatches}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="7"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:AccentSwatch">
+                                        <Button Classes="accent-swatch"
+                                                Background="Transparent" BorderThickness="0" Padding="0"
+                                                Margin="0,0,4,4" Cursor="Hand"
+                                                ToolTip.Tip="{Binding Name}"
+                                                Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ApplyAccentPresetCommand}"
+                                                CommandParameter="{Binding}">
+                                            <Panel Width="44" Height="44">
+                                                <Border Width="40" Height="40" CornerRadius="20"
+                                                        Background="{Binding Hex}"
+                                                        BorderBrush="#22000000"
+                                                        BorderThickness="1"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                <Border Width="44" Height="44" CornerRadius="22"
+                                                        BorderBrush="White" BorderThickness="2"
+                                                        IsVisible="{Binding IsActive}"/>
+                                            </Panel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Custom-color tile: rainbow ring + plus, opens reusable HSV/hex picker. -->
+                            <Panel Margin="-48,96,0,4" VerticalAlignment="Top">
+                                <controls:ColorPickerFlyout Hex="{Binding CustomAccentHex, Mode=TwoWay}"
+                                                            SwatchSize="44"
+                                                            ToolTip.Tip="Custom Color"
+                                                            Cursor="Hand">
+                                    <controls:ColorPickerFlyout.SwatchContent>
+                                        <Panel Width="44" Height="44">
+                                            <!-- Rainbow ring -->
+                                            <Border Width="40" Height="40" CornerRadius="20"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <Border.Background>
+                                                    <ConicGradientBrush Center="50%,50%">
+                                                        <GradientStop Offset="0.00" Color="#FF0000"/>
+                                                        <GradientStop Offset="0.17" Color="#FFFF00"/>
+                                                        <GradientStop Offset="0.33" Color="#00FF00"/>
+                                                        <GradientStop Offset="0.50" Color="#00FFFF"/>
+                                                        <GradientStop Offset="0.67" Color="#0000FF"/>
+                                                        <GradientStop Offset="0.83" Color="#FF00FF"/>
+                                                        <GradientStop Offset="1.00" Color="#FF0000"/>
+                                                    </ConicGradientBrush>
+                                                </Border.Background>
+                                            </Border>
+                                            <!-- White inner disc with + glyph -->
+                                            <Border Width="30" Height="30" CornerRadius="15"
+                                                    Background="{DynamicResource AppMainBackground}"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <TextBlock Text="+"
+                                                           FontSize="20" FontWeight="Light"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <Border Width="44" Height="44" CornerRadius="22"
+                                                    BorderBrush="White" BorderThickness="2"
+                                                    IsVisible="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).IsCustomAccentSelected}"/>
+                                        </Panel>
+                                    </controls:ColorPickerFlyout.SwatchContent>
+                                </controls:ColorPickerFlyout>
+                            </Panel>
+                        </WrapPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Animated artwork -->
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBlock Text="Album page tint" FontSize="15" FontWeight="SemiBold"/>
-                            <Border Classes="beta-badge">
-                                <TextBlock/>
-                            </Border>
-                        </StackPanel>
-                        <TextBlock Text="Use a gradient drawn from the album artwork as the page background. Stays the same across themes."
+                        <TextBlock Text="Animated Artwork" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Show animated cover art when available."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
-                                          IsChecked="{Binding AlbumDetailColorTintEnabled}"
+                                          IsChecked="{Binding EnableAnimatedCovers}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -551,77 +797,14 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- AUDIO PLAYBACK                                     -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="AUDIO PLAYBACK" Margin="0,20,0,10"/>
-
-            <!-- Transitions -->
-            <Border Classes="setting-card">
-                <StackPanel Spacing="14">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" Spacing="2">
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <TextBlock Text="Transition Mode" FontSize="15" FontWeight="SemiBold"/>
-                                <Border Classes="beta-badge">
-                                    <TextBlock/>
-                                </Border>
-                            </StackPanel>
-                            <TextBlock Text="Choose between standard crossfade and context-aware AutoMix."
-                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <ComboBox Grid.Column="1"
-                                  Classes="pill-combo transition-pill"
-                                  ItemsSource="{Binding AutoMixTransitionModes}"
-                                  SelectedItem="{Binding AutoMixTransitionMode}"/>
-                    </Grid>
-
-                    <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding AutoMixEnabled}">
-                        <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="AutoMix Strength" FontSize="13" Opacity="0.75"/>
-                            <TextBlock Text="Controls how long AutoMix can lean into compatible songs."
-                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <ComboBox Grid.Column="1"
-                                  Classes="pill-combo transition-pill"
-                                  ItemsSource="{Binding AutoMixStrengthOptions}"
-                                  SelectedItem="{Binding AutoMixStrength}"/>
-                    </Grid>
-
-                    <StackPanel IsVisible="{Binding AutoMixEnabled}" Spacing="10">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="2">
-                                <TextBlock Text="Remove silence between songs" FontSize="13" Opacity="0.75"/>
-                            </StackPanel>
-                            <controls:LottieToggle Grid.Column="1"
-                                                  IsChecked="{Binding AutoMixRemoveSilence}"
-                                                  VerticalAlignment="Center"/>
-                        </Grid>
-
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="2">
-                                <TextBlock Text="Avoid AutoMix for albums" FontSize="13" Opacity="0.75"/>
-                            </StackPanel>
-                            <controls:LottieToggle Grid.Column="1"
-                                                  IsChecked="{Binding AutoMixAvoidAlbums}"
-                                                  VerticalAlignment="Center"/>
-                        </Grid>
-
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="2">
-                                <TextBlock Text="Beat-match when metadata is available" FontSize="13" Opacity="0.75"/>
-                            </StackPanel>
-                            <controls:LottieToggle Grid.Column="1"
-                                                  IsChecked="{Binding AutoMixBeatMatch}"
-                                                  VerticalAlignment="Center"/>
-                        </Grid>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
+            <TextBlock Classes="section-title" Text="PLAYBACK" Margin="0,20,0,10"/>
 
             <!-- Sound Check -->
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="Sound Check" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Automatically adjusts the volume of songs to the same level."
+                        <TextBlock Text="Keep song volume at a consistent level."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
@@ -693,11 +876,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- EQUALIZER                                          -->
-            <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="EQUALIZER" Margin="0,20,0,10"/>
-
+            <!-- Equalizer (lives under Playback — no redundant header) -->
             <Border Classes="setting-card" Padding="22,16,38,16" ClipToBounds="False">
                 <StackPanel Spacing="16">
                     <!-- Header row with icon, preset selector, and reset button -->
@@ -859,12 +1038,12 @@
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="10">
-                    <TextBlock Text="Online lyrics providers used when no local or embedded lyrics are found."
+                    <TextBlock Text="Use online lyrics when local lyrics are missing."
                                FontSize="12" Opacity="0.5" Margin="0,0,0,4"/>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Text="LRCLIB" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Community-curated lyrics database" FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="Community lyrics database" FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding LrcLibEnabled}"
@@ -873,7 +1052,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Text="NetEase Cloud Music" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Large catalog including synced lyrics" FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="Large synced lyrics catalog" FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding NetEaseEnabled}"
@@ -904,7 +1083,7 @@
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                         <TextBlock Text="Discord Rich Presence" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Display the currently playing song, artist, and album as your Discord activity status. Your friends will see what you're listening to in real time."
+                        <TextBlock Text="Show your current song on Discord."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="2"
@@ -934,7 +1113,7 @@
 
                         <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
                             <TextBlock Text="Last.fm Scrobbling" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
-                            <TextBlock Text="Scrobble your plays to Last.fm for history and recommendations."
+                            <TextBlock Text="Send plays to Last.fm."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
                                        HorizontalAlignment="Left"
                                        Margin="-2,0,0,0"/>
@@ -956,7 +1135,7 @@
                         <!-- Not connected state -->
                         <Button Grid.Column="2" Grid.Row="0"
                                 IsVisible="{Binding !IsLastFmConnected}"
-                                Content="Connect Last.fm"
+                                Content="Connect"
                                 Classes="pill-action"
                                 Command="{Binding LoginLastFmCommand}"
                                 Padding="14,8"
@@ -966,7 +1145,7 @@
                                 Margin="0,0,0,4">
                             <Button.Template>
                                 <ControlTemplate>
-                                    <ContentPresenter Background="#E74856"
+                                    <ContentPresenter Background="{DynamicResource AccentColorBrush}"
                                                       Foreground="White"
                                                       CornerRadius="16"
                                                       Padding="14,8"
@@ -1007,11 +1186,11 @@
 
 
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- MEDIA FOLDERS                                      -->
+            <!-- LIBRARY (folders, scan, startup preferences)       -->
             <!-- ═══════════════════════════════════════════════════ -->
             <TextBlock x:Name="MediaFoldersSectionAnchor"
                        Classes="section-title"
-                       Text="MEDIA FOLDERS"
+                       Text="LIBRARY"
                        Margin="0,20,0,10"/>
 
             <Border Classes="setting-card">
@@ -1079,7 +1258,7 @@
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
                         <StackPanel Spacing="2" VerticalAlignment="Center">
                             <TextBlock Text="Library Scan" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Scan for new tracks or rebuild the search index."
+                            <TextBlock Text="Find new tracks and update search."
                                        FontSize="12" Opacity="0.5"/>
                         </StackPanel>
                     </StackPanel>
@@ -1102,18 +1281,13 @@
             </Border>
 
 
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- PREFERENCES                                        -->
-            <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="PREFERENCES" Margin="0,20,0,10"/>
-
-            <!-- Scan on startup -->
+            <!-- Scan on startup (Library group) -->
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0">
                         <StackPanel Spacing="2">
                             <TextBlock Text="Scan on Startup" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Automatically scan music folders for new or changed files when Noctis starts."
+                            <TextBlock Text="Scan music folders when Noctis starts."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                     </StackPanel>
@@ -1225,11 +1399,7 @@
             </Border>
 
 
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- STORAGE                                            -->
-            <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="STORAGE" Margin="0,20,0,10"/>
-
+            <!-- Disk usage (Library Overview group) -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="14">
                     <Grid ColumnDefinitions="Auto,*,Auto">
@@ -1316,98 +1486,101 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <TextBlock Classes="section-title" Text="ADVANCED" Margin="0,20,0,10"/>
 
-            <!-- Reset Library -->
+            <!-- Combined Advanced card (Reset · Fetch Images · Clear Cache) -->
             <Border Classes="setting-card">
-                <StackPanel Spacing="12">
+                <StackPanel Spacing="14">
+
+                    <!-- Reset Settings -->
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Reset Settings" FontSize="15" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Restore defaults and clear saved library data."
+                                               FontSize="12" Opacity="0.5"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Command="{Binding ShowResetConfirmCommand}"
+                                    IsVisible="{Binding !IsResetConfirmVisible}"
+                                    Classes="pill-action"
+                                    Padding="14,8"
+                                    CornerRadius="16"
+                                    Cursor="Hand"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="Reset Settings" FontSize="13"
+                                           VerticalAlignment="Center"/>
+                            </Button>
+                        </Grid>
+                        <StackPanel IsVisible="{Binding IsResetConfirmVisible}" Spacing="8">
+                            <TextBlock Text="Are you sure? This action cannot be undone."
+                                       FontSize="13" Foreground="#E74856"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="Cancel"
+                                        Command="{Binding CancelResetCommand}"
+                                        Classes="pill-action"
+                                        Padding="16,10"
+                                        CornerRadius="18"
+                                        Cursor="Hand"/>
+                                <Button Content="Reset Everything"
+                                        Command="{Binding ConfirmResetLibraryCommand}"
+                                        Classes="pill-action danger"
+                                        Padding="16,10"
+                                        CornerRadius="18"
+                                        Cursor="Hand"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.2"/>
+
+                    <!-- Fetch Artist Images -->
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0">
                             <StackPanel Spacing="2">
-                                <TextBlock Text="Reset Settings" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Reset all settings to defaults and clear library, playlists, artwork, and lyrics cache."
-                                           FontSize="12" Opacity="0.5"/>
+                                <TextBlock Text="Fetch Artist Images" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="Download missing artist profile images from Deezer."
+                                           FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                             </StackPanel>
                         </StackPanel>
-
-                        <!-- Normal state -->
                         <Button Grid.Column="1"
-                                Command="{Binding ShowResetConfirmCommand}"
-                                IsVisible="{Binding !IsResetConfirmVisible}"
+                                Command="{Binding FetchArtistImagesCommand}"
                                 Classes="pill-action"
                                 Padding="14,8"
                                 CornerRadius="16"
                                 Cursor="Hand"
                                 VerticalAlignment="Center">
-                            <TextBlock Text="Reset Settings" FontSize="13"
+                            <TextBlock Text="Fetch Images" FontSize="13"
                                        VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
 
-                    <!-- Confirmation state -->
-                    <StackPanel IsVisible="{Binding IsResetConfirmVisible}" Spacing="8">
-                        <TextBlock Text="Are you sure? This action cannot be undone."
-                                   FontSize="13" Foreground="#E74856"/>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="Cancel"
-                                    Command="{Binding CancelResetCommand}"
-                                    Classes="pill-action"
-                                    Padding="16,10"
-                                    CornerRadius="18"
-                                    Cursor="Hand"/>
-                            <Button Content="Reset Everything"
-                                    Command="{Binding ConfirmResetLibraryCommand}"
-                                    Classes="pill-action danger"
-                                    Padding="16,10"
-                                    CornerRadius="18"
-                                    Cursor="Hand"/>
+                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.2"/>
+
+                    <!-- Clear Artwork Cache -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Clear Artwork Cache" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="Delete cached artwork. It will rebuild on the next scan."
+                                            FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                                <TextBlock Text="Note: This removes all artwork from your library."
+                                           FontSize="12" Foreground="#E74856" TextWrapping="Wrap"/>
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
+                        <Button Grid.Column="1"
+                                Command="{Binding ClearArtworkCacheCommand}"
+                                Classes="pill-action"
+                                Padding="14,8"
+                                CornerRadius="16"
+                                Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Clear Cache" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                        </Button>
+                    </Grid>
+
                 </StackPanel>
-            </Border>
-            <!-- Fetch Artist Images -->
-            <Border Classes="setting-card">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0">
-                        <StackPanel Spacing="2">
-                            <TextBlock Text="Fetch Artist Images" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Download profile pictures for artists in your library from Deezer. Use after clearing cache or adding new artists."
-                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </StackPanel>
-                    <Button Grid.Column="1"
-                            Command="{Binding FetchArtistImagesCommand}"
-                            Classes="pill-action"
-                            Padding="14,8"
-                            CornerRadius="16"
-                            Cursor="Hand"
-                            VerticalAlignment="Center">
-                        <TextBlock Text="Fetch Images" FontSize="13"
-                                   VerticalAlignment="Center"/>
-                    </Button>
-                </Grid>
-            </Border>
-            <!-- Clear Artwork Cache -->
-            <Border Classes="setting-card">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0">
-                        <StackPanel Spacing="2">
-                            <TextBlock Text="Clear Artwork Cache" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Delete cached album artwork to free disk space. Artwork will be re-extracted on next scan."
-                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                            <TextBlock Text="Note: This will remove all artworks from library."
-                                       FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </StackPanel>
-                    <Button Grid.Column="1"
-                            Command="{Binding ClearArtworkCacheCommand}"
-                            Classes="pill-action"
-                            Padding="14,8"
-                            CornerRadius="16"
-                            Cursor="Hand"
-                            VerticalAlignment="Center">
-                        <TextBlock Text="Clear Cache" FontSize="13"
-                                   VerticalAlignment="Center"/>
-                    </Button>
-                </Grid>
             </Border>
 
 
@@ -1453,11 +1626,8 @@
                                 Padding="16,6"
                                 Background="#E74856"
                                 IsVisible="{Binding IsUpdateAvailable}">
-                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8" Fill="White" VerticalAlignment="Center"/>
-                                <TextBlock Text="Update available"
-                                           FontSize="12" Foreground="White" VerticalAlignment="Center"/>
-                            </StackPanel>
+                            <TextBlock Text="Update available"
+                                       FontSize="12" Foreground="White" VerticalAlignment="Center"/>
                         </Button>
 
                         <!-- Install & Restart button (replaces Update when ready) -->

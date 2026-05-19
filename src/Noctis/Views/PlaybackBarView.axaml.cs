@@ -23,7 +23,6 @@ public partial class PlaybackBarView : UserControl
     private const double TrackTitleBadgeSpacing = 6.0;
     private const double TrackTitleBadgeTrailingPadding = 8.0;
     private static readonly TimeSpan TrackTitleEdgePause = TimeSpan.FromMilliseconds(850);
-    private PlaylistMenuPopulator? _playlistPopulator;
     private readonly DispatcherTimer _trackTitleMarqueeTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private readonly Stopwatch _trackTitleMarqueeClock = new();
     private PlayerViewModel? _observedPlayerViewModel;
@@ -47,6 +46,10 @@ public partial class PlaybackBarView : UserControl
     // Seek slider drag state — only our code sets/clears this, preventing
     // stale Thumb state or stray pointer moves from triggering seeks.
     private bool _isSeekDragging;
+    private bool _isVolumeDragging;
+    private const double VolumeThumbSize = 14;
+    private const double VolumeSliderVisualWidth = 84;
+    private readonly TranslateTransform _volumeThumbTransform = new();
 
     public PlaybackBarView()
     {
@@ -68,13 +71,15 @@ public partial class PlaybackBarView : UserControl
         DispatcherTimer.RunOnce(UpdateSeekSliderVisual, TimeSpan.FromMilliseconds(10));
 
         // Handle volume slider interaction to show/hide percentage badge
-        // MUST use AddHandler with handledEventsToo:true because Slider's Thumb handles these events
-        VolumeSlider.AddHandler(InputElement.PointerPressedEvent, OnVolumeSliderPressed, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
-        VolumeSlider.AddHandler(InputElement.PointerReleasedEvent, OnVolumeSliderReleased, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
+        VolumeSlider.AddHandler(InputElement.PointerPressedEvent, OnVolumeSliderPressed, RoutingStrategies.Tunnel);
+        VolumeSlider.AddHandler(InputElement.PointerMovedEvent, OnVolumeSliderMoved, RoutingStrategies.Tunnel);
+        VolumeSlider.AddHandler(InputElement.PointerReleasedEvent, OnVolumeSliderReleased, RoutingStrategies.Tunnel);
         VolumeSlider.PointerCaptureLost += OnVolumeSliderCaptureLost;
+        VolumeThumb.RenderTransform = _volumeThumbTransform;
 
         // Track volume changes to update percentage badge position
         VolumeSlider.PropertyChanged += OnVolumeSliderPropertyChanged;
+        VolumeSlider.SizeChanged += (_, _) => UpdateVolumeSliderVisual();
 
         TrackTitleTextBlock.PropertyChanged += OnTrackTitleTextBlockPropertyChanged;
         TrackTitleViewport.PropertyChanged += OnTrackTitleViewportPropertyChanged;
@@ -85,9 +90,6 @@ public partial class PlaybackBarView : UserControl
         DetachedFromVisualTree += OnPlaybackBarDetachedFromVisualTree;
         DataContextChanged += OnPlaybackBarDataContextChanged;
 
-        _playlistPopulator = new PlaylistMenuPopulator(AddToPlaylistMenuItem, PlaylistSubmenuSeparator);
-        if (OptionsButton.Flyout is MenuFlyout optionsFlyout)
-            optionsFlyout.Opened += OnOptionsFlyoutOpened;
     }
 
     private void OnPlaybackBarAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
@@ -95,6 +97,7 @@ public partial class PlaybackBarView : UserControl
         ScheduleTrackTitleMarqueeUpdate(resetAnimation: true);
         ScheduleArtistNameMarqueeUpdate(resetAnimation: true);
         DispatcherTimer.RunOnce(RefreshTrackInfoLayout, TimeSpan.FromMilliseconds(10));
+        UpdateIslandWidth();
     }
 
     private void OnPlaybackBarDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
@@ -137,6 +140,11 @@ public partial class PlaybackBarView : UserControl
             e.PropertyName == nameof(PlayerViewModel.ArtistMarqueeEnabled))
         {
             ScheduleArtistNameMarqueeUpdate(resetAnimation: true);
+        }
+
+        if (e.PropertyName == nameof(PlayerViewModel.IsLyricsPageActive))
+        {
+            UpdateIslandWidth();
         }
 
         if (e.PropertyName == nameof(PlayerViewModel.State))
@@ -527,33 +535,12 @@ public partial class PlaybackBarView : UserControl
     {
         if (e.Property == Slider.ValueProperty)
         {
-            UpdateVolumePercentagePosition();
+            UpdateVolumeSliderVisual();
         }
-    }
-
-    private void UpdateVolumePercentagePosition()
-    {
-        if (VolumePercentageBadge.RenderTransform is not TranslateTransform transform)
-            return;
-
-        // Track has Margin="7,0" inside 90px slider, so track area = 76px
-        // Thumb is 14px wide, travel range = 76 - 14 = 62px
-        // At 0%: thumb center at 7 (track margin) + 7 (half thumb) = 14px
-        // At 100%: thumb center at 14 + 62 = 76px
-        const double trackMargin = 7.0;
-        const double thumbHalfWidth = 7.0;
-        const double thumbTravelRange = 62.0;
-
-        var volume = VolumeSlider.Value;
-        var fraction = volume / 100.0;
-
-        // Calculate thumb center position, then center the text over it
-        var thumbCenterX = trackMargin + thumbHalfWidth + (fraction * thumbTravelRange);
-        var textWidth = VolumePercentageBadge.Bounds.Width;
-        if (textWidth <= 0) textWidth = 18; // Estimate if not yet measured
-        var xPos = thumbCenterX - (textWidth / 2);
-
-        transform.X = xPos;
+        else if (e.Property.Name is nameof(Bounds) or nameof(IsEnabled))
+        {
+            UpdateVolumeSliderVisual();
+        }
     }
 
     private void OnSeekStart(object? sender, PointerPressedEventArgs e)
@@ -637,39 +624,156 @@ public partial class PlaybackBarView : UserControl
 
     private void OnVolumeSliderPressed(object? sender, PointerPressedEventArgs e)
     {
-        UpdateVolumePercentagePosition();
+        if (sender is not Slider slider) return;
+        if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed) return;
+
+        _isVolumeDragging = true;
+        e.Pointer.Capture(slider);
+        slider.Value = GetVolumeFromPointer(slider, e.GetPosition(slider));
+        e.Handled = true;
+    }
+
+    private void OnVolumeSliderMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isVolumeDragging || sender is not Slider slider) return;
+
+        slider.Value = GetVolumeFromPointer(slider, e.GetPosition(slider));
+        e.Handled = true;
     }
 
     private void OnVolumeSliderReleased(object? sender, PointerReleasedEventArgs e)
     {
-        (DataContext as ViewModels.PlayerViewModel)?.CommitVolume();
+        if (_isVolumeDragging)
+        {
+            _isVolumeDragging = false;
+            e.Pointer.Capture(null);
+            e.Handled = true;
+        }
+
+        (DataContext as PlayerViewModel)?.CommitVolume();
     }
 
     private void OnVolumeSliderCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
-        (DataContext as ViewModels.PlayerViewModel)?.CommitVolume();
+        if (!_isVolumeDragging) return;
+
+        _isVolumeDragging = false;
+        (DataContext as PlayerViewModel)?.CommitVolume();
+    }
+
+    private void UpdateVolumeSliderVisual()
+    {
+        if (VolumeSlider == null ||
+            VolumeTrackBackground == null ||
+            VolumeTrackFill == null ||
+            VolumeThumb == null)
+            return;
+
+        PillSliderVisualHelper.UpdateVisual(
+            VolumeSlider,
+            VolumeTrackBackground,
+            VolumeTrackFill,
+            VolumeThumb,
+            _volumeThumbTransform,
+            VolumeThumbSize,
+            enabledBackgroundOpacity: 0.4,
+            disabledBackgroundOpacity: 0.25);
+
+    }
+
+    private static double GetVolumeFromPointer(Slider slider, Point position)
+    {
+        return PillSliderVisualHelper.GetValueFromPointer(slider, position, VolumeThumbSize);
     }
 
     private const double IslandBaseWidth = 650;
-    private const double VolumeSliderExpandedWidth = 99;
+    private const double IslandLyricsPageWidth = 390;
+    private static readonly TimeSpan VolumeFlyoutCloseDelay = TimeSpan.FromMilliseconds(140);
 
-    private void OnVolumeContainerEntered(object? sender, PointerEventArgs e)
+    private DispatcherTimer? _volumeFlyoutCloseTimer;
+
+    private void OnVolumeIconClick(object? sender, RoutedEventArgs e)
     {
-        // Expand the island and volume slider together so the timeline doesn't shrink
-        IslandBorder.Width = IslandBaseWidth + VolumeSliderExpandedWidth;
-        VolumeSliderContainer.Width = VolumeSliderExpandedWidth;
-        VolumePercentageBadge.IsVisible = true;
-        UpdateVolumePercentagePosition();
-        VolumePercentageBadge.Opacity = 1.0;
+        // First click opens the popup without muting; subsequent clicks while it's open
+        // toggle mute and keep the popup visible so the user can keep adjusting.
+        if (!VolumeFlyout.IsOpen)
+        {
+            OpenVolumeFlyout();
+            return;
+        }
+
+        if (_observedPlayerViewModel?.ToggleMuteCommand.CanExecute(null) == true)
+            _observedPlayerViewModel.ToggleMuteCommand.Execute(null);
     }
 
-    private void OnVolumeContainerExited(object? sender, PointerEventArgs e)
+    private void OpenVolumeFlyout()
     {
-        // Collapse the island and volume slider together
-        IslandBorder.Width = IslandBaseWidth;
-        VolumeSliderContainer.Width = 0;
-        VolumePercentageBadge.Opacity = 0;
-        VolumePercentageBadge.IsVisible = false;
+        CancelVolumeFlyoutClose();
+        // Start just below the final position, then ease upward as it fades in.
+        VolumeFlyoutContent.Opacity = 0;
+        SetVolumeFlyoutOffset(6);
+        VolumeFlyout.IsOpen = true;
+        UpdateVolumeSliderVisual();
+        Dispatcher.UIThread.Post(() =>
+        {
+            VolumeFlyoutContent.Opacity = 1.0;
+            SetVolumeFlyoutOffset(0);
+        }, DispatcherPriority.Render);
+    }
+
+    private void CloseVolumeFlyout()
+    {
+        CancelVolumeFlyoutClose();
+        VolumeFlyoutContent.Opacity = 0;
+        SetVolumeFlyoutOffset(6);
+        VolumeFlyout.IsOpen = false;
+    }
+
+    private void SetVolumeFlyoutOffset(double y)
+    {
+        if (VolumeFlyoutContent.RenderTransform is TranslateTransform transform)
+            transform.Y = y;
+    }
+
+    // Pointer leaves the icon or the popup → schedule a close.
+    // A brief grace period lets the cursor cross the small gap between the icon and the popup
+    // without dismissing — if it re-enters either, we cancel the pending close.
+    private void OnVolumeButtonPointerExited(object? sender, PointerEventArgs e)
+    {
+        if (VolumeFlyout.IsOpen)
+            ScheduleVolumeFlyoutClose();
+    }
+
+    private void OnVolumeButtonPointerEntered(object? sender, PointerEventArgs e) =>
+        CancelVolumeFlyoutClose();
+
+    private void OnVolumeFlyoutPointerExited(object? sender, PointerEventArgs e) =>
+        ScheduleVolumeFlyoutClose();
+
+    private void OnVolumeFlyoutPointerEntered(object? sender, PointerEventArgs e) =>
+        CancelVolumeFlyoutClose();
+
+    private void ScheduleVolumeFlyoutClose()
+    {
+        CancelVolumeFlyoutClose();
+        _volumeFlyoutCloseTimer = new DispatcherTimer { Interval = VolumeFlyoutCloseDelay };
+        _volumeFlyoutCloseTimer.Tick += (_, _) => CloseVolumeFlyout();
+        _volumeFlyoutCloseTimer.Start();
+    }
+
+    private void CancelVolumeFlyoutClose()
+    {
+        _volumeFlyoutCloseTimer?.Stop();
+        _volumeFlyoutCloseTimer = null;
+    }
+
+    private void UpdateIslandWidth()
+    {
+        // The volume popup floats above the bar instead of inline-expanding it,
+        // so the island no longer needs to grow when the slider is open.
+        IslandBorder.Width = _observedPlayerViewModel?.IsLyricsPageActive == true
+            ? IslandLyricsPageWidth
+            : IslandBaseWidth;
     }
 
     private void OnTrackInfoRightClick(object? sender, PointerReleasedEventArgs e)
@@ -679,6 +783,12 @@ public partial class PlaybackBarView : UserControl
 
         OptionsButton.Flyout?.ShowAt(OptionsButton);
         e.Handled = true;
+    }
+
+    private void OnLyricsDisplayMenuItemPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (sender is MenuItem item)
+            item.IsSubMenuOpen = true;
     }
 
     private void OnLyricsPanelButtonClick(object? sender, RoutedEventArgs e)
@@ -693,13 +803,6 @@ public partial class PlaybackBarView : UserControl
         var mainWindow = this.FindLogicalAncestorOfType<MainWindow>();
         if (mainWindow?.DataContext is MainWindowViewModel mainVm)
             mainVm.ToggleLyricsCommand.Execute(null);
-    }
-
-    private void OnOptionsFlyoutOpened(object? sender, EventArgs e)
-    {
-        if (DataContext is not PlayerViewModel vm) return;
-        _playlistPopulator?.Populate(vm.Playlists, vm.AddCurrentTrackToExistingPlaylistCommand);
-        RefreshTrackInfoLayout();
     }
 
     private void RefreshTrackInfoLayout()

@@ -17,6 +17,13 @@
         <Style Selector="Button.link-btn:pointerover /template/ ContentPresenter">
             <Setter Property="Opacity" Value="0.7"/>
         </Style>
+        <!-- Override global Button:pointerover zoom — link buttons in cover flow stay still on hover -->
+        <Style Selector="Button.link-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.link-btn:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="*">
@@ -226,6 +233,17 @@
                                                   Stretch="UniformToFill"
                                                   RenderOptions.BitmapInterpolationMode="HighQuality"
                                                   IsVisible="{Binding CenterArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                <ctrl:AnimatedCoverImage
+                                    Source="{Binding Player.CurrentAnimatedCoverPath}"
+                                    IsActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}" />
+                                <!-- Favorite heart overlay on the center album cover -->
+                                <PathIcon Data="{StaticResource HeartFillIcon}"
+                                          Width="24" Height="24"
+                                          Foreground="#E74856"
+                                          HorizontalAlignment="Right"
+                                          VerticalAlignment="Bottom"
+                                          Margin="0,0,12,12"
+                                          IsVisible="{Binding CenterIsFavorite}" />
                             </Panel>
                         </Border>
 
@@ -413,7 +431,7 @@
                         <ctrl:MarqueeTextBlock Text="{Binding CenterArtist}"
                                                FontSize="15"
                                                FontWeight="Bold"
-                                               Foreground="#E74856"
+                                               Foreground="{DynamicResource AccentColorBrush}"
                                                MaxDisplayWidth="400"
                                                IsCoverFlow="True"
                                                IsForArtist="True" />
@@ -424,18 +442,11 @@
                             IsVisible="{Binding CenterAlbum.Length}">
                         <ctrl:MarqueeTextBlock Text="{Binding CenterAlbum}"
                                                FontSize="13"
-                                               Foreground="#E74856"
+                                               Foreground="{DynamicResource AccentColorBrush}"
                                                MaxDisplayWidth="400"
                                                IsCoverFlow="True"
                                                IsForAlbum="True" />
                     </Button>
-                    <Panel Height="18" Margin="0,4,0,0">
-                        <PathIcon Data="{StaticResource HeartFillIcon}"
-                                  Width="14" Height="14"
-                                  Foreground="#E74856"
-                                  HorizontalAlignment="Center"
-                                  IsVisible="{Binding CenterIsFavorite}" />
-                    </Panel>
                 </StackPanel>
 
             </StackPanel>

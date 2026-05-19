@@ -10,13 +10,15 @@ namespace Noctis.ViewModels;
 public partial class NowPlayingViewModel : ViewModelBase
 {
     public PlayerViewModel Player { get; }
+    public SettingsViewModel Settings { get; }
 
     /// <summary>Fires when the user wants to go back to the previous view.</summary>
     public event EventHandler? BackRequested;
 
-    public NowPlayingViewModel(PlayerViewModel player)
+    public NowPlayingViewModel(PlayerViewModel player, SettingsViewModel settings)
     {
         Player = player;
+        Settings = settings;
     }
 
     [RelayCommand]
