@@ -143,12 +143,12 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private int _selectedEqPresetIndex = 1; // 0 = Custom, 1 = Flat, 2+ = VLC preset
     [ObservableProperty] private string _selectedEqPresetName = "Flat";
 
-    /// <summary>Preset names shown in the dropdown. "Custom" is only present while bands deviate from a preset.</summary>
+    /// <summary>Preset names shown in the dropdown. The list stays stable so the open popup does not re-layout.</summary>
     public ObservableCollection<string> VisibleEqPresets { get; } = CreateDefaultVisiblePresets();
     private static ObservableCollection<string> CreateDefaultVisiblePresets()
     {
         var list = new ObservableCollection<string>();
-        for (int i = 1; i < EqPresetNames.Length; i++)
+        for (int i = 0; i < EqPresetNames.Length; i++)
             list.Add(EqPresetNames[i]);
         return list;
     }
@@ -295,7 +295,7 @@ public partial class SettingsViewModel : ViewModelBase
             Dispatcher.UIThread.Post(() =>
             {
                 ScanProgress = count;
-                ScanStatusText = $"Scanning Library {count}...";
+                ScanStatusText = "Scanning Library";
             });
         };
 
@@ -463,9 +463,6 @@ public partial class SettingsViewModel : ViewModelBase
             _suppressEqNotify = true;
             EqualizerEnabled = _settings.EqualizerEnabled;
             int loadedIdx = Math.Clamp(_settings.EqualizerPresetIndex + 1, 0, EqPresetNames.Length - 1);
-            // Insert "Custom" into the visible list BEFORE setting the selected name,
-            // otherwise the ComboBox SelectedItem binding silently drops a value that
-            // isn't in ItemsSource yet and the field renders empty after restart.
             SyncCustomInVisiblePresets(loadedIdx == 0);
             SelectedEqPresetIndex = loadedIdx;
             SelectedEqPresetName = EqPresetNames[loadedIdx];
@@ -1206,10 +1203,11 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (_suppressEqNotify) return;
 
+        ApplyEqualizer();
+
         if (value > 0)
             LoadPresetBands(value - 1);
 
-        ApplyEqualizer();
         QueueEqualizerSave();
     }
 
@@ -1225,23 +1223,21 @@ public partial class SettingsViewModel : ViewModelBase
         SelectedEqPresetIndex = idx;
         _suppressEqNotify = false;
 
+        ApplyEqualizer();
+
         if (idx > 0)
         {
             LoadPresetBands(idx - 1);
             SyncCustomInVisiblePresets(false);
         }
 
-        ApplyEqualizer();
         QueueEqualizerSave();
     }
 
     private void SyncCustomInVisiblePresets(bool shouldShowCustom)
     {
-        bool hasCustom = VisibleEqPresets.Count > 0 && VisibleEqPresets[0] == "Custom";
-        if (shouldShowCustom && !hasCustom)
-            VisibleEqPresets.Insert(0, "Custom");
-        else if (!shouldShowCustom && hasCustom)
-            VisibleEqPresets.RemoveAt(0);
+        // Keep the ComboBox ItemsSource stable while its popup is open.
+        // Mutating this collection on selection makes the popup re-layout and visibly shift.
     }
 
     private void LoadPresetBands(int vlcPresetIndex)
@@ -1297,8 +1293,8 @@ public partial class SettingsViewModel : ViewModelBase
         SyncCustomInVisiblePresets(false);
         _suppressEqNotify = false;
 
-        SetEqBands(new float[10]);
         ApplyEqualizer();
+        SetEqBands(new float[10]);
         QueueEqualizerSave();
     }
 
@@ -2008,6 +2004,12 @@ public partial class SettingsViewModel : ViewModelBase
     private void OpenGitHub()
     {
         Helpers.PlatformHelper.OpenUrl("https://github.com/heartached/Noctis");
+    }
+
+    [RelayCommand]
+    private void OpenDiscord()
+    {
+        Helpers.PlatformHelper.OpenUrl("https://discord.gg/BNCDZQUVx7");
     }
 }
 

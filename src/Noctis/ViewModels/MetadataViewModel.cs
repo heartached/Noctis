@@ -80,6 +80,10 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private bool _hasAnimatedArtworkSearchResults;
     [ObservableProperty] private bool _isAnimatedArtworkSearchOpen;
     [ObservableProperty] private string _animatedSearchStatus = string.Empty;
+    // Optional Apple Music URL / album ID the user can paste to bypass iTunes
+    // free-text search when it fails to surface an album (e.g. Bad Bunny's
+    // "nadie sabe..." is reachable by /lookup?id= but not by /search).
+    [ObservableProperty] private string _animatedSearchUrlInput = string.Empty;
     // Path to a small variant downloaded only to drive the live preview inside
     // the search popup. Cleared/replaced on every search; deleted when no longer used.
     [ObservableProperty] private string? _animatedPreviewPath;
@@ -221,7 +225,7 @@ public partial class MetadataViewModel : ViewModelBase
     /// <summary>Fires when the window should close.</summary>
     public event EventHandler? CloseRequested;
 
-    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null, ITunesArtworkService? itunes = null)
+    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null, ITunesArtworkService? itunes = null, ILrcLibService? lrcLib = null)
     {
         _track = track;
         _metadata = metadata;
@@ -229,6 +233,7 @@ public partial class MetadataViewModel : ViewModelBase
         _persistence = persistence;
         _animatedCovers = animatedCovers;
         _itunes = itunes;
+        _lrcLib = lrcLib;
         _albumScoped = albumScoped;
         _albumTracks = albumTracks;
 
@@ -240,6 +245,9 @@ public partial class MetadataViewModel : ViewModelBase
     }
 
     private readonly ITunesArtworkService? _itunes;
+    private readonly ILrcLibService? _lrcLib;
+    [ObservableProperty] private bool _isSearchingSyncedLyrics;
+    [ObservableProperty] private string _syncedLyricsSearchStatus = string.Empty;
 
     private void LoadAnimatedCover()
     {
@@ -661,20 +669,36 @@ public partial class MetadataViewModel : ViewModelBase
         ClearAnimatedPreview();
         try
         {
-            var artist = !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
-            var album = GetArtworkSearchAlbumTerm();
-            var results = await _itunes.SearchAlbumsAsync(artist, album, limit: 3);
-            if (results.Count == 0)
-            {
-                AnimatedSearchStatus = "No matching album on iTunes.";
-                return;
-            }
-
             var variants = new List<ITunesArtworkService.AnimatedArtworkVariant>();
-            foreach (var r in results)
+
+            // Manual fallback: if the user pasted an Apple Music URL or album ID,
+            // resolve it directly via /lookup and skip free-text search.
+            if (TryExtractAppleAlbumId(AnimatedSearchUrlInput, out var pastedId))
             {
-                variants.AddRange(await _itunes.SearchAnimatedArtworkVariantsAsync(r.ViewUrl));
-                if (variants.Count > 0) break;
+                var candidate = await _itunes.LookupAlbumByIdAsync(pastedId);
+                if (candidate == null)
+                {
+                    AnimatedSearchStatus = "Album ID not found on iTunes.";
+                    return;
+                }
+                variants.AddRange(await _itunes.SearchAnimatedArtworkVariantsAsync(candidate.ViewUrl));
+            }
+            else
+            {
+                var artist = !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
+                var album = GetArtworkSearchAlbumTerm();
+                var results = await _itunes.SearchAlbumsAsync(artist, album, limit: 3);
+                if (results.Count == 0)
+                {
+                    AnimatedSearchStatus = "No matching album on iTunes.";
+                    return;
+                }
+
+                foreach (var r in results)
+                {
+                    variants.AddRange(await _itunes.SearchAnimatedArtworkVariantsAsync(r.ViewUrl));
+                    if (variants.Count > 0) break;
+                }
             }
 
             foreach (var variant in variants)
@@ -701,6 +725,62 @@ public partial class MetadataViewModel : ViewModelBase
         finally
         {
             IsSearchingAnimatedCover = false;
+        }
+    }
+
+    // Pulls a numeric album ID from a pasted Apple Music URL or a bare ID.
+    // Accepts:  music.apple.com/us/album/<slug>/1710982865[?...]
+    //           https://music.apple.com/.../id1710982865
+    //           1710982865
+    private static bool TryExtractAppleAlbumId(string? input, out long id)
+    {
+        id = 0;
+        if (string.IsNullOrWhiteSpace(input)) return false;
+
+        var match = System.Text.RegularExpressions.Regex.Match(input.Trim(), @"\d{6,}");
+        return match.Success && long.TryParse(match.Value, out id);
+    }
+
+    [RelayCommand]
+    private async Task SearchSyncedLyrics()
+    {
+        if (_lrcLib == null) { SyncedLyricsSearchStatus = "Search service unavailable."; return; }
+        if (IsSearchingSyncedLyrics) return;
+        if (string.IsNullOrWhiteSpace(Title) || string.IsNullOrWhiteSpace(Artist))
+        {
+            SyncedLyricsSearchStatus = "Title and artist required.";
+            return;
+        }
+
+        IsSearchingSyncedLyrics = true;
+        SyncedLyricsSearchStatus = "Searching…";
+        try
+        {
+            var result = await _lrcLib.GetLyricsAsync(Artist, Title, _track.Duration.TotalSeconds);
+            if (result == null || !result.HasSyncedLyrics)
+            {
+                var alts = await _lrcLib.SearchLyricsAsync(Artist, Title);
+                result = alts.FirstOrDefault(r => r.HasSyncedLyrics);
+            }
+
+            if (result?.SyncedLyrics is { Length: > 0 } synced)
+            {
+                SyncedLyrics = synced;
+                HasCustomSyncedLyrics = true;
+                SyncedLyricsSearchStatus = "Lyrics found";
+            }
+            else
+            {
+                SyncedLyricsSearchStatus = "No Lyrics found";
+            }
+        }
+        catch (Exception ex)
+        {
+            SyncedLyricsSearchStatus = $"Search failed: {ex.Message}";
+        }
+        finally
+        {
+            IsSearchingSyncedLyrics = false;
         }
     }
 

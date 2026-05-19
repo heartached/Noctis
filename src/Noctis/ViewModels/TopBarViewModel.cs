@@ -24,7 +24,7 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private bool _isAlbumDetailBackButtonVisible;
     [ObservableProperty] private string _backButtonText = "";
     [ObservableProperty] private string _backButtonDisplayText = "Back";
-    [ObservableProperty] private string _albumDetailBackButtonDisplayText = "Back to Albums";
+    [ObservableProperty] private string _albumDetailBackButtonDisplayText = "Back";
     [ObservableProperty] private ICommand? _backCommand;
 
     // Optional title shown next to the Back button (e.g., "More By {Artist}")
@@ -46,7 +46,7 @@ public partial class TopBarViewModel : ViewModelBase
 
     public void ShowAlbumDetailBackButton(string text, ICommand command)
     {
-        var displayText = string.IsNullOrWhiteSpace(text) ? "Back to Albums" : text;
+        var displayText = string.IsNullOrWhiteSpace(text) ? "Back" : text;
         AlbumDetailBackButtonDisplayText = displayText;
         BackButtonText = displayText;
         BackButtonDisplayText = displayText;
@@ -66,7 +66,7 @@ public partial class TopBarViewModel : ViewModelBase
         BackCommand = null;
         BackButtonText = "";
         BackButtonDisplayText = "Back";
-        AlbumDetailBackButtonDisplayText = "Back to Albums";
+        AlbumDetailBackButtonDisplayText = "Back";
         BackContextTitle = "";
         IsBackContextTitleVisible = false;
         UpdatePageTitleVisibility();
