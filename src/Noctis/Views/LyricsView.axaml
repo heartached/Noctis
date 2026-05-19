@@ -415,7 +415,8 @@
                                    FontSize="14"
                                    FontWeight="SemiBold"
                                    Foreground="{Binding LyricsSubtleFg}"
-                                   VerticalAlignment="Center"/>
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0"/>
                     </Grid>
 
                     <Grid Grid.Row="1"

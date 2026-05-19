@@ -18,6 +18,17 @@ namespace Noctis.Views;
 
 public partial class PlaybackBarView : UserControl
 {
+    public static readonly StyledProperty<bool> CompactWhenLyricsPageActiveProperty =
+        AvaloniaProperty.Register<PlaybackBarView, bool>(
+            nameof(CompactWhenLyricsPageActive),
+            defaultValue: true);
+
+    public bool CompactWhenLyricsPageActive
+    {
+        get => GetValue(CompactWhenLyricsPageActiveProperty);
+        set => SetValue(CompactWhenLyricsPageActiveProperty, value);
+    }
+
     private const double TrackTitleOverflowThreshold = 1.0;
     private const double TrackTitleScrollSpeed = 26.0;
     private const double TrackTitleBadgeSpacing = 6.0;
@@ -81,6 +92,7 @@ public partial class PlaybackBarView : UserControl
         VolumeSlider.PropertyChanged += OnVolumeSliderPropertyChanged;
         VolumeSlider.SizeChanged += (_, _) => UpdateVolumeSliderVisual();
 
+        PropertyChanged += OnPlaybackBarPropertyChanged;
         TrackTitleTextBlock.PropertyChanged += OnTrackTitleTextBlockPropertyChanged;
         TrackTitleViewport.PropertyChanged += OnTrackTitleViewportPropertyChanged;
         ArtistNameTextBlock.PropertyChanged += OnArtistNameTextBlockPropertyChanged;
@@ -90,6 +102,12 @@ public partial class PlaybackBarView : UserControl
         DetachedFromVisualTree += OnPlaybackBarDetachedFromVisualTree;
         DataContextChanged += OnPlaybackBarDataContextChanged;
 
+    }
+
+    private void OnPlaybackBarPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == CompactWhenLyricsPageActiveProperty)
+            UpdateIslandWidth();
     }
 
     private void OnPlaybackBarAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
@@ -769,9 +787,8 @@ public partial class PlaybackBarView : UserControl
 
     private void UpdateIslandWidth()
     {
-        // The volume popup floats above the bar instead of inline-expanding it,
-        // so the island no longer needs to grow when the slider is open.
-        IslandBorder.Width = _observedPlayerViewModel?.IsLyricsPageActive == true
+        IslandBorder.Width = CompactWhenLyricsPageActive
+                              && _observedPlayerViewModel?.IsLyricsPageActive == true
             ? IslandLyricsPageWidth
             : IslandBaseWidth;
     }

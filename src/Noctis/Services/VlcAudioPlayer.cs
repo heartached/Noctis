@@ -89,6 +89,10 @@ public class VlcAudioPlayer : IAudioPlayer
     private int _advancedEqPresetIndex;
     private float[] _advancedEqBands = new float[10];
     private float _advancedEqPreamp;
+    private int _appliedAdvancedEqPresetIndex = -2;
+    private long _advancedEqRequestVersion;
+    private long _advancedEqAppliedVersion;
+    private int _advancedEqApplyQueued;
 
     // Normalization state
     private bool _normalizationEnabled;
@@ -169,13 +173,15 @@ public class VlcAudioPlayer : IAudioPlayer
         //   slider drag (the original reason WaveOut was selected) is
         //   mitigated by the throttling + deadband in ScheduleVolumeWrite.
         //
-        // NOTE on caching: VLC's defaults (file-caching=300ms, clock-jitter=5000ms) are
-        // intentionally kept. Earlier versions set all caching to 0 to "fix" VBR-MP3
-        // seek stutter, but that workaround was sourced from a thread that tested only
-        // on high-end SSDs with wired output. On Bluetooth / high-latency endpoints the
-        // zero-buffer settings cause output-side underruns and audible stutter (issue #1).
-        // The real seek-stutter fix is --demux=avformat above, which builds an O(1) seek
-        // index at open time regardless of caching.
+        // NOTE on caching: VLC's input-caching defaults (300ms file / 1500ms live /
+        // 300ms disc) buffer pre-EQ-filtered audio, so changes to the equalizer take
+        // effect only after that buffer drains — slider drags feel sluggish (~300ms+
+        // lag). We reduce the input caches to 50ms for snappy EQ response while
+        // leaving --clock-jitter at its 5000ms default. clock-jitter controls
+        // output-side drift tolerance, which is what matters for Bluetooth / high-
+        // latency endpoints (zeroing it caused the underruns in issue #1).
+        // The real seek-stutter fix remains --demux=avformat, which builds an O(1)
+        // seek index at open time regardless of caching.
         var vlcArgs = new List<string>
         {
             "--no-video",
@@ -184,6 +190,9 @@ public class VlcAudioPlayer : IAudioPlayer
             "--input-repeat=0",
             "--demux=avformat",
             "--no-audio-time-stretch",
+            "--file-caching=50",
+            "--live-caching=50",
+            "--disc-caching=50",
         };
         // The speex resampler module + its quality flag are not always present
         // in third-party VLC builds (notably the macOS VLC.app distribution).
@@ -497,13 +506,64 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         if (_disposed) return;
 
-        var previousPresetIndex = _advancedEqPresetIndex;
-        _advancedEqEnabled = enabled;
-        _advancedEqPresetIndex = presetIndex;
-        if (customBands is { Length: 10 })
+        lock (_equalizerLock)
         {
-            for (var i = 0; i < 10; i++)
-                _advancedEqBands[i] = Math.Clamp(customBands[i], -12f, 12f);
+            _advancedEqEnabled = enabled;
+            _advancedEqPresetIndex = presetIndex;
+            if (customBands is { Length: 10 })
+            {
+                for (var i = 0; i < 10; i++)
+                    _advancedEqBands[i] = Math.Clamp(customBands[i], -12f, 12f);
+            }
+        }
+
+        Interlocked.Increment(ref _advancedEqRequestVersion);
+        QueueAdvancedEqualizerApply();
+    }
+
+    private void QueueAdvancedEqualizerApply()
+    {
+        if (Interlocked.Exchange(ref _advancedEqApplyQueued, 1) == 0)
+            _ = Task.Run(ProcessAdvancedEqualizerQueue);
+    }
+
+    private void ProcessAdvancedEqualizerQueue()
+    {
+        try
+        {
+            while (!_disposed)
+            {
+                var version = Interlocked.Read(ref _advancedEqRequestVersion);
+                ApplyAdvancedEqualizerSnapshot();
+                Interlocked.Exchange(ref _advancedEqAppliedVersion, version);
+
+                if (Interlocked.Read(ref _advancedEqRequestVersion) == version)
+                    break;
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _advancedEqApplyQueued, 0);
+            if (!_disposed && Interlocked.Read(ref _advancedEqAppliedVersion) != Interlocked.Read(ref _advancedEqRequestVersion))
+                QueueAdvancedEqualizerApply();
+        }
+    }
+
+    private void ApplyAdvancedEqualizerSnapshot()
+    {
+        bool enabled;
+        int presetIndex;
+        float[] bands;
+        bool soundEnhancerEnabled;
+        int soundEnhancerLevel;
+
+        lock (_equalizerLock)
+        {
+            enabled = _advancedEqEnabled;
+            presetIndex = _advancedEqPresetIndex;
+            bands = (float[])_advancedEqBands.Clone();
+            soundEnhancerEnabled = _soundEnhancerEnabled;
+            soundEnhancerLevel = _soundEnhancerLevel;
         }
 
         if (enabled)
@@ -516,11 +576,12 @@ public class VlcAudioPlayer : IAudioPlayer
                     _equalizer?.Dispose();
                     _equalizer = new Equalizer((uint)presetIndex);
                     _advancedEqPreamp = Math.Clamp(_equalizer.Preamp, -20f, 20f);
+                    _appliedAdvancedEqPresetIndex = presetIndex;
                 }
                 else
                 {
                     // Avoid rebuilding native EQ every slider tick in custom mode.
-                    if (_equalizer == null || previousPresetIndex >= 0)
+                    if (_equalizer == null || _appliedAdvancedEqPresetIndex >= 0)
                     {
                         _equalizer?.Dispose();
                         _equalizer = new Equalizer();
@@ -531,7 +592,9 @@ public class VlcAudioPlayer : IAudioPlayer
                     _equalizer.SetPreamp(Math.Clamp(_advancedEqPreamp, -20f, 20f));
 
                     for (uint i = 0; i < 10; i++)
-                        _equalizer.SetAmp(_advancedEqBands[i], i);
+                        _equalizer.SetAmp(bands[i], i);
+
+                    _appliedAdvancedEqPresetIndex = presetIndex;
                 }
 
                 if (_player != null)
@@ -543,9 +606,9 @@ public class VlcAudioPlayer : IAudioPlayer
         else
         {
             // Disable advanced EQ. If sound enhancer is still on, re-apply it.
-            if (_soundEnhancerEnabled)
+            if (soundEnhancerEnabled)
             {
-                SetSoundEnhancer(true, _soundEnhancerLevel);
+                SetSoundEnhancer(true, soundEnhancerLevel);
             }
             else
             {
@@ -557,6 +620,7 @@ public class VlcAudioPlayer : IAudioPlayer
                         _standbyPlayer.SetEqualizer(null);
                     _equalizer?.Dispose();
                     _equalizer = null;
+                    _appliedAdvancedEqPresetIndex = -2;
                 }
             }
         }

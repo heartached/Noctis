@@ -72,6 +72,20 @@
         <Style Selector="Button.related-album-tile:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
+        <!-- Kill press/pointerover scale on row 3-dot buttons so the MenuFlyout
+             popup doesn't shift down when the button bounds momentarily change. -->
+        <Style Selector="Button.row-more-dots">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Transitions">
+                <Transitions />
+            </Setter>
+        </Style>
+        <Style Selector="Button.row-more-dots:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.row-more-dots:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
     </UserControl.Styles>
 
     <Grid>
@@ -613,6 +627,7 @@
                                        VerticalAlignment="Center"/>
                             <!-- Col 2: 3-dot button — fixed 44px -->
                             <Button Grid.Column="2"
+                                    Classes="row-more-dots"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Padding="0"

@@ -12,7 +12,9 @@ A music player that respects what's yours. Zero tracking, total control.
 [![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=yellowgreen&style=for-the-badge&cacheSeconds=600)](https://github.com/heartached/Noctis/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/heartached/Noctis/dotnet.yml?label=build&style=for-the-badge)](https://github.com/heartached/Noctis/actions)
 
-[Download](https://github.com/heartached/Noctis/releases) • [Features](#features) • [Build](#build) • [Feedback](#feedback)
+[![Discord](https://img.shields.io/badge/DISCORD-JOIN%20SERVER-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=4F4F4F)](https://discord.gg/BNCDZQUVx7)
+
+[Download](https://github.com/heartached/Noctis/releases) • [Discord](https://discord.gg/BNCDZQUVx7) • [Features](#features) • [Build](#build) • [Feedback](#feedback)
 
 </div>
 

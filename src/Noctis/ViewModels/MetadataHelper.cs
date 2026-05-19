@@ -31,7 +31,8 @@ public static class MetadataHelper
 
         var animatedCovers = new AnimatedCoverService(persistence);
         var itunes = App.Services!.GetService<ITunesArtworkService>();
-        var vm = new MetadataViewModel(track, metadata, library, persistence, animatedCovers, albumScoped, albumTracks, itunes);
+        var lrcLib = App.Services!.GetService<ILrcLibService>();
+        var vm = new MetadataViewModel(track, metadata, library, persistence, animatedCovers, albumScoped, albumTracks, itunes, lrcLib);
 
         vm.ChangesSaved += (_, _) =>
         {

@@ -275,6 +275,9 @@
         <Style Selector="ComboBox.pill-combo:pointerover">
             <Setter Property="RenderTransform" Value="scale(1.05)"/>
         </Style>
+        <Style Selector="ComboBox.pill-combo.stable-popup:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
         <Style Selector="ComboBox.pill-combo:pointerover /template/ Border#Background">
             <Setter Property="Background" Value="{DynamicResource ButtonBackground}"/>
         </Style>
@@ -889,7 +892,8 @@
                             </StackPanel>
                         </StackPanel>
                         <ComboBox Grid.Column="2"
-                                  Classes="pill-combo"
+                                  Classes="pill-combo stable-popup"
+                                  Width="164"
                                   ItemsSource="{Binding VisibleEqPresets}"
                                   SelectedItem="{Binding SelectedEqPresetName}"
                                   VerticalAlignment="Center"
@@ -1668,20 +1672,36 @@
                             Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
                             Opacity="0.2" Margin="0,4"/>
 
-                    <Button Command="{Binding OpenGitHubCommand}"
-                            Background="Transparent" BorderThickness="0"
-                            Padding="0" Margin="0,2,0,4" Cursor="Hand"
-                            HorizontalAlignment="Left">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Data="{StaticResource GitHubIcon}"
-                                      Width="14" Height="14"
-                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                      Opacity="0.5" />
-                            <TextBlock Text="Star on GitHub"
-                                       FontSize="12" Opacity="0.5"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
+                    <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,2,0,4">
+                        <Button Command="{Binding OpenGitHubCommand}"
+                                Background="Transparent" BorderThickness="0"
+                                Padding="0" Cursor="Hand"
+                                HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource GitHubIcon}"
+                                          Width="14" Height="14"
+                                          Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                          Opacity="0.5" />
+                                <TextBlock Text="Star on GitHub"
+                                           FontSize="12" Opacity="0.5"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding OpenDiscordCommand}"
+                                Background="Transparent" BorderThickness="0"
+                                Padding="0" Cursor="Hand"
+                                HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource DiscordIcon}"
+                                          Width="14" Height="14"
+                                          Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                          Opacity="0.5" />
+                                <TextBlock Text="Join Discord"
+                                           FontSize="12" Opacity="0.5"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
 
                     <TextBlock Text="Modern music player for Windows."
                                FontSize="13" Opacity="0.6"/>

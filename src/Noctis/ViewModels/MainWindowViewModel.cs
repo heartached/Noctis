@@ -81,6 +81,15 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Whether the playback island bar should be visible (has content and not in lyrics view).</summary>
     public bool IsPlaybackBarVisible => Player.HasContent && !IsLyricsViewActive;
 
+    /// <summary>Whether the playback island should stay mounted in the visual tree.</summary>
+    public bool IsPlaybackBarMounted => Player.HasContent;
+
+    /// <summary>Opacity used to hide the mounted playback bar while fullscreen lyrics owns playback controls.</summary>
+    public double PlaybackBarOpacity => IsPlaybackBarVisible ? 1.0 : 0.0;
+
+    /// <summary>Whether the mounted playback bar should accept pointer input.</summary>
+    public bool IsPlaybackBarHitTestVisible => IsPlaybackBarVisible;
+
     // ── Sidebar visibility ──
 
     /// <summary>Whether the sidebar is hidden (toggled from lyrics view).</summary>
@@ -216,9 +225,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Wire up "View Album" from playback bar three-dots menu
         Player.SetViewAlbumAction(track =>
         {
-            var album = _library.Albums.FirstOrDefault(a => a.Id == track.AlbumId);
-            if (album == null) return;
-            OpenAlbumDetail(album, pushHistory: true);
+            OnViewAlbumFromTrack(this, track);
             TopBar.IsPageTitleVisible = false;
         });
 
@@ -272,7 +279,12 @@ public partial class MainWindowViewModel : ViewModelBase
         Player.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(PlayerViewModel.HasContent))
+            {
                 OnPropertyChanged(nameof(IsPlaybackBarVisible));
+                OnPropertyChanged(nameof(IsPlaybackBarMounted));
+                OnPropertyChanged(nameof(PlaybackBarOpacity));
+                OnPropertyChanged(nameof(IsPlaybackBarHitTestVisible));
+            }
             if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack) && Player.CurrentTrack == null)
                 IsLyricsPanelOpen = false;
         };
@@ -563,14 +575,28 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnCurrentViewChanged(ViewModelBase? oldValue, ViewModelBase newValue)
     {
-        // Notify island bar visibility
-        OnPropertyChanged(nameof(IsLyricsViewActive));
-        OnPropertyChanged(nameof(IsPlaybackBarVisible));
+        var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
+        var leavingLyrics = ReferenceEquals(oldValue, _lyricsVm) && !enteringLyrics;
 
         // Close lyrics panel when entering lyrics full-screen view
-        if (IsLyricsViewActive)
+        if (enteringLyrics)
         {
             IsLyricsPanelOpen = false;
+            NotifyPlaybackBarPresentationChanged();
+            WireLyricsPageToPlayer();
+        }
+
+        // Keep Player.IsLyricsPageActive in sync with the actual view so the inline
+        // playback bar's TrackInfoPanel hides/shows correctly across all nav paths.
+        if (leavingLyrics)
+        {
+            UnwireLyricsPageFromPlayer();
+            IsLyricsPanelOpen = false;
+            NotifyPlaybackBarPresentationChanged();
+        }
+        else if (!enteringLyrics)
+        {
+            NotifyPlaybackBarPresentationChanged();
         }
 
         if (newValue is not AlbumDetailViewModel)
@@ -587,6 +613,15 @@ public partial class MainWindowViewModel : ViewModelBase
         DisposeViewIfTransient(oldValue);
     }
 
+    private void NotifyPlaybackBarPresentationChanged()
+    {
+        OnPropertyChanged(nameof(IsLyricsViewActive));
+        OnPropertyChanged(nameof(IsPlaybackBarVisible));
+        OnPropertyChanged(nameof(IsPlaybackBarMounted));
+        OnPropertyChanged(nameof(PlaybackBarOpacity));
+        OnPropertyChanged(nameof(IsPlaybackBarHitTestVisible));
+    }
+
     private void RefreshBackButton()
     {
         TopBar.SearchWatermark = CurrentView is PlaylistFeaturedArtistsViewModel
@@ -601,7 +636,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (CurrentView is PlaylistFeaturedArtistsViewModel featuredArtistsVm)
         {
-            TopBar.ShowBackButton("Back to Playlist", GoBackInHistoryCommand, featuredArtistsVm.Title);
+            TopBar.ShowBackButton("Back", GoBackInHistoryCommand, featuredArtistsVm.Title);
             return;
         }
 
@@ -613,7 +648,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (ReferenceEquals(CurrentView, _albumsVm) && _albumsVm.IsArtistFiltered)
         {
-            TopBar.ShowBackButton("Back to Albums", GoBackInHistoryCommand, _albumsVm.HeaderText);
+            TopBar.ShowBackButton("Back", GoBackInHistoryCommand, _albumsVm.HeaderText);
             return;
         }
 
@@ -629,7 +664,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (CurrentView is PlaylistViewModel)
         {
-            TopBar.ShowBackButton("Back to Playlists", new RelayCommand(() => Navigate("playlists")));
+            TopBar.ShowBackButton("Back", new RelayCommand(() => Navigate("playlists")));
             return;
         }
 
@@ -809,9 +844,9 @@ public partial class MainWindowViewModel : ViewModelBase
         if (ReferenceEquals(view, Settings))
             return GetSectionBackButtonText("settings");
         if (view is AlbumDetailViewModel)
-            return "Back to Albums";
+            return "Back";
         if (view is PlaylistViewModel)
-            return "Back to Playlists";
+            return "Back";
         return "Back";
     }
 
@@ -827,22 +862,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private static string GetSectionBackButtonText(string? key)
     {
-        return key switch
-        {
-            "home" => "Back to Home",
-            "songs" => "Back to Songs",
-            "albums" => "Back to Albums",
-            "artists" => "Back to Artists",
-            "folders" => "Back to Folders",
-            "playlists" => "Back to Playlists",
-            "favorites" => "Back to Favorites",
-            "queue" => "Back to Queue",
-            "lyrics" => "Back to Lyrics",
-            "statistics" => "Back to Statistics",
-            "settings" => "Back to Settings",
-            { } playlistKey when playlistKey.StartsWith("playlist:", StringComparison.Ordinal) => "Back to Playlists",
-            _ => "Back to Albums"
-        };
+        _ = key;
+        return "Back";
     }
 
     private string GetNavigationEntryBackButtonText(ViewModelBase view)
@@ -898,14 +919,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
         var sourceSectionKey = entry.SectionKey;
 
-        if ((string.IsNullOrWhiteSpace(text) || text == "Back" || text == "Back to Albums")
+        if (string.IsNullOrWhiteSpace(text)
             && !ReferenceEquals(entry.View, _albumsVm)
             && !ReferenceEquals(entry.View, _coverFlowVm)
             && entry.View is not AlbumDetailViewModel)
-        {
-            text = GetSectionBackButtonText(sourceSectionKey);
-        }
-        else if (text == "Back to Albums" && sourceSectionKey is not "albums")
         {
             text = GetSectionBackButtonText(sourceSectionKey);
         }
@@ -915,10 +932,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private static string NormalizeAlbumDetailBackButtonText(string? text)
     {
-        // Empty/null falls back to "Back to Albums". A literal "Back" is intentional
-        // (e.g. when the previous view is an artist discography that lives on _albumsVm
-        // but isn't the Albums grid) — leave it as-is.
-        return string.IsNullOrWhiteSpace(text) ? "Back to Albums" : text;
+        return string.IsNullOrWhiteSpace(text) ? "Back" : text;
     }
 
     private bool IsLongLivedView(ViewModelBase? view)
@@ -1191,7 +1205,10 @@ public partial class MainWindowViewModel : ViewModelBase
             PushCurrentViewToHistory();
         _albumDetailBackButtonText = NormalizeAlbumDetailBackButtonText(backButtonText ?? GetAlbumDetailBackButtonText());
         ClearAllTopBarActions();
-        SetupGlobalViewModeToggle();
+        IsLyricsPanelOpen = false;
+        _isCoverFlowMode = false;
+        TopBar.IsCoverFlowMode = false;
+        _preCoverFlowView = null;
 
         var detail = new AlbumDetailViewModel(album, Player, _persistence, _library, Sidebar, _lastFm, Settings);
         detail.BackRequested += (_, _) => GoBackInHistory();
@@ -1436,6 +1453,8 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.ShowPlaylistActions(_playlistsVm.CreateSmartPlaylistCommand);
         else if (ReferenceEquals(view, _favoritesVm))
             TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
+        else if (ReferenceEquals(view, _lyricsVm))
+            WireLyricsPageToPlayer();
         // Artist actions for _albumsVm are restored in CaptureRestoreState's lambda
     }
 
