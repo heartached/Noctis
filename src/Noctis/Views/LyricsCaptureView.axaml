@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             x:Class="Noctis.Views.LyricsCaptureView"
+             x:DataType="vm:LyricsCaptureViewModel"
+             x:Name="CaptureRoot"
+             Focusable="True"
+             Background="{Binding BackgroundBrush}">
+
+    <UserControl.Styles>
+        <Style Selector="Button.capture-ctl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="Button.capture-ctl:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22FFFFFF"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- Top-left: artwork + metadata -->
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Margin="32" Spacing="8">
+            <Border Width="120" Height="120" CornerRadius="12" ClipToBounds="True"
+                    Background="#222222">
+                <Image Source="{Binding AlbumArt}" Stretch="UniformToFill"/>
+            </Border>
+            <TextBlock Text="{Binding TrackTitle}" FontSize="12" FontWeight="SemiBold"
+                       Foreground="White" Opacity="0.6" MaxWidth="120"
+                       TextTrimming="CharacterEllipsis"/>
+            <TextBlock Text="{Binding TrackArtist}" FontSize="11"
+                       Foreground="White" Opacity="0.5" MaxWidth="120"
+                       TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+
+        <!-- Center: lyric stack -->
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                    MaxWidth="1400" Spacing="24">
+            <TextBlock Text="{Binding PreviousLine.Text}"
+                       IsVisible="{Binding PreviousLine, Converter={x:Static ObjectConverters.IsNotNull}}"
+                       FontSize="36" Foreground="White" Opacity="0.15"
+                       TextAlignment="Center" TextWrapping="Wrap">
+                <TextBlock.Effect>
+                    <DropShadowEffect OffsetX="0" OffsetY="2" BlurRadius="8"
+                                      Color="Black" Opacity="0.6"/>
+                </TextBlock.Effect>
+            </TextBlock>
+
+            <TextBlock Text="{Binding CurrentLine.Text}"
+                       IsVisible="{Binding CurrentLine, Converter={x:Static ObjectConverters.IsNotNull}}"
+                       FontSize="{Binding FontSize}" FontWeight="SemiBold"
+                       Foreground="White" TextAlignment="Center" TextWrapping="Wrap">
+                <TextBlock.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="FontSize" Duration="0:0:0.2"/>
+                    </Transitions>
+                </TextBlock.Transitions>
+                <TextBlock.Effect>
+                    <DropShadowEffect OffsetX="0" OffsetY="2" BlurRadius="8"
+                                      Color="Black" Opacity="0.6"/>
+                </TextBlock.Effect>
+            </TextBlock>
+
+            <ItemsControl ItemsSource="{Binding UpcomingLines}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="m:LyricLine">
+                        <TextBlock Text="{Binding Text}" FontSize="48"
+                                   Foreground="White" Opacity="0.3"
+                                   TextAlignment="Center" TextWrapping="Wrap"
+                                   Margin="0,12,0,0">
+                            <TextBlock.Effect>
+                                <DropShadowEffect OffsetX="0" OffsetY="2" BlurRadius="8"
+                                                  Color="Black" Opacity="0.6"/>
+                            </TextBlock.Effect>
+                        </TextBlock>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
+        <!-- Bottom-center: floating control panel -->
+        <Border x:Name="ControlPanel"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                Margin="0,0,0,16" Padding="16"
+                CornerRadius="999" Background="#CC1A1A1A"
+                Opacity="0" IsHitTestVisible="False">
+            <Border.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                </Transitions>
+            </Border.Transitions>
+            <StackPanel Orientation="Horizontal" Spacing="12"
+                        VerticalAlignment="Center">
+                <Button Classes="capture-ctl" Command="{Binding TogglePlayPauseCommand}">
+                    <Panel>
+                        <Path Fill="White" Data="M8 5v14l11-7z"
+                              IsVisible="{Binding !IsPlaying}"/>
+                        <Path Fill="White" Data="M6 5h4v14H6zM14 5h4v14h-4z"
+                              IsVisible="{Binding IsPlaying}"/>
+                    </Panel>
+                </Button>
+                <Slider Width="180" VerticalAlignment="Center"
+                        Minimum="{Binding MinFontSize}"
+                        Maximum="{Binding MaxFontSize}"
+                        Value="{Binding FontSize, Mode=TwoWay}"/>
+                <Button Classes="capture-ctl" Command="{Binding CloseCommand}">
+                    <Path Fill="White"
+                          Data="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </Button>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
