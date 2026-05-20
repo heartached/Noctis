@@ -111,6 +111,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private void OpenLyricsCapture()
     {
         _lyricsVm.EnsureLyricsForCurrentTrack();
+        _lyricsVm.SelectSyncedLyricsCommand.Execute(null);
         IsCaptureModeActive = true;
     }
 
