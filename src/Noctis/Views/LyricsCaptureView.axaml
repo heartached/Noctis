@@ -60,6 +60,11 @@
                                    Opacity="{Binding LineOpacity}"
                                    TextAlignment="Center" TextWrapping="Wrap"
                                    Margin="0,14">
+                            <TextBlock.Transitions>
+                                <Transitions>
+                                    <DoubleTransition Property="FontSize" Duration="0:0:0.2"/>
+                                </Transitions>
+                            </TextBlock.Transitions>
                             <TextBlock.FontSize>
                                 <MultiBinding Converter="{StaticResource ActiveLineFontSize}">
                                     <Binding Path="IsActive"/>
