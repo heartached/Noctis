@@ -2,11 +2,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
+             xmlns:conv="using:Noctis.Converters"
              x:Class="Noctis.Views.LyricsCaptureView"
              x:DataType="vm:LyricsCaptureViewModel"
              x:Name="CaptureRoot"
              Focusable="True"
              Background="{Binding BackgroundBrush}">
+
+    <UserControl.Resources>
+        <conv:ActiveLineFontSizeConverter x:Key="ActiveLineFontSize"/>
+    </UserControl.Resources>
 
     <UserControl.Styles>
         <Style Selector="Button.capture-ctl">
@@ -40,41 +45,27 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- Center: lyric stack -->
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                    MaxWidth="1400" Spacing="24">
-            <TextBlock Text="{Binding PreviousLine.Text}"
-                       IsVisible="{Binding PreviousLine, Converter={x:Static ObjectConverters.IsNotNull}}"
-                       FontSize="36" Foreground="White" Opacity="0.15"
-                       TextAlignment="Center" TextWrapping="Wrap">
-                <TextBlock.Effect>
-                    <DropShadowEffect OffsetX="0" OffsetY="2" BlurRadius="8"
-                                      Color="Black" Opacity="0.6"/>
-                </TextBlock.Effect>
-            </TextBlock>
-
-            <TextBlock Text="{Binding CurrentLine.Text}"
-                       IsVisible="{Binding CurrentLine, Converter={x:Static ObjectConverters.IsNotNull}}"
-                       FontSize="{Binding FontSize}" FontWeight="SemiBold"
-                       Foreground="White" TextAlignment="Center" TextWrapping="Wrap">
-                <TextBlock.Transitions>
-                    <Transitions>
-                        <DoubleTransition Property="FontSize" Duration="0:0:0.2"/>
-                    </Transitions>
-                </TextBlock.Transitions>
-                <TextBlock.Effect>
-                    <DropShadowEffect OffsetX="0" OffsetY="2" BlurRadius="8"
-                                      Color="Black" Opacity="0.6"/>
-                </TextBlock.Effect>
-            </TextBlock>
-
-            <ItemsControl ItemsSource="{Binding UpcomingLines}">
+        <!-- Center: scrolling lyric list -->
+        <ScrollViewer x:Name="CaptureScrollViewer"
+                      VerticalScrollBarVisibility="Hidden"
+                      HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl x:Name="CaptureLyricsItems"
+                          ItemsSource="{Binding LyricLines}"
+                          MaxWidth="1400" HorizontalAlignment="Center"
+                          Margin="0,540">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="m:LyricLine">
-                        <TextBlock Text="{Binding Text}" FontSize="48"
-                                   Foreground="White" Opacity="0.3"
+                        <TextBlock Text="{Binding Text}"
+                                   Foreground="White" FontWeight="SemiBold"
+                                   Opacity="{Binding LineOpacity}"
                                    TextAlignment="Center" TextWrapping="Wrap"
-                                   Margin="0,12,0,0">
+                                   Margin="0,14">
+                            <TextBlock.FontSize>
+                                <MultiBinding Converter="{StaticResource ActiveLineFontSize}">
+                                    <Binding Path="IsActive"/>
+                                    <Binding Path="$parent[ItemsControl].((vm:LyricsCaptureViewModel)DataContext).FontSize"/>
+                                </MultiBinding>
+                            </TextBlock.FontSize>
                             <TextBlock.Effect>
                                 <DropShadowEffect OffsetX="0" OffsetY="2" BlurRadius="8"
                                                   Color="Black" Opacity="0.6"/>
@@ -83,7 +74,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-        </StackPanel>
+        </ScrollViewer>
 
         <!-- Bottom-center: floating control panel -->
         <Border x:Name="ControlPanel"
