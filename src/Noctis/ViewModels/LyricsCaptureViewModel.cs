@@ -1,17 +1,17 @@
 using System;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Noctis.Helpers;
 using Noctis.Models;
 
 namespace Noctis.ViewModels;
 
 /// <summary>
-/// View model for full-screen Capture Mode. Observes the shared LyricsViewModel
-/// sync engine and derives the lines to display. Runs no timer of its own.
+/// View model for full-screen Capture Mode. Renders the shared LyricsViewModel
+/// line list and mirrors its active-line index. Runs no timer of its own.
 /// </summary>
 public partial class LyricsCaptureViewModel : ViewModelBase
 {
@@ -22,9 +22,9 @@ public partial class LyricsCaptureViewModel : ViewModelBase
     {
         _player = player;
         _lyrics = lyrics;
+        _activeLineIndex = _lyrics.ActiveLineIndex;
         _lyrics.PropertyChanged += OnLyricsPropertyChanged;
         _player.PropertyChanged += OnPlayerPropertyChanged;
-        RefreshLines();
     }
 
     /// <summary>Raised when the user requests to leave Capture Mode (X button or Esc).</summary>
@@ -36,14 +36,12 @@ public partial class LyricsCaptureViewModel : ViewModelBase
     public double MinFontSize => 48;
     public double MaxFontSize => 96;
 
-    [ObservableProperty]
-    private LyricLine? _previousLine;
+    /// <summary>All lyric lines for the current track (the shared LyricsViewModel collection).</summary>
+    public BulkObservableCollection<LyricLine> LyricLines => _lyrics.LyricLines;
 
+    /// <summary>Index of the active line; mirrors LyricsViewModel.ActiveLineIndex.</summary>
     [ObservableProperty]
-    private LyricLine? _currentLine;
-
-    /// <summary>Up to 3 lines after the current one.</summary>
-    public ObservableCollection<LyricLine> UpcomingLines { get; } = new();
+    private int _activeLineIndex = -1;
 
     public IBrush BackgroundBrush => _lyrics.FullBackgroundBrush;
     public Bitmap? AlbumArt => _player.AlbumArt;
@@ -73,7 +71,7 @@ public partial class LyricsCaptureViewModel : ViewModelBase
     private void OnLyricsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(LyricsViewModel.ActiveLineIndex))
-            RefreshLines();
+            ActiveLineIndex = _lyrics.ActiveLineIndex;
         else if (e.PropertyName == nameof(LyricsViewModel.FullBackgroundBrush))
             OnPropertyChanged(nameof(BackgroundBrush));
     }
@@ -91,18 +89,5 @@ public partial class LyricsCaptureViewModel : ViewModelBase
             OnPropertyChanged(nameof(TrackArtist));
             OnPropertyChanged(nameof(AlbumArt));
         }
-    }
-
-    private void RefreshLines()
-    {
-        var lines = _lyrics.LyricLines;
-        var idx = _lyrics.ActiveLineIndex;
-
-        PreviousLine = (idx > 0 && idx - 1 < lines.Count) ? lines[idx - 1] : null;
-        CurrentLine = (idx >= 0 && idx < lines.Count) ? lines[idx] : null;
-
-        UpcomingLines.Clear();
-        for (int i = idx + 1; i < lines.Count && UpcomingLines.Count < 3; i++)
-            UpcomingLines.Add(lines[i]);
     }
 }
