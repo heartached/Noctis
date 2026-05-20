@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Helpers;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
@@ -123,7 +124,7 @@ public partial class LyricsPanelView : UserControl
                 return;
             }
             var t = (double)elapsed / durationMs;
-            var eased = Math.Sin(t * Math.PI / 2.0); // ease-out-sine
+            var eased = Easing.SmootherStep(t);
             PanelScrollViewer.Offset = new Vector(0, from + (to - from) * eased);
         };
         _scrollAnimTimer.Start();
