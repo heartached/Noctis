@@ -76,10 +76,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnIsCaptureModeActiveChanged(bool value)
     {
-        OnPropertyChanged(nameof(IsPlaybackBarMounted));
-        OnPropertyChanged(nameof(IsPlaybackBarVisible));
-        OnPropertyChanged(nameof(PlaybackBarOpacity));
-        OnPropertyChanged(nameof(IsPlaybackBarHitTestVisible));
+        NotifyPlaybackBarPresentationChanged();
     }
 
     // ── Content area ──
