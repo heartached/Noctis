@@ -563,7 +563,7 @@ public partial class LyricsView : UserControl
             var elapsed = sw.Elapsed.TotalMilliseconds;
             var t = Math.Min(1.0, elapsed / totalMs);
 
-            var eased = SmootherStep(t);
+            var eased = Easing.SmootherStep(t);
             var value = from + (to - from) * eased;
 
             scrollViewer.Offset = new Vector(0, value);
@@ -581,10 +581,5 @@ public partial class LyricsView : UserControl
         timer.Start();
     }
 
-    private static double SmootherStep(double t)
-    {
-        t = Math.Clamp(t, 0.0, 1.0);
-        return t * t * t * (t * (t * 6 - 15) + 10);
-    }
-
 }
+
