@@ -742,6 +742,14 @@ public partial class MetadataViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void RemoveSyncedLyrics()
+    {
+        SyncedLyrics = string.Empty;
+        HasCustomSyncedLyrics = false;
+        SyncedLyricsSearchStatus = string.Empty;
+    }
+
+    [RelayCommand]
     private async Task SearchSyncedLyrics()
     {
         if (_lrcLib == null) { SyncedLyricsSearchStatus = "Search service unavailable."; return; }

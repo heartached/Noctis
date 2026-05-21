@@ -261,9 +261,13 @@ public partial class PlaylistView : UserControl
         if (_dragActive)
         {
             await CommitPlaylistDropAsync(e);
+            ResetPlaylistDragState();
+            e.Pointer.Capture(null);
         }
-        ResetPlaylistDragState();
-        e.Pointer.Capture(null);
+        else
+        {
+            ResetPlaylistDragState();
+        }
     }
 
     private void OnTrackRowPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)

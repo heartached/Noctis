@@ -64,6 +64,7 @@ public partial class PlayerViewModel : ViewModelBase
     private Action? _selectLyricsSynced;
     private Action? _selectLyricsPlain;
     private Action? _openLyricsBackgroundColor;
+    private Action? _removeLyrics;
 
     public string PlayPauseTooltip => State == PlaybackState.Playing ? "Pause" : "Play";
 
@@ -347,6 +348,9 @@ public partial class PlayerViewModel : ViewModelBase
     [RelayCommand]
     private void OpenLyricsBackgroundColor() => _openLyricsBackgroundColor?.Invoke();
 
+    [RelayCommand]
+    private void RemoveCurrentTrackLyrics() => _removeLyrics?.Invoke();
+
     /// <summary>
     /// Called by MainWindowViewModel when the lyrics view becomes the current view.
     /// Wires the three pass-through commands and seeds the active-state flags.
@@ -355,6 +359,7 @@ public partial class PlayerViewModel : ViewModelBase
         Action selectSynced,
         Action selectPlain,
         Action openBackgroundColor,
+        Action removeLyrics,
         bool isSyncedActive,
         bool isPlainActive,
         bool isSyncedAvailable)
@@ -362,6 +367,7 @@ public partial class PlayerViewModel : ViewModelBase
         _selectLyricsSynced = selectSynced;
         _selectLyricsPlain = selectPlain;
         _openLyricsBackgroundColor = openBackgroundColor;
+        _removeLyrics = removeLyrics;
         IsLyricsSyncedActive = isSyncedActive;
         IsLyricsPlainActive = isPlainActive;
         IsLyricsSyncedAvailable = isSyncedAvailable;
@@ -376,6 +382,7 @@ public partial class PlayerViewModel : ViewModelBase
         _selectLyricsSynced = null;
         _selectLyricsPlain = null;
         _openLyricsBackgroundColor = null;
+        _removeLyrics = null;
         IsLyricsPageActive = false;
         IsLyricsSyncedActive = false;
         IsLyricsPlainActive = false;

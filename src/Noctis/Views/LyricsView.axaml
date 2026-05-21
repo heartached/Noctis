@@ -707,13 +707,15 @@
                                         BorderThickness="0"
                                         Padding="0"
                                         Margin="0,10"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Stretch"
+                                        MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                        HorizontalAlignment="Left"
+                                        HorizontalContentAlignment="Left"
                                         Cursor="Hand"
                                         IsHitTestVisible="{Binding IsClickable}"
                                         Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
                                         CommandParameter="{Binding}">
-                                    <Panel HorizontalAlignment="Stretch">
+                                    <Panel HorizontalAlignment="Left"
+                                           MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                         <!-- Main text layer (hidden for intro placeholder OR when word-level karaoke is active) -->
                                         <TextBlock Text="{Binding Text}"
                                                    Classes="lyric-line"
@@ -721,7 +723,8 @@
                                                    FontSize="46"
                                                    FontWeight="Bold"
                                                    Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
-                                                   HorizontalAlignment="Stretch"
+                                                   HorizontalAlignment="Left"
+                                                   MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                    Opacity="{Binding LineOpacity}"
                                                    IsVisible="{Binding ShowLineText}"
                                                    TextWrapping="Wrap"/>
@@ -730,7 +733,8 @@
                                         <ItemsControl ItemsSource="{Binding Words}"
                                                       IsVisible="{Binding ShowWords}"
                                                       Opacity="{Binding LineOpacity}"
-                                                      HorizontalAlignment="Stretch">
+                                                      HorizontalAlignment="Left"
+                                                      MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
                                                     <WrapPanel Orientation="Horizontal"/>

@@ -50,6 +50,53 @@ internal static class PillSliderVisualHelper
         return slider.Minimum + fraction * (slider.Maximum - slider.Minimum);
     }
 
+    /// <summary>
+    /// Vertical variant: track runs bottom-to-top (bottom = minimum, top = maximum).
+    /// </summary>
+    public static void UpdateVisualVertical(
+        Slider slider,
+        Control trackBackground,
+        Control trackFill,
+        Control thumb,
+        TranslateTransform thumbTransform,
+        double thumbSize,
+        double enabledBackgroundOpacity = 1.0,
+        double disabledBackgroundOpacity = 0.45)
+    {
+        var height = slider.Bounds.Height;
+        if (height <= 0)
+            return;
+
+        var thumbRadius = thumbSize / 2.0;
+        var trackHeight = Math.Max(0, height - thumbSize);
+        var fraction = GetFraction(slider);
+        var fillHeight = Math.Clamp(trackHeight * fraction, 0, trackHeight);
+
+        trackBackground.Height = trackHeight;
+        Canvas.SetTop(trackBackground, thumbRadius);
+
+        var fillActual = Math.Min(trackHeight, fillHeight + thumbRadius);
+        trackFill.Height = fillActual;
+        Canvas.SetTop(trackFill, height - thumbRadius - fillActual);
+
+        thumbTransform.Y = trackHeight - fillHeight;
+
+        var enabled = slider.IsEnabled;
+        thumb.Opacity = enabled ? 1.0 : 0.45;
+        trackBackground.Opacity = enabled ? enabledBackgroundOpacity : disabledBackgroundOpacity;
+        trackFill.Opacity = enabled ? 1.0 : 0.45;
+    }
+
+    public static double GetValueFromPointerVertical(Slider slider, Point position, double thumbSize)
+    {
+        if (slider.Bounds.Height <= 0)
+            return slider.Minimum;
+
+        var trackHeight = Math.Max(1, slider.Bounds.Height - thumbSize);
+        var fraction = Math.Clamp(1.0 - (position.Y - thumbSize / 2.0) / trackHeight, 0, 1);
+        return slider.Minimum + fraction * (slider.Maximum - slider.Minimum);
+    }
+
     private static double GetFraction(Slider slider)
     {
         var range = slider.Maximum - slider.Minimum;

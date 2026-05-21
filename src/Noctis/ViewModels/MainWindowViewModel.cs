@@ -1343,6 +1343,7 @@ public partial class MainWindowViewModel : ViewModelBase
             selectSynced: () => _lyricsVm.SelectSyncedLyricsCommand.Execute(null),
             selectPlain: () => _lyricsVm.SelectPlainLyricsCommand.Execute(null),
             openBackgroundColor: () => _lyricsVm.OpenBackgroundColorPickerCommand.Execute(null),
+            removeLyrics: () => _lyricsVm.RemoveLyricsCommand.Execute(null),
             isSyncedActive: _lyricsVm.IsSyncTabSelected,
             isPlainActive: _lyricsVm.IsUnsyncTabSelected,
             isSyncedAvailable: _lyricsVm.HasSyncedLyricsAvailable);
