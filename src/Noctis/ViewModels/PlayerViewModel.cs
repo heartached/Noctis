@@ -63,7 +63,6 @@ public partial class PlayerViewModel : ViewModelBase
 
     private Action? _selectLyricsSynced;
     private Action? _selectLyricsPlain;
-    private Action? _openLyricsCapture;
     private Action? _openLyricsBackgroundColor;
     private Action? _removeLyrics;
 
@@ -347,9 +346,6 @@ public partial class PlayerViewModel : ViewModelBase
     private void SetLyricsPlain() => _selectLyricsPlain?.Invoke();
 
     [RelayCommand]
-    private void OpenLyricsCapture() => _openLyricsCapture?.Invoke();
-
-    [RelayCommand]
     private void OpenLyricsBackgroundColor() => _openLyricsBackgroundColor?.Invoke();
 
     [RelayCommand]
@@ -362,7 +358,6 @@ public partial class PlayerViewModel : ViewModelBase
     public void SetLyricsPageActions(
         Action selectSynced,
         Action selectPlain,
-        Action openCapture,
         Action openBackgroundColor,
         Action removeLyrics,
         bool isSyncedActive,
@@ -371,7 +366,6 @@ public partial class PlayerViewModel : ViewModelBase
     {
         _selectLyricsSynced = selectSynced;
         _selectLyricsPlain = selectPlain;
-        _openLyricsCapture = openCapture;
         _openLyricsBackgroundColor = openBackgroundColor;
         _removeLyrics = removeLyrics;
         IsLyricsSyncedActive = isSyncedActive;
@@ -387,7 +381,6 @@ public partial class PlayerViewModel : ViewModelBase
     {
         _selectLyricsSynced = null;
         _selectLyricsPlain = null;
-        _openLyricsCapture = null;
         _openLyricsBackgroundColor = null;
         _removeLyrics = null;
         IsLyricsPageActive = false;

@@ -615,23 +615,6 @@
                 </Transitions>
             </Grid.Transitions>
 
-            <!-- Capture Mode entry button -->
-            <Button x:Name="CaptureModeButton"
-                    HorizontalAlignment="Right" VerticalAlignment="Top"
-                    Margin="0,12,12,0" Width="36" Height="36"
-                    ZIndex="50" CornerRadius="999" Padding="0"
-                    Background="#33FFFFFF" BorderThickness="0" Cursor="Hand"
-                    ToolTip.Tip="Capture Mode"
-                    IsEnabled="{Binding HasSyncedLyricsAvailable}"
-                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenLyricsCaptureCommand}">
-                <Viewbox Width="18" Height="18">
-                    <Canvas Width="24" Height="24">
-                        <Path Fill="White"
-                              Data="M9 3L7.5 5H4C2.9 5 2 5.9 2 7v11c0 1.1 .9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.5L15 3H9zm3 5c2.76 0 5 2.24 5 5s-2.24 5-5 5-5-2.24-5-5 2.24-5 5-5z"/>
-                    </Canvas>
-                </Viewbox>
-            </Button>
-
             <!-- (Color picker moved to left panel bottom) -->
 
             <!-- Search Lyrics Button (when no lyrics) -->
@@ -724,13 +707,15 @@
                                         BorderThickness="0"
                                         Padding="0"
                                         Margin="0,10"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Stretch"
+                                        MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                        HorizontalAlignment="Left"
+                                        HorizontalContentAlignment="Left"
                                         Cursor="Hand"
                                         IsHitTestVisible="{Binding IsClickable}"
                                         Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
                                         CommandParameter="{Binding}">
-                                    <Panel HorizontalAlignment="Stretch">
+                                    <Panel HorizontalAlignment="Left"
+                                           MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                         <!-- Main text layer (hidden for intro placeholder OR when word-level karaoke is active) -->
                                         <TextBlock Text="{Binding Text}"
                                                    Classes="lyric-line"
@@ -738,7 +723,8 @@
                                                    FontSize="46"
                                                    FontWeight="Bold"
                                                    Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
-                                                   HorizontalAlignment="Stretch"
+                                                   HorizontalAlignment="Left"
+                                                   MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                    Opacity="{Binding LineOpacity}"
                                                    IsVisible="{Binding ShowLineText}"
                                                    TextWrapping="Wrap"/>
@@ -747,7 +733,8 @@
                                         <ItemsControl ItemsSource="{Binding Words}"
                                                       IsVisible="{Binding ShowWords}"
                                                       Opacity="{Binding LineOpacity}"
-                                                      HorizontalAlignment="Stretch">
+                                                      HorizontalAlignment="Left"
+                                                      MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
                                                     <WrapPanel Orientation="Horizontal"/>

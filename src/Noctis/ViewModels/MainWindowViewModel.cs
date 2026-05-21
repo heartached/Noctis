@@ -69,15 +69,6 @@ public partial class MainWindowViewModel : ViewModelBase
     public PlayerViewModel Player { get; }
     public SettingsViewModel Settings { get; }
     public LyricsViewModel Lyrics => _lyricsVm;
-    public LyricsCaptureViewModel Capture => _captureVm;
-
-    [ObservableProperty]
-    private bool _isCaptureModeActive;
-
-    partial void OnIsCaptureModeActiveChanged(bool value)
-    {
-        NotifyPlaybackBarPresentationChanged();
-    }
 
     // ── Content area ──
 
@@ -88,10 +79,10 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsLyricsViewActive => CurrentView == _lyricsVm;
 
     /// <summary>Whether the playback island bar should be visible (has content and not in lyrics view).</summary>
-    public bool IsPlaybackBarVisible => Player.HasContent && !IsLyricsViewActive && !IsCaptureModeActive;
+    public bool IsPlaybackBarVisible => Player.HasContent && !IsLyricsViewActive;
 
     /// <summary>Whether the playback island should stay mounted in the visual tree.</summary>
-    public bool IsPlaybackBarMounted => Player.HasContent && !IsCaptureModeActive;
+    public bool IsPlaybackBarMounted => Player.HasContent;
 
     /// <summary>Opacity used to hide the mounted playback bar while fullscreen lyrics owns playback controls.</summary>
     public double PlaybackBarOpacity => IsPlaybackBarVisible ? 1.0 : 0.0;
@@ -106,14 +97,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarHidden = !IsSidebarHidden;
-
-    [RelayCommand]
-    private void OpenLyricsCapture()
-    {
-        _lyricsVm.EnsureLyricsForCurrentTrack();
-        _lyricsVm.SelectSyncedLyricsCommand.Execute(null);
-        IsCaptureModeActive = true;
-    }
 
     // ── Lyrics side panel ──
 
@@ -154,7 +137,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private readonly QueueViewModel _queueVm;
     private readonly LyricsViewModel _lyricsVm;
-    private readonly LyricsCaptureViewModel _captureVm;
     private readonly StatisticsViewModel _statisticsVm;
     private readonly CoverFlowViewModel _coverFlowVm;
     /// <summary>True when the global Cover Flow overlay is active. Survives sidebar navigation between toggle-eligible sections; auto-exits when navigating to an ineligible section.</summary>
@@ -228,8 +210,6 @@ public partial class MainWindowViewModel : ViewModelBase
         _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
-        _captureVm = new LyricsCaptureViewModel(Player, _lyricsVm);
-        _captureVm.CloseRequested += (_, _) => IsCaptureModeActive = false;
         _statisticsVm = new StatisticsViewModel(library);
         _coverFlowVm = new CoverFlowViewModel(Player);
 
@@ -1362,7 +1342,6 @@ public partial class MainWindowViewModel : ViewModelBase
         Player.SetLyricsPageActions(
             selectSynced: () => _lyricsVm.SelectSyncedLyricsCommand.Execute(null),
             selectPlain: () => _lyricsVm.SelectPlainLyricsCommand.Execute(null),
-            openCapture: () => OpenLyricsCaptureCommand.Execute(null),
             openBackgroundColor: () => _lyricsVm.OpenBackgroundColorPickerCommand.Execute(null),
             removeLyrics: () => _lyricsVm.RemoveLyricsCommand.Execute(null),
             isSyncedActive: _lyricsVm.IsSyncTabSelected,

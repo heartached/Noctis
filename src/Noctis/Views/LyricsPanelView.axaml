@@ -129,7 +129,7 @@
                                        MaxLines="1"
                                        TextTrimming="CharacterEllipsis"
                                        Margin="0,2,0,0"
-                                       Foreground="#E74856"/>
+                                       Foreground="{DynamicResource AccentColorBrush}"/>
                         </StackPanel>
                     </Grid>
                 </Button>
