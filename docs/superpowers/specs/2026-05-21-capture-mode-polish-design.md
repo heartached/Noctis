@@ -48,15 +48,14 @@ No new controls (the star / more-options buttons in the Apple Music reference ar
 
 - Add `RenderTransform="translateX(-60px)"` so the centered art block sits ~60px left of center.
 
-### 4. Bundle Inter-Bold and tighten lyric tracking
+### 4. Use Inter Bold and tighten lyric tracking
 
-The app already bundles `Inter-SemiBold.ttf` and uses it as the global default font. Apple Music's typeface (SF Pro) is proprietary and cannot be shipped; Inter is the standard OFL-licensed substitute.
+Apple Music's typeface (SF Pro) is proprietary and cannot be shipped; Inter is the standard OFL-licensed substitute. The project already references the `Avalonia.Fonts.Inter` NuGet package (`Program.cs` calls `.WithInterFont()`), which bundles Inter at all weights under the family `Inter` addressed by the URI `avares://Avalonia.Fonts.Inter/Assets#Inter`. No new font file or download is needed.
 
-- Download `Inter-Bold.ttf` (SIL Open Font License) into `src/Noctis/Assets/Fonts/`.
-- Register a `FontFamily` resource in `App.axaml` next to the existing `InterSemiBold` resource — e.g. `InterBold` → `avares://Noctis/Assets/Fonts/Inter-Bold.ttf#Inter Bold` (exact `#FamilyName` confirmed against the file's internal name during implementation).
-- Apply `FontFamily="{StaticResource InterBold}"` and `LetterSpacing="-0.5"` to the capture lyric `TextBlock` (the `Classes="capture-line"` element, currently lines ~104-110). Scope: capture lyrics only.
+The global `TextBlock` style currently forces `FontFamily` to the static single-weight `Inter-SemiBold.ttf` (`Styles.axaml`), so `FontWeight` has no effect on the capture lyrics today.
 
-**Fallback:** If `Inter-Bold.ttf` cannot be fetched during implementation, skip the new font file, keep `Inter-SemiBold`, and apply only `LetterSpacing="-0.5"`. This is flagged in the implementation plan and reported if it occurs.
+- Register a `FontFamily` resource `InterBold` in `App.axaml` next to the existing `InterSemiBold` resource, pointing at `avares://Avalonia.Fonts.Inter/Assets#Inter`.
+- On the capture lyric `TextBlock` (the `Classes="capture-line"` element, currently lines ~104-110), set `FontFamily="{StaticResource InterBold}"`, `FontWeight="Bold"`, and `LetterSpacing="-0.5"`. Scope: capture lyrics only.
 
 ## Verification
 
