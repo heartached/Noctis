@@ -15,32 +15,74 @@
 
     <UserControl.Styles>
         <Style Selector="Button.capture-ctl">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="#661A1A1A"/>
+            <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Width" Value="36"/>
             <Setter Property="Height" Value="36"/>
             <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="18"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Slider.capture-volume-vertical">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter>
         </Style>
         <Style Selector="Button.capture-ctl:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#22FFFFFF"/>
+        </Style>
+        <Style Selector="Border.capture-line-row">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Margin" Value="0,12"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <!-- Drop shadow only on the active line: ~60 shadowed TextBlocks made the
+             list re-rasterize on every transition/scroll frame. -->
+        <Style Selector="TextBlock.capture-line.active">
+            <Setter Property="Effect">
+                <DropShadowEffect OffsetX="0" OffsetY="3" BlurRadius="10"
+                                  Color="Black" Opacity="0.68"/>
+            </Setter>
         </Style>
     </UserControl.Styles>
 
     <Grid>
         <!-- Top-left: artwork + metadata (16px 9:16-crop safe zone) -->
-        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top"
-                    Margin="16" Spacing="8">
-            <Border Width="120" Height="120" CornerRadius="12" ClipToBounds="True"
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Margin="16" Spacing="14"
+                    IsVisible="{Binding !IsArtCentered}">
+            <Border Width="88" Height="88" CornerRadius="14" ClipToBounds="True"
                     Background="#222222">
                 <Image Source="{Binding AlbumArt}" Stretch="UniformToFill"/>
             </Border>
-            <StackPanel Spacing="4">
-                <TextBlock Text="{Binding TrackTitle}" FontSize="12" FontWeight="SemiBold"
-                           Foreground="White" MaxWidth="140"
-                           TextTrimming="CharacterEllipsis"/>
-                <TextBlock Text="{Binding TrackArtist}" FontSize="11" FontWeight="Regular"
-                           Foreground="#999999" MaxWidth="140"
+            <StackPanel Spacing="3" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="{Binding TrackTitle}" FontSize="17" FontWeight="Bold"
+                               Foreground="White" MaxWidth="240"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"/>
+                    <Border Background="{DynamicResource IslandExplicitBadge}"
+                            CornerRadius="2" Padding="4,0" Height="14"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding IsExplicit, FallbackValue=False}"
+                            ToolTip.Tip="Explicit">
+                        <TextBlock Text="E" FontSize="9" FontWeight="Bold"
+                                   VerticalAlignment="Center" TextAlignment="Center"
+                                   Foreground="{DynamicResource IslandIconFill}"/>
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="{Binding TrackArtist}" FontSize="13" FontWeight="Regular"
+                           Foreground="#B5B5B5" MaxWidth="240"
                            TextTrimming="CharacterEllipsis"/>
             </StackPanel>
         </StackPanel>
@@ -51,66 +93,209 @@
                       HorizontalScrollBarVisibility="Disabled">
             <ItemsControl x:Name="CaptureLyricsItems"
                           ItemsSource="{Binding LyricLines}"
-                          MaxWidth="1400" HorizontalAlignment="Center"
+                          MaxWidth="1180" HorizontalAlignment="Stretch"
                           Margin="0,540">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="m:LyricLine">
-                        <TextBlock Text="{Binding Text}"
-                                   Foreground="White" FontWeight="SemiBold"
-                                   Opacity="{Binding LineOpacity}"
-                                   TextAlignment="Center" TextWrapping="Wrap"
-                                   Margin="0,14">
-                            <TextBlock.Transitions>
-                                <Transitions>
-                                    <DoubleTransition Property="FontSize" Duration="0:0:0.2"/>
-                                </Transitions>
-                            </TextBlock.Transitions>
-                            <TextBlock.FontSize>
-                                <MultiBinding Converter="{StaticResource ActiveLineFontSize}">
-                                    <Binding Path="IsActive"/>
-                                    <Binding Path="$parent[ItemsControl].((vm:LyricsCaptureViewModel)DataContext).FontSize"/>
-                                </MultiBinding>
-                            </TextBlock.FontSize>
-                            <TextBlock.Effect>
-                                <DropShadowEffect OffsetX="0" OffsetY="2" BlurRadius="8"
-                                                  Color="Black" Opacity="0.6"/>
-                            </TextBlock.Effect>
-                        </TextBlock>
+                        <Border Classes="capture-line-row"
+                                IsHitTestVisible="{Binding IsClickable}"
+                                PointerPressed="OnLyricLinePressed">
+                          <Panel>
+                            <TextBlock Text="{Binding Text}"
+                                       IsVisible="{Binding !IsIntroPlaceholder}"
+                                       Classes="capture-line"
+                                       Classes.active="{Binding IsActive}"
+                                       Foreground="White" FontWeight="SemiBold"
+                                       Opacity="{Binding LineOpacity}"
+                                       TextAlignment="Center" TextWrapping="Wrap">
+                                <TextBlock.Transitions>
+                                    <Transitions>
+                                        <DoubleTransition Property="FontSize" Duration="0:0:0.34">
+                                            <DoubleTransition.Easing>
+                                                <CubicEaseOut/>
+                                            </DoubleTransition.Easing>
+                                        </DoubleTransition>
+                                        <DoubleTransition Property="Opacity" Duration="0:0:0.42">
+                                            <DoubleTransition.Easing>
+                                                <CubicEaseOut/>
+                                            </DoubleTransition.Easing>
+                                        </DoubleTransition>
+                                    </Transitions>
+                                </TextBlock.Transitions>
+                                <TextBlock.FontSize>
+                                    <MultiBinding Converter="{StaticResource ActiveLineFontSize}">
+                                        <Binding Path="IsActive"/>
+                                        <Binding Path="$parent[ItemsControl].((vm:LyricsCaptureViewModel)DataContext).FontSize"/>
+                                    </MultiBinding>
+                                </TextBlock.FontSize>
+                            </TextBlock>
+
+                            <!-- Animated intro dots ("...") shown while the track loads -->
+                            <StackPanel Orientation="Horizontal" Spacing="9"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Margin="0,10"
+                                        Opacity="{Binding LineOpacity}"
+                                        IsVisible="{Binding IsIntroPlaceholder}"
+                                        Classes.active="{Binding IsActive}">
+                                <Ellipse x:Name="IntroDot1" Width="10" Height="10" Fill="White">
+                                    <Ellipse.Styles>
+                                        <Style Selector="StackPanel.active Ellipse#IntroDot1">
+                                            <Style.Animations>
+                                                <Animation Duration="0:0:1.8" IterationCount="INFINITE">
+                                                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                    <KeyFrame Cue="16%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                                                    <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                </Animation>
+                                            </Style.Animations>
+                                        </Style>
+                                        <Style Selector="StackPanel:not(.active) Ellipse#IntroDot1">
+                                            <Setter Property="Opacity" Value="1.0"/>
+                                        </Style>
+                                    </Ellipse.Styles>
+                                </Ellipse>
+                                <Ellipse x:Name="IntroDot2" Width="10" Height="10" Fill="White">
+                                    <Ellipse.Styles>
+                                        <Style Selector="StackPanel.active Ellipse#IntroDot2">
+                                            <Style.Animations>
+                                                <Animation Duration="0:0:1.8" IterationCount="INFINITE" Delay="0:0:0.3">
+                                                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                    <KeyFrame Cue="16%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                                                    <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                </Animation>
+                                            </Style.Animations>
+                                        </Style>
+                                        <Style Selector="StackPanel:not(.active) Ellipse#IntroDot2">
+                                            <Setter Property="Opacity" Value="1.0"/>
+                                        </Style>
+                                    </Ellipse.Styles>
+                                </Ellipse>
+                                <Ellipse x:Name="IntroDot3" Width="10" Height="10" Fill="White">
+                                    <Ellipse.Styles>
+                                        <Style Selector="StackPanel.active Ellipse#IntroDot3">
+                                            <Style.Animations>
+                                                <Animation Duration="0:0:1.8" IterationCount="INFINITE" Delay="0:0:0.6">
+                                                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                    <KeyFrame Cue="16%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                                                    <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                </Animation>
+                                            </Style.Animations>
+                                        </Style>
+                                        <Style Selector="StackPanel:not(.active) Ellipse#IntroDot3">
+                                            <Setter Property="Opacity" Value="1.0"/>
+                                        </Style>
+                                    </Ellipse.Styles>
+                                </Ellipse>
+                            </StackPanel>
+                          </Panel>
+                        </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
 
-        <!-- Bottom-center: floating control panel -->
-        <Border x:Name="ControlPanel"
-                HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                Margin="0,0,0,16" Padding="16"
-                CornerRadius="999" Background="#CC1A1A1A"
-                Opacity="0" IsHitTestVisible="False">
-            <Border.Transitions>
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
-                </Transitions>
-            </Border.Transitions>
-            <StackPanel Orientation="Horizontal" Spacing="12"
-                        VerticalAlignment="Center">
-                <Button Classes="capture-ctl" Command="{Binding TogglePlayPauseCommand}">
-                    <Panel>
-                        <Path Fill="White" Data="M8 5v14l11-7z"
-                              IsVisible="{Binding !IsPlaying}"/>
-                        <Path Fill="White" Data="M6 5h4v14H6zM14 5h4v14h-4z"
-                              IsVisible="{Binding IsPlaying}"/>
-                    </Panel>
-                </Button>
-                <Slider Width="180" VerticalAlignment="Center"
-                        Minimum="{Binding MinFontSize}"
-                        Maximum="{Binding MaxFontSize}"
-                        Value="{Binding FontSize, Mode=TwoWay}"/>
-                <Button Classes="capture-ctl" Command="{Binding CloseCommand}">
-                    <Path Fill="White"
-                          Data="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                </Button>
+        <!-- Top-center: artwork + metadata (Apple-Music style; lyrics fade under it) -->
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Center" VerticalAlignment="Top"
+                    Margin="0,30,0,0" Spacing="14" ZIndex="50"
+                    IsVisible="{Binding IsArtCentered}">
+            <Border Width="92" Height="92" CornerRadius="10" ClipToBounds="True"
+                    Background="#222222">
+                <Image Source="{Binding AlbumArt}" Stretch="UniformToFill"/>
+            </Border>
+            <StackPanel Spacing="4" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="{Binding TrackTitle}" FontSize="15" FontWeight="SemiBold"
+                               Foreground="White" MaxWidth="320"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"/>
+                    <Border Background="{DynamicResource IslandExplicitBadge}"
+                            CornerRadius="2" Padding="4,0" Height="14"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding IsExplicit, FallbackValue=False}"
+                            ToolTip.Tip="Explicit">
+                        <TextBlock Text="E" FontSize="9" FontWeight="Bold"
+                                   VerticalAlignment="Center" TextAlignment="Center"
+                                   Foreground="{DynamicResource IslandIconFill}"/>
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="{Binding TrackArtist}" FontSize="12" FontWeight="Regular"
+                           Foreground="#BBBBBB" MaxWidth="320"
+                           TextTrimming="CharacterEllipsis"/>
             </StackPanel>
-        </Border>
+        </StackPanel>
+
+        <!-- Bottom-left: capture controls stay outside the 9:16 crop area. -->
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                    Margin="24,0,0,24" Spacing="10">
+            <Button Classes="capture-ctl"
+                    Command="{Binding ToggleArtPositionCommand}"
+                    ToolTip.Tip="Cover art position">
+                <PathIcon Data="{StaticResource AlbumsIcon}"
+                          Width="16" Height="16"
+                          Foreground="White"/>
+            </Button>
+            <Border CornerRadius="999"
+                    Background="{DynamicResource IslandBackground}"
+                    BorderBrush="{DynamicResource IslandBorder}"
+                    BorderThickness="1"
+                    BoxShadow="0 4 14 0 #50000000"
+                    Padding="6,10"
+                    HorizontalAlignment="Center">
+                <Grid Width="14" Height="110">
+                    <Canvas x:Name="CaptureVolumeVisual"
+                            Width="14" Height="110"
+                            ClipToBounds="False"
+                            IsHitTestVisible="False">
+                        <Border x:Name="CaptureVolumeTrackBackground"
+                                Width="6"
+                                CornerRadius="3"
+                                Background="{DynamicResource IslandSliderUnfilled}"
+                                Opacity="0.4"
+                                Canvas.Left="4"/>
+                        <Border x:Name="CaptureVolumeTrackFill"
+                                Width="6"
+                                CornerRadius="3"
+                                Background="{DynamicResource IslandSliderFilled}"
+                                Canvas.Left="4"/>
+                        <Border x:Name="CaptureVolumeThumb"
+                                Width="14" Height="14"
+                                CornerRadius="7"
+                                Background="{DynamicResource IslandSliderFilled}"
+                                BoxShadow="0 1 3 0 #40000000"
+                                Canvas.Left="0" Canvas.Top="0"/>
+                    </Canvas>
+                    <Slider x:Name="CaptureVolumeSlider"
+                            Classes="capture-volume-vertical"
+                            Orientation="Vertical"
+                            Width="14" Height="110"
+                            Minimum="0" Maximum="100"
+                            Value="{Binding Volume, Mode=TwoWay}"/>
+                </Grid>
+            </Border>
+            <Button Classes="capture-ctl"
+                    Command="{Binding TogglePlayPauseCommand}"
+                    ToolTip.Tip="Play/Pause">
+                <Panel>
+                    <PathIcon Data="{StaticResource PlaySolidIcon}"
+                              Width="14" Height="14"
+                              Foreground="White"
+                              IsVisible="{Binding !IsPlaying}"/>
+                    <PathIcon Data="{StaticResource PauseIcon}"
+                              Width="14" Height="14"
+                              Foreground="White"
+                              IsVisible="{Binding IsPlaying}"/>
+                </Panel>
+            </Button>
+            <Button Classes="capture-ctl"
+                    Command="{Binding CloseCommand}"
+                    ToolTip.Tip="Back">
+                <PathIcon Data="{StaticResource ChevronLeftIcon}"
+                          Width="18" Height="18"
+                          Foreground="White"/>
+            </Button>
+        </StackPanel>
     </Grid>
 </UserControl>
