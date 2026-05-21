@@ -37,6 +37,7 @@
                 <ResourceInclude Source="avares://Noctis/Assets/Icons.axaml" />
             </ResourceDictionary.MergedDictionaries>
             <FontFamily x:Key="InterSemiBold">avares://Noctis/Assets/Fonts/Inter-SemiBold.ttf#Inter SemiBold</FontFamily>
+            <FontFamily x:Key="InterBold">avares://Avalonia.Fonts.Inter/Assets#Inter</FontFamily>
         </ResourceDictionary>
     </Application.Resources>
 
