@@ -715,7 +715,7 @@
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <MenuItem Header="Remove Lyrics"
+                                <MenuItem Header="Remove Lyrics" Classes="danger"
                                           Command="{Binding RemoveCurrentTrackLyricsCommand}"
                                           IsVisible="{Binding IsLyricsPageActive}">
                                     <MenuItem.Icon>
