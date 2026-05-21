@@ -92,7 +92,10 @@ public class ArtistImageServiceTests
     private static HttpResponseMessage ImageResponse()
         => new(HttpStatusCode.OK)
         {
-            Content = new ByteArrayContent(new byte[] { 1, 2, 3, 4, 5 })
+            // Must exceed ArtistImageService's 5120-byte Last.fm-placeholder purge
+            // threshold, otherwise the background purge task races the cache write
+            // and deletes the file before the test asserts File.Exists.
+            Content = new ByteArrayContent(new byte[6 * 1024])
             {
                 Headers = { ContentType = new("image/jpeg") }
             }
