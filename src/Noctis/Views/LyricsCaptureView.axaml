@@ -105,7 +105,9 @@
                                        IsVisible="{Binding !IsIntroPlaceholder}"
                                        Classes="capture-line"
                                        Classes.active="{Binding IsActive}"
-                                       Foreground="White" FontWeight="SemiBold"
+                                       FontFamily="{StaticResource InterBold}"
+                                       Foreground="White" FontWeight="Bold"
+                                       LetterSpacing="-0.5"
                                        Opacity="{Binding LineOpacity}"
                                        TextAlignment="Center" TextWrapping="Wrap">
                                 <TextBlock.Transitions>
