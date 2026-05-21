@@ -110,7 +110,7 @@
                                        LetterSpacing="-0.5"
                                        Opacity="{Binding LineOpacity}"
                                        TextAlignment="Center" TextWrapping="Wrap"
-                                       RenderTransformOrigin="0.5,0.5"
+                                       RenderTransformOrigin="50%,50%"
                                        FontSize="{Binding $parent[ItemsControl].((vm:LyricsCaptureViewModel)DataContext).FontSize}">
                                 <TextBlock.Transitions>
                                     <Transitions>
