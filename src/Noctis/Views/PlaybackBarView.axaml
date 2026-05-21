@@ -716,13 +716,8 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="Remove Lyrics"
-                                          Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Lyrics.RemoveLyricsCommand}">
-                                    <MenuItem.IsVisible>
-                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                            <Binding Path="IsLyricsPageActive" />
-                                            <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Lyrics.CanRemoveLyrics" />
-                                        </MultiBinding>
-                                    </MenuItem.IsVisible>
+                                          Command="{Binding RemoveCurrentTrackLyricsCommand}"
+                                          IsVisible="{Binding IsLyricsPageActive}">
                                     <MenuItem.Icon>
                                         <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
                                     </MenuItem.Icon>
