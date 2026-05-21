@@ -10,7 +10,7 @@
              Background="{Binding BackgroundBrush}">
 
     <UserControl.Resources>
-        <conv:ActiveLineFontSizeConverter x:Key="ActiveLineFontSize"/>
+        <conv:ActiveLineScaleConverter x:Key="ActiveLineScale"/>
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -109,9 +109,16 @@
                                        Foreground="White" FontWeight="Bold"
                                        LetterSpacing="-0.5"
                                        Opacity="{Binding LineOpacity}"
-                                       TextAlignment="Center" TextWrapping="Wrap">
+                                       TextAlignment="Center" TextWrapping="Wrap"
+                                       RenderTransformOrigin="0.5,0.5"
+                                       FontSize="{Binding $parent[ItemsControl].((vm:LyricsCaptureViewModel)DataContext).FontSize}">
                                 <TextBlock.Transitions>
                                     <Transitions>
+                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.34">
+                                            <TransformOperationsTransition.Easing>
+                                                <CubicEaseOut/>
+                                            </TransformOperationsTransition.Easing>
+                                        </TransformOperationsTransition>
                                         <DoubleTransition Property="Opacity" Duration="0:0:0.42">
                                             <DoubleTransition.Easing>
                                                 <CubicEaseOut/>
@@ -119,12 +126,12 @@
                                         </DoubleTransition>
                                     </Transitions>
                                 </TextBlock.Transitions>
-                                <TextBlock.FontSize>
-                                    <MultiBinding Converter="{StaticResource ActiveLineFontSize}">
+                                <TextBlock.RenderTransform>
+                                    <MultiBinding Converter="{StaticResource ActiveLineScale}">
                                         <Binding Path="IsActive"/>
                                         <Binding Path="$parent[ItemsControl].((vm:LyricsCaptureViewModel)DataContext).FontSize"/>
                                     </MultiBinding>
-                                </TextBlock.FontSize>
+                                </TextBlock.RenderTransform>
                             </TextBlock>
 
                             <!-- Animated intro dots ("...") shown while the track loads -->
