@@ -751,11 +751,6 @@
         </Border>
     </Border>
 
-        <!-- Capture Mode: full-window overlay above all chrome -->
-        <views:LyricsCaptureView DataContext="{Binding Capture}"
-                                 ZIndex="100"
-                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsCaptureModeActive, FallbackValue=False}" />
-
     </Panel>
 
 </Window>

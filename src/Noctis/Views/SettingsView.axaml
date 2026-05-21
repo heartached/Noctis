@@ -1703,7 +1703,7 @@
                         </Button>
                     </StackPanel>
 
-                    <TextBlock Text="Modern music player for Windows."
+                    <TextBlock Text="Modern music player for Windows, macOS, and Linux."
                                FontSize="13" Opacity="0.6"/>
                     <TextBlock Text="Yours Truly, heartached."
                                FontSize="12" Opacity="0.4"/>
