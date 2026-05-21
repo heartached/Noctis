@@ -200,6 +200,7 @@
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Center" VerticalAlignment="Top"
                     Margin="0,30,0,0" Spacing="14" ZIndex="50"
+                    RenderTransform="translateX(-60px)"
                     IsVisible="{Binding IsArtCentered}">
             <Border Width="92" Height="92" CornerRadius="10" ClipToBounds="True"
                     Background="#222222">
