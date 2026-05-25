@@ -156,6 +156,10 @@ public class AppSettings
     /// <summary>Custom background color hex for lyrics view (empty = auto from album art).</summary>
     public string LyricsBackgroundColorHex { get; set; } = "";
 
+    /// <summary>When true, the lyrics page shows the blurred album artwork as background.
+    /// When false, the chosen solid/gradient color shows through instead.</summary>
+    public bool LyricsShowArtworkBackground { get; set; } = true;
+
     // ── Lyrics providers ──
 
     /// <summary>Whether LRCLIB online lyrics search is enabled.</summary>
@@ -163,4 +167,17 @@ public class AppSettings
 
     /// <summary>Whether NetEase Cloud Music online lyrics search is enabled.</summary>
     public bool NetEaseEnabled { get; set; } = true;
+
+    // ── Audio Converter ──
+
+    /// <summary>Override path to ffmpeg. Empty = auto-detect (app dir, then PATH).</summary>
+    public string FfmpegPath { get; set; } = string.Empty;
+
+    // ── ReplayGain ──
+
+    /// <summary>"Off", "Track", "Album", or "Auto" (album when same-album sequence else track).</summary>
+    public string ReplayGainMode { get; set; } = "Off";
+
+    /// <summary>Pre-amp in dB applied on top of the RG tag value.</summary>
+    public double ReplayGainPreampDb { get; set; } = 0.0;
 }
