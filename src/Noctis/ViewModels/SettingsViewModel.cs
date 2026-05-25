@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Loon;
@@ -136,6 +137,13 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private bool _lrcLibEnabled = true;
     [ObservableProperty] private bool _netEaseEnabled = true;
+
+    [ObservableProperty] private string _ffmpegPath = string.Empty;
+    [ObservableProperty] private string _ffmpegStatus = string.Empty;
+
+    public string[] ReplayGainModeOptions { get; } = { "Off", "Track", "Album", "Auto" };
+    [ObservableProperty] private string _replayGainMode = "Off";
+    [ObservableProperty] private double _replayGainPreampDb;
 
     // ── Equalizer ──
 
@@ -457,6 +465,10 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
+            FfmpegPath = _settings.FfmpegPath;
+            RefreshFfmpegStatus();
+            ReplayGainMode = string.IsNullOrEmpty(_settings.ReplayGainMode) ? "Off" : _settings.ReplayGainMode;
+            ReplayGainPreampDb = _settings.ReplayGainPreampDb;
             NetEaseEnabled = _settings.NetEaseEnabled;
 
             // Equalizer
@@ -604,6 +616,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsArtistMarqueeEnabled = LyricsArtistMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
         _settings.LrcLibEnabled = LrcLibEnabled;
+        _settings.FfmpegPath = FfmpegPath ?? string.Empty;
+        _settings.ReplayGainMode = ReplayGainMode ?? "Off";
+        _settings.ReplayGainPreampDb = ReplayGainPreampDb;
         _settings.NetEaseEnabled = NetEaseEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
         _settings.EqualizerPresetIndex = SelectedEqPresetIndex - 1;
@@ -1032,6 +1047,59 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
+    }
+
+    partial void OnFfmpegPathChanged(string value)
+    {
+        RefreshFfmpegStatus();
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnReplayGainModeChanged(string value)
+    {
+        if (_suspendSettingPersistence) return;
+        _audioPlayer?.ApplyReplayGain(value, ReplayGainPreampDb);
+        _ = SaveAsync();
+    }
+
+    partial void OnReplayGainPreampDbChanged(double value)
+    {
+        if (_suspendSettingPersistence) return;
+        _audioPlayer?.ApplyReplayGain(ReplayGainMode, value);
+        _ = SaveAsync();
+    }
+
+    /// <summary>Probes the configured or auto-detected ffmpeg path and updates
+    /// <see cref="FfmpegStatus"/> so the Settings view can show whether the
+    /// converter will work without the user having to open the dialog.</summary>
+    public void RefreshFfmpegStatus()
+    {
+        var svc = App.Services?.GetService<IAudioConverterService>();
+        if (svc == null) { FfmpegStatus = string.Empty; return; }
+        var path = svc.GetFfmpegPath();
+        FfmpegStatus = path != null
+            ? $"Detected: {path}"
+            : "Not found — set a path below, or install ffmpeg on your PATH.";
+    }
+
+    [RelayCommand]
+    private async Task BrowseFfmpegAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is not
+            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop) return;
+        if (desktop.MainWindow is not Avalonia.Controls.Window owner) return;
+
+        var top = Avalonia.Controls.TopLevel.GetTopLevel(owner);
+        if (top == null) return;
+
+        var picks = await top.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "Locate ffmpeg",
+            AllowMultiple = false,
+        });
+        if (picks.Count > 0)
+            FfmpegPath = picks[0].Path.LocalPath;
     }
 
     // ── Integration handlers ──
