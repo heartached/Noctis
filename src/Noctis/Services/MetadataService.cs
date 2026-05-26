@@ -158,6 +158,8 @@ public class MetadataService : IMetadataService
                 Codec = codec ?? string.Empty
             };
 
+            PopulateReleaseType(track, file);
+
             return track;
         }
         catch (Exception)
@@ -276,6 +278,7 @@ public class MetadataService : IMetadataService
             tag.Copyright = string.IsNullOrWhiteSpace(track.Copyright) ? null : track.Copyright;
 
             ExtendedTagIO.WriteIsCompilation(file, track.IsCompilation);
+            ExtendedTagIO.WriteReleaseTypeOverride(file, track.IsReleaseTypeOverridden ? track.ReleaseType : null);
             ExtendedTagIO.WriteShowComposer(file, track.ShowComposerInAllViews);
             ExtendedTagIO.WriteUseWorkAndMovement(file, track.UseWorkAndMovement);
             ExtendedTagIO.WriteWorkName(file, track.WorkName);
@@ -1160,6 +1163,54 @@ public class MetadataService : IMetadataService
         }
 
         numeric = -1;
+        return false;
+    }
+
+    /// <summary>
+    /// Reads release-type tags and falls back to the iTunes album-name suffix
+    /// ("Album - Single", "Album - EP"). Sets <see cref="Track.ReleaseTypeFromTag"/>
+    /// when a determination was made so the album-level track-count fallback in
+    /// <see cref="LibraryService"/> can skip explicitly-tagged tracks.
+    /// </summary>
+    private static void PopulateReleaseType(Track track, TagLib.File file)
+    {
+        var tagged = ExtendedTagIO.ReadReleaseType(file, out var isOverride);
+        if (tagged.HasValue)
+        {
+            track.ReleaseType = tagged.Value;
+            track.IsReleaseTypeOverridden = isOverride;
+            track.ReleaseTypeFromTag = true;
+            return;
+        }
+
+        if (TryParseReleaseTypeFromAlbumName(track.Album, out var fromName))
+        {
+            track.ReleaseType = fromName;
+            track.ReleaseTypeFromTag = true;
+            return;
+        }
+
+        // Leave Track.ReleaseType at its default (Album); LibraryService applies
+        // the track-count heuristic at album-grouping time.
+        track.ReleaseTypeFromTag = false;
+    }
+
+    /// <summary>
+    /// Detects "Album Name - Single" / "Album Name - EP" suffixes that iTunes
+    /// applies to standalone releases. Conservative: only triggers on the exact
+    /// dash-separated tokens at the end of the album name.
+    /// </summary>
+    private static bool TryParseReleaseTypeFromAlbumName(string? albumName, out ReleaseType type)
+    {
+        type = ReleaseType.Album;
+        if (string.IsNullOrWhiteSpace(albumName)) return false;
+
+        var trimmed = albumName.TrimEnd();
+        int dash = trimmed.LastIndexOf(" - ", StringComparison.Ordinal);
+        if (dash <= 0) return false;
+        var tail = trimmed[(dash + 3)..].Trim().TrimEnd('.', ' ');
+        if (tail.Equals("Single", StringComparison.OrdinalIgnoreCase)) { type = ReleaseType.Single; return true; }
+        if (tail.Equals("EP", StringComparison.OrdinalIgnoreCase)) { type = ReleaseType.EP; return true; }
         return false;
     }
 

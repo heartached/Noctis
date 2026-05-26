@@ -650,6 +650,44 @@ public static class DominantColorExtractor
         return new SolidColorBrush(color);
     }
 
+    /// <summary>
+    /// Returns the average color of the bitmap by downscaling it to a single pixel.
+    /// Useful for predicting the apparent tint of a heavily-blurred cover image, where
+    /// the blurred surface reads as the bitmap's average tone rather than its dominant
+    /// accent. Cheap (a single GPU downscale + 1-byte read).
+    /// </summary>
+    public static Color ExtractAverageColor(Bitmap? bitmap)
+    {
+        if (bitmap == null || bitmap.Size.Width <= 0 || bitmap.Size.Height <= 0)
+            return FallbackColor;
+
+        try
+        {
+            using var rtb = new RenderTargetBitmap(new PixelSize(1, 1));
+            using (var ctx = rtb.CreateDrawingContext())
+            {
+                ctx.DrawImage(bitmap,
+                    new Rect(0, 0, bitmap.Size.Width, bitmap.Size.Height),
+                    new Rect(0, 0, 1, 1));
+            }
+
+            using var ms = new MemoryStream();
+            rtb.Save(ms);
+            ms.Position = 0;
+            using var decoded = WriteableBitmap.Decode(ms);
+            using var fb = decoded.Lock();
+
+            var pixel = new byte[4];
+            Marshal.Copy(fb.Address, pixel, 0, 4);
+            // Avalonia uses BGRA layout.
+            return Color.FromRgb(pixel[2], pixel[1], pixel[0]);
+        }
+        catch
+        {
+            return FallbackColor;
+        }
+    }
+
     private static (double H, double S, double L) RgbToHsl(byte r, byte g, byte b)
     {
         double rd = r / 255.0, gd = g / 255.0, bd = b / 255.0;

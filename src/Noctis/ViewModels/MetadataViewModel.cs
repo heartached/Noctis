@@ -101,6 +101,9 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private bool _skipWhenShuffling;
     [ObservableProperty] private bool _rememberPlaybackPosition;
     [ObservableProperty] private string _mediaKind = "Music";
+
+    /// <summary>Override release type. "Auto" defers to the scanner-detected value.</summary>
+    [ObservableProperty] private string _releaseTypeOverride = "Auto";
     [ObservableProperty] private bool _hasStartTime;
     [ObservableProperty] private string _startTime = "0:00.000";
     [ObservableProperty] private bool _hasStopTime;
@@ -207,6 +210,13 @@ public partial class MetadataViewModel : ViewModelBase
 
     /// <summary>Available media kinds for the Options tab dropdown.</summary>
     public static string[] AvailableMediaKinds => Track.AvailableMediaKinds;
+
+    /// <summary>Release-type override choices for the Options tab dropdown.
+    /// "Auto" preserves the scanner-detected value.</summary>
+    public static readonly string[] AvailableReleaseTypes =
+    {
+        "Auto", "Album", "Single", "EP", "Compilation", "Live", "Remix", "Soundtrack", "Other"
+    };
 
     /// <summary>EQ presets for the Options tab dropdown (None + all presets from Settings).</summary>
     public static readonly string[] OptionsEqPresets = BuildOptionsEqPresets();
@@ -337,6 +347,11 @@ public partial class MetadataViewModel : ViewModelBase
         // Options
         SkipWhenShuffling = _track.SkipWhenShuffling;
         RememberPlaybackPosition = _track.RememberPlaybackPosition;
+
+        // Release-type override: "Auto" if no override, otherwise the enum name.
+        ReleaseTypeOverride = _track.IsReleaseTypeOverridden
+            ? _track.ReleaseType.ToString()
+            : "Auto";
 
         // Options - extended
         MediaKind = string.IsNullOrEmpty(_track.MediaKind) ? "Music" : _track.MediaKind;
@@ -1044,6 +1059,10 @@ public partial class MetadataViewModel : ViewModelBase
         _track.SkipWhenShuffling = SkipWhenShuffling;
         _track.RememberPlaybackPosition = RememberPlaybackPosition;
         _track.MediaKind = MediaKind;
+
+        // Release type override (album-level concept; fanned out to all album
+        // tracks below). "Auto" clears the override so auto-detection runs again.
+        ApplyReleaseTypeOverride(_track);
         _track.StartTimeMs = HasStartTime ? ParseTimeToMs(StartTime) : 0;
         _track.StopTimeMs = HasStopTime ? ParseTimeToMs(StopTime) : 0;
         _track.VolumeAdjust = VolumeAdjust;
@@ -1061,6 +1080,7 @@ public partial class MetadataViewModel : ViewModelBase
                 t.StopTimeMs = HasStopTime ? ParseTimeToMs(StopTime) : 0;
                 t.VolumeAdjust = VolumeAdjust;
                 t.EqPreset = SelectedEqPreset == "None" ? string.Empty : SelectedEqPreset;
+                ApplyReleaseTypeOverride(t);
             }
         }
 
@@ -1303,6 +1323,25 @@ public partial class MetadataViewModel : ViewModelBase
     {
         if (item != null)
             CustomTags.Remove(item);
+    }
+
+    /// <summary>
+    /// Applies the <see cref="ReleaseTypeOverride"/> string selection to a track.
+    /// "Auto" clears the override and lets auto-detection take over on next scan.
+    /// </summary>
+    private void ApplyReleaseTypeOverride(Track t)
+    {
+        if (string.Equals(ReleaseTypeOverride, "Auto", StringComparison.OrdinalIgnoreCase))
+        {
+            t.IsReleaseTypeOverridden = false;
+            return;
+        }
+        if (Enum.TryParse<ReleaseType>(ReleaseTypeOverride, true, out var parsed))
+        {
+            t.ReleaseType = parsed;
+            t.IsReleaseTypeOverridden = true;
+            t.ReleaseTypeFromTag = true;
+        }
     }
 }
 

@@ -32,7 +32,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private CancellationTokenSource? _statusClearCts;
     private readonly EventHandler? _accentHandler;
 
-    [ObservableProperty] private bool _isColorModeSolid = true;
+    [ObservableProperty] private bool _isColorModeArtwork = true;
+    [ObservableProperty] private bool _isColorModeSolid;
     [ObservableProperty] private bool _isColorModeGradient;
     [ObservableProperty] private string _activeSwatchKey = "";
 
@@ -265,6 +266,61 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private IBrush _panelBackgroundBrush = CreateDefaultPanelBrush();
 
+    // ── Fluid mesh colours (AMLL-style animated background blobs) ──
+
+    [ObservableProperty] private Color _meshBaseColor = DefaultAdaptiveColor;
+    [ObservableProperty] private Color _meshBlobColor1 = Color.FromRgb(0x3A, 0x1C, 0x71);
+    [ObservableProperty] private Color _meshBlobColor2 = Color.FromRgb(0xD7, 0x6D, 0x77);
+    [ObservableProperty] private Color _meshBlobColor3 = Color.FromRgb(0xFF, 0xAF, 0x7B);
+
+    private void UpdateMeshColors(Color dominant, Color secondary)
+    {
+        MeshBaseColor = Darken(dominant, 0.55);
+        MeshBlobColor1 = dominant;
+        MeshBlobColor2 = secondary;
+        MeshBlobColor3 = ShiftHue(dominant, 35);
+    }
+
+    private static Color Darken(Color c, double factor)
+    {
+        factor = Math.Clamp(factor, 0.0, 1.0);
+        return Color.FromRgb((byte)(c.R * factor), (byte)(c.G * factor), (byte)(c.B * factor));
+    }
+
+    private static Color ShiftHue(Color c, double degrees)
+    {
+        // RGB → HSV → shift H → RGB.
+        double r = c.R / 255.0, g = c.G / 255.0, b = c.B / 255.0;
+        double max = Math.Max(r, Math.Max(g, b));
+        double min = Math.Min(r, Math.Min(g, b));
+        double v = max;
+        double d = max - min;
+        double s = max <= 0 ? 0 : d / max;
+        double h = 0;
+        if (d > 0)
+        {
+            if (max == r) h = ((g - b) / d) % 6;
+            else if (max == g) h = (b - r) / d + 2;
+            else h = (r - g) / d + 4;
+            h *= 60;
+            if (h < 0) h += 360;
+        }
+        h = (h + degrees) % 360;
+        if (h < 0) h += 360;
+
+        double c2 = v * s;
+        double x = c2 * (1 - Math.Abs((h / 60) % 2 - 1));
+        double m = v - c2;
+        double rr = 0, gg = 0, bb = 0;
+        if (h < 60) { rr = c2; gg = x; }
+        else if (h < 120) { rr = x; gg = c2; }
+        else if (h < 180) { gg = c2; bb = x; }
+        else if (h < 240) { gg = x; bb = c2; }
+        else if (h < 300) { rr = x; bb = c2; }
+        else { rr = c2; bb = x; }
+        return Color.FromRgb((byte)((rr + m) * 255), (byte)((gg + m) * 255), (byte)((bb + m) * 255));
+    }
+
     // ── Adaptive foreground colors (react to background luminance) ──
 
     [ObservableProperty] private IBrush _lyricsPrimaryFg = Brushes.White;
@@ -349,9 +405,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     private void RefreshAccentForegrounds()
     {
-        // UpdateForegroundsForBackground already picks the right shade (dark/light/medium)
-        // and is the single source of truth for these brushes, so we just replay it.
-        UpdateForegroundsForBackground(FullBackgroundBrush);
+        // Route through RefreshLyricsForegrounds so the choice respects the current
+        // mode (artwork uses visible-blurred luminance, color modes use FullBackgroundBrush).
+        RefreshLyricsForegrounds();
     }
 
     private static IBrush ResolveAccentBrush(string key = "AccentColorBrush")
@@ -492,6 +548,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// Extracts the dominant color from the current album art and updates
     /// both left and right panel brushes. Called on track change.
     /// </summary>
+    /// <summary>Cached average color of the current album art. In artwork mode this is
+    /// what's actually visible (heavily blurred → reads as the bitmap's average), so the
+    /// foreground luminance check needs to fall back to this rather than the dominant
+    /// brush, which can be a small accent that doesn't match the visible wash.</summary>
+    private Color? _averageArtworkColor;
+
+    /// <summary>The scrim painted over the blurred artwork in artwork mode
+    /// (Rectangle Fill="#66000000" in LyricsView.axaml). Keep in sync if that changes —
+    /// it shifts the visible luminance enough to matter for the readability threshold.</summary>
+    private const double ArtworkScrimAlpha = 0x66 / 255.0;
+
     private void UpdateAdaptiveBackground(Bitmap? albumArt)
     {
         // Don't override when a custom background color is selected
@@ -503,6 +570,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             LyricsBackgroundBrush = CreateDefaultSubduedGradient();
             FullBackgroundBrush = CreateDefaultUnifiedBrush();
             PanelBackgroundBrush = CreateDefaultPanelBrush();
+            _averageArtworkColor = null;
+            RefreshLyricsForegrounds();
             return;
         }
 
@@ -514,6 +583,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             LyricsBackgroundBrush = right;
             FullBackgroundBrush = DominantColorExtractor.GenerateUnifiedBrush(dominant, secondary);
             PanelBackgroundBrush = DominantColorExtractor.GeneratePanelBrush(dominant, secondary);
+            UpdateMeshColors(dominant, secondary);
+            _averageArtworkColor = DominantColorExtractor.ExtractAverageColor(albumArt);
+            RefreshLyricsForegrounds();
         }
         catch
         {
@@ -521,6 +593,33 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             LyricsBackgroundBrush = CreateDefaultSubduedGradient();
             FullBackgroundBrush = CreateDefaultUnifiedBrush();
             PanelBackgroundBrush = CreateDefaultPanelBrush();
+            _averageArtworkColor = null;
+            RefreshLyricsForegrounds();
+        }
+    }
+
+    /// <summary>
+    /// Re-computes the lyrics-page foreground brushes against whichever surface is
+    /// actually visible right now: the blurred artwork (with scrim applied) in artwork
+    /// mode, or the FullBackgroundBrush color/gradient in solid/gradient mode.
+    /// Called after track change and on mode toggle.
+    /// </summary>
+    private void RefreshLyricsForegrounds()
+    {
+        if (IsColorModeArtwork && _averageArtworkColor is Color avg)
+        {
+            // Scrim is pure black at ArtworkScrimAlpha opacity, so the visible color is
+            // a straight linear interpolation of avg toward black.
+            double k = 1.0 - ArtworkScrimAlpha;
+            var visible = Color.FromRgb(
+                (byte)Math.Clamp(avg.R * k, 0, 255),
+                (byte)Math.Clamp(avg.G * k, 0, 255),
+                (byte)Math.Clamp(avg.B * k, 0, 255));
+            UpdateForegroundsForBackground(new SolidColorBrush(visible));
+        }
+        else
+        {
+            UpdateForegroundsForBackground(FullBackgroundBrush);
         }
     }
 
@@ -531,17 +630,49 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void SelectColorModeSolid()
+    private async Task SelectColorModeArtwork()
     {
-        IsColorModeSolid = true;
+        IsColorModeArtwork = true;
+        IsColorModeSolid = false;
         IsColorModeGradient = false;
+        // Restore adaptive (album-art-derived) colors so any previously chosen
+        // swatch stops bleeding through the now-visible blurred artwork.
+        await SetBackgroundColor(null);
+        await PersistArtworkBackgroundPreferenceAsync(true);
     }
 
     [RelayCommand]
-    private void SelectColorModeGradient()
+    private async Task SelectColorModeSolid()
     {
+        IsColorModeArtwork = false;
+        IsColorModeSolid = true;
+        IsColorModeGradient = false;
+        // Visible surface is no longer the blurred artwork: re-pick foregrounds against
+        // the FullBackgroundBrush color so timeline/metadata text stays readable.
+        RefreshLyricsForegrounds();
+        await PersistArtworkBackgroundPreferenceAsync(false);
+    }
+
+    [RelayCommand]
+    private async Task SelectColorModeGradient()
+    {
+        IsColorModeArtwork = false;
         IsColorModeSolid = false;
         IsColorModeGradient = true;
+        RefreshLyricsForegrounds();
+        await PersistArtworkBackgroundPreferenceAsync(false);
+    }
+
+    private async Task PersistArtworkBackgroundPreferenceAsync(bool showArtwork)
+    {
+        try
+        {
+            var settings = await _persistence.LoadSettingsAsync();
+            if (settings.LyricsShowArtworkBackground == showArtwork) return;
+            settings.LyricsShowArtworkBackground = showArtwork;
+            await _persistence.SaveSettingsAsync(settings);
+        }
+        catch { }
     }
 
     [RelayCommand]
@@ -612,6 +743,21 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         try
         {
             var settings = await _persistence.LoadSettingsAsync();
+
+            // Restore the Artwork/Solid/Gradient mode preference.
+            // The Solid/Gradient sub-mode is filled in below when a swatch was saved.
+            IsColorModeArtwork = settings.LyricsShowArtworkBackground;
+            if (settings.LyricsShowArtworkBackground)
+            {
+                IsColorModeSolid = false;
+                IsColorModeGradient = false;
+            }
+            else if (!IsColorModeSolid && !IsColorModeGradient)
+            {
+                // Color mode but no sub-mode persisted: default to Solid.
+                IsColorModeSolid = true;
+            }
+
             if (!string.IsNullOrEmpty(settings.LyricsBackgroundColorHex))
             {
                 _selectedColorHex = settings.LyricsBackgroundColorHex;
@@ -1807,6 +1953,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private void SeekToLine(LyricLine? line)
     {
         if (line?.Timestamp == null || _player.Duration.TotalSeconds <= 0) return;
+        // Clicking a line is an explicit "go here" — resume auto-follow so the list
+        // snaps to the new active line. Without this, a prior mouse-wheel scroll leaves
+        // IsAutoFollowPaused=true and the seek looks like it did nothing.
+        IsAutoFollowPaused = false;
         _player.SeekToPositionCommand.Execute(
             line.Timestamp.Value.TotalSeconds / _player.Duration.TotalSeconds);
     }
@@ -1822,8 +1972,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     private static readonly TimeSpan LyricsLookahead = TimeSpan.FromMilliseconds(350);
 
-    // Word-level lookahead is smaller: word timings come from real audio alignment, so we only
-    // compensate UI dispatch latency, not polling jitter as with line-level.
+    // Word-level lookahead: small lead so the sweep matches the vocal instead of trailing
+    // UI dispatch latency. AMLL feels in-sync around 80ms — bigger leads start to read
+    // as the colour racing ahead of the voice.
     private static readonly TimeSpan WordLookahead = TimeSpan.FromMilliseconds(80);
 
     private void UpdateActiveLine(TimeSpan position)
@@ -1935,6 +2086,26 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         if (line.CurrentWordIndex != target)
             line.CurrentWordIndex = target;
+
+        // Drive AMLL-style sweep on the currently-sung word (no-op for -1 / past line end).
+        if (target >= 0 && target < words.Count)
+        {
+            var w = words[target];
+            var end = w.End ?? (target + 1 < words.Count ? words[target + 1].Start : line.EndTimestamp ?? w.Start);
+            var span = (end - w.Start).TotalMilliseconds;
+            double progress;
+            if (span <= 0)
+                progress = 1.0;
+            else
+            {
+                var elapsed = (position - w.Start).TotalMilliseconds;
+                progress = elapsed / span;
+                if (progress < 0) progress = 0;
+                else if (progress > 1) progress = 1;
+            }
+            if (Math.Abs(w.Progress - progress) > 0.005)
+                w.Progress = progress;
+        }
     }
 
     /// <summary>
@@ -1962,6 +2133,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             {
                 line.LineOpacity = 1.0;
                 line.IsClickable = true;
+                if (line.BlurRadius != 0.0) line.BlurRadius = 0.0;
             }
             return;
         }
@@ -1984,11 +2156,23 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                  9 => 0.02,
                  _ => 0.0
             };
+            // Apple Music–style depth: active crisp, neighbours softly blurred.
+            var blur = absDist switch
+            {
+                0 => 0.0,
+                1 => 1.5,
+                2 => 3.0,
+                3 => 4.5,
+                _ => 5.5,
+            };
             var line = LyricLines[i];
             // Only set if changed — avoids unnecessary PropertyChanged notifications and re-renders
             // ReSharper disable once CompareOfFloatsByEqualityOperator
             if (line.LineOpacity != opacity)
                 line.LineOpacity = opacity;
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            if (line.BlurRadius != blur)
+                line.BlurRadius = blur;
             var clickable = opacity > 0.0;
             if (line.IsClickable != clickable)
                 line.IsClickable = clickable;

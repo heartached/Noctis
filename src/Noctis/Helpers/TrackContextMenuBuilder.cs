@@ -34,6 +34,8 @@ public sealed class TrackContextMenuBuilder
     public MenuItem Favorite { get; private set; } = null!;
     public MenuItem Unfavorite { get; private set; } = null!;
     public MenuItem Metadata { get; private set; } = null!;
+    public MenuItem Convert { get; private set; } = null!;
+    public MenuItem ScanReplayGain { get; private set; } = null!;
     public MenuItem SearchLyrics { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
     public MenuItem Remove { get; private set; } = null!;
@@ -92,6 +94,14 @@ public sealed class TrackContextMenuBuilder
         Metadata.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
         items.Add(Metadata);
 
+        Convert = new MenuItem { Header = "Convert…", IsVisible = false };
+        Convert.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
+        items.Add(Convert);
+
+        ScanReplayGain = new MenuItem { Header = "Scan ReplayGain", IsVisible = false };
+        ScanReplayGain.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
+        items.Add(ScanReplayGain);
+
         SearchLyrics = new MenuItem { Header = "Search Lyrics" };
         SearchLyrics.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Lyrics%20ICON.png");
         items.Add(SearchLyrics);
@@ -136,7 +146,9 @@ public sealed class TrackContextMenuBuilder
         ICommand showInExplorerCommand,
         ICommand removeCommand,
         ObservableCollection<Playlist>? playlists = null,
-        ICommand? addToExistingPlaylistCommand = null)
+        ICommand? addToExistingPlaylistCommand = null,
+        ICommand? convertCommand = null,
+        ICommand? scanReplayGainCommand = null)
     {
         Menu.DataContext = track;
 
@@ -170,6 +182,29 @@ public sealed class TrackContextMenuBuilder
 
         Metadata.Command = openMetadataCommand;
         Metadata.CommandParameter = track;
+
+        // Convert is optional — only views that pass a convertCommand surface it.
+        if (convertCommand != null)
+        {
+            Convert.Command = convertCommand;
+            Convert.CommandParameter = track;
+            Convert.IsVisible = true;
+        }
+        else
+        {
+            Convert.IsVisible = false;
+        }
+
+        if (scanReplayGainCommand != null)
+        {
+            ScanReplayGain.Command = scanReplayGainCommand;
+            ScanReplayGain.CommandParameter = track;
+            ScanReplayGain.IsVisible = true;
+        }
+        else
+        {
+            ScanReplayGain.IsVisible = false;
+        }
 
         SearchLyrics.Command = searchLyricsCommand;
         SearchLyrics.CommandParameter = track;

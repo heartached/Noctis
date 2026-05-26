@@ -142,7 +142,7 @@
         <!-- Danger button -->
         <Style Selector="Button.danger /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
         </Style>
         <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
@@ -151,7 +151,7 @@
         <!-- Accent button -->
         <Style Selector="Button.accent /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
         </Style>
         <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
@@ -198,7 +198,7 @@
             <Setter Property="Text" Value="BETA"/>
             <Setter Property="FontSize" Value="9"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
             <Setter Property="LetterSpacing" Value="0.5"/>
         </Style>
 
@@ -459,7 +459,7 @@
                                 <!-- Default initials/glyph when no avatar set -->
                                 <TextBlock Text="?"
                                            FontSize="28" FontWeight="SemiBold"
-                                           Foreground="White"
+                                           Foreground="{DynamicResource AccentForegroundBrush}"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"/>
                                 <!-- Picked avatar overlay -->
@@ -740,13 +740,15 @@
                             </ItemsControl>
 
                             <!-- Custom-color tile: rainbow ring + plus, opens reusable HSV/hex picker. -->
-                            <Panel Margin="-48,96,0,4" VerticalAlignment="Top">
+                            <Panel Width="58" Height="58" Margin="-55,100,0,0" VerticalAlignment="Top">
                                 <controls:ColorPickerFlyout Hex="{Binding CustomAccentHex, Mode=TwoWay}"
-                                                            SwatchSize="44"
+                                                            SwatchSize="58"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"
                                                             ToolTip.Tip="Custom Color"
                                                             Cursor="Hand">
                                     <controls:ColorPickerFlyout.SwatchContent>
-                                        <Panel Width="44" Height="44">
+                                        <Panel Width="58" Height="58">
                                             <!-- Rainbow ring -->
                                             <Border Width="40" Height="40" CornerRadius="20"
                                                     HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -772,6 +774,7 @@
                                             </Border>
                                             <Border Width="44" Height="44" CornerRadius="22"
                                                     BorderBrush="White" BorderThickness="2"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     IsVisible="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).IsCustomAccentSelected}"/>
                                         </Panel>
                                     </controls:ColorPickerFlyout.SwatchContent>
@@ -1067,6 +1070,84 @@
 
 
             <!-- ═══════════════════════════════════════════════════ -->
+            <!-- AUDIO TOOLS                                         -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <TextBlock Classes="section-title" Text="AUDIO TOOLS" Margin="0,20,0,10"/>
+
+            <Border Classes="setting-card">
+                <StackPanel Spacing="10">
+                    <StackPanel Spacing="2">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="ffmpeg" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <Border Background="#33E5484D"
+                                    BorderBrush="#E5484D"
+                                    BorderThickness="1"
+                                    CornerRadius="999"
+                                    Padding="8,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="BETA · EXPERIMENTAL FEATURE"
+                                           FontSize="9"
+                                           FontWeight="Bold"
+                                           Foreground="#FF8A8E"
+                                           LetterSpacing="0.5"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="Used by the audio converter. Leave blank to auto-detect (next to Noctis, then PATH)."
+                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding FfmpegPath}"
+                                 Watermark="(auto-detect)"
+                                 CornerRadius="999"
+                                 Padding="14,8"
+                                 BorderThickness="1.5"
+                                 MinHeight="0" />
+                        <Button Grid.Column="1"
+                                Content="Browse"
+                                Command="{Binding BrowseFfmpegCommand}"
+                                Padding="14,8"
+                                CornerRadius="999"
+                                Margin="8,0,0,0"
+                                Cursor="Hand"/>
+                    </Grid>
+                    <TextBlock Text="{Binding FfmpegStatus}"
+                               FontSize="11" Opacity="0.6"
+                               TextWrapping="Wrap"/>
+
+                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.4" Margin="0,8,0,8"/>
+
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="ReplayGain" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="Scale per-track or per-album volume using REPLAYGAIN_* tags. Scan tracks first via right-click → Scan ReplayGain."
+                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="120,*">
+                        <TextBlock Grid.Column="0" Text="Mode" VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{Binding ReplayGainModeOptions}"
+                                  SelectedItem="{Binding ReplayGainMode}"
+                                  HorizontalAlignment="Stretch"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="120,*,Auto">
+                        <TextBlock Grid.Column="0" Text="Pre-amp (dB)" VerticalAlignment="Center"/>
+                        <Slider Grid.Column="1"
+                                Minimum="-12" Maximum="12"
+                                TickFrequency="1" IsSnapToTickEnabled="True"
+                                Value="{Binding ReplayGainPreampDb}"
+                                VerticalAlignment="Center"
+                                Margin="0,0,12,0"/>
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding ReplayGainPreampDb, StringFormat='{}{0:+0.0;-0.0;0.0} dB'}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" MinWidth="60"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════ -->
             <!-- ACCOUNTS                                           -->
             <!-- ═══════════════════════════════════════════════════ -->
             <TextBlock Classes="section-title" Text="ACCOUNTS" Margin="0,20,0,10"/>
@@ -1115,26 +1196,22 @@
                             </Viewbox>
                         </Border>
 
-                        <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
+                        <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
+                                    VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
                             <TextBlock Text="Last.fm Scrobbling" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
                             <TextBlock Text="Send plays to Last.fm."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
                                        HorizontalAlignment="Left"
                                        Margin="-2,0,0,0"/>
+                            <!-- ACCOUNT line sits inline with title/description so it pulls up tight
+                                 against the description instead of dropping into its own grid row. -->
+                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                        IsVisible="{Binding LastFmUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                        Margin="-2,2,0,0">
+                                <TextBlock Text="ACCOUNT" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding LastFmUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
+                            </StackPanel>
                         </StackPanel>
-
-                        <!-- Connected as ... (below description, when connected) -->
-                        <TextBlock Grid.Column="1" Grid.Row="1"
-                                   IsVisible="{Binding LastFmUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                   FontSize="12" Opacity="0.6"
-                                   Margin="0,4,12,0"
-                                   VerticalAlignment="Top">
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0}">
-                                    <Binding Path="LastFmUsername"/>
-                                </MultiBinding>
-                            </TextBlock.Text>
-                        </TextBlock>
 
                         <!-- Not connected state -->
                         <Button Grid.Column="2" Grid.Row="0"
@@ -1150,7 +1227,7 @@
                             <Button.Template>
                                 <ControlTemplate>
                                     <ContentPresenter Background="{DynamicResource AccentColorBrush}"
-                                                      Foreground="White"
+                                                      Foreground="{DynamicResource AccentForegroundBrush}"
                                                       CornerRadius="16"
                                                       Padding="14,8"
                                                       FontSize="13"
@@ -1183,6 +1260,100 @@
                                    VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding LastFmScrobblingEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- ListenBrainz -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                        <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+                                Width="40" Height="40" CornerRadius="10"
+                                Background="#EB743B"
+                                Margin="0,0,14,0"
+                                VerticalAlignment="Top">
+                            <!-- Stylized sound-wave mark to match the inline SVG icons used by the
+                                 Discord and Last.fm cards. Three concentric arcs over a small dot
+                                 reads as "listening / sound emanating" at 22×22. -->
+                            <Viewbox Width="22" Height="22"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Ellipse Canvas.Left="10.5" Canvas.Top="14.5" Width="3" Height="3" Fill="White"/>
+                                    <Path Stroke="White" StrokeThickness="1.8" StrokeLineCap="Round"
+                                          Data="M8.5,12 A4.5,4.5 0 0 1 15.5,12"/>
+                                    <Path Stroke="White" StrokeThickness="1.8" StrokeLineCap="Round"
+                                          Data="M6,10 A7.5,7.5 0 0 1 18,10"/>
+                                    <Path Stroke="White" StrokeThickness="1.8" StrokeLineCap="Round"
+                                          Data="M3.5,8 A10.5,10.5 0 0 1 20.5,8"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
+                                    VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
+                            <TextBlock Text="ListenBrainz Scrobbling" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Send plays to ListenBrainz."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
+                                       HorizontalAlignment="Left"
+                                       Margin="-2,0,0,0"/>
+
+                            <!-- ACCOUNT line sits inline with the title/description block so it pulls
+                                 up tight against the description instead of dropping into its own grid row. -->
+                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                        IsVisible="{Binding ListenBrainzUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                        Margin="-2,2,0,0">
+                                <TextBlock Text="ACCOUNT" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding ListenBrainzUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- Token + Test connection row lives inside the same StackPanel as the
+                                 title so it sits right under the description instead of leaving a gap. -->
+                            <StackPanel Orientation="Horizontal"
+                                        IsVisible="{Binding !IsListenBrainzConnected}"
+                                        Margin="-2,6,0,0"
+                                        Spacing="8">
+                                <TextBox Text="{Binding ListenBrainzToken}"
+                                         PasswordChar="•"
+                                         Watermark="ListenBrainz user token"
+                                         Width="280"
+                                         FontSize="12"
+                                         CornerRadius="999"
+                                         Padding="14,6"
+                                         VerticalAlignment="Center"/>
+                                <Button Content="Test connection"
+                                        Command="{Binding TestListenBrainzCommand}"
+                                        Classes="pill-action"
+                                        Padding="14,8"
+                                        CornerRadius="16"
+                                        FontSize="12"
+                                        Cursor="Hand"
+                                        VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Logout button (top-right, when connected) -->
+                        <Button Grid.Column="2" Grid.Row="0"
+                                IsVisible="{Binding IsListenBrainzConnected}"
+                                Command="{Binding LogoutListenBrainzCommand}"
+                                Classes="pill-action"
+                                Padding="14,8"
+                                CornerRadius="16"
+                                Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Logout" FontSize="13" VerticalAlignment="Center"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Enable Scrobbling (when connected) -->
+                    <Grid IsVisible="{Binding IsListenBrainzConnected}" ColumnDefinitions="*,Auto" Margin="54,0,0,0">
+                        <TextBlock Grid.Column="0"
+                                   Text="Enable Scrobbling"
+                                   FontSize="13"
+                                   VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding ListenBrainzScrobblingEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                 </StackPanel>
@@ -1606,8 +1777,22 @@
                             </Border>
                             <StackPanel VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="Noctis" FontSize="18" FontWeight="Bold"/>
-                                <TextBlock Text="{Binding AppVersion}"
-                                           FontSize="12" Opacity="0.5"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding AppVersion}"
+                                               FontSize="12" Opacity="0.5"
+                                               VerticalAlignment="Center"/>
+                                    <Border IsVisible="{Binding IsLatestPrerelease}"
+                                            Background="#E74856"
+                                            CornerRadius="9"
+                                            Padding="8,2"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="Pre-release"
+                                                   FontSize="10"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="White"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
 
@@ -1639,8 +1824,9 @@
                                 Classes="pill"
                                 VerticalAlignment="Center"
                                 Padding="16,6"
+                                Background="#E74856"
                                 IsVisible="{Binding IsReadyToInstall}">
-                            <TextBlock Text="Install &amp; Restart" FontSize="12"/>
+                            <TextBlock Text="Install &amp; Restart" FontSize="12" Foreground="White"/>
                         </Button>
                         </StackPanel>
                     </Grid>

@@ -1,0 +1,96 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.ReplayGainScannerDialog"
+        x:DataType="vm:ReplayGainScannerViewModel"
+        Title="Scan ReplayGain"
+        CanResize="False"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Border Background="#50000000">
+        <Border CornerRadius="20"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="640"
+                MaxHeight="780"
+                Margin="0,50"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Stretch"
+                BoxShadow="0 8 32 0 #60000000">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
+                    <TextBlock Text="{Binding TitleText}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                    <TextBlock Text="Measure each track's loudness (EBU R128) and write ReplayGain tags."
+                               FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
+                    <Border Background="#33E5484D"
+                            BorderBrush="#E5484D"
+                            BorderThickness="1"
+                            CornerRadius="999"
+                            Padding="8,2"
+                            HorizontalAlignment="Center"
+                            Margin="0,6,0,0">
+                        <TextBlock Text="BETA · EXPERIMENTAL FEATURE"
+                                   FontSize="9"
+                                   FontWeight="Bold"
+                                   Foreground="#FF8A8E"
+                                   LetterSpacing="0.5"/>
+                    </Border>
+                </StackPanel>
+
+                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
+                                   FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelCommand}"
+                                Width="100" Padding="0,8" FontWeight="Bold"
+                                HorizontalContentAlignment="Center" CornerRadius="999"
+                                Margin="0,0,8,0" Cursor="Hand" />
+                        <Button Grid.Column="2" Content="Start" Command="{Binding StartCommand}"
+                                IsEnabled="{Binding !IsScanning}"
+                                Width="100" Padding="0,8"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center" CornerRadius="999" Cursor="Hand" />
+                    </Grid>
+                </Border>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                              Padding="24,4,24,8">
+                    <StackPanel Spacing="14">
+                        <CheckBox Classes="metadata-pill-checkbox"
+                                  IsChecked="{Binding AlbumMode}"
+                                  Content="Compute album gain (group by AlbumId)" />
+
+                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
+
+                        <TextBlock Text="Queue" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
+                        <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" MaxHeight="380">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Jobs}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ReplayGainScannerViewModel+RgJobRow">
+                                            <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
+                                                <StackPanel Grid.Column="0" Spacing="1">
+                                                    <TextBlock Text="{Binding TrackTitle}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding TrackSubtitle}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding GainsText}" FontSize="11" Opacity="0.75" Margin="12,0,12,0" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Status}" FontSize="11" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>

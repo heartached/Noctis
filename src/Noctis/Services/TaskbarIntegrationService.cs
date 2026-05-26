@@ -85,6 +85,9 @@ public sealed class TaskbarIntegrationService : IDisposable
     [DllImport("comctl32.dll")]
     private static extern IntPtr DefSubclassProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, uint attr, ref int value, int size);
+
     private delegate IntPtr SubclassProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam,
         UIntPtr id, IntPtr refData);
 
@@ -109,8 +112,9 @@ public sealed class TaskbarIntegrationService : IDisposable
     private const uint THB_ICON = 0x0002, THB_TOOLTIP = 0x0004, THB_FLAGS = 0x0008;
     private const uint THBF_ENABLED = 0x0000;
     private const uint WM_COMMAND = 0x0111, THBN_CLICKED = 0x1800;
-    private const uint ID_PREV = 0, ID_PLAY = 1, ID_NEXT = 2;
+    private const uint ID_SHUFFLE = 0, ID_PREV = 1, ID_PLAY = 2, ID_NEXT = 3, ID_FAVORITE = 4;
     private const int IconSize = 20;
+    private const uint DWMWA_DISALLOW_PEEK = 11;
 
     // ── SVG path data (same as Icons.axaml, viewBox 0 0 24 24) ──
 
@@ -129,17 +133,32 @@ public sealed class TaskbarIntegrationService : IDisposable
         "M3 4.753c0-1.408 1.578-2.24 2.74-1.444l10.498 7.194a1.75 1.75 0 0 1 .01 2.88L5.749 20.685C4.59 21.492 3 20.66 3 19.248z" +
         "M21 3.75a.75.75 0 0 0-1.5 0v16.5a.75.75 0 0 0 1.5 0z";
 
+    private const string PathShuffle =
+        "M19.28 4.72a.75.75 0 1 0-1.06 1.06L19.44 7h-.19c-3.918 0-6.423 2.302-8.692 4.388l-.066.06C8.154 13.597 6.044 15.5 2.75 15.5a.75.75 0 0 0 0 1.5c3.918 0 6.423-2.302 8.692-4.388l.066-.06C13.846 10.403 15.956 8.5 19.25 8.5h.19l-1.22 1.22a.75.75 0 1 0 1.06 1.06l2.5-2.5a.75.75 0 0 0 0-1.06z" +
+        "M2.75 7c3.248 0 5.525 1.582 7.501 3.311l-.303.279l-.132.121q-.347.32-.68.62C7.283 9.732 5.4 8.5 2.75 8.5a.75.75 0 1 1 0-1.5" +
+        "m16.5 10c-3.248 0-5.525-1.582-7.501-3.312l.302-.277l.133-.122q.347-.32.68-.62c1.853 1.6 3.736 2.83 6.386 2.83h.19l-1.22-1.219a.75.75 0 0 1 1.06-1.06l2.5 2.5a.75.75 0 0 1 0 1.06l-2.5 2.5a.75.75 0 1 1-1.06-1.06L19.44 17z";
+
+    private const string PathHeartOutline =
+        "m12.82 5.58l-.82.822l-.824-.824a5.375 5.375 0 1 0-7.601 7.602l7.895 7.895a.75.75 0 0 0 1.06 0l7.902-7.897a5.376 5.376 0 0 0-.001-7.599a5.38 5.38 0 0 0-7.611 0" +
+        "m6.548 6.54L12 19.485L4.635 12.12a3.875 3.875 0 1 1 5.48-5.48l1.358 1.357a.75.75 0 0 0 1.073-.012L13.88 6.64a3.88 3.88 0 0 1 5.487 5.48";
+
+    private const string PathHeartFilled =
+        "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z";
+
     // ── Fields ───────────────────────────────────────────────────
 
     private ITaskbarList3? _taskbar;
     private IntPtr _hwnd;
     private SubclassProc? _wndProc; // prevent GC
     private IntPtr _icoPrev, _icoPlay, _icoPause, _icoNext;
+    private IntPtr _icoShuffleOff, _icoShuffleOn, _icoHeart, _icoHeartFilled;
     private bool _ready;
 
     public event Action? PreviousClicked;
     public event Action? PlayPauseClicked;
     public event Action? NextClicked;
+    public event Action? ShuffleClicked;
+    public event Action? FavoriteClicked;
 
     // ── Public API ───────────────────────────────────────────────
 
@@ -157,18 +176,32 @@ public sealed class TaskbarIntegrationService : IDisposable
             if (_taskbar == null) return;
             _taskbar.HrInit();
 
+            // Stop Aero Peek from turning every other window (including an auto-hide
+            // taskbar) transparent when the user hovers our taskbar thumbnail.
+            int disallowPeek = 1;
+            DwmSetWindowAttribute(_hwnd, DWMWA_DISALLOW_PEEK, ref disallowPeek, sizeof(int));
+
             _icoPrev = MakeIcon(PathPrevious);
             _icoPlay = MakeIcon(PathPlay);
             _icoPause = MakeIcon(PathPause);
             _icoNext = MakeIcon(PathNext);
+            // Shuffle + outline heart are thin-outline glyphs that read lighter than
+            // the solid play/prev/next icons. Add a bold stroke pass so their visual
+            // weight matches at 20×20.
+            _icoShuffleOff = MakeIcon(PathShuffle, boldenOutline: true);
+            _icoShuffleOn = MakeIcon(PathShuffle, boldenOutline: true);
+            _icoHeart = MakeIcon(PathHeartOutline, boldenOutline: true);
+            _icoHeartFilled = MakeIcon(PathHeartFilled);
 
             var buttons = new[]
             {
+                Btn(ID_SHUFFLE, _icoShuffleOff, "Shuffle"),
                 Btn(ID_PREV, _icoPrev, "Previous"),
                 Btn(ID_PLAY, _icoPlay, "Play"),
                 Btn(ID_NEXT, _icoNext, "Forward"),
+                Btn(ID_FAVORITE, _icoHeart, "Favorite"),
             };
-            _taskbar.ThumbBarAddButtons(_hwnd, 3, buttons);
+            _taskbar.ThumbBarAddButtons(_hwnd, (uint)buttons.Length, buttons);
 
             _wndProc = WndProc;
             SetWindowSubclass(_hwnd, _wndProc, (UIntPtr)1, IntPtr.Zero);
@@ -191,6 +224,26 @@ public sealed class TaskbarIntegrationService : IDisposable
         });
     }
 
+    public void UpdateShuffleState(bool isOn)
+    {
+        if (!_ready || _taskbar == null) return;
+
+        _taskbar.ThumbBarUpdateButtons(_hwnd, 1, new[]
+        {
+            Btn(ID_SHUFFLE, isOn ? _icoShuffleOn : _icoShuffleOff, isOn ? "Shuffle (on)" : "Shuffle"),
+        });
+    }
+
+    public void UpdateFavoriteState(bool isFavorite)
+    {
+        if (!_ready || _taskbar == null) return;
+
+        _taskbar.ThumbBarUpdateButtons(_hwnd, 1, new[]
+        {
+            Btn(ID_FAVORITE, isFavorite ? _icoHeartFilled : _icoHeart, isFavorite ? "Unfavorite" : "Favorite"),
+        });
+    }
+
     // ── WndProc hook ─────────────────────────────────────────────
 
     private IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam,
@@ -208,6 +261,8 @@ public sealed class TaskbarIntegrationService : IDisposable
                     case ID_PREV: PreviousClicked?.Invoke(); break;
                     case ID_PLAY: PlayPauseClicked?.Invoke(); break;
                     case ID_NEXT: NextClicked?.Invoke(); break;
+                    case ID_SHUFFLE: ShuffleClicked?.Invoke(); break;
+                    case ID_FAVORITE: FavoriteClicked?.Invoke(); break;
                 }
             }
         }
@@ -227,7 +282,7 @@ public sealed class TaskbarIntegrationService : IDisposable
 
     // ── Icon creation via SkiaSharp (SVG path rendering) ─────────
 
-    private static IntPtr MakeIcon(string svgPathData)
+    private static IntPtr MakeIcon(string svgPathData, byte alpha = 0xFF, bool boldenOutline = false)
     {
         const float viewBox = 24f;
         const float padding = 2f;
@@ -247,12 +302,30 @@ public sealed class TaskbarIntegrationService : IDisposable
 
         using var paint = new SKPaint
         {
-            Color = SKColors.White,
+            Color = new SKColor(0xFF, 0xFF, 0xFF, alpha),
             IsAntialias = true,
             Style = SKPaintStyle.Fill,
         };
 
         canvas.DrawPath(path, paint);
+
+        // Outline-style glyphs (shuffle, outline heart) read lighter than the solid
+        // play/prev/next icons. Stroke the same path on top to thicken the visible
+        // edges so all five taskbar icons share the same weight.
+        if (boldenOutline)
+        {
+            using var stroke = new SKPaint
+            {
+                Color = paint.Color,
+                IsAntialias = true,
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 1.6f, // in 24-unit viewBox space
+                StrokeJoin = SKStrokeJoin.Round,
+                StrokeCap = SKStrokeCap.Round,
+            };
+            canvas.DrawPath(path, stroke);
+        }
+
         canvas.Flush();
 
         // Create Win32 HICON from the SkiaSharp bitmap pixel data
@@ -290,6 +363,10 @@ public sealed class TaskbarIntegrationService : IDisposable
         if (_icoPlay != IntPtr.Zero) DestroyIcon(_icoPlay);
         if (_icoPause != IntPtr.Zero) DestroyIcon(_icoPause);
         if (_icoNext != IntPtr.Zero) DestroyIcon(_icoNext);
+        if (_icoShuffleOff != IntPtr.Zero) DestroyIcon(_icoShuffleOff);
+        if (_icoShuffleOn != IntPtr.Zero) DestroyIcon(_icoShuffleOn);
+        if (_icoHeart != IntPtr.Zero) DestroyIcon(_icoHeart);
+        if (_icoHeartFilled != IntPtr.Zero) DestroyIcon(_icoHeartFilled);
 
         _ready = false;
     }

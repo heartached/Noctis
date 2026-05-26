@@ -13,7 +13,7 @@
 
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="24" Spacing="28">
+        <StackPanel Margin="24,24,24,115" Spacing="28">
 
             <!-- Page title -->
             <TextBlock Text="Statistics"

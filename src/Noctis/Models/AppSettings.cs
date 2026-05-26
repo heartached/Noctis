@@ -134,6 +134,15 @@ public class AppSettings
     /// <summary>Last.fm username (populated after successful auth).</summary>
     public string LastFmUsername { get; set; } = "";
 
+    /// <summary>Whether ListenBrainz scrobbling is enabled (independent of Last.fm).</summary>
+    public bool ListenBrainzScrobblingEnabled { get; set; } = true;
+
+    /// <summary>ListenBrainz user token (single-string credential pasted by the user from listenbrainz.org/profile/).</summary>
+    public string ListenBrainzToken { get; set; } = "";
+
+    /// <summary>ListenBrainz username (populated after a successful validate-token call).</summary>
+    public string ListenBrainzUsername { get; set; } = "";
+
     /// <summary>
     /// Internal metadata schema version used for one-time library backfills
     /// when parsing rules are improved (for example explicit tag detection).
@@ -156,6 +165,10 @@ public class AppSettings
     /// <summary>Custom background color hex for lyrics view (empty = auto from album art).</summary>
     public string LyricsBackgroundColorHex { get; set; } = "";
 
+    /// <summary>When true, the lyrics page shows the blurred album artwork as background.
+    /// When false, the chosen solid/gradient color shows through instead.</summary>
+    public bool LyricsShowArtworkBackground { get; set; } = true;
+
     // ── Lyrics providers ──
 
     /// <summary>Whether LRCLIB online lyrics search is enabled.</summary>
@@ -163,4 +176,17 @@ public class AppSettings
 
     /// <summary>Whether NetEase Cloud Music online lyrics search is enabled.</summary>
     public bool NetEaseEnabled { get; set; } = true;
+
+    // ── Audio Converter ──
+
+    /// <summary>Override path to ffmpeg. Empty = auto-detect (app dir, then PATH).</summary>
+    public string FfmpegPath { get; set; } = string.Empty;
+
+    // ── ReplayGain ──
+
+    /// <summary>"Off", "Track", "Album", or "Auto" (album when same-album sequence else track).</summary>
+    public string ReplayGainMode { get; set; } = "Off";
+
+    /// <summary>Pre-amp in dB applied on top of the RG tag value.</summary>
+    public double ReplayGainPreampDb { get; set; } = 0.0;
 }

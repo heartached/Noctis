@@ -44,7 +44,7 @@
                             Padding="0,8"
                             Classes="accent-btn"
                             Background="{DynamicResource AccentColorBrush}"
-                            Foreground="White"
+                            Foreground="{DynamicResource AccentForegroundBrush}"
                             FontWeight="Bold"
                             HorizontalContentAlignment="Center"
                             CornerRadius="999"

@@ -646,6 +646,35 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    private async Task ConvertTrack(Track track)
+        => await MetadataHelper.OpenAudioConverterDialog(new List<Track> { track });
+
+    [RelayCommand]
+    private async Task ScanTrackReplayGain(Track track)
+        => await MetadataHelper.OpenReplayGainScannerDialog(new List<Track> { track });
+
+    [RelayCommand]
+    private async Task ConvertAlbum()
+    {
+        if (Tracks.Count == 0) return;
+        await MetadataHelper.OpenAudioConverterDialog(Tracks.ToList());
+    }
+
+    [RelayCommand]
+    private async Task ScanAlbumReplayGain()
+    {
+        if (Tracks.Count == 0) return;
+        await MetadataHelper.OpenReplayGainScannerDialog(Tracks.ToList());
+    }
+
+    [RelayCommand]
+    private async Task BatchEditAlbum()
+    {
+        if (Tracks.Count == 0) return;
+        await MetadataHelper.OpenBatchMetadataWindow(Tracks.ToList());
+    }
+
+    [RelayCommand]
     private async Task ToggleFavorite(Track track)
     {
         track.IsFavorite = !track.IsFavorite;

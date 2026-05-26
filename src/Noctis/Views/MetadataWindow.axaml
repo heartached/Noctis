@@ -381,7 +381,7 @@
                         Padding="0,10"
                         Classes="accent-btn"
                             Background="{DynamicResource AccentColorBrush}"
-                        Foreground="White"
+                        Foreground="{DynamicResource AccentForegroundBrush}"
                         FontWeight="Bold"
                         HorizontalContentAlignment="Center"
                         CornerRadius="999"
@@ -540,7 +540,7 @@
                                 <Button Content="Reset" Command="{Binding ResetPlayCountCommand}"
                                         Classes="accent-btn"
                                         Padding="14,5" FontSize="12" FontWeight="Bold" Cursor="Hand" VerticalAlignment="Center"
-                                        Foreground="White" Background="{DynamicResource AccentColorBrush}"
+                                        Foreground="{DynamicResource AccentForegroundBrush}" Background="{DynamicResource AccentColorBrush}"
                                         BorderThickness="0" CornerRadius="999" />
                             </StackPanel>
                         </StackPanel>
@@ -774,7 +774,7 @@
                                 Command="{Binding SearchArtworkCommand}"
                                 Classes="accent-btn"
                                 Background="{DynamicResource AccentColorBrush}"
-                                Foreground="White"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
                                 Padding="12,5"
                                 HorizontalContentAlignment="Center"
                                 CornerRadius="999"
@@ -847,7 +847,7 @@
                                                                                 CornerRadius="999"
                                                                                 Classes="accent-btn"
                                                                                 Background="{DynamicResource AccentColorBrush}"
-                                                                                Foreground="White"
+                                                                                Foreground="{DynamicResource AccentForegroundBrush}"
                                                                                 Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectHighestArtworkResultCommand}"
                                                                                 CommandParameter="{Binding}" />
                                                                     </StackPanel>
@@ -954,7 +954,7 @@
                                 Command="{Binding SearchAnimatedCoverCommand}"
                                 Classes="accent-btn"
                                 Background="{DynamicResource AccentColorBrush}"
-                                Foreground="White"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
                                 Padding="12,5"
                                 HorizontalContentAlignment="Center"
                                 CornerRadius="999"
@@ -1035,7 +1035,7 @@
                                                         <DataTemplate>
                                                             <Button Classes="accent-btn anim-variant"
                                                                     Background="{DynamicResource AccentColorBrush}"
-                                                                    Foreground="White"
+                                                                    Foreground="{DynamicResource AccentForegroundBrush}"
                                                                     BorderThickness="0"
                                                                     CornerRadius="999"
                                                                     Padding="16,7"
@@ -1174,9 +1174,6 @@
                             <Button Content="Remove lyrics"
                                     Command="{Binding RemoveSyncedLyricsCommand}"
                                     IsEnabled="{Binding HasCustomSyncedLyrics}"
-                                    Background="#1AFFFFFF"
-                                    Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                    BorderThickness="0"
                                     Padding="14,6"
                                     CornerRadius="999"
                                     Cursor="Hand"
@@ -1191,7 +1188,7 @@
                                     Command="{Binding SearchSyncedLyricsCommand}"
                                     Classes="accent-btn"
                                     Background="{DynamicResource AccentColorBrush}"
-                                    Foreground="White"
+                                    Foreground="{DynamicResource AccentForegroundBrush}"
                                     Padding="14,6"
                                     CornerRadius="999"
                                     Cursor="Hand"
@@ -1219,6 +1216,32 @@
                     <StackPanel Spacing="2">
                         <TextBlock Text="media kind" FontSize="12" Opacity="0.5" />
                         <TextBlock Text="Music" FontSize="14" FontWeight="SemiBold" />
+                    </StackPanel>
+
+                    <Separator Opacity="0.15" Margin="0,2" />
+
+                    <!-- Release type override (Auto, Album, Single, EP, ...) -->
+                    <StackPanel Spacing="2">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="release type" FontSize="12" Opacity="0.5" VerticalAlignment="Center"/>
+                            <Border Background="#33E5484D"
+                                    BorderBrush="#E5484D"
+                                    BorderThickness="1"
+                                    CornerRadius="999"
+                                    Padding="8,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="BETA · EXPERIMENTAL FEATURE"
+                                           FontSize="9"
+                                           FontWeight="Bold"
+                                           Foreground="#FF8A8E"
+                                           LetterSpacing="0.5"/>
+                            </Border>
+                        </StackPanel>
+                        <ComboBox Classes="metadata-info-field"
+                                  ItemsSource="{x:Static vm:MetadataViewModel.AvailableReleaseTypes}"
+                                  SelectedItem="{Binding ReleaseTypeOverride}"
+                                  HorizontalAlignment="Left"
+                                  Width="180" />
                     </StackPanel>
 
                     <Separator Opacity="0.15" Margin="0,2" />

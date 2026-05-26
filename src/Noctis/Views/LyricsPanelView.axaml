@@ -48,6 +48,55 @@
         <Style Selector="Button.panel-header-btn:pressed">
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
+        <!-- Disable hover/pressed background on the album-nav header buttons (artwork + title) -->
+        <Style Selector="Button.panel-header-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.panel-header-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <!-- Artist chip: transparent base, accent-tinted hover -->
+        <Style Selector="Button.artist-chip">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.artist-chip:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.artist-chip:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.artist-chip:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#26FFFFFF"/>
+        </Style>
+        <Style Selector="Button.artist-chip:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1AFFFFFF"/>
+        </Style>
+        <!-- 3-dots: transparent base, subtle circle hover -->
+        <Style Selector="Button.panel-options-btn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.panel-options-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.panel-options-btn:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.panel-options-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#26FFFFFF"/>
+        </Style>
+        <Style Selector="Button.panel-options-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1AFFFFFF"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*">
@@ -56,12 +105,12 @@
               IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
               RowDefinitions="Auto,Auto">
 
-            <!-- Row 0: artwork + title/artist (clickable) + 3-dots -->
+            <!-- Row 0: artwork + title (album-nav) | artist (artist-nav) + 3-dots -->
             <Grid Grid.Row="0"
                   ColumnDefinitions="Auto,*,Auto"
                   Margin="16,14,12,12">
 
-                <!-- Artwork + text are inside one transparent button → navigate to album -->
+                <!-- Artwork + title → album, no hover highlight -->
                 <Button Grid.Column="0" Grid.ColumnSpan="2"
                         Classes="panel-header-btn"
                         Background="Transparent"
@@ -93,7 +142,7 @@
                             </Panel>
                         </Border>
 
-                        <!-- Title + artist -->
+                        <!-- Title row (artist sits outside this button so it can have its own hover) -->
                         <StackPanel Grid.Column="1"
                                     Orientation="Vertical"
                                     VerticalAlignment="Center"
@@ -124,32 +173,32 @@
                                                Foreground="{DynamicResource IslandIconFill}"/>
                                 </Border>
                             </Grid>
-                            <TextBlock Text="{Binding Player.CurrentTrack.Artist, FallbackValue='', TargetNullValue=''}"
-                                       FontSize="12"
-                                       MaxLines="1"
-                                       TextTrimming="CharacterEllipsis"
-                                       Margin="0,2,0,0"
-                                       Foreground="{DynamicResource AccentColorBrush}"/>
+                            <!-- Spacer so the artist chip (below) lines up under the title -->
+                            <Border Height="18" Margin="0,2,0,0"/>
                         </StackPanel>
                     </Grid>
                 </Button>
 
-                <!-- 3-dots options button -->
+                <!-- Artist chip overlay (sits visually under the title; navigates to artist on click) -->
+                <Button Grid.Column="1"
+                        Classes="artist-chip"
+                        VerticalAlignment="Bottom"
+                        Margin="50,0,8,4"
+                        Command="{Binding ViewArtistCommand}"
+                        IsVisible="{Binding Player.CurrentTrack.Artist, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="{Binding Player.CurrentTrack.Artist, FallbackValue='', TargetNullValue=''}"
+                               FontSize="12"
+                               MaxLines="1"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{Binding LyricsAccentFg}"/>
+                </Button>
+
+                <!-- 3-dots options button (hover-only circle highlight) -->
                 <Button Grid.Column="2"
-                        Classes="panel-header-btn"
+                        Classes="panel-options-btn"
                         Width="32" Height="32"
-                        CornerRadius="16"
-                        Background="#1AFFFFFF"
-                        BorderThickness="0"
-                        Padding="0"
-                        Cursor="Hand"
                         VerticalAlignment="Center"
                         ToolTip.Tip="Options">
-                    <Button.Styles>
-                        <Style Selector="Button:pointerover /template/ ContentPresenter">
-                            <Setter Property="Background" Value="#26FFFFFF"/>
-                        </Style>
-                    </Button.Styles>
                     <Viewbox Width="16" Height="16">
                         <Canvas Width="24" Height="24">
                             <Path Fill="{Binding LyricsPrimaryFg}" Data="{StaticResource MoreDotsIcon}"/>
@@ -436,7 +485,7 @@
             <Button HorizontalAlignment="Center"
                     Classes="accent-btn"
                     Background="{DynamicResource AccentColorBrush}"
-                    Foreground="White"
+                    Foreground="{DynamicResource AccentForegroundBrush}"
                     Padding="16,8"
                     FontSize="13"
                     FontWeight="SemiBold"

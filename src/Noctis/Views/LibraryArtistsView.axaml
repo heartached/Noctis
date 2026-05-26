@@ -17,6 +17,7 @@
                      ItemsSource="{Binding FlatArtistList}"
                      Background="Transparent"
                      BorderThickness="0"
+                     Padding="0,0,0,115"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      SelectionMode="Single"

@@ -8,7 +8,10 @@ namespace Noctis.Services;
 
 public sealed class UpdateService
 {
-    private const string ReleaseUrl = "https://api.github.com/repos/heartached/Noctis/releases/latest";
+    // Fetch the recent releases list (instead of /releases/latest) so pre-releases are included.
+    // GitHub excludes pre-releases from /releases/latest, which would hide prerelease builds from
+    // the in-app updater. We pick the highest-version release that has the Windows installer asset.
+    private const string ReleaseUrl = "https://api.github.com/repos/heartached/Noctis/releases?per_page=10";
     private const string AssetPrefix = "Noctis-v";
     private const string AssetSuffix = "-Setup.exe";
 
@@ -44,29 +47,36 @@ public sealed class UpdateService
         using var response = await _http.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
 
-        var release = await response.Content.ReadFromJsonAsync<GitHubRelease>(ct);
-        if (release is null || string.IsNullOrEmpty(release.TagName))
+        var releases = await response.Content.ReadFromJsonAsync<List<GitHubRelease>>(ct);
+        if (releases is null || releases.Count == 0)
             return null;
 
-        // Parse tag like "v1.0.3" -> Version(1, 0, 3)
-        var tagVersion = ParseTag(release.TagName);
-        if (tagVersion is null || tagVersion <= CurrentVersion)
+        // Pick the release with the highest parseable version (skip drafts).
+        var best = releases
+            .Where(r => !r.Draft && !string.IsNullOrEmpty(r.TagName))
+            .Select(r => (Release: r, Version: ParseTag(r.TagName!)))
+            .Where(x => x.Version is not null)
+            .OrderByDescending(x => x.Version)
+            .FirstOrDefault();
+
+        if (best.Release is null || best.Version is null || best.Version <= CurrentVersion)
             return null;
 
         // Find the Setup.exe asset
-        var installerAsset = release.Assets?.FirstOrDefault(a =>
+        var installerAsset = best.Release.Assets?.FirstOrDefault(a =>
             a.Name != null &&
             a.Name.StartsWith(AssetPrefix, StringComparison.OrdinalIgnoreCase) &&
             a.Name.EndsWith(AssetSuffix, StringComparison.OrdinalIgnoreCase));
 
         return new UpdateInfo
         {
-            TagName = release.TagName,
-            Version = tagVersion,
+            TagName = best.Release.TagName!,
+            Version = best.Version,
+            IsPrerelease = best.Release.Prerelease,
             InstallerApiUrl = installerAsset?.Url,
             InstallerUrl = installerAsset?.BrowserDownloadUrl,
             InstallerSize = installerAsset?.Size ?? 0,
-            ReleaseUrl = release.HtmlUrl ?? $"https://github.com/heartached/Noctis/releases/tag/{release.TagName}"
+            ReleaseUrl = best.Release.HtmlUrl ?? $"https://github.com/heartached/Noctis/releases/tag/{best.Release.TagName}"
         };
     }
 
@@ -199,6 +209,12 @@ public sealed class UpdateService
 
         [JsonPropertyName("assets")]
         public List<GitHubAsset>? Assets { get; set; }
+
+        [JsonPropertyName("prerelease")]
+        public bool Prerelease { get; set; }
+
+        [JsonPropertyName("draft")]
+        public bool Draft { get; set; }
     }
 
     private sealed class GitHubAsset
@@ -221,6 +237,8 @@ public sealed class UpdateInfo
 {
     public required string TagName { get; init; }
     public required Version Version { get; init; }
+    /// <summary>True if GitHub marked this release as a pre-release.</summary>
+    public bool IsPrerelease { get; init; }
     /// <summary>GitHub API asset URL used by the in-app updater.</summary>
     public string? InstallerApiUrl { get; init; }
     /// <summary>Browser download URL reserved for manual downloads and website links.</summary>

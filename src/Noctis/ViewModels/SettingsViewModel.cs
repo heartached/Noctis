@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Loon;
@@ -23,6 +24,7 @@ public partial class SettingsViewModel : ViewModelBase
     private IDiscordPresenceService? _discord;
     private LoonClient? _loon;
     private ILastFmService? _lastFm;
+    private IListenBrainzService? _listenBrainz;
     private ArtistImageService? _artistImageService;
     private UpdateService? _updateService;
     private CancellationTokenSource? _updateCts;
@@ -137,6 +139,13 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _lrcLibEnabled = true;
     [ObservableProperty] private bool _netEaseEnabled = true;
 
+    [ObservableProperty] private string _ffmpegPath = string.Empty;
+    [ObservableProperty] private string _ffmpegStatus = string.Empty;
+
+    public string[] ReplayGainModeOptions { get; } = { "Off", "Track", "Album", "Auto" };
+    [ObservableProperty] private string _replayGainMode = "Off";
+    [ObservableProperty] private double _replayGainPreampDb;
+
     // ── Equalizer ──
 
     [ObservableProperty] private bool _equalizerEnabled = true;
@@ -187,6 +196,13 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _lastFmUsername = "";
     [ObservableProperty] private bool _isLastFmConnected;
     [ObservableProperty] private string _lastFmStatusText = "Not connected";
+
+    // ── ListenBrainz ──
+    [ObservableProperty] private bool _listenBrainzScrobblingEnabled = true;
+    [ObservableProperty] private string _listenBrainzToken = "";
+    [ObservableProperty] private string _listenBrainzUsername = "";
+    [ObservableProperty] private bool _isListenBrainzConnected;
+    [ObservableProperty] private string _listenBrainzStatusText = "Not connected";
 
     // ── Preferences ──
 
@@ -273,6 +289,7 @@ public partial class SettingsViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
     private bool _isReadyToInstall;
     [ObservableProperty] private string _latestVersionTag = "";
+    [ObservableProperty] private bool _isLatestPrerelease;
 
     public bool ShowCheckForUpdatesButton => !IsUpdateAvailable && !IsReadyToInstall;
 
@@ -362,6 +379,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Sets the Last.fm service reference.</summary>
     public void SetLastFm(ILastFmService lastFm) => _lastFm = lastFm;
+    public void SetListenBrainz(IListenBrainzService listenBrainz) => _listenBrainz = listenBrainz;
 
     public void SetArtistImageService(ArtistImageService svc) => _artistImageService = svc;
 
@@ -457,6 +475,10 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
+            FfmpegPath = _settings.FfmpegPath;
+            RefreshFfmpegStatus();
+            ReplayGainMode = string.IsNullOrEmpty(_settings.ReplayGainMode) ? "Off" : _settings.ReplayGainMode;
+            ReplayGainPreampDb = _settings.ReplayGainPreampDb;
             NetEaseEnabled = _settings.NetEaseEnabled;
 
             // Equalizer
@@ -508,6 +530,19 @@ public partial class SettingsViewModel : ViewModelBase
                 _lastFm.Configure(_settings.LastFmSessionKey);
                 IsLastFmConnected = true;
                 LastFmStatusText = $"Connected as {_settings.LastFmUsername}";
+            }
+
+            // ListenBrainz
+            ListenBrainzScrobblingEnabled = _settings.ListenBrainzScrobblingEnabled;
+            ListenBrainzToken = _settings.ListenBrainzToken;
+            ListenBrainzUsername = _settings.ListenBrainzUsername;
+            if (_listenBrainz != null && !string.IsNullOrEmpty(_settings.ListenBrainzToken))
+            {
+                _listenBrainz.Configure(_settings.ListenBrainzToken);
+                IsListenBrainzConnected = !string.IsNullOrEmpty(_settings.ListenBrainzUsername);
+                LastFmStatusText = LastFmStatusText; // no-op, kept for symmetry
+                if (IsListenBrainzConnected)
+                    ListenBrainzStatusText = $"Connected as {_settings.ListenBrainzUsername}";
             }
 
             if (_discord != null && DiscordRichPresenceEnabled)
@@ -604,6 +639,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsArtistMarqueeEnabled = LyricsArtistMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
         _settings.LrcLibEnabled = LrcLibEnabled;
+        _settings.FfmpegPath = FfmpegPath ?? string.Empty;
+        _settings.ReplayGainMode = ReplayGainMode ?? "Off";
+        _settings.ReplayGainPreampDb = ReplayGainPreampDb;
         _settings.NetEaseEnabled = NetEaseEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
         _settings.EqualizerPresetIndex = SelectedEqPresetIndex - 1;
@@ -613,6 +651,10 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LastFmUsername = LastFmUsername;
         if (_lastFm is LastFmService lfm)
             _settings.LastFmSessionKey = lfm.GetSessionKey() ?? "";
+
+        _settings.ListenBrainzScrobblingEnabled = ListenBrainzScrobblingEnabled;
+        _settings.ListenBrainzToken = ListenBrainzToken ?? string.Empty;
+        _settings.ListenBrainzUsername = ListenBrainzUsername ?? string.Empty;
     }
 
     /// <summary>Returns the loaded settings object.</summary>
@@ -1034,6 +1076,59 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnFfmpegPathChanged(string value)
+    {
+        RefreshFfmpegStatus();
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnReplayGainModeChanged(string value)
+    {
+        if (_suspendSettingPersistence) return;
+        _audioPlayer?.ApplyReplayGain(value, ReplayGainPreampDb);
+        _ = SaveAsync();
+    }
+
+    partial void OnReplayGainPreampDbChanged(double value)
+    {
+        if (_suspendSettingPersistence) return;
+        _audioPlayer?.ApplyReplayGain(ReplayGainMode, value);
+        _ = SaveAsync();
+    }
+
+    /// <summary>Probes the configured or auto-detected ffmpeg path and updates
+    /// <see cref="FfmpegStatus"/> so the Settings view can show whether the
+    /// converter will work without the user having to open the dialog.</summary>
+    public void RefreshFfmpegStatus()
+    {
+        var svc = App.Services?.GetService<IAudioConverterService>();
+        if (svc == null) { FfmpegStatus = string.Empty; return; }
+        var path = svc.GetFfmpegPath();
+        FfmpegStatus = path != null
+            ? $"Detected: {path}"
+            : "Not found — set a path below, or install ffmpeg on your PATH.";
+    }
+
+    [RelayCommand]
+    private async Task BrowseFfmpegAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is not
+            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop) return;
+        if (desktop.MainWindow is not Avalonia.Controls.Window owner) return;
+
+        var top = Avalonia.Controls.TopLevel.GetTopLevel(owner);
+        if (top == null) return;
+
+        var picks = await top.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "Locate ffmpeg",
+            AllowMultiple = false,
+        });
+        if (picks.Count > 0)
+            FfmpegPath = picks[0].Path.LocalPath;
+    }
+
     // ── Integration handlers ──
 
     partial void OnDiscordRichPresenceEnabledChanged(bool value)
@@ -1187,6 +1282,59 @@ public partial class SettingsViewModel : ViewModelBase
         IsLastFmConnected = false;
         LastFmUsername = "";
         LastFmStatusText = "Not connected";
+        _ = SaveAsync();
+    }
+
+    // ── ListenBrainz handlers ──
+
+    partial void OnListenBrainzScrobblingEnabledChanged(bool value)
+    {
+        _ = SaveAsync();
+    }
+
+    partial void OnListenBrainzTokenChanged(string value)
+    {
+        // Just keep the in-memory service in sync; the user must hit "Test connection"
+        // to validate and persist. Don't autosave keystroke-by-keystroke.
+        _listenBrainz?.Configure(value);
+    }
+
+    [RelayCommand]
+    private async Task TestListenBrainz()
+    {
+        if (_listenBrainz == null) return;
+        if (string.IsNullOrWhiteSpace(ListenBrainzToken))
+        {
+            ListenBrainzStatusText = "Paste your user token first.";
+            return;
+        }
+
+        ListenBrainzStatusText = "Validating...";
+        _listenBrainz.Configure(ListenBrainzToken);
+        var username = await _listenBrainz.ValidateTokenAsync();
+        if (!string.IsNullOrEmpty(username))
+        {
+            ListenBrainzUsername = username!;
+            IsListenBrainzConnected = true;
+            ListenBrainzStatusText = $"Connected as {username}";
+            await SaveAsync();
+        }
+        else
+        {
+            IsListenBrainzConnected = false;
+            ListenBrainzUsername = "";
+            ListenBrainzStatusText = "Token invalid or network error.";
+        }
+    }
+
+    [RelayCommand]
+    private void LogoutListenBrainz()
+    {
+        _listenBrainz?.Logout();
+        IsListenBrainzConnected = false;
+        ListenBrainzToken = "";
+        ListenBrainzUsername = "";
+        ListenBrainzStatusText = "Not connected";
         _ = SaveAsync();
     }
 
@@ -1726,6 +1874,13 @@ public partial class SettingsViewModel : ViewModelBase
             IsLastFmConnected = false;
             LastFmStatusText = "Not connected";
 
+            ListenBrainzScrobblingEnabled = true;
+            ListenBrainzToken = "";
+            ListenBrainzUsername = "";
+            IsListenBrainzConnected = false;
+            ListenBrainzStatusText = "Not connected";
+            _listenBrainz?.Logout();
+
             // Disconnect Discord if connected
             if (_discord != null)
             {
@@ -1843,6 +1998,7 @@ public partial class SettingsViewModel : ViewModelBase
             if (update.InstallerApiUrl is null) return;
 
             LatestVersionTag = update.TagName;
+            IsLatestPrerelease = update.IsPrerelease;
             IsUpdateAvailable = true;
         }
         catch
@@ -1881,11 +2037,13 @@ public partial class SettingsViewModel : ViewModelBase
             else if (update.InstallerApiUrl is null)
             {
                 LatestVersionTag = update.TagName;
+                IsLatestPrerelease = update.IsPrerelease;
                 UpdateStatusText = $"{update.TagName} available — installer not found. Visit GitHub.";
             }
             else
             {
                 LatestVersionTag = update.TagName;
+                IsLatestPrerelease = update.IsPrerelease;
                 UpdateStatusText = $"{update.TagName} is available.";
                 IsUpdateAvailable = true;
             }

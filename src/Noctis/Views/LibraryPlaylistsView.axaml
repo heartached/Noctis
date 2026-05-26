@@ -21,7 +21,8 @@
             <!-- Playlist grid (responsive wrap panel) -->
             <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding FilteredPlaylists}">
+                <ItemsControl ItemsSource="{Binding FilteredPlaylists}"
+                              Margin="0,0,0,115">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid Columns="5" VerticalAlignment="Top" />
