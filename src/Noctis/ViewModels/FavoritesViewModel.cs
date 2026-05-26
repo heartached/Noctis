@@ -80,9 +80,11 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
 
         var items = new List<(FavoriteItem item, DateTime sortKey)>();
 
-        // Most recent favorite event for a track. Falls back to DateAdded so
-        // pre-existing favorites (no timestamp yet) keep a stable order.
-        static DateTime FavoriteSortKey(Track t) => t.FavoritedAt ?? t.DateAdded;
+        // Most recent favorite event for a track. Legacy favorites (null
+        // FavoritedAt) sink to the bottom so any freshly favorited track —
+        // stamped DateTime.UtcNow in Track.OnIsFavoriteChanged — always lands
+        // at the top of the grid.
+        static DateTime FavoriteSortKey(Track t) => t.FavoritedAt ?? DateTime.MinValue;
 
         // Group favorite tracks by album
         var grouped = favTracks.GroupBy(t => t.AlbumId);
@@ -435,8 +437,49 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     [RelayCommand]
     private async Task OpenItemMetadata(FavoriteItem item)
     {
+        // If the user multi-selected, expand to tracks and open the batch dialog.
+        if (CtrlSelectedItems.Count > 1)
+        {
+            var selection = CtrlSelectedItems.ToList();
+            CtrlSelectedItems.Clear();
+            var tracks = ExpandToTracks(selection);
+            if (tracks.Count > 1) { await MetadataHelper.OpenBatchMetadataWindow(tracks); return; }
+            if (tracks.Count == 1) { await MetadataHelper.OpenMetadataWindow(tracks[0]); return; }
+        }
+
         if (item.IsAlbum) await OpenAlbumMetadata(item.Album!);
         else await OpenTrackMetadata(item.Track!);
+    }
+
+    [RelayCommand]
+    private async Task ConvertItem(FavoriteItem item)
+    {
+        var items = CtrlSelectedItems.Count > 0 ? CtrlSelectedItems.ToList() : new List<FavoriteItem> { item };
+        CtrlSelectedItems.Clear();
+        var tracks = ExpandToTracks(items);
+        if (tracks.Count == 0) return;
+        await MetadataHelper.OpenAudioConverterDialog(tracks);
+    }
+
+    [RelayCommand]
+    private async Task ScanItemReplayGain(FavoriteItem item)
+    {
+        var items = CtrlSelectedItems.Count > 0 ? CtrlSelectedItems.ToList() : new List<FavoriteItem> { item };
+        CtrlSelectedItems.Clear();
+        var tracks = ExpandToTracks(items);
+        if (tracks.Count == 0) return;
+        await MetadataHelper.OpenReplayGainScannerDialog(tracks);
+    }
+
+    private static List<Track> ExpandToTracks(IEnumerable<FavoriteItem> items)
+    {
+        var tracks = new List<Track>();
+        foreach (var fi in items)
+        {
+            if (fi.IsAlbum && fi.Album?.Tracks != null) tracks.AddRange(fi.Album.Tracks);
+            else if (fi.Track != null) tracks.Add(fi.Track);
+        }
+        return tracks;
     }
 
     [RelayCommand]

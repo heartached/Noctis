@@ -107,6 +107,7 @@ public static class ThemeDerivation
             // ── Accent (a stub; App.SetAccent overlays the real palette right after) ──
             ["SystemAccentColor"] = accent,
             ["AccentColorBrush"]  = new SolidColorBrush(accent),
+            ["AccentForegroundBrush"] = new SolidColorBrush(Colors.White),
             ["SystemControlHighlightAccentBrush"]  = new SolidColorBrush(accent),
             ["SystemControlHighlightAccentBrush2"] = new SolidColorBrush(accent),
             ["ToggleSwitchFillOn"]            = new SolidColorBrush(accent),

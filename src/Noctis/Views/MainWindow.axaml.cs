@@ -23,6 +23,8 @@ public partial class MainWindow : Window
     private System.ComponentModel.PropertyChangedEventHandler? _playerPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _topBarPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _mainVmPropertyChangedHandler;
+    private System.ComponentModel.PropertyChangedEventHandler? _currentTrackPropertyChangedHandler;
+    private Track? _trackedFavoriteTrack;
     private Border? _sidebarWrapper;
     private Border? _lyricsPanelWrapper;
     private DockPanel? _contentDockPanel;
@@ -209,6 +211,12 @@ public partial class MainWindow : Window
             if (_playerPropertyChangedHandler != null)
                 vm.Player.PropertyChanged -= _playerPropertyChangedHandler;
 
+            if (_trackedFavoriteTrack != null && _currentTrackPropertyChangedHandler != null)
+            {
+                _trackedFavoriteTrack.PropertyChanged -= _currentTrackPropertyChangedHandler;
+                _trackedFavoriteTrack = null;
+            }
+
             if (_topBarPropertyChangedHandler != null)
                 vm.TopBar.PropertyChanged -= _topBarPropertyChangedHandler;
 
@@ -236,6 +244,30 @@ public partial class MainWindow : Window
                 Dispatcher.UIThread.Post(() => vm.Player.PlayPauseCommand.Execute(null));
             _taskbar.NextClicked += () =>
                 Dispatcher.UIThread.Post(() => vm.Player.NextCommand.Execute(null));
+            _taskbar.ShuffleClicked += () =>
+                Dispatcher.UIThread.Post(() => vm.Player.ToggleShuffleCommand.Execute(null));
+            _taskbar.FavoriteClicked += () =>
+                Dispatcher.UIThread.Post(() => vm.Player.ToggleCurrentTrackFavoriteCommand.Execute(null));
+
+            // Tracks IsFavorite changes on the *current* track so we can swap the heart icon.
+            _currentTrackPropertyChangedHandler = (_, e) =>
+            {
+                if (e.PropertyName == nameof(Track.IsFavorite))
+                    _taskbar?.UpdateFavoriteState(vm.Player.CurrentTrack?.IsFavorite == true);
+            };
+
+            void RebindCurrentTrack()
+            {
+                if (_trackedFavoriteTrack != null && _currentTrackPropertyChangedHandler != null)
+                    _trackedFavoriteTrack.PropertyChanged -= _currentTrackPropertyChangedHandler;
+
+                _trackedFavoriteTrack = vm.Player.CurrentTrack;
+
+                if (_trackedFavoriteTrack != null && _currentTrackPropertyChangedHandler != null)
+                    _trackedFavoriteTrack.PropertyChanged += _currentTrackPropertyChangedHandler;
+
+                _taskbar?.UpdateFavoriteState(_trackedFavoriteTrack?.IsFavorite == true);
+            }
 
             // Update play/pause icon when playback state changes + mutual exclusion
             _playerPropertyChangedHandler = (_, e) =>
@@ -249,8 +281,20 @@ public partial class MainWindow : Window
                     if (vm.Player.IsQueuePopupOpen)
                         vm.IsLyricsPanelOpen = false;
                 }
+                else if (e.PropertyName == nameof(PlayerViewModel.IsShuffleEnabled))
+                {
+                    _taskbar?.UpdateShuffleState(vm.Player.IsShuffleEnabled);
+                }
+                else if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
+                {
+                    RebindCurrentTrack();
+                }
             };
             vm.Player.PropertyChanged += _playerPropertyChangedHandler;
+
+            // Seed initial state so icons reflect reality on first paint.
+            _taskbar.UpdateShuffleState(vm.Player.IsShuffleEnabled);
+            RebindCurrentTrack();
         }
         catch
         {
@@ -557,6 +601,12 @@ public partial class MainWindow : Window
         _queueDragRowOffsetY = e.GetPosition(rowControl).Y;
         _queueDragStartPos = e.GetPosition(this);
         _queueDragActive = false;
+    }
+
+    private void OnPageSortByMenuItemPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (sender is MenuItem item)
+            item.IsSubMenuOpen = true;
     }
 
     private void OnQueueItemPointerMoved(object? sender, PointerEventArgs e)

@@ -107,7 +107,8 @@
                   VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled"
                   IsHitTestVisible="{Binding !IsAlbumDescriptionOpen}">
-    <StackPanel TextElement.Foreground="{Binding PageForegroundBrush}">
+    <StackPanel TextElement.Foreground="{Binding PageForegroundBrush}"
+                Margin="0,0,0,115">
 
         <!-- Album header -->
         <Grid ColumnDefinitions="Auto,*,40"
@@ -289,7 +290,7 @@
                             Padding="26,8"
                             CornerRadius="999"
                             Background="{DynamicResource AccentColorBrush}"
-                            Foreground="White"
+                            Foreground="{DynamicResource AccentForegroundBrush}"
                             BorderThickness="0"
                             FontWeight="Bold"
                             Cursor="Hand"
@@ -297,7 +298,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="3">
                             <PathIcon Data="{StaticResource PlaySolidIcon}"
                                      Width="13" Height="13"
-                                     Foreground="White"
+                                     Foreground="{DynamicResource AccentForegroundBrush}"
                                      VerticalAlignment="Center" />
                             <TextBlock Text="Play"
                                        FontSize="14"
@@ -310,7 +311,7 @@
                             Padding="22,8"
                             CornerRadius="999"
                             Background="{DynamicResource AccentColorBrush}"
-                            Foreground="White"
+                            Foreground="{DynamicResource AccentForegroundBrush}"
                             BorderThickness="0"
                             FontWeight="Bold"
                             Cursor="Hand"
@@ -319,10 +320,10 @@
                             <Grid Width="16" Height="16" VerticalAlignment="Center">
                                 <PathIcon Data="{StaticResource ShuffleIcon}"
                                           Width="16" Height="16"
-                                          Foreground="White" />
+                                          Foreground="{DynamicResource AccentForegroundBrush}" />
                                 <PathIcon Data="{StaticResource ShuffleIcon}"
                                           Width="16" Height="16"
-                                          Foreground="White"
+                                          Foreground="{DynamicResource AccentForegroundBrush}"
                                           Opacity="0.85"
                                           Margin="0.6,0,0,0" />
                             </Grid>
@@ -402,6 +403,24 @@
                         </MenuItem>
                         <MenuItem Header="Metadata"
                                   Command="{Binding OpenAlbumMetadataCommand}">
+                            <MenuItem.Icon>
+                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Edit All Tracks…"
+                                  Command="{Binding BatchEditAlbumCommand}">
+                            <MenuItem.Icon>
+                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Convert Album…"
+                                  Command="{Binding ConvertAlbumCommand}">
+                            <MenuItem.Icon>
+                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Scan ReplayGain (Album)"
+                                  Command="{Binding ScanAlbumReplayGainCommand}">
                             <MenuItem.Icon>
                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                             </MenuItem.Icon>
@@ -512,6 +531,20 @@
                                 </MenuItem>
                                 <MenuItem Header="Metadata"
                                           Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenMetadataCommand}"
+                                          CommandParameter="{Binding}">
+                                    <MenuItem.Icon>
+                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Convert…"
+                                          Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ConvertTrackCommand}"
+                                          CommandParameter="{Binding}">
+                                    <MenuItem.Icon>
+                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Scan ReplayGain"
+                                          Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ScanTrackReplayGainCommand}"
                                           CommandParameter="{Binding}">
                                     <MenuItem.Icon>
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
@@ -708,6 +741,20 @@
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
                                         </MenuItem>
+                                        <MenuItem Header="Convert…"
+                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ConvertTrackCommand}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Scan ReplayGain"
+                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ScanTrackReplayGainCommand}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <MenuItem Header="Search Lyrics"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).SearchLyricsCommand}"
                                                   CommandParameter="{Binding}">
@@ -897,8 +944,8 @@
                                     </Border>
                                     <TextBlock FontSize="13"
                                                FontWeight="SemiBold"
-                                               TextWrapping="Wrap"
-                                               MaxLines="2"
+                                               TextWrapping="NoWrap"
+                                               MaxLines="1"
                                                TextTrimming="CharacterEllipsis"
                                                MaxWidth="200"
                                                HorizontalAlignment="Left"
@@ -1110,8 +1157,8 @@
                                     </Border>
                                     <TextBlock FontSize="13"
                                                FontWeight="SemiBold"
-                                               TextWrapping="Wrap"
-                                               MaxLines="2"
+                                               TextWrapping="NoWrap"
+                                               MaxLines="1"
                                                TextTrimming="CharacterEllipsis"
                                                MaxWidth="200"
                                                HorizontalAlignment="Left"

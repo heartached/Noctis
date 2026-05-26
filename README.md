@@ -61,25 +61,29 @@ Or download the installer / portable zip from the
 It packs a horizon of features including,
 
 - [x] Lossless audio support — FLAC, ALAC, WAV, AIFF, APE, WavPack (plus MP3, AAC, OGG, Opus, WMA, M4A)
-- [x] Cover Flow view for browsing albums
-- [x] Synced lyrics via LRCLIB with offline cache
-- [x] Side lyrics panel alongside any view
-- [x] Collapsible sidebar with smooth animation
-- [x] 10-band equalizer with presets
-- [x] Smart playlists & favorites
-- [x] Drag and drop import from Windows Explorer
-- [x] Multi-select with bulk actions across all library views
-- [x] In-app self-update from GitHub releases
-- [x] Dynamic ambient backgrounds on lyrics and album pages
-- [x] Playlist management with artwork, drag reorder, and real-time counts
-- [x] Replay Gain & volume normalization
 - [x] Gapless playback & crossfade
+- [x] 10-band equalizer with presets
+- [x] Replay Gain & loudness normalization
+- [x] Audio converter — batch transcode to FLAC, MP3, AAC, and more (ffmpeg-backed)
+- [x] Cover Flow view for browsing albums
+- [x] Dynamic ambient backgrounds on lyrics and album pages
+- [x] Animated cover art for the now-playing track
+- [x] Custom themes & accent colors
+- [x] Side lyrics panel alongside any view
+- [x] Synced lyrics via LRCLIB and NetEase with offline cache
+- [x] Plain + synced lyrics editor with `.lrc` sidecar export
+- [x] Drag-and-drop import
+- [x] Multi-select with bulk actions across every view
 - [x] Full metadata editor with artwork, lyrics, and per-track options
+- [x] Release-type aware sections (Albums / Singles / EPs / Compilations) with filter chips
+- [x] Smart playlists, favorites, and drag-reorder playlist management
 - [x] Library statistics with play counts, genre distribution, and listening trends
-- [x] Navidrome, SMB, and WebDAV remote source support with offline cache
-- [x] Last.fm scrobbling
+- [x] Navidrome, SMB, and WebDAV remote sources with offline cache
+- [x] Artist images & bios via MusicBrainz and Deezer; artwork lookup via iTunes
+- [x] Last.fm scrobbling + album descriptions
+- [x] ListenBrainz scrobbling
 - [x] Discord Rich Presence integration
-- [x] Library indexing with SQLite
+- [x] In-app self-update from GitHub releases
 
 ---
 

@@ -431,7 +431,11 @@ public partial class LyricsView : UserControl
 
         var topPad = viewportHeight * 0.10;
         var bottomPad = viewportHeight * 0.78;
-        LyricsItemsControl.Margin = new Thickness(0, topPad, 0, bottomPad);
+        // Right margin reserves an overflow zone for the active line's 1.07× scale
+        // transform. Without it, scaled glyphs on long lines get clipped by the
+        // ScrollViewer's internal viewport ("…GOA" instead of "…GOAT").
+        const double activeLineScaleHeadroom = 64;
+        LyricsItemsControl.Margin = new Thickness(0, topPad, activeLineScaleHeadroom, bottomPad);
     }
 
     // Maps the current synced ActiveLineIndex to the corresponding row in UnsyncedLines.
@@ -563,6 +567,8 @@ public partial class LyricsView : UserControl
             var elapsed = sw.Elapsed.TotalMilliseconds;
             var t = Math.Min(1.0, elapsed / totalMs);
 
+            // Scroll easing: smootherstep glides without overshoot. Spring overshoot here
+            // reads as "the lyrics jumped past, then snapped back" — opposite of smooth.
             var eased = Easing.SmootherStep(t);
             var value = from + (to - from) * eased;
 

@@ -24,6 +24,7 @@ public partial class SettingsViewModel : ViewModelBase
     private IDiscordPresenceService? _discord;
     private LoonClient? _loon;
     private ILastFmService? _lastFm;
+    private IListenBrainzService? _listenBrainz;
     private ArtistImageService? _artistImageService;
     private UpdateService? _updateService;
     private CancellationTokenSource? _updateCts;
@@ -195,6 +196,13 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _lastFmUsername = "";
     [ObservableProperty] private bool _isLastFmConnected;
     [ObservableProperty] private string _lastFmStatusText = "Not connected";
+
+    // ── ListenBrainz ──
+    [ObservableProperty] private bool _listenBrainzScrobblingEnabled = true;
+    [ObservableProperty] private string _listenBrainzToken = "";
+    [ObservableProperty] private string _listenBrainzUsername = "";
+    [ObservableProperty] private bool _isListenBrainzConnected;
+    [ObservableProperty] private string _listenBrainzStatusText = "Not connected";
 
     // ── Preferences ──
 
@@ -370,6 +378,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Sets the Last.fm service reference.</summary>
     public void SetLastFm(ILastFmService lastFm) => _lastFm = lastFm;
+    public void SetListenBrainz(IListenBrainzService listenBrainz) => _listenBrainz = listenBrainz;
 
     public void SetArtistImageService(ArtistImageService svc) => _artistImageService = svc;
 
@@ -522,6 +531,19 @@ public partial class SettingsViewModel : ViewModelBase
                 LastFmStatusText = $"Connected as {_settings.LastFmUsername}";
             }
 
+            // ListenBrainz
+            ListenBrainzScrobblingEnabled = _settings.ListenBrainzScrobblingEnabled;
+            ListenBrainzToken = _settings.ListenBrainzToken;
+            ListenBrainzUsername = _settings.ListenBrainzUsername;
+            if (_listenBrainz != null && !string.IsNullOrEmpty(_settings.ListenBrainzToken))
+            {
+                _listenBrainz.Configure(_settings.ListenBrainzToken);
+                IsListenBrainzConnected = !string.IsNullOrEmpty(_settings.ListenBrainzUsername);
+                LastFmStatusText = LastFmStatusText; // no-op, kept for symmetry
+                if (IsListenBrainzConnected)
+                    ListenBrainzStatusText = $"Connected as {_settings.ListenBrainzUsername}";
+            }
+
             if (_discord != null && DiscordRichPresenceEnabled)
             {
                 _ = _discord.ConnectAsync();
@@ -628,6 +650,10 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LastFmUsername = LastFmUsername;
         if (_lastFm is LastFmService lfm)
             _settings.LastFmSessionKey = lfm.GetSessionKey() ?? "";
+
+        _settings.ListenBrainzScrobblingEnabled = ListenBrainzScrobblingEnabled;
+        _settings.ListenBrainzToken = ListenBrainzToken ?? string.Empty;
+        _settings.ListenBrainzUsername = ListenBrainzUsername ?? string.Empty;
     }
 
     /// <summary>Returns the loaded settings object.</summary>
@@ -1258,6 +1284,59 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    // ── ListenBrainz handlers ──
+
+    partial void OnListenBrainzScrobblingEnabledChanged(bool value)
+    {
+        _ = SaveAsync();
+    }
+
+    partial void OnListenBrainzTokenChanged(string value)
+    {
+        // Just keep the in-memory service in sync; the user must hit "Test connection"
+        // to validate and persist. Don't autosave keystroke-by-keystroke.
+        _listenBrainz?.Configure(value);
+    }
+
+    [RelayCommand]
+    private async Task TestListenBrainz()
+    {
+        if (_listenBrainz == null) return;
+        if (string.IsNullOrWhiteSpace(ListenBrainzToken))
+        {
+            ListenBrainzStatusText = "Paste your user token first.";
+            return;
+        }
+
+        ListenBrainzStatusText = "Validating...";
+        _listenBrainz.Configure(ListenBrainzToken);
+        var username = await _listenBrainz.ValidateTokenAsync();
+        if (!string.IsNullOrEmpty(username))
+        {
+            ListenBrainzUsername = username!;
+            IsListenBrainzConnected = true;
+            ListenBrainzStatusText = $"Connected as {username}";
+            await SaveAsync();
+        }
+        else
+        {
+            IsListenBrainzConnected = false;
+            ListenBrainzUsername = "";
+            ListenBrainzStatusText = "Token invalid or network error.";
+        }
+    }
+
+    [RelayCommand]
+    private void LogoutListenBrainz()
+    {
+        _listenBrainz?.Logout();
+        IsListenBrainzConnected = false;
+        ListenBrainzToken = "";
+        ListenBrainzUsername = "";
+        ListenBrainzStatusText = "Not connected";
+        _ = SaveAsync();
+    }
+
     // ── Equalizer handlers ──
 
     partial void OnEqualizerEnabledChanged(bool value)
@@ -1793,6 +1872,13 @@ public partial class SettingsViewModel : ViewModelBase
             LastFmUsername = "";
             IsLastFmConnected = false;
             LastFmStatusText = "Not connected";
+
+            ListenBrainzScrobblingEnabled = true;
+            ListenBrainzToken = "";
+            ListenBrainzUsername = "";
+            IsListenBrainzConnected = false;
+            ListenBrainzStatusText = "Not connected";
+            _listenBrainz?.Logout();
 
             // Disconnect Discord if connected
             if (_discord != null)

@@ -17,6 +17,7 @@
     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="#E8E8E8" />
     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush2" Color="#F0F0F0" />
     <SolidColorBrush x:Key="AccentColorBrush" Color="#E8E8E8" />
+    <SolidColorBrush x:Key="AccentForegroundBrush" Color="#000000" />
 
     <!-- Toggle switch fill — silver on, dark off -->
     <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#E8E8E8" />

@@ -40,7 +40,8 @@
 
         <Grid RowDefinitions="58,*">
             <!-- Zone A: Top bar left | centered playback island | right actions -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ZIndex="20">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ZIndex="20"
+                  IsHitTestVisible="{Binding IsLyricsViewActive, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
                 <!-- Full-width bottom separator line -->
                 <Border Grid.ColumnSpan="2" VerticalAlignment="Bottom"
                         Height="1" Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
@@ -72,13 +73,13 @@
                                     Command="{Binding PageShuffleCommand}"
                                     ToolTip.Tip="Shuffle" VerticalAlignment="Center">
                                 <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14"
-                                         VerticalAlignment="Center" Foreground="White" />
+                                         VerticalAlignment="Center" Foreground="{DynamicResource AccentForegroundBrush}" />
                             </Button>
                             <Button Classes="accent-btn" Background="Transparent"
                                     BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
                                     Command="{Binding PageQueueCommand}" Tag="QueueToggle"
                                     ToolTip.Tip="Queue" VerticalAlignment="Center">
-                                <Border Width="14" Height="14" Background="White" VerticalAlignment="Center"
+                                <Border Width="14" Height="14" Background="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"
                                         RenderOptions.BitmapInterpolationMode="HighQuality">
                                     <Border.OpacityMask>
                                         <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" />
@@ -89,7 +90,7 @@
                                     BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
                                     ToolTip.Tip="Options" VerticalAlignment="Center">
                                 <PathIcon Data="{StaticResource MoreDotsIcon}" Width="14" Height="14"
-                                         VerticalAlignment="Center" Foreground="White" />
+                                         VerticalAlignment="Center" Foreground="{DynamicResource AccentForegroundBrush}" />
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
                                             PlacementConstraintAdjustment="None">
@@ -106,7 +107,9 @@
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />
-                                    <MenuItem Header="Sort By">
+                                    <MenuItem x:Name="PageSortByMenuItem"
+                                              Header="Sort By"
+                                              PointerEntered="OnPageSortByMenuItemPointerEntered">
                                         <MenuItem Header="Title" Command="{Binding PageSortCommand}" CommandParameter="Title">
                                             <MenuItem.Icon>
                                                 <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
@@ -176,7 +179,7 @@
                                 Command="{Binding PageCreateSmartPlaylistCommand}"
                                 ToolTip.Tip="Create Smart Playlist" VerticalAlignment="Center">
                             <PathIcon Data="{StaticResource SmartPlaylistIcon}" Width="15" Height="15"
-                                     VerticalAlignment="Center" Foreground="White" />
+                                     VerticalAlignment="Center" Foreground="{DynamicResource AccentForegroundBrush}" />
                         </Button>
                     </StackPanel>
 
@@ -191,14 +194,14 @@
                                     Command="{Binding PageShuffleArtistCommand}"
                                     ToolTip.Tip="Shuffle All" VerticalAlignment="Center">
                                 <PathIcon Data="{StaticResource ShuffleIcon}"
-                                         Width="14" Height="14"
-                                         VerticalAlignment="Center" Foreground="White" />
+                                          Width="14" Height="14"
+                                          VerticalAlignment="Center" Foreground="{DynamicResource AccentForegroundBrush}" />
                             </Button>
                             <Button Classes="accent-btn" Background="Transparent"
                                     BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
                                     Command="{Binding PagePlayArtistCommand}"
                                     ToolTip.Tip="Play All" VerticalAlignment="Center">
-                                <Border Width="14" Height="14" Background="White" VerticalAlignment="Center"
+                                <Border Width="14" Height="14" Background="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"
                                         Margin="2,0,0,0"
                                         RenderOptions.BitmapInterpolationMode="HighQuality">
                                     <Border.OpacityMask>
@@ -220,14 +223,14 @@
                                     Command="{Binding PageShuffleFavoritesCommand}"
                                     ToolTip.Tip="Shuffle" VerticalAlignment="Center">
                                 <PathIcon Data="{StaticResource ShuffleIcon}"
-                                         Width="14" Height="14"
-                                         VerticalAlignment="Center" Foreground="White" />
+                                          Width="14" Height="14"
+                                          VerticalAlignment="Center" Foreground="{DynamicResource AccentForegroundBrush}" />
                             </Button>
                             <Button Classes="accent-btn" Background="Transparent"
                                     BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
                                     Command="{Binding PagePlayFavoritesCommand}"
                                     ToolTip.Tip="Play" VerticalAlignment="Center">
-                                <Border Width="14" Height="14" Background="White" VerticalAlignment="Center"
+                                <Border Width="14" Height="14" Background="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"
                                         Margin="2,0,0,0"
                                         RenderOptions.BitmapInterpolationMode="HighQuality">
                                     <Border.OpacityMask>
@@ -351,6 +354,7 @@
                         CornerRadius="16"
                         ClipToBounds="True"
                         Background="#E61C1C1C"
+                        TextElement.Foreground="White"
                         IsVisible="{Binding Player.IsQueuePopupOpen}"
                         BoxShadow="-2 0 12 0 #40000000"
                         ZIndex="20">
@@ -366,9 +370,9 @@
                                        Foreground="White"
                                        VerticalAlignment="Center" />
                             <Button Grid.Column="1"
-                                    Classes="accent-btn"
-                                    Background="{DynamicResource AccentColorBrush}"
-                                    Foreground="White"
+                                     Classes="accent-btn"
+                                     Background="{DynamicResource AccentColorBrush}"
+                                     Foreground="{DynamicResource AccentForegroundBrush}"
                                     BorderThickness="0"
                                     CornerRadius="999"
                                     Padding="14,5"
@@ -398,12 +402,13 @@
                                     <TextBlock Text="{Binding Player.CurrentTrack.Title}"
                                                FontSize="14"
                                                FontWeight="SemiBold"
+                                               Foreground="White"
                                                TextTrimming="CharacterEllipsis"
                                                MaxLines="1" />
                                     <TextBlock Text="{Binding Player.CurrentTrack.Artist}"
                                                FontSize="11"
                                                FontWeight="Bold"
-                                               Opacity="0.55"
+                                               Foreground="{DynamicResource AccentColorBrush}"
                                                TextTrimming="CharacterEllipsis"
                                                MaxLines="1"
                                                Margin="0,2,0,0" />
@@ -417,6 +422,7 @@
                                    Text="{Binding Player.UpNext.Count, StringFormat='{}{0} &#x2022; tracks'}"
                                    FontSize="12"
                                    FontWeight="SemiBold"
+                                   Foreground="White"
                                    Opacity="0.55" />
 
                         <!-- Separator -->
@@ -442,16 +448,24 @@
                                         <Setter Property="Margin" Value="0,3"/>
                                         <Setter Property="Cursor" Value="Hand"/>
                                         <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Foreground" Value="White"/>
                                         <Setter Property="Transitions">
                                             <Transitions>
                                                 <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
                                             </Transitions>
                                         </Setter>
                                     </Style>
-                                    <!-- Hover background sits on the row Border so it stays
-                                         inside the rounded pill shape (no square overlay). -->
-                                    <Style Selector="ListBox.queue-popup ListBoxItem:pointerover Border.queue-row">
-                                        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+                                    <!-- Hover highlight on each queue row, matching album track-list. -->
+                                    <Style Selector="Border.queue-row">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Transitions">
+                                            <Transitions>
+                                                <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                                            </Transitions>
+                                        </Setter>
+                                    </Style>
+                                    <Style Selector="Border.queue-row:pointerover">
+                                        <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}"/>
                                     </Style>
                                 </ListBox.Styles>
                                 <ListBox.ItemTemplate>
@@ -463,7 +477,6 @@
                                                 Margin="14,2,14,2"
                                                 Padding="6,4"
                                                 CornerRadius="14"
-                                                Background="Transparent"
                                                 Tag="{Binding}"
                                                 PointerPressed="OnQueueItemPointerPressed"
                                                 PointerMoved="OnQueueItemPointerMoved"
@@ -506,6 +519,7 @@
                                                                Classes="one-line-explicit-title"
                                                                FontSize="13"
                                                                FontWeight="SemiBold"
+                                                               Foreground="White"
                                                                MaxWidth="165" />
                                                     <Border Grid.Column="1"
                                                             Classes="explicit-badge compact"
@@ -522,7 +536,7 @@
                                                 <TextBlock Text="{Binding ArtistDisplay}"
                                                            FontSize="11"
                                                            FontWeight="Bold"
-                                                           Opacity="0.5"
+                                                           Foreground="{DynamicResource AccentColorBrush}"
                                                            TextTrimming="CharacterEllipsis"
                                                            MaxLines="1"
                                                            Margin="0,2,0,0" />
@@ -531,6 +545,7 @@
                                             <TextBlock Grid.Column="2"
                                                        Text="{Binding DurationFormatted}"
                                                        FontSize="12"
+                                                       Foreground="White"
                                                        Opacity="0.4"
                                                        VerticalAlignment="Center" />
                                         </Grid>
@@ -587,15 +602,15 @@
                                     </Border>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
                                         <TextBlock Text="{Binding TitleDisplay}"
-                                                   FontSize="13"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="White"
+                                                    FontSize="13"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{DynamicResource AccentForegroundBrush}"
                                                    TextTrimming="CharacterEllipsis"
                                                    MaxLines="1" />
                                         <TextBlock Text="{Binding ArtistDisplay}"
-                                                   FontSize="11"
-                                                   FontWeight="Bold"
-                                                   Foreground="White"
+                                                    FontSize="11"
+                                                    FontWeight="Bold"
+                                                    Foreground="{DynamicResource AccentForegroundBrush}"
                                                    Opacity="0.7"
                                                    TextTrimming="CharacterEllipsis"
                                                    MaxLines="1"
@@ -604,7 +619,7 @@
                                     <TextBlock Grid.Column="2"
                                                Text="{Binding DurationFormatted}"
                                                FontSize="12"
-                                               Foreground="White"
+                                               Foreground="{DynamicResource AccentForegroundBrush}"
                                                Opacity="0.7"
                                                VerticalAlignment="Center" />
                                 </Grid>
@@ -740,7 +755,7 @@
                             Padding="22,9"
                             CornerRadius="999"
                             Background="{DynamicResource AccentColorBrush}"
-                            Foreground="White"
+                            Foreground="{DynamicResource AccentForegroundBrush}"
                             BorderThickness="0"
                             Cursor="Hand"
                             Content="Close"

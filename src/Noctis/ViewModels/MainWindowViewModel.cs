@@ -22,6 +22,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IPersistenceService _persistence;
     private readonly IDiscordPresenceService _discord;
     private readonly ILastFmService _lastFm;
+    private readonly IListenBrainzService _listenBrainz;
     private readonly ISyncService _syncService;
     private readonly ArtistImageService _artistImageService;
     private readonly ArtistBioService? _artistBioService;
@@ -162,6 +163,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IMetadataService metadata,
         IDiscordPresenceService discord,
         ILastFmService lastFm,
+        IListenBrainzService listenBrainz,
         ISyncService syncService,
         ArtistImageService artistImageService,
         ArtistBioService artistBioService,
@@ -173,6 +175,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _persistence = persistence;
         _discord = discord;
         _lastFm = lastFm;
+        _listenBrainz = listenBrainz;
         _syncService = syncService;
         _artistImageService = artistImageService;
         _artistBioService = artistBioService;
@@ -189,6 +192,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetDiscordPresence(discord);
         Settings.SetLoonClient(loon);
         Settings.SetLastFm(lastFm);
+        Settings.SetListenBrainz(listenBrainz);
         Settings.SetArtistImageService(artistImageService);
         Settings.SetUpdateService(App.Services!.GetRequiredService<UpdateService>());
         Settings.SettingsReset += async (_, _) => await Sidebar.LoadPlaylistsAsync();
@@ -1684,6 +1688,10 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_lastFm.IsAuthenticated && Settings.LastFmScrobblingEnabled)
             _ = _lastFm.UpdateNowPlayingAsync(track);
 
+        // Update ListenBrainz Now Playing (independent of Last.fm)
+        if (_listenBrainz.IsAuthenticated && Settings.ListenBrainzScrobblingEnabled)
+            _ = _listenBrainz.UpdateNowPlayingAsync(track);
+
         // Queue play-state sync for enabled server-backed connections.
         _ = _syncService.PushPlayStateAsync(track);
     }
@@ -1746,13 +1754,22 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void TryScrobblePreviousTrack()
     {
-        if (_scrobbleTrack == null || !_lastFm.IsAuthenticated || !Settings.LastFmScrobblingEnabled)
+        if (_scrobbleTrack == null)
             return;
+
+        var lastFmActive = _lastFm.IsAuthenticated && Settings.LastFmScrobblingEnabled;
+        var listenBrainzActive = _listenBrainz.IsAuthenticated && Settings.ListenBrainzScrobblingEnabled;
+        if (!lastFmActive && !listenBrainzActive)
+        {
+            _scrobbleTrack = null;
+            return;
+        }
 
         var elapsed = DateTime.UtcNow - _trackStartedAt;
         var duration = _scrobbleTrack.Duration;
 
-        // Last.fm scrobble rules: played > 50% of duration OR > 4 minutes
+        // Last.fm scrobble rules: played > 50% of duration OR > 4 minutes.
+        // ListenBrainz mirrors the same threshold for consistency.
         bool shouldScrobble = duration.TotalSeconds > 0
             && (elapsed.TotalSeconds > duration.TotalSeconds * 0.5 || elapsed.TotalMinutes > 4);
 
@@ -1760,7 +1777,10 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var track = _scrobbleTrack;
             var startedAt = _trackStartedAt;
-            _ = _lastFm.ScrobbleAsync(track, startedAt);
+            if (lastFmActive)
+                _ = _lastFm.ScrobbleAsync(track, startedAt);
+            if (listenBrainzActive)
+                _ = _listenBrainz.ScrobbleAsync(track, startedAt);
         }
 
         _scrobbleTrack = null;

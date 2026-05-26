@@ -18,9 +18,9 @@
             <Button DockPanel.Dock="Left"
                     Command="{Binding BackCommand}"
                     IsVisible="{Binding IsAlbumDetailBackButtonVisible}"
-                    Classes="accent-btn"
-                    Background="{DynamicResource AccentColorBrush}"
-                    Foreground="White"
+                     Classes="accent-btn"
+                     Background="{DynamicResource AccentColorBrush}"
+                     Foreground="{DynamicResource AccentForegroundBrush}"
                     BorderThickness="0"
                     Padding="16,7"
                     Margin="0,0,14,0"
@@ -29,24 +29,24 @@
                     HorizontalContentAlignment="Center"
                     VerticalContentAlignment="Center"
                     Cursor="Hand">
-                <Button.Styles>
-                    <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
-                        <Setter Property="Foreground" Value="White"/>
-                    </Style>
-                </Button.Styles>
+                 <Button.Styles>
+                     <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
+                         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+                     </Style>
+                 </Button.Styles>
                 <TextBlock Text="{Binding AlbumDetailBackButtonDisplayText}"
-                           FontSize="13"
-                           FontWeight="SemiBold"
-                           Foreground="White"
-                           VerticalAlignment="Center" />
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            Foreground="{DynamicResource AccentForegroundBrush}"
+                            VerticalAlignment="Center" />
             </Button>
 
             <Button DockPanel.Dock="Left"
                     Command="{Binding BackCommand}"
                     IsVisible="{Binding IsGenericBackButtonVisible}"
-                    Classes="accent-btn"
-                    Background="{DynamicResource AccentColorBrush}"
-                    Foreground="White"
+                     Classes="accent-btn"
+                     Background="{DynamicResource AccentColorBrush}"
+                     Foreground="{DynamicResource AccentForegroundBrush}"
                     BorderThickness="0"
                     Padding="16,7"
                     Margin="0,0,14,0"
@@ -57,16 +57,16 @@
                     Cursor="Hand"
                     FontSize="13"
                     FontWeight="SemiBold">
-                <Button.Styles>
-                    <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
-                        <Setter Property="Foreground" Value="White"/>
-                    </Style>
-                </Button.Styles>
+                 <Button.Styles>
+                     <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
+                         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+                     </Style>
+                 </Button.Styles>
                 <TextBlock Text="{Binding BackButtonDisplayText}"
-                           FontSize="13"
-                           FontWeight="SemiBold"
-                           Foreground="White"
-                           VerticalAlignment="Center" />
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            Foreground="{DynamicResource AccentForegroundBrush}"
+                            VerticalAlignment="Center" />
             </Button>
             <TextBlock Text="{Binding BackContextTitle}"
                        IsVisible="{Binding IsBackContextTitleVisible}"

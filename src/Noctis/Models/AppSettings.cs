@@ -134,6 +134,15 @@ public class AppSettings
     /// <summary>Last.fm username (populated after successful auth).</summary>
     public string LastFmUsername { get; set; } = "";
 
+    /// <summary>Whether ListenBrainz scrobbling is enabled (independent of Last.fm).</summary>
+    public bool ListenBrainzScrobblingEnabled { get; set; } = true;
+
+    /// <summary>ListenBrainz user token (single-string credential pasted by the user from listenbrainz.org/profile/).</summary>
+    public string ListenBrainzToken { get; set; } = "";
+
+    /// <summary>ListenBrainz username (populated after a successful validate-token call).</summary>
+    public string ListenBrainzUsername { get; set; } = "";
+
     /// <summary>
     /// Internal metadata schema version used for one-time library backfills
     /// when parsing rules are improved (for example explicit tag detection).

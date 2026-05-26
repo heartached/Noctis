@@ -34,11 +34,20 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [ObservableProperty] private string _artistFilterName = string.Empty;
     public double TileRowHeight => TileArtworkSize + TileTextHeight;
 
+    /// <summary>
+    /// Active release-type chip filter. null = "All". Drives the chip strip
+    /// at the top of the Albums view and is applied alongside the search query.
+    /// </summary>
+    [ObservableProperty] private ReleaseType? _releaseTypeFilter;
+
+    /// <summary>Filter chips shown above the album grid; one entry per filter value.</summary>
+    public ObservableCollection<ReleaseTypeChip> ReleaseTypeChips { get; }
+
     partial void OnTileArtworkSizeChanged(double value)
     {
         OnPropertyChanged(nameof(TileRowHeight));
     }
-    public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter);
+    public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter) || ReleaseTypeFilter.HasValue;
 
     /// <summary>Whether the view is filtered to a specific artist's discography.</summary>
     public bool IsArtistFiltered => !string.IsNullOrEmpty(ArtistFilterName);
@@ -73,12 +82,36 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         _player = player;
         _sidebar = sidebar;
 
+        ReleaseTypeChips = new ObservableCollection<ReleaseTypeChip>
+        {
+            new() { Filter = null, Label = "All", IsActive = true },
+            new() { Filter = ReleaseType.Album, Label = "Albums" },
+            new() { Filter = ReleaseType.Single, Label = "Singles" },
+            new() { Filter = ReleaseType.EP, Label = "EPs" },
+            new() { Filter = ReleaseType.Compilation, Label = "Other" },
+        };
+
         // Mark dirty when library changes — actual reload deferred to next Refresh() call
         _library.LibraryUpdated += (_, _) =>
         {
             _isDirty = true;
             Dispatcher.UIThread.Post(Refresh);
         };
+    }
+
+    partial void OnReleaseTypeFilterChanged(ReleaseType? value)
+    {
+        foreach (var chip in ReleaseTypeChips)
+            chip.IsActive = chip.Filter == value;
+        OnPropertyChanged(nameof(HasActiveFilter));
+        RebuildFilteredRows();
+    }
+
+    [RelayCommand]
+    private void SelectReleaseTypeChip(ReleaseTypeChip? chip)
+    {
+        if (chip == null) return;
+        ReleaseTypeFilter = chip.Filter;
     }
 
     partial void OnArtistFilterNameChanged(string value)
@@ -103,7 +136,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // previous filter's content for a frame.
         Interlocked.Increment(ref _rebuildGeneration);
         var albums = _library.Albums.ToList();
-        var rows = BuildFilteredRows(albums, ArtistFilterName, _currentFilter, ColumnsPerRow);
+        var rows = BuildFilteredRows(albums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter);
         _allAlbums = albums;
         FilteredAlbumRows.ReplaceAll(rows);
     }
@@ -134,7 +167,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // rows on first paint — otherwise the grid flashes the previous (unfiltered)
         // album list for a frame before the async rebuild's UI post lands.
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
@@ -179,7 +212,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         OnPropertyChanged(nameof(HasActiveFilter));
 
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
@@ -191,10 +224,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var artistFilter = ArtistFilterName;
         var searchFilter = _currentFilter;
         var columns = ColumnsPerRow;
+        var releaseTypeFilter = ReleaseTypeFilter;
 
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns);
+            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter);
 
             // Only apply if no newer rebuild was requested
             if (Volatile.Read(ref _rebuildGeneration) == generation)
@@ -207,9 +241,22 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     }
 
     private List<AlbumRow> BuildFilteredRows(
-        List<Album> allAlbums, string artistFilter, string searchFilter, int columnsPerRow)
+        List<Album> allAlbums, string artistFilter, string searchFilter, int columnsPerRow,
+        ReleaseType? releaseTypeFilter = null)
     {
         var filtered = allAlbums.AsEnumerable();
+
+        // Release-type chip narrows the grid before any other filter.
+        if (releaseTypeFilter.HasValue)
+        {
+            filtered = releaseTypeFilter.Value switch
+            {
+                // "Other" chip groups everything that is not Album / Single / EP
+                // (Compilation, Live, Remix, Soundtrack, Other) under one bucket.
+                ReleaseType.Compilation => filtered.Where(a => a.ReleaseType is not (ReleaseType.Album or ReleaseType.Single or ReleaseType.EP)),
+                _ => filtered.Where(a => a.ReleaseType == releaseTypeFilter.Value),
+            };
+        }
 
         // Apply artist filter first (match on album artist or any track artist,
         // including individual collaborators parsed from multi-artist strings)
@@ -452,6 +499,27 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
         // Open metadata for the first track in the album
         await MetadataHelper.OpenMetadataWindow(album.Tracks[0]);
+    }
+
+    [RelayCommand]
+    private async Task BatchEditAlbum(Album album)
+    {
+        if (album?.Tracks == null || album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenBatchMetadataWindow(album.Tracks.ToList());
+    }
+
+    [RelayCommand]
+    private async Task ConvertAlbum(Album album)
+    {
+        if (album?.Tracks == null || album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenAudioConverterDialog(album.Tracks.ToList());
+    }
+
+    [RelayCommand]
+    private async Task ScanAlbumReplayGain(Album album)
+    {
+        if (album?.Tracks == null || album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenReplayGainScannerDialog(album.Tracks.ToList());
     }
 
     private Action<string>? _viewArtistAction;
