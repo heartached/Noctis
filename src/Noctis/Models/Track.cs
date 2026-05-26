@@ -104,6 +104,25 @@ public partial class Track : ObservableObject
     /// <summary>Whether this track is part of a compilation album.</summary>
     public bool IsCompilation { get; set; }
 
+    /// <summary>
+    /// Album release classification for this track's release. Auto-detected from tags
+    /// during scan; persisted with the library so the value survives without re-reading
+    /// the file. <see cref="IsReleaseTypeOverridden"/> distinguishes a user override
+    /// from an auto-detected value.
+    /// </summary>
+    public ReleaseType ReleaseType { get; set; } = ReleaseType.Album;
+
+    /// <summary>True when the user has explicitly set the release type from the
+    /// metadata Options tab; suppresses auto-detection on subsequent scans.</summary>
+    public bool IsReleaseTypeOverridden { get; set; }
+
+    /// <summary>True when ReleaseType was populated from a real tag value (RELEASETYPE,
+    /// MUSICBRAINZ_ALBUM_TYPE, or the iTunes album-name suffix). Distinguishes an
+    /// explicit "Album" from the unset default so the album-grouping fallback in
+    /// <see cref="Services.LibraryService"/> can apply the track-count heuristic
+    /// only when no tag information was present.</summary>
+    public bool ReleaseTypeFromTag { get; set; }
+
     /// <summary>Grouping tag (e.g., a sub-genre or classical work grouping).</summary>
     public string Grouping { get; set; } = string.Empty;
 

@@ -233,6 +233,7 @@ public partial class App : Application
         var light1 = Mix(color, Colors.White, 0.15);
         var light2 = Mix(color, Colors.White, 0.30);
         var light3 = Mix(color, Colors.White, 0.45);
+        var accentForeground = GetReadableForeground(color);
 
         var rd = new ResourceDictionary
         {
@@ -246,6 +247,7 @@ public partial class App : Application
             ["SystemControlHighlightAccentBrush"]  = new SolidColorBrush(color),
             ["SystemControlHighlightAccentBrush2"] = new SolidColorBrush(light1),
             ["AccentColorBrush"]                   = new SolidColorBrush(color),
+            ["AccentForegroundBrush"]              = new SolidColorBrush(accentForeground),
             ["AccentColorBrushLight1"]             = new SolidColorBrush(light1),
             ["AccentColorBrushDark1"]              = new SolidColorBrush(dark1),
             ["ToggleSwitchFillOn"]                 = new SolidColorBrush(color),
@@ -278,6 +280,26 @@ public partial class App : Application
         byte g = (byte)(a.G + (b.G - a.G) * t);
         byte bl = (byte)(a.B + (b.B - a.B) * t);
         return Color.FromRgb(r, g, bl);
+    }
+
+    private static Color GetReadableForeground(Color background)
+    {
+        static double Linear(byte channel)
+        {
+            var value = channel / 255d;
+            return value <= 0.03928
+                ? value / 12.92
+                : Math.Pow((value + 0.055) / 1.055, 2.4);
+        }
+
+        var luminance =
+            0.2126 * Linear(background.R) +
+            0.7152 * Linear(background.G) +
+            0.0722 * Linear(background.B);
+
+        // Bias toward white: only switch to black when the accent is light enough
+        // that white-on-accent would be unreadable (e.g. white, pale yellow, mint).
+        return luminance >= 0.6 ? Colors.Black : Colors.White;
     }
 
     private static bool TryParseHex(string? hex, out Color color)

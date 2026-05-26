@@ -1,3 +1,4 @@
+using Noctis.Models;
 using TagLib;
 using TagLib.Id3v2;
 using TagLib.Mpeg4;
@@ -24,6 +25,13 @@ internal static class ExtendedTagIO
     private const string MovementTotalKey = "MOVEMENTTOTAL";
     private const string ShowComposerKey = "NOCTIS_SHOWCOMPOSER";
     private const string UseWorkMovementKey = "NOCTIS_USEWORKMOVEMENT";
+
+    // Release type tags. RELEASETYPE is the primary key used by mp3tag/foobar2000.
+    // MUSICBRAINZ_ALBUM_TYPE is what MusicBrainz Picard writes (often multi-valued,
+    // e.g. "album; soundtrack" — we pick the most specific token).
+    private const string ReleaseTypeKey = "RELEASETYPE";
+    private const string MusicBrainzAlbumTypeKey = "MUSICBRAINZ_ALBUM_TYPE";
+    private const string NoctisReleaseTypeOverrideKey = "NOCTIS_RELEASETYPE";
 
     // Apple MP4 atom names (4 chars including the © sign).
     private static readonly ByteVector AppleWorkAtom = new byte[] { 0xa9, (byte)'w', (byte)'r', (byte)'k' };
@@ -199,6 +207,99 @@ internal static class ExtendedTagIO
         }
         WriteCustomBool(file, ShowComposerKey, value);
     }
+
+    // ── Release type (Album / Single / EP / Compilation / Live / Remix / Soundtrack / Other) ──
+
+    /// <summary>
+    /// Reads the release type from tags using priority:
+    /// 1. NOCTIS_RELEASETYPE (user override)
+    /// 2. RELEASETYPE (mp3tag/foobar2000 convention)
+    /// 3. MUSICBRAINZ_ALBUM_TYPE (Picard, may be multi-valued)
+    /// Returns null if none of the tags are set, so callers can fall back to
+    /// album-name heuristics or track-count heuristics.
+    /// </summary>
+    public static ReleaseType? ReadReleaseType(TagFile file, out bool isUserOverride)
+    {
+        isUserOverride = false;
+
+        var overrideValue = ReadCustomString(file, NoctisReleaseTypeOverrideKey);
+        if (!string.IsNullOrWhiteSpace(overrideValue) && TryParseReleaseType(overrideValue, out var overrideParsed))
+        {
+            isUserOverride = true;
+            return overrideParsed;
+        }
+
+        var primary = ReadCustomString(file, ReleaseTypeKey);
+        if (!string.IsNullOrWhiteSpace(primary) && TryParseReleaseTypeList(primary, out var parsedPrimary))
+            return parsedPrimary;
+
+        var mb = ReadCustomString(file, MusicBrainzAlbumTypeKey);
+        if (!string.IsNullOrWhiteSpace(mb) && TryParseReleaseTypeList(mb, out var parsedMb))
+            return parsedMb;
+
+        return null;
+    }
+
+    public static void WriteReleaseTypeOverride(TagFile file, ReleaseType? value)
+    {
+        WriteCustomString(file, NoctisReleaseTypeOverrideKey, value?.ToString());
+    }
+
+    /// <summary>Parses a tag value like "Album", "ep", "Soundtrack" into <see cref="ReleaseType"/>.</summary>
+    private static bool TryParseReleaseType(string raw, out ReleaseType type)
+    {
+        type = ReleaseType.Album;
+        if (string.IsNullOrWhiteSpace(raw)) return false;
+        var token = raw.Trim();
+        switch (token.ToLowerInvariant())
+        {
+            case "album": type = ReleaseType.Album; return true;
+            case "single": type = ReleaseType.Single; return true;
+            case "ep": type = ReleaseType.EP; return true;
+            case "compilation": type = ReleaseType.Compilation; return true;
+            case "live": type = ReleaseType.Live; return true;
+            case "remix": type = ReleaseType.Remix; return true;
+            case "soundtrack": type = ReleaseType.Soundtrack; return true;
+            case "other": type = ReleaseType.Other; return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Parses a list of release type tokens (Picard writes multi-valued like
+    /// "album; soundtrack") and picks the most specific one. Ordering puts
+    /// secondary types (Soundtrack/Live/Remix/Compilation/EP/Single) ahead of
+    /// the generic "Album" so a track tagged "album; soundtrack" classifies
+    /// as Soundtrack.
+    /// </summary>
+    private static bool TryParseReleaseTypeList(string raw, out ReleaseType type)
+    {
+        type = ReleaseType.Album;
+        var tokens = raw.Split(new[] { ';', ',', '/' }, System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
+        ReleaseType? best = null;
+        foreach (var token in tokens)
+        {
+            if (!TryParseReleaseType(token, out var parsed)) continue;
+            if (best == null || Specificity(parsed) > Specificity(best.Value))
+                best = parsed;
+        }
+        if (best == null) return false;
+        type = best.Value;
+        return true;
+    }
+
+    private static int Specificity(ReleaseType t) => t switch
+    {
+        ReleaseType.Album => 0,
+        ReleaseType.Other => 1,
+        ReleaseType.EP => 2,
+        ReleaseType.Single => 3,
+        ReleaseType.Compilation => 4,
+        ReleaseType.Live => 5,
+        ReleaseType.Remix => 6,
+        ReleaseType.Soundtrack => 7,
+        _ => 0,
+    };
 
     // ── Shared custom-field helpers (ID3v2 TXXX / Xiph SetField / APE item) ──
 

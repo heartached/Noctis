@@ -18,7 +18,7 @@
     <Grid RowDefinitions="*">
         <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="28,20,28,28" Spacing="32">
+            <StackPanel Margin="28,20,28,115" Spacing="32">
 
                 <!-- Section title -->
                 <TextBlock Text="Most Listened To"
@@ -119,6 +119,20 @@
                                             </MenuItem>
                                             <MenuItem Header="Metadata"
                                                       Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).OpenTrackMetadataCommand}"
+                                                      CommandParameter="{Binding}">
+                                                <MenuItem.Icon>
+                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="Convert…"
+                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ConvertTrackCommand}"
+                                                      CommandParameter="{Binding}">
+                                                <MenuItem.Icon>
+                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="Scan ReplayGain"
+                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ScanTrackReplayGainCommand}"
                                                       CommandParameter="{Binding}">
                                                 <MenuItem.Icon>
                                                     <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
@@ -397,6 +411,27 @@
                                             </MenuItem>
                                             <MenuItem Header="Metadata"
                                                       Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).OpenMetadataCommand}"
+                                                      CommandParameter="{Binding}">
+                                                <MenuItem.Icon>
+                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="Edit All Tracks…"
+                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).BatchEditAlbumCommand}"
+                                                      CommandParameter="{Binding}">
+                                                <MenuItem.Icon>
+                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="Convert Album…"
+                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ConvertAlbumCommand}"
+                                                      CommandParameter="{Binding}">
+                                                <MenuItem.Icon>
+                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="Scan ReplayGain"
+                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ScanAlbumReplayGainCommand}"
                                                       CommandParameter="{Binding}">
                                                 <MenuItem.Icon>
                                                     <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>

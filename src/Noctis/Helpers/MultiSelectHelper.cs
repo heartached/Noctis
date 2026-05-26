@@ -190,4 +190,87 @@ public static class MultiSelectHelper
         }
         return result;
     }
+
+    // ── Data-tracked variants ──
+    //
+    // The container-tracked variants above suffer a virtualization bug: scrolling
+    // recycles ListBoxItems, so a HashSet<ListBoxItem> ends up holding stale
+    // references whose DataContext now points at a *different* track. The
+    // ctrl-selected visual class then sticks to whatever track happens to
+    // recycle into that container.
+    //
+    // The variants below track selection by the underlying data object (e.g.
+    // Track) and re-apply/strip the visual class as containers prepare/clear,
+    // so scrolling and tab-switching no longer corrupt the selection.
+
+    /// <summary>Toggle Ctrl-selection on a track row by its data object.</summary>
+    public static bool HandleTrackRowClickByData<T>(ListBoxItem item, T data, PointerPressedEventArgs e, HashSet<T> selectedData) where T : class
+    {
+        if (!e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            return false;
+
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            ClearTrackSelectionsByData(selectedData);
+            return false;
+        }
+
+        e.Handled = true;
+        if (selectedData.Contains(data))
+        {
+            selectedData.Remove(data);
+            item.Classes.Remove(SelectedClass);
+        }
+        else
+        {
+            selectedData.Add(data);
+            item.Classes.Add(SelectedClass);
+        }
+        return true;
+    }
+
+    /// <summary>Ctrl+A toggle for data-tracked track selection.</summary>
+    public static bool HandleTrackSelectAllByData<T>(KeyEventArgs e, ListBox listBox, HashSet<T> selectedData) where T : class
+    {
+        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            return false;
+
+        e.Handled = true;
+
+        if (listBox.ItemsSource is not System.Collections.IEnumerable items) return true;
+        var allData = items.OfType<T>().ToList();
+
+        if (allData.Count > 0 && allData.All(d => selectedData.Contains(d)))
+        {
+            ClearTrackSelectionsByData(selectedData);
+            // Strip the class from any currently realized rows.
+            foreach (var child in listBox.GetVisualDescendants())
+                if (child is ListBoxItem li) li.Classes.Remove(SelectedClass);
+        }
+        else
+        {
+            selectedData.Clear();
+            foreach (var d in allData) selectedData.Add(d);
+            foreach (var child in listBox.GetVisualDescendants())
+                if (child is ListBoxItem li) li.Classes.Add(SelectedClass);
+        }
+        return true;
+    }
+
+    /// <summary>Sync the ctrl-selected class on a container based on whether its
+    /// DataContext is in the data selection set. Call from ContainerPrepared so
+    /// recycled containers reflect the right state after scroll/rebind.</summary>
+    public static void SyncContainerVisual<T>(ListBoxItem item, HashSet<T> selectedData) where T : class
+    {
+        if (item.DataContext is T data && selectedData.Contains(data))
+            item.Classes.Add(SelectedClass);
+        else
+            item.Classes.Remove(SelectedClass);
+    }
+
+    /// <summary>Clear all data-tracked track selections.</summary>
+    public static void ClearTrackSelectionsByData<T>(HashSet<T> selectedData) where T : class
+    {
+        selectedData.Clear();
+    }
 }

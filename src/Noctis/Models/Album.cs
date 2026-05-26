@@ -112,6 +112,44 @@ public class Album
     /// </summary>
     public bool IsExplicit => Tracks?.Any(t => t.IsExplicit) == true;
 
+    /// <summary>
+    /// Resolved release classification for the whole album. Priority:
+    ///   1. Any track with <see cref="Track.IsReleaseTypeOverridden"/> wins.
+    ///   2. The first non-Album <see cref="Track.ReleaseType"/> drawn from a tag (<see cref="Track.ReleaseTypeFromTag"/>).
+    ///   3. Any explicit "Album" tag short-circuits the heuristic.
+    ///   4. Track-count fallback: ≤2 tracks → Single, 3–6 → EP, 7+ → Album.
+    /// </summary>
+    public ReleaseType ReleaseType
+    {
+        get
+        {
+            if (Tracks == null || Tracks.Count == 0) return ReleaseType.Album;
+
+            // 1. User override always wins.
+            var overridden = Tracks.FirstOrDefault(t => t.IsReleaseTypeOverridden);
+            if (overridden != null) return overridden.ReleaseType;
+
+            // 2. First track with a non-default tag-derived type.
+            var tagged = Tracks.FirstOrDefault(t => t.ReleaseTypeFromTag && t.ReleaseType != ReleaseType.Album);
+            if (tagged != null) return tagged.ReleaseType;
+
+            // 3. Explicit "Album" tag short-circuits the heuristic.
+            if (Tracks.Any(t => t.ReleaseTypeFromTag && t.ReleaseType == ReleaseType.Album))
+                return ReleaseType.Album;
+
+            // 4. Track-count fallback (IsCompilation also handled here so the
+            //    Albums view can filter compilations even without tags).
+            if (IsCompilation) return ReleaseType.Compilation;
+            var count = Tracks.Count;
+            if (count <= 2) return ReleaseType.Single;
+            if (count <= 6) return ReleaseType.EP;
+            return ReleaseType.Album;
+        }
+    }
+
+    /// <summary>Whether this album is composed entirely of compilation-flagged tracks.</summary>
+    public bool IsCompilation => Tracks?.Count > 0 && Tracks.All(t => t.IsCompilation);
+
     /// <summary>Copyright notice from the first track that has one.</summary>
     public string Copyright =>
         Tracks?.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.Copyright))?.Copyright

@@ -54,6 +54,18 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Enables or disables loudness normalization.</summary>
     void SetNormalization(bool enabled);
 
+    /// <summary>
+    /// Apply ReplayGain to the currently loaded track based on its tags. Reads
+    /// REPLAYGAIN_TRACK_GAIN / REPLAYGAIN_ALBUM_GAIN from the file and scales
+    /// the output volume by 10^((gain + preampDb)/20). Pass "Off" to clear.
+    /// </summary>
+    /// <param name="mode">"Off", "Track", "Album", or "Auto".</param>
+    /// <param name="preampDb">Pre-amp in dB.</param>
+    void ApplyReplayGain(string mode, double preampDb);
+
+    /// <summary>Path to the currently loaded media, or null. Used to re-apply RG.</summary>
+    string? CurrentMediaPath { get; }
+
     /// <summary>Enables or disables the next track transition fade.</summary>
     void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase);
 

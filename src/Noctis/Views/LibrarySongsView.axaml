@@ -49,6 +49,7 @@
                      ItemsSource="{Binding FilteredTracks}"
                      SelectionMode="Multiple"
                      AutoScrollToSelectedItem="False"
+                     Padding="0,0,0,115"
                      x:Name="TrackList">
             <ListBox.Styles>
                 <Style Selector="ListBoxItem">

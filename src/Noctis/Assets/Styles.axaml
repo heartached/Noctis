@@ -23,6 +23,7 @@
                     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush2" Color="{StaticResource SystemAccentColorLight1}" />
                     <SolidColorBrush x:Key="AccentColorBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="AccentForegroundBrush" Color="White" />
 
                     <!-- Custom App Background Colors -->
                     <SolidColorBrush x:Key="AppSidebarBackground" Color="#141414" />
@@ -110,6 +111,7 @@
                     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush2" Color="{StaticResource SystemAccentColorLight1}" />
                     <SolidColorBrush x:Key="AccentColorBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="AccentForegroundBrush" Color="White" />
 
                     <!-- ToggleSwitch checked fill (#E74856) -->
                     <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#E74856" />
@@ -974,7 +976,7 @@
                         </Border.Transitions>
                         <Path x:Name="IndicatorCheck"
                               Data="M 0 3.5 L 3 7 L 9 0"
-                              Stroke="White"
+                              Stroke="{DynamicResource AccentForegroundBrush}"
                               StrokeThickness="1.5"
                               StrokeLineCap="Round"
                               HorizontalAlignment="Center"

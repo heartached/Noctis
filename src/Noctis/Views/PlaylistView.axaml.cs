@@ -16,7 +16,8 @@ namespace Noctis.Views;
 public partial class PlaylistView : UserControl
 {
     private EventHandler? _pendingScrollRestore;
-    private readonly HashSet<ListBoxItem> _selectedTrackItems = new();
+    // See LibrarySongsView for why this is data-tracked rather than container-tracked.
+    private readonly HashSet<Track> _selectedTracks = new();
     private TrackContextMenuBuilder? _menuBuilder;
     private ListBoxItem? _menuOwnerItem;
 
@@ -80,11 +81,11 @@ public partial class PlaylistView : UserControl
         while (source != null && source is not ListBoxItem)
             source = source.Parent as Control;
         if (source is not ListBoxItem item) return;
+        if (item.DataContext is not Track track) return;
 
-        MultiSelectHelper.HandleTrackRowClick(item, e, _selectedTrackItems);
+        MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
 
-        // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
-        if (_selectedTrackItems.Count > 0)
+        if (_selectedTracks.Count > 0)
             Focus();
     }
 
@@ -92,7 +93,7 @@ public partial class PlaylistView : UserControl
     {
         if (DataContext is PlaylistViewModel vm && vm.IsDescriptionOpen)
             return;
-        MultiSelectHelper.HandleTrackSelectAll(e, TrackList, _selectedTrackItems);
+        MultiSelectHelper.HandleTrackSelectAllByData(e, TrackList, _selectedTracks);
     }
 
     private ContextMenu GetOrCreateContextMenu()
@@ -123,7 +124,9 @@ public partial class PlaylistView : UserControl
             openMetadataCommand: vm.OpenMetadataCommand,
             searchLyricsCommand: vm.SearchLyricsCommand,
             showInExplorerCommand: vm.ShowInExplorerCommand,
-            removeCommand: vm.RemoveTrackCommand);
+            removeCommand: vm.RemoveTrackCommand,
+            convertCommand: vm.ConvertTracksCommand,
+            scanReplayGainCommand: vm.ScanReplayGainCommand);
     }
 
     private void DetachMenuFromOwner()
@@ -145,7 +148,7 @@ public partial class PlaylistView : UserControl
         if (sender is not Button btn) return;
         if (btn.Tag is not Track track) return;
         if (DataContext is PlaylistViewModel vm)
-            vm.CtrlSelectedTracks = MultiSelectHelper.GetSelectedTrackData<Track>(_selectedTrackItems);
+            vm.CtrlSelectedTracks = _selectedTracks.ToList();
 
         BindContextMenuToTrack(track);
         var menu = GetOrCreateContextMenu();
@@ -166,7 +169,10 @@ public partial class PlaylistView : UserControl
     private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)
     {
         if (e.Container is ListBoxItem item)
+        {
             WireTrackItem(item);
+            MultiSelectHelper.SyncContainerVisual(item, _selectedTracks);
+        }
     }
 
     private void OnTrackContainerClearing(object? sender, ContainerClearingEventArgs e)
@@ -175,6 +181,7 @@ public partial class PlaylistView : UserControl
         {
             item.ContextRequested -= OnTrackItemContextRequested;
             item.ContextMenu = null;
+            item.Classes.Remove("ctrl-selected");
             item.RemoveHandler(PointerPressedEvent, OnTrackRowPointerPressed);
             item.RemoveHandler(PointerMovedEvent, OnTrackRowPointerMoved);
             item.RemoveHandler(PointerReleasedEvent, OnTrackRowPointerReleased);
@@ -187,7 +194,7 @@ public partial class PlaylistView : UserControl
         if (sender is not ListBoxItem item) return;
         if (item.DataContext is not Track track) return;
         if (DataContext is PlaylistViewModel vm)
-            vm.CtrlSelectedTracks = MultiSelectHelper.GetSelectedTrackData<Track>(_selectedTrackItems);
+            vm.CtrlSelectedTracks = _selectedTracks.ToList();
 
         BindContextMenuToTrack(track);
         var menu = GetOrCreateContextMenu();

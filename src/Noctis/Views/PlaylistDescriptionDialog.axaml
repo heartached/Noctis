@@ -59,7 +59,7 @@
                                 CornerRadius="999"
                                 Cursor="Hand"
                                 Background="{DynamicResource AccentColorBrush}"
-                                Foreground="White"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
                                 Classes="album-desc-btn"
                                 IsVisible="{Binding IsDescriptionEditing}"
                                 IsEnabled="{Binding HasDescriptionChanges}" />
@@ -71,7 +71,7 @@
                                 CornerRadius="999"
                                 Cursor="Hand"
                                 Background="{DynamicResource AccentColorBrush}"
-                                Foreground="White"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
                                 Classes="album-desc-btn"
                                 IsVisible="{Binding IsDescriptionEditing}" />
                     </StackPanel>

@@ -19,7 +19,11 @@ public partial class LibrarySongsView : UserControl
 {
     private LibrarySongsViewModel? _vm;
     private EventHandler? _pendingScrollRestore;
-    private readonly HashSet<ListBoxItem> _selectedTrackItems = new();
+    // Track selection by the Track itself (not the ListBoxItem container) so
+    // virtualization-driven container recycling doesn't drag the visual
+    // ctrl-selected class onto a different track when the user scrolls or
+    // tabs back to the page. See MultiSelectHelper's "Data-tracked variants".
+    private readonly HashSet<Track> _selectedTracks = new();
     private TrackContextMenuBuilder? _menuBuilder;
     private ListBoxItem? _menuOwnerItem;
 
@@ -56,17 +60,17 @@ public partial class LibrarySongsView : UserControl
         while (source != null && source is not ListBoxItem)
             source = source.Parent as Control;
         if (source is not ListBoxItem item) return;
+        if (item.DataContext is not Track track) return;
 
-        MultiSelectHelper.HandleTrackRowClick(item, e, _selectedTrackItems);
+        MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
 
-        // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
-        if (_selectedTrackItems.Count > 0)
+        if (_selectedTracks.Count > 0)
             Focus();
     }
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
-        MultiSelectHelper.HandleTrackSelectAll(e, TrackList, _selectedTrackItems);
+        MultiSelectHelper.HandleTrackSelectAllByData(e, TrackList, _selectedTracks);
     }
 
     private ContextMenu GetOrCreateContextMenu()
@@ -96,13 +100,20 @@ public partial class LibrarySongsView : UserControl
             openMetadataCommand: vm.OpenMetadataCommand,
             searchLyricsCommand: vm.SearchLyricsCommand,
             showInExplorerCommand: vm.ShowInExplorerCommand,
-            removeCommand: vm.RemoveFromLibraryCommand);
+            removeCommand: vm.RemoveFromLibraryCommand,
+            convertCommand: vm.ConvertTracksCommand,
+            scanReplayGainCommand: vm.ScanReplayGainCommand);
     }
 
     private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)
     {
         if (e.Container is ListBoxItem item)
+        {
             item.ContextRequested += OnTrackItemContextRequested;
+            // Re-apply ctrl-selected visual based on the data set so recycled
+            // containers reflect the right state after a scroll.
+            MultiSelectHelper.SyncContainerVisual(item, _selectedTracks);
+        }
     }
 
     private void OnTrackContainerClearing(object? sender, ContainerClearingEventArgs e)
@@ -111,6 +122,9 @@ public partial class LibrarySongsView : UserControl
         {
             item.ContextRequested -= OnTrackItemContextRequested;
             item.ContextMenu = null;
+            // Strip the visual class so the recycled container doesn't display
+            // a stale selection on its next track.
+            item.Classes.Remove("ctrl-selected");
         }
     }
 
@@ -133,7 +147,7 @@ public partial class LibrarySongsView : UserControl
         if (sender is not ListBoxItem item) return;
         if (item.DataContext is not Track track) return;
         if (DataContext is LibrarySongsViewModel vm)
-            vm.CtrlSelectedTracks = MultiSelectHelper.GetSelectedTrackData<Track>(_selectedTrackItems);
+            vm.CtrlSelectedTracks = _selectedTracks.ToList();
 
         BindContextMenuToTrack(track);
         var menu = GetOrCreateContextMenu();
@@ -153,7 +167,7 @@ public partial class LibrarySongsView : UserControl
         if (sender is not Button btn) return;
         if (btn.Tag is not Track track) return;
         if (DataContext is LibrarySongsViewModel vm)
-            vm.CtrlSelectedTracks = MultiSelectHelper.GetSelectedTrackData<Track>(_selectedTrackItems);
+            vm.CtrlSelectedTracks = _selectedTracks.ToList();
 
         BindContextMenuToTrack(track);
         var menu = GetOrCreateContextMenu();

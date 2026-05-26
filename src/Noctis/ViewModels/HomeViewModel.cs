@@ -269,6 +269,14 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    private async Task ConvertTrack(Track track)
+        => await MetadataHelper.OpenAudioConverterDialog(new List<Track> { track });
+
+    [RelayCommand]
+    private async Task ScanTrackReplayGain(Track track)
+        => await MetadataHelper.OpenReplayGainScannerDialog(new List<Track> { track });
+
+    [RelayCommand]
     private void SearchLyricsTrack(Track track)
     {
         _searchLyricsAction?.Invoke(track);
@@ -387,6 +395,27 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
         await MetadataHelper.OpenMetadataWindow(album.Tracks[0]);
+    }
+
+    [RelayCommand]
+    private async Task BatchEditAlbum(Album album)
+    {
+        if (album?.Tracks == null || album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenBatchMetadataWindow(album.Tracks.ToList());
+    }
+
+    [RelayCommand]
+    private async Task ConvertAlbum(Album album)
+    {
+        if (album?.Tracks == null || album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenAudioConverterDialog(album.Tracks.ToList());
+    }
+
+    [RelayCommand]
+    private async Task ScanAlbumReplayGain(Album album)
+    {
+        if (album?.Tracks == null || album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenReplayGainScannerDialog(album.Tracks.ToList());
     }
 
     [RelayCommand]

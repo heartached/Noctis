@@ -1,0 +1,178 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.AudioConverterDialog"
+        x:DataType="vm:AudioConverterViewModel"
+        Title="Convert"
+        CanResize="False"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBox.pill">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+        <Style Selector="TextBox.pill /template/ Border#PART_BorderElement">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="ComboBox.pill">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="14,8" />
+        </Style>
+    </Window.Styles>
+
+    <Border Background="#50000000">
+        <Border CornerRadius="20"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="680"
+                MaxHeight="820"
+                Margin="0,50"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Stretch"
+                BoxShadow="0 8 32 0 #60000000">
+            <DockPanel>
+                <!-- Header -->
+                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
+                    <TextBlock Text="{Binding TitleText}"
+                               FontSize="20" FontWeight="Bold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="Transcode selected tracks to another audio format."
+                               FontSize="12" Opacity="0.6"
+                               HorizontalAlignment="Center" />
+                    <Border Background="#33E5484D"
+                            BorderBrush="#E5484D"
+                            BorderThickness="1"
+                            CornerRadius="999"
+                            Padding="8,2"
+                            HorizontalAlignment="Center"
+                            Margin="0,6,0,0">
+                        <TextBlock Text="BETA · EXPERIMENTAL FEATURE"
+                                   FontSize="9"
+                                   FontWeight="Bold"
+                                   Foreground="#FF8A8E"
+                                   LetterSpacing="0.5"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Footer -->
+                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
+                                   FontSize="12" Opacity="0.7" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <Button Grid.Column="1"
+                                Content="Cancel"
+                                Command="{Binding CancelCommand}"
+                                Width="100" Padding="0,8"
+                                FontWeight="Bold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Margin="0,0,8,0"
+                                Cursor="Hand" />
+                        <Button Grid.Column="2"
+                                Content="Start"
+                                Command="{Binding StartCommand}"
+                                IsEnabled="{Binding !IsConverting}"
+                                Width="100" Padding="0,8"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand" />
+                    </Grid>
+                </Border>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto"
+                              Padding="24,4,24,8">
+                    <StackPanel Spacing="14">
+
+                        <!-- Format + bitrate -->
+                        <Grid ColumnDefinitions="140,*">
+                            <TextBlock Grid.Column="0" Text="Format" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" Classes="pill"
+                                      ItemsSource="{Binding FormatOptions}"
+                                      SelectedItem="{Binding SelectedFormat}"
+                                      HorizontalAlignment="Stretch" />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="140,*" IsVisible="{Binding BitrateApplies}">
+                            <TextBlock Grid.Column="0" Text="Bitrate (kbps)" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" Classes="pill"
+                                      ItemsSource="{Binding BitrateOptions}"
+                                      SelectedItem="{Binding SelectedBitrate}"
+                                      HorizontalAlignment="Stretch" />
+                        </Grid>
+
+                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
+
+                        <!-- Output folder -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Output folder" FontSize="13" FontWeight="SemiBold" />
+                            <TextBlock Text="Leave blank to write next to the source file."
+                                       FontSize="11" Opacity="0.55" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0" Classes="pill"
+                                         Text="{Binding OutputFolder}"
+                                         Watermark="(beside source file)" />
+                                <Button Grid.Column="1" Content="Browse"
+                                        Click="OnBrowseOutputClick"
+                                        Padding="14,8"
+                                        CornerRadius="999"
+                                        Margin="8,0,0,0"
+                                        Cursor="Hand" />
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Filename pattern -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Filename pattern" FontSize="13" FontWeight="SemiBold" />
+                            <TextBlock Text="Tokens: %artist% %albumartist% %album% %title% %tracknumber% %tracknumber2% %discnumber% %year% %genre% %composer%"
+                                       FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
+                            <TextBox Classes="pill" Text="{Binding FilenamePattern}" />
+                        </StackPanel>
+
+                        <!-- Options -->
+                        <StackPanel Spacing="6">
+                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding CopyTags}" Content="Copy tags from source" />
+                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding EmbedArtwork}" Content="Embed source artwork" />
+                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding OverwriteExisting}" Content="Overwrite existing output files" />
+                        </StackPanel>
+
+                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
+
+                        <!-- Job list -->
+                        <TextBlock Text="Queue" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
+                        <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" MaxHeight="220">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Jobs}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:AudioConverterViewModel+JobRow">
+                                            <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                                <StackPanel Grid.Column="0" Spacing="1">
+                                                    <TextBlock Text="{Binding TrackTitle}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding TrackSubtitle}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="11" VerticalAlignment="Center"
+                                                           Margin="12,0,0,0" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>

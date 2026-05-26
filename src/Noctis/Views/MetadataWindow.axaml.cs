@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -256,6 +257,16 @@ public partial class MetadataWindow : Window
     private void OnGenreComboWheel(object? sender, PointerWheelEventArgs e)
     {
         if (sender is not ComboBox cb || cb.IsDropDownOpen)
+            return;
+
+        // The tunnel handler also fires when the wheel event originates inside
+        // the open dropdown popup (popup hosted in the same overlay layer as
+        // the ComboBox). The IsDropDownOpen guard catches the common case, but
+        // some Avalonia versions race the wheel event with the open animation
+        // so the guard reads false even though the popup is visible. Explicitly
+        // skip when the event source is a popup descendant so the popup's own
+        // ScrollViewer can handle wheel scrolling.
+        if (e.Source is Visual source && source.GetVisualAncestors().OfType<Popup>().Any())
             return;
 
         e.Handled = true;

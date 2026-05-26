@@ -122,12 +122,20 @@ internal class Program
         });
         services.AddSingleton<IDiscordPresenceService, DiscordPresenceService>();
         services.AddSingleton<ILastFmService, LastFmService>();
+        services.AddSingleton<IListenBrainzService, ListenBrainzService>();
         services.AddSingleton<ArtistImageService>();
         services.AddSingleton<ArtistBioService>();
         services.AddSingleton<ITunesArtworkService>();
         services.AddSingleton<UpdateService>();
         services.AddSingleton<ILrcLibService, LrcLibService>();
         services.AddSingleton<INetEaseService, NetEaseService>();
+        // AudioConverter resolves the ffmpeg path lazily, so the user can change
+        // it in Settings without restarting. Read through MainWindowViewModel —
+        // it's the canonical owner of the SettingsViewModel instance.
+        services.AddSingleton<IAudioConverterService>(_ =>
+            new AudioConverterService(() =>
+                App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().FfmpegPath ?? string.Empty));
+        services.AddSingleton<IReplayGainScannerService, ReplayGainScannerService>();
 
         // ViewModels — MainWindowViewModel is the root, created once
         services.AddSingleton<MainWindowViewModel>();

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Noctis.Models;
 using LibVLCSharp.Shared;
@@ -17,8 +18,17 @@ namespace Noctis.Services;
 public class VlcAudioPlayer : IAudioPlayer
 {
     private const int SeekThrottleMs = 50;
-    private const int VolumeThrottleMs = 80;
-    private const int VolumeDeadband = 2;
+    // Throttled volume write. Volume goes to player.Volume, which on
+    // --aout=waveout calls waveOutSetVolume — a driver-level write that does
+    // not fire WASAPI session events, so it is click-free even during
+    // continuous slider drag. The 150ms throttle remains a useful coalescer
+    // for trailing writes; CommitVolume (pointer-release) flushes the final
+    // exact value immediately. _applyingVolume breaks the reentrance feedback
+    // loop: setting _player.Volume can fire MediaPlayer.VolumeChanged, which
+    // (if observed) can re-enter the public Volume setter and chain rapid
+    // writes — Interlocked.CompareExchange guards every direct write.
+    private const int VolumeThrottleMs = 150;
+    private const int VolumeDeadband = 1;
     private const int EndReachedGraceMs = 1200;
     private const int FadeStepMs = 35;
     private const int StandbyWarmupTimeoutMs = 650;
@@ -52,12 +62,21 @@ public class VlcAudioPlayer : IAudioPlayer
     private int _seekWorkerActive;
     private long _lastAppliedSeekTicksUtc;
 
-    // Rate-limited volume path — applies immediately then enforces a cooldown.
-    private int _pendingVolumeTarget = -1;
-    private int _lastAppliedVolume = -1;
-    private long _lastVolumeWriteTick;
+    // Volume write state.
+    //   _applyingVolume:        0 = idle, 1 = a write is currently in progress.
+    //                           Used by SetPlayerVolumeGuarded to skip reentrant writes
+    //                           triggered by MediaPlayer.VolumeChanged → ViewModel → setter.
+    //   _pendingVolumeTarget:   the most-recent target requested while throttled
+    //                           (-1 = none pending).
+    //   _lastVolumeWriteTicks:  Stopwatch ticks of the last successful write.
+    //   _volumeTrailingCts:     cancellation for the scheduled trailing write.
+    //   _lastWrittenVolume:     deadband baseline (last value handed to the player).
+    private int _applyingVolume;
+    private volatile int _pendingVolumeTarget = -1;
+    private long _lastVolumeWriteTicks;
+    private int _lastWrittenVolume = -1;
     private CancellationTokenSource? _volumeTrailingCts;
-    private readonly object _volumeGate = new();
+    private readonly object _volumeWriteLock = new();
     private long _lastDualFadeTickMs;
     private int _slowDualFadeTicks;
 
@@ -164,24 +183,34 @@ public class VlcAudioPlayer : IAudioPlayer
         //                           Xing header and builds an O(1) seek table on open,
         //                           fixing per-song variation in seek quality. Also needed
         //                           for AAC/M4A Lossless seek smoothness.
-        //   --aout=mmdevice: WASAPI output. Required so VLC follows the
-        //   Windows default-device change at runtime — WaveOut binds to the
-        //   endpoint that was default at stream-open time and does not
-        //   re-route when the user switches output device, which caused
-        //   audible glitching and eventual silence until app restart.
-        //   The vlc_AudioSessionEvents_OnSimpleVolumeChanged static during
-        //   slider drag (the original reason WaveOut was selected) is
-        //   mitigated by the throttling + deadband in ScheduleVolumeWrite.
+        //   --aout=waveout: classic WaveOut driver-level output. Chosen over
+        //   mmdevice (WASAPI) because mmdevice routes every volume write
+        //   through ISimpleAudioVolume::SetMasterVolume, which fires a
+        //   session-volume event that produces an audible click/static on
+        //   each slider tick. Application-level mitigations (throttling,
+        //   ramping, baking volume into the EQ preamp) all failed to
+        //   eliminate the artifact — it's an mmdevice/WASAPI architectural
+        //   limitation. waveOutSetVolume operates at the driver level with
+        //   no session events and no audio-filter-chain disruption, so
+        //   continuous drag stays click-free.
         //
-        // NOTE on caching: VLC's input-caching defaults (300ms file / 1500ms live /
-        // 300ms disc) buffer pre-EQ-filtered audio, so changes to the equalizer take
-        // effect only after that buffer drains — slider drags feel sluggish (~300ms+
-        // lag). We reduce the input caches to 50ms for snappy EQ response while
-        // leaving --clock-jitter at its 5000ms default. clock-jitter controls
-        // output-side drift tolerance, which is what matters for Bluetooth / high-
-        // latency endpoints (zeroing it caused the underruns in issue #1).
-        // The real seek-stutter fix remains --demux=avformat, which builds an O(1)
-        // seek index at open time regardless of caching.
+        // TODO: waveout does not auto-follow Windows default device changes
+        // (e.g. plugging in headphones). mmdevice handled this automatically.
+        // If device-switch support is needed, implement an
+        // IMMNotificationClient listener that calls Stop()/Play() to
+        // reinitialize the waveout session when the default device changes.
+        //
+        // NOTE on caching: leaving VLC's input-caching at its defaults
+        // (300ms file / 1500ms live / 300ms disc). A previous build forced
+        // these to 50ms for snappier EQ slider response, but on Bluetooth
+        // / high-latency A2DP endpoints the 50ms buffer is too tight — any
+        // disk-read jitter, GC pause, or track-change cost starves the
+        // output and produces stutter (re-opening of issue #1; new reports
+        // in issue #3). The ~250ms EQ-drag lag is a fair tradeoff vs.
+        // audible stuttering. --clock-jitter stays at the 5000ms default
+        // for output-side drift tolerance. The seek-stutter fix remains
+        // --demux=avformat, which builds an O(1) seek index at open time
+        // regardless of caching.
         var vlcArgs = new List<string>
         {
             "--no-video",
@@ -190,18 +219,15 @@ public class VlcAudioPlayer : IAudioPlayer
             "--input-repeat=0",
             "--demux=avformat",
             "--no-audio-time-stretch",
-            "--file-caching=50",
-            "--live-caching=50",
-            "--disc-caching=50",
         };
         // The speex resampler module + its quality flag are not always present
         // in third-party VLC builds (notably the macOS VLC.app distribution).
-        // mmdevice (WASAPI) is Windows-only.
+        // waveout is Windows-only.
         if (OperatingSystem.IsWindows())
         {
             vlcArgs.Add("--audio-resampler=speex");
             vlcArgs.Add("--speex-resampler-quality=10");
-            vlcArgs.Add("--aout=mmdevice");
+            vlcArgs.Add("--aout=directsound");
         }
 
         _libVlc = new LibVLC(vlcArgs.ToArray());
@@ -260,6 +286,17 @@ public class VlcAudioPlayer : IAudioPlayer
     private int _userVolume = 75;
     private int _volumeAdjust;
 
+    // ── ReplayGain ──
+    // Linear multiplier applied on top of the curved VLC volume so RG-aware
+    // playback can attenuate or boost without changing the user's slider.
+    // 1.0 = bypass. Updated by ApplyReplayGain().
+    private double _replayGainScalar = 1.0;
+    private string? _currentMediaPath;
+    private string _rgMode = "Off";
+    private double _rgPreampDb = 0.0;
+
+    public string? CurrentMediaPath => _currentMediaPath;
+
     public int Volume
     {
         get => _userVolume;
@@ -271,6 +308,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 return;
 
             var target = ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100));
+            target = ApplyReplayGainScalar(target);
             ScheduleVolumeWrite(target);
         }
     }
@@ -287,6 +325,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // Re-apply volume with the new adjustment
             var effective = Math.Clamp(_userVolume + _volumeAdjust, 0, 100);
             var target = ApplyVolumeCurve(effective);
+            target = ApplyReplayGainScalar(target);
             ScheduleVolumeWrite(target);
         }
     }
@@ -298,8 +337,17 @@ public class VlcAudioPlayer : IAudioPlayer
     }
 
     /// <summary>
+    /// True while a guarded write to _player.Volume is in progress. Exposed so the
+    /// ViewModel can ignore its own MediaPlayer.VolumeChanged echo and avoid the
+    /// reentrance feedback loop (VLC → ViewModel → setter → VLC → …).
+    /// </summary>
+    public bool IsApplyingVolume => Volatile.Read(ref _applyingVolume) == 1;
+
+    /// <summary>
     /// Applies the final volume to VLC immediately, bypassing the throttle.
-    /// Call on drag-end / pointer-release to ensure the exact target is applied.
+    /// Call on drag-end / pointer-release so the exact target is applied. Clears
+    /// any pending trailing write and resets the throttle deadline so subsequent
+    /// drag motion isn't held up by the just-applied write's cooldown.
     /// </summary>
     public void CommitVolume()
     {
@@ -308,12 +356,15 @@ public class VlcAudioPlayer : IAudioPlayer
             return;
 
         var target = ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100));
-        lock (_volumeGate)
+        target = ApplyReplayGainScalar(target);
+        lock (_volumeWriteLock)
         {
             _volumeTrailingCts?.Cancel();
+            _volumeTrailingCts = null;
             _pendingVolumeTarget = -1;
-            _lastAppliedVolume = target;
-            _player.Volume = target;
+            SetPlayerVolumeGuarded(_player, target);
+            _lastWrittenVolume = target;
+            _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
         }
     }
 
@@ -347,63 +398,85 @@ public class VlcAudioPlayer : IAudioPlayer
     }
 
     /// <summary>
-    /// Schedules a single delayed volume write. Every call resets the timer;
-    /// only the trailing write actually touches _player.Volume, eliminating
-    /// the race between immediate and delayed paths that caused static.
-    /// A deadband skips writes where the mapped VLC value hasn't moved
-    /// enough to be audible.
+    /// Wraps every write to a MediaPlayer.Volume with a one-shot Interlocked guard so
+    /// the ViewModel's MediaPlayer.VolumeChanged callback can't reenter the public
+    /// Volume setter and chain rapid writes. Concurrent reentrant calls fall through
+    /// silently — the outer call is the one that actually writes.
+    /// </summary>
+    private void SetPlayerVolumeGuarded(MediaPlayer player, int value)
+    {
+        var clamped = Math.Clamp(value, 0, 100);
+        if (Interlocked.CompareExchange(ref _applyingVolume, 1, 0) != 0)
+            return; // reentrant write from VolumeChanged echo — drop it
+        try { player.Volume = clamped; }
+        catch { /* player disposed / transitioning */ }
+        finally { Interlocked.Exchange(ref _applyingVolume, 0); }
+    }
+
+    /// <summary>
+    /// Debounced/throttled volume write. Inside the cooldown we cache the target
+    /// and schedule a single trailing write for the remaining time; outside the
+    /// cooldown we write immediately. Deadband skips writes where the mapped VLC
+    /// value didn't change from the last successful write.
     /// </summary>
     private void ScheduleVolumeWrite(int target)
     {
-        lock (_volumeGate)
+        target = Math.Clamp(target, 0, 100);
+        lock (_volumeWriteLock)
         {
-            // Skip if the mapped VLC value hasn't changed enough to matter.
-            if (_lastAppliedVolume >= 0 && Math.Abs(target - _lastAppliedVolume) < VolumeDeadband)
+            if (_disposed) return;
+
+            // Deadband: skip if nothing changed from the last value handed to VLC.
+            if (_lastWrittenVolume >= 0 && Math.Abs(target - _lastWrittenVolume) < VolumeDeadband)
             {
-                _pendingVolumeTarget = target; // remember it for CommitVolume
+                _pendingVolumeTarget = target; // CommitVolume will still flush
                 return;
             }
 
-            var now = Environment.TickCount64;
-            var elapsed = now - _lastVolumeWriteTick;
+            var nowTicks = Stopwatch.GetTimestamp();
+            var elapsedMs = _lastVolumeWriteTicks == 0
+                ? long.MaxValue
+                : (nowTicks - _lastVolumeWriteTicks) * 1000L / Stopwatch.Frequency;
 
-            if (elapsed >= VolumeThrottleMs)
+            if (elapsedMs >= VolumeThrottleMs)
             {
-                // Cooldown expired — apply immediately.
-                _pendingVolumeTarget = -1;
-                _lastAppliedVolume = target;
-                _lastVolumeWriteTick = now;
-                _player.Volume = target;
-            }
-            else
-            {
-                // Inside cooldown — schedule a trailing write for the remaining time.
-                _pendingVolumeTarget = target;
+                // Cooldown expired — apply immediately. Cancel any in-flight
+                // trailing CTS so it can't double-write at the boundary.
                 _volumeTrailingCts?.Cancel();
-                var cts = new CancellationTokenSource();
-                _volumeTrailingCts = cts;
-                var delay = (int)(VolumeThrottleMs - elapsed);
-
-                ThreadPool.QueueUserWorkItem(async _ =>
-                {
-                    try
-                    {
-                        await Task.Delay(delay, cts.Token);
-                        lock (_volumeGate)
-                        {
-                            var pending = _pendingVolumeTarget;
-                            if (!_disposed && pending >= 0)
-                            {
-                                _pendingVolumeTarget = -1;
-                                _lastAppliedVolume = pending;
-                                _lastVolumeWriteTick = Environment.TickCount64;
-                                _player.Volume = pending;
-                            }
-                        }
-                    }
-                    catch (TaskCanceledException) { }
-                });
+                _volumeTrailingCts = null;
+                _pendingVolumeTarget = -1;
+                SetPlayerVolumeGuarded(_player, target);
+                _lastWrittenVolume = target;
+                _lastVolumeWriteTicks = nowTicks;
+                return;
             }
+
+            // Inside cooldown — schedule a single trailing write for the remainder.
+            _pendingVolumeTarget = target;
+            _volumeTrailingCts?.Cancel();
+            var cts = new CancellationTokenSource();
+            _volumeTrailingCts = cts;
+            var delay = (int)(VolumeThrottleMs - elapsedMs);
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(delay, cts.Token).ConfigureAwait(false);
+                }
+                catch (TaskCanceledException) { return; }
+
+                lock (_volumeWriteLock)
+                {
+                    if (_disposed || cts.IsCancellationRequested) return;
+                    var pending = _pendingVolumeTarget;
+                    if (pending < 0) return;
+                    _pendingVolumeTarget = -1;
+                    SetPlayerVolumeGuarded(_player, pending);
+                    _lastWrittenVolume = pending;
+                    _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
+                }
+            });
         }
     }
 
@@ -417,7 +490,7 @@ public class VlcAudioPlayer : IAudioPlayer
 
         if (durationMs == 0 || fromVolume == toVolume)
         {
-            _player.Volume = toVolume;
+            SetPlayerVolumeGuarded(_player, toVolume);
             return;
         }
 
@@ -428,13 +501,13 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             if (_disposed || cancel.IsCancellationRequested)
             {
-                _player.Volume = toVolume;
+                SetPlayerVolumeGuarded(_player, toVolume);
                 return;
             }
             var progress = (double)i / steps;
             var eased = AutoMixFadeMath.SmoothFadeProgress(progress);
             var next = (int)Math.Round(fromVolume + ((toVolume - fromVolume) * eased));
-            _player.Volume = Math.Clamp(next, 0, 100);
+            SetPlayerVolumeGuarded(_player, next);
 
             if (i < steps)
                 Thread.Sleep(sleepMs);
@@ -634,6 +707,117 @@ public class VlcAudioPlayer : IAudioPlayer
         // The flag is stored here and applied in PlayInternal when creating new media.
     }
 
+    public void ApplyReplayGain(string mode, double preampDb)
+    {
+        if (_disposed) return;
+        _rgMode = string.IsNullOrWhiteSpace(mode) ? "Off" : mode;
+        _rgPreampDb = preampDb;
+
+        // Mode "Off" — bypass.
+        if (string.Equals(_rgMode, "Off", StringComparison.OrdinalIgnoreCase))
+        {
+            if (Math.Abs(_replayGainScalar - 1.0) > 0.0001)
+            {
+                _replayGainScalar = 1.0;
+                ReapplyVolume();
+            }
+            return;
+        }
+
+        // Need a loaded track to read RG tags from.
+        if (string.IsNullOrEmpty(_currentMediaPath) || !File.Exists(_currentMediaPath))
+        {
+            _replayGainScalar = 1.0;
+            ReapplyVolume();
+            return;
+        }
+
+        var (track, album) = ReadReplayGainTags(_currentMediaPath);
+        double? gain = _rgMode.ToLowerInvariant() switch
+        {
+            "track" => track,
+            "album" => album ?? track,
+            "auto" => album ?? track,
+            _ => null,
+        };
+
+        if (gain == null)
+        {
+            // No tag present — bypass rather than guess.
+            _replayGainScalar = 1.0;
+        }
+        else
+        {
+            // Clamp combined gain to a sane window so a corrupt tag can't blow speakers.
+            var totalDb = Math.Clamp(gain.Value + preampDb, -30.0, 12.0);
+            _replayGainScalar = Math.Pow(10.0, totalDb / 20.0);
+        }
+        ReapplyVolume();
+    }
+
+    /// <summary>Re-issue the current curved volume × RG scalar so the next
+    /// audible sample reflects an updated <see cref="_replayGainScalar"/>.</summary>
+    private void ReapplyVolume()
+    {
+        if (_crossfadeEnabled && _currentMedia != null) return;
+        var target = ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100));
+        target = ApplyReplayGainScalar(target);
+        ScheduleVolumeWrite(target);
+    }
+
+    private int ApplyReplayGainScalar(int curvedVolume)
+    {
+        if (Math.Abs(_replayGainScalar - 1.0) < 0.0001) return curvedVolume;
+        var scaled = (int)Math.Round(curvedVolume * _replayGainScalar);
+        return Math.Clamp(scaled, 0, 100);
+    }
+
+    /// <summary>Read REPLAYGAIN_TRACK_GAIN / REPLAYGAIN_ALBUM_GAIN from a file
+    /// via TagLib. Returns the parsed dB value (negative for attenuation).</summary>
+    private static (double? track, double? album) ReadReplayGainTags(string filePath)
+    {
+        try
+        {
+            using var file = TagLib.File.Create(filePath);
+            double? track = null, album = null;
+
+            if (file.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3)
+            {
+                track ??= ReadTxxx(id3, "REPLAYGAIN_TRACK_GAIN");
+                album ??= ReadTxxx(id3, "REPLAYGAIN_ALBUM_GAIN");
+            }
+            if (file.GetTag(TagLib.TagTypes.Xiph, false) is TagLib.Ogg.XiphComment xiph)
+            {
+                track ??= ParseDb(xiph.GetField("REPLAYGAIN_TRACK_GAIN").FirstOrDefault());
+                album ??= ParseDb(xiph.GetField("REPLAYGAIN_ALBUM_GAIN").FirstOrDefault());
+            }
+            return (track, album);
+        }
+        catch
+        {
+            return (null, null);
+        }
+    }
+
+    private static double? ReadTxxx(TagLib.Id3v2.Tag id3, string desc)
+    {
+        var frame = id3.GetFrames<TagLib.Id3v2.UserTextInformationFrame>()
+            .FirstOrDefault(f => string.Equals(f.Description, desc, StringComparison.OrdinalIgnoreCase));
+        return ParseDb(frame?.Text.FirstOrDefault());
+    }
+
+    private static double? ParseDb(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return null;
+        var token = s.Trim();
+        // RG values are stored like "-7.84 dB". Strip the unit.
+        var spaceIdx = token.IndexOf(' ');
+        if (spaceIdx > 0) token = token.Substring(0, spaceIdx);
+        return double.TryParse(token, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d)
+            ? d
+            : null;
+    }
+
     public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase)
     {
         if (_disposed) return;
@@ -694,7 +878,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 _standbyStartPositionMs = startPositionMs;
                 Interlocked.Exchange(ref _standbyPreparedTicksUtc, DateTime.UtcNow.Ticks);
                 _standbyPrepared = true;
-                _standbyPlayer.Volume = 0;
+                SetPlayerVolumeGuarded(_standbyPlayer, 0);
                 _standbyPlayer.Mute = _player.Mute;
 
                 Equalizer? equalizerToApply = null;
@@ -760,6 +944,11 @@ public class VlcAudioPlayer : IAudioPlayer
         }
 
         DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play", $"path={Path.GetFileName(filePath)}");
+        _currentMediaPath = filePath;
+        // Re-apply RG for the new track using the last known mode/preamp. If
+        // the mode is "Off" this is a no-op and _replayGainScalar stays 1.0.
+        if (!string.Equals(_rgMode, "Off", StringComparison.OrdinalIgnoreCase))
+            ApplyReplayGain(_rgMode, _rgPreampDb);
 
         // All heavy work on ThreadPool, serialized by the lock.
         ThreadPool.QueueUserWorkItem(_ =>
@@ -899,12 +1088,12 @@ public class VlcAudioPlayer : IAudioPlayer
             if (fadeInMs > 0)
             {
                 // Single-player approximation of crossfade: fade out old track, then fade in new one.
-                _player.Volume = 0;
+                SetPlayerVolumeGuarded(_player, 0);
                 FadePlayerVolumeBlocking(0, targetVolume, fadeInMs, cancel);
             }
             else
             {
-                _player.Volume = targetVolume;
+                SetPlayerVolumeGuarded(_player, targetVolume);
             }
             _crossfadeEnabled = false;
 
@@ -967,13 +1156,16 @@ public class VlcAudioPlayer : IAudioPlayer
         try
         {
             ResetEndReachedPending();
-            lock (_volumeGate)
+            // Cancel any in-flight slider trailing write so it can't fire mid-crossfade
+            // and fight the fade's direct _player.Volume writes.
+            lock (_volumeWriteLock)
             {
                 _volumeTrailingCts?.Cancel();
+                _volumeTrailingCts = null;
                 _pendingVolumeTarget = -1;
             }
 
-            _standbyPlayer.Volume = 0;
+            SetPlayerVolumeGuarded(_standbyPlayer, 0);
             _standbyPlayer.Mute = _player.Mute;
 
             var preparedAgeMs = (DateTime.UtcNow.Ticks - Interlocked.Read(ref _standbyPreparedTicksUtc)) / TimeSpan.TicksPerMillisecond;
@@ -1014,7 +1206,7 @@ public class VlcAudioPlayer : IAudioPlayer
             var finalVolume = GetTargetVlcVolume();
             if (cancel.IsCancellationRequested || _disposed)
             {
-                _player.Volume = finalVolume;
+                SetPlayerVolumeGuarded(_player, finalVolume);
                 ReleasePreparedNext();
                 return true;
             }
@@ -1022,7 +1214,7 @@ public class VlcAudioPlayer : IAudioPlayer
             var outgoingPlayer = _player;
             var outgoingMedia = _currentMedia;
             _player = _standbyPlayer;
-            _player.Volume = finalVolume;
+            SetPlayerVolumeGuarded(_player, finalVolume);
             _currentMedia = _standbyMedia;
             _standbyPlayer = outgoingPlayer;
             _standbyMedia = null;
@@ -1031,12 +1223,16 @@ public class VlcAudioPlayer : IAudioPlayer
             Interlocked.Exchange(ref _standbyPreparedTicksUtc, 0);
             _standbyPrepared = false;
 
-            lock (_volumeGate)
+            // Crossfade just wrote finalVolume directly to _player.Volume — sync
+            // the throttle deadband baseline so the next slider write isn't
+            // erroneously suppressed (or accepted) by a stale _lastWrittenVolume.
+            lock (_volumeWriteLock)
             {
                 _volumeTrailingCts?.Cancel();
+                _volumeTrailingCts = null;
                 _pendingVolumeTarget = -1;
-                _lastAppliedVolume = finalVolume;
-                _lastVolumeWriteTick = Environment.TickCount64;
+                _lastWrittenVolume = finalVolume;
+                _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
             }
 
             _crossfadeEnabled = false;
@@ -1109,7 +1305,7 @@ public class VlcAudioPlayer : IAudioPlayer
             {
                 Thread.Sleep(DeferredCleanupDelayMs);
                 DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.CleanupStart", $"session={sessionId}");
-                inactivePlayer.Volume = 0;
+                SetPlayerVolumeGuarded(inactivePlayer, 0);
                 inactivePlayer.Stop();
                 inactivePlayer.SetEqualizer(null);
                 inactiveMedia?.Dispose();
@@ -1137,8 +1333,8 @@ public class VlcAudioPlayer : IAudioPlayer
 
         if (durationMs == 0)
         {
-            outgoing.Volume = 0;
-            incoming.Volume = incomingTargetVolume;
+            SetPlayerVolumeGuarded(outgoing, 0);
+            SetPlayerVolumeGuarded(incoming, incomingTargetVolume);
             return;
         }
 
@@ -1160,8 +1356,8 @@ public class VlcAudioPlayer : IAudioPlayer
             var (outFactor, inFactor) = AutoMixFadeMath.GetFadeFactors(progress, fadeCurve);
             incomingTargetVolume = GetTargetVlcVolume();
             var headroom = 1.0 - ((1.0 - DualFadeHeadroom) * Math.Sin(Math.PI * progress));
-            outgoing.Volume = Math.Clamp((int)Math.Round(outgoingStartVolume * outFactor * headroom), 0, 100);
-            incoming.Volume = Math.Clamp((int)Math.Round(incomingTargetVolume * inFactor * headroom), 0, 100);
+            SetPlayerVolumeGuarded(outgoing, (int)Math.Round(outgoingStartVolume * outFactor * headroom));
+            SetPlayerVolumeGuarded(incoming, (int)Math.Round(incomingTargetVolume * inFactor * headroom));
 
             var now = Environment.TickCount64;
             var lastTick = Interlocked.Exchange(ref _lastDualFadeTickMs, now);
@@ -1496,7 +1692,7 @@ public class VlcAudioPlayer : IAudioPlayer
     private void ReleasePreparedNext()
     {
         try { _standbyPlayer.Stop(); } catch { }
-        _standbyPlayer.Volume = 0;
+        SetPlayerVolumeGuarded(_standbyPlayer, 0);
         try { _standbyPlayer.SetEqualizer(null); } catch { }
         _standbyMedia?.Dispose();
         _standbyMedia = null;
@@ -1525,8 +1721,12 @@ public class VlcAudioPlayer : IAudioPlayer
 
         CancelSkipCts();
         _skipCts.Dispose();
-        _volumeTrailingCts?.Cancel();
-        _volumeTrailingCts?.Dispose();
+        lock (_volumeWriteLock)
+        {
+            try { _volumeTrailingCts?.Cancel(); } catch { }
+            _volumeTrailingCts?.Dispose();
+            _volumeTrailingCts = null;
+        }
 
         try { _player.Stop(); } catch { }
         try { _standbyPlayer.Stop(); } catch { }

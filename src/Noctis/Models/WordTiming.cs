@@ -28,4 +28,11 @@ public partial class WordTiming : ObservableObject
     /// <summary>True while this word is currently being sung.</summary>
     [ObservableProperty]
     private bool _isCurrent;
+
+    /// <summary>
+    /// Reveal progress in [0..1] — drives the AMLL-style left-to-right colour sweep
+    /// across the word as it is sung. Past = 1, future = 0, current = fraction of elapsed.
+    /// </summary>
+    [ObservableProperty]
+    private double _progress;
 }

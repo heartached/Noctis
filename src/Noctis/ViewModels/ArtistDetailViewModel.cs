@@ -33,7 +33,9 @@ public partial class ArtistDetailViewModel : ViewModelBase
     public ObservableCollection<Track> TopSongs { get; } = new();
     public ObservableCollection<Album> EssentialAlbums { get; } = new();
     public ObservableCollection<Album> StudioAlbums { get; } = new();
-    public ObservableCollection<Album> SinglesAndEps { get; } = new();
+    public ObservableCollection<Album> Singles { get; } = new();
+    public ObservableCollection<Album> Eps { get; } = new();
+    public ObservableCollection<Album> Compilations { get; } = new();
     [ObservableProperty] private Album? _featuredAlbum;
 
     // ── Bio fields ──
@@ -113,27 +115,47 @@ public partial class ArtistDetailViewModel : ViewModelBase
                               .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
                               .FirstOrDefault();
 
+        // Sections now key off the real release-type metadata. Albums with a
+        // ReleaseType of Album, Live, Remix, Soundtrack, or Other are grouped
+        // under Studio Albums; Compilations get their own section; Singles and
+        // EPs each become their own row.
+        var studio = albums
+            .Where(a => a.ReleaseType is ReleaseType.Album
+                                       or ReleaseType.Live
+                                       or ReleaseType.Remix
+                                       or ReleaseType.Soundtrack
+                                       or ReleaseType.Other)
+            .ToList();
+        var singles = albums.Where(a => a.ReleaseType == ReleaseType.Single).ToList();
+        var eps = albums.Where(a => a.ReleaseType == ReleaseType.EP).ToList();
+        var comps = albums.Where(a => a.ReleaseType == ReleaseType.Compilation).ToList();
+
         // Essential Albums = top 5 studio albums by track count.
         EssentialAlbums.Clear();
-        foreach (var a in albums.Where(a => a.TrackCount >= 3)
-                                .OrderByDescending(a => a.TrackCount)
+        foreach (var a in studio.OrderByDescending(a => a.TrackCount)
                                 .ThenByDescending(a => a.Year)
                                 .Take(5))
             EssentialAlbums.Add(a);
 
-        // Studio Albums = ≥3 tracks, year desc.
         StudioAlbums.Clear();
-        foreach (var a in albums.Where(a => a.TrackCount >= 3)
-                                .OrderByDescending(a => a.Year)
+        foreach (var a in studio.OrderByDescending(a => a.Year)
                                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
             StudioAlbums.Add(a);
 
-        // Singles & EPs = ≤2 tracks.
-        SinglesAndEps.Clear();
-        foreach (var a in albums.Where(a => a.TrackCount <= 2)
-                                .OrderByDescending(a => a.Year)
-                                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
-            SinglesAndEps.Add(a);
+        Singles.Clear();
+        foreach (var a in singles.OrderByDescending(a => a.Year)
+                                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
+            Singles.Add(a);
+
+        Eps.Clear();
+        foreach (var a in eps.OrderByDescending(a => a.Year)
+                             .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
+            Eps.Add(a);
+
+        Compilations.Clear();
+        foreach (var a in comps.OrderByDescending(a => a.Year)
+                               .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
+            Compilations.Add(a);
     }
 
     private async Task LoadEnrichmentsAsync()
@@ -232,13 +254,17 @@ public partial class ArtistDetailViewModel : ViewModelBase
     [RelayCommand]
     private void GoBack() => BackRequested?.Invoke(this, EventArgs.Empty);
 
+    private IEnumerable<Track> AllArtistTracks() =>
+        StudioAlbums.SelectMany(a => a.Tracks ?? new List<Track>())
+            .Concat(Singles.SelectMany(a => a.Tracks ?? new List<Track>()))
+            .Concat(Eps.SelectMany(a => a.Tracks ?? new List<Track>()))
+            .Concat(Compilations.SelectMany(a => a.Tracks ?? new List<Track>()))
+            .Where(t => t != null);
+
     [RelayCommand]
     private void PlayArtist()
     {
-        var tracks = StudioAlbums.SelectMany(a => a.Tracks ?? new List<Track>())
-                                 .Concat(SinglesAndEps.SelectMany(a => a.Tracks ?? new List<Track>()))
-                                 .Where(t => t != null)
-                                 .ToList();
+        var tracks = AllArtistTracks().ToList();
         if (tracks.Count == 0) return;
         _player.ReplaceQueueAndPlay(tracks, 0);
     }
@@ -246,11 +272,7 @@ public partial class ArtistDetailViewModel : ViewModelBase
     [RelayCommand]
     private void ShuffleArtist()
     {
-        var tracks = StudioAlbums.SelectMany(a => a.Tracks ?? new List<Track>())
-                                 .Concat(SinglesAndEps.SelectMany(a => a.Tracks ?? new List<Track>()))
-                                 .Where(t => t != null)
-                                 .OrderBy(_ => Random.Shared.Next())
-                                 .ToList();
+        var tracks = AllArtistTracks().OrderBy(_ => Random.Shared.Next()).ToList();
         if (tracks.Count == 0) return;
         _player.ReplaceQueueAndPlay(tracks, 0);
     }

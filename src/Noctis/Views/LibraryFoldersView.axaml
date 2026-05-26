@@ -69,7 +69,8 @@
 
             <ListBox Classes="track-list"
                      ItemsSource="{Binding SelectedFolderTracks}"
-                     SelectionMode="Multiple">
+                     SelectionMode="Multiple"
+                     Padding="0,0,0,115">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:Track">
                         <Grid ColumnDefinitions="*,120,*" Margin="0,2">

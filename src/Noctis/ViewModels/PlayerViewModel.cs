@@ -715,6 +715,9 @@ public partial class PlayerViewModel : ViewModelBase
 
     partial void OnVolumeChanged(int value)
     {
+        // Safe to write on every drag pixel: VlcAudioPlayer applies volume as
+        // PCM gain via the equalizer preamp, so no WASAPI session events fire
+        // and continuous drag stays click-free.
         _audioPlayer.Volume = value;
     }
 
@@ -727,6 +730,11 @@ public partial class PlayerViewModel : ViewModelBase
     partial void OnCurrentTrackChanged(Track? value)
     {
         OnPropertyChanged(nameof(HasContent));
+        // Re-apply ReplayGain so the new track's RG tags take effect. The
+        // player already reads tags at Play() time, but settings or playback
+        // path changes can leave us here without a Play() call.
+        if (_settings != null)
+            _audioPlayer.ApplyReplayGain(_settings.ReplayGainMode, _settings.ReplayGainPreampDb);
     }
 
     partial void OnPositionFractionChanged(double value)

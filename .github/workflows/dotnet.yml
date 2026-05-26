@@ -72,6 +72,52 @@ jobs:
           -p:PublishSingleFile=false
           -o publish/${{ matrix.rid }}
 
+      # Bundle ffmpeg for the Audio Converter feature so users don't need a
+      # system install. Marked continue-on-error so a download-host outage
+      # never blocks a release — the app falls back to auto-detecting ffmpeg
+      # on PATH at runtime. Each platform pulls a static build from the
+      # canonical mirror for that OS.
+      - name: Bundle ffmpeg (Windows)
+        if: matrix.rid == 'win-x64'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $url = 'https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-essentials_build.zip'
+          Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-extract
+          Copy-Item (Get-ChildItem -Recurse ffmpeg-extract -Filter ffmpeg.exe | Select-Object -First 1).FullName "publish/${{ matrix.rid }}/ffmpeg.exe"
+
+      - name: Bundle ffmpeg (macOS)
+        if: startsWith(matrix.rid, 'osx-')
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          # evermeet.cx ships universal2 builds that work on both arm64 and x64.
+          curl -sSL https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip -o ffmpeg.zip
+          unzip -q ffmpeg.zip -d ffmpeg-extract
+          cp ffmpeg-extract/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
+          chmod +x "publish/${{ matrix.rid }}/ffmpeg"
+
+      - name: Bundle ffmpeg (Linux x64)
+        if: matrix.rid == 'linux-x64'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          curl -sSL https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o ffmpeg.tar.xz
+          tar -xf ffmpeg.tar.xz
+          cp ffmpeg-*-amd64-static/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
+          chmod +x "publish/${{ matrix.rid }}/ffmpeg"
+
+      - name: Bundle ffmpeg (Linux arm64)
+        if: matrix.rid == 'linux-arm64'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          curl -sSL https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz -o ffmpeg.tar.xz
+          tar -xf ffmpeg.tar.xz
+          cp ffmpeg-*-arm64-static/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
+          chmod +x "publish/${{ matrix.rid }}/ffmpeg"
+
       # ── macOS: bundle as Noctis.app, wrap in a .dmg ─────────────────
       - name: Package macOS .app + .dmg
         if: startsWith(matrix.rid, 'osx-')

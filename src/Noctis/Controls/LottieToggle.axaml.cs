@@ -25,11 +25,11 @@ public partial class LottieToggle : UserControl
         InitializeComponent();
     }
 
-    private static IBrush ResolveAccentBrush()
+    private static IBrush ResolveResourceBrush(string key, string fallbackHex)
     {
-        if (Application.Current?.Resources.TryGetResource("AccentColorBrush", null, out var b) == true && b is IBrush brush)
+        if (Application.Current?.Resources.TryGetResource(key, null, out var b) == true && b is IBrush brush)
             return brush;
-        return new SolidColorBrush(Color.Parse("#E74856"));
+        return new SolidColorBrush(Color.Parse(fallbackHex));
     }
 
     private EventHandler? _accentHandler;
@@ -78,12 +78,14 @@ public partial class LottieToggle : UserControl
 
         if (IsChecked)
         {
-            Track.Background = ResolveAccentBrush();
+            Track.Background = ResolveResourceBrush("AccentColorBrush", "#E74856");
+            Knob.Background = ResolveResourceBrush("AccentForegroundBrush", "#FFFFFF");
             Knob.Margin = new Thickness(29, 0, 0, 0);
         }
         else
         {
             Track.Background = new SolidColorBrush(Color.Parse("#484C54"));
+            Knob.Background = Brushes.White;
             Knob.Margin = new Thickness(3, 0, 0, 0);
         }
     }

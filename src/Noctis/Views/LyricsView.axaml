@@ -5,6 +5,7 @@
              xmlns:conv="using:Noctis.Converters"
              xmlns:controls="using:Noctis.Controls"
              xmlns:views="using:Noctis.Views"
+             xmlns:helpers="using:Noctis.Helpers"
              x:Class="Noctis.Views.LyricsView"
              x:DataType="vm:LyricsViewModel"
              x:Name="LyricsRoot"
@@ -14,6 +15,7 @@
         <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter"/>
         <conv:VolumeToIconConverter x:Key="VolumeToIcon"/>
+        <conv:ProgressToSweepMaskConverter x:Key="ProgressToSweepMask"/>
         <!-- Adaptive button/slider brushes (updated from code-behind) -->
         <SolidColorBrush x:Key="LyricsBtnBgRes" Color="#33FFFFFF"/>
         <SolidColorBrush x:Key="LyricsBtnBgHoverRes" Color="#55FFFFFF"/>
@@ -139,8 +141,47 @@
             <Setter Property="Background" Value="{DynamicResource LyricsSecBtnBgHoverRes}"/>
         </Style>
 
+        <!-- AMLL-style active-line presentation: scale up + small lift, damped-spring ease.
+             Origin pinned to the left edge so text grows in place instead of drifting. -->
+        <Style Selector="Button.lyric-line-btn">
+            <Setter Property="RenderTransformOrigin" Value="0,0.5"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <!-- Near-critically-damped spring: <2% overshoot. Reads as a soft settle, not a bounce. -->
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.45">
+                        <TransformOperationsTransition.Easing>
+                            <helpers:SpringEase Damping="7.5" Frequency="4.0"/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.lyric-line-btn.active">
+            <Setter Property="RenderTransform" Value="scale(1.07) translate(0px,-4px)"/>
+        </Style>
+        <!-- Suppress global hover-scale on lyric lines, but preserve the active scale on hover. -->
         <Style Selector="ItemsControl#LyricsItemsControl Button:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="ItemsControl#LyricsItemsControl Button.lyric-line-btn.active:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1.07) translate(0px,-4px)"/>
+        </Style>
+
+        <!-- Per-word lift: words fire rapidly, so spring oscillation reads as chatter.
+             Use a quick cubic ease-out instead — glides up, no bounce. -->
+        <Style Selector="Panel.word-cell">
+            <Setter Property="RenderTransformOrigin" Value="0.5,1"/>
+            <Setter Property="RenderTransform" Value="translate(0px,0px) scale(1)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Panel.word-cell.current">
+            <Setter Property="RenderTransform" Value="translate(0px,-3px) scale(1.02)"/>
         </Style>
 
         <!-- Lyric line: keep active emphasis in opacity/color only, without size/position zoom. -->
@@ -223,6 +264,44 @@
 
     <Grid x:Name="MainLayoutGrid" ColumnDefinitions="*,*"
           Background="{Binding FullBackgroundBrush}">
+        <!-- AMLL/Apple-Music–style background: heavily-blurred album cover filling the page.
+             A subtle scrim on top keeps lyric text legible against bright art. -->
+        <Grid x:Name="LyricsBlurBackdrop"
+              Grid.ColumnSpan="2"
+              ZIndex="-1"
+              ClipToBounds="True"
+              IsHitTestVisible="False"
+              IsVisible="{Binding IsColorModeArtwork}">
+            <!-- Instant fallback: Player.AlbumArt is the in-memory bitmap already shown
+                 in the mini-player, so it paints synchronously the moment the page
+                 mounts. The high-res CachedImage below replaces it once decoded,
+                 eliminating the gray flicker between page-attach and image-decode. -->
+            <Image Source="{Binding Player.AlbumArt}"
+                   Stretch="UniformToFill"
+                   RenderOptions.BitmapInterpolationMode="HighQuality"
+                   IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Image.Effect>
+                    <BlurEffect Radius="72"/>
+                </Image.Effect>
+                <Image.RenderTransform>
+                    <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
+                </Image.RenderTransform>
+            </Image>
+            <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                                  DecodeWidth="800"
+                                  Stretch="UniformToFill"
+                                  RenderOptions.BitmapInterpolationMode="HighQuality">
+                <controls:CachedImage.Effect>
+                    <BlurEffect Radius="72"/>
+                </controls:CachedImage.Effect>
+                <!-- Gentle outward scale so blur edges never reveal the underlying solid fill. -->
+                <controls:CachedImage.RenderTransform>
+                    <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
+                </controls:CachedImage.RenderTransform>
+            </controls:CachedImage>
+            <!-- Dark scrim: drops the cover's brightness so white lyrics stay readable. -->
+            <Rectangle Fill="#66000000"/>
+        </Grid>
 
 
         <!-- ══════════════════════════════════════════════════════ -->
@@ -269,6 +348,13 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                         </Border>
+                        <!-- Instant fallback bitmap (already cached at 768px for the
+                             mini-player). Prevents the gray placeholder from flashing
+                             between page-attach and the 1280px CachedImage decode. -->
+                        <Image Source="{Binding Player.AlbumArt}"
+                               Stretch="UniformToFill"
+                               RenderOptions.BitmapInterpolationMode="HighQuality"
+                               IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                         <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
                                               DecodeWidth="1280"
                                               Stretch="UniformToFill"
@@ -375,9 +461,12 @@
                                            Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
                             </StackPanel>
                         </ToolTip.Tip>
-                        <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,1,0,0" Opacity="0.6">
+                        <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,1,0,0">
+                            <!-- Match the adjacent "Lossless" label colour so the badge reads as one
+                                 inline element instead of an icon-plus-label with mismatched tones.
+                                 No Opacity here — it would dim the icon relative to the text. -->
                             <Path Data="M8.184,0.35C9.944,0.35 10.703,3.296 11.338,5.238C11.673,3.842 11.497,3.542 11.857,3.542C11.99,3.542 12.126,3.633 12.126,3.798C12.126,3.809 12.123,3.839 12.117,3.883L12.091,4.058C12.02,4.522 11.845,5.494 11.654,6.144C13.198,10.191 14.345,4.861 14.474,3.772C14.493,3.615 14.612,3.542 14.731,3.542C14.891,3.542 15.022,3.662 14.997,3.843C14.72,5.605 14.295,8.35 12.547,8.35C11.582,8.35 11.04,7.595 10.611,6.73C9.54,4.626 9.047,1.093 7.997,1.093C7.66,1.093 7.411,1.444 7.394,1.444C7.362,1.444 7.337,1.301 7.023,0.909C7.322,0.567 7.734,0.35 8.184,0.35ZM2.458,0.354C5.211,0.354 5.456,7.618 7.014,7.618C7.197,7.618 7.394,7.507 7.61,7.256C7.729,7.458 7.851,7.638 7.978,7.796C7.667,8.151 7.28,8.35 6.795,8.35C5.054,8.349 4.306,5.434 3.663,3.466C3.511,4.097 3.432,4.669 3.402,4.925C3.382,5.088 3.263,5.163 3.143,5.163C3.009,5.163 2.874,5.071 2.874,4.908L2.874,4.908L2.877,4.87C2.966,4.223 3.146,3.243 3.347,2.56C3.079,1.858 2.745,1.091 2.252,1.091C1.257,1.091 0.687,3.591 0.527,4.925C0.508,5.088 0.388,5.163 0.268,5.163C0.135,5.163 0,5.071 0,4.908C0,4.896 0.001,4.883 0.002,4.87C0.283,2.836 0.808,0.354 2.458,0.354ZM5.315,0.35C5.809,0.35 6.339,0.608 6.797,1.211C6.822,1.241 7.078,1.639 7.159,1.777C8.277,3.802 8.818,7.627 9.881,7.627C10.065,7.627 10.264,7.513 10.484,7.256C10.604,7.458 10.726,7.638 10.852,7.796C10.542,8.15 10.155,8.35 9.67,8.35C6.933,8.349 6.636,1.09 5.128,1.09C4.788,1.09 4.536,1.444 4.519,1.444C4.487,1.444 4.462,1.301 4.148,0.909C4.455,0.558 4.87,0.35 5.315,0.35Z"
-                                  Fill="{Binding LyricsControlFill}" />
+                                  Fill="{Binding LyricsSubtleFg}" />
                         </Viewbox>
                         <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
                                    FontSize="12"
@@ -476,6 +565,10 @@
                                     <Setter Property="BorderThickness" Value="0"/>
                                     <Setter Property="MinWidth" Value="0"/>
                                     <Setter Property="MaxWidth" Value="9999"/>
+                                    <!-- Suppress the built-in ScrollViewer's scrollbars; the picker is a
+                                         pill that should never show a track on either axis. -->
+                                    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+                                    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled"/>
                                 </ControlTheme>
                             </Flyout.FlyoutPresenterTheme>
                             <Border Background="#EE141414" CornerRadius="999" Padding="6,5"
@@ -484,27 +577,36 @@
                                             DataContext="{Binding #LyricsRoot.DataContext}"
                                             x:DataType="vm:LyricsViewModel">
 
-                                    <!-- Solid / Gradient toggle -->
+                                    <!-- Artwork / Solid / Gradient toggle -->
                                     <Border Background="#18FFFFFF" CornerRadius="999" Padding="2"
                                             VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal" Spacing="1">
+                                            <Button Command="{Binding SelectColorModeArtworkCommand}"
+                                                    Background="Transparent"
+                                                    BorderThickness="0" Padding="8,3" CornerRadius="999" Cursor="Hand"
+                                                    Opacity="{Binding IsColorModeArtwork, Converter={StaticResource BoolToOpacity}}"
+                                                    ToolTip.Tip="Show blurred album artwork as background">
+                                                <TextBlock Text="Artwork" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
+                                            </Button>
                                             <Button Command="{Binding SelectColorModeSolidCommand}"
                                                     Background="Transparent"
                                                     BorderThickness="0" Padding="8,3" CornerRadius="999" Cursor="Hand"
                                                     Opacity="{Binding IsColorModeSolid, Converter={StaticResource BoolToOpacity}}">
-                                                <TextBlock Text="Solid" FontSize="10" FontWeight="SemiBold"/>
+                                                <TextBlock Text="Solid" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
                                             </Button>
                                             <Button Command="{Binding SelectColorModeGradientCommand}"
                                                     Background="Transparent"
                                                     BorderThickness="0" Padding="8,3" CornerRadius="999" Cursor="Hand"
                                                     Opacity="{Binding IsColorModeGradient, Converter={StaticResource BoolToOpacity}}">
-                                                <TextBlock Text="Gradient" FontSize="10" FontWeight="SemiBold"/>
+                                                <TextBlock Text="Gradient" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
                                             </Button>
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- Divider -->
-                                    <Border Width="1" Height="16" Background="#30FFFFFF" VerticalAlignment="Center"/>
+                                    <!-- Divider between mode toggle and swatches; hidden in Artwork mode
+                                         where no swatches follow, otherwise it reads as a trailing scrollbar. -->
+                                    <Border Width="1" Height="16" Background="#30FFFFFF" VerticalAlignment="Center"
+                                            IsVisible="{Binding IsColorModeArtwork, Converter={x:Static BoolConverters.Not}}"/>
 
                                     <!-- Solid swatches -->
                                     <ScrollViewer x:Name="SolidSwatchScroller"
@@ -631,7 +733,7 @@
                            IsVisible="{Binding SearchFailedMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 <Button Classes="accent-btn"
                         Background="{DynamicResource AccentColorBrush}"
-                        Foreground="{Binding LyricsPrimaryFg}"
+                        Foreground="{DynamicResource AccentForegroundBrush}"
                         BorderThickness="0"
                         Padding="16,8"
                         FontSize="13"
@@ -640,7 +742,9 @@
                         Cursor="Hand"
                         Command="{Binding SearchLyricsCommand}"
                         HorizontalAlignment="Center">
-                    <TextBlock Text="Search lyrics" VerticalAlignment="Center"/>
+                    <TextBlock Text="Search lyrics"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource AccentForegroundBrush}"/>
                 </Button>
             </StackPanel>
 
@@ -671,8 +775,11 @@
                 </TextBlock.Styles>
             </TextBlock>
 
-            <!-- Opacity-masked lyrics container -->
-            <Border ClipToBounds="True"
+            <!-- Opacity-masked lyrics container.
+                 ClipToBounds=False so the active line's 1.07× scale doesn't get hard-clipped
+                 on the right edge ("…GOA" → "…GOAT"). Vertical clipping still handled by the
+                 ScrollViewer below; the OpacityMask handles the soft top/bottom fade. -->
+            <Border ClipToBounds="False"
                     VerticalAlignment="Stretch"
                     Margin="0,20,0,20">
                 <Border.OpacityMask>
@@ -689,7 +796,7 @@
                 <ScrollViewer x:Name="LyricsScrollViewer"
                               VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled"
-                              Padding="24,0,32,0">
+                              Padding="24,0,0,0">
                     <ItemsControl ItemsSource="{Binding ActiveLyricLines}"
                                   x:Name="LyricsItemsControl"
                                   MaxWidth="640"
@@ -704,6 +811,8 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="m:LyricLine">
                                 <Button Background="Transparent"
+                                        Classes="lyric-line-btn"
+                                        Classes.active="{Binding IsActive}"
                                         BorderThickness="0"
                                         Padding="0"
                                         Margin="0,10"
@@ -714,6 +823,9 @@
                                         IsHitTestVisible="{Binding IsClickable}"
                                         Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
                                         CommandParameter="{Binding}">
+                                    <Button.Effect>
+                                        <BlurEffect Radius="{Binding BlurRadius}"/>
+                                    </Button.Effect>
                                     <Panel HorizontalAlignment="Left"
                                            MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                         <!-- Main text layer (hidden for intro placeholder OR when word-level karaoke is active) -->
@@ -742,20 +854,20 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="m:WordTiming">
-                                                    <Panel>
+                                                    <Panel Classes="word-cell"
+                                                           Classes.current="{Binding IsCurrent}">
+                                                        <!-- Dim base layer (always visible) — gives unsung words a soft ghost. -->
                                                         <TextBlock Text="{Binding Text}"
-                                                                   Classes="word"
-                                                                   Classes.past="{Binding IsPast}"
-                                                                   Classes.current="{Binding IsCurrent}"
                                                                    FontSize="46"
                                                                    FontWeight="Bold"
+                                                                   Opacity="0.45"
                                                                    Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                                                        <!-- Bright overlay revealed left-to-right by Progress sweep. -->
                                                         <TextBlock Text="{Binding Text}"
-                                                                   Classes="word-accent"
-                                                                   Classes.current="{Binding IsCurrent}"
                                                                    FontSize="46"
                                                                    FontWeight="Bold"
-                                                                   Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsAccentFg}"/>
+                                                                   Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
+                                                                   OpacityMask="{Binding Progress, Converter={StaticResource ProgressToSweepMask}}"/>
                                                     </Panel>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>

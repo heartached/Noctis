@@ -15,6 +15,67 @@ namespace Noctis.ViewModels;
 /// </summary>
 public static class MetadataHelper
 {
+    public static async Task OpenReplayGainScannerDialog(IReadOnlyList<Track> tracks)
+    {
+        if (tracks == null || tracks.Count == 0) return;
+        var service = App.Services!.GetRequiredService<IReplayGainScannerService>();
+        var library = App.Services!.GetRequiredService<ILibraryService>();
+        var vm = new ReplayGainScannerViewModel(tracks, service, library);
+        var window = new ReplayGainScannerDialog(vm);
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            DialogHelper.SizeToOwner(window, desktop.MainWindow);
+            await window.ShowDialog(desktop.MainWindow);
+        }
+        else
+        {
+            window.Show();
+        }
+    }
+
+    public static async Task OpenAudioConverterDialog(IReadOnlyList<Track> tracks)
+    {
+        if (tracks == null || tracks.Count == 0) return;
+        var service = App.Services!.GetRequiredService<IAudioConverterService>();
+        var vm = new AudioConverterViewModel(tracks, service);
+        var window = new AudioConverterDialog(vm);
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            DialogHelper.SizeToOwner(window, desktop.MainWindow);
+            await window.ShowDialog(desktop.MainWindow);
+        }
+        else
+        {
+            window.Show();
+        }
+    }
+
+    public static async Task OpenBatchMetadataWindow(IReadOnlyList<Track> tracks)
+    {
+        if (tracks == null || tracks.Count == 0) return;
+        if (tracks.Count == 1) { await OpenMetadataWindow(tracks[0]); return; }
+
+        var metadata = App.Services!.GetRequiredService<IMetadataService>();
+        var library = App.Services!.GetRequiredService<ILibraryService>();
+        var vm = new BatchMetadataViewModel(tracks, metadata, library);
+        var window = new BatchMetadataWindow(vm);
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            DialogHelper.SizeToOwner(window, desktop.MainWindow);
+            await window.ShowDialog(desktop.MainWindow);
+        }
+        else
+        {
+            window.Show();
+        }
+    }
+
     public static async Task OpenMetadataWindow(Track track, bool albumScoped = false)
     {
         var metadata = App.Services!.GetRequiredService<IMetadataService>();

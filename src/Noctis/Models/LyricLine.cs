@@ -28,6 +28,13 @@ public partial class LyricLine : ObservableObject
     [ObservableProperty]
     private bool _isClickable = true;
 
+    /// <summary>
+    /// Gaussian blur radius applied to inactive lines (depth-of-field, Apple Music style).
+    /// Driven by distance from the active line. 0 on the active line; rises with distance.
+    /// </summary>
+    [ObservableProperty]
+    private double _blurRadius;
+
     /// <summary>Whether this line is the intro placeholder ("...").</summary>
     public bool IsIntroPlaceholder { get; set; }
 
@@ -69,6 +76,10 @@ public partial class LyricLine : ObservableObject
             var isPast = i < value;
             if (w.IsCurrent != isCurrent) w.IsCurrent = isCurrent;
             if (w.IsPast != isPast) w.IsPast = isPast;
+
+            // Snap Progress for past/future words; the VM drives the current word per tick.
+            var snap = isPast ? 1.0 : (isCurrent ? w.Progress : 0.0);
+            if (w.Progress != snap) w.Progress = snap;
         }
     }
 }

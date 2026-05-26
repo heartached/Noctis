@@ -10,7 +10,7 @@ namespace Noctis.Services;
 /// </summary>
 public class LibraryService : ILibraryService
 {
-    private const int CurrentMetadataSchemaVersion = 5;
+    private const int CurrentMetadataSchemaVersion = 6;
     private const int CurrentIndexCacheVersion = 2;
 
     private readonly IMetadataService _metadata;
@@ -698,6 +698,10 @@ public class LibraryService : ILibraryService
         if (settings.MetadataSchemaVersion < 5)
             didBackfillMetadata |= BackfillArtistFromTitle(_tracks);
 
+        // v6: populate ReleaseType from tags + album-name heuristic for existing libraries.
+        if (settings.MetadataSchemaVersion < 6)
+            didBackfillMetadata |= await BackfillReleaseTypeAsync(_tracks);
+
         settings.MetadataSchemaVersion = CurrentMetadataSchemaVersion;
 
         try
@@ -836,6 +840,56 @@ public class LibraryService : ILibraryService
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Populates ReleaseType + ReleaseTypeFromTag for tracks indexed before v6,
+    /// by re-reading just the relevant tags. Skips already-overridden tracks
+    /// and tracks whose file is no longer accessible.
+    /// </summary>
+    private async Task<bool> BackfillReleaseTypeAsync(List<Track> tracks)
+    {
+        var candidates = tracks
+            .Where(t => !string.IsNullOrWhiteSpace(t.FilePath) && File.Exists(t.FilePath)
+                        && !t.IsReleaseTypeOverridden
+                        && !t.ReleaseTypeFromTag)
+            .ToList();
+
+        if (candidates.Count == 0)
+            return false;
+
+        var changedCount = 0;
+
+        await Task.Run(() =>
+        {
+            Parallel.ForEach(
+                candidates,
+                new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+                },
+                track =>
+                {
+                    try
+                    {
+                        var refreshed = _metadata.ReadTrackMetadata(track.FilePath);
+                        if (refreshed == null) return;
+                        if (refreshed.ReleaseTypeFromTag || refreshed.IsReleaseTypeOverridden)
+                        {
+                            track.ReleaseType = refreshed.ReleaseType;
+                            track.IsReleaseTypeOverridden = refreshed.IsReleaseTypeOverridden;
+                            track.ReleaseTypeFromTag = refreshed.ReleaseTypeFromTag;
+                            Interlocked.Increment(ref changedCount);
+                        }
+                    }
+                    catch
+                    {
+                        // Non-fatal — backfill is best-effort.
+                    }
+                });
+        });
+
+        return changedCount > 0;
     }
 
     private async Task<bool> BackfillReleaseDateAndCopyrightAsync(List<Track> tracks)

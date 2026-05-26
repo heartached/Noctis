@@ -11,7 +11,7 @@
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto"
                   Padding="0">
-        <StackPanel Spacing="32" Margin="0,0,0,40">
+        <StackPanel Spacing="32" Margin="0,0,0,115">
 
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- HERO BANNER                                          -->
@@ -56,7 +56,7 @@
                                             Command="{Binding PlayArtistCommand}"
                                             ToolTip.Tip="Play artist">
                                         <Path Data="M3,2 L11,7 L3,12 Z"
-                                              Fill="White"
+                                              Fill="{DynamicResource AccentForegroundBrush}"
                                               Width="14" Height="14"
                                               Stretch="Uniform"/>
                                     </Button>
@@ -77,18 +77,18 @@
                             <Button Classes="pill-action"
                                     Command="{Binding PlayArtistCommand}"
                                     Background="{DynamicResource AccentColorBrush}"
-                                    Foreground="White">
+                                    Foreground="{DynamicResource AccentForegroundBrush}">
                                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                    <Path Data="M3,2 L11,7 L3,12 Z" Fill="White" Width="11" Height="11" Stretch="Uniform"/>
+                                    <Path Data="M3,2 L11,7 L3,12 Z" Fill="{DynamicResource AccentForegroundBrush}" Width="11" Height="11" Stretch="Uniform"/>
                                     <TextBlock Text="Play" FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Button>
                             <Button Classes="pill-action"
                                     Command="{Binding ShuffleArtistCommand}"
                                     Background="{DynamicResource AccentColorBrush}"
-                                    Foreground="White">
+                                    Foreground="{DynamicResource AccentForegroundBrush}">
                                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                    <PathIcon Data="{StaticResource ShuffleIcon}" Width="12" Height="12" Foreground="White"/>
+                                    <PathIcon Data="{StaticResource ShuffleIcon}" Width="12" Height="12" Foreground="{DynamicResource AccentForegroundBrush}"/>
                                     <TextBlock Text="Shuffle" FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Button>
@@ -259,11 +259,85 @@
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- SINGLES & EPS                                        -->
+            <!-- SINGLES                                              -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <StackPanel Margin="32,0" Spacing="12" IsVisible="{Binding SinglesAndEps.Count}">
-                <TextBlock Text="Singles &amp; EPs" FontSize="20" FontWeight="Bold"/>
-                <ItemsControl ItemsSource="{Binding SinglesAndEps}">
+            <StackPanel Margin="32,0" Spacing="12" IsVisible="{Binding Singles.Count}">
+                <TextBlock Text="Singles" FontSize="20" FontWeight="Bold"/>
+                <ItemsControl ItemsSource="{Binding Singles}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="6" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type m:Album}">
+                            <Button Classes="album-tile" Focusable="False" Margin="4"
+                                    HorizontalAlignment="Stretch"
+                                    Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).OpenAlbumCommand}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Spacing="6">
+                                    <Border CornerRadius="6" ClipToBounds="True"
+                                            Background="#1AFFFFFF" HorizontalAlignment="Stretch"
+                                            Height="160">
+                                        <ctrl:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                          Stretch="UniformToFill"
+                                                          RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                    </Border>
+                                    <TextBlock FontSize="12" FontWeight="SemiBold"
+                                               Text="{Binding Name}"
+                                               TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                    <TextBlock FontSize="10" Opacity="0.55"
+                                               Text="{Binding Year}" />
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- EPs                                                  -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel Margin="32,0" Spacing="12" IsVisible="{Binding Eps.Count}">
+                <TextBlock Text="EPs" FontSize="20" FontWeight="Bold"/>
+                <ItemsControl ItemsSource="{Binding Eps}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="6" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type m:Album}">
+                            <Button Classes="album-tile" Focusable="False" Margin="4"
+                                    HorizontalAlignment="Stretch"
+                                    Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).OpenAlbumCommand}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Spacing="6">
+                                    <Border CornerRadius="6" ClipToBounds="True"
+                                            Background="#1AFFFFFF" HorizontalAlignment="Stretch"
+                                            Height="160">
+                                        <ctrl:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                          Stretch="UniformToFill"
+                                                          RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                    </Border>
+                                    <TextBlock FontSize="12" FontWeight="SemiBold"
+                                               Text="{Binding Name}"
+                                               TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                    <TextBlock FontSize="10" Opacity="0.55"
+                                               Text="{Binding Year}" />
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- COMPILATIONS                                         -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel Margin="32,0" Spacing="12" IsVisible="{Binding Compilations.Count}">
+                <TextBlock Text="Compilations" FontSize="20" FontWeight="Bold"/>
+                <ItemsControl ItemsSource="{Binding Compilations}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid Columns="6" />
