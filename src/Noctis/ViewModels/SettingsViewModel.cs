@@ -289,6 +289,7 @@ public partial class SettingsViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
     private bool _isReadyToInstall;
     [ObservableProperty] private string _latestVersionTag = "";
+    [ObservableProperty] private bool _isLatestPrerelease;
 
     public bool ShowCheckForUpdatesButton => !IsUpdateAvailable && !IsReadyToInstall;
 
@@ -1997,6 +1998,7 @@ public partial class SettingsViewModel : ViewModelBase
             if (update.InstallerApiUrl is null) return;
 
             LatestVersionTag = update.TagName;
+            IsLatestPrerelease = update.IsPrerelease;
             IsUpdateAvailable = true;
         }
         catch
@@ -2035,11 +2037,13 @@ public partial class SettingsViewModel : ViewModelBase
             else if (update.InstallerApiUrl is null)
             {
                 LatestVersionTag = update.TagName;
+                IsLatestPrerelease = update.IsPrerelease;
                 UpdateStatusText = $"{update.TagName} available — installer not found. Visit GitHub.";
             }
             else
             {
                 LatestVersionTag = update.TagName;
+                IsLatestPrerelease = update.IsPrerelease;
                 UpdateStatusText = $"{update.TagName} is available.";
                 IsUpdateAvailable = true;
             }

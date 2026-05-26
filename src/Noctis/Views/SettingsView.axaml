@@ -1777,8 +1777,22 @@
                             </Border>
                             <StackPanel VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="Noctis" FontSize="18" FontWeight="Bold"/>
-                                <TextBlock Text="{Binding AppVersion}"
-                                           FontSize="12" Opacity="0.5"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding AppVersion}"
+                                               FontSize="12" Opacity="0.5"
+                                               VerticalAlignment="Center"/>
+                                    <Border IsVisible="{Binding IsLatestPrerelease}"
+                                            Background="#E74856"
+                                            CornerRadius="9"
+                                            Padding="8,2"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="Pre-release"
+                                                   FontSize="10"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="White"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
 
