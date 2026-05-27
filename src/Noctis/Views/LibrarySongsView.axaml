@@ -107,7 +107,7 @@
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
                                                          FontSize="12"
                                                          FontWeight="SemiBold"
-                                                         Foreground="{DynamicResource AccentColorBrush}"
+                                                         Foreground="{DynamicResource AccentTextBrush}"
                                                          TextTrimming="CharacterEllipsis"
                                                          VerticalAlignment="Center" />
                         </Button>
@@ -120,7 +120,7 @@
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
                                                          FontSize="12"
                                                          FontWeight="SemiBold"
-                                                         Foreground="{DynamicResource AccentColorBrush}"
+                                                         Foreground="{DynamicResource AccentTextBrush}"
                                                          TextTrimming="CharacterEllipsis"
                                                          VerticalAlignment="Center" />
                         </Button>
@@ -160,7 +160,7 @@
                                 Click="OnOptionsButtonClick">
                             <PathIcon Data="{StaticResource MoreDotsIcon}"
                                      Width="14" Height="14"
-                                     Foreground="{DynamicResource AccentColorBrush}"
+                                     Foreground="{DynamicResource AccentTextBrush}"
                                      HorizontalAlignment="Center"
                                      VerticalAlignment="Center" />
                         </Button>

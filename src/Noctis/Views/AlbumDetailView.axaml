@@ -127,10 +127,11 @@
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                Opacity="0.2"
-                               IsVisible="{Binding AlbumArt, Converter={x:Static ObjectConverters.IsNull}}" />
-                    <Image Source="{Binding AlbumArt}"
-                           Stretch="UniformToFill"
-                           IsVisible="{Binding AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                               IsVisible="{Binding HeaderArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                    <controls:CachedImage SourcePath="{Binding HeaderArtPath}"
+                                          DecodeWidth="512"
+                                          Stretch="UniformToFill"
+                                          IsVisible="{Binding HeaderArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                     <!-- Bitmap-rendered (not a native VideoView): composes/clips like a
                          normal control, so it doesn't bleed over or jump relative to the
                          sidebar when it expands. -->
@@ -180,7 +181,7 @@
                                FontSize="20"
                                LineHeight="24"
                                VerticalAlignment="Center"
-                               Foreground="{DynamicResource AccentColorBrush}" />
+                               Foreground="{DynamicResource AccentTextBrush}" />
                 </Button>
                 <StackPanel Orientation="Horizontal" Spacing="0" Margin="0,4,0,0"
                             TextElement.Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
@@ -291,7 +292,8 @@
                             CornerRadius="999"
                             Background="{DynamicResource AccentColorBrush}"
                             Foreground="{DynamicResource AccentForegroundBrush}"
-                            BorderThickness="0"
+                            BorderBrush="{DynamicResource AccentBorderBrush}"
+                            BorderThickness="1"
                             FontWeight="Bold"
                             Cursor="Hand"
                             ToolTip.Tip="Play">
@@ -312,7 +314,8 @@
                             CornerRadius="999"
                             Background="{DynamicResource AccentColorBrush}"
                             Foreground="{DynamicResource AccentForegroundBrush}"
-                            BorderThickness="0"
+                            BorderBrush="{DynamicResource AccentBorderBrush}"
+                            BorderThickness="1"
                             FontWeight="Bold"
                             Cursor="Hand"
                             ToolTip.Tip="Shuffle">
@@ -351,7 +354,7 @@
                     ToolTip.Tip="Options">
                 <PathIcon Data="{StaticResource MoreDotsIcon}"
                           Width="14" Height="14"
-                          Foreground="{DynamicResource AccentColorBrush}"
+                          Foreground="{DynamicResource AccentTextBrush}"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center" />
                 <Button.Flyout>
@@ -672,7 +675,7 @@
                                     Tag="{Binding}">
                                 <PathIcon Data="{StaticResource MoreDotsIcon}"
                                           Width="14" Height="14"
-                                          Foreground="{DynamicResource AccentColorBrush}"
+                                          Foreground="{DynamicResource AccentTextBrush}"
                                           HorizontalAlignment="Center"
                                           VerticalAlignment="Center" />
                                 <Button.Flyout>

@@ -35,9 +35,12 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void OpenSettings()
     {
-        Settings.RefreshLibraryStats();
-        Settings.RefreshStorageInfo();
+        // Open immediately so the click feels instant. Library stats are an in-memory
+        // pass (cheap); storage info walks the artwork directory and is deferred to
+        // a background thread so it never blocks the click.
         IsSettingsModalOpen = true;
+        Settings.RefreshLibraryStats();
+        _ = Settings.RefreshStorageInfoAsync();
     }
 
     /// <summary>Closes the Settings modal popup.</summary>
@@ -386,8 +389,23 @@ public partial class MainWindowViewModel : ViewModelBase
         // UI for ~1–2 s right after the window appeared (building a heavy view is
         // ~1 s on its own, plus six full list rebuilds).
         void PostWarmup(Action step) => Dispatcher.UIThread.Post(step, DispatcherPriority.Background);
-        PostWarmup(() => App.CachedLocator?.Build(_songsVm));
-        PostWarmup(() => App.CachedLocator?.Build(_albumsVm));
+
+        // Pre-warm only the heaviest cached views (Songs/Albums/Settings) so the
+        // first click on those is instant. Trying to pre-warm every view here
+        // saturated the dispatcher for ~10 s after launch — lighter views build
+        // fast enough on first click that the cost isn't worth eating up front.
+        // Wait ~1.5 s so the window has fully painted and the user has time to
+        // orient before we start the background templating work.
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(1500);
+            Dispatcher.UIThread.Post(() => App.CachedLocator?.Build(_songsVm), DispatcherPriority.Background);
+            Dispatcher.UIThread.Post(() => App.CachedLocator?.Build(_albumsVm), DispatcherPriority.Background);
+            Dispatcher.UIThread.Post(() => App.CachedLocator?.Build(Settings), DispatcherPriority.Background);
+        });
+
+        // Refresh non-visible content VMs so their data is ready when navigated to.
+        // These are data-only refreshes (no visual tree work), so they're cheap.
         PostWarmup(_songsVm.Refresh);
         PostWarmup(_albumsVm.Refresh);
         PostWarmup(_artistsVm.Refresh);

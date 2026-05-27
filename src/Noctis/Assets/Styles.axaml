@@ -24,6 +24,8 @@
                     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush2" Color="{StaticResource SystemAccentColorLight1}" />
                     <SolidColorBrush x:Key="AccentColorBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentForegroundBrush" Color="White" />
+                    <SolidColorBrush x:Key="AccentBorderBrush" Color="{StaticResource SystemAccentColorDark1}" />
+                    <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
 
                     <!-- Custom App Background Colors -->
                     <SolidColorBrush x:Key="AppSidebarBackground" Color="#141414" />
@@ -81,6 +83,10 @@
                     <SolidColorBrush x:Key="HomeCardBackground" Color="#18FFFFFF" />
                     <SolidColorBrush x:Key="HomeCardHoverBackground" Color="#28FFFFFF" />
 
+                    <!-- Filter chips (release type, etc.) -->
+                    <SolidColorBrush x:Key="ChipBackground" Color="#1AFFFFFF" />
+                    <SolidColorBrush x:Key="ChipHoverBackground" Color="#28FFFFFF" />
+
                     <!-- Playback Island -->
                     <SolidColorBrush x:Key="IslandBackground" Color="#F0181818" />
                     <SolidColorBrush x:Key="IslandForeground" Color="#F0F0F0" />
@@ -112,6 +118,8 @@
                     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush2" Color="{StaticResource SystemAccentColorLight1}" />
                     <SolidColorBrush x:Key="AccentColorBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentForegroundBrush" Color="White" />
+                    <SolidColorBrush x:Key="AccentBorderBrush" Color="{StaticResource SystemAccentColorDark1}" />
+                    <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
 
                     <!-- ToggleSwitch checked fill (#E74856) -->
                     <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#E74856" />
@@ -174,6 +182,10 @@
                     <!-- Home card pills -->
                     <SolidColorBrush x:Key="HomeCardBackground" Color="#18000000" />
                     <SolidColorBrush x:Key="HomeCardHoverBackground" Color="#28000000" />
+
+                    <!-- Filter chips (release type, etc.) -->
+                    <SolidColorBrush x:Key="ChipBackground" Color="#14000000" />
+                    <SolidColorBrush x:Key="ChipHoverBackground" Color="#22000000" />
 
                     <!-- Playback Island (dark pill on light backgrounds) -->
                     <SolidColorBrush x:Key="IslandBackground" Color="#F0181818" />
@@ -342,7 +354,7 @@
         <Setter Property="MinHeight" Value="40"/>
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                <BrushTransition Property="Background" Duration="0:0:0.07"/>
             </Transitions>
         </Setter>
     </Style>
@@ -369,7 +381,7 @@
         <Setter Property="MinWidth" Value="40"/>
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                <BrushTransition Property="Background" Duration="0:0:0.07"/>
             </Transitions>
         </Setter>
     </Style>
@@ -453,7 +465,7 @@
     <Style Selector="MenuItem">
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.14">
+                <BrushTransition Property="Background" Duration="0:0:0.07">
                     <BrushTransition.Easing>
                         <CubicEaseOut/>
                     </BrushTransition.Easing>
@@ -513,7 +525,7 @@
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                <BrushTransition Property="Background" Duration="0:0:0.07"/>
                 <DoubleTransition Property="Opacity" Duration="0:0:0.1"/>
             </Transitions>
         </Setter>
@@ -524,7 +536,7 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                <BrushTransition Property="Background" Duration="0:0:0.07"/>
             </Transitions>
         </Setter>
     </Style>
@@ -862,7 +874,14 @@
         <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
-    <!-- Accent/red pill buttons: keep their red fill on hover/press instead of Fluent's dark hover chrome. -->
+    <!-- Accent/red pill buttons: keep their red fill on hover/press instead of Fluent's dark hover chrome.
+         Default border so accent-filled pills stay visible when the accent matches the page background
+         (e.g. white accent on light theme). Buttons that explicitly opt out — typically transparent
+         buttons nested inside an outer accent-coloured pill container — set BorderThickness="0" inline. -->
+    <Style Selector="Button.accent-btn">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
     <Style Selector="Button.accent-btn:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{TemplateBinding Background}" />
         <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />

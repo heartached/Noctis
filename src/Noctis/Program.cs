@@ -80,6 +80,13 @@ internal class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
+            // Skia keeps decoded bitmaps as GPU textures in a bounded cache.
+            // The default (~64 MB) is small for an image-heavy music library —
+            // when album-art textures exceed it during scroll, the GPU evicts
+            // older textures and we re-upload them on the next frame, which is
+            // what causes scroll stutter on the album grid. 256 MB comfortably
+            // holds the visible+nearby cover textures for a 10K-track library.
+            .With(new SkiaOptions { MaxGpuResourceSizeBytes = 256L * 1024 * 1024 })
             .LogToTrace();
 
     /// <summary>
