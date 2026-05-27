@@ -59,7 +59,6 @@
                         Classes="accent-btn"
                         Background="#E74856"
                         Foreground="White"
-                        BorderThickness="0"
                         CornerRadius="999"
                         Padding="14,7"
                         FontSize="12"

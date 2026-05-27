@@ -6,6 +6,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -34,6 +35,13 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private Album _album;
     [ObservableProperty] private Bitmap? _albumArt;
+
+    /// <summary>Path to the album's artwork file used by <see cref="Controls.CachedImage"/>
+    /// in the header. Set synchronously when the page opens so the cover paints on
+    /// the first frame from the shared LRU cache — no flash. (The Bitmap-based
+    /// <see cref="AlbumArt"/> property is retained for back-compat with any consumer
+    /// not yet migrated.)</summary>
+    [ObservableProperty] private string? _headerArtPath;
 
     /// <summary>True when this album's track is currently playing AND animated covers are enabled AND a cover exists.</summary>
     public bool IsCurrentAlbumPlaying =>
@@ -95,7 +103,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
             StringComparison.Ordinal);
 
     /// <summary>Tracks in this album, ordered by disc and track number.</summary>
-    public ObservableCollection<Track> Tracks { get; } = new();
+    public BulkObservableCollection<Track> Tracks { get; } = new();
 
     /// <summary>Other versions of this album (same artist, normalized base title), excluding self.</summary>
     public ObservableCollection<Album> OtherVersions { get; } = new();
@@ -164,26 +172,16 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         if (tokens.Length == 0) tokens = new[] { album.Artist };
         ArtistTokens = tokens.Select((name, i) => new ArtistTokenItem(name, IsLast: i == tokens.Length - 1)).ToArray();
 
-        // Load tracks
-        foreach (var track in album.Tracks)
-            Tracks.Add(track);
+        // Load tracks (single Reset event instead of N Add events)
+        Tracks.ReplaceAll(album.Tracks);
         BuildDiscGroups();
         AnimatedCoverPath = ResolveAlbumAnimatedCover();
 
-        // Load artwork off UI thread
+        // Drive the header via CachedImage so the cover paints from the shared LRU
+        // cache on the first frame (no flash). The CachedImage control handles
+        // background decode + previous-frame retention on cache miss internally.
         var artPath = persistence.GetArtworkPath(album.Id);
-        if (File.Exists(artPath))
-        {
-            ThreadPool.QueueUserWorkItem(_ =>
-            {
-                try
-                {
-                    var bmp = new Bitmap(artPath);
-                    Dispatcher.UIThread.Post(() => AlbumArt = bmp);
-                }
-                catch { }
-            });
-        }
+        HeaderArtPath = File.Exists(artPath) ? artPath : null;
 
         // Track the currently playing song — store handler so we can unsubscribe in Dispose
         UpdateCurrentPlayingTrack();
@@ -230,7 +228,12 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         }
 
         // Build related-album sections from the local library.
-        BuildRelatedSections();
+        // Deferred to background priority so the page paints first; the carousel
+        // rows below the fold can fill in a frame later without delaying first
+        // paint of the album header + track list. On large artist catalogues
+        // this work (normalize titles, OrderBy(Random)) was the dominant cost
+        // of opening an album.
+        Dispatcher.UIThread.Post(BuildRelatedSections, DispatcherPriority.Background);
 
         // Fetch album description asynchronously; fail silently if unavailable.
         _ = LoadAlbumDescriptionAsync();
@@ -324,27 +327,17 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
         Album = updatedAlbum;
 
-        Tracks.Clear();
-        foreach (var track in updatedAlbum.Tracks)
-            Tracks.Add(track);
+        Tracks.ReplaceAll(updatedAlbum.Tracks);
         BuildDiscGroups();
         AnimatedCoverPath = ResolveAlbumAnimatedCover();
         // OnAlbumChanged already rebuilds related sections; reaching here only when the
         // ID actually changed, but rebuild defensively in case the same-ID path missed.
         BuildRelatedSections();
 
-        // Reload artwork in case it changed
-        var oldArt = AlbumArt;
+        // Refresh header art path. CachedImage in the XAML invalidates and
+        // reloads via the shared LRU cache automatically on path change.
         var artPath = _persistence.GetArtworkPath(updatedAlbum.Id);
-        if (File.Exists(artPath))
-        {
-            try { AlbumArt = new Bitmap(artPath); } catch { AlbumArt = null; }
-        }
-        else
-        {
-            AlbumArt = null;
-        }
-        oldArt?.Dispose();
+        HeaderArtPath = File.Exists(artPath) ? artPath : null;
     }
 
     partial void OnAlbumArtChanged(Bitmap? value)

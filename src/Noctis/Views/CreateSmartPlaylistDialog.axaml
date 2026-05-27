@@ -13,6 +13,28 @@
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
 
+    <!-- Scoped outlines so input rows + the Cancel pill stay visible on light themes
+         where the dialog body and inputs share a (near-)white surface. -->
+    <Window.Styles>
+        <Style Selector="TextBox.crisp-input">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="NumericUpDown.limit-pill-number">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <!-- Cancel button (no accent-btn class) — outline so it doesn't vanish on white. -->
+        <Style Selector="Button.dialog-cancel">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+    </Window.Styles>
+
 <!-- Full-window dimmed overlay that captures all input -->
     <Border Background="#50000000"
             PointerPressed="OnOverlayPointerPressed"
@@ -41,6 +63,7 @@
                 <Button Grid.Column="2"
                         Content="Cancel"
                         Command="{Binding CancelCommand}"
+                        Classes="dialog-cancel"
                         Width="100"
                         Padding="0,8"
                         FontWeight="Bold"
@@ -113,7 +136,7 @@
                 <ItemsControl ItemsSource="{Binding Rules}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:SmartPlaylistRuleViewModel">
-                            <Border Background="#15FFFFFF" CornerRadius="8" Padding="12" Margin="0,4">
+                            <Border Background="{DynamicResource ChipBackground}" CornerRadius="8" Padding="12" Margin="0,4">
                                 <Grid ColumnDefinitions="*,*,*,Auto">
                                     <!-- Field dropdown -->
                                     <ComboBox Grid.Column="0"
@@ -184,7 +207,6 @@
                         Classes="accent-btn"
                             Background="{DynamicResource AccentColorBrush}"
                         Foreground="{DynamicResource AccentForegroundBrush}"
-                        BorderThickness="0"
                         HorizontalAlignment="Left"
                         Padding="16,7"
                         CornerRadius="999"

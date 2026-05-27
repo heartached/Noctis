@@ -234,6 +234,20 @@ public partial class App : Application
         var light2 = Mix(color, Colors.White, 0.30);
         var light3 = Mix(color, Colors.White, 0.45);
         var accentForeground = GetReadableForeground(color);
+        var isLightTheme = RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light;
+        // Outline around accent-filled pills. Only meaningful when the accent fill
+        // would be indistinguishable from the page background — in practice that's
+        // a white / very-light accent on the Light theme. In every other case the
+        // outline is visual noise, so make it fully transparent.
+        var accentBorder = (isLightTheme && IsLight(color))
+            ? Mix(color, Colors.Black, 0.25)
+            : Color.FromArgb(0, 0, 0, 0);
+        // Page-bg-aware accent for *text* / icon foregrounds drawn on the main surface.
+        // Falls back to a darkened/lightened accent when the accent itself would blend
+        // into the current page background.
+        var accentText = isLightTheme
+            ? (IsLight(color) ? Mix(color, Colors.Black, 0.55) : color)
+            : (IsLight(color) ? color : Mix(color, Colors.White, 0.55));
 
         var rd = new ResourceDictionary
         {
@@ -248,6 +262,8 @@ public partial class App : Application
             ["SystemControlHighlightAccentBrush2"] = new SolidColorBrush(light1),
             ["AccentColorBrush"]                   = new SolidColorBrush(color),
             ["AccentForegroundBrush"]              = new SolidColorBrush(accentForeground),
+            ["AccentBorderBrush"]                  = new SolidColorBrush(accentBorder),
+            ["AccentTextBrush"]                    = new SolidColorBrush(accentText),
             ["AccentColorBrushLight1"]             = new SolidColorBrush(light1),
             ["AccentColorBrushDark1"]              = new SolidColorBrush(dark1),
             ["ToggleSwitchFillOn"]                 = new SolidColorBrush(color),
@@ -301,6 +317,8 @@ public partial class App : Application
         // that white-on-accent would be unreadable (e.g. white, pale yellow, mint).
         return luminance >= 0.6 ? Colors.Black : Colors.White;
     }
+
+    private static bool IsLight(Color c) => GetReadableForeground(c) == Colors.Black;
 
     private static bool TryParseHex(string? hex, out Color color)
     {

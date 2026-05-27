@@ -541,7 +541,7 @@
                                         Classes="accent-btn"
                                         Padding="14,5" FontSize="12" FontWeight="Bold" Cursor="Hand" VerticalAlignment="Center"
                                         Foreground="{DynamicResource AccentForegroundBrush}" Background="{DynamicResource AccentColorBrush}"
-                                        BorderThickness="0" CornerRadius="999" />
+                                        CornerRadius="999" />
                             </StackPanel>
                         </StackPanel>
 
@@ -1036,7 +1036,6 @@
                                                             <Button Classes="accent-btn anim-variant"
                                                                     Background="{DynamicResource AccentColorBrush}"
                                                                     Foreground="{DynamicResource AccentForegroundBrush}"
-                                                                    BorderThickness="0"
                                                                     CornerRadius="999"
                                                                     Padding="16,7"
                                                                     Cursor="Hand"

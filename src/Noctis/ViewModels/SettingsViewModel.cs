@@ -1455,25 +1455,33 @@ public partial class SettingsViewModel : ViewModelBase
         TotalArtists = _library.Artists.Count;
         TotalAlbums = _library.Albums.Count;
 
-        // Library size
-        var totalBytes = tracks.Sum(t => t.FileSize);
+        // Single pass over Tracks: Sum(FileSize) + Sum(Duration) + Count(IsLossless)
+        // + Count(IsHiResLossless) all in one iteration. Previously 4 LINQ passes
+        // over the same collection plus a redundant tracks.Count subtraction.
+        long totalBytes = 0;
+        long totalDurationTicks = 0;
+        int losslessCount = 0;
+        int hiResCount = 0;
+        foreach (var t in tracks)
+        {
+            totalBytes += t.FileSize;
+            totalDurationTicks += t.Duration.Ticks;
+            if (t.IsLossless) losslessCount++;
+            if (t.IsHiResLossless) hiResCount++;
+        }
+
         TotalFileSize = FormatLibrarySize(totalBytes);
-
-        // Total duration
-        var totalDuration = TimeSpan.FromTicks(tracks.Sum(t => t.Duration.Ticks));
-        TotalListeningTime = FormatDuration(totalDuration);
-
-        // Audio quality
-        LosslessCount = tracks.Count(t => t.IsLossless);
-        LossyCount = tracks.Count - LosslessCount;
-        HiResCount = tracks.Count(t => t.IsHiResLossless);
+        TotalListeningTime = FormatDuration(TimeSpan.FromTicks(totalDurationTicks));
+        LosslessCount = losslessCount;
+        LossyCount = tracks.Count - losslessCount;
+        HiResCount = hiResCount;
         if (tracks.Count > 0)
         {
-            var pct = (double)LosslessCount / tracks.Count;
+            var pct = (double)losslessCount / tracks.Count;
             LosslessPercentage = pct;
             LosslessPercentageText = $"{pct * 100:F0}%";
             LossyPercentageText = $"{(1 - pct) * 100:F0}%";
-            HiResPercentageText = $"{(double)HiResCount / tracks.Count * 100:F0}%";
+            HiResPercentageText = $"{(double)hiResCount / tracks.Count * 100:F0}%";
         }
         else
         {
@@ -1532,19 +1540,78 @@ public partial class SettingsViewModel : ViewModelBase
         StorageTotal = FormatBytes(librarySize + queueSize + playlistsSize + settingsSize + artworkSize);
     }
 
+    /// <summary>
+    /// Async variant of <see cref="RefreshStorageInfo"/> for click paths (e.g. opening Settings).
+    /// Computes sizes on a background thread, then marshals formatted strings back to the UI.
+    /// </summary>
+    public async Task RefreshStorageInfoAsync()
+    {
+        var dataDir = _persistence.DataDirectory;
+        if (!Directory.Exists(dataDir)) return;
+
+        var result = await Task.Run(() =>
+        {
+            long librarySize = GetFileSize(Path.Combine(dataDir, "library.json"));
+            long queueSize = GetFileSize(Path.Combine(dataDir, "queue.json"));
+            long playlistsSize = GetFileSize(Path.Combine(dataDir, "playlists.json"));
+            long settingsSize = GetFileSize(Path.Combine(dataDir, "settings.json"));
+            long artworkSize = GetDirectorySize(Path.Combine(dataDir, "artwork"));
+
+            return new
+            {
+                LibraryData = FormatBytes(librarySize + queueSize),
+                Artwork = FormatBytes(artworkSize),
+                Playlists = FormatBytes(playlistsSize),
+                Settings = FormatBytes(settingsSize),
+                Total = FormatBytes(librarySize + queueSize + playlistsSize + settingsSize + artworkSize),
+            };
+        }).ConfigureAwait(false);
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            StorageLibraryData = result.LibraryData;
+            StorageArtwork = result.Artwork;
+            StoragePlaylists = result.Playlists;
+            StorageSettings = result.Settings;
+            StorageTotal = result.Total;
+        });
+    }
+
     private static long GetFileSize(string path)
     {
         try { return File.Exists(path) ? new FileInfo(path).Length : 0; }
         catch (Exception ex) { Debug.WriteLine($"[Settings] GetFileSize failed for '{path}': {ex.Message}"); return 0; }
     }
 
-    private static long GetDirectorySize(string path)
+    // Cache the recursive artwork-folder walk for a few seconds so repeated
+    // RefreshStorageInfo calls (e.g. open Settings, close, open again) don't
+    // re-walk the whole tree. Cache is invalidated on cache-clear / scan /
+    // settings-reset paths because they call RefreshStorageInfo with the
+    // expectation of a fresh number — those paths bypass the cache via the
+    // forceRefresh flag below.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime Stamp, long Bytes)>
+        _dirSizeCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly TimeSpan _dirSizeCacheTtl = TimeSpan.FromSeconds(5);
+
+    private static long GetDirectorySize(string path) => GetDirectorySize(path, forceRefresh: false);
+
+    private static long GetDirectorySize(string path, bool forceRefresh)
     {
         try
         {
             if (!Directory.Exists(path)) return 0;
-            return Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories)
+
+            if (!forceRefresh
+                && _dirSizeCache.TryGetValue(path, out var cached)
+                && DateTime.UtcNow - cached.Stamp < _dirSizeCacheTtl)
+            {
+                return cached.Bytes;
+            }
+
+            long size = Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories)
                 .Sum(f => new FileInfo(f).Length);
+            _dirSizeCache[path] = (DateTime.UtcNow, size);
+            return size;
         }
         catch (Exception ex) { Debug.WriteLine($"[Settings] GetDirectorySize failed for '{path}': {ex.Message}"); return 0; }
     }
@@ -1710,6 +1777,7 @@ public partial class SettingsViewModel : ViewModelBase
                 Directory.CreateDirectory(artworkDir);
                 Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
             }
+            _dirSizeCache.TryRemove(artworkDir, out _);
         }
         catch (Exception ex)
         {
@@ -1954,6 +2022,7 @@ public partial class SettingsViewModel : ViewModelBase
                 Directory.Delete(artworkDir, true);
                 Directory.CreateDirectory(artworkDir);
             }
+            _dirSizeCache.TryRemove(artworkDir, out _);
             RefreshStorageInfo();
             SetScanStatus("Artwork cache cleared.", autoClear: true);
         }
