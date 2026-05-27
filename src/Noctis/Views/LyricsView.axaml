@@ -159,14 +159,18 @@
             </Setter>
         </Style>
         <Style Selector="Button.lyric-line-btn.active">
-            <Setter Property="RenderTransform" Value="scale(1.07) translate(0px,-4px)"/>
+            <!-- Scale removed: the 1.07× zoom-from-left caused the rightmost
+                 character of a long active lyric to be clipped by the ScrollViewer's
+                 internal ScrollContentPresenter (e.g. the "p" in "wake up").
+                 The active line is still visually distinct via bold weight + opacity. -->
+            <Setter Property="RenderTransform" Value="translate(0px,-4px)"/>
         </Style>
-        <!-- Suppress global hover-scale on lyric lines, but preserve the active scale on hover. -->
+        <!-- Suppress global hover-scale on lyric lines. -->
         <Style Selector="ItemsControl#LyricsItemsControl Button:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
         <Style Selector="ItemsControl#LyricsItemsControl Button.lyric-line-btn.active:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1.07) translate(0px,-4px)"/>
+            <Setter Property="RenderTransform" Value="translate(0px,-4px)"/>
         </Style>
 
         <!-- Per-word lift: words fire rapidly, so spring oscillation reads as chatter.
@@ -734,7 +738,6 @@
                 <Button Classes="accent-btn"
                         Background="{DynamicResource AccentColorBrush}"
                         Foreground="{DynamicResource AccentForegroundBrush}"
-                        BorderThickness="0"
                         Padding="16,8"
                         FontSize="13"
                         FontWeight="SemiBold"

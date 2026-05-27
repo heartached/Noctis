@@ -123,7 +123,6 @@
                             Classes="accent-btn"
                             Background="{DynamicResource AccentColorBrush}"
                             Foreground="{DynamicResource AccentForegroundBrush}"
-                            BorderThickness="0"
                             Cursor="Hand" />
                     <Button Content="Remove Cover Art"
                             Command="{Binding RemoveCoverArtCommand}"

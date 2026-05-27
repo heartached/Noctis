@@ -26,6 +26,12 @@ public class LibraryService : ILibraryService
     private Dictionary<Guid, Track> _trackIndex = new();
     private Dictionary<Guid, Album> _albumIndex = new();
 
+    // Lazy-built lookup from artist name → that artist's albums. Avoids an O(N)
+    // LINQ scan in GetAlbumsByArtist (hot on AlbumDetail open and ArtistDetail).
+    // Invalidated to null whenever _albums is reassigned; the next reader rebuilds.
+    private Dictionary<string, List<Album>>? _albumsByArtistIndex;
+    private readonly object _albumsByArtistLock = new();
+
     public IReadOnlyList<Track> Tracks => _tracks;
     public IReadOnlyList<Album> Albums => _albums;
     public IReadOnlyList<Artist> Artists => _artists;
@@ -336,8 +342,34 @@ public class LibraryService : ILibraryService
 
     public IReadOnlyList<Album> GetAlbumsByArtist(string artistName)
     {
-        return _albums.Where(a =>
-            a.Artist.Equals(artistName, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (string.IsNullOrWhiteSpace(artistName))
+            return Array.Empty<Album>();
+
+        var index = _albumsByArtistIndex;
+        if (index == null)
+        {
+            lock (_albumsByArtistLock)
+            {
+                index = _albumsByArtistIndex;
+                if (index == null)
+                {
+                    var built = new Dictionary<string, List<Album>>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var a in _albums)
+                    {
+                        if (!built.TryGetValue(a.Artist, out var list))
+                        {
+                            list = new List<Album>();
+                            built[a.Artist] = list;
+                        }
+                        list.Add(a);
+                    }
+                    _albumsByArtistIndex = built;
+                    index = built;
+                }
+            }
+        }
+
+        return index.TryGetValue(artistName, out var albums) ? albums : (IReadOnlyList<Album>)Array.Empty<Album>();
     }
 
     public async Task RemoveTrackAsync(Guid id)
@@ -618,6 +650,7 @@ public class LibraryService : ILibraryService
         _artists = artists;
         _trackIndex = trackIndex;
         _albumIndex = albumIndex;
+        _albumsByArtistIndex = null; // invalidate; next GetAlbumsByArtist rebuilds
 
         // Persist the computed indexes so next startup can skip this rebuild
         _ = SaveIndexCacheAsync();
@@ -1133,6 +1166,7 @@ public class LibraryService : ILibraryService
             _artists = cache.Artists;
             _trackIndex = trackIndex;
             _albumIndex = albumIndex;
+            _albumsByArtistIndex = null; // invalidate; next GetAlbumsByArtist rebuilds
 
             return true;
         }

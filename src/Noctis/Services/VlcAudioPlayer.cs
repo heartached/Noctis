@@ -607,7 +607,7 @@ public class VlcAudioPlayer : IAudioPlayer
             while (!_disposed)
             {
                 var version = Interlocked.Read(ref _advancedEqRequestVersion);
-                ApplyAdvancedEqualizerSnapshot();
+                ApplyAdvancedEqualizerSnapshot(version);
                 Interlocked.Exchange(ref _advancedEqAppliedVersion, version);
 
                 if (Interlocked.Read(ref _advancedEqRequestVersion) == version)
@@ -622,7 +622,7 @@ public class VlcAudioPlayer : IAudioPlayer
         }
     }
 
-    private void ApplyAdvancedEqualizerSnapshot()
+    private void ApplyAdvancedEqualizerSnapshot(long capturedVersion = long.MinValue)
     {
         bool enabled;
         int presetIndex;
@@ -672,8 +672,21 @@ public class VlcAudioPlayer : IAudioPlayer
 
                 if (_player != null)
                     _player.SetEqualizer(_equalizer);
+
+                // Skip the standby player update while newer EQ requests are still
+                // pending (i.e. the user is actively dragging a slider). The
+                // standby is silent until end-of-track crossfade, so it doesn't
+                // need real-time updates — and skipping it halves the per-iteration
+                // cost of the apply loop, which is the dominant source of slider
+                // lag. The next loop iteration (or the final converged one) will
+                // sync standby once the version stabilises.
                 if (_standbyPrepared)
-                    _standbyPlayer.SetEqualizer(_equalizer);
+                {
+                    var pendingNewer = capturedVersion != long.MinValue &&
+                        Interlocked.Read(ref _advancedEqRequestVersion) != capturedVersion;
+                    if (!pendingNewer)
+                        _standbyPlayer.SetEqualizer(_equalizer);
+                }
             }
         }
         else

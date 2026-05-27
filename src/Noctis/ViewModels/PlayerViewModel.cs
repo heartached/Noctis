@@ -58,6 +58,15 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _isLyricsPlainActive;
     [ObservableProperty] private bool _isLyricsSyncedAvailable;
 
+    /// <summary>
+    /// Path to the current track's artwork file (or null if none).
+    /// Used by surfaces that bind via <see cref="Controls.CachedImage"/> so the
+    /// previous cover stays visible during async cache-miss decode — no flash on
+    /// track switch. The Bitmap-based <see cref="AlbumArt"/> property is kept
+    /// for legacy bindings (NowPlaying, Lyrics) that haven't been migrated yet.
+    /// </summary>
+    [ObservableProperty] private string? _currentArtPath;
+
     /// <summary>True if there's any content loaded (current track or upcoming tracks in queue).</summary>
     public bool HasContent => CurrentTrack != null || UpNext.Count > 0;
 
@@ -994,7 +1003,11 @@ public partial class PlayerViewModel : ViewModelBase
     /// while matching the shared <see cref="ArtworkCache"/> default width so the same
     /// cover isn't decoded/cached a second time at a player-only size.
     /// </summary>
-    private const int PlayerArtDecodeWidth = 768;
+    // Aligned with ArtworkCache.DecodeWidth default (512) and the album-grid /
+    // album-detail header sizes so every surface shares the same cache entry.
+    // Mismatched sizes (was 768 here, 512 in grid, 128 in playback bar) caused
+    // visible cache-miss decodes — i.e. the artwork "flicker" on track switch.
+    private const int PlayerArtDecodeWidth = 512;
 
     /// <summary>Bumped on every <see cref="LoadAlbumArt"/> call so a slow background
     /// decode that finishes after the track changed again is discarded.</summary>
@@ -1006,6 +1019,11 @@ public partial class PlayerViewModel : ViewModelBase
         // dispose them here. The cache de-dupes, so track switches no longer leak.
         var artPath = _persistence.GetArtworkPath(track.AlbumId);
         var generation = Interlocked.Increment(ref _albumArtGeneration);
+
+        // Drive CachedImage-based surfaces (playback bar) via a path string. They
+        // handle previous-frame retention during background decode, so there's no
+        // flash. Set null when the file is missing so the placeholder renders.
+        CurrentArtPath = !string.IsNullOrEmpty(artPath) && File.Exists(artPath) ? artPath : null;
 
         // No artwork available for this track — clear immediately so we don't
         // keep showing the previous track's cover.

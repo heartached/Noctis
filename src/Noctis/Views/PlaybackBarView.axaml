@@ -473,13 +473,15 @@
                                        VerticalAlignment="Center"
                                        Opacity="0.3"
                                        Foreground="{DynamicResource IslandForegroundTertiary}"
-                                       IsVisible="{Binding AlbumArt, Converter={x:Static ObjectConverters.IsNull}}" />
+                                       IsVisible="{Binding CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
                             <!-- Actual artwork — always the still cover here; the animated
-                                 cover is shown on the album, lyrics and cover-flow pages only. -->
-                            <Image Source="{Binding AlbumArt}"
-                                   Stretch="UniformToFill"
-                                   RenderOptions.BitmapInterpolationMode="HighQuality"
-                                   IsVisible="{Binding AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                 cover is shown on the album, lyrics and cover-flow pages only.
+                                 CachedImage keeps the previous bitmap visible during async
+                                 cache-miss decode so there's no flash on track switch. -->
+                            <controls:CachedImage SourcePath="{Binding CurrentArtPath}"
+                                                  Stretch="UniformToFill"
+                                                  RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                  IsVisible="{Binding CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </Panel>
                     </Border>
 
