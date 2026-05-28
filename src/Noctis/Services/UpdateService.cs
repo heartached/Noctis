@@ -38,8 +38,9 @@ public sealed class UpdateService
 
     /// <summary>
     /// Checks the latest GitHub release. Returns null if up-to-date or on error.
+    /// Pre-releases are only considered when <paramref name="includePrereleases"/> is true.
     /// </summary>
-    public async Task<UpdateInfo?> CheckForUpdateAsync(CancellationToken ct = default)
+    public async Task<UpdateInfo?> CheckForUpdateAsync(bool includePrereleases = false, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, ReleaseUrl);
         request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
@@ -51,27 +52,32 @@ public sealed class UpdateService
         if (releases is null || releases.Count == 0)
             return null;
 
-        // Pick the release with the highest parseable version (skip drafts).
-        var best = releases
+        // Candidate releases newer than the current build, highest version first.
+        var candidates = releases
             .Where(r => !r.Draft && !string.IsNullOrEmpty(r.TagName))
+            .Where(r => includePrereleases || !r.Prerelease)
             .Select(r => (Release: r, Version: ParseTag(r.TagName!)))
-            .Where(x => x.Version is not null)
+            .Where(x => x.Version is not null && x.Version > CurrentVersion)
             .OrderByDescending(x => x.Version)
-            .FirstOrDefault();
+            .ToList();
 
-        if (best.Release is null || best.Version is null || best.Version <= CurrentVersion)
+        if (candidates.Count == 0)
             return null;
 
-        // Find the Setup.exe asset
-        var installerAsset = best.Release.Assets?.FirstOrDefault(a =>
-            a.Name != null &&
-            a.Name.StartsWith(AssetPrefix, StringComparison.OrdinalIgnoreCase) &&
-            a.Name.EndsWith(AssetSuffix, StringComparison.OrdinalIgnoreCase));
+        // Prefer the highest-version release that actually ships the Windows installer
+        // asset, so a newer release missing the asset never masks an installable one.
+        // Fall back to the highest version overall so non-Windows builds (and the
+        // "visit GitHub" path) still surface that an update exists.
+        var best = candidates.FirstOrDefault(x => FindInstallerAsset(x.Release) is not null);
+        if (best.Release is null)
+            best = candidates[0];
+
+        var installerAsset = FindInstallerAsset(best.Release);
 
         return new UpdateInfo
         {
             TagName = best.Release.TagName!,
-            Version = best.Version,
+            Version = best.Version!,
             IsPrerelease = best.Release.Prerelease,
             InstallerApiUrl = installerAsset?.Url,
             InstallerUrl = installerAsset?.BrowserDownloadUrl,
@@ -79,6 +85,12 @@ public sealed class UpdateService
             ReleaseUrl = best.Release.HtmlUrl ?? $"https://github.com/heartached/Noctis/releases/tag/{best.Release.TagName}"
         };
     }
+
+    private static GitHubAsset? FindInstallerAsset(GitHubRelease release) =>
+        release.Assets?.FirstOrDefault(a =>
+            a.Name != null &&
+            a.Name.StartsWith(AssetPrefix, StringComparison.OrdinalIgnoreCase) &&
+            a.Name.EndsWith(AssetSuffix, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Downloads the installer to %TEMP%. Reports progress 0-100.
@@ -192,8 +204,11 @@ public sealed class UpdateService
 
     private static Version? ParseTag(string tag)
     {
-        // Strip leading 'v' or 'V'
+        // Strip leading 'v'/'V', then any semver pre-release/build suffix
+        // (e.g. "1.1.11-beta.1" or "1.1.11+build") so prerelease tags still parse.
         var raw = tag.TrimStart('v', 'V');
+        int cut = raw.IndexOfAny(new[] { '-', '+' });
+        if (cut >= 0) raw = raw.Substring(0, cut);
         return Version.TryParse(raw, out var v) ? v : null;
     }
 

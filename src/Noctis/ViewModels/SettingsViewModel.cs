@@ -290,6 +290,7 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _isReadyToInstall;
     [ObservableProperty] private string _latestVersionTag = "";
     [ObservableProperty] private bool _isLatestPrerelease;
+    [ObservableProperty] private bool _includePrereleaseUpdates;
 
     public bool ShowCheckForUpdatesButton => !IsUpdateAvailable && !IsReadyToInstall;
 
@@ -459,6 +460,7 @@ public partial class SettingsViewModel : ViewModelBase
             RebuildAccentSwatches();
 
             ScanOnStartup = _settings.ScanOnStartup;
+            IncludePrereleaseUpdates = _settings.IncludePrereleaseUpdates;
 
             // Playback
             CrossfadeEnabled = _settings.CrossfadeEnabled;
@@ -997,6 +999,12 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnIncludePrereleaseUpdatesChanged(bool value)
+    {
+        _settings.IncludePrereleaseUpdates = value;
+        _ = SaveAsync();
+    }
+
     partial void OnCrossfadeEnabledChanged(bool value)
     {
         ApplyAudioSettings();
@@ -1522,7 +1530,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    public void RefreshStorageInfo()
+    public void RefreshStorageInfo(bool forceRefresh = false)
     {
         var dataDir = _persistence.DataDirectory;
         if (!Directory.Exists(dataDir)) return;
@@ -1531,7 +1539,7 @@ public partial class SettingsViewModel : ViewModelBase
         long queueSize = GetFileSize(Path.Combine(dataDir, "queue.json"));
         long playlistsSize = GetFileSize(Path.Combine(dataDir, "playlists.json"));
         long settingsSize = GetFileSize(Path.Combine(dataDir, "settings.json"));
-        long artworkSize = GetDirectorySize(Path.Combine(dataDir, "artwork"));
+        long artworkSize = GetDirectorySize(Path.Combine(dataDir, "artwork"), forceRefresh);
 
         StorageLibraryData = FormatBytes(librarySize + queueSize);
         StorageArtwork = FormatBytes(artworkSize);
@@ -1687,7 +1695,7 @@ public partial class SettingsViewModel : ViewModelBase
                 ? "No tracks found."
                 : $"{_library.Tracks.Count} tracks found.", autoClear: true);
             RefreshLibraryStats();
-            RefreshStorageInfo();
+            RefreshStorageInfo(forceRefresh: true);
         }
         catch (Exception ex)
         {
@@ -1714,7 +1722,7 @@ public partial class SettingsViewModel : ViewModelBase
                 ? "No tracks found."
                 : "Indexed Library.", autoClear: true);
             RefreshLibraryStats();
-            RefreshStorageInfo();
+            RefreshStorageInfo(forceRefresh: true);
         }
         catch (Exception ex)
         {
@@ -1903,6 +1911,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Preferences
             ScanOnStartup = true;
+            IncludePrereleaseUpdates = false;
 
             // Playback
             CrossfadeEnabled = false;
@@ -2062,7 +2071,7 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            var update = await _updateService.CheckForUpdateAsync(cts.Token);
+            var update = await _updateService.CheckForUpdateAsync(IncludePrereleaseUpdates, cts.Token);
             if (update is null) return;
             if (update.InstallerApiUrl is null) return;
 
@@ -2096,7 +2105,7 @@ public partial class SettingsViewModel : ViewModelBase
             _updateCts?.Dispose();
             _updateCts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
-            var update = await _updateService.CheckForUpdateAsync(_updateCts.Token);
+            var update = await _updateService.CheckForUpdateAsync(IncludePrereleaseUpdates, _updateCts.Token);
 
             if (update is null)
             {
@@ -2150,7 +2159,7 @@ public partial class SettingsViewModel : ViewModelBase
             _updateCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
 
             // Re-check to get fresh URL
-            var update = await _updateService.CheckForUpdateAsync(_updateCts.Token);
+            var update = await _updateService.CheckForUpdateAsync(IncludePrereleaseUpdates, _updateCts.Token);
             if (update is null || update.InstallerApiUrl is null)
             {
                 UpdateStatusText = "Update no longer available.";

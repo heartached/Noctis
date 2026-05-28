@@ -1854,6 +1854,17 @@
                         </Button>
                     </StackPanel>
 
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="Include pre-release updates" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Offer beta builds in the updater. Off = stable releases only."
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding IncludePrereleaseUpdates}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
                     <Border Height="1"
                             Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
                             Opacity="0.2" Margin="0,4"/>
