@@ -134,74 +134,73 @@ git commit -m "feat(sidebar): drive Settings nav badge from update-available sta
 ### Task 3: Render the dot in the sidebar
 
 **Files:**
-- Modify: `src/Noctis/Views/SidebarView.axaml`
+- Modify: `src/Noctis/Views/SidebarView.axaml` (main-nav `DataTemplate`, lines ~38-61)
 
-Context: the **main nav** `ItemsControl` (`ItemsSource="{Binding NavItems}"`) uses a `DataTemplate x:DataType="m:NavItem"` whose `RadioButton` content is a `Grid ColumnDefinitions="Auto,*"` (icon + label). The **Favorites** template just below already demonstrates the badge pattern: a third `Auto` column with a `Border` using `Background="{DynamicResource AccentBrush}"`. Mirror that, but as a plain dot (no text) bound to `ShowBadge`. Because the sidebar is shown/hidden as a whole unit (`MainWindow.axaml:240` → `IsVisible="{Binding !IsSidebarHidden}"`) there is no icon-only mode, so the dot needs no special collapsed handling.
+Context (verified against the real file): the **main nav** `ListBox` (`ItemsSource="{Binding NavItems}"`, `x:Name="NavList"`) uses `<DataTemplate x:DataType="m:NavItem">` whose root is a **horizontal `StackPanel`**, NOT a Grid. It contains:
+1. an icon `Grid` (28x28) holding a `Border` with an `OpacityMask`/`ImageBrush` for the glyph, and
+2. a label `TextBlock` that is only visible when the sidebar is expanded
+   (`IsVisible="{Binding ...IsExpanded}"`).
 
-- [ ] **Step 1: Add the dot to the main-nav template**
+The sidebar has a real **icon-only collapsed rail**: `MainWindow.axaml.cs:104` sets the sidebar wrapper `Width = 60` when collapsed (labels hidden via `IsExpanded`), and `Width = 0` only when fully hidden. So the badge MUST be anchored to the **icon**, not placed in a trailing label column — otherwise it vanishes in the icon-only rail. We overlay a small `Ellipse` in the top-right corner of the 28x28 icon `Grid` (a `Grid` with no column/row defs stacks its children, so an aligned child becomes an overlay).
 
-In the **main nav** `DataTemplate` (the one whose grid is `ColumnDefinitions="Auto,*"` — NOT the Favorites one with `Auto,*,Auto`), change the content grid from:
+The accent brush actually defined/used in this file is **`AccentColorBrush`** (see the Favorites heart `Background="{DynamicResource AccentColorBrush}"`). Use that, not `AccentBrush`.
+
+- [ ] **Step 1: Add the dot overlay to the icon Grid in the main-nav template**
+
+In the **main nav** `DataTemplate` (the `NavList` one, root `StackPanel Orientation="Horizontal" Spacing="14"` — NOT the Favorites or Playlist templates), change the icon `Grid` from:
 
 ```xml
-                                <Grid ColumnDefinitions="Auto,*">
-                                    <Border Grid.Column="0" Width="22" Height="22" Margin="0,0,12,0"
-                                            VerticalAlignment="Center">
-                                        <Panel>
-                                            <Border x:Name="IconBg"/>
-                                            <Image Width="18" Height="18">
-                                                <Image.Source>
-                                                    <DrawingImage>
-                                                        <DrawingGroup>
-                                                            <GeometryDrawing Brush="{Binding $parent[RadioButton].Foreground}"
-                                                                             Geometry="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"/>
-                                                        </DrawingGroup>
-                                                    </DrawingImage>
-                                                </Image.Source>
-                                            </Image>
-                                        </Panel>
-                                    </Border>
-                                    <TextBlock Grid.Column="1" Text="{Binding Label}"
-                                               VerticalAlignment="Center"
-                                               FontSize="14" FontWeight="Medium"/>
-                                </Grid>
+                                    <Grid Width="28"
+                                          Height="28"
+                                          VerticalAlignment="Center">
+                                        <Border Width="20"
+                                                Height="20"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                Background="{DynamicResource IslandForeground}">
+                                            <Border.OpacityMask>
+                                                <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
+                                                            Stretch="Uniform" />
+                                            </Border.OpacityMask>
+                                        </Border>
+                                    </Grid>
 ```
 
-to (add a third `Auto` column and an `Ellipse` dot bound to `ShowBadge`):
+to (add an `Ellipse` dot overlay anchored top-right, bound to `ShowBadge`):
 
 ```xml
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <Border Grid.Column="0" Width="22" Height="22" Margin="0,0,12,0"
-                                            VerticalAlignment="Center">
-                                        <Panel>
-                                            <Border x:Name="IconBg"/>
-                                            <Image Width="18" Height="18">
-                                                <Image.Source>
-                                                    <DrawingImage>
-                                                        <DrawingGroup>
-                                                            <GeometryDrawing Brush="{Binding $parent[RadioButton].Foreground}"
-                                                                             Geometry="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"/>
-                                                        </DrawingGroup>
-                                                    </DrawingImage>
-                                                </Image.Source>
-                                            </Image>
-                                        </Panel>
-                                    </Border>
-                                    <TextBlock Grid.Column="1" Text="{Binding Label}"
-                                               VerticalAlignment="Center"
-                                               FontSize="14" FontWeight="Medium"/>
-                                    <Ellipse Grid.Column="2"
-                                             Width="8" Height="8"
-                                             Fill="{DynamicResource AccentBrush}"
-                                             VerticalAlignment="Center" Margin="8,0,0,0"
-                                             IsVisible="{Binding ShowBadge}"/>
-                                </Grid>
+                                    <Grid Width="28"
+                                          Height="28"
+                                          VerticalAlignment="Center">
+                                        <Border Width="20"
+                                                Height="20"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                Background="{DynamicResource IslandForeground}">
+                                            <Border.OpacityMask>
+                                                <ImageBrush Source="{Binding IconGlyph, Converter={StaticResource IconKeyToGeometry}}"
+                                                            Stretch="Uniform" />
+                                            </Border.OpacityMask>
+                                        </Border>
+                                        <!-- Update-available dot (top-right of icon; visible in
+                                             both expanded and icon-only rail) -->
+                                        <Ellipse Width="8" Height="8"
+                                                 Fill="{DynamicResource AccentColorBrush}"
+                                                 HorizontalAlignment="Right"
+                                                 VerticalAlignment="Top"
+                                                 Margin="0,-1,-1,0"
+                                                 IsVisible="{Binding ShowBadge}" />
+                                    </Grid>
 ```
 
 Implementer notes:
-- `ShowBadge` binds against the `m:NavItem` data context of the template (the generated PascalCase property from Task 1).
-- `AccentBrush` is the same `DynamicResource` the Favorites badge uses — confirmed present in the Favorites template in this same file.
-- `Ellipse` is `Avalonia.Controls.Shapes.Ellipse`, available in the default Avalonia XAML namespace already used by this view (no new `xmlns` needed).
-- Do NOT modify the Favorites template; only the main-nav one.
+- `ShowBadge` binds against the `m:NavItem` data context of the template (the generated PascalCase property from Task 1). It is only ever `true` for the Settings item (Task 2 only sets that one), so no per-item filtering is needed in XAML.
+- `AccentColorBrush` is a `DynamicResource` already used by the Favorites heart in this same file — confirmed present.
+- `Ellipse` is `Avalonia.Controls.Shapes.Ellipse`, in the default Avalonia XAML namespace already used by this view (no new `xmlns` needed).
+- Because the dot lives inside the icon `Grid`, it stays visible in the icon-only collapsed rail (width 60) and in the expanded state. It disappears only when the whole sidebar is hidden (width 0), which is correct.
+- Do NOT modify the Favorites or Playlist templates; only the `NavList` main-nav one.
 
 - [ ] **Step 2: Build to verify XAML compiles**
 
@@ -238,7 +237,7 @@ Run: `dotnet run --project src/Noctis/Noctis.csproj`
 Expected, after ~5s (the silent-check delay):
 1. A small accent dot appears on the **Settings** item in the sidebar.
 2. No exception in the console (confirms the UI-thread marshalling in Task 2 is correct).
-3. Hide/show the sidebar (the existing toggle): the dot is present whenever the sidebar is visible.
+3. Collapse the sidebar to the icon-only rail (move the pointer off it so labels hide / `IsExpanded` is false): the dot is still visible on the Settings icon. Expand again: still visible. Fully hide the sidebar: it disappears with the sidebar (correct).
 
 - [ ] **Step 3: Verify it clears**
 
@@ -263,8 +262,8 @@ If Steps 1-4 left the tree clean (expected), there is nothing to commit. Do not 
 - Persistent dot on Settings nav item → Task 1 + Task 3. ✓
 - Driven by existing `IsUpdateAvailable`, UI-thread safe → Task 2. ✓
 - Startup-only check unchanged, no `UpdateService` changes → no task touches them (explicitly out of scope). ✓
-- Visible in expanded/collapsed sidebar → confirmed no icon-only mode exists; dot shows whenever sidebar visible (Task 3 note + Task 4 Step 2.3). ✓
-- Mirror existing Favorites badge styling → Task 3 uses the same `AccentBrush`. ✓
+- Visible in expanded/collapsed sidebar → an icon-only rail (width 60) DOES exist; dot is anchored to the icon so it survives both states (Task 3 context + Task 4 Step 2.3). ✓
+- Mirror existing Favorites badge styling → Task 3 uses the same `AccentColorBrush`. ✓
 - Auto-clears on update → Task 2 handler + Task 4 Step 3. ✓
 - No toast / no auto-download / no new setting → none added. ✓
 
