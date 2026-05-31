@@ -200,6 +200,20 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetUpdateService(App.Services!.GetRequiredService<UpdateService>());
         Settings.SettingsReset += async (_, _) => await Sidebar.LoadPlaylistsAsync();
 
+        // Mirror the "update available" state onto the Settings sidebar item so a
+        // dot nudges the user without them opening Settings. The silent update
+        // check runs on a background thread, so marshal to the UI thread.
+        Settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(SettingsViewModel.IsUpdateAvailable)) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                var settingsNav = Sidebar.NavItems.FirstOrDefault(n => n.Key == "settings");
+                if (settingsNav is not null)
+                    settingsNav.ShowBadge = Settings.IsUpdateAvailable;
+            });
+        };
+
         // Create content ViewModels
         _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService);
         _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence);
@@ -214,6 +228,13 @@ public partial class MainWindowViewModel : ViewModelBase
             OpenSettings();
             Dispatcher.UIThread.Post(Settings.RequestMediaFoldersSection);
         };
+        // Settings is a modal overlay and folder add/remove doesn't fire LibraryUpdated,
+        // so explicitly rebuild the Folders tree when the media-folder set changes.
+        Settings.MusicFoldersChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            _foldersVm.MarkDirty();
+            _foldersVm.Refresh();
+        });
         _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
@@ -249,6 +270,13 @@ public partial class MainWindowViewModel : ViewModelBase
         // Wire up album detail navigation from albums view
         _albumsVm.AlbumOpened += OnAlbumOpened;
         _albumsVm.SetViewArtistAction(ViewArtistByName);
+
+        // Entering/leaving an artist's discography toggles the title-bar filter chips.
+        _albumsVm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LibraryAlbumsViewModel.IsArtistFiltered))
+                UpdateReleaseTypeChips();
+        };
 
         // Wire up album detail navigation from home view
         _homeVm.AlbumOpened += OnHomeAlbumOpened;
@@ -625,6 +653,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _albumDetailBackButtonText = null;
 
         RefreshBackButton();
+        UpdateReleaseTypeChips();
 
         // Dispose transient ViewModels (e.g., AlbumDetailViewModel) to release
         // event handlers on singleton services and unmanaged resources like Bitmaps.
@@ -1407,6 +1436,21 @@ public partial class MainWindowViewModel : ViewModelBase
         // Home and Cover Flow do not use the top-bar search field.
         if (_isCoverFlowMode || _currentSectionKey == "home")
             TopBar.IsSearchVisible = false;
+    }
+
+    /// <summary>
+    /// Shows the release-type filter chips next to the title only on the Albums grid
+    /// (Library mode, not artist-filtered). Cover Flow and artist discography hide them.
+    /// </summary>
+    private void UpdateReleaseTypeChips()
+    {
+        var show = ReferenceEquals(CurrentView, _albumsVm)
+                   && !_isCoverFlowMode
+                   && !_albumsVm.IsArtistFiltered;
+        if (show)
+            TopBar.ShowReleaseTypeChips(_albumsVm.ReleaseTypeChips, _albumsVm.SelectReleaseTypeChipCommand);
+        else
+            TopBar.HideReleaseTypeChips();
     }
 
     private void EnterCoverFlowMode()
