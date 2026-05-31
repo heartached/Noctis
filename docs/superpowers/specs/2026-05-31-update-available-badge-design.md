@@ -35,8 +35,10 @@ Chosen approach: a `ShowBadge` flag on the sidebar `NavItem`, wired by
 This keeps `SidebarViewModel` and `SettingsViewModel` decoupled and mirrors the
 existing `FavoritesCount` pattern in the sidebar.
 
-### Modified: `ViewModels/NavItem.cs`
+### Modified: `Models/NavItem.cs`
 
+- `NavItem` is in the `Noctis.Models` namespace and already an `ObservableObject`
+  (its `Label` already uses `[ObservableProperty]`).
 - Add `[ObservableProperty] private bool _showBadge;`
 - Default `false`. Purely presentational state for a nav entry.
 
@@ -57,9 +59,12 @@ existing `FavoritesCount` pattern in the sidebar.
 
 ### Modified: `Views/SidebarView.axaml`
 
-- In the `NavItems` `ItemsControl` `DataTemplate` (currently a single
-  `RadioButton Classes="nav-item"`), wrap the `RadioButton` in a `Grid`/`Panel`
-  overlay and add a small `Ellipse` "dot":
+- The `NavItems` `ItemsControl` uses `<DataTemplate x:DataType="m:NavItem">`
+  containing the nav `RadioButton` (with an `ImageBrush`/`IconGlyph` icon).
+  Note the adjacent `FavoritesItems` template already renders a count badge
+  bound to `FavoritesCount` — mirror that badge styling for visual consistency.
+- Wrap the nav `RadioButton` in a `Grid`/`Panel` overlay and add a small
+  `Ellipse` "dot":
   - Accent color (reuse the existing accent brush used elsewhere in the app;
     the update buttons use `#E74856` — prefer an existing accent resource if one
     exists, else match that value).
@@ -120,7 +125,7 @@ download/install flow → IsUpdateAvailable = false
 
 | File | Change |
 |------|--------|
-| `ViewModels/NavItem.cs` | Add `ShowBadge` observable property |
+| `Models/NavItem.cs` | Add `ShowBadge` observable property |
 | `ViewModels/MainWindowViewModel.cs` | Wire `Settings.IsUpdateAvailable` → Settings nav item `ShowBadge` (UI thread) |
 | `Views/SidebarView.axaml` | Overlay accent dot on nav item, bound to `ShowBadge` |
 
