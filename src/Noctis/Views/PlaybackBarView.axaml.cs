@@ -669,6 +669,9 @@ public partial class PlaybackBarView : UserControl
         }
 
         (DataContext as PlayerViewModel)?.CommitVolume();
+        // The drag suppressed any hover-close; now that it's over, close if the
+        // cursor ended up away from the icon and popup.
+        ReevaluateVolumeFlyoutHover();
     }
 
     private void OnVolumeSliderCaptureLost(object? sender, PointerCaptureLostEventArgs e)
@@ -677,6 +680,7 @@ public partial class PlaybackBarView : UserControl
 
         _isVolumeDragging = false;
         (DataContext as PlayerViewModel)?.CommitVolume();
+        ReevaluateVolumeFlyoutHover();
     }
 
     private void UpdateVolumeSliderVisual()
@@ -707,14 +711,19 @@ public partial class PlaybackBarView : UserControl
     private const double IslandBaseWidth = 650;
     private const double IslandLyricsPageWidth = 390;
     private static readonly TimeSpan VolumeFlyoutCloseDelay = TimeSpan.FromMilliseconds(140);
+    // Matches the slowest entrance/exit transition on VolumeFlyoutContent (Y = 0.18s) so the
+    // popup stays alive long enough for the slide-down + fade-out to finish before it unmaps.
+    private static readonly TimeSpan VolumeFlyoutExitDuration = TimeSpan.FromMilliseconds(190);
 
     private DispatcherTimer? _volumeFlyoutCloseTimer;
+    private DispatcherTimer? _volumeFlyoutExitTimer;
 
     private void OnVolumeIconClick(object? sender, RoutedEventArgs e)
     {
         // First click opens the popup without muting; subsequent clicks while it's open
         // toggle mute and keep the popup visible so the user can keep adjusting.
-        if (!VolumeFlyout.IsOpen)
+        // A click during the close animation (still IsOpen, but fading out) re-opens it.
+        if (!VolumeFlyout.IsOpen || _volumeFlyoutExitTimer != null)
         {
             OpenVolumeFlyout();
             return;
@@ -727,6 +736,7 @@ public partial class PlaybackBarView : UserControl
     private void OpenVolumeFlyout()
     {
         CancelVolumeFlyoutClose();
+        CancelVolumeFlyoutExit();
         // Start just below the final position, then ease upward as it fades in.
         VolumeFlyoutContent.Opacity = 0;
         SetVolumeFlyoutOffset(6);
@@ -742,9 +752,27 @@ public partial class PlaybackBarView : UserControl
     private void CloseVolumeFlyout()
     {
         CancelVolumeFlyoutClose();
+        if (!VolumeFlyout.IsOpen) return;
+
+        // Reverse of the open animation: slide back down + fade out, then unmap the popup
+        // once the transition has finished (setting IsOpen=false immediately would snap it shut).
         VolumeFlyoutContent.Opacity = 0;
         SetVolumeFlyoutOffset(6);
-        VolumeFlyout.IsOpen = false;
+
+        CancelVolumeFlyoutExit();
+        _volumeFlyoutExitTimer = new DispatcherTimer { Interval = VolumeFlyoutExitDuration };
+        _volumeFlyoutExitTimer.Tick += (_, _) =>
+        {
+            CancelVolumeFlyoutExit();
+            VolumeFlyout.IsOpen = false;
+        };
+        _volumeFlyoutExitTimer.Start();
+    }
+
+    private void CancelVolumeFlyoutExit()
+    {
+        _volumeFlyoutExitTimer?.Stop();
+        _volumeFlyoutExitTimer = null;
     }
 
     private void SetVolumeFlyoutOffset(double y)
@@ -773,10 +801,24 @@ public partial class PlaybackBarView : UserControl
 
     private void ScheduleVolumeFlyoutClose()
     {
+        // Never close mid-drag: while adjusting volume the captured pointer can drift off
+        // the thin popup strip and fire PointerExited, which would otherwise dismiss it.
+        if (_isVolumeDragging) return;
+
         CancelVolumeFlyoutClose();
         _volumeFlyoutCloseTimer = new DispatcherTimer { Interval = VolumeFlyoutCloseDelay };
         _volumeFlyoutCloseTimer.Tick += (_, _) => CloseVolumeFlyout();
         _volumeFlyoutCloseTimer.Start();
+    }
+
+    // After a drag ends, decide whether to keep the popup open: stay if the cursor is still
+    // over the icon or popup, otherwise schedule the normal hover-close.
+    private void ReevaluateVolumeFlyoutHover()
+    {
+        if (!VolumeFlyout.IsOpen) return;
+        if (VolumeButton.IsPointerOver || VolumeFlyoutContent.IsPointerOver) return;
+
+        ScheduleVolumeFlyoutClose();
     }
 
     private void CancelVolumeFlyoutClose()

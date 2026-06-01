@@ -26,7 +26,8 @@ public partial class LibraryAlbumsView : UserControl
 
         DataContextChanged += OnDataContextChanged;
         AddHandler(PointerPressedEvent, OnTilePointerPressed, RoutingStrategies.Tunnel);
-        AddHandler(KeyDownEvent, OnViewKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
+        // Forward Ctrl+A from the window so it works without first clicking a tile.
+        _ = new WindowKeyForwarder(this, OnViewKeyDown);
     }
 
     private void OnTilePointerPressed(object? sender, PointerPressedEventArgs e)
@@ -45,13 +46,18 @@ public partial class LibraryAlbumsView : UserControl
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
+        MultiSelectHelper.HandleAlbumSelectAll(e, CollectAlbumTiles(), _selectedTiles);
+    }
+
+    private List<Button> CollectAlbumTiles()
+    {
         var allTiles = new List<Button>();
         foreach (var desc in AlbumListBox.GetVisualDescendants())
         {
             if (desc is Button b && b.Classes.Contains("album-tile"))
                 allTiles.Add(b);
         }
-        MultiSelectHelper.HandleAlbumSelectAll(e, allTiles, _selectedTiles);
+        return allTiles;
     }
 
     /// <summary>Returns the list of ctrl-selected albums, or a single-item list with the given album if none are selected.</summary>
@@ -65,6 +71,10 @@ public partial class LibraryAlbumsView : UserControl
 
     private void OnAlbumContextMenuOpening(object? sender, CancelEventArgs e)
     {
+        // Close any menu still open from a previous rapid right-click so menus
+        // don't stack on top of each other.
+        ContextMenuCoordinator.NotifyOpening(sender as ContextMenu);
+
         if (DataContext is not LibraryAlbumsViewModel vm) return;
 
         // Push ctrl-selected albums to ViewModel so commands can operate on all of them
@@ -141,6 +151,11 @@ public partial class LibraryAlbumsView : UserControl
         }
         if (_vm != null)
             _vm.FilteredAlbumRows.CollectionChanged -= OnFilteredRowsChanged;
+
+        // Reset multi-selection so it doesn't leak back when the view is revisited.
+        MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
+        if (DataContext is LibraryAlbumsViewModel selVm) selVm.CtrlSelectedAlbums = new List<Album>();
+
         base.OnDetachedFromVisualTree(e);
     }
 

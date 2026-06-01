@@ -13,6 +13,9 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
     private readonly ILibraryService _library;
     private readonly IReadOnlyList<Track> _tracks;
     private CancellationTokenSource? _cts;
+    // Cancels the background "already scanned" tag reads so they never hold a file
+    // handle while a scan writes to the same file (or after the dialog is closed).
+    private readonly CancellationTokenSource _initCts = new();
 
     public string TitleText { get; }
     public bool IsServiceAvailable => _service.IsAvailable;
@@ -37,12 +40,46 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
 
         if (!_service.IsAvailable)
             StatusMessage = "ffmpeg not found — set the path in Settings → Audio Tools.";
+
+        // Flag tracks that already carry ReplayGain tags so the user can tell a
+        // re-scan from a first scan. Reading tags is file IO, so do it off the UI thread.
+        _ = MarkAlreadyScannedAsync();
+    }
+
+    /// <summary>Reads each track's tags and labels rows that already have a
+    /// REPLAYGAIN_TRACK_GAIN value as "Already scanned" (re-scanning still works).</summary>
+    private async Task MarkAlreadyScannedAsync()
+    {
+        var ct = _initCts.Token;
+        foreach (var t in _tracks)
+        {
+            if (ct.IsCancellationRequested) return;
+
+            bool scanned = false;
+            await Task.Run(() =>
+            {
+                try { scanned = !string.IsNullOrWhiteSpace(AdvancedTagIO.ReadAll(t.FilePath).ReplayGainTrackGain); }
+                catch { /* unreadable file — treat as not scanned */ }
+            }, ct).ConfigureAwait(false);
+
+            if (!scanned || ct.IsCancellationRequested) continue;
+            Dispatcher.UIThread.Post(() =>
+            {
+                var row = Jobs.FirstOrDefault(j => j.Track == t);
+                // Only relabel the idle "Pending" state — never overwrite an
+                // in-progress or finished scan from this session.
+                if (row is { Done: false, Status: "Pending" })
+                    row.Status = "Already scanned";
+            });
+        }
     }
 
     [RelayCommand]
     private async Task Start()
     {
         if (IsScanning || !_service.IsAvailable) return;
+        // Stop the pre-scan tag reads so they can't hold a handle while we write.
+        _initCts.Cancel();
         IsScanning = true;
         StatusMessage = "Scanning…";
         _cts = new CancellationTokenSource();
@@ -66,10 +103,9 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
 
         try
         {
-            await Task.Run(() => _service.ScanAsync(_tracks, AlbumMode, progress, _cts.Token));
-            var done = Jobs.Count(j => j.Done && !j.Failed);
-            var failed = Jobs.Count(j => j.Failed);
-            StatusMessage = $"Finished · Scanned: {done} · Failed: {failed}";
+            var summary = await Task.Run(() => _service.ScanAsync(_tracks, AlbumMode, progress, _cts.Token));
+            StatusMessage = $"Finished · {summary.Scanned} scanned"
+                + (summary.Failed > 0 ? $" · {summary.Failed} failed" : string.Empty);
             // Refresh the library so any in-app view (e.g. metadata window) that
             // reads RG tags picks up the new values.
             _library.NotifyMetadataChanged();
@@ -88,6 +124,7 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
     private void Cancel()
     {
         if (IsScanning) { _cts?.Cancel(); return; }
+        _initCts.Cancel(); // stop any background tag reads before the dialog closes
         Closed?.Invoke(this, EventArgs.Empty);
     }
 

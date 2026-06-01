@@ -253,14 +253,16 @@ public class MetadataService : IMetadataService
         return bestFrontCover?.Data?.Data ?? bestAny?.Data?.Data;
     }
 
-    public bool WriteTrackMetadata(Track track)
+    public bool WriteTrackMetadata(Track track) => WriteTrackMetadata(track, track.FilePath, null);
+
+    public bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null)
     {
         try
         {
-            using var file = TagLib.File.Create(track.FilePath);
+            using var file = TagLib.File.Create(targetFilePath);
             var tag = file.Tag;
 
-            tag.Title = track.Title;
+            tag.Title = string.IsNullOrEmpty(titleOverride) ? track.Title : titleOverride;
             tag.Performers = SplitArtistList(track.Artist);
             tag.AlbumArtists = SplitArtistList(track.AlbumArtist);
             tag.Album = track.Album;

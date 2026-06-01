@@ -5,6 +5,7 @@
         xmlns:views="using:Noctis.Views"
         xmlns:controls="using:Noctis.Controls"
         xmlns:conv="using:Noctis.Converters"
+        xmlns:helpers="using:Noctis.Helpers"
         x:Class="Noctis.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Noctis"
@@ -95,7 +96,8 @@
                                          VerticalAlignment="Center" Foreground="{DynamicResource AccentForegroundBrush}" />
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
-                                            PlacementConstraintAdjustment="None">
+                                            PlacementConstraintAdjustment="None"
+                                            helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                     <MenuItem Header="All Items" Command="{Binding PageSetShowAllItemsCommand}">
                                         <MenuItem.Icon>
                                             <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"

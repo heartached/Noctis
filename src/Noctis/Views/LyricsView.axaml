@@ -526,13 +526,13 @@
                             <Border x:Name="LyricsTimelineTrackFill"
                                     Height="7"
                                     CornerRadius="3.5"
-                                    Background="{Binding LyricsSliderFilled}"
+                                    Background="{Binding LyricsAccentFg}"
                                     Canvas.Top="8.5"/>
                             <Border x:Name="LyricsTimelineThumb"
                                     Width="16"
                                     Height="16"
                                     CornerRadius="8"
-                                    Background="{Binding LyricsSliderThumb}"
+                                    Background="{Binding LyricsAccentFg}"
                                     BoxShadow="0 2 5 0 #40000000"
                                     Canvas.Top="4"/>
                         </Canvas>

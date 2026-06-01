@@ -94,7 +94,7 @@ public sealed class TrackContextMenuBuilder
         Metadata.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
         items.Add(Metadata);
 
-        Convert = new MenuItem { Header = "Convert…", IsVisible = false };
+        Convert = new MenuItem { Header = "Convert File", IsVisible = false };
         Convert.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
         items.Add(Convert);
 

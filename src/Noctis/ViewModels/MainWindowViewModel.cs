@@ -127,6 +127,9 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     private readonly Stack<NavigationEntry> _navigationHistory = new();
+    // Forward stack mirrors browser semantics: populated when going back,
+    // consumed when going forward, and cleared whenever a new branch is navigated.
+    private readonly Stack<NavigationEntry> _forwardHistory = new();
     private string? _albumDetailBackButtonText;
 
     // ── Cached content ViewModels (created once, reused) ──
@@ -748,7 +751,8 @@ public partial class MainWindowViewModel : ViewModelBase
         if (view == null)
             return false;
 
-        return _navigationHistory.Any(entry => ReferenceEquals(entry.View, view));
+        return _navigationHistory.Any(entry => ReferenceEquals(entry.View, view))
+               || _forwardHistory.Any(entry => ReferenceEquals(entry.View, view));
     }
 
     private void ClearNavigationHistory()
@@ -756,6 +760,16 @@ public partial class MainWindowViewModel : ViewModelBase
         while (_navigationHistory.Count > 0)
         {
             var entry = _navigationHistory.Pop();
+            DisposeViewIfTransient(entry.View);
+        }
+        ClearForwardHistory();
+    }
+
+    private void ClearForwardHistory()
+    {
+        while (_forwardHistory.Count > 0)
+        {
+            var entry = _forwardHistory.Pop();
             DisposeViewIfTransient(entry.View);
         }
     }
@@ -844,7 +858,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private void PushCurrentViewToHistory()
     {
         _navigationHistory.Push(CaptureCurrentNavigationEntry());
+        // Navigating to a new branch invalidates any forward history.
+        ClearForwardHistory();
     }
+
+    public bool CanGoBack => _navigationHistory.Count > 0;
+    public bool CanGoForward => _forwardHistory.Count > 0;
 
     [RelayCommand]
     private void GoBackInHistory()
@@ -852,7 +871,25 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_navigationHistory.Count == 0)
             return;
 
-        var target = _navigationHistory.Pop();
+        // Preserve the current view so forward navigation can return to it.
+        _forwardHistory.Push(CaptureCurrentNavigationEntry());
+        RestoreNavigationEntry(_navigationHistory.Pop());
+    }
+
+    [RelayCommand]
+    private void GoForwardInHistory()
+    {
+        if (_forwardHistory.Count == 0)
+            return;
+
+        // Mirror of GoBack: stash current onto the back stack, then restore the
+        // forward entry. Forward stack is intentionally left intact here.
+        _navigationHistory.Push(CaptureCurrentNavigationEntry());
+        RestoreNavigationEntry(_forwardHistory.Pop());
+    }
+
+    private void RestoreNavigationEntry(NavigationEntry target)
+    {
         ClearAllTopBarActions();
         target.RestoreState();
         TopBar.CurrentTabName = target.TabName;

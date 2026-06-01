@@ -22,7 +22,8 @@ public partial class FavoritesView : UserControl
     {
         InitializeComponent();
         AddHandler(PointerPressedEvent, OnTilePointerPressed, RoutingStrategies.Tunnel);
-        AddHandler(KeyDownEvent, OnViewKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
+        // Forward Ctrl+A from the window so it works without first clicking a tile.
+        _ = new WindowKeyForwarder(this, OnViewKeyDown);
     }
 
     private void OnTilePointerPressed(object? sender, PointerPressedEventArgs e)
@@ -52,6 +53,10 @@ public partial class FavoritesView : UserControl
 
     private void OnContextMenuOpening(object? sender, CancelEventArgs e)
     {
+        // Close any menu still open from a previous rapid right-click so menus
+        // don't stack on top of each other.
+        ContextMenuCoordinator.NotifyOpening(sender as ContextMenu);
+
         if (DataContext is not FavoritesViewModel vm) return;
 
         // Push ctrl-selected items to ViewModel so commands can operate on all of them
@@ -114,6 +119,11 @@ public partial class FavoritesView : UserControl
             if (sv != null)
                 vm.SavedScrollOffset = sv.Offset.Y;
         }
+
+        // Reset multi-selection so it doesn't leak back when the view is revisited.
+        MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
+        if (DataContext is FavoritesViewModel selVm) selVm.CtrlSelectedItems = new List<FavoriteItem>();
+
         base.OnDetachedFromVisualTree(e);
     }
 

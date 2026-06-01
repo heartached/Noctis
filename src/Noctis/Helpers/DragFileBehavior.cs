@@ -85,10 +85,14 @@ public static class DragFileBehavior
 
             if (items.Count > 0)
             {
+                // Pre-11.3 IDataObject/DataFormats drag API; suppress obsolete-usage
+                // warnings rather than rewriting working code for the new DataTransfer API.
+#pragma warning disable CS0618 // Type or member is obsolete
                 var data = new DataObject();
                 data.Set(DataFormats.Files, items);
                 data.Set(InternalDragFormat, true);
                 await DragDrop.DoDragDrop(e, data, DragDropEffects.Copy);
+#pragma warning restore CS0618 // Type or member is obsolete
             }
         }
         catch (Exception ex)

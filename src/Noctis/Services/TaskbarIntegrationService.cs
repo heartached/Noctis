@@ -112,7 +112,7 @@ public sealed class TaskbarIntegrationService : IDisposable
     private const uint THB_ICON = 0x0002, THB_TOOLTIP = 0x0004, THB_FLAGS = 0x0008;
     private const uint THBF_ENABLED = 0x0000;
     private const uint WM_COMMAND = 0x0111, THBN_CLICKED = 0x1800;
-    private const uint ID_SHUFFLE = 0, ID_PREV = 1, ID_PLAY = 2, ID_NEXT = 3, ID_FAVORITE = 4;
+    private const uint ID_PREV = 1, ID_PLAY = 2, ID_NEXT = 3, ID_FAVORITE = 4;
     private const int IconSize = 20;
     private const uint DWMWA_DISALLOW_PEEK = 11;
 
@@ -133,11 +133,6 @@ public sealed class TaskbarIntegrationService : IDisposable
         "M3 4.753c0-1.408 1.578-2.24 2.74-1.444l10.498 7.194a1.75 1.75 0 0 1 .01 2.88L5.749 20.685C4.59 21.492 3 20.66 3 19.248z" +
         "M21 3.75a.75.75 0 0 0-1.5 0v16.5a.75.75 0 0 0 1.5 0z";
 
-    private const string PathShuffle =
-        "M19.28 4.72a.75.75 0 1 0-1.06 1.06L19.44 7h-.19c-3.918 0-6.423 2.302-8.692 4.388l-.066.06C8.154 13.597 6.044 15.5 2.75 15.5a.75.75 0 0 0 0 1.5c3.918 0 6.423-2.302 8.692-4.388l.066-.06C13.846 10.403 15.956 8.5 19.25 8.5h.19l-1.22 1.22a.75.75 0 1 0 1.06 1.06l2.5-2.5a.75.75 0 0 0 0-1.06z" +
-        "M2.75 7c3.248 0 5.525 1.582 7.501 3.311l-.303.279l-.132.121q-.347.32-.68.62C7.283 9.732 5.4 8.5 2.75 8.5a.75.75 0 1 1 0-1.5" +
-        "m16.5 10c-3.248 0-5.525-1.582-7.501-3.312l.302-.277l.133-.122q.347-.32.68-.62c1.853 1.6 3.736 2.83 6.386 2.83h.19l-1.22-1.219a.75.75 0 0 1 1.06-1.06l2.5 2.5a.75.75 0 0 1 0 1.06l-2.5 2.5a.75.75 0 1 1-1.06-1.06L19.44 17z";
-
     private const string PathHeartOutline =
         "m12.82 5.58l-.82.822l-.824-.824a5.375 5.375 0 1 0-7.601 7.602l7.895 7.895a.75.75 0 0 0 1.06 0l7.902-7.897a5.376 5.376 0 0 0-.001-7.599a5.38 5.38 0 0 0-7.611 0" +
         "m6.548 6.54L12 19.485L4.635 12.12a3.875 3.875 0 1 1 5.48-5.48l1.358 1.357a.75.75 0 0 0 1.073-.012L13.88 6.64a3.88 3.88 0 0 1 5.487 5.48";
@@ -151,13 +146,12 @@ public sealed class TaskbarIntegrationService : IDisposable
     private IntPtr _hwnd;
     private SubclassProc? _wndProc; // prevent GC
     private IntPtr _icoPrev, _icoPlay, _icoPause, _icoNext;
-    private IntPtr _icoShuffleOff, _icoShuffleOn, _icoHeart, _icoHeartFilled;
+    private IntPtr _icoHeart, _icoHeartFilled;
     private bool _ready;
 
     public event Action? PreviousClicked;
     public event Action? PlayPauseClicked;
     public event Action? NextClicked;
-    public event Action? ShuffleClicked;
     public event Action? FavoriteClicked;
 
     // ── Public API ───────────────────────────────────────────────
@@ -185,17 +179,13 @@ public sealed class TaskbarIntegrationService : IDisposable
             _icoPlay = MakeIcon(PathPlay);
             _icoPause = MakeIcon(PathPause);
             _icoNext = MakeIcon(PathNext);
-            // Shuffle + outline heart are thin-outline glyphs that read lighter than
-            // the solid play/prev/next icons. Add a bold stroke pass so their visual
-            // weight matches at 20×20.
-            _icoShuffleOff = MakeIcon(PathShuffle, boldenOutline: true);
-            _icoShuffleOn = MakeIcon(PathShuffle, boldenOutline: true);
+            // The outline heart is a thin-outline glyph that reads lighter than the solid
+            // play/prev/next icons. Add a bold stroke pass so its visual weight matches at 20×20.
             _icoHeart = MakeIcon(PathHeartOutline, boldenOutline: true);
             _icoHeartFilled = MakeIcon(PathHeartFilled);
 
             var buttons = new[]
             {
-                Btn(ID_SHUFFLE, _icoShuffleOff, "Shuffle"),
                 Btn(ID_PREV, _icoPrev, "Previous"),
                 Btn(ID_PLAY, _icoPlay, "Play"),
                 Btn(ID_NEXT, _icoNext, "Forward"),
@@ -221,16 +211,6 @@ public sealed class TaskbarIntegrationService : IDisposable
         _taskbar.ThumbBarUpdateButtons(_hwnd, 1, new[]
         {
             Btn(ID_PLAY, isPlaying ? _icoPause : _icoPlay, isPlaying ? "Pause" : "Play")
-        });
-    }
-
-    public void UpdateShuffleState(bool isOn)
-    {
-        if (!_ready || _taskbar == null) return;
-
-        _taskbar.ThumbBarUpdateButtons(_hwnd, 1, new[]
-        {
-            Btn(ID_SHUFFLE, isOn ? _icoShuffleOn : _icoShuffleOff, isOn ? "Shuffle (on)" : "Shuffle"),
         });
     }
 
@@ -261,7 +241,6 @@ public sealed class TaskbarIntegrationService : IDisposable
                     case ID_PREV: PreviousClicked?.Invoke(); break;
                     case ID_PLAY: PlayPauseClicked?.Invoke(); break;
                     case ID_NEXT: NextClicked?.Invoke(); break;
-                    case ID_SHUFFLE: ShuffleClicked?.Invoke(); break;
                     case ID_FAVORITE: FavoriteClicked?.Invoke(); break;
                 }
             }
@@ -363,8 +342,6 @@ public sealed class TaskbarIntegrationService : IDisposable
         if (_icoPlay != IntPtr.Zero) DestroyIcon(_icoPlay);
         if (_icoPause != IntPtr.Zero) DestroyIcon(_icoPause);
         if (_icoNext != IntPtr.Zero) DestroyIcon(_icoNext);
-        if (_icoShuffleOff != IntPtr.Zero) DestroyIcon(_icoShuffleOff);
-        if (_icoShuffleOn != IntPtr.Zero) DestroyIcon(_icoShuffleOn);
         if (_icoHeart != IntPtr.Zero) DestroyIcon(_icoHeart);
         if (_icoHeartFilled != IntPtr.Zero) DestroyIcon(_icoHeartFilled);
 

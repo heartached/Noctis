@@ -625,9 +625,19 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _player.AddRangeToQueue(InAlbumOrder(Tracks));
     }
 
+    /// <summary>Tracks Ctrl-selected in the album track list. Set by the view's code-behind.</summary>
+    public List<Track> CtrlSelectedTracks { get; set; } = new();
+
     [RelayCommand]
     private async Task OpenMetadata(Track track)
     {
+        if (CtrlSelectedTracks.Count > 1)
+        {
+            var selection = CtrlSelectedTracks.ToList();
+            CtrlSelectedTracks.Clear();
+            await MetadataHelper.OpenMultiTrackMetadataWindow(selection);
+            return;
+        }
         await MetadataHelper.OpenMetadataWindow(track);
     }
 
@@ -640,11 +650,19 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     [RelayCommand]
     private async Task ConvertTrack(Track track)
-        => await MetadataHelper.OpenAudioConverterDialog(new List<Track> { track });
+    {
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        CtrlSelectedTracks.Clear();
+        await MetadataHelper.OpenAudioConverterDialog(tracks);
+    }
 
     [RelayCommand]
     private async Task ScanTrackReplayGain(Track track)
-        => await MetadataHelper.OpenReplayGainScannerDialog(new List<Track> { track });
+    {
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        CtrlSelectedTracks.Clear();
+        await MetadataHelper.OpenReplayGainScannerDialog(tracks);
+    }
 
     [RelayCommand]
     private async Task ConvertAlbum()
@@ -841,6 +859,20 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     {
         if (album == null || album.Tracks.Count == 0) return;
         await MetadataHelper.OpenMetadataWindow(album.Tracks[0], albumScoped: true);
+    }
+
+    [RelayCommand]
+    private async Task ConvertRelatedAlbum(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenAudioConverterDialog(InAlbumOrder(album.Tracks));
+    }
+
+    [RelayCommand]
+    private async Task ScanRelatedAlbumReplayGain(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenReplayGainScannerDialog(InAlbumOrder(album.Tracks));
     }
 
     [RelayCommand]

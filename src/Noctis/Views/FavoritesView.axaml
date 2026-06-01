@@ -55,7 +55,9 @@
                                             Tag="{Binding}"
                                             Click="OnFavoriteCardClick">
                                         <Button.ContextMenu>
-                                            <ContextMenu DataContext="{Binding}" x:DataType="m:FavoriteItem" Opening="OnContextMenuOpening">
+                                            <ContextMenu DataContext="{Binding}"
+                                                         x:DataType="m:FavoriteItem"
+                                                         Opening="OnContextMenuOpening">
                                                 <MenuItem Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).PlayItemCommand}"
                                                           CommandParameter="{Binding}"
                                                           MaxWidth="400">
@@ -114,7 +116,7 @@
                                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                                     </MenuItem.Icon>
                                                 </MenuItem>
-                                                <MenuItem Header="Convert…"
+                                                <MenuItem Header="Convert File"
                                                           Command="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).ConvertItemCommand}"
                                                           CommandParameter="{Binding}">
                                                     <MenuItem.Icon>

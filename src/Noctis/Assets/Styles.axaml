@@ -415,10 +415,8 @@
         <Setter Property="CornerRadius" Value="16" />
         <Setter Property="Padding" Value="6" />
         <Setter Property="PlacementConstraintAdjustment" Value="None" />
-        <Setter Property="RenderTransform" Value="scale(1)" />
-        <Setter Property="Transitions">
-            <Transitions />
-        </Setter>
+        <!-- Rise-up + fade open/close (applies to every right-click menu app-wide). -->
+        <Setter Property="(helpers:MenuOpenAnimation.Enable)" Value="True" />
     </Style>
     <Style Selector="ContextMenu /template/ Border">
         <Setter Property="CornerRadius" Value="16" />
@@ -427,10 +425,8 @@
         <Setter Property="CornerRadius" Value="16" />
         <Setter Property="Padding" Value="6" />
         <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
-        <Setter Property="RenderTransform" Value="scale(1)" />
-        <Setter Property="Transitions">
-            <Transitions />
-        </Setter>
+        <!-- Rise-up + fade on open (3-dots MenuFlyout close is enabled on each MenuFlyout). -->
+        <Setter Property="(helpers:MenuOpenAnimation.Enable)" Value="True" />
     </Style>
     <Style Selector="MenuFlyoutPresenter /template/ Border">
         <Setter Property="CornerRadius" Value="16" />
@@ -855,6 +851,13 @@
     </Style>
 
     <Style Selector="Button.artist-item:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+
+    <!-- Opt out of the global hover scale: the release-type filter chips (All/Albums/
+         Singles/EPs/Other) sit flush against the top bar edges, so scaling them up on
+         hover clips the first/last pills at the container bounds. -->
+    <Style Selector="Button.release-chip:pointerover">
         <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 

@@ -181,7 +181,7 @@
                                FontSize="20"
                                LineHeight="24"
                                VerticalAlignment="Center"
-                               Foreground="{DynamicResource AccentTextBrush}" />
+                               Foreground="{DynamicResource AccentColorBrush}" />
                 </Button>
                 <StackPanel Orientation="Horizontal" Spacing="0" Margin="0,4,0,0"
                             TextElement.Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
@@ -360,6 +360,7 @@
                 <Button.Flyout>
                     <MenuFlyout Placement="BottomEdgeAlignedRight"
                                 PlacementConstraintAdjustment="None"
+                                helpers:MenuOpenAnimation.EnableFlyoutClose="True"
                                 Opened="OnAlbumFlyoutOpened">
                         <MenuItem MaxWidth="400"
                                   Command="{Binding PlayAllCommand}">
@@ -410,13 +411,7 @@
                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Edit All Tracks…"
-                                  Command="{Binding BatchEditAlbumCommand}">
-                            <MenuItem.Icon>
-                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="Convert Album…"
+                        <MenuItem Header="Convert Album"
                                   Command="{Binding ConvertAlbumCommand}">
                             <MenuItem.Icon>
                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
@@ -539,7 +534,7 @@
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <MenuItem Header="Convert…"
+                                <MenuItem Header="Convert File"
                                           Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ConvertTrackCommand}"
                                           CommandParameter="{Binding}">
                                     <MenuItem.Icon>
@@ -681,6 +676,7 @@
                                 <Button.Flyout>
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
                                                 PlacementConstraintAdjustment="None"
+                                                helpers:MenuOpenAnimation.EnableFlyoutClose="True"
                                                 Opened="OnTrackFlyoutOpened">
                                         <MenuItem MaxWidth="400"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PlayFromCommand}"
@@ -744,7 +740,7 @@
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="Convert…"
+                                        <MenuItem Header="Convert File"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ConvertTrackCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
@@ -905,6 +901,20 @@
                                         </MenuItem>
                                         <MenuItem Header="Metadata"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenRelatedAlbumMetadataCommand}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Convert Album"
+                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ConvertRelatedAlbumCommand}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Scan ReplayGain (Album)"
+                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ScanRelatedAlbumReplayGainCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
@@ -1118,6 +1128,20 @@
                                         </MenuItem>
                                         <MenuItem Header="Metadata"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenRelatedAlbumMetadataCommand}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Convert Album"
+                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ConvertRelatedAlbumCommand}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Scan ReplayGain (Album)"
+                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ScanRelatedAlbumReplayGainCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>

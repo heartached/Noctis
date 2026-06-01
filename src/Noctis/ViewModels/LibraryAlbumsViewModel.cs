@@ -495,10 +495,20 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private async Task OpenMetadata(Album album)
     {
+        // Multi-album selection: edit every track across the selected albums in the
+        // shared multi-select editor (Mixed fields, edits fan out to all tracks).
+        if (CtrlSelectedAlbums.Count > 1)
+        {
+            var tracks = CtrlSelectedAlbums.SelectMany(a => a.Tracks ?? new()).ToList();
+            CtrlSelectedAlbums.Clear();
+            await MetadataHelper.OpenBatchMetadataWindow(tracks);
+            return;
+        }
+
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        // Open metadata for the first track in the album
-        await MetadataHelper.OpenMetadataWindow(album.Tracks[0]);
+        // Album-scoped: edit the whole album (Mixed fields, edits fan out to all tracks)
+        await MetadataHelper.OpenMetadataWindow(album.Tracks[0], albumScoped: true);
     }
 
     [RelayCommand]

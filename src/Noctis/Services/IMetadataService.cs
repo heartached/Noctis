@@ -25,6 +25,13 @@ public interface IMetadataService
     bool WriteTrackMetadata(Track track);
 
     /// <summary>
+    /// Writes <paramref name="track"/>'s tags to a specific file (which may differ from
+    /// the track's own path — e.g. a converted copy). When <paramref name="titleOverride"/>
+    /// is set it replaces the title (e.g. "Song (WAV)").
+    /// </summary>
+    bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null);
+
+    /// <summary>
     /// Sets the embedded album artwork on an audio file.
     /// Pass null to remove artwork.
     /// </summary>

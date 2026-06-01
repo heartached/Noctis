@@ -28,6 +28,16 @@ public sealed class ScanProgress
     public double AlbumGainDb { get; set; }
 }
 
+/// <summary>Outcome tallies for a completed ReplayGain scan run.</summary>
+public sealed class ScanSummary
+{
+    /// <summary>Tracks measured and tagged successfully.</summary>
+    public int Scanned { get; set; }
+
+    /// <summary>Tracks that failed to measure or whose tags could not be written.</summary>
+    public int Failed { get; set; }
+}
+
 public interface IReplayGainScannerService
 {
     /// <summary>True if a usable ffmpeg binary is available.</summary>
@@ -39,7 +49,7 @@ public interface IReplayGainScannerService
     /// an album gain is computed per group (target -18 LUFS, the ReplayGain 2.0
     /// reference). All four RG tags (track/album × gain/peak) are written.
     /// </summary>
-    Task ScanAsync(
+    Task<ScanSummary> ScanAsync(
         IReadOnlyList<Track> tracks,
         bool albumMode,
         IProgress<ScanProgress> progress,
@@ -59,18 +69,23 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
 
     public bool IsAvailable => _converter.GetFfmpegPath() != null;
 
-    public async Task ScanAsync(
+    public async Task<ScanSummary> ScanAsync(
         IReadOnlyList<Track> tracks,
         bool albumMode,
         IProgress<ScanProgress> progress,
         CancellationToken ct)
     {
+        var summary = new ScanSummary();
+
         var ffmpeg = _converter.GetFfmpegPath();
         if (ffmpeg == null)
         {
             foreach (var t in tracks)
+            {
                 progress.Report(new ScanProgress { Track = t, Status = "ffmpeg not found", Failed = true, Done = true });
-            return;
+                summary.Failed++;
+            }
+            return summary;
         }
 
         // First pass: measure every track. We need every track's LUFS+peak
@@ -86,6 +101,7 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
             if (r.Failed)
             {
                 progress.Report(new ScanProgress { Track = t, Status = "Failed: " + r.Error, Failed = true, Done = true });
+                summary.Failed++;
             }
         }
 
@@ -124,17 +140,22 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
                 aPeakLinear = DbToLinear(albumPeak[t.AlbumId]);
             }
 
-            var ok = WriteReplayGainTags(t.FilePath, trackGainDb, trackPeakLinear, aGainDb, aPeakLinear);
+            var (ok, error) = WriteReplayGainTags(t.FilePath, trackGainDb, trackPeakLinear, aGainDb, aPeakLinear);
             progress.Report(new ScanProgress
             {
                 Track = t,
-                Status = ok ? "Done" : "Tag write failed",
+                Status = ok ? "Done" : ("Tag write failed: " + error),
                 Failed = !ok,
                 Done = true,
                 TrackGainDb = trackGainDb,
                 AlbumGainDb = aGainDb ?? 0.0,
             });
+
+            if (ok) summary.Scanned++;
+            else summary.Failed++;
         }
+
+        return summary;
     }
 
     private static double DbToLinear(double db) => System.Math.Pow(10.0, db / 20.0);
@@ -169,14 +190,21 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
             if (p.ExitCode != 0)
                 return new LoudnessResult { Failed = true, Error = "exit " + p.ExitCode };
 
-            // ebur128 summary block at end of stderr:
+            // ebur128 prints a running "I: … LUFS" line for EVERY frame while decoding
+            // (the integrated value starts near -70 and converges to the real loudness),
+            // then a final Summary block:
             //   [Parsed_ebur128_0 @ ...] Summary:
             //     Integrated loudness:
             //       I:         -14.2 LUFS
             //     True peak:
             //       Peak:       -0.7 dBFS
-            var integrated = ParseFirstNumber(stderr, @"I:\s+(-?\d+(?:\.\d+)?)\s+LUFS");
-            var peak = ParseFirstNumber(stderr, @"Peak:\s+(-?\d+(?:\.\d+)?)\s+dBFS");
+            // We must read I:/Peak: from the Summary block — parsing the first match in
+            // the whole log picks up an early frame (~-70 LUFS) and yields a bogus +50 dB
+            // gain. Scope to the text after the last "Summary:".
+            var summaryIdx = stderr.LastIndexOf("Summary:", StringComparison.Ordinal);
+            var summary = summaryIdx >= 0 ? stderr.Substring(summaryIdx) : stderr;
+            var integrated = ParseFirstNumber(summary, @"I:\s+(-?\d+(?:\.\d+)?)\s+LUFS");
+            var peak = ParseFirstNumber(summary, @"Peak:\s+(-?\d+(?:\.\d+)?)\s+dBFS");
             if (integrated == null) return new LoudnessResult { Failed = true, Error = "could not parse LUFS" };
 
             return new LoudnessResult
@@ -204,65 +232,51 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
         return null;
     }
 
-    private static bool WriteReplayGainTags(
+    private static (bool ok, string error) WriteReplayGainTags(
         string filePath, double trackGainDb, double trackPeakLinear, double? albumGainDb, double? albumPeakLinear)
     {
-        try
+        // ReplayGain 2.0 standard tag keys: dB suffix on gain, linear (0..1+) peak.
+        string Gain(double db) => db.ToString("F2", CultureInfo.InvariantCulture) + " dB";
+        string Peak(double linear) => linear.ToString("F6", CultureInfo.InvariantCulture);
+
+        // The file can be momentarily locked by another handle (the dialog's
+        // "already scanned" tag read, the library indexer, antivirus). Those clear
+        // quickly, so retry a few times before giving up. A persistent lock (e.g. the
+        // track is currently playing) still surfaces the real OS message.
+        const int maxAttempts = 5;
+        var lastError = string.Empty;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
-            using var file = TagLib.File.Create(filePath);
-            // ReplayGain 2.0 standard tag keys, with the dB suffix on gain
-            // values and a linear (0..1+) value for peak.
-            string Gain(double db) => db.ToString("F2", CultureInfo.InvariantCulture) + " dB";
-            string Peak(double linear) => linear.ToString("F6", CultureInfo.InvariantCulture);
-
-            // Try the modern Vorbis/MP4/Xiph path via Tag's user-text fields
-            // when available. TagLib# exposes "replaygain_*" custom fields on
-            // Ogg/FLAC tags directly; for ID3v2 we set TXXX frames.
-            var trackGainTag = Gain(trackGainDb);
-            var trackPeakTag = Peak(trackPeakLinear);
-
-            // ID3v2 (mp3): set TXXX frames keyed by description.
-            if (file.GetTag(TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3)
+            try
             {
-                SetTxxx(id3, "REPLAYGAIN_TRACK_GAIN", trackGainTag);
-                SetTxxx(id3, "REPLAYGAIN_TRACK_PEAK", trackPeakTag);
+                using var file = TagLib.File.Create(filePath);
+
+                // AdvancedTagIO.WriteCustomField writes to whichever tag the file carries —
+                // ID3v2 (mp3), Xiph (flac/ogg/opus), and MP4 freeform atoms (m4a/alac/aac) —
+                // so ReplayGain now works for every format the app supports, not just mp3/flac.
+                AdvancedTagIO.WriteCustomField(file, "REPLAYGAIN_TRACK_GAIN", Gain(trackGainDb));
+                AdvancedTagIO.WriteCustomField(file, "REPLAYGAIN_TRACK_PEAK", Peak(trackPeakLinear));
                 if (albumGainDb.HasValue)
                 {
-                    SetTxxx(id3, "REPLAYGAIN_ALBUM_GAIN", Gain(albumGainDb.Value));
-                    SetTxxx(id3, "REPLAYGAIN_ALBUM_PEAK", Peak(albumPeakLinear ?? 0.0));
+                    AdvancedTagIO.WriteCustomField(file, "REPLAYGAIN_ALBUM_GAIN", Gain(albumGainDb.Value));
+                    AdvancedTagIO.WriteCustomField(file, "REPLAYGAIN_ALBUM_PEAK", Peak(albumPeakLinear ?? 0.0));
                 }
-            }
 
-            // Vorbis / FLAC / Opus / Ogg: SetField on the Xiph tag.
-            if (file.GetTag(TagTypes.Xiph, false) is TagLib.Ogg.XiphComment xiph)
+                file.Save();
+                return (true, string.Empty);
+            }
+            catch (System.IO.IOException ex)
             {
-                xiph.SetField("REPLAYGAIN_TRACK_GAIN", trackGainTag);
-                xiph.SetField("REPLAYGAIN_TRACK_PEAK", trackPeakTag);
-                if (albumGainDb.HasValue)
-                {
-                    xiph.SetField("REPLAYGAIN_ALBUM_GAIN", Gain(albumGainDb.Value));
-                    xiph.SetField("REPLAYGAIN_ALBUM_PEAK", Peak(albumPeakLinear ?? 0.0));
-                }
+                // Transient sharing violation — wait briefly for the other handle to close.
+                lastError = ex.Message;
+                System.Threading.Thread.Sleep(150);
             }
-
-            file.Save();
-            return true;
+            catch (System.Exception ex)
+            {
+                // Non-transient (unsupported format, permissions) — don't retry.
+                return (false, ex.Message);
+            }
         }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static void SetTxxx(TagLib.Id3v2.Tag id3, string desc, string value)
-    {
-        // Remove any prior TXXX with this description so we don't duplicate.
-        var existing = id3.GetFrames<TagLib.Id3v2.UserTextInformationFrame>()
-            .Where(f => string.Equals(f.Description, desc, System.StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        foreach (var f in existing) id3.RemoveFrame(f);
-
-        var frame = TagLib.Id3v2.UserTextInformationFrame.Get(id3, desc, true);
-        frame.Text = new[] { value };
+        return (false, lastError);
     }
 }

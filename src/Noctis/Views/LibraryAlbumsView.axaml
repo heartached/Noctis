@@ -18,50 +18,6 @@
     <Grid RowDefinitions="*">
         <DockPanel Grid.Row="0" Margin="12,8,12,8">
 
-        <!-- Release-type filter chips -->
-        <ItemsControl DockPanel.Dock="Top"
-                      ItemsSource="{Binding ReleaseTypeChips}"
-                      Margin="6,0,6,8"
-                      IsVisible="{Binding !IsArtistFiltered}">
-            <ItemsControl.Styles>
-                <Style Selector="Button.release-chip">
-                    <Setter Property="Background" Value="{DynamicResource ChipBackground}"/>
-                    <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                    <Setter Property="CornerRadius" Value="999"/>
-                    <Setter Property="Padding" Value="14,6"/>
-                    <Setter Property="FontSize" Value="12"/>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="Cursor" Value="Hand"/>
-                </Style>
-                <Style Selector="Button.release-chip:pointerover /template/ ContentPresenter">
-                    <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
-                </Style>
-                <Style Selector="Button.release-chip.active">
-                    <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-                    <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-                </Style>
-                <Style Selector="Button.release-chip.active /template/ ContentPresenter">
-                    <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-                    <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-                </Style>
-            </ItemsControl.Styles>
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" Spacing="8" />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:ReleaseTypeChip">
-                    <Button Classes="release-chip"
-                            Classes.active="{Binding IsActive}"
-                            Content="{Binding Label}"
-                            Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).SelectReleaseTypeChipCommand}"
-                            CommandParameter="{Binding}"/>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
         <!-- Content area with overlay for empty state -->
         <Grid>
             <!-- Album grid: outer ListBox virtualizes rows, inner UniformGrid lays out 5 columns per row -->
@@ -169,14 +125,7 @@
                                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                                     </MenuItem.Icon>
                                                 </MenuItem>
-                                                <MenuItem Header="Edit All Tracks…"
-                                                          Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).BatchEditAlbumCommand}"
-                                                          CommandParameter="{Binding}">
-                                                    <MenuItem.Icon>
-                                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <MenuItem Header="Convert Album…"
+                                                <MenuItem Header="Convert Album"
                                                           Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ConvertAlbumCommand}"
                                                           CommandParameter="{Binding}">
                                                     <MenuItem.Icon>

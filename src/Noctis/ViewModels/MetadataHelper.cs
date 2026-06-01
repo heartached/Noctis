@@ -39,7 +39,8 @@ public static class MetadataHelper
     {
         if (tracks == null || tracks.Count == 0) return;
         var service = App.Services!.GetRequiredService<IAudioConverterService>();
-        var vm = new AudioConverterViewModel(tracks, service);
+        var library = App.Services!.GetRequiredService<ILibraryService>();
+        var vm = new AudioConverterViewModel(tracks, service, library);
         var window = new AudioConverterDialog(vm);
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
@@ -58,11 +59,30 @@ public static class MetadataHelper
     {
         if (tracks == null || tracks.Count == 0) return;
         if (tracks.Count == 1) { await OpenMetadataWindow(tracks[0]); return; }
+        await OpenMultiTrackMetadataWindow(tracks);
+    }
+
+    /// <summary>
+    /// Opens the tabbed metadata editor in multi-select mode for an arbitrary set of
+    /// tracks: blank artwork, "N artists / M songs selected" header, Mixed fields, and
+    /// edits that fan out to every selected track.
+    /// </summary>
+    public static async Task OpenMultiTrackMetadataWindow(IReadOnlyList<Track> tracks)
+    {
+        if (tracks == null || tracks.Count == 0) return;
+        if (tracks.Count == 1) { await OpenMetadataWindow(tracks[0]); return; }
 
         var metadata = App.Services!.GetRequiredService<IMetadataService>();
         var library = App.Services!.GetRequiredService<ILibraryService>();
-        var vm = new BatchMetadataViewModel(tracks, metadata, library);
-        var window = new BatchMetadataWindow(vm);
+        var persistence = App.Services!.GetRequiredService<IPersistenceService>();
+        var animatedCovers = new AnimatedCoverService(persistence);
+        var itunes = App.Services!.GetService<ITunesArtworkService>();
+        var lrcLib = App.Services!.GetService<ILrcLibService>();
+
+        var vm = new MetadataViewModel(tracks[0], metadata, library, persistence, animatedCovers,
+            albumScoped: true, albumTracks: tracks.ToList(), itunes: itunes, lrcLib: lrcLib, multiSelect: true);
+
+        var window = new MetadataWindow(vm);
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow != null)

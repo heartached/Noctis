@@ -319,7 +319,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     private async Task OpenAlbumMetadata(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        await MetadataHelper.OpenMetadataWindow(album.Tracks[0]);
+        await MetadataHelper.OpenMetadataWindow(album.Tracks[0], albumScoped: true);
     }
 
     [RelayCommand]

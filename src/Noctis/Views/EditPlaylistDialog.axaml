@@ -30,7 +30,7 @@
             Width="450"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            BoxShadow="0 8 32 0 #60000000">
+            BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
         <DockPanel>
 
             <!-- Bottom: Cancel / Save buttons -->

@@ -222,7 +222,8 @@
                              VerticalAlignment="Center" />
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedRight"
-                                    PlacementConstraintAdjustment="None">
+                                    PlacementConstraintAdjustment="None"
+                                    helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                             <MenuItem Command="{Binding PlayAllCommand}"
                                       MaxWidth="400">
                                 <MenuItem.Header>

@@ -29,7 +29,7 @@ public partial class SettingsViewModel : ViewModelBase
     private UpdateService? _updateService;
     private CancellationTokenSource? _updateCts;
     private string? _downloadedInstallerPath;
-    private bool _lastFmAuthInProgress;
+    private CancellationTokenSource? _lastFmAuthCts;
     private bool _settingsLoaded;
     private bool _suspendSettingPersistence;
     private CancellationTokenSource? _eqSaveDebounceCts;
@@ -203,6 +203,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _listenBrainzUsername = "";
     [ObservableProperty] private bool _isListenBrainzConnected;
     [ObservableProperty] private string _listenBrainzStatusText = "Not connected";
+    [ObservableProperty] private string _listenBrainzError = "";
 
     // ── Preferences ──
 
@@ -301,6 +302,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Fires after a full settings reset so the shell can reload playlists, etc.</summary>
     public event EventHandler? SettingsReset;
+
+    /// <summary>Fires when a media folder is added or removed so the Folders view can rebuild its tree.</summary>
+    public event EventHandler? MusicFoldersChanged;
 
     public SettingsViewModel(IPersistenceService persistence, ILibraryService library)
     {
@@ -1086,6 +1090,12 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnFfmpegPathChanged(string value)
     {
+        // Reflect the new path into the live settings object *before* probing so the
+        // status label and the converter see it immediately. RefreshFfmpegStatus()
+        // resolves through GetFfmpegPath(), which reads _settings.FfmpegPath; without
+        // this the label lags one edit behind (stays "Not found" after a valid paste).
+        // SaveAsync() re-syncs + persists below.
+        _settings.FfmpegPath = value ?? string.Empty;
         RefreshFfmpegStatus();
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
@@ -1105,17 +1115,42 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    private int _ffmpegProbeGeneration;
+
     /// <summary>Probes the configured or auto-detected ffmpeg path and updates
     /// <see cref="FfmpegStatus"/> so the Settings view can show whether the
-    /// converter will work without the user having to open the dialog.</summary>
+    /// converter will work without the user having to open the dialog.
+    /// Existence is not enough — the resolved binary is run with <c>-version</c>
+    /// to confirm it is genuinely ffmpeg (so e.g. a README file is rejected).</summary>
     public void RefreshFfmpegStatus()
     {
         var svc = App.Services?.GetService<IAudioConverterService>();
         if (svc == null) { FfmpegStatus = string.Empty; return; }
+
         var path = svc.GetFfmpegPath();
-        FfmpegStatus = path != null
-            ? $"Detected: {path}"
-            : "Not found — set a path below, or install ffmpeg on your PATH.";
+        // Bump the generation so a slow probe from an earlier edit can't overwrite
+        // the status of a newer one.
+        var generation = ++_ffmpegProbeGeneration;
+
+        if (path == null)
+        {
+            FfmpegStatus = "Not found — set a path below, or install ffmpeg on your PATH.";
+            return;
+        }
+
+        FfmpegStatus = $"Checking {path}…";
+
+        _ = Task.Run(async () =>
+        {
+            var version = await svc.ValidateFfmpegAsync(path);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (generation != _ffmpegProbeGeneration) return; // superseded by a newer edit
+                FfmpegStatus = version != null
+                    ? $"ffmpeg found ✓ — {version}"
+                    : $"Not a valid ffmpeg executable — {path}";
+            });
+        });
     }
 
     [RelayCommand]
@@ -1217,7 +1252,14 @@ public partial class SettingsViewModel : ViewModelBase
     private async Task LoginLastFm()
     {
         if (_lastFm == null) return;
-        if (_lastFmAuthInProgress) return;
+
+        // Root cause fix: a prior poll held the "in progress" guard for the full 2-minute
+        // window, so if the user declined in the browser and clicked Connect again the
+        // command silently no-op'd (dead button). Cancel any in-flight poll and start a
+        // fresh attempt instead of blocking re-initiation.
+        _lastFmAuthCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _lastFmAuthCts = cts;
 
         LastFmStatusText = "Opening browser...";
         var authUrl = await _lastFm.GetAuthUrlAsync();
@@ -1238,19 +1280,18 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         LastFmStatusText = "Waiting for authorization in browser...";
-        _ = PollLastFmAuthAsync();
+        _ = PollLastFmAuthAsync(cts);
     }
 
-    private async Task PollLastFmAuthAsync()
+    private async Task PollLastFmAuthAsync(CancellationTokenSource cts)
     {
         if (_lastFm == null) return;
-        if (_lastFmAuthInProgress) return;
-        _lastFmAuthInProgress = true;
+        var token = cts.Token;
         try
         {
             var deadline = DateTime.UtcNow.AddMinutes(2);
             var failedAttempts = 0;
-            while (DateTime.UtcNow < deadline)
+            while (DateTime.UtcNow < deadline && !token.IsCancellationRequested)
             {
                 var success = await _lastFm.CompleteAuthAsync();
                 if (success)
@@ -1271,15 +1312,25 @@ public partial class SettingsViewModel : ViewModelBase
                 if (!IsLastFmConnected && failedAttempts >= 2)
                     LastFmStatusText = "Not connected";
 
-                await Task.Delay(2000);
+                try
+                {
+                    await Task.Delay(2000, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
             }
 
-            if (!IsLastFmConnected)
+            if (!IsLastFmConnected && !token.IsCancellationRequested)
                 LastFmStatusText = "Not connected";
         }
         finally
         {
-            _lastFmAuthInProgress = false;
+            // Only clear the shared handle if a newer attempt hasn't already replaced it.
+            if (ReferenceEquals(_lastFmAuthCts, cts))
+                _lastFmAuthCts = null;
+            cts.Dispose();
         }
     }
 
@@ -1302,7 +1353,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnListenBrainzTokenChanged(string value)
     {
-        // Just keep the in-memory service in sync; the user must hit "Test connection"
+        // Clear any stale validation error as soon as the user edits the token.
+        ListenBrainzError = "";
+        // Just keep the in-memory service in sync; the user must hit "Connect"
         // to validate and persist. Don't autosave keystroke-by-keystroke.
         _listenBrainz?.Configure(value);
     }
@@ -1313,10 +1366,12 @@ public partial class SettingsViewModel : ViewModelBase
         if (_listenBrainz == null) return;
         if (string.IsNullOrWhiteSpace(ListenBrainzToken))
         {
-            ListenBrainzStatusText = "Paste your user token first.";
+            ListenBrainzError = "Token required";
+            ListenBrainzStatusText = "Not connected";
             return;
         }
 
+        ListenBrainzError = "";
         ListenBrainzStatusText = "Validating...";
         _listenBrainz.Configure(ListenBrainzToken);
         var username = await _listenBrainz.ValidateTokenAsync();
@@ -1331,7 +1386,8 @@ public partial class SettingsViewModel : ViewModelBase
         {
             IsListenBrainzConnected = false;
             ListenBrainzUsername = "";
-            ListenBrainzStatusText = "Token invalid or network error.";
+            ListenBrainzError = "Token invalid or network error.";
+            ListenBrainzStatusText = "Not connected";
         }
     }
 
@@ -1343,6 +1399,7 @@ public partial class SettingsViewModel : ViewModelBase
         ListenBrainzToken = "";
         ListenBrainzUsername = "";
         ListenBrainzStatusText = "Not connected";
+        ListenBrainzError = "";
         _ = SaveAsync();
     }
 
@@ -1644,6 +1701,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MusicFolders = MusicFolders.ToList();
         OnPropertyChanged(nameof(MediaFolderDisplay));
         await SaveAsync();
+        MusicFoldersChanged?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -1653,6 +1711,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MusicFolders = MusicFolders.ToList();
         OnPropertyChanged(nameof(MediaFolderDisplay));
         await SaveAsync();
+        MusicFoldersChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void SetScanStatus(string text, bool autoClear = false)

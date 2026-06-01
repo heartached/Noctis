@@ -21,6 +21,7 @@ public partial class MetadataWindow : Window
     private ScrollViewer? _metadataTabStripScroller;
     private Button? _metadataTabStripLeft;
     private Button? _metadataTabStripRight;
+    private ScrollViewer? _genreFormScroller;
 
     public MetadataWindow()
     {
@@ -33,6 +34,8 @@ public partial class MetadataWindow : Window
                 OnGenreComboWheel,
                 RoutingStrategies.Tunnel,
                 handledEventsToo: true);
+            genreCombo.DropDownOpened += OnGenreDropDownOpened;
+            genreCombo.DropDownClosed += OnGenreDropDownClosed;
         }
 
         VolumeAdjustThumb.RenderTransform = _volumeAdjustThumbTransform;
@@ -254,30 +257,51 @@ public partial class MetadataWindow : Window
         return dx * dx + dy * dy <= 36;
     }
 
+    private void OnGenreDropDownOpened(object? sender, EventArgs e)
+    {
+        if (sender is not ComboBox cb)
+            return;
+
+        // The genre combo lives inside the Details tab's ScrollViewer. That
+        // ScrollViewer's momentum-scroll behavior is a Tunnel handler that fires
+        // first and consumes wheel events routed through it — including events over
+        // the open dropdown, which is hosted within its subtree. Suspend it while
+        // the dropdown is open so the wheel reaches the popup's own ScrollViewer.
+        _genreFormScroller ??= cb.GetVisualAncestors().OfType<ScrollViewer>().FirstOrDefault();
+        if (_genreFormScroller is not null)
+            MomentumScrollBehavior.SetIsEnabled(_genreFormScroller, false);
+    }
+
+    private void OnGenreDropDownClosed(object? sender, EventArgs e)
+    {
+        if (_genreFormScroller is not null)
+            MomentumScrollBehavior.SetIsEnabled(_genreFormScroller, true);
+    }
+
     private void OnGenreComboWheel(object? sender, PointerWheelEventArgs e)
     {
-        if (sender is not ComboBox cb || cb.IsDropDownOpen)
+        if (sender is not ComboBox cb)
             return;
 
-        // The tunnel handler also fires when the wheel event originates inside
-        // the open dropdown popup (popup hosted in the same overlay layer as
-        // the ComboBox). The IsDropDownOpen guard catches the common case, but
-        // some Avalonia versions race the wheel event with the open animation
-        // so the guard reads false even though the popup is visible. Explicitly
-        // skip when the event source is a popup descendant so the popup's own
-        // ScrollViewer can handle wheel scrolling.
-        if (e.Source is Visual source && source.GetVisualAncestors().OfType<Popup>().Any())
+        // Dropdown open: let the popup's own ScrollViewer handle the wheel so the
+        // genre list scrolls natively (matching the plain Options-tab combos).
+        if (cb.IsDropDownOpen)
             return;
 
+        // Dropdown closed: a ComboBox would otherwise cycle its selected value on
+        // wheel. Suppress that and scroll the surrounding form instead, so wheeling
+        // over the field inside the scrollable Details tab can't change the genre.
         e.Handled = true;
-
         var scrollViewer = cb.GetVisualAncestors().OfType<ScrollViewer>().FirstOrDefault();
-        if (scrollViewer is null)
-            return;
+        if (scrollViewer is not null)
+            ScrollByWheel(scrollViewer, e.Delta.Y);
+    }
 
+    private static void ScrollByWheel(ScrollViewer scrollViewer, double deltaY)
+    {
         const double lineHeight = 50.0;
-        var newY = scrollViewer.Offset.Y - e.Delta.Y * lineHeight;
-        newY = System.Math.Max(0, System.Math.Min(newY, scrollViewer.Extent.Height - scrollViewer.Viewport.Height));
+        var newY = scrollViewer.Offset.Y - deltaY * lineHeight;
+        newY = Math.Max(0, Math.Min(newY, scrollViewer.Extent.Height - scrollViewer.Viewport.Height));
         scrollViewer.Offset = new Vector(scrollViewer.Offset.X, newY);
     }
 }

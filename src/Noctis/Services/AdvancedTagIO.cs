@@ -424,7 +424,13 @@ internal static class AdvancedTagIO
         }
     }
 
-    private static void WriteCustomField(TagFile file, string key, string? value)
+    /// <summary>
+    /// Writes (or clears, when <paramref name="value"/> is empty) a custom key/value
+    /// across whichever tag formats the file carries: ID3v2 TXXX, Xiph comment, and
+    /// MP4 freeform atom. Public so other services (e.g. the ReplayGain scanner) can
+    /// write format-agnostic tags through one code path.
+    /// </summary>
+    public static void WriteCustomField(TagFile file, string key, string? value)
     {
         var clean = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 

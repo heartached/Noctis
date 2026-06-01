@@ -4,6 +4,13 @@ obj/
 publish/
 artifacts/
 
+## Release artifacts (built locally, uploaded to GitHub Releases)
+/Noctis-windows-x64.zip
+installer-output/
+ci-artifacts/
+ci-fresh/
+.tmp-scoop-bucket/
+
 ## IDE
 .vs/
 .vscode/
