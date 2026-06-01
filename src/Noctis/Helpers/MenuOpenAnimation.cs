@@ -82,11 +82,15 @@ public static class MenuOpenAnimation
                 return;
 
             control.AttachedToVisualTree += OnAttached;
-            if (control is ContextMenu enabledContextMenu)
-            {
-                enabledContextMenu.Closing += OnContextMenuClosing;
-                enabledContextMenu.Closed += OnContextMenuClosed;
-            }
+            // NOTE: ContextMenu intentionally does NOT get a close animation. Animating the
+            // close requires cancelling the real close (e.Cancel = true) and keeping the
+            // popup open-but-invisible (Opacity = 0) for the animation's duration, then
+            // closing it from a timer. When a menu item opens a modal dialog, navigates, or
+            // refreshes the owning list, that deferred close is disrupted and the popup is
+            // stranded: open and hit-testable but invisible, so it swallows scroll/right-click
+            // and fires stray clicks on the now-invisible items. Right-click menus therefore
+            // close instantly. (MenuFlyout below keeps its close animation — it is anchored to
+            // a persistent button, so a stranded flyout can always be re-toggled.)
 
             // The setter is often applied after the popup has already attached, so the
             // attach event would be missed. Run now if we're already in the visual tree.

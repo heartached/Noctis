@@ -22,6 +22,8 @@ public partial class LyricsView : UserControl
     private DispatcherTimer? _autoFollowResumeTimer;
     private LyricsViewModel? _subscribedVm;
     private bool _swatchScrollersWired;
+    private DispatcherTimer? _colorPickerDismissTimer;
+    private const double ColorPickerAutoDismissSeconds = 3;
     private bool _isNarrowMode;
     private bool _isTimelineSeekDragging;
     private bool _isJumpingOnAttach;
@@ -56,19 +58,55 @@ public partial class LyricsView : UserControl
         if (LyricsColorPickerHost?.Flyout is Avalonia.Controls.Flyout colorPickerFlyout)
         {
             colorPickerFlyout.Opened += OnColorPickerFlyoutOpened;
+            colorPickerFlyout.Closed += OnColorPickerFlyoutClosed;
         }
     }
 
     private void OnColorPickerFlyoutOpened(object? sender, EventArgs e)
     {
-        if (_swatchScrollersWired) return;
+        if (!_swatchScrollersWired)
+        {
+            if (SolidSwatchScroller != null)
+                SolidSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
+            if (GradientSwatchScroller != null)
+                GradientSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
 
-        if (SolidSwatchScroller != null)
-            SolidSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
-        if (GradientSwatchScroller != null)
-            GradientSwatchScroller.PointerWheelChanged += OnSwatchWheelScroll;
+            // Any interaction inside the picker resets the auto-dismiss countdown so it only
+            // closes once the user has stopped fiddling with it (handledEventsToo so swatch/mode
+            // button clicks still count).
+            if (ColorPickerContent != null)
+            {
+                ColorPickerContent.AddHandler(PointerPressedEvent, OnColorPickerInteraction, RoutingStrategies.Tunnel, handledEventsToo: true);
+                ColorPickerContent.AddHandler(PointerMovedEvent, OnColorPickerInteraction, RoutingStrategies.Tunnel, handledEventsToo: true);
+                ColorPickerContent.AddHandler(PointerWheelChangedEvent, OnColorPickerInteraction, RoutingStrategies.Tunnel, handledEventsToo: true);
+            }
 
-        _swatchScrollersWired = true;
+            _swatchScrollersWired = true;
+        }
+
+        RestartColorPickerDismissTimer();
+    }
+
+    private void OnColorPickerFlyoutClosed(object? sender, EventArgs e) => StopColorPickerDismissTimer();
+
+    private void OnColorPickerInteraction(object? sender, RoutedEventArgs e) => RestartColorPickerDismissTimer();
+
+    private void RestartColorPickerDismissTimer()
+    {
+        StopColorPickerDismissTimer();
+        _colorPickerDismissTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(ColorPickerAutoDismissSeconds) };
+        _colorPickerDismissTimer.Tick += (_, _) =>
+        {
+            StopColorPickerDismissTimer();
+            LyricsColorPickerHost?.Flyout?.Hide();
+        };
+        _colorPickerDismissTimer.Start();
+    }
+
+    private void StopColorPickerDismissTimer()
+    {
+        _colorPickerDismissTimer?.Stop();
+        _colorPickerDismissTimer = null;
     }
 
     private void OnSwatchWheelScroll(object? sender, PointerWheelEventArgs e)

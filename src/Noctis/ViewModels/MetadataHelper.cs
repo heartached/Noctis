@@ -15,14 +15,12 @@ namespace Noctis.ViewModels;
 /// </summary>
 public static class MetadataHelper
 {
-    public static async Task OpenReplayGainScannerDialog(IReadOnlyList<Track> tracks)
+    /// <summary>
+    /// Shows a dialog as a modal owned by the main window (sized to the owner), or as a
+    /// standalone window when no desktop lifetime is available.
+    /// </summary>
+    private static async Task ShowDialogOwned(Window window)
     {
-        if (tracks == null || tracks.Count == 0) return;
-        var service = App.Services!.GetRequiredService<IReplayGainScannerService>();
-        var library = App.Services!.GetRequiredService<ILibraryService>();
-        var vm = new ReplayGainScannerViewModel(tracks, service, library);
-        var window = new ReplayGainScannerDialog(vm);
-
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow != null)
         {
@@ -35,6 +33,16 @@ public static class MetadataHelper
         }
     }
 
+    public static async Task OpenReplayGainScannerDialog(IReadOnlyList<Track> tracks)
+    {
+        if (tracks == null || tracks.Count == 0) return;
+        var service = App.Services!.GetRequiredService<IReplayGainScannerService>();
+        var library = App.Services!.GetRequiredService<ILibraryService>();
+        var vm = new ReplayGainScannerViewModel(tracks, service, library);
+        var window = new ReplayGainScannerDialog(vm);
+        await ShowDialogOwned(window);
+    }
+
     public static async Task OpenAudioConverterDialog(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;
@@ -42,17 +50,7 @@ public static class MetadataHelper
         var library = App.Services!.GetRequiredService<ILibraryService>();
         var vm = new AudioConverterViewModel(tracks, service, library);
         var window = new AudioConverterDialog(vm);
-
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
-        {
-            DialogHelper.SizeToOwner(window, desktop.MainWindow);
-            await window.ShowDialog(desktop.MainWindow);
-        }
-        else
-        {
-            window.Show();
-        }
+        await ShowDialogOwned(window);
     }
 
     public static async Task OpenBatchMetadataWindow(IReadOnlyList<Track> tracks)
@@ -83,17 +81,7 @@ public static class MetadataHelper
             albumScoped: true, albumTracks: tracks.ToList(), itunes: itunes, lrcLib: lrcLib, multiSelect: true);
 
         var window = new MetadataWindow(vm);
-
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
-        {
-            DialogHelper.SizeToOwner(window, desktop.MainWindow);
-            await window.ShowDialog(desktop.MainWindow);
-        }
-        else
-        {
-            window.Show();
-        }
+        await ShowDialogOwned(window);
     }
 
     public static async Task OpenMetadataWindow(Track track, bool albumScoped = false)
@@ -134,16 +122,6 @@ public static class MetadataHelper
         };
 
         var window = new MetadataWindow(vm);
-
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow != null)
-        {
-            DialogHelper.SizeToOwner(window, desktop.MainWindow);
-            await window.ShowDialog(desktop.MainWindow);
-        }
-        else
-        {
-            window.Show();
-        }
+        await ShowDialogOwned(window);
     }
 }

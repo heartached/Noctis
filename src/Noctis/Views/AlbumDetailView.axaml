@@ -913,7 +913,7 @@
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="Scan ReplayGain (Album)"
+                                        <MenuItem Header="Scan ReplayGain"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ScanRelatedAlbumReplayGainCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
@@ -1140,7 +1140,7 @@
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="Scan ReplayGain (Album)"
+                                        <MenuItem Header="Scan ReplayGain"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ScanRelatedAlbumReplayGainCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>

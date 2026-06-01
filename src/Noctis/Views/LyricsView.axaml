@@ -303,8 +303,10 @@
                     <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
                 </controls:CachedImage.RenderTransform>
             </controls:CachedImage>
-            <!-- Dark scrim: drops the cover's brightness so white lyrics stay readable. -->
-            <Rectangle Fill="#66000000"/>
+            <!-- Dark scrim: drops the cover's brightness so white lyrics stay readable.
+                 Kept strong enough that bright/near-white covers don't bleed a light
+                 halo around the title/artist/album text. -->
+            <Rectangle Fill="#99000000"/>
         </Grid>
 
 
@@ -575,7 +577,8 @@
                                     <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled"/>
                                 </ControlTheme>
                             </Flyout.FlyoutPresenterTheme>
-                            <Border Background="#EE141414" CornerRadius="999" Padding="6,5"
+                            <Border x:Name="ColorPickerContent"
+                                    Background="#EE141414" CornerRadius="999" Padding="6,5"
                                     BorderBrush="#22FFFFFF" BorderThickness="1">
                                 <StackPanel Orientation="Horizontal" Spacing="6"
                                             DataContext="{Binding #LyricsRoot.DataContext}"

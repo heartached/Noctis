@@ -16,7 +16,9 @@
     </UserControl.Resources>
 
     <Grid RowDefinitions="*">
-        <DockPanel Grid.Row="0" Margin="12,8,12,8">
+        <!-- Right margin trimmed to 2 so the vertical scrollbar sits near the window
+             edge (Apple Music style) instead of being inset ~12px from it. -->
+        <DockPanel Grid.Row="0" Margin="12,8,2,8">
 
         <!-- Content area with overlay for empty state -->
         <Grid>
@@ -27,7 +29,8 @@
                      BorderThickness="0"
                      Padding="0,0,0,115"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.VerticalScrollBarVisibility="Visible"
+                     ScrollViewer.AllowAutoHide="False"
                      SelectionMode="Single"
                      AutoScrollToSelectedItem="False">
                 <ListBox.Styles>

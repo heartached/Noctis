@@ -546,6 +546,7 @@
                              Background="Transparent"
                              BorderThickness="0" Padding="0"
                              MinHeight="0"
+                             KeyDown="OnProfileNameKeyDown"
                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                 </Grid>
             </Border>
@@ -1008,6 +1009,43 @@
                 </Grid>
             </Border>
 
+            <!-- Player bar opacity -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Player Bar Opacity" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Adjust the playback bar's background transparency. Higher is more solid and legible when it overlaps content."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Slider Grid.Column="0"
+                                Classes="accent-slider"
+                                Minimum="0" Maximum="1"
+                                Value="{Binding PlaybackBarBackgroundOpacity, Mode=TwoWay}"
+                                VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding PlaybackBarBackgroundOpacity, StringFormat='{}{0:P0}'}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center"
+                                   MinWidth="44" TextAlignment="Right" Margin="12,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Collapse album editions -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Collapse Album Editions" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Show one tile per release in album grids instead of every edition. Other editions stay available under &quot;Other Versions&quot; on the album page."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding CollapseAlbumEditions}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
 
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- AUDIO PLAYBACK                                     -->
@@ -1085,6 +1123,19 @@
                         <TextBlock Grid.Column="0" Text="Animate long artist/album names" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding LyricsArtistMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Sub-header: Sidebar -->
+                    <TextBlock Text="SIDEBAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="Hover to expand sidebar" FontSize="13"/>
+                            <TextBlock Text="Slide the sidebar open on hover. Turn off to keep the icon-only rail with no animation."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding SidebarHoverExpand}"
                                               VerticalAlignment="Center"/>
                     </Grid>
 

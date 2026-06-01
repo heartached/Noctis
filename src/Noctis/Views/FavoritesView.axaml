@@ -16,7 +16,8 @@
     </UserControl.Resources>
 
     <Grid RowDefinitions="*">
-        <DockPanel Grid.Row="0" Margin="12,8,12,8">
+        <!-- Right margin trimmed to 2 so the vertical scrollbar sits at the window edge. -->
+        <DockPanel Grid.Row="0" Margin="12,8,2,8">
 
         <!-- Content area with overlay for empty state -->
         <Grid>

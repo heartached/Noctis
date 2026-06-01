@@ -17,7 +17,9 @@
     </UserControl.Resources>
 
     <Grid RowDefinitions="*">
-        <DockPanel Grid.Row="0" Margin="16,8,16,16">
+        <!-- Right margin trimmed to 2 so the vertical scrollbar sits near the window
+             edge (matches the Albums section) instead of being inset ~16px from it. -->
+        <DockPanel Grid.Row="0" Margin="16,8,2,16">
 
         <!-- Column headers (sortable) -->
         <Grid DockPanel.Dock="Top"

@@ -18,6 +18,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private readonly ILibraryService _library;
     private readonly PlayerViewModel _player;
     private readonly SidebarViewModel _sidebar;
+    private readonly SettingsViewModel _settings;
+    private readonly System.ComponentModel.PropertyChangedEventHandler _settingsPropertyChangedHandler;
 
     private List<Album> _allAlbums = new();
     private string _currentFilter = string.Empty;
@@ -76,11 +78,23 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Exposes the sidebar's playlists for the Add to Playlist submenu.</summary>
     public ObservableCollection<Playlist> Playlists => _sidebar.Playlists;
 
-    public LibraryAlbumsViewModel(ILibraryService library, PlayerViewModel player, SidebarViewModel sidebar)
+    public LibraryAlbumsViewModel(ILibraryService library, PlayerViewModel player, SidebarViewModel sidebar, SettingsViewModel settings)
     {
         _library = library;
         _player = player;
         _sidebar = sidebar;
+        _settings = settings;
+
+        // Rebuild the grid when the "collapse album editions" setting is toggled.
+        _settingsPropertyChangedHandler = (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsViewModel.CollapseAlbumEditions))
+            {
+                _isDirty = true;
+                Dispatcher.UIThread.Post(RebuildFilteredRows);
+            }
+        };
+        _settings.PropertyChanged += _settingsPropertyChangedHandler;
 
         ReleaseTypeChips = new ObservableCollection<ReleaseTypeChip>
         {
@@ -258,13 +272,15 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             };
         }
 
-        // Apply artist filter first (match on album artist or any track artist,
-        // including individual collaborators parsed from multi-artist strings)
+        // Apply artist filter first. Match on the album-artist credit only (parsed
+        // into individual collaborators, so credited collaboration albums like
+        // "A & B" still appear). Track-level feature appearances are deliberately
+        // excluded so a different artist's album doesn't land in this artist's
+        // discography just because they're featured on a track — keeping this grid
+        // consistent with the artist landing page (GetAlbumsByArtist).
         if (!string.IsNullOrEmpty(artistFilter))
         {
-            filtered = filtered.Where(a =>
-                ContainsArtistToken(a.Artist, artistFilter) ||
-                a.Tracks.Any(t => ContainsArtistToken(t.Artist, artistFilter)));
+            filtered = filtered.Where(a => ContainsArtistToken(a.Artist, artistFilter));
         }
 
         // Apply search filter on top
@@ -320,6 +336,13 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             ordered = filtered;
         }
 
+        // Collapse multiple editions of the same release into one representative tile
+        // when the opt-in setting is on. Skipped while searching so a specific edition
+        // can still be found. Hidden editions stay reachable via the album page's
+        // "Other Versions" section.
+        if (_settings.CollapseAlbumEditions && string.IsNullOrWhiteSpace(searchFilter))
+            ordered = CollapseEditions(ordered);
+
         // Group albums into rows of columnsPerRow for virtualized display
         var rows = new List<AlbumRow>();
         var currentRow = new List<Album>();
@@ -338,6 +361,48 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             rows.Add(new AlbumRow { Albums = currentRow });
 
         return rows;
+    }
+
+    /// <summary>
+    /// Collapses albums sharing the same album-artist credit and normalized base title
+    /// (edition suffixes stripped) into a single representative edition. Each group is
+    /// anchored at its first occurrence so the caller's existing sort order is preserved.
+    /// </summary>
+    private static IEnumerable<Album> CollapseEditions(IEnumerable<Album> albums)
+    {
+        var groups = new Dictionary<string, Album>(StringComparer.OrdinalIgnoreCase);
+        var order = new List<string>();
+        foreach (var a in albums)
+        {
+            var baseTitle = Helpers.AlbumTitle.NormalizeForEdition(a.Name);
+            var key = string.IsNullOrEmpty(baseTitle)
+                ? $" id:{a.Id}"                                   // never merge untitled albums
+                : $"{(a.Artist ?? string.Empty).Trim()} {baseTitle}";
+            if (!groups.TryGetValue(key, out var rep))
+            {
+                groups[key] = a;
+                order.Add(key);
+            }
+            else if (IsBetterEditionRepresentative(a, rep))
+            {
+                groups[key] = a;
+            }
+        }
+        return order.Select(k => groups[k]).ToList();
+    }
+
+    /// <summary>
+    /// Representative selection: prefer the plain/base edition, else the most complete
+    /// (most tracks), else the earliest release year.
+    /// </summary>
+    private static bool IsBetterEditionRepresentative(Album cand, Album cur)
+    {
+        var cb = Helpers.AlbumTitle.IsBaseEdition(cand.Name);
+        var ub = Helpers.AlbumTitle.IsBaseEdition(cur.Name);
+        if (cb != ub) return cb;                                  // prefer plain edition
+        if (cand.TrackCount != cur.TrackCount) return cand.TrackCount > cur.TrackCount; // most complete
+        if (cand.Year != cur.Year) return cand.Year != 0 && (cur.Year == 0 || cand.Year < cur.Year); // earliest
+        return false;
     }
 
     partial void OnSearchTextChanged(string value)
@@ -709,6 +774,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
     public void Dispose()
     {
+        _settings.PropertyChanged -= _settingsPropertyChangedHandler;
         if (_searchDebounce != null)
         {
             _searchDebounce.Stop();

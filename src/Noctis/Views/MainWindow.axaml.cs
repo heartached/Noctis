@@ -121,7 +121,10 @@ public partial class MainWindow : Window
                     {
                         if (e.Property == Border.IsPointerOverProperty && !vm.IsSidebarHidden)
                         {
-                            var expanded = _sidebarWrapper.IsPointerOver;
+                            // Honor the "Hover to expand sidebar" preference: when disabled the
+                            // rail stays icon-only and never expands (no slide animation).
+                            var expanded = _sidebarWrapper.IsPointerOver
+                                           && vm.Settings.SidebarHoverExpand;
                             _sidebarWrapper.Width = expanded ? 220 : 60;
                             if (_rootPanel?.RenderTransform is TranslateTransform translate)
                                 translate.X = expanded ? 160 : 0;

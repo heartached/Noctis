@@ -50,6 +50,9 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _autoMixBeatMatch = true;
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _artistMarqueeEnabled = true;
+    /// <summary>Opacity of the playback bar's glass fill (0–1). Driven by Settings; default
+    /// 0.4 matches the original #66 alpha. Background only — controls/text stay opaque.</summary>
+    [ObservableProperty] private double _islandBackgroundOpacity = 0.4;
 
     // ── Lyrics page integration (flags + pass-through commands set up by MainWindowViewModel) ──
 

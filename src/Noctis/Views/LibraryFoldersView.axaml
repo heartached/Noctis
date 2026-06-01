@@ -6,7 +6,8 @@
              x:DataType="vm:LibraryFoldersViewModel"
              Background="{DynamicResource AppMainBackground}">
 
-    <Grid ColumnDefinitions="280,*" Margin="16,8,16,16">
+    <!-- Right margin trimmed to 2 so the content list's vertical scrollbar sits at the window edge. -->
+    <Grid ColumnDefinitions="280,*" Margin="16,8,2,16">
 
         <!-- Folder tree -->
         <Border Grid.Column="0"

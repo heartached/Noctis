@@ -311,7 +311,6 @@
         <!-- Dynamic Island: Single unified glass pill-shaped container -->
         <Border x:Name="IslandBorder"
                 Classes="island"
-                Background="#66202020"
                 BorderBrush="#40FFFFFF"
                 BorderThickness="1"
                 CornerRadius="999"
@@ -320,6 +319,11 @@
                 VerticalAlignment="Center"
                 Height="50"
                 Width="650">
+            <!-- Glass fill: opaque colour with user-controlled opacity (Settings → Player Bar
+                 Opacity). Driving the brush opacity (not the Border's) keeps text/controls crisp. -->
+            <Border.Background>
+                <SolidColorBrush Color="#202020" Opacity="{Binding IslandBackgroundOpacity}"/>
+            </Border.Background>
             <Border.Transitions>
                 <Transitions>
                     <DoubleTransition Property="Width" Duration="0:0:0.2">

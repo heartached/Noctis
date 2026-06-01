@@ -133,6 +133,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _lyricsTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsArtistMarqueeEnabled = true;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
+    [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
+    [ObservableProperty] private bool _sidebarHoverExpand = true;
+    [ObservableProperty] private bool _collapseAlbumEditions;
 
     // ── Lyrics Providers ──
 
@@ -478,6 +481,9 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsTitleMarqueeEnabled = _settings.LyricsTitleMarqueeEnabled;
             LyricsArtistMarqueeEnabled = _settings.LyricsArtistMarqueeEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
+            PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
+            SidebarHoverExpand = _settings.SidebarHoverExpand;
+            CollapseAlbumEditions = _settings.CollapseAlbumEditions;
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
@@ -644,6 +650,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsTitleMarqueeEnabled = LyricsTitleMarqueeEnabled;
         _settings.LyricsArtistMarqueeEnabled = LyricsArtistMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
+        _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        _settings.SidebarHoverExpand = SidebarHoverExpand;
+        _settings.CollapseAlbumEditions = CollapseAlbumEditions;
         _settings.LrcLibEnabled = LrcLibEnabled;
         _settings.FfmpegPath = FfmpegPath ?? string.Empty;
         _settings.ReplayGainMode = ReplayGainMode ?? "Off";
@@ -682,6 +691,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (_player == null) return;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
+        _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         Controls.MarqueeTextBlock.GlobalCoverFlowScrollEnabled = CoverFlowMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowArtistScrollEnabled = CoverFlowArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowAlbumScrollEnabled = CoverFlowAlbumMarqueeEnabled;
@@ -1031,6 +1041,30 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSoundCheckEnabledChanged(bool value)
     {
         ApplyAudioSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnSidebarHoverExpandChanged(bool value)
+    {
+        _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarBackgroundOpacityChanged(double value)
+    {
+        var clamped = Math.Clamp(value, 0, 1);
+        if (clamped != value)
+        {
+            PlaybackBarBackgroundOpacity = clamped;
+            return;
+        }
+
+        ApplyPlayerSettings();
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    partial void OnCollapseAlbumEditionsChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
 
@@ -1983,6 +2017,7 @@ public partial class SettingsViewModel : ViewModelBase
             CoverFlowAlbumMarqueeEnabled = true;
             LyricsTitleMarqueeEnabled = true;
             LyricsArtistMarqueeEnabled = true;
+            SidebarHoverExpand = true;
 
             // Lyrics providers
             LrcLibEnabled = true;

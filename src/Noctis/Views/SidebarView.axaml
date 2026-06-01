@@ -99,7 +99,7 @@
                                                   Foreground="{DynamicResource AccentForegroundBrush}"
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
-                                                  Margin="2,0,0,0" />
+                                                  Margin="0,0,-1,-1" />
                                     </Border>
                                     <StackPanel VerticalAlignment="Center" Spacing="1"
                                                 IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">

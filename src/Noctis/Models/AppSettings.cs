@@ -103,6 +103,20 @@ public class AppSettings
     /// <summary>Whether animated cover art (looping MP4/WebM) plays for the currently playing track.</summary>
     public bool EnableAnimatedCovers { get; set; } = true;
 
+    /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
+    /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
+    /// original #66 alpha glass look.</summary>
+    public double PlaybackBarBackgroundOpacity { get; set; } = 0.4;
+
+    /// <summary>Whether the sidebar expands on hover (with its slide animation). When false the
+    /// sidebar stays in the icon-only rail and never expands.</summary>
+    public bool SidebarHoverExpand { get; set; } = true;
+
+    /// <summary>When true, the album grids collapse multiple editions/issues of the same release
+    /// (same album-artist + normalized base title) into a single representative tile. Hidden
+    /// editions remain reachable via the album page's "Other Versions" section. Default off.</summary>
+    public bool CollapseAlbumEditions { get; set; } = false;
+
     /// <summary>Whether long track titles in the Lyrics page should scroll.</summary>
     public bool LyricsTitleMarqueeEnabled { get; set; } = true;
 

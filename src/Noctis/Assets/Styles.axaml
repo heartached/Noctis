@@ -316,9 +316,13 @@
 
     <!-- Smooth scrolling for all ScrollViewers -->
     <Style Selector="ScrollViewer">
-        <Setter Property="AllowAutoHide" Value="True"/>
+        <!-- Persistent (non-fading) scrollbars app-wide: with Auto visibility the bar
+             shows whenever content overflows and stays put (no delayed fade), matching
+             the Albums page. Pages/menus that fit still show no bar. -->
+        <Setter Property="AllowAutoHide" Value="False"/>
         <Setter Property="IsScrollInertiaEnabled" Value="True"/>
         <Setter Property="helpers:MomentumScrollBehavior.IsEnabled" Value="True"/>
+        <Setter Property="helpers:AutoScrollBehavior.IsEnabled" Value="True"/>
         <Setter Property="helpers:MomentumScrollBehavior.Friction" Value="0.95"/>
         <Setter Property="helpers:MomentumScrollBehavior.WheelVelocity" Value="13"/>
         <Setter Property="helpers:MomentumScrollBehavior.FastWheelReferenceMs" Value="80"/>
@@ -336,7 +340,7 @@
 
     <!-- Rounded pill scrollbar styling (no transitions to prevent conflict with context menus) -->
     <Style Selector="ScrollBar">
-        <Setter Property="AllowAutoHide" Value="True"/>
+        <Setter Property="AllowAutoHide" Value="False"/>
         <!-- Removed opacity transition that caused scrollbar to animate while context menu is open -->
     </Style>
 
@@ -346,31 +350,104 @@
         <Setter Property="Margin" Value="2,0,0,0"/>
     </Style>
 
-    <!-- Vertical scrollbar thumb (rounded pill) -->
+    <!-- Vertical scrollbar thumb (rounded pill). Apple-Music style: idle = thin + dim,
+         hovering or dragging the bar = full width + bright. Driven by :pointerover on the
+         bar so it reacts instantly; our setters override Fluent's IsExpanded states (which
+         only flip after a ~1s timer), so that delayed expand never affects the look. -->
     <Style Selector="ScrollBar:vertical /template/ Thumb">
         <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Width" Value="10"/>
-        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Width" Value="12"/>
+        <Setter Property="MinHeight" Value="48"/>
+        <!-- Idle: scaled thin, anchored to the right track edge. -->
+        <Setter Property="RenderTransformOrigin" Value="100%,50%"/>
+        <Setter Property="RenderTransform" Value="scaleX(0.5)"/>
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.07"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.10"/>
             </Transitions>
         </Setter>
     </Style>
 
-    <Style Selector="ScrollBar:vertical /template/ Thumb /template/ Border">
-        <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
-        <Setter Property="CornerRadius" Value="5"/>
-        <Setter Property="Opacity" Value="0.5"/>
+    <!-- Hover anywhere on the bar, or drag the thumb → full width, instantly. -->
+    <Style Selector="ScrollBar:vertical:pointerover /template/ Thumb">
+        <Setter Property="RenderTransform" Value="none"/>
+    </Style>
+    <Style Selector="ScrollBar:vertical /template/ Thumb:pressed">
+        <Setter Property="RenderTransform" Value="none"/>
     </Style>
 
-    <Style Selector="ScrollBar:vertical /template/ Thumb:pointerover /template/ Border">
-        <Setter Property="Opacity" Value="0.7"/>
+    <Style Selector="ScrollBar:vertical /template/ Thumb /template/ Border">
+        <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <!-- Dim when idle, bright on hover. -->
+        <Setter Property="Opacity" Value="0.45"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.10"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="ScrollBar:vertical:pointerover /template/ Thumb /template/ Border">
+        <Setter Property="Opacity" Value="0.95"/>
     </Style>
 
     <Style Selector="ScrollBar:vertical /template/ Thumb:pressed /template/ Border">
-        <Setter Property="Opacity" Value="0.9"/>
+        <Setter Property="Opacity" Value="1.0"/>
+    </Style>
+
+    <!-- Round the track "box" behind the thumb into a pill; reveal it only while the bar
+         is hovered (instant), hidden when idle — mirrors the thumb behaviour. -->
+    <Style Selector="ScrollBar:vertical /template/ Border#VerticalRoot">
+        <Setter Property="CornerRadius" Value="7"/>
+    </Style>
+    <Style Selector="ScrollBar:vertical /template/ Rectangle#TrackRect">
+        <Setter Property="RadiusX" Value="7"/>
+        <Setter Property="RadiusY" Value="7"/>
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.10"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="ScrollBar:vertical:pointerover /template/ Rectangle#TrackRect">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+
+    <!-- Remove the up/down arrow line buttons. -->
+    <Style Selector="ScrollBar:vertical /template/ RepeatButton#PART_LineUpButton">
+        <Setter Property="IsVisible" Value="False"/>
+        <Setter Property="Opacity" Value="0"/>
+    </Style>
+    <Style Selector="ScrollBar:vertical /template/ RepeatButton#PART_LineDownButton">
+        <Setter Property="IsVisible" Value="False"/>
+        <Setter Property="Opacity" Value="0"/>
+    </Style>
+    <!-- The Fluent expanded state (fires on hover) bumps every RepeatButton's opacity
+         back to 1, which re-shows the arrow chevrons (most visible as a white spot at the
+         top of the bar on the light Settings dialog). Force them transparent while expanded
+         too — name-independent so it holds regardless of the line-button part name. Page
+         RepeatButtons stay hit-testable (opacity ≠ disabled), so click-to-page still works. -->
+    <Style Selector="ScrollBar:vertical[IsExpanded=true] /template/ RepeatButton">
+        <Setter Property="Opacity" Value="0"/>
+    </Style>
+    <!-- Decisive kill for the line-button arrow glyph (the "white spot" at the top of the
+         Settings scrollbar). The arrow is a PathIcon coloured by the ScrollBarButtonArrowForeground
+         DynamicResource (near-white on dark), which re-resolves on every theme switch — hence it
+         "comes back" when the theme changes. Opacity/IsVisible on the button lose to Fluent's
+         expand-state opacity animation and the control's local-priority visibility, so hide the
+         PathIcon itself: an invisible child renders nothing regardless of the button's opacity,
+         and IsVisible (not a DynamicResource) is unaffected by theme switches. Page buttons have
+         no PathIcon, so only the up/down arrows are affected. NOTE: the PathIcon is the line
+         button's *Content* (FluentScrollBarLineButton is a ContentPresenter theme), so it lives in
+         the ScrollBar template's namescope — match it with a single /template/ here. A
+         "RepeatButton /template/ PathIcon" selector never matches (the icon isn't in the button's
+         own template) and lets the dot survive. -->
+    <Style Selector="ScrollBar /template/ PathIcon">
+        <Setter Property="IsVisible" Value="False"/>
+        <Setter Property="Foreground" Value="Transparent"/>
     </Style>
 
     <!-- Horizontal scrollbar thumb (rounded pill) -->

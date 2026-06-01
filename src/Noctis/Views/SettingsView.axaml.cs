@@ -72,6 +72,17 @@ public partial class SettingsView : UserControl
         }
     }
 
+    // Enter in the profile name box commits the edit and drops focus, so the caret/edit
+    // affordance disappears (same defocus target used when clicking outside the token box).
+    private void OnProfileNameKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Enter or Key.Return)
+        {
+            SettingsScrollViewer?.Focus(NavigationMethod.Pointer);
+            e.Handled = true;
+        }
+    }
+
     private void OnEqPresetDropDownOpened(object? sender, EventArgs e)
     {
         if (SettingsScrollViewer is not null)
