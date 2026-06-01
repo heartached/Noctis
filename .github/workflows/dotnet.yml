@@ -178,10 +178,23 @@ jobs:
           mkdir -p dist/dmg-staging
           cp -R "$APP" dist/dmg-staging/
           ln -s /Applications dist/dmg-staging/Applications
-          hdiutil create -volname "Noctis" \
-            -srcfolder dist/dmg-staging \
-            -ov -format UDZO \
-            "dist/${DMG_NAME}"
+          # macOS runners intermittently fail here with
+          # "hdiutil: create failed - Resource busy" when the staging volume is
+          # still held by Spotlight/another process. Retry a few times.
+          for attempt in 1 2 3 4 5; do
+            if hdiutil create -volname "Noctis" \
+                 -srcfolder dist/dmg-staging \
+                 -ov -format UDZO \
+                 "dist/${DMG_NAME}"; then
+              break
+            fi
+            if [ "$attempt" = 5 ]; then
+              echo "hdiutil create failed after 5 attempts" >&2
+              exit 1
+            fi
+            echo "hdiutil create failed (attempt $attempt/5) — retrying in 5s…"
+            sleep 5
+          done
 
           mkdir -p packaged
           mv "dist/${DMG_NAME}" packaged/
