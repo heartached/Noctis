@@ -53,6 +53,9 @@ ICON_PLACEMENT_INSTRUCTIONS.md
 IMPLEMENTATION_SUMMARY.md
 QA_PHASE0_CHECKLIST.md
 USAGE.md
+RELEASE_NOTES_*.md
+docs/plans/
+docs/superpowers/
 
 ## Node (noctis-v2 experiment)
 node_modules/
