@@ -127,6 +127,9 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     private readonly Stack<NavigationEntry> _navigationHistory = new();
+    // Forward stack mirrors browser semantics: populated when going back,
+    // consumed when going forward, and cleared whenever a new branch is navigated.
+    private readonly Stack<NavigationEntry> _forwardHistory = new();
     private string? _albumDetailBackButtonText;
 
     // ── Cached content ViewModels (created once, reused) ──
@@ -200,10 +203,24 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetUpdateService(App.Services!.GetRequiredService<UpdateService>());
         Settings.SettingsReset += async (_, _) => await Sidebar.LoadPlaylistsAsync();
 
+        // Mirror the "update available" state onto the Settings sidebar item so a
+        // dot nudges the user without them opening Settings. The silent update
+        // check runs on a background thread, so marshal to the UI thread.
+        Settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(SettingsViewModel.IsUpdateAvailable)) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                var settingsNav = Sidebar.NavItems.FirstOrDefault(n => n.Key == "settings");
+                if (settingsNav is not null)
+                    settingsNav.ShowBadge = Settings.IsUpdateAvailable;
+            });
+        };
+
         // Create content ViewModels
         _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService);
         _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence);
-        _albumsVm = new LibraryAlbumsViewModel(library, Player, Sidebar);
+        _albumsVm = new LibraryAlbumsViewModel(library, Player, Sidebar, Settings);
         _artistsVm = new LibraryArtistsViewModel(library);
         _artistsVm.SetArtistImageService(artistImageService);
         _playlistsVm = new LibraryPlaylistsViewModel(Sidebar, Player, library, persistence);
@@ -214,6 +231,13 @@ public partial class MainWindowViewModel : ViewModelBase
             OpenSettings();
             Dispatcher.UIThread.Post(Settings.RequestMediaFoldersSection);
         };
+        // Settings is a modal overlay and folder add/remove doesn't fire LibraryUpdated,
+        // so explicitly rebuild the Folders tree when the media-folder set changes.
+        Settings.MusicFoldersChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            _foldersVm.MarkDirty();
+            _foldersVm.Refresh();
+        });
         _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
@@ -249,6 +273,13 @@ public partial class MainWindowViewModel : ViewModelBase
         // Wire up album detail navigation from albums view
         _albumsVm.AlbumOpened += OnAlbumOpened;
         _albumsVm.SetViewArtistAction(ViewArtistByName);
+
+        // Entering/leaving an artist's discography toggles the title-bar filter chips.
+        _albumsVm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LibraryAlbumsViewModel.IsArtistFiltered))
+                UpdateReleaseTypeChips();
+        };
 
         // Wire up album detail navigation from home view
         _homeVm.AlbumOpened += OnHomeAlbumOpened;
@@ -625,6 +656,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _albumDetailBackButtonText = null;
 
         RefreshBackButton();
+        UpdateReleaseTypeChips();
 
         // Dispose transient ViewModels (e.g., AlbumDetailViewModel) to release
         // event handlers on singleton services and unmanaged resources like Bitmaps.
@@ -719,7 +751,8 @@ public partial class MainWindowViewModel : ViewModelBase
         if (view == null)
             return false;
 
-        return _navigationHistory.Any(entry => ReferenceEquals(entry.View, view));
+        return _navigationHistory.Any(entry => ReferenceEquals(entry.View, view))
+               || _forwardHistory.Any(entry => ReferenceEquals(entry.View, view));
     }
 
     private void ClearNavigationHistory()
@@ -727,6 +760,16 @@ public partial class MainWindowViewModel : ViewModelBase
         while (_navigationHistory.Count > 0)
         {
             var entry = _navigationHistory.Pop();
+            DisposeViewIfTransient(entry.View);
+        }
+        ClearForwardHistory();
+    }
+
+    private void ClearForwardHistory()
+    {
+        while (_forwardHistory.Count > 0)
+        {
+            var entry = _forwardHistory.Pop();
             DisposeViewIfTransient(entry.View);
         }
     }
@@ -815,7 +858,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private void PushCurrentViewToHistory()
     {
         _navigationHistory.Push(CaptureCurrentNavigationEntry());
+        // Navigating to a new branch invalidates any forward history.
+        ClearForwardHistory();
     }
+
+    public bool CanGoBack => _navigationHistory.Count > 0;
+    public bool CanGoForward => _forwardHistory.Count > 0;
 
     [RelayCommand]
     private void GoBackInHistory()
@@ -823,7 +871,25 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_navigationHistory.Count == 0)
             return;
 
-        var target = _navigationHistory.Pop();
+        // Preserve the current view so forward navigation can return to it.
+        _forwardHistory.Push(CaptureCurrentNavigationEntry());
+        RestoreNavigationEntry(_navigationHistory.Pop());
+    }
+
+    [RelayCommand]
+    private void GoForwardInHistory()
+    {
+        if (_forwardHistory.Count == 0)
+            return;
+
+        // Mirror of GoBack: stash current onto the back stack, then restore the
+        // forward entry. Forward stack is intentionally left intact here.
+        _navigationHistory.Push(CaptureCurrentNavigationEntry());
+        RestoreNavigationEntry(_forwardHistory.Pop());
+    }
+
+    private void RestoreNavigationEntry(NavigationEntry target)
+    {
         ClearAllTopBarActions();
         target.RestoreState();
         TopBar.CurrentTabName = target.TabName;
@@ -1407,6 +1473,21 @@ public partial class MainWindowViewModel : ViewModelBase
         // Home and Cover Flow do not use the top-bar search field.
         if (_isCoverFlowMode || _currentSectionKey == "home")
             TopBar.IsSearchVisible = false;
+    }
+
+    /// <summary>
+    /// Shows the release-type filter chips next to the title only on the Albums grid
+    /// (Library mode, not artist-filtered). Cover Flow and artist discography hide them.
+    /// </summary>
+    private void UpdateReleaseTypeChips()
+    {
+        var show = ReferenceEquals(CurrentView, _albumsVm)
+                   && !_isCoverFlowMode
+                   && !_albumsVm.IsArtistFiltered;
+        if (show)
+            TopBar.ShowReleaseTypeChips(_albumsVm.ReleaseTypeChips, _albumsVm.SelectReleaseTypeChipCommand);
+        else
+            TopBar.HideReleaseTypeChips();
     }
 
     private void EnterCoverFlowMode()

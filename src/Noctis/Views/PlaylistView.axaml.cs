@@ -36,7 +36,8 @@ public partial class PlaylistView : UserControl
 
         TrackList.DoubleTapped += OnTrackDoubleTapped;
         TrackList.AddHandler(PointerPressedEvent, OnTrackPointerPressed, RoutingStrategies.Tunnel);
-        AddHandler(KeyDownEvent, OnViewKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
+        // Forward Ctrl+A from the window so it works without first clicking a row.
+        _ = new WindowKeyForwarder(this, OnViewKeyDown);
 
         TrackList.ContainerPrepared += OnTrackContainerPrepared;
         TrackList.ContainerClearing += OnTrackContainerClearing;
@@ -431,6 +432,13 @@ public partial class PlaylistView : UserControl
             if (sv != null)
                 vm.SavedScrollOffset = sv.Offset.Y;
         }
+
+        // Reset multi-selection so it doesn't leak back when the view is revisited.
+        _selectedTracks.Clear();
+        foreach (var child in TrackList.GetVisualDescendants())
+            if (child is ListBoxItem li) li.Classes.Remove("ctrl-selected");
+        if (DataContext is PlaylistViewModel selVm) selVm.CtrlSelectedTracks = new List<Track>();
+
         base.OnDetachedFromVisualTree(e);
     }
 

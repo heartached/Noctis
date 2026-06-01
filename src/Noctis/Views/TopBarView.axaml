@@ -78,13 +78,60 @@
                        VerticalAlignment="Center" />
         </DockPanel>
 
-        <!-- Page title left-aligned (shown when back button is hidden) -->
-        <TextBlock Text="{Binding CurrentTabName}"
-                   IsVisible="{Binding IsPageTitleVisible}"
-                   HorizontalAlignment="Left"
-                   VerticalAlignment="Center"
-                   FontSize="22"
-                   FontWeight="Bold" />
+        <!-- Page title + release-type filter chips left-aligned (shown when back button is hidden).
+             Chips only appear on the Albums grid (driven by TopBar.HasReleaseTypeChips). -->
+        <StackPanel Orientation="Horizontal"
+                    Spacing="16"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    IsVisible="{Binding IsPageTitleVisible}">
+            <TextBlock Text="{Binding CurrentTabName}"
+                       VerticalAlignment="Center"
+                       FontSize="22"
+                       FontWeight="Bold" />
+
+            <ItemsControl ItemsSource="{Binding ReleaseTypeChips}"
+                          IsVisible="{Binding HasReleaseTypeChips}"
+                          VerticalAlignment="Center">
+                <ItemsControl.Styles>
+                    <Style Selector="Button.release-chip">
+                        <Setter Property="Background" Value="{DynamicResource ChipBackground}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                        <Setter Property="CornerRadius" Value="999"/>
+                        <Setter Property="Padding" Value="14,6"/>
+                        <Setter Property="FontSize" Value="12"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                    </Style>
+                    <Style Selector="Button.release-chip:pointerover /template/ ContentPresenter">
+                        <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
+                    </Style>
+                    <Style Selector="Button.release-chip.active">
+                        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+                    </Style>
+                    <Style Selector="Button.release-chip.active /template/ ContentPresenter">
+                        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+                    </Style>
+                </ItemsControl.Styles>
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="8" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ReleaseTypeChip">
+                        <Button Classes="release-chip"
+                                Classes.active="{Binding IsActive}"
+                                Content="{Binding Label}"
+                                Command="{Binding $parent[UserControl].((vm:TopBarViewModel)DataContext).ReleaseTypeChipCommand}"
+                                CommandParameter="{Binding}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
 
       </Grid>
     </Border>

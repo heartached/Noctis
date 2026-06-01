@@ -21,6 +21,15 @@ public partial class MetadataViewModel : ViewModelBase
     private readonly Track _track;
     private readonly bool _albumScoped;
     private readonly List<Track>? _albumTracks;
+    private readonly bool _multiSelect;
+
+    // Album-scoped editing: fields whose value differs across the album show the
+    // "Mixed" placeholder, and only fields the user actually edits are fanned out
+    // to every track on save (so per-track values like track numbers survive).
+    private readonly HashSet<string> _mixedFields = new();
+    private readonly Dictionary<string, string> _albumLoaded = new();
+    private bool _loadedIsCompilation;
+    private bool _loadedShowComposerInAllViews;
 
     // ── Tab selection ──
     [ObservableProperty] private int _selectedTabIndex;
@@ -58,6 +67,20 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private bool _hasArtwork;
     private byte[]? _newArtworkData;
     private bool _artworkRemoved;
+
+    partial void OnHasArtworkChanged(bool value) => OnPropertyChanged(nameof(ShowAlbumArtPlaceholderText));
+
+    // ── Rename-by-pattern (multi-select only) ──
+    [ObservableProperty] private bool _applyRename;
+    [ObservableProperty] private string _renamePattern = "%tracknumber2% - %title%";
+    public ObservableCollection<RenamePreview> RenamePreviews { get; } = new();
+
+    public sealed class RenamePreview
+    {
+        public string OriginalName { get; set; } = string.Empty;
+        public string NewName { get; set; } = string.Empty;
+        public bool Conflict { get; set; }
+    }
 
     // ── Animated cover tab ──
     [ObservableProperty] private string? _animatedCoverPath;
@@ -165,9 +188,20 @@ public partial class MetadataViewModel : ViewModelBase
     public bool ShowAdvancedTab => !_albumScoped;
 
     /// <summary>Track title and artist for the header.</summary>
-    public string HeaderTitle => _albumScoped && !string.IsNullOrWhiteSpace(_track.Album) ? _track.Album : _track.Title;
-    public string HeaderArtist => _track.Artist;
-    public string HeaderAlbum => _track.Album;
+    public string HeaderTitle => _multiSelect
+        ? $"{DistinctArtistCount} artists selected"
+        : (_albumScoped && !string.IsNullOrWhiteSpace(_track.Album) ? _track.Album : _track.Title);
+    public string HeaderArtist => _multiSelect ? $"{SongCount} songs selected" : _track.Artist;
+    public string HeaderAlbum => _multiSelect ? string.Empty : _track.Album;
+
+    /// <summary>True when editing an arbitrary multi-track selection (blank art, "N selected" header).</summary>
+    public bool IsMultiSelect => _multiSelect;
+    /// <summary>Album-art placeholder text shows only for non-multi-select with no artwork.</summary>
+    public bool ShowAlbumArtPlaceholderText => !HasArtwork && !_multiSelect;
+    private int SongCount => _albumTracks?.Count ?? 1;
+    private int DistinctArtistCount => _albumTracks == null
+        ? 1
+        : _albumTracks.Select(t => t.Artist ?? string.Empty).Distinct().Count();
     public bool HeaderIsExplicit => _track.IsExplicit;
     public bool HeaderIsFavorite => _track.IsFavorite;
     public string HeaderAudioQualityBadge => _track.AudioQualityBadge;
@@ -176,6 +210,30 @@ public partial class MetadataViewModel : ViewModelBase
     public bool ShowLyricsTab => !_albumScoped;
     public bool ShowSyncedLyricsTab => !_albumScoped;
     public bool ShowFileTab => !_albumScoped;
+
+    /// <summary>Animated Artwork is per-album; hide it for arbitrary multi-track selections.</summary>
+    public bool ShowAnimatedArtworkTab => !_multiSelect;
+
+    /// <summary>The rename-by-pattern section is offered only when editing a multi-track selection.</summary>
+    public bool ShowRenameSection => _multiSelect;
+
+    /// <summary>Per-track-only Details fields (Title, Performer) are hidden when editing a whole album.</summary>
+    public bool ShowTrackFields => !_albumScoped;
+
+    // "Mixed" placeholders for album-scoped Details fields that differ across tracks.
+    public string AlbumWatermark => Watermark(nameof(Album));
+    public string AlbumArtistWatermark => Watermark(nameof(AlbumArtist));
+    public string ArtistWatermark => Watermark(nameof(Artist));
+    public string ComposerWatermark => Watermark(nameof(Composer));
+    public string GroupingWatermark => Watermark(nameof(Grouping));
+    public string GenreWatermark => Watermark(nameof(Genre));
+    public string YearWatermark => Watermark(nameof(Year));
+    public string TrackNumberWatermark => Watermark(nameof(TrackNumber));
+    public string TrackCountWatermark => Watermark(nameof(TrackCount));
+    public string DiscNumberWatermark => Watermark(nameof(DiscNumber));
+    public string DiscCountWatermark => Watermark(nameof(DiscCount));
+    public string BpmWatermark => Watermark(nameof(Bpm));
+    public string CommentWatermark => Watermark(nameof(Comment));
 
     /// <summary>Formatted play count display with last played date.</summary>
     public string PlayCountDisplay
@@ -235,7 +293,7 @@ public partial class MetadataViewModel : ViewModelBase
     /// <summary>Fires when the window should close.</summary>
     public event EventHandler? CloseRequested;
 
-    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null, ITunesArtworkService? itunes = null, ILrcLibService? lrcLib = null)
+    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null, ITunesArtworkService? itunes = null, ILrcLibService? lrcLib = null, bool multiSelect = false)
     {
         _track = track;
         _metadata = metadata;
@@ -246,12 +304,184 @@ public partial class MetadataViewModel : ViewModelBase
         _lrcLib = lrcLib;
         _albumScoped = albumScoped;
         _albumTracks = albumTracks;
+        _multiSelect = multiSelect;
 
         LoadFromTrack();
         LoadFileInfo();
         LoadArtwork();
         LoadAnimatedCover();
         LoadAdvancedFields();
+
+        if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
+            LoadAlbumScopedOverrides();
+
+        if (_multiSelect)
+            RebuildRenamePreview();
+    }
+
+    // ── Album-scoped (whole-album) editing ──────────────────────────────────
+    // Replaces the single-track values loaded from Tracks[0] with album-wide
+    // values: a shared value is shown as-is; a field that differs across tracks
+    // is shown blank with a "Mixed" placeholder.
+    private void LoadAlbumScopedOverrides()
+    {
+        Artist = CommonStrOrMixed(nameof(Artist), t => t.Artist);
+        Composer = CommonStrOrMixed(nameof(Composer), t => t.Composer);
+        Grouping = CommonStrOrMixed(nameof(Grouping), t => t.Grouping);
+        Comment = CommonStrOrMixed(nameof(Comment), t => t.Comment);
+        Year = CommonIntOrMixed(nameof(Year), t => t.Year);
+        TrackNumber = CommonIntOrMixed(nameof(TrackNumber), t => t.TrackNumber);
+        TrackCount = CommonIntOrMixed(nameof(TrackCount), t => t.TrackCount);
+        DiscNumber = CommonIntOrMixed(nameof(DiscNumber), t => t.DiscNumber);
+        DiscCount = CommonIntOrMixed(nameof(DiscCount), t => t.DiscCount);
+        Bpm = CommonIntOrMixed(nameof(Bpm), t => t.Bpm);
+
+        var genre0 = _track.Genre ?? string.Empty;
+        if (_albumTracks!.All(t => (t.Genre ?? string.Empty) == genre0))
+            Genre = genre0;
+        else { _mixedFields.Add(nameof(Genre)); Genre = string.Empty; }
+
+        IsCompilation = _albumTracks!.All(t => t.IsCompilation);
+        ShowComposerInAllViews = _albumTracks!.All(t => t.ShowComposerInAllViews);
+
+        // Album / Album Artist are shared within a single album, so they stay as-is in
+        // album-scoped mode. A multi-select can span albums, so show Mixed when they differ.
+        if (_multiSelect)
+        {
+            Album = CommonStrOrMixed(nameof(Album), t => t.Album);
+            AlbumArtist = CommonStrOrMixed(nameof(AlbumArtist), t => t.AlbumArtist);
+        }
+
+        SnapshotAlbumOriginals();
+    }
+
+    private string CommonStrOrMixed(string key, Func<Track, string?> sel)
+    {
+        var first = sel(_track) ?? string.Empty;
+        if (_albumTracks!.All(t => (sel(t) ?? string.Empty) == first)) return first;
+        _mixedFields.Add(key);
+        return string.Empty;
+    }
+
+    private string CommonIntOrMixed(string key, Func<Track, int> sel)
+    {
+        var first = sel(_track);
+        if (_albumTracks!.All(t => sel(t) == first)) return first > 0 ? first.ToString() : string.Empty;
+        _mixedFields.Add(key);
+        return string.Empty;
+    }
+
+    private void SnapshotAlbumOriginals()
+    {
+        _albumLoaded[nameof(Artist)] = Artist;
+        _albumLoaded[nameof(Album)] = Album;
+        _albumLoaded[nameof(AlbumArtist)] = AlbumArtist;
+        _albumLoaded[nameof(Composer)] = Composer;
+        _albumLoaded[nameof(Grouping)] = Grouping;
+        _albumLoaded[nameof(Genre)] = Genre;
+        _albumLoaded[nameof(Year)] = Year;
+        _albumLoaded[nameof(TrackNumber)] = TrackNumber;
+        _albumLoaded[nameof(TrackCount)] = TrackCount;
+        _albumLoaded[nameof(DiscNumber)] = DiscNumber;
+        _albumLoaded[nameof(DiscCount)] = DiscCount;
+        _albumLoaded[nameof(Bpm)] = Bpm;
+        _albumLoaded[nameof(Comment)] = Comment;
+        _loadedIsCompilation = IsCompilation;
+        _loadedShowComposerInAllViews = ShowComposerInAllViews;
+    }
+
+    private bool AlbumFieldChanged(string key, string current)
+        => current != _albumLoaded.GetValueOrDefault(key, string.Empty);
+
+    private string Watermark(string key) => _mixedFields.Contains(key) ? "Mixed" : string.Empty;
+
+    // ── Rename-by-pattern (multi-select) ──
+    partial void OnRenamePatternChanged(string value) => RebuildRenamePreview();
+
+    private void RebuildRenamePreview()
+    {
+        RenamePreviews.Clear();
+        if (!_multiSelect || _albumTracks == null) return;
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var t in _albumTracks.Take(8))
+        {
+            var newPath = ComputeRenamedPath(t, out var conflict, seen);
+            RenamePreviews.Add(new RenamePreview
+            {
+                OriginalName = Path.GetFileName(t.FilePath),
+                NewName = newPath != null ? Path.GetFileName(newPath) : "(empty pattern)",
+                Conflict = conflict,
+            });
+        }
+    }
+
+    private string? ComputeRenamedPath(Track t, out bool conflict, HashSet<string>? seenInBatch = null)
+    {
+        conflict = false;
+        var expanded = TitleFormatter.Expand(RenamePattern, t, sanitizeForFilename: true);
+        if (string.IsNullOrWhiteSpace(expanded)) return null;
+
+        var dir = Path.GetDirectoryName(t.FilePath) ?? string.Empty;
+        var ext = Path.GetExtension(t.FilePath);
+        var newPath = Path.Combine(dir, expanded + ext);
+
+        if (string.Equals(newPath, t.FilePath, StringComparison.OrdinalIgnoreCase)) return newPath;
+        if (File.Exists(newPath)) conflict = true;
+        if (seenInBatch != null && !seenInBatch.Add(newPath.ToLowerInvariant())) conflict = true;
+        return newPath;
+    }
+
+    /// <summary>
+    /// Applies the album-scoped Details edits: only fields the user changed are
+    /// fanned out to every track of the album, so untouched ("Mixed") and
+    /// per-track fields (titles, track numbers, …) keep their own values.
+    /// </summary>
+    private void ApplyAlbumScopedDetails()
+    {
+        if (_albumTracks == null || _albumTracks.Count == 0) return;
+
+        bool artistChg = AlbumFieldChanged(nameof(Artist), Artist);
+        bool albumChg = AlbumFieldChanged(nameof(Album), Album);
+        bool albumArtistChg = AlbumFieldChanged(nameof(AlbumArtist), AlbumArtist);
+        bool composerChg = AlbumFieldChanged(nameof(Composer), Composer);
+        bool groupingChg = AlbumFieldChanged(nameof(Grouping), Grouping);
+        bool genreChg = AlbumFieldChanged(nameof(Genre), Genre);
+        bool yearChg = AlbumFieldChanged(nameof(Year), Year);
+        bool trackNumberChg = AlbumFieldChanged(nameof(TrackNumber), TrackNumber);
+        bool trackCountChg = AlbumFieldChanged(nameof(TrackCount), TrackCount);
+        bool discNumberChg = AlbumFieldChanged(nameof(DiscNumber), DiscNumber);
+        bool discCountChg = AlbumFieldChanged(nameof(DiscCount), DiscCount);
+        bool bpmChg = AlbumFieldChanged(nameof(Bpm), Bpm);
+        bool commentChg = AlbumFieldChanged(nameof(Comment), Comment);
+        bool compChg = IsCompilation != _loadedIsCompilation;
+        bool showComposerChg = ShowComposerInAllViews != _loadedShowComposerInAllViews;
+
+        int yearVal = int.TryParse(Year, out var yr) ? yr : 0;
+        int trackNumberVal = int.TryParse(TrackNumber, out var tn) ? tn : 0;
+        int trackCountVal = int.TryParse(TrackCount, out var tc) ? tc : 0;
+        int discNumberVal = int.TryParse(DiscNumber, out var dn) ? Math.Max(1, dn) : 1;
+        int discCountVal = int.TryParse(DiscCount, out var dc) ? Math.Max(1, dc) : 1;
+        int bpmVal = int.TryParse(Bpm, out var bp) ? Math.Max(0, bp) : 0;
+
+        foreach (var t in _albumTracks)
+        {
+            if (artistChg) t.Artist = Artist;
+            if (albumArtistChg) t.AlbumArtist = AlbumArtist;
+            if (albumChg) t.Album = Album;
+            if (composerChg) t.Composer = Composer;
+            if (groupingChg) t.Grouping = Grouping;
+            if (genreChg) t.Genre = Genre;
+            if (yearChg) t.Year = yearVal;
+            if (trackNumberChg) t.TrackNumber = trackNumberVal;
+            if (trackCountChg) t.TrackCount = trackCountVal;
+            if (discNumberChg) t.DiscNumber = discNumberVal;
+            if (discCountChg) t.DiscCount = discCountVal;
+            if (bpmChg) t.Bpm = bpmVal;
+            if (commentChg) t.Comment = Comment;
+            if (compChg) t.IsCompilation = IsCompilation;
+            if (showComposerChg) t.ShowComposerInAllViews = ShowComposerInAllViews;
+            if (albumChg || albumArtistChg) t.AlbumId = Track.ComputeAlbumId(t.AlbumArtist, t.Album);
+        }
     }
 
     private readonly ITunesArtworkService? _itunes;
@@ -412,6 +642,9 @@ public partial class MetadataViewModel : ViewModelBase
 
     private void LoadArtwork()
     {
+        // Multi-select can span albums; don't show one album's art as if shared.
+        if (_multiSelect) { HasArtwork = false; return; }
+
         var artPath = _persistence.GetArtworkPath(_track.AlbumId);
 
         byte[]? cachedData = null;
@@ -1016,34 +1249,44 @@ public partial class MetadataViewModel : ViewModelBase
     [RelayCommand]
     private async Task Save()
     {
-        // Apply Details changes to the track model
-        _track.Title = Title;
-        _track.Artist = Artist;
-        _track.AlbumArtist = AlbumArtist;
-        _track.Album = Album;
-        _track.Genre = Genre;
-        _track.Composer = Composer;
-        _track.TrackNumber = int.TryParse(TrackNumber, out var tn) ? tn : 0;
-        _track.TrackCount = int.TryParse(TrackCount, out var tc) ? tc : 0;
-        _track.DiscNumber = int.TryParse(DiscNumber, out var dn) ? Math.Max(1, dn) : 1;
-        _track.DiscCount = int.TryParse(DiscCount, out var dc) ? Math.Max(1, dc) : 1;
-        _track.Bpm = int.TryParse(Bpm, out var bp) ? Math.Max(0, bp) : 0;
-        _track.Year = int.TryParse(Year, out var yr) ? yr : 0;
-        _track.IsCompilation = IsCompilation;
-        _track.ShowComposerInAllViews = ShowComposerInAllViews;
-        _track.Grouping = Grouping;
-        _track.UseWorkAndMovement = UseWorkAndMovement;
-        _track.WorkName = WorkName;
-        _track.MovementName = MovementName;
-        _track.MovementNumber = int.TryParse(MovementNumber, out var mn) ? Math.Max(0, mn) : 0;
-        _track.MovementCount = int.TryParse(MovementCount, out var mc) ? Math.Max(0, mc) : 0;
-        _track.PlayCount = int.TryParse(PlayCount, out var pc) ? Math.Max(0, pc) : 0;
-        _track.Comment = Comment;
-        _track.Copyright = Copyright ?? string.Empty;
-
-        // Recalculate AlbumId if album or artist changed
         var oldAlbumId = _track.AlbumId;
-        _track.AlbumId = Track.ComputeAlbumId(_track.AlbumArtist, _track.Album);
+
+        if (!_albumScoped)
+        {
+            // Apply Details changes to the track model
+            _track.Title = Title;
+            _track.Artist = Artist;
+            _track.AlbumArtist = AlbumArtist;
+            _track.Album = Album;
+            _track.Genre = Genre;
+            _track.Composer = Composer;
+            _track.TrackNumber = int.TryParse(TrackNumber, out var tn) ? tn : 0;
+            _track.TrackCount = int.TryParse(TrackCount, out var tc) ? tc : 0;
+            _track.DiscNumber = int.TryParse(DiscNumber, out var dn) ? Math.Max(1, dn) : 1;
+            _track.DiscCount = int.TryParse(DiscCount, out var dc) ? Math.Max(1, dc) : 1;
+            _track.Bpm = int.TryParse(Bpm, out var bp) ? Math.Max(0, bp) : 0;
+            _track.Year = int.TryParse(Year, out var yr) ? yr : 0;
+            _track.IsCompilation = IsCompilation;
+            _track.ShowComposerInAllViews = ShowComposerInAllViews;
+            _track.Grouping = Grouping;
+            _track.UseWorkAndMovement = UseWorkAndMovement;
+            _track.WorkName = WorkName;
+            _track.MovementName = MovementName;
+            _track.MovementNumber = int.TryParse(MovementNumber, out var mn) ? Math.Max(0, mn) : 0;
+            _track.MovementCount = int.TryParse(MovementCount, out var mc) ? Math.Max(0, mc) : 0;
+            _track.PlayCount = int.TryParse(PlayCount, out var pc) ? Math.Max(0, pc) : 0;
+            _track.Comment = Comment;
+            _track.Copyright = Copyright ?? string.Empty;
+
+            // Recalculate AlbumId if album or artist changed
+            _track.AlbumId = Track.ComputeAlbumId(_track.AlbumArtist, _track.Album);
+        }
+        else
+        {
+            // Album-scoped: fan out only the Details fields the user actually
+            // changed to every album track (per-track values are preserved).
+            ApplyAlbumScopedDetails();
+        }
 
         // Apply Lyrics (plain + synced) — defensively strip timestamps from plain
         var plainToWrite = HasCustomLyrics
@@ -1084,8 +1327,17 @@ public partial class MetadataViewModel : ViewModelBase
             }
         }
 
-        // Write metadata to file tags (plain lyrics go to USLT tag)
-        _metadata.WriteTrackMetadata(_track);
+        // Write metadata to file tags (plain lyrics go to USLT tag). Album-scoped
+        // edits must be written to every track, not just Tracks[0].
+        if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
+        {
+            foreach (var t in _albumTracks)
+                _metadata.WriteTrackMetadata(t);
+        }
+        else
+        {
+            _metadata.WriteTrackMetadata(_track);
+        }
 
         // Write advanced fields (sort, people, identifiers, custom tags)
         if (!_albumScoped && _originalAdvancedFields != null)
@@ -1122,9 +1374,27 @@ public partial class MetadataViewModel : ViewModelBase
         // Handle artwork changes
         if (_newArtworkData != null)
         {
-            _metadata.WriteAlbumArt(_track.FilePath, _newArtworkData);
-            _persistence.SaveArtwork(_track.AlbumId, _newArtworkData);
-            ArtworkCache.Invalidate(_persistence.GetArtworkPath(_track.AlbumId));
+            if (_multiSelect && _albumTracks != null)
+            {
+                // Apply the chosen image to every selected track and refresh each
+                // affected album's cached cover.
+                foreach (var albumId in _albumTracks.Select(t => t.AlbumId).Distinct())
+                {
+                    _persistence.SaveArtwork(albumId, _newArtworkData);
+                    ArtworkCache.Invalidate(_persistence.GetArtworkPath(albumId));
+                }
+                foreach (var t in _albumTracks)
+                {
+                    try { _metadata.WriteAlbumArt(t.FilePath, _newArtworkData); } catch { }
+                    t.AlbumArtworkPath = null;
+                }
+            }
+            else
+            {
+                _metadata.WriteAlbumArt(_track.FilePath, _newArtworkData);
+                _persistence.SaveArtwork(_track.AlbumId, _newArtworkData);
+                ArtworkCache.Invalidate(_persistence.GetArtworkPath(_track.AlbumId));
+            }
         }
         else if (_artworkRemoved)
         {
@@ -1184,6 +1454,23 @@ public partial class MetadataViewModel : ViewModelBase
                 {
                     try { File.Move(oldP, _persistence.GetAnimatedCoverPath(_track.AlbumId, null, ext), true); }
                     catch { }
+                }
+            }
+        }
+
+        // Rename files by pattern (multi-select only). Done after tag writes so the
+        // new name can reflect just-applied tags.
+        if (_multiSelect && ApplyRename && _albumTracks != null)
+        {
+            var renameSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var t in _albumTracks)
+            {
+                var newPath = ComputeRenamedPath(t, out var conflict, renameSeen);
+                if (newPath != null && !conflict
+                    && !string.Equals(newPath, t.FilePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    try { File.Move(t.FilePath, newPath); t.FilePath = newPath; }
+                    catch { /* Non-fatal — skip this file */ }
                 }
             }
         }

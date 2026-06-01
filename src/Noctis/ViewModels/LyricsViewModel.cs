@@ -1072,6 +1072,52 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Writes freshly fetched online lyrics to sidecar files next to the track and
+    /// updates the in-memory track fields, so the Metadata editor's Plain/Synced
+    /// tabs reflect them immediately and persistently. Best-effort; never throws.
+    /// </summary>
+    private void PersistOnlineLyricsToSidecar(LrcLibResult result)
+    {
+        var track = _currentTrack;
+        if (track == null) return;
+
+        var synced = result.SyncedLyrics;
+        var plain = !string.IsNullOrWhiteSpace(result.PlainLyrics)
+            ? result.PlainLyrics
+            : LyricsTextHelper.StripTimestamps(synced);
+
+        if (string.IsNullOrWhiteSpace(synced) && string.IsNullOrWhiteSpace(plain))
+            return;
+
+        // Update the in-memory track first — the Metadata window reads these fields
+        // before falling back to sidecars, so an already-open editor reflects them.
+        track.Lyrics = plain ?? string.Empty;
+        track.SyncedLyrics = synced ?? string.Empty;
+
+        var trackPath = track.FilePath;
+        if (string.IsNullOrWhiteSpace(trackPath)) return;
+
+        // Sidecar writes run off the UI thread and are best-effort.
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(synced))
+                {
+                    var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
+                    File.WriteAllText(lrcPath, NormalizeLyricsForLrc(synced), new UTF8Encoding(false));
+                }
+                if (!string.IsNullOrWhiteSpace(plain))
+                {
+                    var txtPath = Path.ChangeExtension(trackPath, ".txt");
+                    File.WriteAllText(txtPath, NormalizeLyricsForLrc(plain), new UTF8Encoding(false));
+                }
+            }
+            catch { /* best effort — sidecar write is non-fatal */ }
+        });
+    }
+
+    /// <summary>
     /// Removes the currently displayed online lyrics: clears the cached file,
     /// resets lyrics state, and shows the search button so the user can retry.
     /// </summary>
@@ -1261,6 +1307,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             if (!string.IsNullOrWhiteSpace(lrcToCache))
                 _ = SaveLyricsToCacheAsync(_currentTrack.Id, lrcToCache);
         }
+
+        // Persist to sidecars + the in-memory track so any found lyrics (manual or
+        // auto search) show up and stay in the Metadata editor's Plain/Synced tabs
+        // without requiring a separate "Save to File" click.
+        PersistOnlineLyricsToSidecar(result);
 
         // Start sync timer if synced lyrics and playing
         if (_hasSyncedLyrics && IsSyncTabSelected && _player.State == Models.PlaybackState.Playing)

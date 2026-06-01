@@ -97,11 +97,11 @@ jobs:
           cd scoop-bucket
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- bucket/noctis.json; then
+          git add bucket/noctis.json
+          if git diff --cached --quiet -- bucket/noctis.json; then
             echo "No change to noctis.json; skipping."
             exit 0
           fi
-          git add bucket/noctis.json
           git commit -m "noctis: update to ${{ needs.resolve.outputs.version }}"
           git push
 

@@ -13,6 +13,10 @@ public partial class NavItem : ObservableObject
     /// <summary>Display label shown in the sidebar.</summary>
     [ObservableProperty] private string _label = string.Empty;
 
+    /// <summary>When true, the sidebar shows a small accent dot on this item
+    /// (used to flag an available app update on the Settings entry).</summary>
+    [ObservableProperty] private bool _showBadge;
+
     /// <summary>Icon glyph character or path identifier.</summary>
     public string IconGlyph { get; set; } = string.Empty;
 

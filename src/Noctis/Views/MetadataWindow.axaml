@@ -91,6 +91,19 @@
             <Setter Property="CornerRadius" Value="999" />
         </Style>
 
+        <!-- Pill-shaped hover/selection highlight for dropdown items, matching the
+             rounded menu highlight used elsewhere. Inset via margin so the pill
+             doesn't bleed to the popup edges, and round the background presenter. -->
+        <Style Selector="ComboBoxItem">
+            <Setter Property="Margin" Value="4,1" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="ComboBoxItem /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+
         <Style Selector="TabItem">
             <Setter Property="Padding" Value="0,0,0,6" />
             <Setter Property="Margin" Value="0,0,28,0" />
@@ -253,7 +266,7 @@
                 Width="700" Height="700"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                BoxShadow="0 8 32 0 #60000000">
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
 
     <Grid Margin="0" RowDefinitions="Auto,*,Auto">
 
@@ -273,7 +286,13 @@
                                    Opacity="0.35"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
-                                   IsVisible="{Binding !HasArtwork}" />
+                                   IsVisible="{Binding ShowAlbumArtPlaceholderText}" />
+                        <PathIcon Data="{StaticResource SongsIcon}"
+                                  Width="40" Height="40"
+                                  Opacity="0.4"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  IsVisible="{Binding IsMultiSelect}" />
                         <Image Source="{Binding ArtworkPreview}"
                                Stretch="UniformToFill"
                                IsVisible="{Binding HasArtwork}" />
@@ -400,8 +419,8 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="16" Margin="24,16,24,24">
-                        <!-- Title -->
-                        <StackPanel Spacing="4">
+                        <!-- Title (per-track; hidden when editing a whole album) -->
+                        <StackPanel Spacing="4" IsVisible="{Binding ShowTrackFields}">
                             <TextBlock Text="title" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Title}" />
                         </StackPanel>
@@ -437,7 +456,7 @@
                         <!-- Album -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="album" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Album}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Album}" Watermark="{Binding AlbumWatermark}" />
                         </StackPanel>
 
                         <!-- Album is compilation -->
@@ -448,17 +467,17 @@
                         <!-- Artist -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="artist" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Artist}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Artist}" Watermark="{Binding ArtistWatermark}" />
                         </StackPanel>
 
                         <!-- Album Artist -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="album artist" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding AlbumArtist}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding AlbumArtist}" Watermark="{Binding AlbumArtistWatermark}" />
                         </StackPanel>
 
-                        <!-- Performer -->
-                        <StackPanel Spacing="4">
+                        <!-- Performer (per-track; hidden when editing a whole album) -->
+                        <StackPanel Spacing="4" IsVisible="{Binding ShowTrackFields}">
                             <TextBlock Text="performer" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field" Text="{Binding Performer}" />
                         </StackPanel>
@@ -466,7 +485,7 @@
                         <!-- Composer -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="composer" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Composer}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Composer}" Watermark="{Binding ComposerWatermark}" />
                         </StackPanel>
 
                         <!-- Show composer in all views -->
@@ -477,7 +496,7 @@
                         <!-- Grouping -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="grouping" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Grouping}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Grouping}" Watermark="{Binding GroupingWatermark}" />
                         </StackPanel>
 
                         <!-- Genre -->
@@ -485,51 +504,39 @@
                             <TextBlock Text="genre" FontSize="12" Opacity="0.5" />
                             <ComboBox x:Name="GenreCombo"
                                       Classes="metadata-info-field"
+                                      FontWeight="Normal"
                                       ItemsSource="{Binding GenreOptions}"
                                       SelectedItem="{Binding Genre}"
-                                      HorizontalAlignment="Stretch">
-                                <ComboBox.SelectionBoxItemTemplate>
-                                     <DataTemplate>
-                                         <presenters:TextPresenter Text="{Binding}"
-                                                                   FontWeight="Normal"
-                                                                   VerticalAlignment="Center" />
-                                     </DataTemplate>
-                                </ComboBox.SelectionBoxItemTemplate>
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <presenters:TextPresenter Text="{Binding}"
-                                                                  FontWeight="Normal" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
+                                      PlaceholderText="{Binding GenreWatermark}"
+                                      HorizontalAlignment="Stretch" />
                         </StackPanel>
 
                         <!-- Year -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="year" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Year}" Width="120" HorizontalAlignment="Left" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Year}" Watermark="{Binding YearWatermark}" Width="120" HorizontalAlignment="Left" />
                         </StackPanel>
 
                         <!-- Track number -->
                         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                             <TextBlock Text="track" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Width="36" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding TrackNumber}" Width="80" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding TrackNumber}" Watermark="{Binding TrackNumberWatermark}" Width="80" />
                             <TextBlock Text="of" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding TrackCount}" Width="80" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding TrackCount}" Watermark="{Binding TrackCountWatermark}" Width="80" />
                         </StackPanel>
 
                         <!-- Disc number -->
                         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                             <TextBlock Text="disc" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Width="36" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding DiscNumber}" Width="80" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding DiscNumber}" Watermark="{Binding DiscNumberWatermark}" Width="80" />
                             <TextBlock Text="of" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding DiscCount}" Width="80" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding DiscCount}" Watermark="{Binding DiscCountWatermark}" Width="80" />
                         </StackPanel>
 
                         <!-- BPM -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="bpm" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Bpm}" Width="120" HorizontalAlignment="Left" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Bpm}" Watermark="{Binding BpmWatermark}" Width="120" HorizontalAlignment="Left" />
                         </StackPanel>
 
                         <!-- Play Count -->
@@ -549,7 +556,7 @@
                         <StackPanel Spacing="4">
                             <TextBlock Text="comment" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field"
-                                     Text="{Binding Comment}" />
+                                     Text="{Binding Comment}" Watermark="{Binding CommentWatermark}" />
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
@@ -919,7 +926,7 @@
             </TabItem>
 
             <!-- ═══════════ ANIMATED ARTWORK TAB ═══════════ -->
-            <TabItem Header="Animated Artwork" FontSize="14" FontWeight="SemiBold">
+            <TabItem Header="Animated Artwork" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowAnimatedArtworkTab}">
                 <DockPanel Margin="24,16">
                     <StackPanel DockPanel.Dock="Bottom"
                                 HorizontalAlignment="Center"
@@ -1211,31 +1218,21 @@
             <TabItem Header="Options" FontSize="14" FontWeight="SemiBold">
                 <StackPanel Margin="24,14" Spacing="10">
 
-                    <!-- Media Kind (locked to Music) -->
+                    <!-- Media Kind (Music, Podcast, Audiobook, ...) -->
                     <StackPanel Spacing="2">
                         <TextBlock Text="media kind" FontSize="12" Opacity="0.5" />
-                        <TextBlock Text="Music" FontSize="14" FontWeight="SemiBold" />
+                        <ComboBox Classes="metadata-info-field"
+                                  ItemsSource="{x:Static vm:MetadataViewModel.AvailableMediaKinds}"
+                                  SelectedItem="{Binding MediaKind}"
+                                  HorizontalAlignment="Left"
+                                  Width="180" />
                     </StackPanel>
 
                     <Separator Opacity="0.15" Margin="0,2" />
 
                     <!-- Release type override (Auto, Album, Single, EP, ...) -->
                     <StackPanel Spacing="2">
-                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <TextBlock Text="release type" FontSize="12" Opacity="0.5" VerticalAlignment="Center"/>
-                            <Border Background="#33E5484D"
-                                    BorderBrush="#E5484D"
-                                    BorderThickness="1"
-                                    CornerRadius="999"
-                                    Padding="8,2"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="BETA · EXPERIMENTAL FEATURE"
-                                           FontSize="9"
-                                           FontWeight="Bold"
-                                           Foreground="#FF8A8E"
-                                           LetterSpacing="0.5"/>
-                            </Border>
-                        </StackPanel>
+                        <TextBlock Text="release type" FontSize="12" Opacity="0.5" />
                         <ComboBox Classes="metadata-info-field"
                                   ItemsSource="{x:Static vm:MetadataViewModel.AvailableReleaseTypes}"
                                   SelectedItem="{Binding ReleaseTypeOverride}"
@@ -1349,6 +1346,40 @@
                                   SelectedItem="{Binding SelectedEqPreset}"
                                   HorizontalAlignment="Left"
                                   Width="104" />
+                    </StackPanel>
+
+                    <!-- Rename by pattern (multi-select only) -->
+                    <StackPanel Spacing="8" IsVisible="{Binding ShowRenameSection}">
+                        <Separator Opacity="0.15" Margin="0,2" />
+                        <CheckBox Classes="metadata-pill-checkbox"
+                                  Content="Rename files by pattern"
+                                  IsChecked="{Binding ApplyRename}" />
+                        <TextBlock Text="Tokens: %artist% %albumartist% %album% %title% %tracknumber% %tracknumber2% %discnumber% %year% %genre% %composer%"
+                                   FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
+                        <TextBox Classes="metadata-info-field"
+                                 Text="{Binding RenamePattern}"
+                                 IsEnabled="{Binding ApplyRename}" />
+                        <Border Background="#10FFFFFF" CornerRadius="8" Padding="10"
+                                IsVisible="{Binding ApplyRename}">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Preview (first 8 tracks)" FontSize="11" Opacity="0.6" Margin="0,0,0,4" />
+                                <ItemsControl ItemsSource="{Binding RenamePreviews}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:MetadataViewModel+RenamePreview">
+                                            <Grid ColumnDefinitions="*,Auto,*,Auto" Margin="0,1">
+                                                <TextBlock Grid.Column="0" Text="{Binding OriginalName}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                                                <TextBlock Grid.Column="1" Text="→" FontSize="11" Opacity="0.5" Margin="0,0,8,0" />
+                                                <TextBlock Grid.Column="2" Text="{Binding NewName}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="3" Text="conflict" FontSize="10"
+                                                           Foreground="#E74856" FontWeight="SemiBold"
+                                                           Margin="8,0,0,0"
+                                                           IsVisible="{Binding Conflict}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                 </StackPanel>

@@ -41,7 +41,7 @@
                 MaxHeight="600"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                BoxShadow="0 8 32 0 #60000000">
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
             <DockPanel Margin="0">
 
                 <!-- Bottom bar: Cancel -->

@@ -25,6 +25,17 @@
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="Padding" Value="14,8" />
         </Style>
+        <!-- Pill-shaped hover/selection highlight for dropdown items, matching the
+             rounded menu highlight used elsewhere. Margin insets each row so the pill
+             floats; CornerRadius on the content presenter clips it to a pill. -->
+        <Style Selector="ComboBox.pill ComboBoxItem">
+            <Setter Property="Margin" Value="4,1" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="ComboBox.pill ComboBoxItem /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
     </Window.Styles>
 
     <Border Background="#50000000">
@@ -36,7 +47,7 @@
                 Margin="0,50"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Stretch"
-                BoxShadow="0 8 32 0 #60000000">
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
             <DockPanel>
                 <!-- Header -->
                 <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
@@ -46,19 +57,6 @@
                     <TextBlock Text="Transcode selected tracks to another audio format."
                                FontSize="12" Opacity="0.6"
                                HorizontalAlignment="Center" />
-                    <Border Background="#33E5484D"
-                            BorderBrush="#E5484D"
-                            BorderThickness="1"
-                            CornerRadius="999"
-                            Padding="8,2"
-                            HorizontalAlignment="Center"
-                            Margin="0,6,0,0">
-                        <TextBlock Text="BETA · EXPERIMENTAL FEATURE"
-                                   FontSize="9"
-                                   FontWeight="Bold"
-                                   Foreground="#FF8A8E"
-                                   LetterSpacing="0.5"/>
-                    </Border>
                 </StackPanel>
 
                 <!-- Footer -->
@@ -77,7 +75,7 @@
                                 Margin="0,0,8,0"
                                 Cursor="Hand" />
                         <Button Grid.Column="2"
-                                Content="Start"
+                                Content="Convert"
                                 Command="{Binding StartCommand}"
                                 IsEnabled="{Binding !IsConverting}"
                                 Width="100" Padding="0,8"
@@ -110,6 +108,14 @@
                             <ComboBox Grid.Column="1" Classes="pill"
                                       ItemsSource="{Binding BitrateOptions}"
                                       SelectedItem="{Binding SelectedBitrate}"
+                                      HorizontalAlignment="Stretch" />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="140,*" IsVisible="{Binding BitDepthApplies}">
+                            <TextBlock Grid.Column="0" Text="Bit depth" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" Classes="pill"
+                                      ItemsSource="{Binding BitDepthOptions}"
+                                      SelectedItem="{Binding SelectedBitDepth}"
                                       HorizontalAlignment="Stretch" />
                         </Grid>
 
@@ -146,6 +152,7 @@
                             <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding CopyTags}" Content="Copy tags from source" />
                             <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding EmbedArtwork}" Content="Embed source artwork" />
                             <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding OverwriteExisting}" Content="Overwrite existing output files" />
+                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding AddToLibrary}" Content="Add to library (show in app)" />
                         </StackPanel>
 
                         <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />

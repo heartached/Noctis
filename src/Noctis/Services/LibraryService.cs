@@ -29,7 +29,7 @@ public class LibraryService : ILibraryService
     // Lazy-built lookup from artist name → that artist's albums. Avoids an O(N)
     // LINQ scan in GetAlbumsByArtist (hot on AlbumDetail open and ArtistDetail).
     // Invalidated to null whenever _albums is reassigned; the next reader rebuilds.
-    private Dictionary<string, List<Album>>? _albumsByArtistIndex;
+    private volatile Dictionary<string, List<Album>>? _albumsByArtistIndex;
     private readonly object _albumsByArtistLock = new();
 
     public IReadOnlyList<Track> Tracks => _tracks;
@@ -369,7 +369,9 @@ public class LibraryService : ILibraryService
             }
         }
 
-        return index.TryGetValue(artistName, out var albums) ? albums : (IReadOnlyList<Album>)Array.Empty<Album>();
+        // Return a copy: the cached list is shared per-artist state and must not be
+        // mutated (or aliased into mutation) by callers.
+        return index.TryGetValue(artistName, out var albums) ? albums.ToArray() : Array.Empty<Album>();
     }
 
     public async Task RemoveTrackAsync(Guid id)
@@ -650,7 +652,9 @@ public class LibraryService : ILibraryService
         _artists = artists;
         _trackIndex = trackIndex;
         _albumIndex = albumIndex;
-        _albumsByArtistIndex = null; // invalidate; next GetAlbumsByArtist rebuilds
+        // Invalidate under the lock so it can't race a concurrent rebuild in
+        // GetAlbumsByArtist and leave a stale index behind; next reader rebuilds.
+        lock (_albumsByArtistLock) { _albumsByArtistIndex = null; }
 
         // Persist the computed indexes so next startup can skip this rebuild
         _ = SaveIndexCacheAsync();
@@ -1166,7 +1170,9 @@ public class LibraryService : ILibraryService
             _artists = cache.Artists;
             _trackIndex = trackIndex;
             _albumIndex = albumIndex;
-            _albumsByArtistIndex = null; // invalidate; next GetAlbumsByArtist rebuilds
+            // Invalidate under the lock so it can't race a concurrent rebuild in
+            // GetAlbumsByArtist and leave a stale index behind; next reader rebuilds.
+            lock (_albumsByArtistLock) { _albumsByArtistIndex = null; }
 
             return true;
         }

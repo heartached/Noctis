@@ -271,6 +271,9 @@ public partial class App : Application
             ["ToggleSwitchFillOnPressed"]          = new SolidColorBrush(dark1),
             ["ToggleSwitchFillOnDragging"]         = new SolidColorBrush(light1),
             ["IslandIconAccent"]                   = new SolidColorBrush(color),
+            // Slider fill/thumb tracks the accent so every slider (seek, volume,
+            // volume-adjust, pre-amp, island) is uniformly accent-coloured.
+            ["IslandSliderFilled"]                 = new SolidColorBrush(color),
 
             // Accent-tinted hover/press for menu items so dropdowns match the active accent
             ["MenuFlyoutItemBackgroundPointerOver"]    = new SolidColorBrush(color, 0.22),

@@ -187,19 +187,23 @@
             <Setter Property="Padding" Value="16,10"/>
         </Style>
 
-        <!-- Small beta badge -->
-        <Style Selector="Border.beta-badge">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+        <!-- Social links (GitHub / Discord) in the About card: brand-coloured icon,
+             brighter label, and a soft brand-tinted pill on hover. -->
+        <Style Selector="Button.social-link">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,6"/>
             <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Padding" Value="7,2"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
         </Style>
-        <Style Selector="Border.beta-badge TextBlock">
-            <Setter Property="Text" Value="BETA"/>
-            <Setter Property="FontSize" Value="9"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-            <Setter Property="LetterSpacing" Value="0.5"/>
+        <Style Selector="Button.social-link /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Button.social-discord:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#265865F2"/>
+        </Style>
+        <Style Selector="Button.social-github:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#26F1C40F"/>
         </Style>
 
         <!-- Pill ComboBox -->
@@ -281,12 +285,60 @@
         <Style Selector="ComboBox.pill-combo:pointerover /template/ Border#Background">
             <Setter Property="Background" Value="{DynamicResource ButtonBackground}"/>
         </Style>
-        <!-- Selected item highlight: #E74856 -->
+        <!-- Selected item highlight. Foreground tracks the accent's contrast colour so the
+             label stays readable even when the accent is white (otherwise white-on-white). -->
         <Style Selector="ComboBox.pill-combo ComboBoxItem:selected /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
         </Style>
         <Style Selector="ComboBox.pill-combo ComboBoxItem:selected:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+        <!-- Pill-shaped hover/selection highlight in the dropdown list, matching the
+             rounded MenuItems in the page options menu. Margin insets each row so the
+             highlight floats; CornerRadius on the content presenter clips it to a pill. -->
+        <Style Selector="ComboBox.pill-combo ComboBoxItem">
+            <Setter Property="Margin" Value="4,1"/>
+            <Setter Property="Padding" Value="11,6"/>
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="ComboBox.pill-combo ComboBoxItem /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+
+        <!-- Pill dropdown items for plain (default-template) pill combos, e.g. ReplayGain Mode. -->
+        <Style Selector="ComboBox.pill-list ComboBoxItem">
+            <Setter Property="Margin" Value="4,1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="ComboBox.pill-list ComboBoxItem /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+
+        <!-- Token field: identical treatment to the metadata editor's text fields. The inner
+             PART_BorderElement gets the same CornerRadius so the rounded corners render clean
+             (the earlier square-corner artifact came from leaving PART_BorderElement unstyled). -->
+        <Style Selector="TextBox.metadata-info-field">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
+        </Style>
+        <Style Selector="TextBox.metadata-info-field /template/ Border#PART_BorderElement">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+        </Style>
+        <Style Selector="TextBox.metadata-info-field:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="TextBox.metadata-info-field:focus-within /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
         </Style>
         <Style Selector="ComboBox.transition-pill">
             <Setter Property="Width" Value="132"/>
@@ -428,11 +480,24 @@
         <Style Selector="Slider.accent-vertical:pointerover /template/ Thumb">
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
+
+        <!-- Pre-amp pill slider: the real Slider is transparent and only handles hit
+             testing; the visible pill track/fill/thumb are drawn on a Canvas and driven
+             from code-behind (PillSliderVisualHelper), matching the metadata volume slider. -->
+        <Style Selector="Slider.preamp-horizontal">
+            <Setter Property="Orientation" Value="Horizontal"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource IslandSliderFilled}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="*">
     <ScrollViewer x:Name="SettingsScrollViewer"
                   Grid.Row="0"
+                  Focusable="True"
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="28,8,40,28" HorizontalAlignment="Stretch" Spacing="4">
@@ -481,8 +546,153 @@
                              Background="Transparent"
                              BorderThickness="0" Padding="0"
                              MinHeight="0"
+                             KeyDown="OnProfileNameKeyDown"
                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                 </Grid>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- ABOUT (compact, surfaced at top for quick access)  -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <Border Classes="setting-card" Padding="18,16" Margin="0,0,0,16">
+                <StackPanel Spacing="10">
+                    <!-- Row 1: logo + version on left, update button on right -->
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+                            <Border Width="40" Height="40" CornerRadius="20"
+                                    ClipToBounds="True">
+                                <Image Source="avares://Noctis/Assets/Icons/Noctis%20Logo.png"
+                                       Stretch="UniformToFill"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="Noctis" FontSize="16" FontWeight="Bold"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding AppVersion}"
+                                               FontSize="12" Opacity="0.5"
+                                               VerticalAlignment="Center"/>
+                                    <Border IsVisible="{Binding IsLatestPrerelease}"
+                                            Background="#E74856"
+                                            CornerRadius="9"
+                                            Padding="8,2"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="Pre-release"
+                                                   FontSize="10"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="White"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Action buttons (top-right) -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Button Command="{Binding CheckForUpdateCommand}"
+                                    Classes="pill"
+                                    VerticalAlignment="Center"
+                                    Padding="16,6"
+                                    Background="#E74856"
+                                    IsVisible="{Binding ShowCheckForUpdatesButton}">
+                                <TextBlock Text="Check for Updates" FontSize="12" Foreground="White"/>
+                            </Button>
+
+                            <!-- Update Available button (replaces Check when a new release is detected) -->
+                            <Button Command="{Binding DownloadUpdateCommand}"
+                                    Classes="pill"
+                                    VerticalAlignment="Center"
+                                    Padding="16,6"
+                                    Background="#E74856"
+                                    IsVisible="{Binding IsUpdateAvailable}">
+                                <TextBlock Text="Update available"
+                                           FontSize="12" Foreground="White" VerticalAlignment="Center"/>
+                            </Button>
+
+                            <!-- Install & Restart button (replaces Update when ready) -->
+                            <Button Command="{Binding InstallUpdateCommand}"
+                                    Classes="pill"
+                                    VerticalAlignment="Center"
+                                    Padding="16,6"
+                                    Background="#E74856"
+                                    IsVisible="{Binding IsReadyToInstall}">
+                                <TextBlock Text="Install &amp; Restart" FontSize="12" Foreground="White"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Update status area -->
+                    <StackPanel Orientation="Horizontal" Spacing="12"
+                                IsVisible="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock Text="{Binding UpdateStatusText}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12"
+                                IsVisible="{Binding IsDownloadingUpdate}">
+                        <ProgressBar Minimum="0" Maximum="100"
+                                     Value="{Binding DownloadProgress}"
+                                     Height="4" CornerRadius="2"
+                                     VerticalAlignment="Center"
+                                     MinWidth="200" />
+                        <Button Command="{Binding CancelUpdateCommand}"
+                                Classes="pill"
+                                Padding="16,6"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Cancel" FontSize="12" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Row 2: GitHub + Discord (brand-coloured icons, hover pill) -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="-10,0,0,2">
+                        <Button Classes="social-link social-github"
+                                Command="{Binding OpenGitHubCommand}"
+                                HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource StarIcon}"
+                                          Width="14" Height="14"
+                                          Foreground="#F1C40F" />
+                                <TextBlock Text="Star on GitHub"
+                                           FontSize="12" Opacity="0.85"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="social-link social-discord"
+                                Command="{Binding OpenDiscordCommand}"
+                                Margin="-6,0,0,0"
+                                HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource DiscordIcon}"
+                                          Width="14" Height="14"
+                                          Foreground="#5865F2" />
+                                <TextBlock Text="Join Discord"
+                                           FontSize="12" Opacity="0.85"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Divider -->
+                    <Border Height="1"
+                            Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                            Opacity="0.2" Margin="0,4"/>
+
+                    <!-- Row 3: pre-release toggle -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="Include pre-release updates" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Offer beta builds in the updater. Off = stable releases only."
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding IncludePrereleaseUpdates}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Signature -->
+                    <TextBlock Text="Yours Truly, heartached."
+                               FontSize="12" Opacity="0.4"/>
+                </StackPanel>
             </Border>
 
             <!-- ═══════════════════════════════════════════════════ -->
@@ -799,6 +1009,43 @@
                 </Grid>
             </Border>
 
+            <!-- Player bar opacity -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Player Bar Opacity" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Adjust the playback bar's background transparency. Higher is more solid and legible when it overlaps content."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Slider Grid.Column="0"
+                                Classes="accent-slider"
+                                Minimum="0" Maximum="1"
+                                Value="{Binding PlaybackBarBackgroundOpacity, Mode=TwoWay}"
+                                VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding PlaybackBarBackgroundOpacity, StringFormat='{}{0:P0}'}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center"
+                                   MinWidth="44" TextAlignment="Right" Margin="12,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Collapse album editions -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Collapse Album Editions" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Show one tile per release in album grids instead of every edition. Other editions stay available under &quot;Other Versions&quot; on the album page."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding CollapseAlbumEditions}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
 
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- AUDIO PLAYBACK                                     -->
@@ -879,6 +1126,19 @@
                                               VerticalAlignment="Center"/>
                     </Grid>
 
+                    <!-- Sub-header: Sidebar -->
+                    <TextBlock Text="SIDEBAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="Hover to expand sidebar" FontSize="13"/>
+                            <TextBlock Text="Slide the sidebar open on hover. Turn off to keep the icon-only rail with no animation."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding SidebarHoverExpand}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
                 </StackPanel>
             </Border>
 
@@ -895,6 +1155,7 @@
                             </StackPanel>
                         </StackPanel>
                         <ComboBox Grid.Column="2"
+                                  x:Name="EqPresetCombo"
                                   Classes="pill-combo stable-popup"
                                   Width="164"
                                   ItemsSource="{Binding VisibleEqPresets}"
@@ -1079,18 +1340,6 @@
                     <StackPanel Spacing="2">
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <TextBlock Text="ffmpeg" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Border Background="#33E5484D"
-                                    BorderBrush="#E5484D"
-                                    BorderThickness="1"
-                                    CornerRadius="999"
-                                    Padding="8,2"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="BETA · EXPERIMENTAL FEATURE"
-                                           FontSize="9"
-                                           FontWeight="Bold"
-                                           Foreground="#FF8A8E"
-                                           LetterSpacing="0.5"/>
-                            </Border>
                         </StackPanel>
                         <TextBlock Text="Used by the audio converter. Leave blank to auto-detect (next to Noctis, then PATH)."
                                    FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
@@ -1102,7 +1351,8 @@
                                  CornerRadius="999"
                                  Padding="14,8"
                                  BorderThickness="1.5"
-                                 MinHeight="0" />
+                                 MinHeight="0"
+                                 KeyDown="OnFfmpegPathKeyDown" />
                         <Button Grid.Column="1"
                                 Content="Browse"
                                 Command="{Binding BrowseFfmpegCommand}"
@@ -1125,6 +1375,7 @@
                     <Grid ColumnDefinitions="120,*">
                         <TextBlock Grid.Column="0" Text="Mode" VerticalAlignment="Center"/>
                         <ComboBox Grid.Column="1"
+                                  Classes="pill-list"
                                   ItemsSource="{Binding ReplayGainModeOptions}"
                                   SelectedItem="{Binding ReplayGainMode}"
                                   HorizontalAlignment="Stretch"
@@ -1133,12 +1384,38 @@
                     </Grid>
                     <Grid ColumnDefinitions="120,*,Auto">
                         <TextBlock Grid.Column="0" Text="Pre-amp (dB)" VerticalAlignment="Center"/>
-                        <Slider Grid.Column="1"
-                                Minimum="-12" Maximum="12"
-                                TickFrequency="1" IsSnapToTickEnabled="True"
-                                Value="{Binding ReplayGainPreampDb}"
-                                VerticalAlignment="Center"
-                                Margin="0,0,12,0"/>
+                        <Grid Grid.Column="1" Height="20" ClipToBounds="False"
+                              VerticalAlignment="Center" Margin="0,0,12,0">
+                            <Canvas x:Name="PreampVisual"
+                                    Height="20"
+                                    ClipToBounds="False"
+                                    IsHitTestVisible="False">
+                                <Border x:Name="PreampTrackBackground"
+                                        Height="6"
+                                        CornerRadius="3"
+                                        Background="{DynamicResource IslandSliderUnfilled}"
+                                        Opacity="0.4"
+                                        Canvas.Top="7"/>
+                                <Border x:Name="PreampTrackFill"
+                                        Height="6"
+                                        CornerRadius="3"
+                                        Background="{DynamicResource IslandSliderFilled}"
+                                        Canvas.Top="7"/>
+                                <Border x:Name="PreampThumb"
+                                        Width="14"
+                                        Height="14"
+                                        CornerRadius="7"
+                                        Background="{DynamicResource IslandSliderFilled}"
+                                        BoxShadow="0 1 3 0 #40000000"
+                                        Canvas.Top="3"/>
+                            </Canvas>
+                            <Slider x:Name="PreampSlider"
+                                    Classes="preamp-horizontal"
+                                    Value="{Binding ReplayGainPreampDb, Mode=TwoWay}"
+                                    Minimum="-12" Maximum="12"
+                                    HorizontalAlignment="Stretch"
+                                    DoubleTapped="OnPreampSliderDoubleTapped" />
+                        </Grid>
                         <TextBlock Grid.Column="2"
                                    Text="{Binding ReplayGainPreampDb, StringFormat='{}{0:+0.0;-0.0;0.0} dB'}"
                                    FontSize="12" Opacity="0.7"
@@ -1269,27 +1546,15 @@
             <Border Classes="setting-card">
                 <StackPanel Spacing="8">
                     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-                        <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
-                                Width="40" Height="40" CornerRadius="10"
-                                Background="#EB743B"
-                                Margin="0,0,14,0"
-                                VerticalAlignment="Top">
-                            <!-- Stylized sound-wave mark to match the inline SVG icons used by the
-                                 Discord and Last.fm cards. Three concentric arcs over a small dot
-                                 reads as "listening / sound emanating" at 22×22. -->
-                            <Viewbox Width="22" Height="22"
-                                     HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Canvas Width="24" Height="24">
-                                    <Ellipse Canvas.Left="10.5" Canvas.Top="14.5" Width="3" Height="3" Fill="White"/>
-                                    <Path Stroke="White" StrokeThickness="1.8" StrokeLineCap="Round"
-                                          Data="M8.5,12 A4.5,4.5 0 0 1 15.5,12"/>
-                                    <Path Stroke="White" StrokeThickness="1.8" StrokeLineCap="Round"
-                                          Data="M6,10 A7.5,7.5 0 0 1 18,10"/>
-                                    <Path Stroke="White" StrokeThickness="1.8" StrokeLineCap="Round"
-                                          Data="M3.5,8 A10.5,10.5 0 0 1 20.5,8"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
+                        <!-- Official multi-colour ListenBrainz logo (transparent PNG). It's the
+                             hexagonal brand mark, so it stands on its own at the same 40×40 footprint
+                             as the Discord / Last.fm tiles rather than sitting on a colour fill. -->
+                        <Image Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+                               Width="40" Height="40"
+                               Margin="0,0,14,0"
+                               VerticalAlignment="Top"
+                               Source="avares://Noctis/Assets/Icons/ListenBrainz ICON.png"
+                               RenderOptions.BitmapInterpolationMode="HighQuality"/>
 
                         <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
                                     VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
@@ -1308,30 +1573,52 @@
                                 <TextBlock Text="{Binding ListenBrainzUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                             </StackPanel>
 
-                            <!-- Token + Test connection row lives inside the same StackPanel as the
-                                 title so it sits right under the description instead of leaving a gap. -->
-                            <StackPanel Orientation="Horizontal"
-                                        IsVisible="{Binding !IsListenBrainzConnected}"
+                            <!-- Token row lives inside the same StackPanel as the title so it sits
+                                 right under the description instead of leaving a gap. The Connect
+                                 button is hoisted to column 2 (top-right) to match the Last.fm card. -->
+                            <StackPanel IsVisible="{Binding !IsListenBrainzConnected}"
                                         Margin="-2,6,0,0"
-                                        Spacing="8">
-                                <TextBox Text="{Binding ListenBrainzToken}"
+                                        Spacing="4">
+                                <TextBox x:Name="ListenBrainzTokenBox"
+                                         Classes="metadata-info-field"
+                                         Text="{Binding ListenBrainzToken}"
                                          PasswordChar="•"
                                          Watermark="ListenBrainz user token"
-                                         Width="280"
                                          FontSize="12"
-                                         CornerRadius="999"
-                                         Padding="14,6"
-                                         VerticalAlignment="Center"/>
-                                <Button Content="Test connection"
-                                        Command="{Binding TestListenBrainzCommand}"
-                                        Classes="pill-action"
-                                        Padding="14,8"
-                                        CornerRadius="16"
-                                        FontSize="12"
-                                        Cursor="Hand"
-                                        VerticalAlignment="Center"/>
+                                         Width="280"
+                                         HorizontalAlignment="Left"/>
+                                <!-- Inline validation error (e.g. "Token required"), semantically red. -->
+                                <TextBlock Text="{Binding ListenBrainzError}"
+                                           IsVisible="{Binding ListenBrainzError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                           Foreground="#E74856"
+                                           FontSize="11"
+                                           Margin="8,0,0,0"/>
                             </StackPanel>
                         </StackPanel>
+
+                        <!-- Not connected state (top-right, mirrors the Last.fm Connect button) -->
+                        <Button Grid.Column="2" Grid.Row="0"
+                                IsVisible="{Binding !IsListenBrainzConnected}"
+                                Content="Connect"
+                                Classes="pill-action"
+                                Command="{Binding TestListenBrainzCommand}"
+                                Padding="14,8"
+                                CornerRadius="16"
+                                Cursor="Hand"
+                                VerticalAlignment="Center"
+                                Margin="0,0,0,4">
+                            <Button.Template>
+                                <ControlTemplate>
+                                    <ContentPresenter Background="{DynamicResource AccentColorBrush}"
+                                                      Foreground="{DynamicResource AccentForegroundBrush}"
+                                                      CornerRadius="16"
+                                                      Padding="14,8"
+                                                      FontSize="13"
+                                                      FontWeight="SemiBold"
+                                                      Content="{TemplateBinding Content}"/>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
 
                         <!-- Logout button (top-right, when connected) -->
                         <Button Grid.Column="2" Grid.Row="0"
@@ -1758,143 +2045,6 @@
                 </StackPanel>
             </Border>
 
-
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- ABOUT                                              -->
-            <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="ABOUT" Margin="0,20,0,10"/>
-
-            <Border Classes="setting-card" Padding="14,16">
-                <StackPanel Spacing="10">
-                    <!-- Top row: logo + version on left, Update button on right -->
-                    <Grid ColumnDefinitions="Auto,*,Auto">
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
-                            <Border Width="48" Height="48" CornerRadius="24"
-                                    ClipToBounds="True">
-                                <Image Source="avares://Noctis/Assets/Icons/Noctis%20Logo.png"
-                                       Stretch="UniformToFill"
-                                       RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                            </Border>
-                            <StackPanel VerticalAlignment="Center" Spacing="2">
-                                <TextBlock Text="Noctis" FontSize="18" FontWeight="Bold"/>
-                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding AppVersion}"
-                                               FontSize="12" Opacity="0.5"
-                                               VerticalAlignment="Center"/>
-                                    <Border IsVisible="{Binding IsLatestPrerelease}"
-                                            Background="#E74856"
-                                            CornerRadius="9"
-                                            Padding="8,2"
-                                            VerticalAlignment="Center">
-                                        <TextBlock Text="Pre-release"
-                                                   FontSize="10"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="White"
-                                                   VerticalAlignment="Center"/>
-                                    </Border>
-                                </StackPanel>
-                            </StackPanel>
-                        </StackPanel>
-
-                        <!-- Action buttons (top-right) -->
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-
-                        <Button Command="{Binding CheckForUpdateCommand}"
-                                Classes="pill"
-                                VerticalAlignment="Center"
-                                Padding="16,6"
-                                Background="#E74856"
-                                IsVisible="{Binding ShowCheckForUpdatesButton}">
-                            <TextBlock Text="Check for Updates" FontSize="12" Foreground="White"/>
-                        </Button>
-
-                        <!-- Update Available button (replaces Check when a new release is detected) -->
-                        <Button Command="{Binding DownloadUpdateCommand}"
-                                Classes="pill"
-                                VerticalAlignment="Center"
-                                Padding="16,6"
-                                Background="#E74856"
-                                IsVisible="{Binding IsUpdateAvailable}">
-                            <TextBlock Text="Update available"
-                                       FontSize="12" Foreground="White" VerticalAlignment="Center"/>
-                        </Button>
-
-                        <!-- Install & Restart button (replaces Update when ready) -->
-                        <Button Command="{Binding InstallUpdateCommand}"
-                                Classes="pill"
-                                VerticalAlignment="Center"
-                                Padding="16,6"
-                                Background="#E74856"
-                                IsVisible="{Binding IsReadyToInstall}">
-                            <TextBlock Text="Install &amp; Restart" FontSize="12" Foreground="White"/>
-                        </Button>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Update status area -->
-                    <StackPanel Orientation="Horizontal" Spacing="12"
-                                IsVisible="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <TextBlock Text="{Binding UpdateStatusText}"
-                                   FontSize="12" Opacity="0.7"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Spacing="12"
-                                IsVisible="{Binding IsDownloadingUpdate}">
-                        <ProgressBar Minimum="0" Maximum="100"
-                                     Value="{Binding DownloadProgress}"
-                                     Height="4" CornerRadius="2"
-                                     VerticalAlignment="Center"
-                                     MinWidth="200" />
-                        <Button Command="{Binding CancelUpdateCommand}"
-                                Classes="pill"
-                                Padding="16,6"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="Cancel" FontSize="12" />
-                        </Button>
-                    </StackPanel>
-
-                    <Border Height="1"
-                            Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-                            Opacity="0.2" Margin="0,4"/>
-
-                    <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,2,0,4">
-                        <Button Command="{Binding OpenGitHubCommand}"
-                                Background="Transparent" BorderThickness="0"
-                                Padding="0" Cursor="Hand"
-                                HorizontalAlignment="Left">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="{StaticResource GitHubIcon}"
-                                          Width="14" Height="14"
-                                          Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                          Opacity="0.5" />
-                                <TextBlock Text="Star on GitHub"
-                                           FontSize="12" Opacity="0.5"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        <Button Command="{Binding OpenDiscordCommand}"
-                                Background="Transparent" BorderThickness="0"
-                                Padding="0" Cursor="Hand"
-                                HorizontalAlignment="Left">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="{StaticResource DiscordIcon}"
-                                          Width="14" Height="14"
-                                          Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                          Opacity="0.5" />
-                                <TextBlock Text="Join Discord"
-                                           FontSize="12" Opacity="0.5"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-
-                    <TextBlock Text="Modern music player for Windows, macOS, and Linux."
-                               FontSize="13" Opacity="0.6"/>
-                    <TextBlock Text="Yours Truly, heartached."
-                               FontSize="12" Opacity="0.4"/>
-                </StackPanel>
-            </Border>
 
         </StackPanel>
     </ScrollViewer>

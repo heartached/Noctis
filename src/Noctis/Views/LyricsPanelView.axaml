@@ -3,6 +3,7 @@
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
              xmlns:conv="using:Noctis.Converters"
+             xmlns:helpers="using:Noctis.Helpers"
              x:Class="Noctis.Views.LyricsPanelView"
              x:DataType="vm:LyricsViewModel">
 
@@ -206,7 +207,8 @@
                     </Viewbox>
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedRight"
-                                    PlacementConstraintAdjustment="None">
+                                    PlacementConstraintAdjustment="None"
+                                    helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                             <MenuItem Command="{Binding Player.PlayPauseCommand}" MaxWidth="400">
                                 <MenuItem.Header>
                                     <TextBlock Text="Play"

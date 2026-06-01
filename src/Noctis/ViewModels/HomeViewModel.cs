@@ -393,8 +393,18 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task OpenMetadata(Album album)
     {
+        // Multi-album selection: edit every track across the selected albums in the
+        // shared multi-select editor (Mixed fields, edits fan out to all tracks).
+        if (CtrlSelectedAlbums.Count > 1)
+        {
+            var tracks = CtrlSelectedAlbums.SelectMany(a => a.Tracks ?? new()).ToList();
+            CtrlSelectedAlbums.Clear();
+            await MetadataHelper.OpenBatchMetadataWindow(tracks);
+            return;
+        }
+
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        await MetadataHelper.OpenMetadataWindow(album.Tracks[0]);
+        await MetadataHelper.OpenMetadataWindow(album.Tracks[0], albumScoped: true);
     }
 
     [RelayCommand]

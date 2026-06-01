@@ -139,9 +139,10 @@ internal class Program
         // AudioConverter resolves the ffmpeg path lazily, so the user can change
         // it in Settings without restarting. Read through MainWindowViewModel —
         // it's the canonical owner of the SettingsViewModel instance.
-        services.AddSingleton<IAudioConverterService>(_ =>
-            new AudioConverterService(() =>
-                App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().FfmpegPath ?? string.Empty));
+        services.AddSingleton<IAudioConverterService>(sp =>
+            new AudioConverterService(
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().FfmpegPath ?? string.Empty,
+                sp.GetRequiredService<IMetadataService>()));
         services.AddSingleton<IReplayGainScannerService, ReplayGainScannerService>();
 
         // ViewModels — MainWindowViewModel is the root, created once

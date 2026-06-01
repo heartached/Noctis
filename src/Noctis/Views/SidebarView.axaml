@@ -53,6 +53,14 @@
                                                             Stretch="Uniform" />
                                             </Border.OpacityMask>
                                         </Border>
+                                        <!-- Update-available dot (top-right of icon; visible in
+                                             both expanded and icon-only rail) -->
+                                        <Ellipse Width="8" Height="8"
+                                                 Fill="{DynamicResource AccentColorBrush}"
+                                                 HorizontalAlignment="Right"
+                                                 VerticalAlignment="Top"
+                                                 Margin="0,-1,-1,0"
+                                                 IsVisible="{Binding ShowBadge}" />
                                     </Grid>
                                     <TextBlock Text="{Binding Label}"
                                                VerticalAlignment="Center"
@@ -90,7 +98,8 @@
                                                   Width="14" Height="14"
                                                   Foreground="{DynamicResource AccentForegroundBrush}"
                                                   HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center" />
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,-1,-1" />
                                     </Border>
                                     <StackPanel VerticalAlignment="Center" Spacing="1"
                                                 IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">

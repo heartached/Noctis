@@ -29,7 +29,7 @@ public partial class SettingsViewModel : ViewModelBase
     private UpdateService? _updateService;
     private CancellationTokenSource? _updateCts;
     private string? _downloadedInstallerPath;
-    private bool _lastFmAuthInProgress;
+    private CancellationTokenSource? _lastFmAuthCts;
     private bool _settingsLoaded;
     private bool _suspendSettingPersistence;
     private CancellationTokenSource? _eqSaveDebounceCts;
@@ -133,6 +133,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _lyricsTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsArtistMarqueeEnabled = true;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
+    [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
+    [ObservableProperty] private bool _sidebarHoverExpand = true;
+    [ObservableProperty] private bool _collapseAlbumEditions;
 
     // ── Lyrics Providers ──
 
@@ -203,6 +206,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _listenBrainzUsername = "";
     [ObservableProperty] private bool _isListenBrainzConnected;
     [ObservableProperty] private string _listenBrainzStatusText = "Not connected";
+    [ObservableProperty] private string _listenBrainzError = "";
 
     // ── Preferences ──
 
@@ -290,6 +294,7 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _isReadyToInstall;
     [ObservableProperty] private string _latestVersionTag = "";
     [ObservableProperty] private bool _isLatestPrerelease;
+    [ObservableProperty] private bool _includePrereleaseUpdates;
 
     public bool ShowCheckForUpdatesButton => !IsUpdateAvailable && !IsReadyToInstall;
 
@@ -300,6 +305,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Fires after a full settings reset so the shell can reload playlists, etc.</summary>
     public event EventHandler? SettingsReset;
+
+    /// <summary>Fires when a media folder is added or removed so the Folders view can rebuild its tree.</summary>
+    public event EventHandler? MusicFoldersChanged;
 
     public SettingsViewModel(IPersistenceService persistence, ILibraryService library)
     {
@@ -459,6 +467,7 @@ public partial class SettingsViewModel : ViewModelBase
             RebuildAccentSwatches();
 
             ScanOnStartup = _settings.ScanOnStartup;
+            IncludePrereleaseUpdates = _settings.IncludePrereleaseUpdates;
 
             // Playback
             CrossfadeEnabled = _settings.CrossfadeEnabled;
@@ -472,6 +481,9 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsTitleMarqueeEnabled = _settings.LyricsTitleMarqueeEnabled;
             LyricsArtistMarqueeEnabled = _settings.LyricsArtistMarqueeEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
+            PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
+            SidebarHoverExpand = _settings.SidebarHoverExpand;
+            CollapseAlbumEditions = _settings.CollapseAlbumEditions;
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
@@ -638,6 +650,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsTitleMarqueeEnabled = LyricsTitleMarqueeEnabled;
         _settings.LyricsArtistMarqueeEnabled = LyricsArtistMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
+        _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        _settings.SidebarHoverExpand = SidebarHoverExpand;
+        _settings.CollapseAlbumEditions = CollapseAlbumEditions;
         _settings.LrcLibEnabled = LrcLibEnabled;
         _settings.FfmpegPath = FfmpegPath ?? string.Empty;
         _settings.ReplayGainMode = ReplayGainMode ?? "Off";
@@ -676,6 +691,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (_player == null) return;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
+        _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         Controls.MarqueeTextBlock.GlobalCoverFlowScrollEnabled = CoverFlowMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowArtistScrollEnabled = CoverFlowArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowAlbumScrollEnabled = CoverFlowAlbumMarqueeEnabled;
@@ -997,6 +1013,12 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnIncludePrereleaseUpdatesChanged(bool value)
+    {
+        _settings.IncludePrereleaseUpdates = value;
+        _ = SaveAsync();
+    }
+
     partial void OnCrossfadeEnabledChanged(bool value)
     {
         ApplyAudioSettings();
@@ -1019,6 +1041,30 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSoundCheckEnabledChanged(bool value)
     {
         ApplyAudioSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnSidebarHoverExpandChanged(bool value)
+    {
+        _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarBackgroundOpacityChanged(double value)
+    {
+        var clamped = Math.Clamp(value, 0, 1);
+        if (clamped != value)
+        {
+            PlaybackBarBackgroundOpacity = clamped;
+            return;
+        }
+
+        ApplyPlayerSettings();
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    partial void OnCollapseAlbumEditionsChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
 
@@ -1078,6 +1124,12 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnFfmpegPathChanged(string value)
     {
+        // Reflect the new path into the live settings object *before* probing so the
+        // status label and the converter see it immediately. RefreshFfmpegStatus()
+        // resolves through GetFfmpegPath(), which reads _settings.FfmpegPath; without
+        // this the label lags one edit behind (stays "Not found" after a valid paste).
+        // SaveAsync() re-syncs + persists below.
+        _settings.FfmpegPath = value ?? string.Empty;
         RefreshFfmpegStatus();
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
@@ -1097,17 +1149,42 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    private int _ffmpegProbeGeneration;
+
     /// <summary>Probes the configured or auto-detected ffmpeg path and updates
     /// <see cref="FfmpegStatus"/> so the Settings view can show whether the
-    /// converter will work without the user having to open the dialog.</summary>
+    /// converter will work without the user having to open the dialog.
+    /// Existence is not enough — the resolved binary is run with <c>-version</c>
+    /// to confirm it is genuinely ffmpeg (so e.g. a README file is rejected).</summary>
     public void RefreshFfmpegStatus()
     {
         var svc = App.Services?.GetService<IAudioConverterService>();
         if (svc == null) { FfmpegStatus = string.Empty; return; }
+
         var path = svc.GetFfmpegPath();
-        FfmpegStatus = path != null
-            ? $"Detected: {path}"
-            : "Not found — set a path below, or install ffmpeg on your PATH.";
+        // Bump the generation so a slow probe from an earlier edit can't overwrite
+        // the status of a newer one.
+        var generation = ++_ffmpegProbeGeneration;
+
+        if (path == null)
+        {
+            FfmpegStatus = "Not found — set a path below, or install ffmpeg on your PATH.";
+            return;
+        }
+
+        FfmpegStatus = $"Checking {path}…";
+
+        _ = Task.Run(async () =>
+        {
+            var version = await svc.ValidateFfmpegAsync(path);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (generation != _ffmpegProbeGeneration) return; // superseded by a newer edit
+                FfmpegStatus = version != null
+                    ? $"ffmpeg found ✓ — {version}"
+                    : $"Not a valid ffmpeg executable — {path}";
+            });
+        });
     }
 
     [RelayCommand]
@@ -1209,7 +1286,14 @@ public partial class SettingsViewModel : ViewModelBase
     private async Task LoginLastFm()
     {
         if (_lastFm == null) return;
-        if (_lastFmAuthInProgress) return;
+
+        // Root cause fix: a prior poll held the "in progress" guard for the full 2-minute
+        // window, so if the user declined in the browser and clicked Connect again the
+        // command silently no-op'd (dead button). Cancel any in-flight poll and start a
+        // fresh attempt instead of blocking re-initiation.
+        _lastFmAuthCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _lastFmAuthCts = cts;
 
         LastFmStatusText = "Opening browser...";
         var authUrl = await _lastFm.GetAuthUrlAsync();
@@ -1230,19 +1314,18 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         LastFmStatusText = "Waiting for authorization in browser...";
-        _ = PollLastFmAuthAsync();
+        _ = PollLastFmAuthAsync(cts);
     }
 
-    private async Task PollLastFmAuthAsync()
+    private async Task PollLastFmAuthAsync(CancellationTokenSource cts)
     {
         if (_lastFm == null) return;
-        if (_lastFmAuthInProgress) return;
-        _lastFmAuthInProgress = true;
+        var token = cts.Token;
         try
         {
             var deadline = DateTime.UtcNow.AddMinutes(2);
             var failedAttempts = 0;
-            while (DateTime.UtcNow < deadline)
+            while (DateTime.UtcNow < deadline && !token.IsCancellationRequested)
             {
                 var success = await _lastFm.CompleteAuthAsync();
                 if (success)
@@ -1263,15 +1346,25 @@ public partial class SettingsViewModel : ViewModelBase
                 if (!IsLastFmConnected && failedAttempts >= 2)
                     LastFmStatusText = "Not connected";
 
-                await Task.Delay(2000);
+                try
+                {
+                    await Task.Delay(2000, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
             }
 
-            if (!IsLastFmConnected)
+            if (!IsLastFmConnected && !token.IsCancellationRequested)
                 LastFmStatusText = "Not connected";
         }
         finally
         {
-            _lastFmAuthInProgress = false;
+            // Only clear the shared handle if a newer attempt hasn't already replaced it.
+            if (ReferenceEquals(_lastFmAuthCts, cts))
+                _lastFmAuthCts = null;
+            cts.Dispose();
         }
     }
 
@@ -1294,7 +1387,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnListenBrainzTokenChanged(string value)
     {
-        // Just keep the in-memory service in sync; the user must hit "Test connection"
+        // Clear any stale validation error as soon as the user edits the token.
+        ListenBrainzError = "";
+        // Just keep the in-memory service in sync; the user must hit "Connect"
         // to validate and persist. Don't autosave keystroke-by-keystroke.
         _listenBrainz?.Configure(value);
     }
@@ -1305,10 +1400,12 @@ public partial class SettingsViewModel : ViewModelBase
         if (_listenBrainz == null) return;
         if (string.IsNullOrWhiteSpace(ListenBrainzToken))
         {
-            ListenBrainzStatusText = "Paste your user token first.";
+            ListenBrainzError = "Token required";
+            ListenBrainzStatusText = "Not connected";
             return;
         }
 
+        ListenBrainzError = "";
         ListenBrainzStatusText = "Validating...";
         _listenBrainz.Configure(ListenBrainzToken);
         var username = await _listenBrainz.ValidateTokenAsync();
@@ -1323,7 +1420,8 @@ public partial class SettingsViewModel : ViewModelBase
         {
             IsListenBrainzConnected = false;
             ListenBrainzUsername = "";
-            ListenBrainzStatusText = "Token invalid or network error.";
+            ListenBrainzError = "Token invalid or network error.";
+            ListenBrainzStatusText = "Not connected";
         }
     }
 
@@ -1335,6 +1433,7 @@ public partial class SettingsViewModel : ViewModelBase
         ListenBrainzToken = "";
         ListenBrainzUsername = "";
         ListenBrainzStatusText = "Not connected";
+        ListenBrainzError = "";
         _ = SaveAsync();
     }
 
@@ -1522,7 +1621,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    public void RefreshStorageInfo()
+    public void RefreshStorageInfo(bool forceRefresh = false)
     {
         var dataDir = _persistence.DataDirectory;
         if (!Directory.Exists(dataDir)) return;
@@ -1531,7 +1630,7 @@ public partial class SettingsViewModel : ViewModelBase
         long queueSize = GetFileSize(Path.Combine(dataDir, "queue.json"));
         long playlistsSize = GetFileSize(Path.Combine(dataDir, "playlists.json"));
         long settingsSize = GetFileSize(Path.Combine(dataDir, "settings.json"));
-        long artworkSize = GetDirectorySize(Path.Combine(dataDir, "artwork"));
+        long artworkSize = GetDirectorySize(Path.Combine(dataDir, "artwork"), forceRefresh);
 
         StorageLibraryData = FormatBytes(librarySize + queueSize);
         StorageArtwork = FormatBytes(artworkSize);
@@ -1636,6 +1735,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MusicFolders = MusicFolders.ToList();
         OnPropertyChanged(nameof(MediaFolderDisplay));
         await SaveAsync();
+        MusicFoldersChanged?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -1645,6 +1745,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MusicFolders = MusicFolders.ToList();
         OnPropertyChanged(nameof(MediaFolderDisplay));
         await SaveAsync();
+        MusicFoldersChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void SetScanStatus(string text, bool autoClear = false)
@@ -1687,7 +1788,7 @@ public partial class SettingsViewModel : ViewModelBase
                 ? "No tracks found."
                 : $"{_library.Tracks.Count} tracks found.", autoClear: true);
             RefreshLibraryStats();
-            RefreshStorageInfo();
+            RefreshStorageInfo(forceRefresh: true);
         }
         catch (Exception ex)
         {
@@ -1714,7 +1815,7 @@ public partial class SettingsViewModel : ViewModelBase
                 ? "No tracks found."
                 : "Indexed Library.", autoClear: true);
             RefreshLibraryStats();
-            RefreshStorageInfo();
+            RefreshStorageInfo(forceRefresh: true);
         }
         catch (Exception ex)
         {
@@ -1903,6 +2004,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Preferences
             ScanOnStartup = true;
+            IncludePrereleaseUpdates = false;
 
             // Playback
             CrossfadeEnabled = false;
@@ -1915,6 +2017,7 @@ public partial class SettingsViewModel : ViewModelBase
             CoverFlowAlbumMarqueeEnabled = true;
             LyricsTitleMarqueeEnabled = true;
             LyricsArtistMarqueeEnabled = true;
+            SidebarHoverExpand = true;
 
             // Lyrics providers
             LrcLibEnabled = true;
@@ -2062,7 +2165,7 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            var update = await _updateService.CheckForUpdateAsync(cts.Token);
+            var update = await _updateService.CheckForUpdateAsync(IncludePrereleaseUpdates, cts.Token);
             if (update is null) return;
             if (update.InstallerApiUrl is null) return;
 
@@ -2096,7 +2199,7 @@ public partial class SettingsViewModel : ViewModelBase
             _updateCts?.Dispose();
             _updateCts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
-            var update = await _updateService.CheckForUpdateAsync(_updateCts.Token);
+            var update = await _updateService.CheckForUpdateAsync(IncludePrereleaseUpdates, _updateCts.Token);
 
             if (update is null)
             {
@@ -2150,7 +2253,7 @@ public partial class SettingsViewModel : ViewModelBase
             _updateCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
 
             // Re-check to get fresh URL
-            var update = await _updateService.CheckForUpdateAsync(_updateCts.Token);
+            var update = await _updateService.CheckForUpdateAsync(IncludePrereleaseUpdates, _updateCts.Token);
             if (update is null || update.InstallerApiUrl is null)
             {
                 UpdateStatusText = "Update no longer available.";

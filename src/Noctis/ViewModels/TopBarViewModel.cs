@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -217,6 +218,25 @@ public partial class TopBarViewModel : ViewModelBase
         SetLibraryModeCommand = null;
         SetCoverFlowModeCommand = null;
         IsCoverFlowMode = false;
+    }
+
+    // Release-type filter chips (All / Albums / Singles / EPs / Other) — shown next
+    // to the title on the Albums page. The collection and command are owned by
+    // LibraryAlbumsViewModel; the top bar just mirrors them for placement.
+    [ObservableProperty] private bool _hasReleaseTypeChips;
+    [ObservableProperty] private ObservableCollection<ReleaseTypeChip>? _releaseTypeChips;
+    [ObservableProperty] private ICommand? _releaseTypeChipCommand;
+
+    public void ShowReleaseTypeChips(ObservableCollection<ReleaseTypeChip> chips, ICommand selectCommand)
+    {
+        ReleaseTypeChips = chips;
+        ReleaseTypeChipCommand = selectCommand;
+        HasReleaseTypeChips = true;
+    }
+
+    public void HideReleaseTypeChips()
+    {
+        HasReleaseTypeChips = false;
     }
 
     private void UpdatePageTitleVisibility()

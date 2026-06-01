@@ -183,22 +183,21 @@ public class VlcAudioPlayer : IAudioPlayer
         //                           Xing header and builds an O(1) seek table on open,
         //                           fixing per-song variation in seek quality. Also needed
         //                           for AAC/M4A Lossless seek smoothness.
-        //   --aout=waveout: classic WaveOut driver-level output. Chosen over
-        //   mmdevice (WASAPI) because mmdevice routes every volume write
-        //   through ISimpleAudioVolume::SetMasterVolume, which fires a
-        //   session-volume event that produces an audible click/static on
-        //   each slider tick. Application-level mitigations (throttling,
-        //   ramping, baking volume into the EQ preamp) all failed to
-        //   eliminate the artifact — it's an mmdevice/WASAPI architectural
-        //   limitation. waveOutSetVolume operates at the driver level with
-        //   no session events and no audio-filter-chain disruption, so
-        //   continuous drag stays click-free.
+        //   --aout=mmdevice: WASAPI shared-mode output, VLC's modern Windows
+        //   backend. Replaces the legacy --aout=directsound path, whose
+        //   DirectSound emulation underran on high-latency endpoints
+        //   (Bluetooth A2DP, some USB DACs) and produced the audible stutter
+        //   reported in issues #1 and #3. mmdevice also auto-follows the
+        //   Windows default-device change (e.g. plugging in headphones) and
+        //   runs a smaller output buffer, so EQ slider moves take effect
+        //   faster.
         //
-        // TODO: waveout does not auto-follow Windows default device changes
-        // (e.g. plugging in headphones). mmdevice handled this automatically.
-        // If device-switch support is needed, implement an
-        // IMMNotificationClient listener that calls Stop()/Play() to
-        // reinitialize the waveout session when the default device changes.
+        //   CAVEAT (verify by ear on real BT / USB-DAC hardware): mmdevice
+        //   routes volume writes through ISimpleAudioVolume::SetMasterVolume,
+        //   which historically fired a session-volume event producing an
+        //   audible click/static on continuous slider drag — the reason an
+        //   earlier build moved off WASAPI. If that artifact regresses,
+        //   switch this back to --aout=directsound.
         //
         // NOTE on caching: leaving VLC's input-caching at its defaults
         // (300ms file / 1500ms live / 300ms disc). A previous build forced
@@ -222,12 +221,12 @@ public class VlcAudioPlayer : IAudioPlayer
         };
         // The speex resampler module + its quality flag are not always present
         // in third-party VLC builds (notably the macOS VLC.app distribution).
-        // waveout is Windows-only.
+        // mmdevice is Windows-only.
         if (OperatingSystem.IsWindows())
         {
             vlcArgs.Add("--audio-resampler=speex");
             vlcArgs.Add("--speex-resampler-quality=10");
-            vlcArgs.Add("--aout=directsound");
+            vlcArgs.Add("--aout=mmdevice");
         }
 
         _libVlc = new LibVLC(vlcArgs.ToArray());
@@ -803,6 +802,12 @@ public class VlcAudioPlayer : IAudioPlayer
             {
                 track ??= ParseDb(xiph.GetField("REPLAYGAIN_TRACK_GAIN").FirstOrDefault());
                 album ??= ParseDb(xiph.GetField("REPLAYGAIN_ALBUM_GAIN").FirstOrDefault());
+            }
+            // MP4 / M4A / ALAC / AAC: RG lives in iTunes freeform atoms.
+            if (file.GetTag(TagLib.TagTypes.Apple, false) is TagLib.Mpeg4.AppleTag apple)
+            {
+                track ??= ParseDb(apple.GetDashBox("com.apple.iTunes", "REPLAYGAIN_TRACK_GAIN"));
+                album ??= ParseDb(apple.GetDashBox("com.apple.iTunes", "REPLAYGAIN_ALBUM_GAIN"));
             }
             return (track, album);
         }
@@ -1388,7 +1393,7 @@ public class VlcAudioPlayer : IAudioPlayer
     }
 
     private int GetTargetVlcVolume() =>
-        ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100));
+        ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
 
     public void Pause()
     {

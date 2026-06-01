@@ -1,17 +1,28 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using System.ComponentModel;
+using Noctis.Helpers;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
 
 public partial class SettingsView : UserControl
 {
+    private const double PreampThumbSize = 14;
+    private const double PreampDefault = 0.0;
+
     private SettingsViewModel? _trackedViewModel;
+    private readonly TranslateTransform _preampThumbTransform = new();
+    private bool _isPreampDragging;
+    private DateTime _lastPreampPressAt = DateTime.MinValue;
+    private Point _lastPreampPressPosition;
 
     public SettingsView()
     {
@@ -20,6 +31,90 @@ public partial class SettingsView : UserControl
         // Wire up the Add Folder button to open a native folder picker
         AddFolderButton.Click += OnAddFolderClicked;
         DataContextChanged += OnSettingsDataContextChanged;
+
+        // Pre-amp pill slider: the visible track/fill/thumb are drawn on a Canvas and
+        // positioned from code-behind. The real Slider is transparent and only handles
+        // pointer input (drag + double-press-to-reset), mirroring the metadata volume slider.
+        PreampThumb.RenderTransform = _preampThumbTransform;
+        PreampSlider.AddHandler(InputElement.PointerPressedEvent, OnPreampPointerPressed, RoutingStrategies.Tunnel);
+        PreampSlider.AddHandler(InputElement.PointerMovedEvent, OnPreampPointerMoved, RoutingStrategies.Tunnel);
+        PreampSlider.AddHandler(InputElement.PointerReleasedEvent, OnPreampPointerReleased, RoutingStrategies.Tunnel);
+        PreampSlider.PointerCaptureLost += OnPreampCaptureLost;
+        PreampSlider.PropertyChanged += OnPreampSliderPropertyChanged;
+        PreampSlider.SizeChanged += (_, _) => UpdatePreampVisual();
+        DispatcherTimer.RunOnce(UpdatePreampVisual, TimeSpan.FromMilliseconds(10));
+
+        // Drop focus from the ListenBrainz token box when the user clicks anywhere
+        // outside it, same behaviour as the top-bar search box. Tunnel so it runs
+        // before inner controls handle the press.
+        AddHandler(PointerPressedEvent, OnSettingsPointerPressed, RoutingStrategies.Tunnel);
+
+        // The EQ preset combo lives inside SettingsScrollViewer; its momentum-scroll
+        // behavior would otherwise consume wheel events routed through it, including
+        // events over the open dropdown. Suspend it while the dropdown is open so the
+        // wheel reaches the popup's own ScrollViewer (same fix as the genre combo).
+        if (this.FindControl<ComboBox>("EqPresetCombo") is { } eqCombo)
+        {
+            eqCombo.DropDownOpened += OnEqPresetDropDownOpened;
+            eqCombo.DropDownClosed += OnEqPresetDropDownClosed;
+        }
+    }
+
+    // Enter in the ffmpeg path box re-probes the path so the user gets an explicit
+    // "validate now" affordance after pasting. The Text binding already updates the
+    // status live on each edit; this is a deliberate confirmation step.
+    private void OnFfmpegPathKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Enter or Key.Return && DataContext is SettingsViewModel vm)
+        {
+            vm.RefreshFfmpegStatus();
+            e.Handled = true;
+        }
+    }
+
+    // Enter in the profile name box commits the edit and drops focus, so the caret/edit
+    // affordance disappears (same defocus target used when clicking outside the token box).
+    private void OnProfileNameKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Enter or Key.Return)
+        {
+            SettingsScrollViewer?.Focus(NavigationMethod.Pointer);
+            e.Handled = true;
+        }
+    }
+
+    private void OnEqPresetDropDownOpened(object? sender, EventArgs e)
+    {
+        if (SettingsScrollViewer is not null)
+            MomentumScrollBehavior.SetIsEnabled(SettingsScrollViewer, false);
+    }
+
+    private void OnEqPresetDropDownClosed(object? sender, EventArgs e)
+    {
+        if (SettingsScrollViewer is not null)
+            MomentumScrollBehavior.SetIsEnabled(SettingsScrollViewer, true);
+    }
+
+    private void OnSettingsPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        var tokenBox = this.FindControl<TextBox>("ListenBrainzTokenBox");
+        if (tokenBox is not { IsFocused: true })
+            return;
+
+        bool insideBox = false;
+        if (e.Source is Visual clickSource)
+        {
+            Visual? v = clickSource;
+            while (v != null)
+            {
+                if (ReferenceEquals(v, tokenBox)) { insideBox = true; break; }
+                v = v.GetVisualParent();
+            }
+        }
+
+        if (!insideBox)
+            Dispatcher.UIThread.Post(() => SettingsScrollViewer.Focus(NavigationMethod.Pointer),
+                DispatcherPriority.Background);
     }
 
     private void OnSettingsDataContextChanged(object? sender, EventArgs e)
@@ -121,6 +216,99 @@ public partial class SettingsView : UserControl
         {
             System.Diagnostics.Debug.WriteLine($"[SettingsView] Avatar pick failed: {ex.Message}");
         }
+    }
+
+    private void OnPreampSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+            vm.ReplayGainPreampDb = PreampDefault;
+    }
+
+    private void OnPreampSliderPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == Slider.ValueProperty ||
+            e.Property.Name is nameof(Bounds) or nameof(IsEnabled))
+        {
+            UpdatePreampVisual();
+        }
+    }
+
+    private void UpdatePreampVisual()
+    {
+        if (PreampSlider == null ||
+            PreampTrackBackground == null ||
+            PreampTrackFill == null ||
+            PreampThumb == null)
+            return;
+
+        PillSliderVisualHelper.UpdateVisual(
+            PreampSlider,
+            PreampTrackBackground,
+            PreampTrackFill,
+            PreampThumb,
+            _preampThumbTransform,
+            PreampThumbSize,
+            enabledBackgroundOpacity: 0.4,
+            disabledBackgroundOpacity: 0.2);
+    }
+
+    private void OnPreampPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Slider slider) return;
+        if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed) return;
+
+        var position = e.GetPosition(slider);
+        if (IsPreampDoublePress(position))
+        {
+            _isPreampDragging = false;
+            _lastPreampPressAt = DateTime.MinValue;
+            e.Pointer.Capture(null);
+            if (DataContext is SettingsViewModel vm)
+                vm.ReplayGainPreampDb = PreampDefault;
+            e.Handled = true;
+            return;
+        }
+
+        _lastPreampPressAt = DateTime.UtcNow;
+        _lastPreampPressPosition = position;
+        _isPreampDragging = true;
+        e.Pointer.Capture(slider);
+        slider.Value = PillSliderVisualHelper.GetValueFromPointer(slider, position, PreampThumbSize);
+        e.Handled = true;
+    }
+
+    private void OnPreampPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isPreampDragging) return;
+        if (sender is not Slider slider) return;
+
+        slider.Value = PillSliderVisualHelper.GetValueFromPointer(slider, e.GetPosition(slider), PreampThumbSize);
+        e.Handled = true;
+    }
+
+    private void OnPreampPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_isPreampDragging) return;
+
+        _isPreampDragging = false;
+        e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    private void OnPreampCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        _isPreampDragging = false;
+    }
+
+    private bool IsPreampDoublePress(Point position)
+    {
+        var elapsed = DateTime.UtcNow - _lastPreampPressAt;
+        if (elapsed > TimeSpan.FromMilliseconds(400))
+            return false;
+
+        var dx = position.X - _lastPreampPressPosition.X;
+        var dy = position.Y - _lastPreampPressPosition.Y;
+        return dx * dx + dy * dy <= 36;
     }
 
     private async void OnAddFolderClicked(object? sender, RoutedEventArgs e)

@@ -372,10 +372,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
             .Where(a => a.Id != currentId)
             .ToList();
 
-        var currentNormalized = NormalizeAlbumTitle(Album!.Name);
+        var currentNormalized = AlbumTitle.NormalizeForEdition(Album!.Name);
 
         var versions = artistAlbums
-            .Where(a => string.Equals(NormalizeAlbumTitle(a.Name), currentNormalized, StringComparison.OrdinalIgnoreCase))
+            .Where(a => string.Equals(AlbumTitle.NormalizeForEdition(a.Name), currentNormalized, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
         OtherVersions.Clear();
@@ -415,43 +415,6 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(HasOtherVersions));
         OnPropertyChanged(nameof(HasMoreByArtist));
         OnPropertyChanged(nameof(MoreByArtistTitle));
-    }
-
-    private static readonly System.Text.RegularExpressions.Regex s_featRegex =
-        new(@"\s*[\(\[]\s*(feat\.?|ft\.?|featuring)\s+[^\)\]]+[\)\]]\s*",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
-
-    private static readonly System.Text.RegularExpressions.Regex s_trailingParensRegex =
-        new(@"\s*[\(\[][^\)\]]*[\)\]]\s*$",
-            System.Text.RegularExpressions.RegexOptions.Compiled);
-
-    private static readonly System.Text.RegularExpressions.Regex s_trailingDashSuffixRegex =
-        new(@"\s*-\s*(single|ep)\s*$",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
-
-    /// <summary>
-    /// Normalizes an album title for "Other Versions" matching by stripping any
-    /// trailing parenthetical/bracketed segment (e.g. "(Deluxe Edition)",
-    /// "(3am Edition)", "(Til Dawn Edition)", "(Big Machine Radio Release Special)")
-    /// plus " - Single" / " - EP" suffixes and any embedded "(feat. ...)" group.
-    /// Mirrors Apple Music's "Other Versions" grouping behavior.
-    /// </summary>
-    private static string NormalizeAlbumTitle(string? title)
-    {
-        if (string.IsNullOrWhiteSpace(title)) return string.Empty;
-        var s = title.Trim();
-        s = s_featRegex.Replace(s, " ").Trim();
-        // Iteratively strip trailing markers so stacked suffixes like
-        // "Album (Deluxe Edition) [Remastered]" collapse to "Album".
-        for (int i = 0; i < 6; i++)
-        {
-            var prev = s;
-            s = s_trailingParensRegex.Replace(s, string.Empty).Trim();
-            s = s_trailingDashSuffixRegex.Replace(s, string.Empty).Trim();
-            s = s.TrimEnd('-', '–', '—').Trim();
-            if (s == prev) break;
-        }
-        return s;
     }
 
     private void BuildDiscGroups()
@@ -625,9 +588,19 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _player.AddRangeToQueue(InAlbumOrder(Tracks));
     }
 
+    /// <summary>Tracks Ctrl-selected in the album track list. Set by the view's code-behind.</summary>
+    public List<Track> CtrlSelectedTracks { get; set; } = new();
+
     [RelayCommand]
     private async Task OpenMetadata(Track track)
     {
+        if (CtrlSelectedTracks.Count > 1)
+        {
+            var selection = CtrlSelectedTracks.ToList();
+            CtrlSelectedTracks.Clear();
+            await MetadataHelper.OpenMultiTrackMetadataWindow(selection);
+            return;
+        }
         await MetadataHelper.OpenMetadataWindow(track);
     }
 
@@ -640,11 +613,19 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     [RelayCommand]
     private async Task ConvertTrack(Track track)
-        => await MetadataHelper.OpenAudioConverterDialog(new List<Track> { track });
+    {
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        CtrlSelectedTracks.Clear();
+        await MetadataHelper.OpenAudioConverterDialog(tracks);
+    }
 
     [RelayCommand]
     private async Task ScanTrackReplayGain(Track track)
-        => await MetadataHelper.OpenReplayGainScannerDialog(new List<Track> { track });
+    {
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        CtrlSelectedTracks.Clear();
+        await MetadataHelper.OpenReplayGainScannerDialog(tracks);
+    }
 
     [RelayCommand]
     private async Task ConvertAlbum()
@@ -841,6 +822,20 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     {
         if (album == null || album.Tracks.Count == 0) return;
         await MetadataHelper.OpenMetadataWindow(album.Tracks[0], albumScoped: true);
+    }
+
+    [RelayCommand]
+    private async Task ConvertRelatedAlbum(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenAudioConverterDialog(InAlbumOrder(album.Tracks));
+    }
+
+    [RelayCommand]
+    private async Task ScanRelatedAlbumReplayGain(Album? album)
+    {
+        if (album == null || album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenReplayGainScannerDialog(InAlbumOrder(album.Tracks));
     }
 
     [RelayCommand]

@@ -4,6 +4,7 @@
              xmlns:m="using:Noctis.Models"
              xmlns:controls="using:Noctis.Controls"
              xmlns:conv="using:Noctis.Converters"
+             xmlns:helpers="using:Noctis.Helpers"
              x:Class="Noctis.Views.PlaybackBarView"
              x:DataType="vm:PlayerViewModel"
              Background="Transparent">
@@ -159,6 +160,8 @@
         <Style Selector="Button.artist-link-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
         </Style>
+        <!-- Highlight tracks the button, which now wraps only the artist text (it lives
+             inside the 200px clip viewport), so hover/press only fire over the name. -->
         <Style Selector="Button.artist-link-btn:pointerover Border.artist-text-hover">
             <Setter Property="Background" Value="#22FFFFFF" />
         </Style>
@@ -308,7 +311,6 @@
         <!-- Dynamic Island: Single unified glass pill-shaped container -->
         <Border x:Name="IslandBorder"
                 Classes="island"
-                Background="#66202020"
                 BorderBrush="#40FFFFFF"
                 BorderThickness="1"
                 CornerRadius="999"
@@ -317,6 +319,11 @@
                 VerticalAlignment="Center"
                 Height="50"
                 Width="650">
+            <!-- Glass fill: opaque colour with user-controlled opacity (Settings → Player Bar
+                 Opacity). Driving the brush opacity (not the Border's) keeps text/controls crisp. -->
+            <Border.Background>
+                <SolidColorBrush Color="#202020" Opacity="{Binding IslandBackgroundOpacity}"/>
+            </Border.Background>
             <Border.Transitions>
                 <Transitions>
                     <DoubleTransition Property="Width" Duration="0:0:0.2">
@@ -543,16 +550,18 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- Artist name -->
-                            <Button Grid.Row="1"
-                                    Classes="artist-link-btn"
-                                    Background="Transparent" BorderThickness="0" Padding="0"
-                                    Cursor="Hand" HorizontalAlignment="Left"
-                                    MaxWidth="200"
-                                    Command="{Binding ViewCurrentArtistCommand}">
-                                <Border x:Name="ArtistNameViewport"
-                                        Width="200"
-                                        ClipToBounds="True">
+                            <!-- Artist name. The 200px viewport clips the marquee; the Button
+                                 sits inside and wraps only the text, so hover/click are limited
+                                 to the artist name itself, not the blank space to its right. -->
+                            <Border x:Name="ArtistNameViewport"
+                                    Grid.Row="1"
+                                    Width="200"
+                                    ClipToBounds="True"
+                                    HorizontalAlignment="Left">
+                                <Button Classes="artist-link-btn"
+                                        Background="Transparent" BorderThickness="0" Padding="0"
+                                        Cursor="Hand" HorizontalAlignment="Left"
+                                        Command="{Binding ViewCurrentArtistCommand}">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Classes="artist-text-hover"
                                                 CornerRadius="2"
@@ -570,8 +579,8 @@
                                             </TextBlock>
                                         </Border>
                                     </StackPanel>
-                                </Border>
-                            </Button>
+                                </Button>
+                            </Border>
 
                             <!-- Compact seek bar: fixed side times with a long centered slider -->
                             <Grid Grid.Row="2" Height="20" Margin="-22,-2,0,0" ClipToBounds="False"
@@ -650,7 +659,8 @@
                         </Viewbox>
                         <Button.Flyout>
                             <MenuFlyout Placement="TopEdgeAlignedLeft"
-                                        PlacementConstraintAdjustment="FlipY">
+                                        PlacementConstraintAdjustment="FlipY"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
                                 <MenuItem Command="{Binding PlayPauseCommand}"
                                           MaxWidth="400">
                                     <MenuItem.Header>
@@ -865,14 +875,14 @@
                                PlacementAnchor="Bottom"
                                PlacementGravity="Top"
                                VerticalOffset="-4"
-                               IsLightDismissEnabled="False">
+                               IsLightDismissEnabled="False"
+                               WindowManagerAddShadowHint="False">
                             <Border x:Name="VolumeFlyoutContent"
                                     Background="{DynamicResource IslandBackground}"
                                     BorderBrush="{DynamicResource IslandBorder}"
                                     BorderThickness="1"
                                     CornerRadius="999"
                                     Padding="10,6"
-                                    BoxShadow="0 4 14 0 #50000000"
                                     Opacity="0"
                                     PointerEntered="OnVolumeFlyoutPointerEntered"
                                     PointerExited="OnVolumeFlyoutPointerExited">

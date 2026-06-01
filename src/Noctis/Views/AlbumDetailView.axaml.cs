@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -19,6 +20,8 @@ public partial class AlbumDetailView : UserControl
     private EventHandler? _pendingScrollRestore;
     private System.ComponentModel.PropertyChangedEventHandler? _bgHandler;
     private AlbumDetailViewModel? _trackedVm;
+    // Multi-select tracked by Track (data) so it survives container recycling.
+    private readonly HashSet<Track> _selectedTracks = new();
 
     public AlbumDetailView()
     {
@@ -35,6 +38,53 @@ public partial class AlbumDetailView : UserControl
         MoreByArtistScroll.LayoutUpdated += (_, _) => UpdateHScrollArrows(MoreByArtistScroll, MoreByArtistLeft, MoreByArtistRight);
 
         AddHandler(InputElement.PointerPressedEvent, OnOptionsFlyoutButtonPointerPressed, RoutingStrategies.Tunnel);
+        // Forward Ctrl+A from the window so it works without first clicking a row.
+        _ = new WindowKeyForwarder(this, OnViewKeyDown);
+    }
+
+    /// <summary>Ctrl+Click toggles a track row's selection; a plain click clears it.</summary>
+    private void OnTrackRowPointerPressed(PointerPressedEventArgs e)
+    {
+        var src = e.Source as Control;
+        while (src != null && src is not ListBoxItem)
+            src = src.Parent as Control;
+        if (src is not ListBoxItem item) return;
+        if (item.DataContext is not Track track) return;
+
+        MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
+        if (_selectedTracks.Count > 0)
+            Focus();
+    }
+
+    /// <summary>Ctrl+A selects all album tracks (toggles to deselect when all are selected).</summary>
+    private void OnViewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(KeyModifiers.Control)) return;
+        if (DataContext is not AlbumDetailViewModel vm) return;
+        e.Handled = true;
+
+        var all = vm.Tracks.ToList();
+        var allSelected = all.Count > 0 && all.All(t => _selectedTracks.Contains(t));
+        _selectedTracks.Clear();
+        if (!allSelected)
+            foreach (var t in all) _selectedTracks.Add(t);
+
+        foreach (var li in DiscGroupList.GetVisualDescendants().OfType<ListBoxItem>())
+        {
+            if (li.DataContext is Track t && _selectedTracks.Contains(t))
+                li.Classes.Add("ctrl-selected");
+            else
+                li.Classes.Remove("ctrl-selected");
+        }
+    }
+
+    private void ClearTrackSelection()
+    {
+        _selectedTracks.Clear();
+        foreach (var li in DiscGroupList.GetVisualDescendants().OfType<ListBoxItem>())
+            li.Classes.Remove("ctrl-selected");
+        if (DataContext is AlbumDetailViewModel vm)
+            vm.CtrlSelectedTracks = new List<Track>();
     }
 
     private static void UpdateHScrollArrows(ScrollViewer sv, Button left, Button right)
@@ -123,19 +173,28 @@ public partial class AlbumDetailView : UserControl
     private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)
     {
         if (e.Container is ListBoxItem item)
+        {
             item.ContextRequested += OnTrackItemContextRequested;
+            MultiSelectHelper.SyncContainerVisual(item, _selectedTracks);
+        }
     }
 
     private void OnTrackContainerClearing(object? sender, ContainerClearingEventArgs e)
     {
         if (e.Container is ListBoxItem item)
+        {
             item.ContextRequested -= OnTrackItemContextRequested;
+            item.Classes.Remove("ctrl-selected");
+        }
     }
 
     private void OnTrackItemContextRequested(object? sender, ContextRequestedEventArgs e)
     {
         if (e.Handled) return;
         if (sender is not ListBoxItem item) return;
+
+        if (DataContext is AlbumDetailViewModel vm)
+            vm.CtrlSelectedTracks = _selectedTracks.ToList();
 
         Grid? grid = null;
         foreach (var desc in item.GetVisualDescendants())
@@ -148,15 +207,20 @@ public partial class AlbumDetailView : UserControl
         e.Handled = true;
     }
 
-    private void OnContextMenuOpening(object? sender, CancelEventArgs e) { }
+    // Close any menu still open from a previous rapid right-click so menus
+    // don't stack on top of each other.
+    private void OnContextMenuOpening(object? sender, CancelEventArgs e)
+        => ContextMenuCoordinator.NotifyOpening(sender as ContextMenu);
 
-    private void OnRelatedAlbumContextMenuOpening(object? sender, CancelEventArgs e) { }
+    private void OnRelatedAlbumContextMenuOpening(object? sender, CancelEventArgs e)
+        => ContextMenuCoordinator.NotifyOpening(sender as ContextMenu);
 
     private void OnAlbumFlyoutOpened(object? sender, EventArgs e) { }
 
     private void OnTrackFlyoutOpened(object? sender, EventArgs e) { }
 
-    private void OnOptionsFlyoutButtonPointerPressed(object? sender, PointerPressedEventArgs e) { }
+    private void OnOptionsFlyoutButtonPointerPressed(object? sender, PointerPressedEventArgs e)
+        => OnTrackRowPointerPressed(e);
 
     private void OnTrackDoubleTapped(object? sender, TappedEventArgs e)
     {
@@ -184,6 +248,10 @@ public partial class AlbumDetailView : UserControl
         {
             vm.SavedScrollOffset = TrackScrollViewer.Offset.Y;
         }
+
+        // Reset multi-selection so it doesn't leak back when the view is revisited.
+        ClearTrackSelection();
+
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -210,6 +278,9 @@ public partial class AlbumDetailView : UserControl
         // back-navigation still restores the previous album's position.
         if (_trackedVm != null)
             _trackedVm.SavedScrollOffset = TrackScrollViewer.Offset.Y;
+
+        // Drop any selection from the previous album so it doesn't carry over.
+        _selectedTracks.Clear();
 
         CancelPendingScrollRestore();
 

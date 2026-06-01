@@ -17,7 +17,9 @@
     </UserControl.Resources>
 
     <Grid RowDefinitions="*">
-        <DockPanel Grid.Row="0" Margin="16,8,16,16">
+        <!-- Right margin trimmed to 2 so the vertical scrollbar sits near the window
+             edge (matches the Albums section) instead of being inset ~16px from it. -->
+        <DockPanel Grid.Row="0" Margin="16,8,2,16">
 
         <!-- Column headers (sortable) -->
         <Grid DockPanel.Dock="Top"
@@ -28,11 +30,11 @@
             <Button Grid.Column="1" Content="Time" Command="{Binding SortCommand}" CommandParameter="Time"
                     Background="Transparent" BorderThickness="0" Padding="0" Margin="-4,0,0,0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             <Button Grid.Column="2" Content="Artist" Command="{Binding SortCommand}" CommandParameter="Artist"
-                    Background="Transparent" BorderThickness="0" Padding="0" Margin="-4,0,0,0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
+                    Background="Transparent" BorderThickness="0" Padding="0" Margin="-1,0,0,0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="3" Content="Album" Command="{Binding SortCommand}" CommandParameter="Album"
                     Background="Transparent" BorderThickness="0" Padding="0" Margin="-4,0,0,0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="4" Content="Genre" Command="{Binding SortCommand}" CommandParameter="Genre"
-                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
+                    Background="Transparent" BorderThickness="0" Padding="0" Margin="-8,0,0,0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="5" Content="Favorites" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
                     Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             <Button Grid.Column="6" Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
@@ -98,8 +100,7 @@
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center" />
                         <Button Grid.Column="2"
-                                Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" MinHeight="0"
-                                HorizontalContentAlignment="Left"
+                                Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                 Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
                                 Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ViewArtistCommand}"
                                 CommandParameter="{Binding Artist}">
@@ -129,7 +130,7 @@
                                                      HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
                                                      FontSize="12"
                                                      FontWeight="SemiBold"
-                                                     Opacity="0.7"
+                                                     Foreground="{DynamicResource AccentTextBrush}"
                                                      TextTrimming="CharacterEllipsis"
                                                      VerticalAlignment="Center" />
                         <PathIcon Grid.Column="5"

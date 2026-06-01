@@ -121,7 +121,10 @@ public partial class MainWindow : Window
                     {
                         if (e.Property == Border.IsPointerOverProperty && !vm.IsSidebarHidden)
                         {
-                            var expanded = _sidebarWrapper.IsPointerOver;
+                            // Honor the "Hover to expand sidebar" preference: when disabled the
+                            // rail stays icon-only and never expands (no slide animation).
+                            var expanded = _sidebarWrapper.IsPointerOver
+                                           && vm.Settings.SidebarHoverExpand;
                             _sidebarWrapper.Width = expanded ? 220 : 60;
                             if (_rootPanel?.RenderTransform is TranslateTransform translate)
                                 translate.X = expanded ? 160 : 0;
@@ -244,8 +247,6 @@ public partial class MainWindow : Window
                 Dispatcher.UIThread.Post(() => vm.Player.PlayPauseCommand.Execute(null));
             _taskbar.NextClicked += () =>
                 Dispatcher.UIThread.Post(() => vm.Player.NextCommand.Execute(null));
-            _taskbar.ShuffleClicked += () =>
-                Dispatcher.UIThread.Post(() => vm.Player.ToggleShuffleCommand.Execute(null));
             _taskbar.FavoriteClicked += () =>
                 Dispatcher.UIThread.Post(() => vm.Player.ToggleCurrentTrackFavoriteCommand.Execute(null));
 
@@ -281,10 +282,6 @@ public partial class MainWindow : Window
                     if (vm.Player.IsQueuePopupOpen)
                         vm.IsLyricsPanelOpen = false;
                 }
-                else if (e.PropertyName == nameof(PlayerViewModel.IsShuffleEnabled))
-                {
-                    _taskbar?.UpdateShuffleState(vm.Player.IsShuffleEnabled);
-                }
                 else if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
                 {
                     RebindCurrentTrack();
@@ -293,7 +290,6 @@ public partial class MainWindow : Window
             vm.Player.PropertyChanged += _playerPropertyChangedHandler;
 
             // Seed initial state so icons reflect reality on first paint.
-            _taskbar.UpdateShuffleState(vm.Player.IsShuffleEnabled);
             RebindCurrentTrack();
         }
         catch
@@ -302,6 +298,10 @@ public partial class MainWindow : Window
         }
     }
 
+    // The file-import drag-drop below uses Avalonia's pre-11.3 IDataObject/DataFormats
+    // API. The newer DataTransfer API isn't adopted yet, so suppress the obsolete-usage
+    // warnings for this self-contained region rather than rewriting working code.
+#pragma warning disable CS0618 // Type or member is obsolete
     private void OnWindowDragOver(object? sender, DragEventArgs e)
     {
         // Don't show import overlay for internal drags (album/track tiles dragged within the app)
@@ -452,6 +452,7 @@ public partial class MainWindow : Window
         if (!File.Exists(path)) return false;
         return MetadataService.SupportedExtensions.Contains(Path.GetExtension(path));
     }
+#pragma warning restore CS0618 // Type or member is obsolete
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
@@ -515,6 +516,21 @@ public partial class MainWindow : Window
 
     private void OnGlobalPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        // Mouse back/forward buttons drive in-app navigation (browser-style).
+        var props = e.GetCurrentPoint(this).Properties;
+        if (props.IsXButton1Pressed || props.IsXButton2Pressed)
+        {
+            if (DataContext is MainWindowViewModel navVm)
+            {
+                if (props.IsXButton1Pressed)
+                    navVm.GoBackInHistoryCommand.Execute(null);
+                else
+                    navVm.GoForwardInHistoryCommand.Execute(null);
+                e.Handled = true;
+            }
+            return;
+        }
+
         // Clear search box focus when clicking outside it
         var searchBox = this.FindControl<TextBox>("SearchBox");
         if (searchBox is { IsFocused: true })
