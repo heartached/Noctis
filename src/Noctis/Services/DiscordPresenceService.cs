@@ -14,9 +14,26 @@ namespace Noctis.Services;
 public sealed class DiscordPresenceService : IDiscordPresenceService
 {
     private const string ApplicationId = "1470224696976085096";
+    private const string DefaultIconKey = "noctis_icon";
+
+    /// <summary>
+    /// Grace period between clearing the presence and tearing down the pipe.
+    /// DiscordRPC.NET flushes presence frames on an internal worker thread; disposing
+    /// immediately after <c>ClearPresence()</c> drops the queued clear frame, leaving a
+    /// stale presence in Discord. The library exposes no synchronous flush, so we wait
+    /// a bounded period to let the worker send it.
+    /// </summary>
+    private const int ClearFlushDelayMs = 250;
 
     private readonly SemaphoreSlim _gate = new(1, 1);
     private DiscordRpcClient? _client;
+
+    // Last successfully-published artwork key and the track it belonged to.
+    // Used to avoid flipping good art to the app icon when the artwork relay
+    // transiently drops mid-track (relay outage -> null URL -> would otherwise
+    // overwrite the cached cover with the logo).
+    private string? _lastArtworkKey;
+    private string? _lastTrackIdentity;
 
     public bool IsConnected => _client is { IsInitialized: true, IsDisposed: false };
 
@@ -69,6 +86,14 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
         await _gate.WaitAsync();
         try
         {
+            // Flush a clear frame and give the RPC worker time to send it before we
+            // close the pipe — otherwise the presence lingers in Discord after toggle-off.
+            if (_client is { IsDisposed: false })
+            {
+                try { _client.ClearPresence(); } catch { /* best effort */ }
+                await Task.Delay(ClearFlushDelayMs);
+            }
+
             DisposeClient();
             Debug.WriteLine("[Discord] Disconnected.");
         }
@@ -93,6 +118,14 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             var artist = string.IsNullOrWhiteSpace(track.Artist) ? "Unknown Artist" : track.Artist;
             var album = track.Album;
 
+            var identity = TrackIdentity(title, artist, album);
+            var artworkKey = ResolveArtworkKey(track.ArtworkUrl, identity, _lastArtworkKey, _lastTrackIdentity);
+            if (!string.Equals(artworkKey, DefaultIconKey, StringComparison.Ordinal))
+            {
+                _lastArtworkKey = artworkKey;
+                _lastTrackIdentity = identity;
+            }
+
             var presence = new RichPresence
             {
                 Type = ActivityType.Listening,
@@ -101,7 +134,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
                 State = Truncate(artist, 128),
                 Assets = new Assets
                 {
-                    LargeImageKey = !string.IsNullOrWhiteSpace(track.ArtworkUrl) ? track.ArtworkUrl : "noctis_icon",
+                    LargeImageKey = artworkKey,
                     LargeImageText = Truncate(!string.IsNullOrWhiteSpace(album) ? album : artist, 128),
                     SmallImageKey = isPlaying ? "play" : "pause",
                     SmallImageText = isPlaying ? "Playing" : "Paused",
@@ -164,6 +197,10 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
 
     private void DisposeClient()
     {
+        // Forget cached art so a later reconnect can't reuse a key from a prior session.
+        _lastArtworkKey = null;
+        _lastTrackIdentity = null;
+
         if (_client == null) return;
         try
         {
@@ -175,6 +212,23 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             // Ignore errors during teardown
         }
         _client = null;
+    }
+
+    /// <summary>Stable identity for a track, used to scope cached artwork keys.</summary>
+    private static string TrackIdentity(string title, string artist, string? album)
+        => $"{title}{artist}{album}";
+
+    /// <summary>
+    /// Chooses the Discord <c>LargeImageKey</c>. Prefers a fresh artwork URL; if none is
+    /// available (relay transiently down) it reuses the last good key for the SAME track so
+    /// Discord keeps showing the already-cached cover instead of flipping to the app icon.
+    /// Falls back to the app icon only for a track we have no prior art for.
+    /// </summary>
+    public static string ResolveArtworkKey(string? incomingUrl, string identity, string? lastKey, string? lastIdentity)
+    {
+        if (!string.IsNullOrWhiteSpace(incomingUrl)) return incomingUrl;
+        if (lastKey != null && string.Equals(identity, lastIdentity, StringComparison.Ordinal)) return lastKey;
+        return DefaultIconKey;
     }
 
     /// <summary>

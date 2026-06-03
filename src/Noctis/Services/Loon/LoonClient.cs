@@ -31,6 +31,13 @@ public sealed class LoonClient : IDisposable
     /// <summary>Whether the client is connected and ready to generate URLs.</summary>
     public bool IsConnected => _connected;
 
+    /// <summary>
+    /// Raised after every successful (re)connect, once a fresh clientId/secret are in place.
+    /// Subscribers should re-publish any artwork URL they previously handed out, because a
+    /// reconnect rotates the clientId and invalidates URLs generated before it.
+    /// </summary>
+    public event Action? Reconnected;
+
     public LoonClient(string artworkDirectory)
     {
         _artworkDirectory = artworkDirectory;
@@ -129,6 +136,9 @@ public sealed class LoonClient : IDisposable
 
         _connected = true;
         Debug.WriteLine($"[Loon] Connected: clientId={_clientId}, chunkSize={_chunkSize}");
+
+        try { Reconnected?.Invoke(); }
+        catch (Exception ex) { Debug.WriteLine($"[Loon] Reconnected handler threw: {ex.Message}"); }
     }
 
     // ── Receive loop ──
