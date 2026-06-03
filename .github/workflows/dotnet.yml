@@ -113,9 +113,13 @@ jobs:
         continue-on-error: true
         run: |
           set -euo pipefail
-          curl -sSL https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz -o ffmpeg.tar.xz
+          # johnvansickle.com has no reliable arm64 static host (it serves an HTML
+          # page, not the tarball — "tar: This does not look like a tar archive").
+          # Use BtbN's GitHub-hosted static arm64 build instead; the binary lives
+          # at ffmpeg-*/bin/ffmpeg inside the archive.
+          curl -sSL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linuxarm64-gpl.tar.xz -o ffmpeg.tar.xz
           tar -xf ffmpeg.tar.xz
-          cp ffmpeg-*-arm64-static/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
+          cp ffmpeg-*-linuxarm64-gpl/bin/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
           chmod +x "publish/${{ matrix.rid }}/ffmpeg"
 
       # ── macOS: bundle as Noctis.app, wrap in a .dmg ─────────────────
