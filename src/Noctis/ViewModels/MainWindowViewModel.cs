@@ -332,6 +332,10 @@ public partial class MainWindowViewModel : ViewModelBase
         Player.PropertyChanged += OnPlayerPropertyChangedForIntegrations;
         Player.Seeked += OnPlayerSeekedForIntegrations;
 
+        // A loon reconnect rotates the clientId and invalidates the artwork URL Discord
+        // is currently holding, so re-publish the presence with a fresh, valid URL.
+        _loon.Reconnected += OnLoonReconnected;
+
     }
 
     /// <summary>
@@ -1829,6 +1833,17 @@ public partial class MainWindowViewModel : ViewModelBase
         _lastDiscordSeekUpdate = now;
 
         _ = UpdateDiscordPresenceAsync(Player.CurrentTrack, newPosition, Player.State == PlaybackState.Playing);
+    }
+
+    private void OnLoonReconnected()
+    {
+        // Refresh the presence so Discord re-fetches the cover through the new clientId.
+        if (!_discord.IsConnected) return;
+
+        var track = Player.CurrentTrack;
+        if (track == null || Player.State != PlaybackState.Playing) return;
+
+        _ = UpdateDiscordPresenceAsync(track, Player.Position, true);
     }
 
     private async Task UpdateDiscordPresenceAsync(Track track, TimeSpan position, bool isPlaying)
