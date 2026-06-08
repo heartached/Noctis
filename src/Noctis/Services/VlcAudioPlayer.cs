@@ -18,16 +18,51 @@ namespace Noctis.Services;
 public class VlcAudioPlayer : IAudioPlayer
 {
     private const int SeekThrottleMs = 50;
-    // Throttled volume write. Volume goes to player.Volume, which on
-    // --aout=waveout calls waveOutSetVolume — a driver-level write that does
-    // not fire WASAPI session events, so it is click-free even during
-    // continuous slider drag. The 150ms throttle remains a useful coalescer
-    // for trailing writes; CommitVolume (pointer-release) flushes the final
-    // exact value immediately. _applyingVolume breaks the reentrance feedback
-    // loop: setting _player.Volume can fire MediaPlayer.VolumeChanged, which
-    // (if observed) can re-enter the public Volume setter and chain rapid
-    // writes — Interlocked.CompareExchange guards every direct write.
-    private const int VolumeThrottleMs = 150;
+    // A backward seek to the very start desyncs LibVLC's mmdevice/WASAPI output
+    // clock on files with encoder-delay priming (start_time != 0), producing a
+    // permanent "playback too late → flushing buffers" stutter that never
+    // recovers. Seeks landing at/under this threshold are served by a clean
+    // track restart instead of an in-place seek. See Seek() for details.
+    private const long StartSeekRestartThresholdMs = 1000;
+    // ── Volume application (default, non-OS-session path) ──
+    // Raw per-pixel slider writes go to player.Volume, which --aout=mmdevice
+    // applies via the Windows audio session (ISimpleAudioVolume). Each session
+    // change is ramped by the OS over ~10-20ms; hammering it every few ms during
+    // a drag interrupts that ramp repeatedly → audible static (confirmed in the
+    // diag log: a continuous stream of "mmdevice: simple volume changed" during
+    // the drag). The fix: never write raw per-pixel. A ramp worker instead slews
+    // the applied volume toward the latest slider value in small, evenly-paced
+    // steps — a smooth continuous gain that follows the drag in real time, the
+    // same way the crossfade already applies stepped volume cleanly.
+    //   NOCTIS_VOL_RAMP_TICK — ms between steps (default 4; the worker raises the
+    //                          Windows timer resolution so this is honored)
+    //   NOCTIS_VOL_RAMP_STEP — max step per tick, in 0.1% amplitude units (default 5)
+    // The level is applied to the Windows session as a FLOAT (sub-percent
+    // resolution, click-free) so high-volume steps stop being coarse; non-Windows
+    // / COM failure falls back to LibVLC's integer 0–100 player volume.
+    // _applyingVolume breaks a reentrance loop: setting _player.Volume can fire
+    // MediaPlayer.VolumeChanged, which (if observed) re-enters the public Volume
+    // setter — Interlocked.CompareExchange guards every direct write.
+    //
+    // Legacy A/B: NOCTIS_VOL_SETTLE>0 restores the old settle-debounce (applies
+    // on release, not real-time) for comparison; default 0 uses the ramp.
+    private readonly int _volumeSettleMs =
+        int.TryParse(Environment.GetEnvironmentVariable("NOCTIS_VOL_SETTLE"), out var vs) && vs >= 0
+            ? vs : 0;
+    // Tick interval and max step are tuned together to keep the amplitude slew
+    // (step per tick) under the Windows session-volume crackle threshold. Driving
+    // the OS session faster than ~600–900 per-mille/sec produces audible
+    // static/zipper; 10 per-mille every 16ms (~625/sec) is the fastest rate that
+    // stays click-free while still tracking the slider in real time. Verified by
+    // ear: STEP 10 clean, 15 faint crackle, 20 heavy static. Don't lower the tick
+    // or raise the step without re-testing — it reintroduces the crackle.
+    private readonly int _volumeRampTickMs =
+        int.TryParse(Environment.GetEnvironmentVariable("NOCTIS_VOL_RAMP_TICK"), out var rt) && rt >= 1
+            ? rt : 16;
+    // Max step per tick in per-mille (0.1%) of the 0–1000 amplitude level scale.
+    private readonly int _volumeRampMaxStep =
+        int.TryParse(Environment.GetEnvironmentVariable("NOCTIS_VOL_RAMP_STEP"), out var rs) && rs >= 1
+            ? rs : 10;
     private const int VolumeDeadband = 1;
     private const int EndReachedGraceMs = 1200;
     private const int FadeStepMs = 35;
@@ -39,6 +74,29 @@ public class VlcAudioPlayer : IAudioPlayer
     private readonly LibVLC _libVlc;
     private MediaPlayer _player;
     private MediaPlayer _standbyPlayer;
+
+    // Windows: drives the user's volume through the OS audio session (ramped
+    // smoothly, click-free) instead of LibVLC's abrupt float_mixer gain. When
+    // non-null, LibVLC's own volume is pinned at 100 and only used as the
+    // transient fade layer for crossfades. Null on non-Windows / COM failure →
+    // the code falls back to the LibVLC (debounced) volume path. See
+    // WindowsSessionVolume for why.
+    private readonly WindowsSessionVolume? _sessionVolume;
+
+    // Experimental Windows-only per-sample-gain output (NOCTIS_WASAPI=1, off by
+    // default). When non-null it OWNS volume — applied click-free at any drag
+    // speed — LibVLC's audio is routed here via SetAudioCallbacks, LibVLC's own
+    // volume is pinned at unity, and _sessionVolume is forced null. See
+    // WasapiGainOutput for why the stepped gain paths can't be both instant and
+    // silent. The callback delegates must be held for the player's lifetime or
+    // the GC collects them and LibVLC calls into freed memory.
+    private readonly WasapiGainOutput? _wasapiOut;
+    private MediaPlayer.LibVLCAudioPlayCb? _audioPlayCb;
+    private MediaPlayer.LibVLCAudioPauseCb? _audioPauseCb;
+    private MediaPlayer.LibVLCAudioResumeCb? _audioResumeCb;
+    private MediaPlayer.LibVLCAudioFlushCb? _audioFlushCb;
+    private MediaPlayer.LibVLCAudioDrainCb? _audioDrainCb;
+
     private Media? _currentMedia;
     private Media? _standbyMedia;
     private string? _standbyPath;
@@ -46,6 +104,16 @@ public class VlcAudioPlayer : IAudioPlayer
     private long _standbyPreparedTicksUtc;
     private bool _standbyPrepared;
     private bool _disposed;
+
+    // ── VLC internal-log diagnostics (gated by env NOCTIS_VLC_LOG=1) ──
+    // Off by default and zero-cost. When enabled, LibVLC's OWN log (decoder,
+    // audio-output / mmdevice underrun warnings, seek/flush messages) is
+    // written to a file alongside our Playback markers, so the exact failure
+    // at a stutter moment can be read directly instead of guessed at. Pure
+    // instrumentation — it does not alter the playback path.
+    private StreamWriter? _vlcDiagWriter;
+    private readonly object _vlcDiagLock = new();
+    private long _vlcDiagStartTicks;
 
     // Serializes Play/Stop operations so rapid track switching
     // (e.g. spamming Next) doesn't overlap Stop+Play calls.
@@ -79,6 +147,16 @@ public class VlcAudioPlayer : IAudioPlayer
     private readonly object _volumeWriteLock = new();
     private long _lastDualFadeTickMs;
     private int _slowDualFadeTicks;
+
+    // Volume ramp engine (see NOCTIS_VOL_RAMP_*). Works in per-mille amplitude
+    // units (0–1000 = level 0.0–1.0). _rampTargetMilli is the latest slider value;
+    // a single worker eases _rampCurrentMilli toward it, applying each step as a
+    // float session level (or integer player volume on the fallback path). -1 =
+    // uninitialized: the first value snaps (no startup glide). Accessed only via
+    // Volatile.Read/Write (not the `volatile` keyword, which warns on ref pass).
+    private int _rampTargetMilli = -1;
+    private int _rampCurrentMilli = -1;
+    private int _rampWorkerActive;
 
     // EndReached can fire before the final output buffer is fully audible.
     // Keep lyrics/UI alive briefly, then raise TrackEnded once the grace window passes.
@@ -199,17 +277,31 @@ public class VlcAudioPlayer : IAudioPlayer
         //   earlier build moved off WASAPI. If that artifact regresses,
         //   switch this back to --aout=directsound.
         //
-        // NOTE on caching: leaving VLC's input-caching at its defaults
-        // (300ms file / 1500ms live / 300ms disc). A previous build forced
-        // these to 50ms for snappier EQ slider response, but on Bluetooth
-        // / high-latency A2DP endpoints the 50ms buffer is too tight — any
-        // disk-read jitter, GC pause, or track-change cost starves the
-        // output and produces stutter (re-opening of issue #1; new reports
-        // in issue #3). The ~250ms EQ-drag lag is a fair tradeoff vs.
-        // audible stuttering. --clock-jitter stays at the 5000ms default
-        // for output-side drift tolerance. The seek-stutter fix remains
-        // --demux=avformat, which builds an O(1) seek index at open time
-        // regardless of caching.
+        // NOTE on caching: VLC's 300ms default file-caching is fine for wired
+        // output (near-zero endpoint latency) but too shallow for Bluetooth
+        // A2DP. AirPods et al. add ~150-300ms of their own pipeline latency, so
+        // a 300ms decode buffer runs dry between refills the moment any disk-read
+        // jitter, GC pause, or track-change cost lands — mmdevice's WASAPI clock
+        // then spirals into the permanent "playback too late -> flushing buffers"
+        // stutter, dropping the first seconds of the track and stuttering
+        // throughout. Reported as Bluetooth-only (wired is unaffected), which is
+        // the signature of output-side starvation. The fix is to keep the
+        // decoder further ahead so the output can't starve: deepen the input
+        // caching to a Bluetooth-safe depth (VideoLAN's own BT recommendation).
+        // This is purely a read-ahead margin — for local files VLC starts output
+        // once primed rather than waiting out the whole window, so wired
+        // track-start/seek and every other path are unchanged. --clock-jitter
+        // stays at the 5000ms default; the seek-stutter fix remains
+        // --demux=avformat (O(1) seek index, independent of caching).
+        //   NOCTIS_CACHING overrides the depth in ms for A/B testing on real
+        //   hardware (e.g. NOCTIS_CACHING=300 restores the old default).
+        var cachingMs =
+            int.TryParse(Environment.GetEnvironmentVariable("NOCTIS_CACHING"), out var cm) && cm >= 0
+                ? cm : 1000;
+
+        var vlcDiag = string.Equals(
+            Environment.GetEnvironmentVariable("NOCTIS_VLC_LOG"), "1", StringComparison.Ordinal);
+
         var vlcArgs = new List<string>
         {
             "--no-video",
@@ -218,6 +310,10 @@ public class VlcAudioPlayer : IAudioPlayer
             "--input-repeat=0",
             "--demux=avformat",
             "--no-audio-time-stretch",
+            $"--file-caching={cachingMs}",
+            $"--disc-caching={cachingMs}",
+            $"--live-caching={cachingMs}",
+            $"--network-caching={cachingMs}",
         };
         // The speex resampler module + its quality flag are not always present
         // in third-party VLC builds (notably the macOS VLC.app distribution).
@@ -226,13 +322,115 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             vlcArgs.Add("--audio-resampler=speex");
             vlcArgs.Add("--speex-resampler-quality=10");
-            vlcArgs.Add("--aout=mmdevice");
+            // Diagnostic override: NOCTIS_AOUT lets us A/B the Windows audio
+            // output module on real hardware without recompiling. On Bluetooth
+            // (AirPods etc.) mmdevice's WASAPI clock can spiral into a permanent
+            // "playback too late → flushing buffers" stutter; directsound /
+            // waveout use different timing models. Defaults to mmdevice.
+            var aoutOverride = Environment.GetEnvironmentVariable("NOCTIS_AOUT");
+            var aout = string.IsNullOrWhiteSpace(aoutOverride) ? "mmdevice" : aoutOverride.Trim();
+            vlcArgs.Add($"--aout={aout}");
+        }
+
+        // Verbose generation so LibVLC actually emits debug-level audio-output
+        // (underrun / "playback too late" / flush) lines for the diag capture.
+        if (vlcDiag)
+            vlcArgs.Add("--verbose=2");
+
+        // Diagnostic: append arbitrary space-separated LibVLC args so output
+        // modules / clock / time-stretch settings can be A/B-tested on real
+        // hardware without recompiling (e.g. "--audio-time-stretch" to test
+        // whether tempo-stretch rides out Bluetooth clock drift instead of
+        // dropping buffers). Appended last, so these override defaults above.
+        var extraArgs = Environment.GetEnvironmentVariable("NOCTIS_VLC_EXTRA");
+        if (!string.IsNullOrWhiteSpace(extraArgs))
+        {
+            foreach (var tok in extraArgs.Split(' ',
+                         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                vlcArgs.Add(tok);
         }
 
         _libVlc = new LibVLC(vlcArgs.ToArray());
 
+        // Identify our audio session as "Noctis" in the Windows Volume Mixer
+        // (and as the network user agent) instead of LibVLC's default
+        // "VLC media player (LibVLC x.y.z)".
+        try
+        {
+            _libVlc.SetUserAgent("Noctis", "Noctis");
+            _libVlc.SetAppId("com.heartached.noctis", "1.0", "noctis");
+        }
+        catch { /* cosmetic only — never block playback on naming */ }
+
+        if (vlcDiag)
+        {
+            TryEnableVlcDiagnostics();
+            // Self-document the effective audio config so the diag log proves
+            // which build/settings produced the captured stutter (e.g. confirms
+            // the deeper caching is actually live). Mirrored into the diag via
+            // OnDebugEntryForDiag, which is now subscribed.
+            DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Config",
+                $"args={string.Join(' ', vlcArgs)}");
+        }
+
         _player = new MediaPlayer(_libVlc);
         _standbyPlayer = new MediaPlayer(_libVlc);
+
+        // Experimental: route audio through a custom WASAPI sink that applies
+        // volume as a per-sample interpolated gain (click-free at any drag speed).
+        // SetAudioCallbacks disables LibVLC's own output, so EQ/ReplayGain — both
+        // applied upstream of the callback — stay baked into the PCM we receive,
+        // and LibVLC's volume is pinned at unity. Single stream only: crossfade
+        // and standby-prepare are gated off on this path (see PlayInternal /
+        // PrepareNext). On any failure we fall through to the OS-session path.
+        WasapiGainOutput? wasapi = null;
+        if (OperatingSystem.IsWindows() &&
+            Environment.GetEnvironmentVariable("NOCTIS_WASAPI") == "1")
+        {
+            wasapi = WasapiGainOutput.TryCreate();
+            if (wasapi != null)
+            {
+                _audioPlayCb = AudioPlay;
+                _audioPauseCb = AudioPause;
+                _audioResumeCb = AudioResume;
+                _audioFlushCb = AudioFlush;
+                _audioDrainCb = AudioDrain;
+                try
+                {
+                    // Order matters: register the amem callbacks first, then pin the
+                    // output format to what our sink renders (FL32 at the device rate).
+                    _player.SetAudioCallbacks(_audioPlayCb, _audioPauseCb, _audioResumeCb, _audioFlushCb, _audioDrainCb);
+                    _player.SetAudioFormat("FL32", (uint)wasapi.SampleRate, (uint)wasapi.Channels);
+                    _player.Volume = 100;
+                    WasapiGainOutput.Diag($"VlcAudioPlayer wired callbacks: FL32 {wasapi.SampleRate}Hz {wasapi.Channels}ch");
+                }
+                catch (Exception ex)
+                {
+                    WasapiGainOutput.Diag($"VlcAudioPlayer wiring FAILED: {ex.GetType().Name}: {ex.Message}");
+                    try { wasapi.Dispose(); } catch { }
+                    wasapi = null;
+                    _audioPlayCb = null; _audioPauseCb = null; _audioResumeCb = null;
+                    _audioFlushCb = null; _audioDrainCb = null;
+                }
+            }
+        }
+        _wasapiOut = wasapi;
+
+        // Volume is driven through the Windows audio session as a FLOAT level via
+        // a fine click-free ramp (see the NOCTIS_VOL_RAMP_* notes above). When
+        // active, LibVLC's own integer volume is pinned at 100 and used only as
+        // the transient fade layer for crossfades. Null on non-Windows / COM
+        // failure → fall back to the integer player-volume ramp.
+        // NOCTIS_OSVOL=0 forces the integer fallback for A/B testing. Skipped
+        // entirely when the WASAPI sink owns volume.
+        _sessionVolume = _wasapiOut != null || Environment.GetEnvironmentVariable("NOCTIS_OSVOL") == "0"
+            ? null
+            : WindowsSessionVolume.TryCreate();
+        if (_sessionVolume != null)
+        {
+            try { _player.Volume = 100; } catch { }
+            try { _standbyPlayer.Volume = 100; } catch { }
+        }
 
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnError;
@@ -354,17 +552,35 @@ public class VlcAudioPlayer : IAudioPlayer
         if (_crossfadeEnabled && _currentMedia != null)
             return;
 
+        // WASAPI path: the sink already tracks the live target per-sample, so a
+        // drag-release commit is just a final target set (no throttle to flush).
+        if (_wasapiOut != null)
+        {
+            _wasapiOut.SetGainTarget(WasapiGainLevel());
+            return;
+        }
+
         var target = ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100));
         target = ApplyReplayGainScalar(target);
-        lock (_volumeWriteLock)
+
+        // Legacy A/B path (integer player volume only): flush exact final now.
+        if (_sessionVolume == null && _volumeSettleMs > 0)
         {
-            _volumeTrailingCts?.Cancel();
-            _volumeTrailingCts = null;
-            _pendingVolumeTarget = -1;
-            SetPlayerVolumeGuarded(_player, target);
-            _lastWrittenVolume = target;
-            _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
+            lock (_volumeWriteLock)
+            {
+                _volumeTrailingCts?.Cancel();
+                _volumeTrailingCts = null;
+                _pendingVolumeTarget = -1;
+                SetPlayerVolumeGuarded(_player, target);
+                _lastWrittenVolume = target;
+                _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
+            }
+            return;
         }
+
+        // Drag released — set the exact final target; the ramp converges to it.
+        Volatile.Write(ref _rampTargetMilli, CurvedVolumeToLevelMilli(target));
+        EnsureVolumeRampWorker();
     }
 
     public bool IsMuted
@@ -412,15 +628,36 @@ public class VlcAudioPlayer : IAudioPlayer
         finally { Interlocked.Exchange(ref _applyingVolume, 0); }
     }
 
-    /// <summary>
-    /// Debounced/throttled volume write. Inside the cooldown we cache the target
-    /// and schedule a single trailing write for the remaining time; outside the
-    /// cooldown we write immediately. Deadband skips writes where the mapped VLC
-    /// value didn't change from the last successful write.
-    /// </summary>
     private void ScheduleVolumeWrite(int target)
     {
         target = Math.Clamp(target, 0, 100);
+        if (_disposed) return;
+
+        // WASAPI path: hand the target straight to the sink, which interpolates
+        // the gain per-sample (click-free at any speed). No ramp worker needed.
+        if (_wasapiOut != null)
+        {
+            _wasapiOut.SetGainTarget(WasapiGainLevel());
+            return;
+        }
+
+        // Legacy A/B path (integer player volume only): settle-debounce.
+        if (_sessionVolume == null && _volumeSettleMs > 0)
+        {
+            ScheduleSettleDebounce(target);
+            return;
+        }
+
+        // Default: fine click-free ramp toward the latest target.
+        Volatile.Write(ref _rampTargetMilli, CurvedVolumeToLevelMilli(target));
+        EnsureVolumeRampWorker();
+    }
+
+    // Legacy settle-debounce: never writes mid-drag; the value lands once the
+    // slider holds still for _volumeSettleMs (or on release via CommitVolume).
+    // Integer player-volume path only — kept for NOCTIS_VOL_SETTLE>0 A/B testing.
+    private void ScheduleSettleDebounce(int target)
+    {
         lock (_volumeWriteLock)
         {
             if (_disposed) return;
@@ -432,36 +669,16 @@ public class VlcAudioPlayer : IAudioPlayer
                 return;
             }
 
-            var nowTicks = Stopwatch.GetTimestamp();
-            var elapsedMs = _lastVolumeWriteTicks == 0
-                ? long.MaxValue
-                : (nowTicks - _lastVolumeWriteTicks) * 1000L / Stopwatch.Frequency;
-
-            if (elapsedMs >= VolumeThrottleMs)
-            {
-                // Cooldown expired — apply immediately. Cancel any in-flight
-                // trailing CTS so it can't double-write at the boundary.
-                _volumeTrailingCts?.Cancel();
-                _volumeTrailingCts = null;
-                _pendingVolumeTarget = -1;
-                SetPlayerVolumeGuarded(_player, target);
-                _lastWrittenVolume = target;
-                _lastVolumeWriteTicks = nowTicks;
-                return;
-            }
-
-            // Inside cooldown — schedule a single trailing write for the remainder.
             _pendingVolumeTarget = target;
             _volumeTrailingCts?.Cancel();
             var cts = new CancellationTokenSource();
             _volumeTrailingCts = cts;
-            var delay = (int)(VolumeThrottleMs - elapsedMs);
 
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await Task.Delay(delay, cts.Token).ConfigureAwait(false);
+                    await Task.Delay(_volumeSettleMs, cts.Token).ConfigureAwait(false);
                 }
                 catch (TaskCanceledException) { return; }
 
@@ -470,6 +687,8 @@ public class VlcAudioPlayer : IAudioPlayer
                     if (_disposed || cts.IsCancellationRequested) return;
                     var pending = _pendingVolumeTarget;
                     if (pending < 0) return;
+                    if (_lastWrittenVolume >= 0 && Math.Abs(pending - _lastWrittenVolume) < VolumeDeadband)
+                        return;
                     _pendingVolumeTarget = -1;
                     SetPlayerVolumeGuarded(_player, pending);
                     _lastWrittenVolume = pending;
@@ -477,6 +696,134 @@ public class VlcAudioPlayer : IAudioPlayer
                 }
             });
         }
+    }
+
+    /// <summary>
+    /// Map a curved VLC volume (0–100) to the session amplitude level in per-mille
+    /// (0–1000). mmdevice applies VLC's volume to the session cubically
+    /// (amplitude = (vol/100)³), so reproducing that taper makes driving the
+    /// session directly sound identical to the old player-volume path — just at
+    /// float resolution. Stepping the ramp in this amplitude domain also gives
+    /// uniform, click-free increments across the whole range.
+    /// </summary>
+    private static int CurvedVolumeToLevelMilli(int curvedVolume)
+    {
+        var amp = Math.Pow(Math.Clamp(curvedVolume, 0, 100) / 100.0, 3.0);
+        return Math.Clamp((int)Math.Round(amp * 1000.0), 0, 1000);
+    }
+
+    /// <summary>
+    /// Apply one ramp level (0–1000 per-mille amplitude). On Windows this is a
+    /// float write to the OS audio session (sub-percent resolution, click-free);
+    /// otherwise it falls back to LibVLC's integer 0–100 player volume (which
+    /// mmdevice re-cubes), recovered via the inverse cube root.
+    /// </summary>
+    private void ApplyRampLevel(int milli)
+    {
+        milli = Math.Clamp(milli, 0, 1000);
+        if (_sessionVolume != null)
+        {
+            _sessionVolume.SetLevel(milli / 1000.0);
+        }
+        else
+        {
+            var vol = (int)Math.Round(Math.Cbrt(milli / 1000.0) * 100.0);
+            SetPlayerVolumeGuarded(_player, vol);
+        }
+    }
+
+    /// <summary>
+    /// Drives the click-free real-time volume ramp. A single worker eases
+    /// _rampCurrentMilli toward the latest slider value (_rampTargetMilli),
+    /// applying each step via <see cref="ApplyRampLevel"/>. Steps are proportional
+    /// (fast on big jumps) but capped at _volumeRampMaxStep and floored at a fine
+    /// minimum, so motion stays responsive while the final approach is smooth.
+    /// Exits once converged; the next slider move re-arms it.
+    /// </summary>
+    private void EnsureVolumeRampWorker()
+    {
+        if (_disposed) return;
+        if (Interlocked.CompareExchange(ref _rampWorkerActive, 1, 0) != 0)
+            return;
+
+        _ = Task.Run(async () =>
+        {
+            // Raise the Windows timer resolution for the duration of the ramp so
+            // the short ramp tick is honored (default scheduler granularity is
+            // ~15.6ms, which would otherwise jitter the steps). Released when we
+            // converge.
+            var raisedTimer = TryBeginHighResTimer();
+            try
+            {
+                while (!_disposed)
+                {
+                    var target = Volatile.Read(ref _rampTargetMilli);
+                    if (target < 0) break;
+
+                    var current = Volatile.Read(ref _rampCurrentMilli);
+                    if (current < 0)
+                    {
+                        // First value ever: snap (no glide up from 0 at startup).
+                        ApplyRampLevel(target);
+                        Volatile.Write(ref _rampCurrentMilli, target);
+                        continue;
+                    }
+
+                    if (current == target) break; // converged
+
+                    var delta = target - current;
+                    var dist = Math.Abs(delta);
+                    var step = Math.Max(2, (int)Math.Round(dist * 0.35));
+                    step = Math.Min(step, _volumeRampMaxStep);
+                    step = Math.Min(step, dist);
+                    var next = current + (delta > 0 ? step : -step);
+
+                    ApplyRampLevel(next);
+                    Volatile.Write(ref _rampCurrentMilli, next);
+
+                    if (next == Volatile.Read(ref _rampTargetMilli)) break;
+
+                    try { await Task.Delay(_volumeRampTickMs).ConfigureAwait(false); }
+                    catch { break; }
+                }
+            }
+            finally
+            {
+                if (raisedTimer) TryEndHighResTimer();
+                Interlocked.Exchange(ref _rampWorkerActive, 0);
+                // A target set after our last read (or between the converge check
+                // and clearing the flag) must still be served.
+                if (!_disposed)
+                {
+                    var t = Volatile.Read(ref _rampTargetMilli);
+                    if (t >= 0 && t != Volatile.Read(ref _rampCurrentMilli))
+                        EnsureVolumeRampWorker();
+                }
+            }
+        });
+    }
+
+    // Windows multimedia timer resolution. timeBeginPeriod(1) drops the system
+    // timer granularity from ~15.6ms to ~1ms so the ramp's short Task.Delay ticks
+    // are honored (finer steps → click-free). Paired with timeEndPeriod while the
+    // ramp is active. No-op / safe on non-Windows.
+    [System.Runtime.InteropServices.DllImport("winmm.dll", EntryPoint = "timeBeginPeriod")]
+    private static extern uint NativeTimeBeginPeriod(uint uMilliseconds);
+
+    [System.Runtime.InteropServices.DllImport("winmm.dll", EntryPoint = "timeEndPeriod")]
+    private static extern uint NativeTimeEndPeriod(uint uMilliseconds);
+
+    private static bool TryBeginHighResTimer()
+    {
+        if (!OperatingSystem.IsWindows()) return false;
+        try { return NativeTimeBeginPeriod(1) == 0; }
+        catch { return false; }
+    }
+
+    private static void TryEndHighResTimer()
+    {
+        try { NativeTimeEndPeriod(1); }
+        catch { /* nothing to release */ }
     }
 
     private void FadePlayerVolumeBlocking(int fromVolume, int toVolume, int durationMs, CancellationToken cancel = default)
@@ -849,6 +1196,11 @@ public class VlcAudioPlayer : IAudioPlayer
         if (_disposed || string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
             return;
 
+        // WASAPI path is single-stream (Phase 1): standby warmup would play the
+        // second player through LibVLC's own output, bypassing the sink. Skip it.
+        if (_wasapiOut != null)
+            return;
+
         var normalizedPath = Path.GetFullPath(filePath);
         if (_standbyPrepared &&
             string.Equals(_standbyPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
@@ -1016,7 +1368,9 @@ public class VlcAudioPlayer : IAudioPlayer
 
             var hadPreviousMedia = _currentMedia != null;
             var targetVolume = GetTargetVlcVolume();
-            var canTransitionFade = _crossfadeEnabled && hadPreviousMedia && !_player.Mute;
+            // Crossfade needs two simultaneous streams; the WASAPI sink is single-
+            // stream in Phase 1, so disable the transition fade on that path.
+            var canTransitionFade = _crossfadeEnabled && hadPreviousMedia && !_player.Mute && _wasapiOut == null;
             var fadeOutMs = canTransitionFade && _player.IsPlaying
                 ? Math.Clamp(_crossfadeDurationMs / 2, 100, 6000)
                 : 0;
@@ -1137,6 +1491,10 @@ public class VlcAudioPlayer : IAudioPlayer
             // 7. Start position timer and fire initial duration update after brief delay
             _positionTimer.Start();
 
+            // The new output session opens at 100% — push the user level onto it
+            // as soon as it appears so there's no full-volume blip on track start.
+            ScheduleSessionVolumeReassert(sessionId);
+
             // Poll for accurate duration shortly after playback starts
             // VLC may not report accurate duration until decoding begins
             ThreadPool.QueueUserWorkItem(_ =>
@@ -1182,6 +1540,8 @@ public class VlcAudioPlayer : IAudioPlayer
                 _volumeTrailingCts = null;
                 _pendingVolumeTarget = -1;
             }
+            // Park the volume ramp so it can't fight the crossfade's direct fades.
+            Volatile.Write(ref _rampTargetMilli, Volatile.Read(ref _rampCurrentMilli));
 
             SetPlayerVolumeGuarded(_standbyPlayer, 0);
             _standbyPlayer.Mute = _player.Mute;
@@ -1256,6 +1616,10 @@ public class VlcAudioPlayer : IAudioPlayer
             _crossfadeEnabled = false;
             _isPaused = false;
             _positionTimer.Start();
+
+            // Restore the user level on the session after the crossfade (the fade
+            // drove the session volume up to full as the incoming track came in).
+            ScheduleSessionVolumeReassert(sessionId);
 
             DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.PlayerSwapCommitted", $"session={sessionId}");
             QueueInactivePlayerCleanup(_standbyPlayer, outgoingMedia, sessionId);
@@ -1392,8 +1756,98 @@ public class VlcAudioPlayer : IAudioPlayer
             $"elapsedMs={Environment.TickCount64 - fadeStart}, slowTicks={Interlocked.CompareExchange(ref _slowDualFadeTicks, 0, 0)}");
     }
 
+    // The steady LibVLC volume for the active player. With OS-session volume the
+    // user level lives on the session, so LibVLC stays at full (100) and only
+    // moves as the transient crossfade fade layer; otherwise it carries the
+    // curved + ReplayGain-scaled user level directly.
     private int GetTargetVlcVolume() =>
-        ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
+        _sessionVolume != null || _wasapiOut != null
+            ? 100
+            : ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
+
+    // Current user volume as a 0..1 amplitude for the WASAPI sink: the perceptual
+    // curve cubed to the same taper the OS-session path used, so the two sound
+    // identical at a given slider position. ReplayGain is NOT folded in here —
+    // LibVLC applies it upstream of the audio callback.
+    private float WasapiGainLevel() =>
+        CurvedVolumeToLevelMilli(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100))) / 1000f;
+
+    // ── Experimental WASAPI per-sample-gain output callbacks ─────────
+    // LibVLC delivers decoded FL32 PCM here (EQ + ReplayGain already applied); we
+    // forward it to the sink, which applies the user's volume per-sample. These
+    // run on LibVLC's audio thread — they must never throw.
+    private long _audioPlayCallCount;
+    private void AudioPlay(IntPtr data, IntPtr samples, uint count, long pts)
+    {
+        var sink = _wasapiOut;
+        if (sink == null) return;
+        var bytes = checked((int)count * sink.Channels * 4);
+        if (Interlocked.Increment(ref _audioPlayCallCount) <= 3)
+            WasapiGainOutput.Diag($"AudioPlay #{_audioPlayCallCount}: count(frames)={count} -> {bytes}B, pts={pts}");
+        var buf = System.Buffers.ArrayPool<byte>.Shared.Rent(bytes);
+        try
+        {
+            System.Runtime.InteropServices.Marshal.Copy(samples, buf, 0, bytes);
+            sink.Write(buf, bytes);
+        }
+        catch (Exception ex)
+        {
+            if (_audioPlayCallCount <= 5) WasapiGainOutput.Diag($"AudioPlay threw: {ex.GetType().Name}: {ex.Message}");
+        }
+        finally { System.Buffers.ArrayPool<byte>.Shared.Return(buf); }
+    }
+
+    private void AudioPause(IntPtr data, long pts) => _wasapiOut?.Pause();
+    private void AudioResume(IntPtr data, long pts) => _wasapiOut?.Resume();
+    private void AudioFlush(IntPtr data, long pts) => _wasapiOut?.Flush();
+    private void AudioDrain(IntPtr data) => _wasapiOut?.Drain();
+
+    /// <summary>
+    /// Push the current user level onto the OS audio session. LibVLC recreates
+    /// its session at full volume whenever the output (re)opens — a new track,
+    /// a restart, a crossfade swap — so the session level must be re-asserted
+    /// once the new session exists, or playback would jump to 100%. No-op when
+    /// OS-session volume isn't in use. Returns true once a session was set.
+    /// </summary>
+    private bool ReapplySessionVolume()
+    {
+        if (_sessionVolume == null) return false;
+        var target = ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
+        var milli = CurvedVolumeToLevelMilli(target);
+        var ok = _sessionVolume.SetLevel(milli / 1000.0);
+        if (ok)
+        {
+            lock (_volumeWriteLock) { _lastWrittenVolume = target; }
+            // The session level was set outside the ramp (output reopen) — sync
+            // the ramp's current so a later drag glides from the true level.
+            Volatile.Write(ref _rampCurrentMilli, milli);
+        }
+        return ok;
+    }
+
+    /// <summary>
+    /// Re-assert the session level as soon as the new output session appears,
+    /// retrying briefly so the full-volume window after (re)open is inaudible.
+    /// Runs on a worker; safe no-op when OS-session volume isn't used.
+    /// </summary>
+    private void ScheduleSessionVolumeReassert(long sessionId)
+    {
+        if (_sessionVolume == null) return;
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            // New output session on track start/swap — drop the previous track's
+            // cached session so we re-resolve to the new active one (no accumulation).
+            _sessionVolume.Invalidate();
+            // The session is created a few ms after Play(); poll quickly so the
+            // user level lands almost immediately instead of a 100% blip.
+            for (var waited = 0; waited < 600; waited += 20)
+            {
+                if (_disposed || sessionId != CurrentSessionId) return;
+                if (ReapplySessionVolume()) return;
+                Thread.Sleep(20);
+            }
+        });
+    }
 
     public void Pause()
     {
@@ -1487,6 +1941,31 @@ public class VlcAudioPlayer : IAudioPlayer
 
         var clampedMs = (long)Math.Clamp(position.TotalMilliseconds, 0, len);
         DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Request", $"targetMs={clampedMs}, playerState={_player.State}");
+
+        // Restart-instead-of-seek for the start region. An in-place backward seek
+        // to the beginning desyncs LibVLC's mmdevice output clock on files with
+        // encoder-delay priming: VLC logs "playback too early (-58000)" (the
+        // inserted priming samples), abandons resampling, then drops + flushes
+        // every buffer ~4×/sec permanently — the audible restart stutter, proven
+        // in the VLC diagnostic log. A fresh Play() tears down and rebuilds the
+        // audio output clock with correct priming, avoiding the desync. This
+        // covers both the Previous-restart and drag-to-start paths, which both
+        // funnel into Seek(~0). Forward / mid-track seeks keep the fast in-place
+        // path below.
+        if (clampedMs <= StartSeekRestartThresholdMs &&
+            !string.IsNullOrEmpty(_currentMediaPath))
+        {
+            lock (_seekGate)
+            {
+                _latestSeekMs = -1; // discard any queued in-place seek for this drag
+            }
+            _positionTimer.Stop();
+            // Apply the residual offset (e.g. drag to 0.4s) after the clean
+            // restart; exact-zero restarts need no pending seek.
+            Interlocked.Exchange(ref _pendingSeekMs, clampedMs > 0 ? clampedMs : -1);
+            Play(_currentMediaPath);
+            return;
+        }
 
         // Stop the position timer before enqueuing the seek so the timer thread
         // cannot read _player.Time concurrently while the seek worker writes it.
@@ -1726,6 +2205,7 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         if (_disposed) return;
         _disposed = true;
+        Volatile.Write(ref _rampTargetMilli, -1); // stop the volume ramp worker
 
         ResetEndReachedPending();
         Interlocked.Exchange(ref _latestSeekMs, -1);
@@ -1754,12 +2234,83 @@ public class VlcAudioPlayer : IAudioPlayer
             _equalizer?.Dispose();
             _equalizer = null;
         }
+        if (_vlcDiagWriter != null)
+        {
+            try { _libVlc.Log -= OnVlcLog; } catch { }
+            try { DebugLogger.EntryAdded -= OnDebugEntryForDiag; } catch { }
+            lock (_vlcDiagLock)
+            {
+                try { _vlcDiagWriter.Flush(); _vlcDiagWriter.Dispose(); } catch { }
+                _vlcDiagWriter = null;
+            }
+        }
+
+        _sessionVolume?.Dispose();
+        _wasapiOut?.Dispose();
+
         _currentMedia?.Dispose();
         _standbyMedia?.Dispose();
         _player.Dispose();
         _standbyPlayer.Dispose();
         _libVlc.Dispose();
         _playbackLock.Dispose();
+    }
+
+    // ── VLC diagnostics (gated; see field comment above) ───────────
+
+    private void TryEnableVlcDiagnostics()
+    {
+        try
+        {
+            var dir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+                dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var path = Path.Combine(dir, "noctis_vlc_diag.log");
+
+            _vlcDiagWriter = new StreamWriter(path, append: false) { AutoFlush = true };
+            _vlcDiagStartTicks = Stopwatch.GetTimestamp();
+
+            WriteVlcDiag("=== Noctis VLC diagnostic log ===");
+            WriteVlcDiag($"started {DateTime.Now:O}");
+            WriteVlcDiag("Reproduce the stutter, then quit the app and send this file.");
+            WriteVlcDiag("[APP] lines are our own markers; all other lines are LibVLC's own log.");
+            WriteVlcDiag("--------------------------------------------------");
+
+            // Mirror our Playback markers (Seek.Request / Seek.Apply / VLC.Play …)
+            // into the same timeline so VLC's underrun lines can be tied to the
+            // exact user action that triggered them.
+            DebugLogger.IsEnabled = true;
+            DebugLogger.EntryAdded += OnDebugEntryForDiag;
+
+            _libVlc.Log += OnVlcLog;
+        }
+        catch
+        {
+            // Best-effort: diagnostics must never break playback.
+            _vlcDiagWriter = null;
+        }
+    }
+
+    private void OnDebugEntryForDiag(DebugLogger.LogEntry entry)
+    {
+        if (entry.Category != DebugLogger.Category.Playback) return;
+        var meta = entry.Metadata != null ? $" | {entry.Metadata}" : "";
+        WriteVlcDiag($"[APP] {entry.Action}{meta}");
+    }
+
+    private void OnVlcLog(object? sender, LogEventArgs e)
+        => WriteVlcDiag($"[{e.Level}] {e.Module}: {e.Message}");
+
+    private void WriteVlcDiag(string line)
+    {
+        var w = _vlcDiagWriter;
+        if (w == null) return;
+        var ms = (Stopwatch.GetTimestamp() - _vlcDiagStartTicks) * 1000L / Stopwatch.Frequency;
+        lock (_vlcDiagLock)
+        {
+            try { w.WriteLine($"{ms,8} ms  {line}"); }
+            catch { /* writer closing */ }
+        }
     }
 
     [DllImport("libc", EntryPoint = "setenv")]

@@ -282,6 +282,10 @@ public partial class SettingsViewModel : ViewModelBase
 
     public string AppVersion => UpdateService.CurrentVersionDisplay;
 
+    /// <summary>True when the installed build is a pre-release — drives the
+    /// "Pre-release" badge next to the version in the About section.</summary>
+    public bool IsPrereleaseBuild => UpdateService.IsPrereleaseBuild;
+
     [ObservableProperty] private string _updateStatusText = "";
     [ObservableProperty] private bool _isCheckingForUpdate;
     [ObservableProperty]

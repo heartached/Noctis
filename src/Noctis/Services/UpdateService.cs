@@ -37,6 +37,26 @@ public sealed class UpdateService
     }
 
     /// <summary>
+    /// True when THIS installed build is a pre-release. Detected from the
+    /// assembly's informational version, which carries a SemVer pre-release
+    /// suffix (e.g. "1.1.15-prerelease") set in the csproj for pre-release
+    /// builds; stable builds have no suffix. Build metadata ("+sha") is ignored.
+    /// This reflects the running build, not whatever the latest GitHub release is.
+    /// </summary>
+    public static bool IsPrereleaseBuild
+    {
+        get
+        {
+            var info = Assembly.GetExecutingAssembly()
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (string.IsNullOrEmpty(info)) return false;
+            var plus = info.IndexOf('+');          // strip "+<build metadata>"
+            if (plus >= 0) info = info[..plus];
+            return info.Contains('-');             // SemVer pre-release segment present
+        }
+    }
+
+    /// <summary>
     /// Checks the latest GitHub release. Returns null if up-to-date or on error.
     /// Pre-releases are only considered when <paramref name="includePrereleases"/> is true.
     /// </summary>

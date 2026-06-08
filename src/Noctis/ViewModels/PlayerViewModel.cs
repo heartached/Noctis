@@ -727,9 +727,9 @@ public partial class PlayerViewModel : ViewModelBase
 
     partial void OnVolumeChanged(int value)
     {
-        // Safe to write on every drag pixel: VlcAudioPlayer applies volume as
-        // PCM gain via the equalizer preamp, so no WASAPI session events fire
-        // and continuous drag stays click-free.
+        // Fired on every drag pixel. VlcAudioPlayer feeds the value to its volume
+        // ramp engine, which slews the applied gain in small paced steps —
+        // real-time yet click-free (raw per-pixel session writes crackle).
         _audioPlayer.Volume = value;
     }
 

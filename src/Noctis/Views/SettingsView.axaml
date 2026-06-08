@@ -571,7 +571,7 @@
                                     <TextBlock Text="{Binding AppVersion}"
                                                FontSize="12" Opacity="0.5"
                                                VerticalAlignment="Center"/>
-                                    <Border IsVisible="{Binding IsLatestPrerelease}"
+                                    <Border IsVisible="{Binding IsPrereleaseBuild}"
                                             Background="#E74856"
                                             CornerRadius="9"
                                             Padding="8,2"

@@ -11,7 +11,12 @@
     <RootNamespace>Noctis</RootNamespace>
     <Product>Noctis</Product>
     <Company>Noctis</Company>
-    <Version>1.1.14</Version>
+    <Version>1.1.15</Version>
+    <!-- Pre-release marker: numeric Version stays 1.1.15 (update checks + the
+         displayed number are unchanged); the "-prerelease" SemVer suffix on the
+         informational version is what lights the "Pre-release" badge in Settings.
+         Remove this line (or drop the suffix) when cutting a stable release. -->
+    <InformationalVersion>1.1.15-prerelease</InformationalVersion>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
 
     <!-- Avalonia requires this for XAML compilation -->
@@ -48,6 +53,9 @@
     <PackageReference Include="LibVLCSharp.Avalonia" Version="3.9.7.1" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <PackageReference Include="VideoLAN.LibVLC.Mac" Version="3.0.21" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+    <!-- WASAPI output for click-free per-sample-gain volume (NOCTIS_WASAPI=1,
+         Windows-only at runtime; managed package restores on all build hosts). -->
+    <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
 
   <!-- Metadata reading -->
