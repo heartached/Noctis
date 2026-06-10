@@ -311,13 +311,17 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
 
-        // Float drag-and-drop imported albums to the top when not searching/filtering.
+        // Float newly added albums to the top when not searching/filtering.
+        // IsRecentImport only lives for the current session, so also float
+        // anything added in the last 7 days — the placement survives a restart
+        // (the previous flag-only check lost the float on every relaunch).
         IEnumerable<Album> ordered;
         if (string.IsNullOrEmpty(artistFilter) && string.IsNullOrWhiteSpace(searchFilter))
         {
+            var recentCutoff = DateTime.UtcNow - TimeSpan.FromDays(7);
             var materialized = filtered.ToList();
             var recent = materialized
-                .Where(a => a.Tracks.Any(t => t.IsRecentImport))
+                .Where(a => a.Tracks.Any(t => t.IsRecentImport || t.DateAdded >= recentCutoff))
                 .OrderByDescending(a => a.Tracks.Max(t => t.DateAdded))
                 .ToList();
             if (recent.Count > 0)

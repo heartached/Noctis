@@ -190,7 +190,21 @@ public partial class Track : ObservableObject
 
     partial void OnIsFavoriteChanged(bool value)
     {
-        if (value) FavoritedAt = DateTime.UtcNow;
+        if (value)
+        {
+            // Only stamp when no timestamp exists: JSON deserialization replays
+            // IsFavorite=true on every library load, and unconditionally stamping
+            // here overwrote every favorite's history with load time (the
+            // favorites grid then scattered after each restart). The persisted
+            // FavoritedAt may be applied before or after this setter; ??= is
+            // correct in both orders.
+            FavoritedAt ??= DateTime.UtcNow;
+        }
+        else
+        {
+            // Clearing on unfavorite makes a later re-favorite stamp fresh.
+            FavoritedAt = null;
+        }
     }
 
     /// <summary>
