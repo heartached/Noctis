@@ -266,12 +266,15 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid x:Name="MainLayoutGrid" ColumnDefinitions="*,*"
+    <!-- Row/column definitions are fixed; wide vs narrow mode is expressed purely
+         through Grid.Row/Column/Span attached properties from code-behind. -->
+    <Grid x:Name="MainLayoutGrid" ColumnDefinitions="*,*" RowDefinitions="Auto,*"
           Background="{Binding FullBackgroundBrush}">
         <!-- AMLL/Apple-Music–style background: heavily-blurred album cover filling the page.
              A subtle scrim on top keeps lyric text legible against bright art. -->
         <Grid x:Name="LyricsBlurBackdrop"
               Grid.ColumnSpan="2"
+              Grid.RowSpan="2"
               ZIndex="-1"
               ClipToBounds="True"
               IsHitTestVisible="False"
@@ -315,6 +318,7 @@
         <!-- ══════════════════════════════════════════════════════ -->
         <Border x:Name="LeftPanel"
                 Grid.Column="0"
+                Grid.RowSpan="2"
                 Background="Transparent"
                 Padding="40,30">
             <StackPanel x:Name="LeftContentStack" VerticalAlignment="Center"
@@ -716,7 +720,7 @@
         <!-- ══════════════════════════════════════════════════════ -->
         <!-- RIGHT PANEL: Lyrics Column                           -->
         <!-- ══════════════════════════════════════════════════════ -->
-        <Grid x:Name="RightPanel" Grid.Column="1"
+        <Grid x:Name="RightPanel" Grid.Column="1" Grid.RowSpan="2"
               RenderTransformOrigin="0.5,0.5">
             <Grid.Transitions>
                 <Transitions>

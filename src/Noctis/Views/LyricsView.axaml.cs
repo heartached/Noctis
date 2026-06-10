@@ -25,6 +25,7 @@ public partial class LyricsView : UserControl
     private DispatcherTimer? _colorPickerDismissTimer;
     private const double ColorPickerAutoDismissSeconds = 3;
     private bool _isNarrowMode;
+    private DispatcherTimer? _resizeRecenterTimer;
     private bool _isTimelineSeekDragging;
     private bool _isJumpingOnAttach;
     private readonly TranslateTransform _lyricsTimelineThumbTransform = new();
@@ -162,6 +163,11 @@ public partial class LyricsView : UserControl
     {
         base.OnSizeChanged(e);
         UpdateResponsiveLayout(e.NewSize);
+
+        // Re-anchor the active lyric line once the resize settles — layout
+        // rewrapping changes every line's height, so the saved scroll offset
+        // points somewhere else entirely after a fullscreen/restore switch.
+        ScheduleActiveLineRecenter();
     }
 
     private void UpdateResponsiveLayout(Size size)
@@ -170,52 +176,43 @@ public partial class LyricsView : UserControl
         var height = size.Height;
         if (width <= 0 || height <= 0) return;
 
+        // The grid's row/column definitions are static ("*,*" / "Auto,*").
+        // Mode switches only move the panels via attached properties: mutating
+        // the definition collections mid-layout-pass crashed Grid.MeasureCell
+        // (children briefly referenced a column that no longer existed) when
+        // the window was resized across the breakpoint.
         var shouldBeNarrow = width < NarrowBreakpoint;
         if (shouldBeNarrow != _isNarrowMode)
         {
             _isNarrowMode = shouldBeNarrow;
 
-            var rightPanel = MainLayoutGrid.Children.Count > 1
-                ? MainLayoutGrid.Children[1] as Grid
-                : null;
-
             if (_isNarrowMode)
             {
-                // Narrow mode: stack vertically
-                MainLayoutGrid.ColumnDefinitions.Clear();
-                MainLayoutGrid.RowDefinitions.Clear();
-                MainLayoutGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-                MainLayoutGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
-
-                Grid.SetColumn(LeftPanel, 0);
+                // Narrow mode: stack vertically (cover row on top, lyrics below)
+                Grid.SetColumnSpan(LeftPanel, 2);
                 Grid.SetRow(LeftPanel, 0);
+                Grid.SetRowSpan(LeftPanel, 1);
                 LeftPanel.MaxHeight = 320;
                 LeftPanel.Padding = new Thickness(30, 20);
 
-                if (rightPanel != null)
-                {
-                    Grid.SetColumn(rightPanel, 0);
-                    Grid.SetRow(rightPanel, 1);
-                }
+                Grid.SetColumn(RightPanel, 0);
+                Grid.SetColumnSpan(RightPanel, 2);
+                Grid.SetRow(RightPanel, 1);
+                Grid.SetRowSpan(RightPanel, 1);
             }
             else
             {
-                // Wide mode: two equal columns
-                MainLayoutGrid.RowDefinitions.Clear();
-                MainLayoutGrid.ColumnDefinitions.Clear();
-                MainLayoutGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-                MainLayoutGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-
-                Grid.SetColumn(LeftPanel, 0);
+                // Wide mode: two equal columns spanning both rows
+                Grid.SetColumnSpan(LeftPanel, 1);
                 Grid.SetRow(LeftPanel, 0);
+                Grid.SetRowSpan(LeftPanel, 2);
                 LeftPanel.MaxHeight = double.PositiveInfinity;
                 LeftPanel.Padding = new Thickness(40, 30);
 
-                if (rightPanel != null)
-                {
-                    Grid.SetColumn(rightPanel, 1);
-                    Grid.SetRow(rightPanel, 0);
-                }
+                Grid.SetColumn(RightPanel, 1);
+                Grid.SetColumnSpan(RightPanel, 1);
+                Grid.SetRow(RightPanel, 0);
+                Grid.SetRowSpan(RightPanel, 2);
             }
         }
 
@@ -260,6 +257,26 @@ public partial class LyricsView : UserControl
         // Inherited by the line/karaoke TextBlocks in the item template.
         var fontScale = Math.Clamp(Math.Min(height / 1000.0, width / 1700.0), 0.55, 1.0);
         LyricsItemsControl.FontSize = Math.Round(46 * fontScale);
+    }
+
+    /// <summary>Debounced jump back to the active lyric line after a resize settles.</summary>
+    private void ScheduleActiveLineRecenter()
+    {
+        _resizeRecenterTimer?.Stop();
+        _resizeRecenterTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        _resizeRecenterTimer.Tick += (_, _) =>
+        {
+            _resizeRecenterTimer?.Stop();
+            _resizeRecenterTimer = null;
+
+            if (DataContext is not LyricsViewModel vm) return;
+            if (!vm.IsSyncTabSelected || vm.IsAutoFollowPaused) return;
+            if (vm.ActiveLineIndex < 0) return;
+
+            _lastScrolledIndex = -1; // force the jump even if the index didn't change
+            JumpToActiveLineWhenReady(vm.ActiveLineIndex);
+        };
+        _resizeRecenterTimer.Start();
     }
 
     // ── ViewModel subscription + scroll animation ──
