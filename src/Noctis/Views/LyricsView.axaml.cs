@@ -161,69 +161,105 @@ public partial class LyricsView : UserControl
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
-        UpdateResponsiveLayout(e.NewSize.Width);
+        UpdateResponsiveLayout(e.NewSize);
     }
 
-    private void UpdateResponsiveLayout(double width)
+    private void UpdateResponsiveLayout(Size size)
     {
+        var width = size.Width;
+        var height = size.Height;
+        if (width <= 0 || height <= 0) return;
+
         var shouldBeNarrow = width < NarrowBreakpoint;
-        if (shouldBeNarrow == _isNarrowMode) return;
-        _isNarrowMode = shouldBeNarrow;
-
-        if (_isNarrowMode)
+        if (shouldBeNarrow != _isNarrowMode)
         {
-            // Narrow mode: stack vertically
-            MainLayoutGrid.ColumnDefinitions.Clear();
-            MainLayoutGrid.RowDefinitions.Clear();
-            MainLayoutGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-            MainLayoutGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
-
-            Grid.SetColumn(LeftPanel, 0);
-            Grid.SetRow(LeftPanel, 0);
-            LeftPanel.MaxHeight = 320;
-            LeftPanel.Padding = new Thickness(30, 20);
-
-            AlbumArtBorder.Width = 200;
-            AlbumArtBorder.Height = 200;
-            LeftContentStack.Width = 200;
+            _isNarrowMode = shouldBeNarrow;
 
             var rightPanel = MainLayoutGrid.Children.Count > 1
                 ? MainLayoutGrid.Children[1] as Grid
                 : null;
-            if (rightPanel != null)
+
+            if (_isNarrowMode)
             {
-                Grid.SetColumn(rightPanel, 0);
-                Grid.SetRow(rightPanel, 1);
+                // Narrow mode: stack vertically
+                MainLayoutGrid.ColumnDefinitions.Clear();
+                MainLayoutGrid.RowDefinitions.Clear();
+                MainLayoutGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+                MainLayoutGrid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+
+                Grid.SetColumn(LeftPanel, 0);
+                Grid.SetRow(LeftPanel, 0);
+                LeftPanel.MaxHeight = 320;
+                LeftPanel.Padding = new Thickness(30, 20);
+
+                if (rightPanel != null)
+                {
+                    Grid.SetColumn(rightPanel, 0);
+                    Grid.SetRow(rightPanel, 1);
+                }
             }
+            else
+            {
+                // Wide mode: two equal columns
+                MainLayoutGrid.RowDefinitions.Clear();
+                MainLayoutGrid.ColumnDefinitions.Clear();
+                MainLayoutGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+                MainLayoutGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+
+                Grid.SetColumn(LeftPanel, 0);
+                Grid.SetRow(LeftPanel, 0);
+                LeftPanel.MaxHeight = double.PositiveInfinity;
+                LeftPanel.Padding = new Thickness(40, 30);
+
+                if (rightPanel != null)
+                {
+                    Grid.SetColumn(rightPanel, 1);
+                    Grid.SetRow(rightPanel, 0);
+                }
+            }
+        }
+
+        // Continuous sizing: derive the cover and lyric sizes from the actual
+        // window dimensions instead of assuming a 1080p-class maximized window.
+        // The previous fixed 780px cover + 1.1× lyric scale overflowed smaller
+        // displays (MacBook-sized windows) and broke fullscreen/resize.
+        double stackWidth;
+        if (_isNarrowMode)
+        {
+            var cover = Math.Clamp(height * 0.25, 120, 200);
+            AlbumArtBorder.Width = cover;
+            AlbumArtBorder.Height = cover;
+            stackWidth = Math.Max(cover, 200);
+            LyricsItemsControl.MaxWidth = Math.Max(240, width - 80);
+            RightPanel.RenderTransform = null;
         }
         else
         {
-            // Wide mode: two equal columns
-            MainLayoutGrid.RowDefinitions.Clear();
-            MainLayoutGrid.ColumnDefinitions.Clear();
-            MainLayoutGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-            MainLayoutGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-
-            Grid.SetColumn(LeftPanel, 0);
-            Grid.SetRow(LeftPanel, 0);
-            LeftPanel.MaxHeight = double.PositiveInfinity;
-            LeftPanel.Padding = new Thickness(40, 30);
-
-            AlbumArtBorder.Width = 780;
-            AlbumArtBorder.Height = 780;
-            LeftContentStack.Width = 780;
-            LyricsItemsControl.MaxWidth = 620;
+            // Left column is half the window minus panel padding; vertically
+            // reserve room for track info, timeline, and playback controls.
+            var maxByWidth = width / 2 - 90;
+            var maxByHeight = height - 330;
+            var cover = Math.Clamp(Math.Min(maxByWidth, maxByHeight), 220, 780);
+            AlbumArtBorder.Width = cover;
+            AlbumArtBorder.Height = cover;
+            stackWidth = Math.Max(cover, 300);
+            LyricsItemsControl.MaxWidth = Math.Clamp(width / 2 - 120, 280, 620);
             RightPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1.1, 1.1)");
-
-            var rightPanel = MainLayoutGrid.Children.Count > 1
-                ? MainLayoutGrid.Children[1] as Grid
-                : null;
-            if (rightPanel != null)
-            {
-                Grid.SetColumn(rightPanel, 1);
-                Grid.SetRow(rightPanel, 0);
-            }
         }
+
+        LeftContentStack.Width = stackWidth;
+
+        // Track title/artist/album marquees must not run wider than the stack.
+        var marqueeMax = Math.Min(520, Math.Max(180, stackWidth - 40));
+        TitleMarquee.MaxDisplayWidth = marqueeMax;
+        ArtistMarquee.MaxDisplayWidth = marqueeMax;
+        AlbumMarquee.MaxDisplayWidth = marqueeMax;
+
+        // Lyric text: 46px suits a ~1000px-tall window; scale down with the
+        // window so lines don't wrap into a wall of text on small displays.
+        // Inherited by the line/karaoke TextBlocks in the item template.
+        var fontScale = Math.Clamp(Math.Min(height / 1000.0, width / 1700.0), 0.55, 1.0);
+        LyricsItemsControl.FontSize = Math.Round(46 * fontScale);
     }
 
     // ── ViewModel subscription + scroll animation ──
