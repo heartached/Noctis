@@ -2173,9 +2173,15 @@ public partial class SettingsViewModel : ViewModelBase
             if (update is null) return;
             if (update.InstallerApiUrl is null) return;
 
-            LatestVersionTag = update.TagName;
-            IsLatestPrerelease = update.IsPrerelease;
-            IsUpdateAvailable = true;
+            // This runs inside Task.Run at startup, so continuations are on a
+            // thread-pool thread. PropertyChanged must be raised on the UI thread
+            // or the About page update UI won't refresh.
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                LatestVersionTag = update.TagName;
+                IsLatestPrerelease = update.IsPrerelease;
+                IsUpdateAvailable = true;
+            });
         }
         catch
         {
