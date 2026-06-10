@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
@@ -17,6 +18,11 @@ namespace Noctis.Controls;
 /// inside transparent windows, clips to its parent's rounded border, and never spawns a
 /// native output window. Software-decoded; fine for a small muted loop. Minor frame tearing
 /// under load is accepted (single shared buffer).
+///
+/// All LibVLC calls (first-use core initialization, Play, Stop, Dispose) run on worker
+/// threads: they block for hundreds of milliseconds and froze the UI when a cover was
+/// applied or replaced. Each playback attempt is an isolated <see cref="Session"/> so a
+/// stale startup can never corrupt the current one.
 /// </summary>
 public partial class AnimatedCoverImage : UserControl
 {
@@ -45,16 +51,12 @@ public partial class AnimatedCoverImage : UserControl
     private const int BufferBytes = Stride * RenderSize;
 
     private readonly Image _image;
-    private MediaPlayer? _player;
-    private IntPtr _buffer = IntPtr.Zero;          // native frame buffer VLC writes into
-    private byte[]? _scratch;                       // managed hop for the IntPtr->IntPtr copy
-    private WriteableBitmap? _bitmap;
-    private volatile bool _framePending;            // coalesce UI invalidations
+    private Session? _session;
 
-    // Keep delegate instances alive for the player's lifetime — VLC stores raw
-    // function pointers and will crash if these are garbage-collected.
-    private MediaPlayer.LibVLCVideoLockCb? _lockCb;
-    private MediaPlayer.LibVLCVideoDisplayCb? _displayCb;
+    // Bumped on every Refresh/Teardown (UI thread only). A background session
+    // startup that finishes after the control was restarted sees a stale value
+    // and shuts itself down instead of becoming current.
+    private int _sessionGeneration;
 
     public AnimatedCoverImage()
     {
@@ -78,100 +80,146 @@ public partial class AnimatedCoverImage : UserControl
 
     private void Refresh()
     {
-        var shouldPlay = IsActive && !string.IsNullOrEmpty(Source) && File.Exists(Source);
-        if (!shouldPlay)
-        {
-            Teardown();
+        Teardown();
+
+        var source = Source;
+        if (!IsActive || string.IsNullOrEmpty(source) || !File.Exists(source))
             return;
-        }
 
-        try
+        var generation = _sessionGeneration;
+        ThreadPool.QueueUserWorkItem(_ =>
         {
-            EnsurePlayer();
-            using var media = new Media(SharedLibVlc.Instance, Source!, FromType.FromPath,
-                ":no-audio", ":input-repeat=65535");
-            _player!.Play(media);
-        }
-        catch
-        {
-            Teardown();
-        }
-    }
+            Session session;
+            try
+            {
+                session = new Session(this);
+            }
+            catch
+            {
+                return; // LibVLC unavailable — leave the static cover in place
+            }
 
-    private void EnsurePlayer()
-    {
-        if (_player != null) return;
+            try
+            {
+                using var media = new Media(SharedLibVlc.Instance, source, FromType.FromPath,
+                    ":no-audio", ":input-repeat=65535");
+                session.Player.Play(media);
+            }
+            catch
+            {
+                session.ShutDown();
+                return;
+            }
 
-        _buffer = Marshal.AllocHGlobal(BufferBytes);
-        _scratch = new byte[BufferBytes];
-        _bitmap = new WriteableBitmap(new PixelSize(RenderSize, RenderSize), new Vector(96, 96),
-            PixelFormat.Bgra8888, AlphaFormat.Opaque);
-        // Don't show the bitmap yet — it holds uninitialized pixels until the first
-        // decoded frame arrives; assigning it now flashes garbage on a tab switch.
-        // OnDisplay assigns _image.Source on the first frame.
-
-        // Software decoding is required for the frame-callback path.
-        _player = new MediaPlayer(SharedLibVlc.Instance) { EnableHardwareDecoding = false, Mute = true };
-        _lockCb = OnLock;
-        _displayCb = OnDisplay;
-        _player.SetVideoFormat("RV32", RenderSize, RenderSize, Stride);
-        _player.SetVideoCallbacks(_lockCb, null, _displayCb);
-    }
-
-    // VLC asks where to write the next frame; hand back the single shared buffer.
-    private IntPtr OnLock(IntPtr opaque, IntPtr planes)
-    {
-        Marshal.WriteIntPtr(planes, _buffer);
-        return _buffer; // picture id — unused
-    }
-
-    // A decoded frame is in _buffer. Push it to the WriteableBitmap on the UI thread.
-    private void OnDisplay(IntPtr opaque, IntPtr picture)
-    {
-        if (_framePending) return;
-        _framePending = true;
-        Dispatcher.UIThread.Post(() =>
-        {
-            _framePending = false;
-            var bmp = _bitmap;
-            var scratch = _scratch;
-            // Safe against use-after-free: Teardown() also runs on the UI thread and
-            // completes fully (stopping the player and zeroing _buffer) before any posted
-            // closure is dequeued, so _buffer is either still valid or already zero here.
-            if (bmp == null || scratch == null || _buffer == IntPtr.Zero) return;
-            Marshal.Copy(_buffer, scratch, 0, BufferBytes);
-            using (var fb = bmp.Lock())
-                Marshal.Copy(scratch, 0, fb.Address, BufferBytes);
-            _image.Source = bmp; // no-op after the first frame; reveals real content
-            _image.InvalidateVisual();
-        }, DispatcherPriority.Render);
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (generation != _sessionGeneration)
+                {
+                    // Control was torn down or restarted while this session was
+                    // starting up — it must never become current.
+                    session.ShutDown();
+                    return;
+                }
+                _session = session;
+            });
+        });
     }
 
     private void Teardown()
     {
-        // Stop() is synchronous in LibVLC 3.x — after it returns, no more callbacks fire,
-        // so it is safe to free the native buffer afterwards. Any UI-thread frame closure
-        // already posted by OnDisplay will see _buffer == IntPtr.Zero and bail.
-        var player = _player;
-        _player = null;
-        if (player != null)
-        {
-            try { player.Stop(); } catch { }
-            try { player.SetVideoCallbacks(null, null, null); } catch { }
-            try { player.Dispose(); } catch { }
-        }
-        _lockCb = null;
-        _displayCb = null;
-
+        _sessionGeneration++;
+        var session = _session;
+        _session = null;
         _image.Source = null;
-        _bitmap?.Dispose();
-        _bitmap = null;
-        _scratch = null;
+        session?.ShutDown();
+    }
 
-        if (_buffer != IntPtr.Zero)
+    /// <summary>
+    /// One playback attempt: owns its MediaPlayer, native frame buffer, and bitmap.
+    /// Constructed and played on a worker thread; shut down from the UI thread.
+    /// </summary>
+    private sealed class Session
+    {
+        private readonly AnimatedCoverImage _owner;
+        public readonly MediaPlayer Player;
+        private readonly IntPtr _buffer;                // native frame buffer VLC writes into
+        private readonly byte[] _scratch = new byte[BufferBytes]; // managed hop for the IntPtr->IntPtr copy
+        private readonly WriteableBitmap _bitmap;
+        private volatile bool _framePending;            // coalesce UI invalidations
+        private volatile bool _dead;
+
+        // Keep delegate instances alive for the player's lifetime — VLC stores raw
+        // function pointers and will crash if these are garbage-collected.
+        private readonly MediaPlayer.LibVLCVideoLockCb _lockCb;
+        private readonly MediaPlayer.LibVLCVideoDisplayCb _displayCb;
+
+        public Session(AnimatedCoverImage owner)
         {
-            Marshal.FreeHGlobal(_buffer);
-            _buffer = IntPtr.Zero;
+            _owner = owner;
+            _buffer = Marshal.AllocHGlobal(BufferBytes);
+            _bitmap = new WriteableBitmap(new PixelSize(RenderSize, RenderSize), new Vector(96, 96),
+                PixelFormat.Bgra8888, AlphaFormat.Opaque);
+            // The bitmap holds uninitialized pixels until the first decoded frame
+            // arrives; OnDisplay assigns _image.Source on the first frame so no
+            // garbage ever flashes.
+
+            _lockCb = OnLock;
+            _displayCb = OnDisplay;
+
+            // Software decoding is required for the frame-callback path.
+            Player = new MediaPlayer(SharedLibVlc.Instance) { EnableHardwareDecoding = false, Mute = true };
+            Player.SetVideoFormat("RV32", RenderSize, RenderSize, Stride);
+            Player.SetVideoCallbacks(_lockCb, null, _displayCb);
+        }
+
+        // VLC asks where to write the next frame; hand back the single shared buffer.
+        private IntPtr OnLock(IntPtr opaque, IntPtr planes)
+        {
+            Marshal.WriteIntPtr(planes, _buffer);
+            return _buffer; // picture id — unused
+        }
+
+        // A decoded frame is in _buffer. Push it to the WriteableBitmap on the UI thread.
+        private void OnDisplay(IntPtr opaque, IntPtr picture)
+        {
+            if (_framePending || _dead) return;
+            _framePending = true;
+            Dispatcher.UIThread.Post(() =>
+            {
+                _framePending = false;
+                // _dead is set on the UI thread before the shutdown worker is queued,
+                // so any closure dequeued after ShutDown() always bails here — the
+                // buffer/bitmap are only freed after that point.
+                if (_dead) return;
+                Marshal.Copy(_buffer, _scratch, 0, BufferBytes);
+                using (var fb = _bitmap.Lock())
+                    Marshal.Copy(_scratch, 0, fb.Address, BufferBytes);
+                if (_owner._session == this)
+                {
+                    _owner._image.Source = _bitmap; // no-op after the first frame; reveals real content
+                    _owner._image.InvalidateVisual();
+                }
+            }, DispatcherPriority.Render);
+        }
+
+        /// <summary>
+        /// Stops and disposes the player on a worker thread (Stop blocks in LibVLC 3.x).
+        /// Safe to call multiple times; called on the UI thread or a startup worker.
+        /// </summary>
+        public void ShutDown()
+        {
+            if (_dead) return;
+            _dead = true;
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                // Stop() is synchronous — after it returns, no more callbacks fire,
+                // so the native buffer can be freed safely.
+                try { Player.Stop(); } catch { }
+                try { Player.SetVideoCallbacks(null, null, null); } catch { }
+                try { Player.Dispose(); } catch { }
+                Marshal.FreeHGlobal(_buffer);
+                Dispatcher.UIThread.Post(_bitmap.Dispose);
+            });
         }
 
         // NEVER dispose the shared LibVLC — it's reused across surfaces.
