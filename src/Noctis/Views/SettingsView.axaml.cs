@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -130,22 +132,93 @@ public partial class SettingsView : UserControl
 
     private void OnSettingsViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SettingsViewModel.MediaFoldersScrollRequest))
-            ScrollToMediaFoldersSection();
+        switch (e.PropertyName)
+        {
+            // The media-folders card is the first card on the Library tab (the view model
+            // already switched tabs), so landing there is just a scroll to the top.
+            case nameof(SettingsViewModel.MediaFoldersScrollRequest):
+            case nameof(SettingsViewModel.SelectedSettingsTab):
+                ScrollToTop();
+                break;
+            case nameof(SettingsViewModel.SettingsSearchText):
+                ApplySettingsSearchFilter();
+                break;
+        }
     }
 
-    private void ScrollToMediaFoldersSection()
+    private void ScrollToTop()
     {
-        Dispatcher.UIThread.Post(() =>
-        {
-            var point = MediaFoldersSectionAnchor.TranslatePoint(new Point(0, 0), SettingsScrollViewer);
-            if (point is not { } relativePoint)
-                return;
+        Dispatcher.UIThread.Post(
+            () => SettingsScrollViewer.Offset = new Vector(SettingsScrollViewer.Offset.X, 0),
+            DispatcherPriority.Loaded);
+    }
 
-            var maxY = Math.Max(0, SettingsScrollViewer.Extent.Height - SettingsScrollViewer.Viewport.Height);
-            var targetY = Math.Clamp(SettingsScrollViewer.Offset.Y + relativePoint.Y - 12, 0, maxY);
-            SettingsScrollViewer.Offset = new Vector(SettingsScrollViewer.Offset.X, targetY);
-        }, DispatcherPriority.Loaded);
+    // Generic settings search: while a query is active every tab panel is visible (driven
+    // by the view model) and cards whose text doesn't match are hidden. Section headers
+    // stay visible only when at least one card beneath them matches.
+    private void ApplySettingsSearchFilter()
+    {
+        var query = _trackedViewModel?.SettingsSearchText?.Trim() ?? string.Empty;
+        bool searching = query.Length > 0;
+
+        foreach (var panel in TabContentPanels())
+        {
+            TextBlock? header = null;
+            bool headerHasMatch = false;
+
+            foreach (var child in panel.Children)
+            {
+                if (child is TextBlock title && title.Classes.Contains("section-title"))
+                {
+                    if (header != null)
+                        header.IsVisible = !searching || headerHasMatch;
+                    header = title;
+                    headerHasMatch = false;
+                }
+                else if (child is Border card)
+                {
+                    bool match = !searching || CardMatchesQuery(card, query);
+                    card.IsVisible = match;
+                    if (match)
+                        headerHasMatch = true;
+                }
+            }
+
+            if (header != null)
+                header.IsVisible = !searching || headerHasMatch;
+        }
+
+        if (searching)
+            ScrollToTop();
+    }
+
+    private IEnumerable<StackPanel> TabContentPanels()
+    {
+        yield return GeneralTabPanel;
+        yield return AboutTabPanel;
+        yield return AppearanceTabPanel;
+        yield return AudioTabPanel;
+        yield return IntegrationsTabPanel;
+        yield return LibraryTabPanel;
+    }
+
+    private static bool CardMatchesQuery(Border card, string query)
+    {
+        foreach (var logical in card.GetLogicalDescendants())
+        {
+            string? text = logical switch
+            {
+                TextBlock tb => tb.Text,
+                TextBox box => box.Watermark,
+                _ => null
+            };
+
+            if (!string.IsNullOrEmpty(text) &&
+                text.Contains(query, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)

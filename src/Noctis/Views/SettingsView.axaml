@@ -492,19 +492,76 @@
             <Setter Property="Height" Value="20"/>
             <Setter Property="Opacity" Value="0"/>
         </Style>
+
+        <!-- Settings tab strip -->
+        <Style Selector="Button.settings-tab">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.settings-tab /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Button.settings-tab.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="*">
+    <Grid RowDefinitions="Auto,*">
+
+    <!-- Search box + tab strip -->
+    <StackPanel Grid.Row="0" Margin="28,4,40,10" Spacing="10">
+        <TextBox Text="{Binding SettingsSearchText, Mode=TwoWay}"
+                 Watermark="Search settings"
+                 CornerRadius="999"
+                 Padding="14,8"
+                 BorderThickness="1.5"
+                 MinHeight="0"/>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+            <Button Classes="settings-tab" Classes.active="{Binding IsGeneralTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="General">
+                <TextBlock Text="General" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+            <Button Classes="settings-tab" Classes.active="{Binding IsAppearanceTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Appearance">
+                <TextBlock Text="Appearance" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+            <Button Classes="settings-tab" Classes.active="{Binding IsAudioTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Audio">
+                <TextBlock Text="Audio" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+            <Button Classes="settings-tab" Classes.active="{Binding IsLibraryTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Library">
+                <TextBlock Text="Library" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+            <Button Classes="settings-tab" Classes.active="{Binding IsIntegrationsTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Integrations">
+                <TextBlock Text="Integrations" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+            <Button Classes="settings-tab" Classes.active="{Binding IsAboutTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="About">
+                <TextBlock Text="About" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+        </StackPanel>
+    </StackPanel>
+
     <ScrollViewer x:Name="SettingsScrollViewer"
-                  Grid.Row="0"
+                  Grid.Row="1"
                   Focusable="True"
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="28,8,40,28" HorizontalAlignment="Stretch" Spacing="4">
 
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- PROFILE                                            -->
+            <!-- GENERAL                                             -->
             <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel x:Name="GeneralTabPanel" IsVisible="{Binding IsGeneralTabVisible}" Spacing="4">
+
+            <!-- Profile -->
             <Border Classes="setting-card" Padding="18,16" Margin="0,0,0,16">
                 <Grid ColumnDefinitions="Auto,*">
                     <!-- Round avatar (click to change) -->
@@ -551,9 +608,103 @@
                 </Grid>
             </Border>
 
+            <!-- Text Animation group -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Text Animation" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Control how long text scrolls in the player bar, Up Next, and menus."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <!-- Sub-header: Player Bar -->
+                    <TextBlock Text="PLAYER BAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,4,0,2"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding TrackTitleMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long artist names" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding ArtistMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Sub-header: Cover Flow -->
+                    <TextBlock Text="COVER FLOW" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding CoverFlowMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long artist names" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding CoverFlowArtistMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long album titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding CoverFlowAlbumMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Sub-header: Lyrics Page -->
+                    <TextBlock Text="LYRICS PAGE" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding LyricsTitleMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long artist/album names" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding LyricsArtistMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Sub-header: Sidebar -->
+                    <TextBlock Text="SIDEBAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="Hover to expand sidebar" FontSize="13"/>
+                            <TextBlock Text="Slide the sidebar open on hover. Turn off to keep the icon-only rail with no animation."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding SidebarHoverExpand}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                </StackPanel>
+            </Border>
+
+            <!-- Collapse album editions -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Collapse Album Editions" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Show one tile per release in album grids instead of every edition. Other editions stay available under &quot;Other Versions&quot; on the album page."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding CollapseAlbumEditions}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            </StackPanel>
+
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- ABOUT (compact, surfaced at top for quick access)  -->
+            <!-- ABOUT                                               -->
             <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel x:Name="AboutTabPanel" IsVisible="{Binding IsAboutTabVisible}" Spacing="4">
+
             <Border Classes="setting-card" Padding="18,16" Margin="0,0,0,16">
                 <StackPanel Spacing="10">
                     <!-- Row 1: logo + version on left, update button on right -->
@@ -695,10 +846,12 @@
                 </StackPanel>
             </Border>
 
+            </StackPanel>
+
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- APPEARANCE                                         -->
+            <!-- APPEARANCE                                          -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="APPEARANCE"/>
+            <StackPanel x:Name="AppearanceTabPanel" IsVisible="{Binding IsAppearanceTabVisible}" Spacing="4">
 
             <Border Classes="setting-card" Padding="22,12">
                 <StackPanel Spacing="12">
@@ -1032,25 +1185,14 @@
                 </StackPanel>
             </Border>
 
-            <!-- Collapse album editions -->
-            <Border Classes="setting-card">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Collapse Album Editions" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Show one tile per release in album grids instead of every edition. Other editions stay available under &quot;Other Versions&quot; on the album page."
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          IsChecked="{Binding CollapseAlbumEditions}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-
+            </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- AUDIO PLAYBACK                                     -->
+            <!-- AUDIO                                               -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="PLAYBACK" Margin="0,20,0,10"/>
+            <StackPanel x:Name="AudioTabPanel" IsVisible="{Binding IsAudioTabVisible}" Spacing="4">
+
+            <TextBlock Classes="section-title" Text="PLAYBACK" Margin="0,4,0,10"/>
 
             <!-- Sound Check -->
             <Border Classes="setting-card">
@@ -1064,82 +1206,6 @@
                                           IsChecked="{Binding SoundCheckEnabled}"
                                           VerticalAlignment="Center"/>
                 </Grid>
-            </Border>
-
-            <!-- Text Animation group -->
-            <Border Classes="setting-card">
-                <StackPanel Spacing="12">
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="Text Animation" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Control how long text scrolls in the player bar, Up Next, and menus."
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-
-                    <!-- Sub-header: Player Bar -->
-                    <TextBlock Text="PLAYER BAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,4,0,2"/>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding TrackTitleMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long artist names" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding ArtistMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-
-                    <!-- Sub-header: Cover Flow -->
-                    <TextBlock Text="COVER FLOW" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding CoverFlowMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long artist names" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding CoverFlowArtistMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long album titles" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding CoverFlowAlbumMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-
-                    <!-- Sub-header: Lyrics Page -->
-                    <TextBlock Text="LYRICS PAGE" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding LyricsTitleMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long artist/album names" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding LyricsArtistMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-
-                    <!-- Sub-header: Sidebar -->
-                    <TextBlock Text="SIDEBAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="Hover to expand sidebar" FontSize="13"/>
-                            <TextBlock Text="Slide the sidebar open on hover. Turn off to keep the icon-only rail with no animation."
-                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding SidebarHoverExpand}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-
-                </StackPanel>
             </Border>
 
             <!-- Equalizer (lives under Playback — no redundant header) -->
@@ -1299,40 +1365,6 @@
             </Border>
 
 
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- LYRICS PROVIDERS                                   -->
-            <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="LYRICS" Margin="0,20,0,10"/>
-
-            <Border Classes="setting-card">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="Use online lyrics when local lyrics are missing."
-                               FontSize="12" Opacity="0.5" Margin="0,0,0,4"/>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="LRCLIB" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Community lyrics database" FontSize="11" Opacity="0.5"/>
-                        </StackPanel>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding LrcLibEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="NetEase Cloud Music" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Large synced lyrics catalog" FontSize="11" Opacity="0.5"/>
-                        </StackPanel>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding NetEaseEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                </StackPanel>
-            </Border>
-
-
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- AUDIO TOOLS                                         -->
-            <!-- ═══════════════════════════════════════════════════ -->
             <TextBlock Classes="section-title" Text="AUDIO TOOLS" Margin="0,20,0,10"/>
 
             <Border Classes="setting-card">
@@ -1424,9 +1456,40 @@
                 </StackPanel>
             </Border>
 
+            </StackPanel>
+
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- ACCOUNTS                                           -->
+            <!-- INTEGRATIONS                                        -->
             <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel x:Name="IntegrationsTabPanel" IsVisible="{Binding IsIntegrationsTabVisible}" Spacing="4">
+
+            <TextBlock Classes="section-title" Text="LYRICS" Margin="0,4,0,10"/>
+
+            <Border Classes="setting-card">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Use online lyrics when local lyrics are missing."
+                               FontSize="12" Opacity="0.5" Margin="0,0,0,4"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="LRCLIB" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Community lyrics database" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding LrcLibEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="NetEase Cloud Music" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Large synced lyrics catalog" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding NetEaseEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <TextBlock Classes="section-title" Text="ACCOUNTS" Margin="0,20,0,10"/>
 
             <!-- Discord Rich Presence -->
@@ -1647,13 +1710,12 @@
             </Border>
 
 
+            </StackPanel>
+
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- LIBRARY (folders, scan, startup preferences)       -->
+            <!-- LIBRARY (folders, scan, startup preferences)        -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock x:Name="MediaFoldersSectionAnchor"
-                       Classes="section-title"
-                       Text="LIBRARY"
-                       Margin="0,20,0,10"/>
+            <StackPanel x:Name="LibraryTabPanel" IsVisible="{Binding IsLibraryTabVisible}" Spacing="4">
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
@@ -2045,6 +2107,7 @@
                 </StackPanel>
             </Border>
 
+            </StackPanel>
 
         </StackPanel>
     </ScrollViewer>

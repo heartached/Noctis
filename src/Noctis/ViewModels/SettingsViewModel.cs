@@ -12,7 +12,7 @@ using Noctis.Services.Loon;
 namespace Noctis.ViewModels;
 
 /// <summary>
-/// ViewModel for the unified Settings page (single scrollable view).
+/// ViewModel for the unified Settings page (tabbed modal with search).
 /// </summary>
 public partial class SettingsViewModel : ViewModelBase
 {
@@ -37,6 +37,65 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private int _mediaFoldersScrollRequest;
 
+    // ── Tabs & search ──
+    // The Settings modal is split into named tabs. While a search query is active every
+    // tab's content panel is shown and the view code-behind hides non-matching cards.
+    public const string TabGeneral = "General";
+    public const string TabAppearance = "Appearance";
+    public const string TabAudio = "Audio";
+    public const string TabLibrary = "Library";
+    public const string TabIntegrations = "Integrations";
+    public const string TabAbout = "About";
+
+    [ObservableProperty] private string _selectedSettingsTab = TabGeneral;
+    [ObservableProperty] private string _settingsSearchText = string.Empty;
+
+    public bool IsSearchingSettings => !string.IsNullOrWhiteSpace(SettingsSearchText);
+
+    public bool IsGeneralTabSelected => SelectedSettingsTab == TabGeneral;
+    public bool IsAppearanceTabSelected => SelectedSettingsTab == TabAppearance;
+    public bool IsAudioTabSelected => SelectedSettingsTab == TabAudio;
+    public bool IsLibraryTabSelected => SelectedSettingsTab == TabLibrary;
+    public bool IsIntegrationsTabSelected => SelectedSettingsTab == TabIntegrations;
+    public bool IsAboutTabSelected => SelectedSettingsTab == TabAbout;
+
+    public bool IsGeneralTabVisible => IsSearchingSettings || IsGeneralTabSelected;
+    public bool IsAppearanceTabVisible => IsSearchingSettings || IsAppearanceTabSelected;
+    public bool IsAudioTabVisible => IsSearchingSettings || IsAudioTabSelected;
+    public bool IsLibraryTabVisible => IsSearchingSettings || IsLibraryTabSelected;
+    public bool IsIntegrationsTabVisible => IsSearchingSettings || IsIntegrationsTabSelected;
+    public bool IsAboutTabVisible => IsSearchingSettings || IsAboutTabSelected;
+
+    partial void OnSelectedSettingsTabChanged(string value) => NotifyTabStateChanged();
+    partial void OnSettingsSearchTextChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsSearchingSettings));
+        NotifyTabStateChanged();
+    }
+
+    private void NotifyTabStateChanged()
+    {
+        OnPropertyChanged(nameof(IsGeneralTabSelected));
+        OnPropertyChanged(nameof(IsAppearanceTabSelected));
+        OnPropertyChanged(nameof(IsAudioTabSelected));
+        OnPropertyChanged(nameof(IsLibraryTabSelected));
+        OnPropertyChanged(nameof(IsIntegrationsTabSelected));
+        OnPropertyChanged(nameof(IsAboutTabSelected));
+        OnPropertyChanged(nameof(IsGeneralTabVisible));
+        OnPropertyChanged(nameof(IsAppearanceTabVisible));
+        OnPropertyChanged(nameof(IsAudioTabVisible));
+        OnPropertyChanged(nameof(IsLibraryTabVisible));
+        OnPropertyChanged(nameof(IsIntegrationsTabVisible));
+        OnPropertyChanged(nameof(IsAboutTabVisible));
+    }
+
+    [RelayCommand]
+    private void SelectSettingsTab(string tab)
+    {
+        SettingsSearchText = string.Empty;
+        SelectedSettingsTab = tab;
+    }
+
     // ── Profile ──
     [ObservableProperty] private string _profileName = string.Empty;
     [ObservableProperty] private string _profileUsername = string.Empty;
@@ -50,6 +109,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     public void RequestMediaFoldersSection()
     {
+        // The media-folders card lives on the Library tab; switch there so the
+        // scroll anchor is actually in the visual tree before the view scrolls.
+        SelectSettingsTab(TabLibrary);
         MediaFoldersScrollRequest++;
     }
 
