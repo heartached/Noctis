@@ -91,6 +91,15 @@ public class VlcAudioPlayer : IAudioPlayer
     // silent. The callback delegates must be held for the player's lifetime or
     // the GC collects them and LibVLC calls into freed memory.
     private readonly WasapiGainOutput? _wasapiOut;
+
+    // Windows: silent WASAPI render stream that keeps the audio engine and the
+    // endpoint warm, so LibVLC's mmdevice output never opens its stream against
+    // a cold device — the cold open desyncs the output clock into the permanent
+    // "playback too late → flushing buffers" stutter on the FIRST play after
+    // launch (confirmed by reporter: keeping any other audio app open fully
+    // suppresses it). Null on non-Windows / NOCTIS_KEEPALIVE=0 / init failure.
+    // See WasapiSilenceKeepAlive for the idle-park and session-exclusion design.
+    private readonly WasapiSilenceKeepAlive? _keepAlive;
     private MediaPlayer.LibVLCAudioPlayCb? _audioPlayCb;
     private MediaPlayer.LibVLCAudioPauseCb? _audioPauseCb;
     private MediaPlayer.LibVLCAudioResumeCb? _audioResumeCb;
@@ -431,6 +440,10 @@ public class VlcAudioPlayer : IAudioPlayer
             try { _player.Volume = 100; } catch { }
             try { _standbyPlayer.Volume = 100; } catch { }
         }
+
+        // Start the keep-alive immediately: construction happens at app launch,
+        // which is exactly the window before the reported first-play stutter.
+        _keepAlive = WasapiSilenceKeepAlive.TryStart();
 
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnError;
@@ -1314,6 +1327,7 @@ public class VlcAudioPlayer : IAudioPlayer
         }
 
         DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play", $"path={Path.GetFileName(filePath)}");
+        _keepAlive?.NotifyActivity();
         _currentMediaPath = filePath;
         // Re-apply RG for the new track using the last known mode/preamp. If
         // the mode is "Off" this is a no-op and _replayGainScalar stays 1.0.
@@ -1852,6 +1866,7 @@ public class VlcAudioPlayer : IAudioPlayer
     public void Pause()
     {
         if (_disposed) return;
+        _keepAlive?.NotifyActivity();
         CancelSkipCts();
         CancelPreparedNext();
 
@@ -1867,6 +1882,7 @@ public class VlcAudioPlayer : IAudioPlayer
     public void Resume()
     {
         if (_disposed || _currentMedia == null) return;
+        _keepAlive?.NotifyActivity();
 
         // Serialize with Play()/Stop() to prevent racing against a concurrent
         // Play() call on the ThreadPool (e.g., track ending + user unpausing).
@@ -1932,6 +1948,7 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         if (_disposed || _currentMedia == null) return;
 
+        _keepAlive?.NotifyActivity();
         CancelSkipCts();
         CancelPreparedNext();
         ResetEndReachedPending();
@@ -2043,6 +2060,10 @@ public class VlcAudioPlayer : IAudioPlayer
     private void OnPositionTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
     {
         if (_disposed) return;
+
+        // The timer runs only while audio is playing — it doubles as the
+        // keep-alive's "still in use" heartbeat (cheap: one volatile write).
+        _keepAlive?.NotifyActivity();
 
         try
         {
@@ -2247,6 +2268,7 @@ public class VlcAudioPlayer : IAudioPlayer
 
         _sessionVolume?.Dispose();
         _wasapiOut?.Dispose();
+        _keepAlive?.Dispose();
 
         _currentMedia?.Dispose();
         _standbyMedia?.Dispose();

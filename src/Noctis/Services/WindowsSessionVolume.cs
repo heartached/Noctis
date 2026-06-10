@@ -113,7 +113,13 @@ internal sealed class WindowsSessionVolume
 
         var matched = 0;
         var active = 0;
+        var excluded = 0;
         var heldActive = false;
+        // The silent keep-alive stream (WasapiSilenceKeepAlive) is a session of
+        // THIS process and is Active whenever it runs — without exclusion the
+        // active-preference below could hold it instead of VLC's session, and
+        // the user's volume would drive silence while the music stays at 100%.
+        var keepAliveId = WasapiSilenceKeepAlive.SessionInstanceId;
         try
         {
             _enumerator ??= (IMMDeviceEnumerator)new MMDeviceEnumerator();
@@ -148,7 +154,8 @@ internal sealed class WindowsSessionVolume
                             {
                                 if (ctlObj is IAudioSessionControl2 ctl2 &&
                                     ctl2.GetProcessId(out var spid) >= 0 && spid == _pid &&
-                                    ctlObj is ISimpleAudioVolume vol)
+                                    ctlObj is ISimpleAudioVolume vol &&
+                                    !IsKeepAliveSession(ctl2, keepAliveId, ref excluded))
                                 {
                                     matched++;
                                     var isActive = ctl2.GetState(out var state) >= 0 &&
@@ -199,9 +206,35 @@ internal sealed class WindowsSessionVolume
         }
 
         // Verification signal in noctis_vlc_diag.log: with the fix, held should be
-        // 1 (one write per ramp tick) even when many stale sessions are matched.
+        // 1 (one write per ramp tick) even when many stale sessions are matched,
+        // and excluded should be 1 while the silent keep-alive stream exists.
         DebugLogger.Info(DebugLogger.Category.Playback, "SessionVolume.Resolve",
-            $"matched={matched}, active={active}, held={(_activeVolume != null ? 1 : 0)}, heldActive={heldActive}");
+            $"matched={matched}, active={active}, excluded={excluded}, held={(_activeVolume != null ? 1 : 0)}, heldActive={heldActive}");
+    }
+
+    /// <summary>True if this session is the silent keep-alive stream's session
+    /// (compared by session instance identifier). Failure to read the identifier
+    /// counts as "not the keep-alive" so volume control keeps working.</summary>
+    private static bool IsKeepAliveSession(IAudioSessionControl2 ctl, string? keepAliveId, ref int excluded)
+    {
+        if (keepAliveId == null) return false;
+        try
+        {
+            if (ctl.GetSessionInstanceIdentifier(out var ptr) < 0 || ptr == IntPtr.Zero)
+                return false;
+            try
+            {
+                if (!string.Equals(Marshal.PtrToStringUni(ptr), keepAliveId, StringComparison.Ordinal))
+                    return false;
+                excluded++;
+                return true;
+            }
+            finally { Marshal.FreeCoTaskMem(ptr); }
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private void ReleaseActive()
@@ -296,7 +329,7 @@ internal sealed class WindowsSessionVolume
         [PreserveSig] int RegisterAudioSessionNotification();
         [PreserveSig] int UnregisterAudioSessionNotification();
         [PreserveSig] int GetSessionIdentifier();
-        [PreserveSig] int GetSessionInstanceIdentifier();
+        [PreserveSig] int GetSessionInstanceIdentifier(out IntPtr pRetVal);
         [PreserveSig] int GetProcessId(out uint pRetVal);
         [PreserveSig] int IsSystemSoundsSession();
         [PreserveSig] int SetDuckingPreference();
