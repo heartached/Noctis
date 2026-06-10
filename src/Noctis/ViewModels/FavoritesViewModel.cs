@@ -172,7 +172,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     {
         var allTracks = GetAllFavoriteTracks();
         if (allTracks.Count == 0) return;
-        var shuffled = allTracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(allTracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
@@ -192,7 +192,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     private void ShuffleTrack(Track track)
     {
         var allTracks = GetAllFavoriteTracks();
-        var shuffled = allTracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(allTracks);
         // Put selected track first
         var idx = shuffled.FindIndex(t => t.Id == track.Id);
         if (idx > 0) { var t = shuffled[idx]; shuffled.RemoveAt(idx); shuffled.Insert(0, t); }
@@ -271,7 +271,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     private void ShuffleAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        var shuffled = album.Tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(album.Tracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 

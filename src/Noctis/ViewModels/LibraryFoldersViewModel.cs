@@ -127,7 +127,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, IDisposable
     private void ShuffleFolder()
     {
         if (SelectedFolderTracks.Count == 0) return;
-        var shuffled = SelectedFolderTracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(SelectedFolderTracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 

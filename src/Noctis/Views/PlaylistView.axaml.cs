@@ -127,9 +127,7 @@ public partial class PlaylistView : UserControl
             showInExplorerCommand: vm.ShowInExplorerCommand,
             removeCommand: vm.RemoveTrackCommand,
             convertCommand: vm.ConvertTracksCommand,
-            scanReplayGainCommand: vm.ScanReplayGainCommand,
-            rateTrackCommand: vm.RateTrackCommand,
-            toggleDislikedCommand: vm.ToggleDislikedCommand);
+            scanReplayGainCommand: vm.ScanReplayGainCommand);
     }
 
     private void DetachMenuFromOwner()

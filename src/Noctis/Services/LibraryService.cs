@@ -495,37 +495,46 @@ public class LibraryService : ILibraryService
         FavoritesChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public async Task SetTrackRatingAsync(Track track, int rating)
+    public async Task SetTracksRatingAsync(IReadOnlyList<Track> tracks, int rating)
     {
         rating = Math.Clamp(rating, 0, 5);
-        if (track.Rating == rating) return;
+        var changed = tracks.Where(t => t.Rating != rating).ToList();
+        if (changed.Count == 0) return;
 
-        track.Rating = rating;
+        foreach (var track in changed)
+            track.Rating = rating;
         await SaveAsync();
-        QueueRatingTagWrite(track);
+        QueueRatingTagWrites(changed);
     }
 
-    public async Task SetTrackDislikedAsync(Track track, bool isDisliked)
+    public async Task SetTracksDislikedAsync(IReadOnlyList<Track> tracks, bool isDisliked)
     {
-        if (track.IsDisliked == isDisliked) return;
+        var changed = tracks.Where(t => t.IsDisliked != isDisliked).ToList();
+        if (changed.Count == 0) return;
 
-        track.IsDisliked = isDisliked;
+        foreach (var track in changed)
+            track.IsDisliked = isDisliked;
         await SaveAsync();
-        QueueRatingTagWrite(track);
+        QueueRatingTagWrites(changed);
     }
 
     /// <summary>
-    /// Persists the rating tags to the audio file on a worker thread (best effort —
-    /// the library JSON above is the source of truth if the file is locked/read-only).
+    /// Persists rating tags to the audio files on a worker thread (best effort —
+    /// the library JSON saved above is the source of truth if a file is locked/read-only).
     /// </summary>
-    private void QueueRatingTagWrite(Track track)
+    private void QueueRatingTagWrites(IReadOnlyList<Track> tracks)
     {
-        if (track.SourceType != SourceType.Local) return;
+        var targets = tracks
+            .Where(t => t.SourceType == SourceType.Local)
+            .Select(t => (t.FilePath, t.Rating, t.IsDisliked))
+            .ToList();
+        if (targets.Count == 0) return;
 
-        var path = track.FilePath;
-        var rating = track.Rating;
-        var disliked = track.IsDisliked;
-        _ = Task.Run(() => _metadata.WriteRating(path, rating, disliked));
+        _ = Task.Run(() =>
+        {
+            foreach (var (path, rating, disliked) in targets)
+                _metadata.WriteRating(path, rating, disliked);
+        });
     }
 
     public void NotifyMetadataChanged()

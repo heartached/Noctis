@@ -460,7 +460,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private void ShuffleAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        var shuffled = album.Tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(album.Tracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
@@ -479,7 +479,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var allTracks = GetAllFilteredTracks();
         if (allTracks.Count == 0) return;
-        var shuffled = allTracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(allTracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 

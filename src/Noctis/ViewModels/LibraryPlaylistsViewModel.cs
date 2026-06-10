@@ -151,7 +151,7 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
         if (playlist == null) return;
         var tracks = ResolvePlaylistTracks(playlist);
         if (tracks.Count == 0) return;
-        var shuffled = tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 

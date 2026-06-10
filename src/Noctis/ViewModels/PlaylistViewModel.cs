@@ -335,7 +335,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         var tracks = Tracks.ToList();
         if (tracks.Count == 0) return;
-        var shuffled = tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
@@ -398,14 +398,6 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         _library.NotifyFavoritesChanged();
         CtrlSelectedTracks.Clear();
     }
-
-    [RelayCommand]
-    private Task RateTrack(TrackRatingParameter parameter) =>
-        _library.SetTrackRatingAsync(parameter.Track, parameter.Rating);
-
-    [RelayCommand]
-    private Task ToggleDisliked(Track track) =>
-        _library.SetTrackDislikedAsync(track, !track.IsDisliked);
 
     [RelayCommand]
     private void ViewAlbum(Track track)

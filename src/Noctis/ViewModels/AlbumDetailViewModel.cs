@@ -666,13 +666,23 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ShowTrackRowHearts));
     }
 
-    [RelayCommand]
-    private Task RateTrack(TrackRatingParameter parameter) =>
-        _library.SetTrackRatingAsync(parameter.Track, parameter.Rating);
+    /// <summary>True when every album track is flagged "not liked" (album-level toggle state).</summary>
+    public bool IsAlbumDisliked => Tracks.Count > 0 && Tracks.All(t => t.IsDisliked);
 
     [RelayCommand]
-    private Task ToggleDisliked(Track track) =>
-        _library.SetTrackDislikedAsync(track, !track.IsDisliked);
+    private async Task RateAlbum(string stars)
+    {
+        if (!int.TryParse(stars, out var rating) || Tracks.Count == 0) return;
+        await _library.SetTracksRatingAsync(Tracks.ToList(), rating);
+    }
+
+    [RelayCommand]
+    private async Task ToggleAlbumDisliked()
+    {
+        if (Tracks.Count == 0) return;
+        await _library.SetTracksDislikedAsync(Tracks.ToList(), !IsAlbumDisliked);
+        OnPropertyChanged(nameof(IsAlbumDisliked));
+    }
 
     [RelayCommand]
     private async Task ToggleAlbumFavorites()

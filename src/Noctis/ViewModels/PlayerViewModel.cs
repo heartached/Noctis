@@ -180,9 +180,7 @@ public partial class PlayerViewModel : ViewModelBase
                 else if (_library.Tracks.Count > 0)
                 {
                     // No track loaded — shuffle entire library
-                    var allTracks = _library.Tracks
-                        .OrderBy(_ => Random.Shared.Next())
-                        .ToList();
+                    var allTracks = Helpers.ShuffleHelper.WeightedShuffle(_library.Tracks);
                     IsShuffleEnabled = true;
                     ReplaceQueueAndPlay(allTracks, 0);
                 }
@@ -268,11 +266,10 @@ public partial class PlayerViewModel : ViewModelBase
             {
                 // Save original queue order
                 _originalQueue = UpNext.ToList();
-                // Shuffle the queue, respecting SkipWhenShuffling
-                var shuffled = UpNext
-                    .Where(t => !t.SkipWhenShuffling)
-                    .OrderBy(_ => Random.Shared.Next())
-                    .ToList();
+                // Shuffle the queue, respecting SkipWhenShuffling and
+                // down-weighting "not liked" tracks.
+                var shuffled = Helpers.ShuffleHelper.WeightedShuffle(
+                    UpNext.Where(t => !t.SkipWhenShuffling));
                 UpNext.ReplaceAll(shuffled);
             }
             else if (_originalQueue.Count > 0)
@@ -441,7 +438,7 @@ public partial class PlayerViewModel : ViewModelBase
         if (CurrentTrack == null) return;
         var album = _library.GetAlbumById(CurrentTrack.AlbumId);
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        var shuffled = album.Tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(album.Tracks);
         ReplaceQueueAndPlay(shuffled, 0);
     }
 

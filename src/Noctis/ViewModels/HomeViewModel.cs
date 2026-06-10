@@ -287,7 +287,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         var tracks = TopSongs.ToList();
         if (tracks.Count == 0) return;
-        var shuffled = tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
@@ -327,7 +327,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private void ShuffleAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        var shuffled = album.Tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(album.Tracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 

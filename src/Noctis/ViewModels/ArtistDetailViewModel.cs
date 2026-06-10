@@ -272,7 +272,7 @@ public partial class ArtistDetailViewModel : ViewModelBase
     [RelayCommand]
     private void ShuffleArtist()
     {
-        var tracks = AllArtistTracks().OrderBy(_ => Random.Shared.Next()).ToList();
+        var tracks = Helpers.ShuffleHelper.WeightedShuffle(AllArtistTracks());
         if (tracks.Count == 0) return;
         _player.ReplaceQueueAndPlay(tracks, 0);
     }

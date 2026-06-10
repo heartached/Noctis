@@ -196,7 +196,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         if (tracks.Count == 0) return;
 
         // Shuffle the list using thread-safe Random.Shared
-        var shuffled = tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
 
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
@@ -277,14 +277,6 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         _library.NotifyFavoritesChanged();
         CtrlSelectedTracks.Clear();
     }
-
-    [RelayCommand]
-    private Task RateTrack(TrackRatingParameter parameter) =>
-        _library.SetTrackRatingAsync(parameter.Track, parameter.Rating);
-
-    [RelayCommand]
-    private Task ToggleDisliked(Track track) =>
-        _library.SetTrackDislikedAsync(track, !track.IsDisliked);
 
     [RelayCommand]
     private void ViewAlbum(Track track)

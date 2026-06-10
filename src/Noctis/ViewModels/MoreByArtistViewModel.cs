@@ -73,7 +73,7 @@ public partial class MoreByArtistViewModel : ViewModelBase
         if (_player == null) return;
         var tracks = GetAllTracks();
         if (tracks.Count == 0) return;
-        var shuffled = tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
