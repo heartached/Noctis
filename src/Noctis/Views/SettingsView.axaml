@@ -513,14 +513,8 @@
 
     <Grid RowDefinitions="Auto,*">
 
-    <!-- Search box + tab strip -->
+    <!-- Tab strip -->
     <StackPanel Grid.Row="0" Margin="28,4,40,10" Spacing="10">
-        <TextBox Text="{Binding SettingsSearchText, Mode=TwoWay}"
-                 Watermark="Search settings"
-                 CornerRadius="999"
-                 Padding="14,8"
-                 BorderThickness="1.5"
-                 MinHeight="0"/>
         <StackPanel Orientation="Horizontal" Spacing="6">
             <Button Classes="settings-tab" Classes.active="{Binding IsGeneralTabSelected}"
                     Command="{Binding SelectSettingsTabCommand}" CommandParameter="General">
@@ -1463,34 +1457,7 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <StackPanel x:Name="IntegrationsTabPanel" IsVisible="{Binding IsIntegrationsTabVisible}" Spacing="4">
 
-            <TextBlock Classes="section-title" Text="LYRICS" Margin="0,4,0,10"/>
-
-            <Border Classes="setting-card">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="Use online lyrics when local lyrics are missing."
-                               FontSize="12" Opacity="0.5" Margin="0,0,0,4"/>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="LRCLIB" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Community lyrics database" FontSize="11" Opacity="0.5"/>
-                        </StackPanel>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding LrcLibEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="NetEase Cloud Music" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Large synced lyrics catalog" FontSize="11" Opacity="0.5"/>
-                        </StackPanel>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding NetEaseEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                </StackPanel>
-            </Border>
-
-            <TextBlock Classes="section-title" Text="ACCOUNTS" Margin="0,20,0,10"/>
+            <TextBlock Classes="section-title" Text="ACCOUNTS" Margin="0,4,0,10"/>
 
             <!-- Discord Rich Presence -->
             <Border Classes="setting-card">
@@ -1704,6 +1671,33 @@
                                    VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding ListenBrainzScrobblingEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Classes="section-title" Text="LYRICS" Margin="0,20,0,10"/>
+
+            <Border Classes="setting-card">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Use online lyrics when local lyrics are missing."
+                               FontSize="12" Opacity="0.5" Margin="0,0,0,4"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="LRCLIB" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Community lyrics database" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding LrcLibEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="NetEase Cloud Music" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Large synced lyrics catalog" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding NetEaseEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                 </StackPanel>

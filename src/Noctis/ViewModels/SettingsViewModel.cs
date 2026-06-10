@@ -37,9 +37,8 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private int _mediaFoldersScrollRequest;
 
-    // ── Tabs & search ──
-    // The Settings modal is split into named tabs. While a search query is active every
-    // tab's content panel is shown and the view code-behind hides non-matching cards.
+    // ── Tabs ──
+    // The Settings modal is split into named tabs; exactly one tab panel is visible at a time.
     public const string TabGeneral = "General";
     public const string TabAppearance = "Appearance";
     public const string TabAudio = "Audio";
@@ -48,9 +47,6 @@ public partial class SettingsViewModel : ViewModelBase
     public const string TabAbout = "About";
 
     [ObservableProperty] private string _selectedSettingsTab = TabGeneral;
-    [ObservableProperty] private string _settingsSearchText = string.Empty;
-
-    public bool IsSearchingSettings => !string.IsNullOrWhiteSpace(SettingsSearchText);
 
     public bool IsGeneralTabSelected => SelectedSettingsTab == TabGeneral;
     public bool IsAppearanceTabSelected => SelectedSettingsTab == TabAppearance;
@@ -59,21 +55,14 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsIntegrationsTabSelected => SelectedSettingsTab == TabIntegrations;
     public bool IsAboutTabSelected => SelectedSettingsTab == TabAbout;
 
-    public bool IsGeneralTabVisible => IsSearchingSettings || IsGeneralTabSelected;
-    public bool IsAppearanceTabVisible => IsSearchingSettings || IsAppearanceTabSelected;
-    public bool IsAudioTabVisible => IsSearchingSettings || IsAudioTabSelected;
-    public bool IsLibraryTabVisible => IsSearchingSettings || IsLibraryTabSelected;
-    public bool IsIntegrationsTabVisible => IsSearchingSettings || IsIntegrationsTabSelected;
-    public bool IsAboutTabVisible => IsSearchingSettings || IsAboutTabSelected;
+    public bool IsGeneralTabVisible => IsGeneralTabSelected;
+    public bool IsAppearanceTabVisible => IsAppearanceTabSelected;
+    public bool IsAudioTabVisible => IsAudioTabSelected;
+    public bool IsLibraryTabVisible => IsLibraryTabSelected;
+    public bool IsIntegrationsTabVisible => IsIntegrationsTabSelected;
+    public bool IsAboutTabVisible => IsAboutTabSelected;
 
-    partial void OnSelectedSettingsTabChanged(string value) => NotifyTabStateChanged();
-    partial void OnSettingsSearchTextChanged(string value)
-    {
-        OnPropertyChanged(nameof(IsSearchingSettings));
-        NotifyTabStateChanged();
-    }
-
-    private void NotifyTabStateChanged()
+    partial void OnSelectedSettingsTabChanged(string value)
     {
         OnPropertyChanged(nameof(IsGeneralTabSelected));
         OnPropertyChanged(nameof(IsAppearanceTabSelected));
@@ -90,11 +79,7 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SelectSettingsTab(string tab)
-    {
-        SettingsSearchText = string.Empty;
-        SelectedSettingsTab = tab;
-    }
+    private void SelectSettingsTab(string tab) => SelectedSettingsTab = tab;
 
     // ── Profile ──
     [ObservableProperty] private string _profileName = string.Empty;
