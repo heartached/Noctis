@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 
 namespace Noctis.Services;
@@ -10,10 +11,8 @@ public sealed class UpdateService
 {
     // Fetch the recent releases list (instead of /releases/latest) so pre-releases are included.
     // GitHub excludes pre-releases from /releases/latest, which would hide prerelease builds from
-    // the in-app updater. We pick the highest-version release that has the Windows installer asset.
+    // the in-app updater. We pick the highest-version release that has this platform's installer asset.
     private const string ReleaseUrl = "https://api.github.com/repos/heartached/Noctis/releases?per_page=10";
-    private const string AssetPrefix = "Noctis-v";
-    private const string AssetSuffix = "-Setup.exe";
 
     private readonly HttpClient _http;
 
@@ -84,10 +83,11 @@ public sealed class UpdateService
         if (candidates.Count == 0)
             return null;
 
-        // Prefer the highest-version release that actually ships the Windows installer
-        // asset, so a newer release missing the asset never masks an installable one.
-        // Fall back to the highest version overall so non-Windows builds (and the
-        // "visit GitHub" path) still surface that an update exists.
+        // Prefer the highest-version release that actually ships this platform's
+        // installer asset, so a newer release missing the asset never masks an
+        // installable one. Fall back to the highest version overall so platforms
+        // without an in-app installer (Linux) still surface that an update exists
+        // via the "visit GitHub" path.
         var best = candidates.FirstOrDefault(x => FindInstallerAsset(x.Release) is not null);
         if (best.Release is null)
             best = candidates[0];
@@ -106,11 +106,36 @@ public sealed class UpdateService
         };
     }
 
-    private static GitHubAsset? FindInstallerAsset(GitHubRelease release) =>
-        release.Assets?.FirstOrDefault(a =>
-            a.Name != null &&
-            a.Name.StartsWith(AssetPrefix, StringComparison.OrdinalIgnoreCase) &&
-            a.Name.EndsWith(AssetSuffix, StringComparison.OrdinalIgnoreCase));
+    /// <summary>
+    /// Picks the release asset the in-app updater can install on this platform:
+    /// Windows gets the Inno Setup exe ("Noctis-v1.2.3-Setup.exe"), macOS gets the
+    /// per-architecture disk image ("Noctis-1.2.3-osx-arm64.dmg"). Linux has no
+    /// in-app installer (AppImage/tar.gz are updated manually), so no asset matches
+    /// and the UI falls back to pointing at the GitHub release page.
+    /// </summary>
+    private static GitHubAsset? FindInstallerAsset(GitHubRelease release)
+    {
+        if (release.Assets is null) return null;
+
+        if (OperatingSystem.IsWindows())
+        {
+            return release.Assets.FirstOrDefault(a =>
+                a.Name != null &&
+                a.Name.StartsWith("Noctis-v", StringComparison.OrdinalIgnoreCase) &&
+                a.Name.EndsWith("-Setup.exe", StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            var arch = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64";
+            return release.Assets.FirstOrDefault(a =>
+                a.Name != null &&
+                a.Name.StartsWith("Noctis-", StringComparison.OrdinalIgnoreCase) &&
+                a.Name.EndsWith($"-osx-{arch}.dmg", StringComparison.OrdinalIgnoreCase));
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Downloads the installer to %TEMP%. Reports progress 0-100.
@@ -132,7 +157,8 @@ public sealed class UpdateService
         IProgress<double>? progress,
         CancellationToken ct)
     {
-        var tempPath = Path.Combine(Path.GetTempPath(), "Noctis-Update-Setup.exe");
+        var tempPath = Path.Combine(Path.GetTempPath(),
+            OperatingSystem.IsMacOS() ? "Noctis-Update.dmg" : "Noctis-Update-Setup.exe");
 
         try
         {
@@ -185,41 +211,63 @@ public sealed class UpdateService
     }
 
     /// <summary>
-    /// Launches the downloaded Inno Setup installer with /SILENT and returns true.
-    /// The caller should exit the app after this returns.
+    /// Launches the downloaded installer and returns true. Windows runs the Inno
+    /// Setup exe with /SILENT; macOS opens the downloaded .dmg so the user drags
+    /// the new Noctis.app over the old one. The caller should exit the app after
+    /// this returns so the bundle/files can be replaced.
     /// </summary>
     public bool LaunchInstaller(string installerPath)
     {
-        // The bundled installer is an Inno Setup .exe; only launch on Windows.
-        // On other platforms users update via package manager or by re-downloading.
-        if (!OperatingSystem.IsWindows())
-            return false;
-
         if (!File.Exists(installerPath))
             return false;
 
-        try
+        if (OperatingSystem.IsWindows())
         {
-            var proc = Process.Start(new ProcessStartInfo
+            try
             {
-                FileName = installerPath,
-                Arguments = "/SILENT",
-                UseShellExecute = true  // triggers UAC elevation prompt
-            });
+                var proc = Process.Start(new ProcessStartInfo
+                {
+                    FileName = installerPath,
+                    Arguments = "/SILENT",
+                    UseShellExecute = true  // triggers UAC elevation prompt
+                });
 
-            if (proc is null)
+                if (proc is null)
+                {
+                    Debug.WriteLine("[UpdateService] Process.Start returned null for installer.");
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception ex)
             {
-                Debug.WriteLine("[UpdateService] Process.Start returned null for installer.");
+                // Most common cause: user declined the UAC prompt.
+                Debug.WriteLine($"[UpdateService] LaunchInstaller failed: {ex.Message}");
                 return false;
             }
-            return true;
         }
-        catch (Exception ex)
+
+        if (OperatingSystem.IsMacOS())
         {
-            // Most common cause: user declined the UAC prompt.
-            Debug.WriteLine($"[UpdateService] LaunchInstaller failed: {ex.Message}");
-            return false;
+            try
+            {
+                var proc = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "open",
+                    ArgumentList = { installerPath },
+                    UseShellExecute = false
+                });
+                return proc is not null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[UpdateService] LaunchInstaller (open .dmg) failed: {ex.Message}");
+                return false;
+            }
         }
+
+        // Linux: no in-app installer; users update via AppImage/tar.gz.
+        return false;
     }
 
     private static Version? ParseTag(string tag)
