@@ -1026,11 +1026,14 @@ public partial class PlayerViewModel : ViewModelBase
         // Drive CachedImage-based surfaces (playback bar) via a path string. They
         // handle previous-frame retention during background decode, so there's no
         // flash. Set null when the file is missing so the placeholder renders.
-        CurrentArtPath = !string.IsNullOrEmpty(artPath) && File.Exists(artPath) ? artPath : null;
+        var hasArtFile = !string.IsNullOrEmpty(artPath) && File.Exists(artPath);
+        CurrentArtPath = hasArtFile ? artPath : null;
 
         // No artwork available for this track — clear immediately so we don't
-        // keep showing the previous track's cover.
-        if (string.IsNullOrEmpty(artPath))
+        // keep showing the previous track's cover. GetArtworkPath always returns
+        // a computed path, so the file-existence check is what actually detects
+        // a coverless track here.
+        if (!hasArtFile)
         {
             AlbumArt = null;
             CurrentAnimatedCoverPath = _animatedCovers.Resolve(track);
