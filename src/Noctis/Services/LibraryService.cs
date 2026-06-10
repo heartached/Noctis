@@ -11,7 +11,8 @@ namespace Noctis.Services;
 public class LibraryService : ILibraryService
 {
     private const int CurrentMetadataSchemaVersion = 6;
-    private const int CurrentIndexCacheVersion = 2;
+    // v3: album track order normalized (disc 0 → 1, missing track numbers last)
+    private const int CurrentIndexCacheVersion = 3;
 
     private readonly IMetadataService _metadata;
     private readonly IPersistenceService _persistence;
@@ -581,7 +582,14 @@ public class LibraryService : ILibraryService
                 .GroupBy(t => t.AlbumId)
                 .Select(g =>
                 {
-                    var albumTracks = g.OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
+                    // Same normalization as the play-order sort (AlbumDetailViewModel.InAlbumOrder):
+                    // disc 0 counts as disc 1 and missing track numbers sink to the end,
+                    // so the displayed album order always matches the playback order.
+                    var albumTracks = g
+                        .OrderBy(t => t.DiscNumber <= 0 ? 1 : t.DiscNumber)
+                        .ThenBy(t => t.TrackNumber <= 0 ? int.MaxValue : t.TrackNumber)
+                        .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
                     var first = albumTracks[0];
                     var hasArt = artworkExists.Contains(first.AlbumId);
 

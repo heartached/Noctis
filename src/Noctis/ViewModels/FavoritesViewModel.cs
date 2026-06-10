@@ -106,9 +106,13 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
             }
         }
 
-        // Newest favorites first.
-        items.Sort((a, b) => b.sortKey.CompareTo(a.sortKey));
-        _allFavoriteItems = items.Select(x => x.item).ToList();
+        // Newest favorites first. OrderByDescending is a stable sort: items with
+        // equal timestamps (legacy favorites, album batch-favorites) keep their
+        // library order instead of reshuffling on every refresh like List.Sort did.
+        _allFavoriteItems = items
+            .OrderByDescending(x => x.sortKey)
+            .Select(x => x.item)
+            .ToList();
         ApplyFilter(_currentFilter);
     }
 
