@@ -1328,15 +1328,22 @@ public partial class MetadataViewModel : ViewModelBase
         }
 
         // Write metadata to file tags (plain lyrics go to USLT tag). Album-scoped
-        // edits must be written to every track, not just Tracks[0].
+        // edits must be written to every track, not just Tracks[0]. Each write
+        // opens and rewrites the audio file, so run the batch on a worker thread —
+        // doing it on the UI thread froze the app for seconds on large albums
+        // (e.g. saving an animated cover for a 20+ track album).
         if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
         {
-            foreach (var t in _albumTracks)
-                _metadata.WriteTrackMetadata(t);
+            var tagWriteTargets = _albumTracks.ToList();
+            await Task.Run(() =>
+            {
+                foreach (var t in tagWriteTargets)
+                    _metadata.WriteTrackMetadata(t);
+            });
         }
         else
         {
-            _metadata.WriteTrackMetadata(_track);
+            await Task.Run(() => _metadata.WriteTrackMetadata(_track));
         }
 
         // Write advanced fields (sort, people, identifiers, custom tags)
@@ -1383,11 +1390,15 @@ public partial class MetadataViewModel : ViewModelBase
                     _persistence.SaveArtwork(albumId, _newArtworkData);
                     ArtworkCache.Invalidate(_persistence.GetArtworkPath(albumId));
                 }
-                foreach (var t in _albumTracks)
+                var artTargets = _albumTracks.ToList();
+                await Task.Run(() =>
                 {
-                    try { _metadata.WriteAlbumArt(t.FilePath, _newArtworkData); } catch { }
-                    t.AlbumArtworkPath = null;
-                }
+                    foreach (var t in artTargets)
+                    {
+                        try { _metadata.WriteAlbumArt(t.FilePath, _newArtworkData); } catch { }
+                        t.AlbumArtworkPath = null;
+                    }
+                });
             }
             else
             {
@@ -1407,11 +1418,14 @@ public partial class MetadataViewModel : ViewModelBase
             var albumTracks = _albumTracks
                 ?? _library.Tracks.Where(t => t.AlbumId == _track.AlbumId).ToList();
             if (albumTracks.Count == 0) albumTracks = new List<Track> { _track };
-            foreach (var t in albumTracks)
+            await Task.Run(() =>
             {
-                try { _metadata.WriteAlbumArt(t.FilePath, null); } catch { }
-                t.AlbumArtworkPath = null;
-            }
+                foreach (var t in albumTracks)
+                {
+                    try { _metadata.WriteAlbumArt(t.FilePath, null); } catch { }
+                    t.AlbumArtworkPath = null;
+                }
+            });
 
             // Delete the persisted cache file too — invalidating the in-memory
             // cache alone leaves the PNG on disk, so the next album load reads
