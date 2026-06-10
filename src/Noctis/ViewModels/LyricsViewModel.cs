@@ -243,10 +243,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private int _activeLineIndex = -1;
 
-    /// <summary>Album metadata line (e.g. "2021 · Alternative · 17 tracks").</summary>
-    [ObservableProperty]
-    private string _albumInfoText = string.Empty;
-
     /// <summary>Whether to show favorite heart in metadata row (reflects current track's favorite status).</summary>
     public bool ShowMetadataFavoriteHeart => Player?.CurrentTrack?.IsFavorite ?? false;
 
@@ -1340,7 +1336,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         ShowSearchButton = false;
         IsSearching = false;
         SaveStatusText = string.Empty;
-        AlbumInfoText = string.Empty;
         _lyricsSyncTimer.Stop();
         _lyricsSyncTimer.Interval = TimeSpan.FromMilliseconds(LineSyncIntervalMs);
 
@@ -1521,13 +1516,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         _lineCursor = 0;
         _lastSyncPosition = TimeSpan.MinValue;
         _lyricsSyncTimer.Interval = TimeSpan.FromMilliseconds(LineSyncIntervalMs);
-
-        // Build album info text: "Genre · Year · N tracks"
-        var infoParts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(track.Genre)) infoParts.Add(track.Genre);
-        if (track.Year > 0) infoParts.Add(track.Year.ToString());
-        if (track.TrackCount > 0) infoParts.Add($"{track.TrackCount} tracks");
-        AlbumInfoText = string.Join(" \u00B7 ", infoParts);
 
         // Fire-and-forget: all file I/O runs off the UI thread, result is posted back.
         _ = LoadLocalLyricsAsync(track, generation);
