@@ -193,6 +193,14 @@ public partial class Track : ObservableObject
         if (value) FavoritedAt = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Raises a change notification for every property. Most metadata fields are
+    /// plain non-notifying properties (they only change via the metadata editor),
+    /// so views bound directly to a Track instance call-site-refresh through this
+    /// after a save instead of requiring a full list rebuild.
+    /// </summary>
+    public void NotifyMetadataUpdated() => OnPropertyChanged(string.Empty);
+
     /// <summary>Cached album artwork path, populated from album data during index build. Not persisted.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public string? AlbumArtworkPath { get; set; }

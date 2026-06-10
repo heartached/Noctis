@@ -1475,6 +1475,19 @@ public partial class MetadataViewModel : ViewModelBase
             }
         }
 
+        // Refresh bindings on the edited track instances immediately — views bound
+        // directly to Track properties (genre/title columns, lyrics-page info line)
+        // would otherwise show stale values until their next full rebuild.
+        _track.NotifyMetadataUpdated();
+        if (_albumTracks != null)
+        {
+            foreach (var t in _albumTracks)
+            {
+                if (!ReferenceEquals(t, _track))
+                    t.NotifyMetadataUpdated();
+            }
+        }
+
         // Persist library changes and notify UI
         await _library.SaveAsync();
         _library.NotifyMetadataChanged();
