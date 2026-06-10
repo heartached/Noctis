@@ -325,6 +325,13 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        // A metadata save can change the album's identity (album/artist rename →
+        // new AlbumId), but it's still the same page. Re-key the stable
+        // "More By Artist" pick instead of letting the key miss and reshuffle
+        // the carousel under the user.
+        if (_moreByArtistKey != null && _moreByArtistOrder != null)
+            _moreByArtistKey = $"{updatedAlbum.Artist}\0{updatedAlbum.Id}";
+
         Album = updatedAlbum;
 
         Tracks.ReplaceAll(updatedAlbum.Tracks);
