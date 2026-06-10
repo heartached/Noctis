@@ -640,6 +640,18 @@ public partial class PlaybackBarView : UserControl
         return PillSliderVisualHelper.GetValueFromPointer(slider, position, SeekThumbSize);
     }
 
+    // Clicking the album-art thumbnail toggles the mini player window.
+    private void OnAlbumArtPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+
+        if (TopLevel.GetTopLevel(this) is MainWindow mainWindow)
+        {
+            mainWindow.ToggleMiniPlayer();
+            e.Handled = true;
+        }
+    }
+
     private void OnVolumeSliderPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is not Slider slider) return;

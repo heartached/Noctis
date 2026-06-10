@@ -1,0 +1,243 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:m="using:Noctis.Models"
+        xmlns:controls="using:Noctis.Controls"
+        x:Class="Noctis.Views.MiniPlayerWindow"
+        x:DataType="vm:PlayerViewModel"
+        Title="Noctis Mini Player"
+        Width="340" Height="340"
+        CanResize="False"
+        Topmost="True"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        WindowStartupLocation="Manual">
+
+    <Window.Styles>
+        <!-- Transport buttons: borderless white glyphs over the artwork -->
+        <Style Selector="Button.mini-transport">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.mini-transport /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Button.mini-transport:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#28FFFFFF"/>
+        </Style>
+        <Style Selector="Button.mini-transport:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#40FFFFFF"/>
+        </Style>
+
+        <!-- Compact seek slider -->
+        <Style Selector="Slider.mini-seek">
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ Track">
+            <Setter Property="Height" Value="4"/>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ RepeatButton">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ RepeatButton#PART_DecreaseButton">
+            <Setter Property="Margin" Value="0,0,-6,0"/>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ RepeatButton#PART_IncreaseButton">
+            <Setter Property="Margin" Value="-6,0,0,0"/>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ RepeatButton /template/ Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Height" Value="4"/>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ RepeatButton#PART_IncreaseButton /template/ Border">
+            <Setter Property="Background" Value="#50FFFFFF"/>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ Thumb">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Width="{TemplateBinding Width}"
+                            Height="{TemplateBinding Height}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="999"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+    </Window.Styles>
+
+    <Border CornerRadius="14"
+            ClipToBounds="True"
+            Background="#FF141414"
+            BorderBrush="#33FFFFFF"
+            BorderThickness="1"
+            PointerPressed="OnRootPointerPressed">
+        <Panel>
+            <!-- Artwork (or placeholder note) fills the window -->
+            <controls:CachedImage SourcePath="{Binding CurrentArtPath}"
+                                  Stretch="UniformToFill"
+                                  RenderOptions.BitmapInterpolationMode="HighQuality"
+                                  IsVisible="{Binding CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <TextBlock Text="♪"
+                       FontSize="84"
+                       Opacity="0.15"
+                       Foreground="White"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+
+            <!-- Bottom scrim so the overlay text/controls stay legible on bright art -->
+            <Border VerticalAlignment="Bottom" Height="170" IsHitTestVisible="False">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#00000000"/>
+                        <GradientStop Offset="0.55" Color="#99000000"/>
+                        <GradientStop Offset="1" Color="#D8000000"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <!-- Close (returns to the main window) -->
+            <Button Classes="mini-transport"
+                    Width="28" Height="28"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Margin="10"
+                    Background="#66000000"
+                    ToolTip.Tip="Close Mini Player"
+                    Click="OnCloseClick">
+                <PathIcon Data="M 5 5 L 13 13 M 13 5 L 5 13"
+                          Width="11" Height="11"
+                          Foreground="White"/>
+            </Button>
+
+            <!-- Track info + seek + transport -->
+            <StackPanel VerticalAlignment="Bottom" Margin="16,0,16,10" Spacing="2">
+                <TextBlock Text="{Binding CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
+                           FontSize="16" FontWeight="Bold"
+                           Foreground="White"
+                           TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                <TextBlock Text="{Binding CurrentTrack.ArtistDisplay, FallbackValue=''}"
+                           FontSize="13"
+                           Foreground="#C0FFFFFF"
+                           TextTrimming="CharacterEllipsis" MaxLines="1"/>
+
+                <!-- Seek bar with elapsed / remaining -->
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding PositionText}"
+                               FontSize="10" Foreground="#A0FFFFFF"
+                               VerticalAlignment="Center" MinWidth="32"/>
+                    <Slider Grid.Column="1"
+                            x:Name="SeekSlider"
+                            Classes="mini-seek"
+                            Minimum="0" Maximum="1"
+                            Focusable="False"
+                            Value="{Binding PositionFraction, Mode=TwoWay}"
+                            Margin="6,0"
+                            VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding RemainingTimeText}"
+                               FontSize="10" Foreground="#A0FFFFFF"
+                               VerticalAlignment="Center" MinWidth="32"
+                               TextAlignment="Right"/>
+                </Grid>
+
+                <!-- Transport row -->
+                <StackPanel Orientation="Horizontal" Spacing="10"
+                            HorizontalAlignment="Center">
+                    <Button Classes="mini-transport" Width="32" Height="32"
+                            Command="{Binding ToggleShuffleCommand}"
+                            ToolTip.Tip="Shuffle">
+                        <Panel>
+                            <Viewbox Width="16" Height="16" IsVisible="{Binding !IsShuffleEnabled}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="#B8FFFFFF" Data="{StaticResource ShuffleIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                            <Viewbox Width="16" Height="16" IsVisible="{Binding IsShuffleEnabled}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource ShuffleIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Panel>
+                    </Button>
+                    <Button Classes="mini-transport" Width="36" Height="36"
+                            Command="{Binding PreviousCommand}"
+                            ToolTip.Tip="Previous">
+                        <Viewbox Width="20" Height="20">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="White" Data="{StaticResource PreviousIcon}"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button Classes="mini-transport" Width="42" Height="42"
+                            Command="{Binding PlayPauseCommand}"
+                            ToolTip.Tip="{Binding PlayPauseTooltip}">
+                        <Panel>
+                            <Viewbox Width="24" Height="24"
+                                     IsVisible="{Binding State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="White" Data="{StaticResource PlayIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                            <Viewbox Width="24" Height="24"
+                                     IsVisible="{Binding State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="White" Data="{StaticResource PauseIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Panel>
+                    </Button>
+                    <Button Classes="mini-transport" Width="36" Height="36"
+                            Command="{Binding NextCommand}"
+                            ToolTip.Tip="Next">
+                        <Viewbox Width="20" Height="20">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="White" Data="{StaticResource NextIcon}"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button Classes="mini-transport" Width="32" Height="32"
+                            Command="{Binding CycleRepeatCommand}"
+                            ToolTip.Tip="Repeat">
+                        <Panel>
+                            <Viewbox Width="16" Height="16"
+                                     IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="#B8FFFFFF" Data="{StaticResource RepeatAllIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                            <Viewbox Width="16" Height="16"
+                                     IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatAllIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                            <Viewbox Width="16" Height="16"
+                                     IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatOneIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Panel>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+        </Panel>
+    </Border>
+
+</Window>

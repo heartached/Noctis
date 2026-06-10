@@ -465,12 +465,15 @@
                       ColumnDefinitions="Auto,*"
                       IsVisible="{Binding !IsLyricsPageActive}">
 
-                    <!-- Album art thumbnail -->
+                    <!-- Album art thumbnail (click toggles the mini player) -->
                     <Border Grid.Column="0"
                             Width="36" Height="36"
                             CornerRadius="7"
                             ClipToBounds="True"
                             Margin="0,0,12,0"
+                            Cursor="Hand"
+                            ToolTip.Tip="Mini Player"
+                            PointerPressed="OnAlbumArtPressed"
                             Background="{DynamicResource IslandAlbumArtPlaceholder}">
                         <Panel>
                             <!-- Placeholder when no art -->

@@ -29,6 +29,53 @@ public partial class MainWindow : Window
     private Border? _lyricsPanelWrapper;
     private DockPanel? _contentDockPanel;
     private DockPanel? _rootPanel;
+    private MiniPlayerWindow? _miniPlayer;
+
+    /// <summary>
+    /// Opens the compact always-on-top mini player (hiding the main window), or closes
+    /// it if it's already open. Closing the mini player restores the main window.
+    /// Triggered by clicking the cover art in the bottom player bar.
+    /// </summary>
+    public void ToggleMiniPlayer()
+    {
+        if (_miniPlayer != null)
+        {
+            _miniPlayer.Close(); // Closed handler below restores the main window
+            return;
+        }
+
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        _miniPlayer = new MiniPlayerWindow { DataContext = vm.Player };
+        _miniPlayer.Closed += OnMiniPlayerClosed;
+
+        // Place it near the top-right of the screen the main window is on.
+        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        if (screen != null)
+        {
+            var area = screen.WorkingArea;
+            var scale = screen.Scaling;
+            var width = (int)(_miniPlayer.Width * scale);
+            _miniPlayer.Position = new PixelPoint(
+                area.X + area.Width - width - (int)(24 * scale),
+                area.Y + (int)(24 * scale));
+        }
+
+        _miniPlayer.Show();
+        Hide();
+    }
+
+    private void OnMiniPlayerClosed(object? sender, System.EventArgs e)
+    {
+        if (sender is MiniPlayerWindow mini)
+            mini.Closed -= OnMiniPlayerClosed;
+        _miniPlayer = null;
+
+        Show();
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+        Activate();
+    }
 
     public MainWindow()
     {
@@ -148,6 +195,18 @@ public partial class MainWindow : Window
 
         Closing += (_, _) => CaptureWindowPlacement();
         Closed += OnWindowClosed;
+
+        // If the main window goes down (OS shutdown, etc.) take the mini player with it
+        // so it can't outlive the app shell as an orphaned topmost window.
+        Closed += (_, _) =>
+        {
+            if (_miniPlayer is { } mini)
+            {
+                mini.Closed -= OnMiniPlayerClosed;
+                _miniPlayer = null;
+                mini.Close();
+            }
+        };
     }
 
     private void RestoreWindowPlacement(AppSettings settings)
