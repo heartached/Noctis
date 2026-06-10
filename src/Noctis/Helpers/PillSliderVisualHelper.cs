@@ -29,7 +29,9 @@ internal static class PillSliderVisualHelper
         trackBackground.Width = trackWidth;
         Canvas.SetLeft(trackBackground, thumbRadius);
 
-        trackFill.Width = Math.Min(trackWidth, fillWidth + thumbRadius);
+        // End the fill at the thumb's center — the fill bar is thinner than the
+        // thumb circle, so anything past the center pokes out beyond its curve.
+        trackFill.Width = fillWidth;
         Canvas.SetLeft(trackFill, thumbRadius);
 
         thumbTransform.X = fillWidth;
@@ -75,9 +77,9 @@ internal static class PillSliderVisualHelper
         trackBackground.Height = trackHeight;
         Canvas.SetTop(trackBackground, thumbRadius);
 
-        var fillActual = Math.Min(trackHeight, fillHeight + thumbRadius);
-        trackFill.Height = fillActual;
-        Canvas.SetTop(trackFill, height - thumbRadius - fillActual);
+        // End the fill at the thumb's center (see horizontal variant).
+        trackFill.Height = fillHeight;
+        Canvas.SetTop(trackFill, height - thumbRadius - fillHeight);
 
         thumbTransform.Y = trackHeight - fillHeight;
 
