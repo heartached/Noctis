@@ -533,6 +533,24 @@
                             <TextBox Classes="metadata-info-field" Text="{Binding DiscCount}" Watermark="{Binding DiscCountWatermark}" Width="80" />
                         </StackPanel>
 
+                        <!-- Rating (per-track; hidden for album-scoped edits) -->
+                        <StackPanel Spacing="6" IsVisible="{Binding ShowTrackFields}">
+                            <TextBlock Text="rating" FontSize="12" Opacity="0.5" />
+                            <StackPanel Orientation="Horizontal" Spacing="18" VerticalAlignment="Center">
+                                <controls:RatingStars Value="{Binding Rating, Mode=TwoWay}"
+                                                      IsInteractive="True"
+                                                      StarSize="18"
+                                                      StarSpacing="4"
+                                                      Cursor="Hand"
+                                                      Foreground="{DynamicResource AccentColorBrush}"
+                                                      VerticalAlignment="Center" />
+                                <CheckBox Classes="metadata-pill-checkbox"
+                                          Content="Not Liked"
+                                          IsChecked="{Binding IsDisliked}"
+                                          VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+
                         <!-- BPM -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="bpm" FontSize="12" Opacity="0.5" />

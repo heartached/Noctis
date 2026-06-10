@@ -400,6 +400,14 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     }
 
     [RelayCommand]
+    private Task RateTrack(TrackRatingParameter parameter) =>
+        _library.SetTrackRatingAsync(parameter.Track, parameter.Rating);
+
+    [RelayCommand]
+    private Task ToggleDisliked(Track track) =>
+        _library.SetTrackDislikedAsync(track, !track.IsDisliked);
+
+    [RelayCommand]
     private void ViewAlbum(Track track)
     {
         ViewAlbumRequested?.Invoke(this, track);

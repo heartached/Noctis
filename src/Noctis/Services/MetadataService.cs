@@ -151,6 +151,8 @@ public class MetadataService : IMetadataService
                 MovementName = ExtendedTagIO.ReadMovementName(file),
                 MovementNumber = ExtendedTagIO.ReadMovementNumber(file),
                 MovementCount = ExtendedTagIO.ReadMovementCount(file),
+                Rating = ExtendedTagIO.ReadRating(file),
+                IsDisliked = ExtendedTagIO.ReadIsDisliked(file),
                 // Audio quality properties
                 Bitrate = bitrate,
                 SampleRate = sampleRate,
@@ -287,7 +289,25 @@ public class MetadataService : IMetadataService
             ExtendedTagIO.WriteMovementName(file, track.MovementName);
             ExtendedTagIO.WriteMovementNumber(file, track.MovementNumber);
             ExtendedTagIO.WriteMovementCount(file, track.MovementCount);
+            ExtendedTagIO.WriteRating(file, track.Rating);
+            ExtendedTagIO.WriteIsDisliked(file, track.IsDisliked);
 
+            file.Save();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public bool WriteRating(string filePath, int rating, bool isDisliked)
+    {
+        try
+        {
+            using var file = TagLib.File.Create(filePath);
+            ExtendedTagIO.WriteRating(file, rating);
+            ExtendedTagIO.WriteIsDisliked(file, isDisliked);
             file.Save();
             return true;
         }

@@ -61,6 +61,8 @@ public partial class MetadataViewModel : ViewModelBase
 
     [ObservableProperty] private string _playCount = string.Empty;
     [ObservableProperty] private string _comment = string.Empty;
+    [ObservableProperty] private int _rating;
+    [ObservableProperty] private bool _isDisliked;
 
     // ── Artwork tab ──
     [ObservableProperty] private Bitmap? _artworkPreview;
@@ -524,6 +526,8 @@ public partial class MetadataViewModel : ViewModelBase
         MovementCount = _track.MovementCount > 0 ? _track.MovementCount.ToString() : string.Empty;
         PlayCount = _track.PlayCount > 0 ? _track.PlayCount.ToString() : "0";
         Comment = _track.Comment;
+        Rating = _track.Rating;
+        IsDisliked = _track.IsDisliked;
 
         // Lyrics — synced from Track.SyncedLyrics or .lrc sidecar; plain from Track.Lyrics or .txt sidecar.
         // Plain tab must NEVER contain timestamps; if a legacy track stored synced text in Lyrics, strip it.
@@ -1277,6 +1281,8 @@ public partial class MetadataViewModel : ViewModelBase
             _track.PlayCount = int.TryParse(PlayCount, out var pc) ? Math.Max(0, pc) : 0;
             _track.Comment = Comment;
             _track.Copyright = Copyright ?? string.Empty;
+            _track.Rating = Math.Clamp(Rating, 0, 5);
+            _track.IsDisliked = IsDisliked;
 
             // Recalculate AlbumId if album or artist changed
             _track.AlbumId = Track.ComputeAlbumId(_track.AlbumArtist, _track.Album);

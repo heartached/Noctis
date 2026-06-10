@@ -667,6 +667,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    private Task RateTrack(TrackRatingParameter parameter) =>
+        _library.SetTrackRatingAsync(parameter.Track, parameter.Rating);
+
+    [RelayCommand]
+    private Task ToggleDisliked(Track track) =>
+        _library.SetTrackDislikedAsync(track, !track.IsDisliked);
+
+    [RelayCommand]
     private async Task ToggleAlbumFavorites()
     {
         if (Tracks.Count == 0) return;

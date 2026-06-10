@@ -16,7 +16,9 @@ public enum RuleField
     LastPlayed,
     IsFavorite,
     IsLossless,
-    IsExplicit
+    IsExplicit,
+    Rating,
+    IsDisliked
 }
 
 /// <summary>Comparison operators for smart playlist rules.</summary>

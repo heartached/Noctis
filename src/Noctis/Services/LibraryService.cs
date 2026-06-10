@@ -495,6 +495,39 @@ public class LibraryService : ILibraryService
         FavoritesChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    public async Task SetTrackRatingAsync(Track track, int rating)
+    {
+        rating = Math.Clamp(rating, 0, 5);
+        if (track.Rating == rating) return;
+
+        track.Rating = rating;
+        await SaveAsync();
+        QueueRatingTagWrite(track);
+    }
+
+    public async Task SetTrackDislikedAsync(Track track, bool isDisliked)
+    {
+        if (track.IsDisliked == isDisliked) return;
+
+        track.IsDisliked = isDisliked;
+        await SaveAsync();
+        QueueRatingTagWrite(track);
+    }
+
+    /// <summary>
+    /// Persists the rating tags to the audio file on a worker thread (best effort —
+    /// the library JSON above is the source of truth if the file is locked/read-only).
+    /// </summary>
+    private void QueueRatingTagWrite(Track track)
+    {
+        if (track.SourceType != SourceType.Local) return;
+
+        var path = track.FilePath;
+        var rating = track.Rating;
+        var disliked = track.IsDisliked;
+        _ = Task.Run(() => _metadata.WriteRating(path, rating, disliked));
+    }
+
     public void NotifyMetadataChanged()
     {
         _ = Task.Run(async () =>
@@ -677,6 +710,7 @@ public class LibraryService : ILibraryService
         target.PlayCount = source.PlayCount;
         target.LastPlayed = source.LastPlayed;
         target.Rating = source.Rating;
+        target.IsDisliked = source.IsDisliked;
         target.OfflineState = source.OfflineState;
         target.SourceType = source.SourceType;
         target.SourceTrackId = source.SourceTrackId;

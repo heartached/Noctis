@@ -33,6 +33,8 @@ public sealed class TrackContextMenuBuilder
     public MenuItem AddToPlaylist { get; private set; } = null!;
     public MenuItem Favorite { get; private set; } = null!;
     public MenuItem Unfavorite { get; private set; } = null!;
+    public MenuItem Rate { get; private set; } = null!;
+    public MenuItem NotLiked { get; private set; } = null!;
     public MenuItem Metadata { get; private set; } = null!;
     public MenuItem Convert { get; private set; } = null!;
     public MenuItem ScanReplayGain { get; private set; } = null!;
@@ -41,6 +43,8 @@ public sealed class TrackContextMenuBuilder
     public MenuItem Remove { get; private set; } = null!;
 
     public ContextMenu Menu { get; private set; } = null!;
+
+    private readonly MenuItem[] _rateItems = new MenuItem[6];
 
     /// <summary>
     /// Builds the context menu. Call once per view lifetime.
@@ -89,6 +93,27 @@ public sealed class TrackContextMenuBuilder
             Foreground = new SolidColorBrush(Color.Parse("#E74856"))
         };
         items.Add(Unfavorite);
+
+        Rate = new MenuItem { Header = "Rate", IsVisible = false };
+        Rate.Icon = new PathIcon
+        {
+            Width = 14, Height = 14,
+            Data = (Geometry)resourceHost.FindResource("StarIcon")!
+        };
+        for (int stars = 0; stars <= 5; stars++)
+        {
+            var item = new MenuItem
+            {
+                Header = stars == 0 ? "None" : new string('★', stars),
+                ToggleType = MenuItemToggleType.Radio
+            };
+            Rate.Items.Add(item);
+            _rateItems[stars] = item;
+        }
+        Rate.Items.Add(new Separator());
+        NotLiked = new MenuItem { Header = "Not Liked", ToggleType = MenuItemToggleType.CheckBox };
+        Rate.Items.Add(NotLiked);
+        items.Add(Rate);
 
         Metadata = new MenuItem { Header = "Metadata" };
         Metadata.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
@@ -148,7 +173,9 @@ public sealed class TrackContextMenuBuilder
         ObservableCollection<Playlist>? playlists = null,
         ICommand? addToExistingPlaylistCommand = null,
         ICommand? convertCommand = null,
-        ICommand? scanReplayGainCommand = null)
+        ICommand? scanReplayGainCommand = null,
+        ICommand? rateTrackCommand = null,
+        ICommand? toggleDislikedCommand = null)
     {
         Menu.DataContext = track;
 
@@ -179,6 +206,22 @@ public sealed class TrackContextMenuBuilder
         Unfavorite.IsVisible = track.IsFavorite;
         if (Unfavorite.Icon is PathIcon heartIcon)
             heartIcon.Foreground = new SolidColorBrush(Color.Parse("#E74856"));
+
+        // Quick rating (optional — only views that pass the commands surface it)
+        Rate.IsVisible = rateTrackCommand != null;
+        if (rateTrackCommand != null)
+        {
+            for (int stars = 0; stars <= 5; stars++)
+            {
+                _rateItems[stars].Command = rateTrackCommand;
+                _rateItems[stars].CommandParameter = new TrackRatingParameter(track, stars);
+                _rateItems[stars].IsChecked = track.Rating == stars;
+            }
+        }
+        NotLiked.Command = toggleDislikedCommand;
+        NotLiked.CommandParameter = track;
+        NotLiked.IsChecked = track.IsDisliked;
+        NotLiked.IsVisible = toggleDislikedCommand != null;
 
         Metadata.Command = openMetadataCommand;
         Metadata.CommandParameter = track;

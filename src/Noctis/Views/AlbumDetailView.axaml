@@ -15,6 +15,7 @@
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:ArtistTokensConverter x:Key="ArtistTokens" />
         <conv:TrackPlaylistCommandParameterConverter x:Key="TrackPlaylistParamConverter" />
+        <conv:TrackRatingParameterConverter x:Key="TrackRatingParam" />
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -527,6 +528,35 @@
                                         <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <MenuItem Header="Rate">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource StarIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                    </MenuItem.Icon>
+                                    <MenuItem Header="None"
+                                              Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RateTrackCommand}"
+                                              CommandParameter="{Binding Converter={StaticResource TrackRatingParam}, ConverterParameter=0}" />
+                                    <MenuItem Header="★"
+                                              Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RateTrackCommand}"
+                                              CommandParameter="{Binding Converter={StaticResource TrackRatingParam}, ConverterParameter=1}" />
+                                    <MenuItem Header="★★"
+                                              Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RateTrackCommand}"
+                                              CommandParameter="{Binding Converter={StaticResource TrackRatingParam}, ConverterParameter=2}" />
+                                    <MenuItem Header="★★★"
+                                              Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RateTrackCommand}"
+                                              CommandParameter="{Binding Converter={StaticResource TrackRatingParam}, ConverterParameter=3}" />
+                                    <MenuItem Header="★★★★"
+                                              Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RateTrackCommand}"
+                                              CommandParameter="{Binding Converter={StaticResource TrackRatingParam}, ConverterParameter=4}" />
+                                    <MenuItem Header="★★★★★"
+                                              Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RateTrackCommand}"
+                                              CommandParameter="{Binding Converter={StaticResource TrackRatingParam}, ConverterParameter=5}" />
+                                    <Separator />
+                                    <MenuItem Header="Not Liked"
+                                              ToggleType="CheckBox"
+                                              IsChecked="{Binding IsDisliked, Mode=OneWay}"
+                                              Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ToggleDislikedCommand}"
+                                              CommandParameter="{Binding}" />
+                                </MenuItem>
                                 <MenuItem Header="Metadata"
                                           Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenMetadataCommand}"
                                           CommandParameter="{Binding}">
@@ -633,14 +663,25 @@
                                        IsVisible="{Binding ShouldShowArtistSubtitleInAlbum}" />
                         </StackPanel>
 
-                        <!-- Heart + Duration + Track options (column 2, fixed-width grid for alignment) -->
+                        <!-- Stars + Heart + Duration + Track options (column 2, fixed-width grid for alignment) -->
                         <Grid Grid.Column="2"
-                              ColumnDefinitions="22,52,44"
+                              ColumnDefinitions="Auto,22,52,44"
                               VerticalAlignment="Center"
                               Margin="0,0,10,0">
-                            <!-- Col 0: heart — always 22px wide so duration never shifts -->
+                            <!-- Col 0: rating stars (collapsed when unrated) -->
+                            <controls:RatingStars Grid.Column="0"
+                                                  Value="{Binding Rating}"
+                                                  StarSize="11"
+                                                  StarSpacing="2"
+                                                  IsHitTestVisible="False"
+                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                  Opacity="0.7"
+                                                  Margin="0,0,8,0"
+                                                  VerticalAlignment="Center"
+                                                  IsVisible="{Binding !!Rating}" />
+                            <!-- Col 1: heart — always 22px wide so duration never shifts -->
                             <!-- Hidden for singles and fully-favorited albums (heart shown in metadata row instead) -->
-                            <Panel Grid.Column="0" IsVisible="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShowTrackRowHearts}">
+                            <Panel Grid.Column="1" IsVisible="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShowTrackRowHearts}">
                                 <PathIcon Data="{StaticResource HeartFillIcon}"
                                          Width="14" Height="14"
                                          Foreground="#E74856"
@@ -648,16 +689,16 @@
                                          VerticalAlignment="Center"
                                          IsVisible="{Binding IsFavorite}"/>
                             </Panel>
-                            <!-- Col 1: duration — fixed 52px, right-aligned for perfect column -->
-                            <TextBlock Grid.Column="1"
+                            <!-- Col 2: duration — fixed 52px, right-aligned for perfect column -->
+                            <TextBlock Grid.Column="2"
                                        Text="{Binding DurationFormatted}"
                                        FontSize="14"
                                        Opacity="0.5"
                                        FontFeatures="+tnum"
                                        HorizontalAlignment="Right"
                                        VerticalAlignment="Center"/>
-                            <!-- Col 2: 3-dot button — fixed 44px -->
-                            <Button Grid.Column="2"
+                            <!-- Col 3: 3-dot button — fixed 44px -->
+                            <Button Grid.Column="3"
                                     Classes="row-more-dots"
                                     Background="Transparent"
                                     BorderThickness="0"
@@ -732,6 +773,35 @@
                                             <MenuItem.Icon>
                                                 <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
                                             </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Rate">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource StarIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                            </MenuItem.Icon>
+                                            <MenuItem Header="None"
+                                                      Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RateTrackCommand}"
+                                                      CommandParameter="{Binding Converter={StaticResource TrackRatingParam}, ConverterParameter=0}" />
+                                            <MenuItem Header="★"
+                                                      Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RateTrackCommand}"
+                                                      CommandParameter="{Binding Converter={StaticResource TrackRatingParam}, ConverterParameter=1}" />
+                                            <MenuItem Header="★★"
+                                                      Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RateTrackCommand}"
+                                                      CommandParameter="{Binding Converter={StaticResource TrackRatingParam}, ConverterParameter=2}" />
+                                            <MenuItem Header="★★★"
+                                                      Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RateTrackCommand}"
+                                                      CommandParameter="{Binding Converter={StaticResource TrackRatingParam}, ConverterParameter=3}" />
+                                            <MenuItem Header="★★★★"
+                                                      Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RateTrackCommand}"
+                                                      CommandParameter="{Binding Converter={StaticResource TrackRatingParam}, ConverterParameter=4}" />
+                                            <MenuItem Header="★★★★★"
+                                                      Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).RateTrackCommand}"
+                                                      CommandParameter="{Binding Converter={StaticResource TrackRatingParam}, ConverterParameter=5}" />
+                                            <Separator />
+                                            <MenuItem Header="Not Liked"
+                                                      ToggleType="CheckBox"
+                                                      IsChecked="{Binding IsDisliked, Mode=OneWay}"
+                                                      Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ToggleDislikedCommand}"
+                                                      CommandParameter="{Binding}" />
                                         </MenuItem>
                                         <MenuItem Header="Metadata"
                                                   Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).OpenMetadataCommand}"

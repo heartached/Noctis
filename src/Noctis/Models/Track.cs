@@ -175,8 +175,13 @@ public partial class Track : ObservableObject
     /// <summary>Date and time when this track was last played.</summary>
     public DateTime? LastPlayed { get; set; }
 
-    /// <summary>User rating from 0 to 5 stars.</summary>
-    public int Rating { get; set; }
+    /// <summary>User rating from 0 to 5 stars. Observable so star displays update live.</summary>
+    [ObservableProperty]
+    private int _rating;
+
+    /// <summary>Apple Music-style "not liked" flag (suggest less of this).</summary>
+    [ObservableProperty]
+    private bool _isDisliked;
 
     /// <summary>Offline cache state for this track.</summary>
     public OfflineState OfflineState { get; set; } = OfflineState.None;

@@ -67,6 +67,12 @@ public interface ILibraryService
     /// <summary>Raises the FavoritesChanged event to notify subscribers.</summary>
     void NotifyFavoritesChanged();
 
+    /// <summary>Sets a track's 0-5 star rating, saves the library, and writes the file tag.</summary>
+    Task SetTrackRatingAsync(Track track, int rating);
+
+    /// <summary>Sets a track's "not liked" flag, saves the library, and writes the file tag.</summary>
+    Task SetTrackDislikedAsync(Track track, bool isDisliked);
+
     /// <summary>Rebuilds indexes and raises LibraryUpdated after a track's metadata has been edited.</summary>
     void NotifyMetadataChanged();
 }

@@ -23,7 +23,7 @@
 
         <!-- Column headers (sortable) -->
         <Grid DockPanel.Dock="Top"
-              ColumnDefinitions="*,80,*,*,*,80,55,42"
+              ColumnDefinitions="*,80,*,*,*,80,84,55,42"
               Margin="0,0,0,8">
             <Button Grid.Column="0" Content="Title" Command="{Binding SortCommand}" CommandParameter="Title"
                     Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
@@ -37,9 +37,11 @@
                     Background="Transparent" BorderThickness="0" Padding="0" Margin="-8,0,0,0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="5" Content="Favorites" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
                     Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
-            <Button Grid.Column="6" Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
+            <Button Grid.Column="6" Content="Rating" Command="{Binding SortCommand}" CommandParameter="Rating"
+                    Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            <Button Grid.Column="7" Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
                     Background="Transparent" BorderThickness="0" Padding="0" Margin="-10,0,0,0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
-            <TextBlock Grid.Column="7" Text="" FontSize="12" />
+            <TextBlock Grid.Column="8" Text="" FontSize="12" />
         </Grid>
 
         <Separator DockPanel.Dock="Top" Margin="0,0,0,4" />
@@ -60,7 +62,7 @@
             </ListBox.Styles>
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="m:Track">
-                    <Grid ColumnDefinitions="*,80,*,*,*,80,55,42"
+                    <Grid ColumnDefinitions="*,80,*,*,*,80,84,55,42"
                           Margin="0,2"
                           Background="Transparent"
                           helpers:DragFileBehavior.EnableFileDrag="True"
@@ -140,7 +142,18 @@
                                  HorizontalAlignment="Center"
                                  VerticalAlignment="Center"
                                  IsVisible="{Binding IsFavorite}" />
-                        <TextBlock Grid.Column="6"
+                        <controls:RatingStars Grid.Column="6"
+                                              Value="{Binding Rating}"
+                                              StarSize="11"
+                                              StarSpacing="2"
+                                              IsHitTestVisible="False"
+                                              Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                              Opacity="0.7"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsVisible="{Binding !!Rating}" />
+
+                        <TextBlock Grid.Column="7"
                                    Text="{Binding PlayCount}"
                                    FontSize="12"
                                    Opacity="0.5"
@@ -148,7 +161,7 @@
                                    VerticalAlignment="Center" />
 
                         <!-- 3-dots menu button -->
-                        <Button Grid.Column="7"
+                        <Button Grid.Column="8"
                                 Background="Transparent"
                                 BorderThickness="0"
                                 Padding="0"

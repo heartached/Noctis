@@ -279,6 +279,14 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     }
 
     [RelayCommand]
+    private Task RateTrack(TrackRatingParameter parameter) =>
+        _library.SetTrackRatingAsync(parameter.Track, parameter.Rating);
+
+    [RelayCommand]
+    private Task ToggleDisliked(Track track) =>
+        _library.SetTrackDislikedAsync(track, !track.IsDisliked);
+
+    [RelayCommand]
     private void ViewAlbum(Track track)
     {
         ViewAlbumRequested?.Invoke(this, track);
@@ -382,6 +390,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             "Genre" => sortAsc ? ordered.ThenBy(x => x.Track.Genre).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Genre).ThenBy(x => x.Track.Title),
             "Year" => sortAsc ? ordered.ThenBy(x => x.Track.Year).ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber) : ordered.ThenByDescending(x => x.Track.Year).ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber),
             "Plays" => sortAsc ? ordered.ThenBy(x => x.Track.PlayCount) : ordered.ThenByDescending(x => x.Track.PlayCount),
+            "Rating" => sortAsc ? ordered.ThenBy(x => x.Track.Rating).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Rating).ThenBy(x => x.Track.Title),
             "Duration" => sortAsc ? ordered.ThenBy(x => x.Track.Duration) : ordered.ThenByDescending(x => x.Track.Duration),
             "Date Added" => sortAsc ? ordered.ThenBy(x => x.Track.DateAdded) : ordered.ThenByDescending(x => x.Track.DateAdded),
             _ => ordered.ThenBy(x => x.Track.Title)
