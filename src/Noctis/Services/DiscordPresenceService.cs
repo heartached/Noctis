@@ -28,6 +28,13 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
     private readonly SemaphoreSlim _gate = new(1, 1);
     private DiscordRpcClient? _client;
 
+    // Monotonic stamp for presence mutations (updates and clears). SemaphoreSlim
+    // wakes waiters in no particular order, so when tracks are skipped rapidly an
+    // older update could acquire the gate AFTER a newer one and overwrite Discord
+    // with a stale song. Each call takes a stamp on entry and bails inside the
+    // gate if a newer call has arrived since — last call wins.
+    private long _presenceSequence;
+
     // Last successfully-published artwork key and the track it belonged to.
     // Used to avoid flipping good art to the app icon when the artwork relay
     // transiently drops mid-track (relay outage -> null URL -> would otherwise
@@ -109,9 +116,11 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
 
     public async Task UpdateAsync(DiscordPresenceTrack track, TimeSpan position, TimeSpan? duration, bool isPlaying)
     {
+        var seq = Interlocked.Increment(ref _presenceSequence);
         await _gate.WaitAsync();
         try
         {
+            if (seq != Interlocked.Read(ref _presenceSequence)) return; // superseded by a newer update/clear
             if (!IsConnected) return;
 
             var title = string.IsNullOrWhiteSpace(track.Title) ? "Unknown" : track.Title;
@@ -165,9 +174,11 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
 
     public async Task ClearAsync()
     {
+        var seq = Interlocked.Increment(ref _presenceSequence);
         await _gate.WaitAsync();
         try
         {
+            if (seq != Interlocked.Read(ref _presenceSequence)) return; // superseded by a newer update
             _client?.ClearPresence();
         }
         catch (Exception ex)
