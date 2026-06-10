@@ -77,7 +77,8 @@ internal class Program
     private static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
 
     public static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<App>()
+    {
+        var builder = AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
             // Skia keeps decoded bitmaps as GPU textures in a bounded cache.
@@ -88,6 +89,42 @@ internal class Program
             // holds the visible+nearby cover textures for a 10K-track library.
             .With(new SkiaOptions { MaxGpuResourceSizeBytes = 256L * 1024 * 1024 })
             .LogToTrace();
+
+        // The app's default font is the embedded Inter, which carries no
+        // CJK/Hangul glyphs. Windows resolves missing glyphs through the system
+        // font manager automatically, but on macOS/Linux that lookup doesn't
+        // reliably engage for embedded fonts, so Korean/Japanese/Chinese lyrics
+        // rendered as "?" boxes. Provide an explicit fallback chain of each
+        // platform's stock CJK-capable fonts.
+        if (OperatingSystem.IsMacOS())
+        {
+            builder = builder.With(new Avalonia.Media.FontManagerOptions
+            {
+                FontFallbacks = new[]
+                {
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("PingFang SC") },
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Hiragino Sans") },
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Apple SD Gothic Neo") },
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Apple Color Emoji") },
+                }
+            });
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            builder = builder.With(new Avalonia.Media.FontManagerOptions
+            {
+                FontFallbacks = new[]
+                {
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Sans CJK SC") },
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Sans CJK KR") },
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Sans CJK JP") },
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Color Emoji") },
+                }
+            });
+        }
+
+        return builder;
+    }
 
     /// <summary>
     /// Registers all services and ViewModels in the DI container.
