@@ -169,8 +169,18 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Audio Playback ──
 
+    // Back-compat mirror only: no UI binds this; SongTransitions* are the source of truth.
     [ObservableProperty] private bool _crossfadeEnabled;
     [ObservableProperty] private double _crossfadeDuration = 6;
+
+    // ── Song Transitions (Apple-style; drives the player's AutoMix engine) ──
+    [ObservableProperty] private bool _songTransitionsEnabled;
+    [ObservableProperty] private string _transitionStyle = "Crossfade";
+    [ObservableProperty] private string _songTransitionStrength = "Balanced";
+    [ObservableProperty] private bool _songTransitionBeatMatch = true;
+    public bool IsCrossfadeStyle { get => string.Equals(TransitionStyle, "Crossfade", StringComparison.OrdinalIgnoreCase); set { if (value) TransitionStyle = "Crossfade"; } }
+    public bool IsAutoMixStyle { get => string.Equals(TransitionStyle, "AutoMix", StringComparison.OrdinalIgnoreCase); set { if (value) TransitionStyle = "AutoMix"; } }
+
     [ObservableProperty] private bool _soundCheckEnabled;
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _artistMarqueeEnabled = true;
@@ -179,6 +189,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _coverFlowAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsArtistMarqueeEnabled = true;
+    [ObservableProperty] private bool _miniPlayerTitleMarqueeEnabled = true;
+    [ObservableProperty] private bool _miniPlayerAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
@@ -528,8 +540,15 @@ public partial class SettingsViewModel : ViewModelBase
             IncludePrereleaseUpdates = _settings.IncludePrereleaseUpdates;
 
             // Playback
+            MigrateTransitionSettings(_settings);
             CrossfadeEnabled = _settings.CrossfadeEnabled;
             CrossfadeDuration = Math.Clamp(_settings.CrossfadeDuration, 1, 12);
+            SongTransitionsEnabled = _settings.SongTransitionsEnabled;
+            TransitionStyle = string.IsNullOrWhiteSpace(_settings.TransitionStyle) ? "Crossfade" : _settings.TransitionStyle;
+            SongTransitionStrength = string.IsNullOrWhiteSpace(_settings.SongTransitionStrength) ? "Balanced" : _settings.SongTransitionStrength;
+            SongTransitionBeatMatch = _settings.SongTransitionBeatMatch;
+            OnPropertyChanged(nameof(IsCrossfadeStyle));
+            OnPropertyChanged(nameof(IsAutoMixStyle));
             SoundCheckEnabled = _settings.SoundCheckEnabled;
             TrackTitleMarqueeEnabled = _settings.TrackTitleMarqueeEnabled;
             ArtistMarqueeEnabled = _settings.ArtistMarqueeEnabled;
@@ -538,6 +557,8 @@ public partial class SettingsViewModel : ViewModelBase
             CoverFlowAlbumMarqueeEnabled = _settings.CoverFlowAlbumMarqueeEnabled;
             LyricsTitleMarqueeEnabled = _settings.LyricsTitleMarqueeEnabled;
             LyricsArtistMarqueeEnabled = _settings.LyricsArtistMarqueeEnabled;
+            MiniPlayerTitleMarqueeEnabled = _settings.MiniPlayerTitleMarqueeEnabled;
+            MiniPlayerAlbumMarqueeEnabled = _settings.MiniPlayerAlbumMarqueeEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
@@ -692,7 +713,12 @@ public partial class SettingsViewModel : ViewModelBase
                 Enabled = r.Enabled
             })
             .ToList();
-        _settings.CrossfadeEnabled = CrossfadeEnabled;
+        _settings.SongTransitionsEnabled = SongTransitionsEnabled;
+        _settings.TransitionStyle = TransitionStyle ?? "Crossfade";
+        _settings.SongTransitionStrength = SongTransitionStrength ?? "Balanced";
+        _settings.SongTransitionBeatMatch = SongTransitionBeatMatch;
+        // Back-compat mirror so older builds still crossfade when appropriate.
+        _settings.CrossfadeEnabled = SongTransitionsEnabled && IsCrossfadeStyle;
         _settings.CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         _settings.SoundCheckEnabled = SoundCheckEnabled;
         _settings.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
@@ -702,6 +728,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.CoverFlowAlbumMarqueeEnabled = CoverFlowAlbumMarqueeEnabled;
         _settings.LyricsTitleMarqueeEnabled = LyricsTitleMarqueeEnabled;
         _settings.LyricsArtistMarqueeEnabled = LyricsArtistMarqueeEnabled;
+        _settings.MiniPlayerTitleMarqueeEnabled = MiniPlayerTitleMarqueeEnabled;
+        _settings.MiniPlayerAlbumMarqueeEnabled = MiniPlayerAlbumMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
@@ -740,7 +768,8 @@ public partial class SettingsViewModel : ViewModelBase
     private void ApplyAudioSettings()
     {
         _audioPlayer?.SetNormalization(SoundCheckEnabled);
-        _audioPlayer?.SetCrossfade(false, (int)Math.Round(CrossfadeDuration));
+        _audioPlayer?.SetCrossfade(SongTransitionsEnabled && IsCrossfadeStyle, (int)Math.Round(CrossfadeDuration));
+        ApplyAutoMixToPlayer();
         _audioPlayer?.SetGapless(GaplessPlaybackEnabled);
         _audioPlayer?.SetExclusiveMode(ExclusiveAudioEnabled);
         _audioPlayer?.ApplyReplayGain(ReplayGainMode ?? "Off", ReplayGainPreampDb);
@@ -748,14 +777,27 @@ public partial class SettingsViewModel : ViewModelBase
         _player?.RefreshSignalPath();
     }
 
+    /// <summary>Pushes the AutoMix transition mode/strength/beat-match settings onto the player.</summary>
+    private void ApplyAutoMixToPlayer()
+    {
+        if (_player == null) return;
+        _player.AutoMixTransitionMode = MapTransitionMode(SongTransitionsEnabled, TransitionStyle);
+        _player.AutoMixStrength = SongTransitionStrength switch
+        {
+            "Subtle" => Models.AutoMixStrength.Subtle,
+            "Extended" => Models.AutoMixStrength.Extended,
+            _ => Models.AutoMixStrength.Balanced,
+        };
+        _player.AutoMixBeatMatch = SongTransitionBeatMatch;
+        _player.AutoMixAvoidAlbums = true; // albums in order stay gapless
+    }
+
     private void ApplyPlayerSettings()
     {
         if (_player == null) return;
-        // The Crossfade toggle drives the player's transition machinery; gapless
-        // covers natural track changes when crossfade is off.
-        _player.AutoMixTransitionMode = CrossfadeEnabled
-            ? Models.AutoMixTransitionMode.Crossfade
-            : Models.AutoMixTransitionMode.Off;
+        // The Song Transitions toggle + style drive the player's transition machinery;
+        // gapless covers natural track changes when transitions are off.
+        ApplyAutoMixToPlayer();
         _player.GaplessEnabled = GaplessPlaybackEnabled;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
@@ -765,6 +807,8 @@ public partial class SettingsViewModel : ViewModelBase
         Controls.MarqueeTextBlock.GlobalCoverFlowAlbumScrollEnabled = CoverFlowAlbumMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalLyricsTitleScrollEnabled = LyricsTitleMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalLyricsArtistScrollEnabled = LyricsArtistMarqueeEnabled;
+        Controls.MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled = MiniPlayerTitleMarqueeEnabled;
+        Controls.MarqueeTextBlock.GlobalMiniPlayerAlbumScrollEnabled = MiniPlayerAlbumMarqueeEnabled;
     }
 
     private void ApplyEqualizer()
@@ -787,6 +831,25 @@ public partial class SettingsViewModel : ViewModelBase
 
         return (ParametricEqMath.MapToGraphicBands(
             EqBands.Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q })), 0f);
+    }
+
+    /// <summary>Maps the Song Transitions master toggle + style to the player's transition mode.</summary>
+    public static Models.AutoMixTransitionMode MapTransitionMode(bool enabled, string style)
+    {
+        if (!enabled) return Models.AutoMixTransitionMode.Off;
+        return string.Equals(style, "AutoMix", StringComparison.OrdinalIgnoreCase)
+            ? Models.AutoMixTransitionMode.AutoMix
+            : Models.AutoMixTransitionMode.Crossfade;
+    }
+
+    /// <summary>One-time migration: legacy CrossfadeEnabled becomes SongTransitions + Crossfade style.</summary>
+    public static void MigrateTransitionSettings(Models.AppSettings s)
+    {
+        if (s.CrossfadeEnabled && !s.SongTransitionsEnabled)
+        {
+            s.SongTransitionsEnabled = true;
+            s.TransitionStyle = "Crossfade";
+        }
     }
 
     private static bool TryGetVlcPresetCurve(int vlcPresetIndex, out float[] bands, out float preamp)
@@ -1136,6 +1199,36 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnSongTransitionsEnabledChanged(bool value)
+    {
+        ApplyAudioSettings();
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnTransitionStyleChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsCrossfadeStyle));
+        OnPropertyChanged(nameof(IsAutoMixStyle));
+        ApplyAudioSettings();
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnSongTransitionStrengthChanged(string value)
+    {
+        ApplyAudioSettings();
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnSongTransitionBeatMatchChanged(bool value)
+    {
+        ApplyAudioSettings();
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
     partial void OnCrossfadeDurationChanged(double value)
     {
         var clamped = Math.Clamp(value, 1, 12);
@@ -1223,6 +1316,18 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLyricsArtistMarqueeEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnMiniPlayerTitleMarqueeEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnMiniPlayerAlbumMarqueeEnabledChanged(bool value)
     {
         ApplyPlayerSettings();
         _ = SaveAsync();
@@ -2150,6 +2255,10 @@ public partial class SettingsViewModel : ViewModelBase
             // Playback
             CrossfadeEnabled = false;
             CrossfadeDuration = 6;
+            SongTransitionsEnabled = false;
+            TransitionStyle = "Crossfade";
+            SongTransitionStrength = "Balanced";
+            SongTransitionBeatMatch = true;
             SoundCheckEnabled = false;
             ExclusiveAudioEnabled = false;
             GaplessPlaybackEnabled = true;
@@ -2161,6 +2270,8 @@ public partial class SettingsViewModel : ViewModelBase
             CoverFlowAlbumMarqueeEnabled = true;
             LyricsTitleMarqueeEnabled = true;
             LyricsArtistMarqueeEnabled = true;
+            MiniPlayerTitleMarqueeEnabled = true;
+            MiniPlayerAlbumMarqueeEnabled = true;
             SidebarHoverExpand = true;
 
             // Lyrics providers

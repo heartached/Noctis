@@ -76,6 +76,15 @@ public class AppSettings
     /// <summary>Crossfade duration in seconds (1–12, fractional allowed).</summary>
     public double CrossfadeDuration { get; set; } = 6;
 
+    /// <summary>Master toggle for Apple-style song transitions (drives AutoMixTransitionMode).</summary>
+    public bool SongTransitionsEnabled { get; set; }
+    /// <summary>Transition style when enabled: "AutoMix" (key/tempo aware) or "Crossfade" (fixed duration).</summary>
+    public string TransitionStyle { get; set; } = "Crossfade";
+    /// <summary>AutoMix strength: "Subtle", "Balanced", or "Extended".</summary>
+    public string SongTransitionStrength { get; set; } = "Balanced";
+    /// <summary>Whether AutoMix beat-matches when BPM/key metadata is available.</summary>
+    public bool SongTransitionBeatMatch { get; set; } = true;
+
     /// <summary>Whether loudness normalization (Sound Check) is enabled.</summary>
     public bool SoundCheckEnabled { get; set; }
 

@@ -42,6 +42,33 @@
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
 
+        <!-- Selectable card used by the Song Transitions style picker -->
+        <Style Selector="RadioButton.transition-card">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="card"
+                            Background="{DynamicResource SystemControlBackgroundListLowBrush}"
+                            BorderBrush="Transparent"
+                            BorderThickness="2"
+                            CornerRadius="18"
+                            Padding="18,14">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="RadioButton.transition-card:checked /template/ Border#card">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
+        <Style Selector="RadioButton.transition-card:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+
 
         <!-- Setting row: label left, control right -->
         <Style Selector="Border.setting-row">
@@ -662,6 +689,21 @@
                                               VerticalAlignment="Center"/>
                     </Grid>
 
+                    <!-- Sub-header: Mini Player -->
+                    <TextBlock Text="MINI PLAYER" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding MiniPlayerTitleMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long album titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding MiniPlayerAlbumMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
                     <!-- Sub-header: Sidebar -->
                     <TextBlock Text="SIDEBAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
                     <Grid ColumnDefinitions="*,Auto">
@@ -1187,6 +1229,64 @@
             <StackPanel x:Name="AudioTabPanel" IsVisible="{Binding IsAudioTabVisible}" Spacing="4">
 
             <TextBlock Classes="section-title" Text="PLAYBACK" Margin="0,4,0,10"/>
+
+            <!-- Song Transitions (Apple-style; drives the AutoMix engine) -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Song Transitions" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Beginnings and endings of songs blend together seamlessly. Albums and some genres will still play without transitions."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding SongTransitionsEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Transition Style picker -->
+                    <StackPanel Spacing="6" IsEnabled="{Binding SongTransitionsEnabled}">
+                        <TextBlock Text="TRANSITION STYLE" FontSize="10" Opacity="0.45" Margin="2,4,0,2"/>
+
+                        <RadioButton Classes="transition-card"
+                                     GroupName="TransitionStyle"
+                                     IsChecked="{Binding IsAutoMixStyle, Mode=TwoWay}">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="AutoMix" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock Text="Songs transition at the perfect moment, based on analysis of the key and tempo of the music."
+                                           FontSize="12" Opacity="0.55" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton Classes="transition-card"
+                                     GroupName="TransitionStyle"
+                                     IsChecked="{Binding IsCrossfadeStyle, Mode=TwoWay}">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Crossfade" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock Text="Simple song transitions from one to the next for a set duration."
+                                           FontSize="12" Opacity="0.55" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <!-- Crossfade Duration (only for the Crossfade style) -->
+                        <StackPanel Spacing="6" Margin="2,4,0,0" IsVisible="{Binding IsCrossfadeStyle}">
+                            <TextBlock Text="Crossfade Duration" FontSize="13" FontWeight="SemiBold"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Slider Grid.Column="0"
+                                        Classes="accent-slider"
+                                        Minimum="1" Maximum="12"
+                                        Value="{Binding CrossfadeDuration, Mode=TwoWay}"
+                                        VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding CrossfadeDuration, StringFormat='{}{0:0} seconds'}"
+                                           FontSize="12" Opacity="0.7"
+                                           VerticalAlignment="Center"
+                                           MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
 
             <!-- Sound Check -->
             <Border Classes="setting-card">
