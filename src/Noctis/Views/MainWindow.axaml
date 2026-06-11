@@ -423,14 +423,38 @@
                             </Grid>
                         </Border>
 
-                        <!-- Track count line: "1317 · tracks" -->
-                        <TextBlock DockPanel.Dock="Top"
-                                   Margin="20,2,20,10"
-                                   Text="{Binding Player.UpNext.Count, StringFormat='{}{0} &#x2022; tracks'}"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   Foreground="White"
-                                   Opacity="0.55" />
+                        <!-- Track count line + save-as-playlist -->
+                        <Grid DockPanel.Dock="Top" Margin="20,2,20,10" ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding Player.UpNext.Count, StringFormat='{}{0} &#x2022; tracks'}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Opacity="0.55" />
+                            <Button Grid.Column="1"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="6,2"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="Save the current queue as a playlist"
+                                    Command="{Binding Player.SaveQueueAsPlaylistCommand}"
+                                    IsVisible="{Binding !!Player.UpNext.Count}">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <PathIcon Data="{StaticResource PlaylistsIcon}"
+                                              Width="12" Height="12"
+                                              Foreground="White"
+                                              Opacity="0.55"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="Save as playlist"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="White"
+                                               Opacity="0.55"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
 
                         <!-- Separator -->
                         <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.08" Margin="20,0" />

@@ -865,6 +865,21 @@ public partial class PlayerViewModel : ViewModelBase
         ReplaceQueueAndPlay(remaining, 0);
     }
 
+    /// <summary>
+    /// Saves the current queue (now playing + up next) as a playlist via the
+    /// unified Add to Playlist dialog.
+    /// </summary>
+    [RelayCommand]
+    private async Task SaveQueueAsPlaylist()
+    {
+        if (_sidebar == null) return;
+        var tracks = new List<Track>();
+        if (CurrentTrack != null) tracks.Add(CurrentTrack);
+        tracks.AddRange(UpNext);
+        if (tracks.Count == 0) return;
+        await _sidebar.OpenAddToPlaylistAsync(tracks);
+    }
+
     // ── Queue state persistence ──────────────────────────────
 
     /// <summary>Saves the current queue state so it can be restored on next launch.</summary>

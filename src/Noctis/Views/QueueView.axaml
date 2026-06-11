@@ -67,12 +67,32 @@
                        IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNull}}" />
 
             <!-- Up Next section -->
-            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+            <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,8">
                 <TextBlock Grid.Column="0"
                            Text="Up Next"
                            FontSize="18"
                            FontWeight="SemiBold" />
                 <Button Grid.Column="1"
+                        Command="{Binding Player.SaveQueueAsPlaylistCommand}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="6,3"
+                        Margin="0,0,8,0"
+                        Cursor="Hand"
+                        ToolTip.Tip="Save the current queue as a playlist"
+                        IsVisible="{Binding !!UpNext.Count}">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <PathIcon Data="{StaticResource PlaylistsIcon}"
+                                  Width="13" Height="13"
+                                  Opacity="0.6"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="Save as playlist"
+                                   FontSize="12"
+                                   Opacity="0.6"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="2"
                         Command="{Binding ClearQueueCommand}"
                         Background="Transparent"
                         BorderThickness="0"

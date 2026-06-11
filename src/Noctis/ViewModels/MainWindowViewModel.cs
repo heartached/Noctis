@@ -387,6 +387,11 @@ public partial class MainWindowViewModel : ViewModelBase
         // Apply saved volume
         Player.Volume = Settings.GetSettings().Volume;
 
+        // Restore the previous session's queue (current track loads paused;
+        // the user presses play to resume).
+        try { await Player.RestoreQueueStateAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Queue restore failed: {ex.Message}"); }
+
         // Auto-scan if enabled
         if (Settings.GetSettings().ScanOnStartup && Settings.GetSettings().MusicFolders.Count > 0)
         {
@@ -497,6 +502,10 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetVolume(Player.Volume);
         await Settings.SaveAsync();
         await _playHistory.FlushAsync();
+
+        // Snapshot the queue so the next launch restores it.
+        try { await Player.SaveQueueStateAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Queue save failed: {ex.Message}"); }
 
         // Cleanup integrations
         await _discord.ClearAsync();
