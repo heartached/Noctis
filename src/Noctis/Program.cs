@@ -192,6 +192,9 @@ internal class Program
                 sp.GetRequiredService<IMetadataService>()));
         services.AddSingleton<IReplayGainScannerService, ReplayGainScannerService>();
 
+        // Library tools
+        services.AddSingleton<IFileOrganizerService, FileOrganizerService>();
+
         // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process
         // (reusing AudioConverterService for ffmpeg discovery) and runs managed DSP;
         // results cache in library.db and fill Track.Bpm/MusicalKey when missing.

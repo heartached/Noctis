@@ -402,6 +402,48 @@ public class LibraryService : ILibraryService
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, Guid>> RelocateTracksAsync(
+        IReadOnlyList<(string oldPath, string newPath)> moves, CancellationToken ct = default)
+    {
+        var remap = new Dictionary<Guid, Guid>();
+        if (moves == null || moves.Count == 0) return remap;
+
+        var changed = false;
+        foreach (var (oldPath, newPath) in moves)
+        {
+            if (string.IsNullOrWhiteSpace(oldPath) || string.IsNullOrWhiteSpace(newPath)) continue;
+
+            var oldId = ComputeFileId(oldPath);
+            if (!_trackIndex.TryGetValue(oldId, out var track)) continue;
+
+            track.FilePath = newPath;
+            try
+            {
+                var fi = new FileInfo(newPath);
+                if (fi.Exists)
+                {
+                    track.LastModified = fi.LastWriteTimeUtc;
+                    track.FileSize = fi.Length;
+                }
+            }
+            catch { /* keep prior size/timestamp if the new file isn't readable yet */ }
+
+            var newId = ComputeFileId(newPath);
+            track.Id = newId;
+            if (oldId != newId) remap[oldId] = newId;
+            changed = true;
+        }
+
+        if (!changed) return remap;
+
+        await RebuildIndexesAsync();
+        await SaveAsync();
+        await _sqliteIndex.ClearAsync(ct);
+        await _sqliteIndex.UpsertTracksAsync(_tracks, ct);
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        return remap;
+    }
+
     /// <summary>
     /// Adds removed file paths to the exclusion list and removes any MusicFolders
     /// entries that no longer contribute any tracks to the library.

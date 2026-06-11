@@ -283,6 +283,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private bool _watchFoldersEnabled = true;
 
+    [ObservableProperty] private string _organizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
+    [ObservableProperty] private string _organizeTargetRoot = string.Empty;
+
     // ── Library overview stats ──
 
     [ObservableProperty] private int _totalSongs;
@@ -545,6 +548,8 @@ public partial class SettingsViewModel : ViewModelBase
 
             ScanOnStartup = _settings.ScanOnStartup;
             WatchFoldersEnabled = _settings.WatchFoldersEnabled;
+            OrganizePattern = _settings.OrganizePattern;
+            OrganizeTargetRoot = _settings.OrganizeTargetRoot;
             IncludePrereleaseUpdates = _settings.IncludePrereleaseUpdates;
 
             // Playback
@@ -714,6 +719,8 @@ public partial class SettingsViewModel : ViewModelBase
 
         _settings.ScanOnStartup = ScanOnStartup;
         _settings.WatchFoldersEnabled = WatchFoldersEnabled;
+        _settings.OrganizePattern = OrganizePattern;
+        _settings.OrganizeTargetRoot = OrganizeTargetRoot;
         _settings.MusicFolders = MusicFolders.ToList();
         _settings.FolderRules = FolderRules
             .Where(r => !string.IsNullOrWhiteSpace(r.Path))
@@ -2088,6 +2095,10 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task OpenOrganizeFiles()
+        => await MetadataHelper.OpenOrganizeFilesDialog(this);
+
+    [RelayCommand]
     private async Task Rescan()
     {
         if (IsScanning) return;
@@ -2319,6 +2330,8 @@ public partial class SettingsViewModel : ViewModelBase
             // Preferences
             ScanOnStartup = true;
             WatchFoldersEnabled = true;
+            OrganizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
+            OrganizeTargetRoot = string.Empty;
             IncludePrereleaseUpdates = false;
 
             // Playback

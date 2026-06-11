@@ -1933,6 +1933,26 @@
                 </Grid>
             </Border>
 
+            <!-- Library Tools (Library group) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Organize Files" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Rename and move files into a tag-derived folder structure, with a full preview before anything changes."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Classes="pill-action"
+                            Command="{Binding OpenOrganizeFilesCommand}"
+                            Padding="14,8" CornerRadius="16" Cursor="Hand"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="Organize…" FontSize="13" VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+            </Border>
+
             <!-- Snoozed tracks (hidden from shuffle + radio) -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">

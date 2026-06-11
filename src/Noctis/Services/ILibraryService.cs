@@ -52,6 +52,15 @@ public interface ILibraryService
     /// <summary>Removes multiple tracks from the library in a single batch (one rebuild + save).</summary>
     Task RemoveTracksAsync(IEnumerable<Guid> ids);
 
+    /// <summary>
+    /// Updates the on-disk location of tracks that have been moved/renamed, preserving
+    /// each track's user state (favorites, play count, rating). Because track IDs are
+    /// derived from the file path, IDs are recomputed; the returned map (old ID → new ID)
+    /// lets callers fix up references such as playlist track lists.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, Guid>> RelocateTracksAsync(
+        IReadOnlyList<(string oldPath, string newPath)> moves, CancellationToken ct = default);
+
     /// <summary>Loads the library from persisted JSON data.</summary>
     Task LoadAsync();
 

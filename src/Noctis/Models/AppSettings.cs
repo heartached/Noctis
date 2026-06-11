@@ -58,6 +58,15 @@ public class AppSettings
     /// </summary>
     public bool WatchFoldersEnabled { get; set; } = true;
 
+    /// <summary>
+    /// Folder/filename template for the auto-organize tool. Tokens:
+    /// {AlbumArtist} {Artist} {Album} {Title} {TrackNo} {DiscNo} {Year} {Genre}.
+    /// </summary>
+    public string OrganizePattern { get; set; } = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
+
+    /// <summary>Destination root for organized files. Empty = first media folder.</summary>
+    public string OrganizeTargetRoot { get; set; } = string.Empty;
+
     /// <summary>When true, the in-app updater also offers GitHub pre-releases. Off = stable channel only.</summary>
     public bool IncludePrereleaseUpdates { get; set; } = false;
 

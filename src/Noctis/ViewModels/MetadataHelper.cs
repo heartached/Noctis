@@ -43,6 +43,17 @@ public static class MetadataHelper
         await ShowDialogOwned(window);
     }
 
+    /// <summary>Opens the auto-organize tool over all local library tracks.</summary>
+    public static async Task OpenOrganizeFilesDialog(SettingsViewModel settings)
+    {
+        var library = App.Services!.GetRequiredService<ILibraryService>();
+        var service = App.Services!.GetRequiredService<IFileOrganizerService>();
+        var tracks = library.Tracks.Where(t => t.SourceType == SourceType.Local).ToList();
+        var vm = new OrganizeFilesViewModel(tracks, service, settings);
+        var window = new OrganizeFilesDialog(vm);
+        await ShowDialogOwned(window);
+    }
+
     public static async Task OpenAudioConverterDialog(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;

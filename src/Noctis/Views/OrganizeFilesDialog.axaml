@@ -1,0 +1,99 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.OrganizeFilesDialog"
+        x:DataType="vm:OrganizeFilesViewModel"
+        Title="Organize Files"
+        CanResize="False"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Border Background="#50000000">
+        <Border CornerRadius="20"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="720"
+                MaxHeight="820"
+                Margin="0,50"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Stretch"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
+                    <TextBlock Text="Organize Files" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                    <TextBlock Text="Rename and move files into a tag-derived folder structure. Review every move before applying."
+                               FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
+                                   FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <Button Grid.Column="1" Content="Undo last" Command="{Binding UndoLastCommand}"
+                                IsEnabled="{Binding CanUndo}"
+                                Width="100" Padding="0,8" FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center" CornerRadius="999"
+                                Margin="0,0,8,0" Cursor="Hand" />
+                        <Button Grid.Column="2" Content="Close" Command="{Binding CloseCommand}"
+                                Width="90" Padding="0,8" FontWeight="Bold"
+                                HorizontalContentAlignment="Center" CornerRadius="999"
+                                Margin="0,0,8,0" Cursor="Hand" />
+                        <Button Grid.Column="3" Content="Apply" Command="{Binding ApplyCommand}"
+                                IsEnabled="{Binding HasApplicableMoves}"
+                                Width="100" Padding="0,8"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center" CornerRadius="999" Cursor="Hand" />
+                    </Grid>
+                </Border>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                              Padding="24,4,24,8">
+                    <StackPanel Spacing="12">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Folder pattern" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
+                            <TextBox Text="{Binding Pattern}" Watermark="{}{AlbumArtist}/{Album}/{TrackNo} {Title}" />
+                            <TextBlock Text="Tokens: {AlbumArtist} {Artist} {Album} {Title} {TrackNo} {DiscNo} {Year} {Genre}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Destination folder (blank = first media folder)" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
+                            <TextBox Text="{Binding TargetRoot}" Watermark="First media folder" />
+                        </StackPanel>
+
+                        <Button Content="Update preview" Command="{Binding PreviewCommand}"
+                                HorizontalAlignment="Left" Padding="14,8" CornerRadius="16" Cursor="Hand" />
+
+                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
+
+                        <TextBlock Text="Preview" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
+                        <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" MaxHeight="420">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Rows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:OrganizeFilesViewModel+OrganizeRow">
+                                            <Grid ColumnDefinitions="*,Auto" Margin="0,3">
+                                                <StackPanel Grid.Column="0" Spacing="1">
+                                                    <TextBlock Text="{Binding SourceName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding TargetRelative}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding ActionText}" FontSize="11" Opacity="0.75"
+                                                           VerticalAlignment="Center" Margin="12,0,0,0" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>
