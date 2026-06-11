@@ -177,19 +177,50 @@ public class AutoMixTransitionPlannerTests
         Assert.True(validation.IsValid);
     }
 
+    [Fact]
+    public void PreparedValidation_GaplessAcceptsTransitionModeOff()
+    {
+        var next = Track("Two", 2);
+        var prepared = new AutoMixPreparedTransitionSnapshot(
+            next.Id, next.FilePath, 10, false, RepeatMode.Off, AutoMixTransitionMode.Off, 42);
+
+        var offWithoutGapless = AutoMixPreparedTransitionValidator.Validate(
+            prepared, next, 10, false, RepeatMode.Off, AutoMixTransitionMode.Off, 42);
+        var offWithGapless = AutoMixPreparedTransitionValidator.Validate(
+            prepared, next, 10, false, RepeatMode.Off, AutoMixTransitionMode.Off, 42, gapless: true);
+
+        Assert.False(offWithoutGapless.IsValid);
+        Assert.True(offWithGapless.IsValid);
+    }
+
+    [Fact]
+    public void CreateTransitionPlan_CrossfadeModeHonoursUserDuration()
+    {
+        var plan = AutoMixTransitionPlanner.CreateTransitionPlan(
+            Track("One", 1, bpm: 120, key: "8A", duration: TimeSpan.FromMinutes(5)),
+            Track("Two", 2, bpm: 122, key: "9A", duration: TimeSpan.FromMinutes(5)),
+            Options(avoidAlbums: false, mode: AutoMixTransitionMode.Crossfade, crossfadeDurationSeconds: 11));
+
+        Assert.Equal(AutoMixTransitionType.SimpleCrossfade, plan.TransitionType);
+        Assert.Equal(TimeSpan.FromSeconds(11), plan.Duration);
+    }
+
     private static AutoMixPlannerOptions Options(
         RepeatMode repeatMode = RepeatMode.Off,
         bool shuffle = false,
-        bool avoidAlbums = true) =>
+        bool avoidAlbums = true,
+        AutoMixTransitionMode mode = AutoMixTransitionMode.AutoMix,
+        double crossfadeDurationSeconds = 6) =>
         new(
-            AutoMixTransitionMode.AutoMix,
+            mode,
             AutoMixStrength.Balanced,
             true,
             avoidAlbums,
             true,
             repeatMode,
             shuffle,
-            false);
+            false,
+            crossfadeDurationSeconds);
 
     private static AutoMixPreparedTransitionSnapshot Prepared(Track track) =>
         new(

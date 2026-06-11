@@ -82,6 +82,10 @@ public class AppSettings
     /// <summary>Windows only: WASAPI exclusive-mode output for bit-perfect playback.</summary>
     public bool ExclusiveAudioEnabled { get; set; }
 
+    /// <summary>Gapless playback: natural track changes hand off to a pre-decoded
+    /// standby player instead of an audible stop/start. On by default.</summary>
+    public bool GaplessPlaybackEnabled { get; set; } = true;
+
     /// <summary>Whether long playback-bar track titles should scroll while playing.</summary>
     public bool TrackTitleMarqueeEnabled { get; set; } = true;
 
@@ -205,8 +209,9 @@ public class AppSettings
 
     // ── ReplayGain ──
 
-    /// <summary>"Off", "Track", "Album", or "Auto" (album when same-album sequence else track).</summary>
-    public string ReplayGainMode { get; set; } = "Off";
+    /// <summary>"Off", "Track", "Album", or "Auto" (album when same-album sequence else track).
+    /// On by default ("Auto") for fresh installs; stored values are respected.</summary>
+    public string ReplayGainMode { get; set; } = "Auto";
 
     /// <summary>Pre-amp in dB applied on top of the RG tag value.</summary>
     public double ReplayGainPreampDb { get; set; } = 0.0;

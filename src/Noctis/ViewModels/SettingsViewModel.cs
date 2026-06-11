@@ -195,6 +195,12 @@ public partial class SettingsViewModel : ViewModelBase
     public string[] ReplayGainModeOptions { get; } = { "Off", "Track", "Album", "Auto" };
     [ObservableProperty] private string _replayGainMode = "Off";
     [ObservableProperty] private double _replayGainPreampDb;
+    /// <summary>On/off mirror of <see cref="ReplayGainMode"/> for the Settings toggle.</summary>
+    [ObservableProperty] private bool _replayGainEnabled;
+    private string _lastActiveReplayGainMode = "Auto";
+    private bool _suppressRgNotify;
+
+    [ObservableProperty] private bool _gaplessPlaybackEnabled = true;
 
     // ── Exclusive mode (Windows WASAPI) ──
 
@@ -543,6 +549,8 @@ public partial class SettingsViewModel : ViewModelBase
             RefreshFfmpegStatus();
             ReplayGainMode = string.IsNullOrEmpty(_settings.ReplayGainMode) ? "Off" : _settings.ReplayGainMode;
             ReplayGainPreampDb = _settings.ReplayGainPreampDb;
+            ReplayGainEnabled = !string.Equals(ReplayGainMode, "Off", StringComparison.OrdinalIgnoreCase);
+            GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
             ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
             NetEaseEnabled = _settings.NetEaseEnabled;
 
@@ -702,6 +710,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.FfmpegPath = FfmpegPath ?? string.Empty;
         _settings.ReplayGainMode = ReplayGainMode ?? "Off";
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
+        _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
         _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
         _settings.NetEaseEnabled = NetEaseEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
@@ -732,13 +741,21 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer?.SetNormalization(SoundCheckEnabled);
         _audioPlayer?.SetCrossfade(false, (int)Math.Round(CrossfadeDuration));
+        _audioPlayer?.SetGapless(GaplessPlaybackEnabled);
         _audioPlayer?.SetExclusiveMode(ExclusiveAudioEnabled);
+        _audioPlayer?.ApplyReplayGain(ReplayGainMode ?? "Off", ReplayGainPreampDb);
         ApplyEqualizer();
     }
 
     private void ApplyPlayerSettings()
     {
         if (_player == null) return;
+        // The Crossfade toggle drives the player's transition machinery; gapless
+        // covers natural track changes when crossfade is off.
+        _player.AutoMixTransitionMode = CrossfadeEnabled
+            ? Models.AutoMixTransitionMode.Crossfade
+            : Models.AutoMixTransitionMode.Off;
+        _player.GaplessEnabled = GaplessPlaybackEnabled;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
@@ -1113,6 +1130,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnCrossfadeEnabledChanged(bool value)
     {
         ApplyAudioSettings();
+        ApplyPlayerSettings();
         _ = SaveAsync();
     }
 
@@ -1235,8 +1253,30 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnReplayGainModeChanged(string value)
     {
+        // Keep the on/off toggle mirrored to the mode and remember the last
+        // active mode so re-enabling restores it.
+        var isOff = string.Equals(value, "Off", StringComparison.OrdinalIgnoreCase);
+        if (!isOff && !string.IsNullOrEmpty(value))
+            _lastActiveReplayGainMode = value;
+        _suppressRgNotify = true;
+        ReplayGainEnabled = !isOff;
+        _suppressRgNotify = false;
+
         if (_suspendSettingPersistence) return;
         _audioPlayer?.ApplyReplayGain(value, ReplayGainPreampDb);
+        _ = SaveAsync();
+    }
+
+    partial void OnReplayGainEnabledChanged(bool value)
+    {
+        if (_suppressRgNotify) return;
+        ReplayGainMode = value ? _lastActiveReplayGainMode : "Off";
+    }
+
+    partial void OnGaplessPlaybackEnabledChanged(bool value)
+    {
+        _audioPlayer?.SetGapless(value);
+        if (_player != null) _player.GaplessEnabled = value;
         _ = SaveAsync();
     }
 
@@ -2110,6 +2150,8 @@ public partial class SettingsViewModel : ViewModelBase
             CrossfadeDuration = 6;
             SoundCheckEnabled = false;
             ExclusiveAudioEnabled = false;
+            GaplessPlaybackEnabled = true;
+            ReplayGainMode = "Auto";
             TrackTitleMarqueeEnabled = true;
             ArtistMarqueeEnabled = true;
             CoverFlowMarqueeEnabled = true;

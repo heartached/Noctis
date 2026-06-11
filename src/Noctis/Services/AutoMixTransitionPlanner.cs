@@ -43,6 +43,9 @@ public static class AutoMixTransitionPlanner
             return AutoMixTransitionPlan.None("AutoMix skipped: track too short", currentSilence, nextSilence);
 
         if (options.Mode == AutoMixTransitionMode.Crossfade)
+        {
+            // Plain crossfade honours the user's Settings > Audio duration.
+            var crossfadeSeconds = Math.Clamp(options.CrossfadeDurationSeconds, 1, 12);
             return CreateCrossfadePlan(
                 current,
                 next,
@@ -50,8 +53,9 @@ public static class AutoMixTransitionPlanner
                 currentSilence,
                 nextSilence,
                 AutoMixTransitionType.SimpleCrossfade,
-                TimeSpan.FromSeconds(6),
-                "AutoMix planned: SimpleCrossfade 6s");
+                TimeSpan.FromSeconds(crossfadeSeconds),
+                $"AutoMix planned: SimpleCrossfade {crossfadeSeconds:0.#}s");
+        }
 
         var missingBpm = current.Bpm <= 0 || next.Bpm <= 0;
         var missingKey = NormalizeCamelotKey(current.MusicalKey) == null ||
@@ -191,9 +195,10 @@ public static class AutoMixTransitionPlanner
         nextBpm > 0 &&
         GetNormalizedBpmDifference(currentBpm, nextBpm) <= 10;
 
-    public static TimeSpan ClampTransitionDuration(TimeSpan requested, Track current, Track next, AutoMixStrength strength)
+    public static TimeSpan ClampTransitionDuration(
+        TimeSpan requested, Track current, Track next, AutoMixStrength strength, double? maxSecondsOverride = null)
     {
-        var maxByStrength = strength switch
+        var maxByStrength = maxSecondsOverride ?? strength switch
         {
             AutoMixStrength.Subtle => 6,
             AutoMixStrength.Extended => 12,
@@ -245,7 +250,11 @@ public static class AutoMixTransitionPlanner
                               nextSilence.StartSilence > TimeSpan.Zero);
         var duration = type == AutoMixTransitionType.SilenceTrim
             ? TimeSpan.Zero
-            : ClampTransitionDuration(requestedDuration, current, next, options.Strength);
+            : ClampTransitionDuration(
+                requestedDuration, current, next, options.Strength,
+                // Plain crossfade honours the full Settings range (1-12s) instead
+                // of the AutoMix strength cap; the 20%-of-track limit still applies.
+                options.Mode == AutoMixTransitionMode.Crossfade ? 12 : null);
         var transitionEnd = GetTransitionEnd(current) - currentSilence.EndSilence;
         if (transitionEnd < TimeSpan.Zero)
             transitionEnd = TimeSpan.Zero;

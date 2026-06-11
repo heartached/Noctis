@@ -42,7 +42,8 @@ public sealed record AutoMixPlannerOptions(
     bool BeatMatchWhenMetadataAvailable,
     RepeatMode RepeatMode,
     bool ShuffleEnabled,
-    bool ManualTransition);
+    bool ManualTransition,
+    double CrossfadeDurationSeconds = 6);
 
 public sealed record AutoMixTransitionPlan(
     AutoMixTransitionType TransitionType,

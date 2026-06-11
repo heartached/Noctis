@@ -80,6 +80,14 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Enables or disables the next track transition fade.</summary>
     void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase);
 
+    /// <summary>
+    /// Enables gapless playback: when the next track was prepared via
+    /// <see cref="PrepareNext"/> and no crossfade is active, track changes hand
+    /// off to the prepared player instantly at full volume instead of the
+    /// stop/parse/start path.
+    /// </summary>
+    void SetGapless(bool enabled);
+
     /// <summary>Prepares a next media item for an AutoMix transition without making it active.</summary>
     void PrepareNext(string filePath, long startPositionMs = -1);
 

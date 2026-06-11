@@ -44,6 +44,9 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _isQueuePopupOpen;
     [ObservableProperty] private bool _autoMixEnabled;
     [ObservableProperty] private AutoMixTransitionMode _autoMixTransitionMode = AutoMixTransitionMode.Off;
+    /// <summary>Gapless playback (Settings > Audio): natural track changes hand off to a
+    /// pre-decoded standby player instead of the audible stop/parse/start path.</summary>
+    [ObservableProperty] private bool _gaplessEnabled = true;
     [ObservableProperty] private AutoMixStrength _autoMixStrength = AutoMixStrength.Balanced;
     [ObservableProperty] private bool _autoMixRemoveSilence = true;
     [ObservableProperty] private bool _autoMixAvoidAlbums = true;
@@ -1195,6 +1198,9 @@ public partial class PlayerViewModel : ViewModelBase
             if (TryAdvanceForAutoMix(newPosition, effectiveDuration))
                 return;
 
+            if (TryAdvanceForGapless(newPosition, effectiveDuration))
+                return;
+
             ScheduleNaturalEndFallbackIfNeeded(newPosition, effectiveDuration);
 
             // Check per-track stop time
@@ -1377,7 +1383,87 @@ public partial class PlayerViewModel : ViewModelBase
             AutoMixBeatMatch,
             RepeatMode,
             IsShuffleEnabled,
-            false);
+            false,
+            _settings?.CrossfadeDuration ?? 6);
+
+    // Gapless timing: pre-decode the next track on the standby player well before
+    // the end, then advance just inside the final position tick so the handoff in
+    // VlcAudioPlayer starts the prepared player with no audible gap. The handoff
+    // lead must stay above one position-timer period (100ms) or the end can slip
+    // past us into the EndReached path.
+    private const double GaplessPrepareLeadSeconds = 8.0;
+    private const double GaplessHandoffLeadSeconds = 0.3;
+
+    private bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration)
+    {
+        if (!GaplessEnabled ||
+            AutoMixTransitionMode != Noctis.Models.AutoMixTransitionMode.Off ||
+            _autoMixAdvanceQueued ||
+            CurrentTrack == null ||
+            UpNext.Count == 0 ||
+            RepeatMode == RepeatMode.One ||
+            CurrentTrack.StopTimeMs > 0)
+            return false;
+
+        if (State != PlaybackState.Playing || _isSeeking || DateTime.UtcNow < _autoMixCommitGuardUntilUtc)
+            return false;
+
+        if (duration <= TimeSpan.Zero)
+            return false;
+
+        var nextTrack = UpNext[0];
+        var remaining = duration - position;
+
+        if (remaining > TimeSpan.FromSeconds(GaplessHandoffLeadSeconds))
+        {
+            if (remaining <= TimeSpan.FromSeconds(GaplessPrepareLeadSeconds) &&
+                _autoMixPreparedTrackId != nextTrack.Id &&
+                !string.IsNullOrWhiteSpace(nextTrack.FilePath))
+            {
+                _autoMixPreparedTrackId = nextTrack.Id;
+                _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
+                    nextTrack.Id,
+                    nextTrack.FilePath,
+                    _queueVersion,
+                    IsShuffleEnabled,
+                    RepeatMode,
+                    AutoMixTransitionMode,
+                    _audioPlayer.CurrentSessionId);
+                _audioPlayer.PrepareNext(
+                    nextTrack.FilePath,
+                    nextTrack.StartTimeMs > 0 ? nextTrack.StartTimeMs : -1);
+            }
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(nextTrack.FilePath) || !File.Exists(nextTrack.FilePath))
+            return false;
+
+        var validation = AutoMixPreparedTransitionValidator.Validate(
+            _autoMixPreparedSnapshot,
+            nextTrack,
+            _queueVersion,
+            IsShuffleEnabled,
+            RepeatMode,
+            AutoMixTransitionMode,
+            _audioPlayer.CurrentSessionId,
+            gapless: true);
+        if (!validation.IsValid)
+        {
+            // Nothing usable prepared — let the normal EndReached path advance.
+            DebugLogger.Info(DebugLogger.Category.Playback, "Gapless.NotPrepared", validation.Reason);
+            return false;
+        }
+
+        _autoMixAdvanceQueued = true;
+        _audioPlayer.SetCrossfade(false, 6);
+        DebugLogger.Info(
+            DebugLogger.Category.Playback,
+            "Gapless.Advance",
+            $"current={CurrentTrack.Title}, next={nextTrack.Title}, remainingMs={remaining.TotalMilliseconds:F0}");
+        AdvanceQueue(QueueAdvanceReason.Natural);
+        return true;
+    }
 
     partial void OnAutoMixTransitionModeChanged(AutoMixTransitionMode value)
     {

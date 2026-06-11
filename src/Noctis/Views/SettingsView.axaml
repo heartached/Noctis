@@ -1202,6 +1202,20 @@
                 </Grid>
             </Border>
 
+            <!-- Gapless playback -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Gapless Playback" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Pre-decode the next song so tracks flow into each other without a pause."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding GaplessPlaybackEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Exclusive mode (Windows WASAPI) -->
             <Border Classes="setting-card" IsVisible="{Binding IsExclusiveAudioSupported}">
                 <Grid ColumnDefinitions="*,Auto">
@@ -1347,12 +1361,17 @@
 
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.4" Margin="0,8,0,8"/>
 
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="ReplayGain" FontSize="13" FontWeight="SemiBold"/>
-                        <TextBlock Text="Scale per-track or per-album volume using REPLAYGAIN_* tags. Scan tracks first via right-click → Scan ReplayGain."
-                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <Grid ColumnDefinitions="120,*">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="ReplayGain" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Scale per-track or per-album volume using REPLAYGAIN_* tags. Scan tracks first via right-click → Scan ReplayGain."
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding ReplayGainEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="120,*" IsEnabled="{Binding ReplayGainEnabled}">
                         <TextBlock Grid.Column="0" Text="Mode" VerticalAlignment="Center"/>
                         <ComboBox Grid.Column="1"
                                   Classes="pill-list"

@@ -217,6 +217,10 @@ public class VlcAudioPlayer : IAudioPlayer
     private int _crossfadeDurationMs = 6000;
     private AutoMixFadeCurve _crossfadeFadeCurve = AutoMixFadeCurve.SmoothEase;
 
+    // Gapless state: with a prepared standby and no crossfade, track changes
+    // hand off to the standby player instantly at full volume.
+    private volatile bool _gaplessEnabled = true;
+
     // Pending seek — applied inside PlayInternal after _player.Play() to avoid race
     private long _pendingSeekMs = -1;
 
@@ -1313,6 +1317,12 @@ public class VlcAudioPlayer : IAudioPlayer
         _crossfadeFadeCurve = fadeCurve;
     }
 
+    public void SetGapless(bool enabled)
+    {
+        if (_disposed) return;
+        _gaplessEnabled = enabled;
+    }
+
     public void PrepareNext(string filePath, long startPositionMs = -1)
     {
         if (_disposed || string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
@@ -1438,10 +1448,6 @@ public class VlcAudioPlayer : IAudioPlayer
         DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play", $"path={Path.GetFileName(filePath)}");
         _keepAlive?.NotifyActivity();
         _currentMediaPath = filePath;
-        // Re-apply RG for the new track using the last known mode/preamp. If
-        // the mode is "Off" this is a no-op and _replayGainScalar stays 1.0.
-        if (!string.Equals(_rgMode, "Off", StringComparison.OrdinalIgnoreCase))
-            ApplyReplayGain(_rgMode, _rgPreampDb);
 
         // All heavy work on ThreadPool, serialized by the lock.
         ThreadPool.QueueUserWorkItem(_ =>
@@ -1489,6 +1495,13 @@ public class VlcAudioPlayer : IAudioPlayer
             Interlocked.Exchange(ref _latestSeekMs, -1);
             Interlocked.Exchange(ref _lastKnownLengthMs, 0);
 
+            // Re-apply ReplayGain for the new track (tag read does file IO, so it
+            // runs here on the worker, before the target volume is computed). If
+            // the mode is "Off" this is a no-op and _replayGainScalar stays 1.0.
+            _currentMediaPath = filePath;
+            if (!string.Equals(_rgMode, "Off", StringComparison.OrdinalIgnoreCase))
+                ApplyReplayGain(_rgMode, _rgPreampDb);
+
             var hadPreviousMedia = _currentMedia != null;
             var targetVolume = GetTargetVlcVolume();
             // Crossfade needs two simultaneous streams; the WASAPI callback sinks
@@ -1503,7 +1516,17 @@ public class VlcAudioPlayer : IAudioPlayer
                 : 0;
 
             if (canTransitionFade &&
-                TryStartPreparedAutoMix(filePath, targetVolume, sessionId, cancel))
+                TryStartPreparedAutoMix(filePath, targetVolume, sessionId, cancel, instantHandoff: false))
+            {
+                Interlocked.Exchange(ref _pendingSeekMs, -1);
+                return;
+            }
+
+            // Gapless: no crossfade, but the next track was prepared on the
+            // standby player — hand off to it instantly at full volume instead
+            // of the audible stop/parse/start path.
+            if (!canTransitionFade && _gaplessEnabled && _standbyPrepared && hadPreviousMedia &&
+                TryStartPreparedAutoMix(filePath, targetVolume, sessionId, cancel, instantHandoff: true))
             {
                 Interlocked.Exchange(ref _pendingSeekMs, -1);
                 return;
@@ -1641,7 +1664,14 @@ public class VlcAudioPlayer : IAudioPlayer
         }
     }
 
-    private bool TryStartPreparedAutoMix(string filePath, int targetVolume, long sessionId, CancellationToken cancel)
+    /// <summary>
+    /// Start the prepared standby player and swap it in. With
+    /// <paramref name="instantHandoff"/> false this is the AutoMix crossfade
+    /// (standby fades in while the outgoing player fades out); with true it is
+    /// the gapless handoff — the standby starts at full volume immediately and
+    /// the (ended) outgoing player is silenced, no fade.
+    /// </summary>
+    private bool TryStartPreparedAutoMix(string filePath, int targetVolume, long sessionId, CancellationToken cancel, bool instantHandoff)
     {
         var normalizedPath = Path.GetFullPath(filePath);
         if (!_standbyPrepared ||
@@ -1667,14 +1697,16 @@ public class VlcAudioPlayer : IAudioPlayer
             // Park the volume ramp so it can't fight the crossfade's direct fades.
             Volatile.Write(ref _rampTargetMilli, Volatile.Read(ref _rampCurrentMilli));
 
-            SetPlayerVolumeGuarded(_standbyPlayer, 0);
+            // Gapless handoff starts the incoming track at full level right away;
+            // the crossfade starts it silent and fades it in.
+            SetPlayerVolumeGuarded(_standbyPlayer, instantHandoff ? targetVolume : 0);
             _standbyPlayer.Mute = _player.Mute;
 
             var preparedAgeMs = (DateTime.UtcNow.Ticks - Interlocked.Read(ref _standbyPreparedTicksUtc)) / TimeSpan.TicksPerMillisecond;
 
             DebugLogger.Info(
                 DebugLogger.Category.Playback,
-                "AutoMix.DualStarted",
+                instantHandoff ? "Gapless.DualStarted" : "AutoMix.DualStarted",
                 $"path={Path.GetFileName(filePath)}, durationMs={_crossfadeDurationMs}, curve={_crossfadeFadeCurve}, preparedAgeMs={preparedAgeMs}");
 
             Interlocked.Exchange(ref _lastPlayStartTicksUtc, DateTime.UtcNow.Ticks);
@@ -1696,14 +1728,23 @@ public class VlcAudioPlayer : IAudioPlayer
 
             DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.DualWarmupReady", $"elapsedMs={warmupElapsedMs}, state={_standbyPlayer.State}");
 
-            FadeDualPlayerVolumesBlocking(
-                _player,
-                _standbyPlayer,
-                _player.Volume,
-                targetVolume,
-                _crossfadeDurationMs,
-                _crossfadeFadeCurve,
-                cancel);
+            if (instantHandoff)
+            {
+                // The outgoing track is at (or within a beat of) its end —
+                // silence it so the incoming audio is the only thing audible.
+                SetPlayerVolumeGuarded(_player, 0);
+            }
+            else
+            {
+                FadeDualPlayerVolumesBlocking(
+                    _player,
+                    _standbyPlayer,
+                    _player.Volume,
+                    targetVolume,
+                    _crossfadeDurationMs,
+                    _crossfadeFadeCurve,
+                    cancel);
+            }
 
             var finalVolume = GetTargetVlcVolume();
             if (cancel.IsCancellationRequested || _disposed)
