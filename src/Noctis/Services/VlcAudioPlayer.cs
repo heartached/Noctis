@@ -1000,6 +1000,31 @@ public class VlcAudioPlayer : IAudioPlayer
 
     public bool ExclusiveModeActive => _exclusiveOut is { IsExclusive: true };
 
+    public string OutputDescription
+    {
+        get
+        {
+            if (_exclusiveModeEnabled && _exclusiveOut is { } sink)
+            {
+                return sink.IsExclusive
+                    ? $"WASAPI Exclusive — {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}"
+                    : $"WASAPI Shared — {sink.SampleRate / 1000.0:0.#} kHz (exclusive unavailable)";
+            }
+            if (_exclusiveModeEnabled)
+                return "WASAPI Exclusive (engages on play)";
+            if (_wasapiOut != null)
+                return $"WASAPI Shared — {_wasapiOut.SampleRate / 1000.0:0.#} kHz";
+            if (OperatingSystem.IsWindows())
+                return "WASAPI Shared (system mixer)";
+            if (OperatingSystem.IsMacOS())
+                return "CoreAudio (shared)";
+            return "System output (shared)";
+        }
+    }
+
+    public double ReplayGainAppliedDb =>
+        Math.Abs(_replayGainScalar - 1.0) < 0.0001 ? 0.0 : 20.0 * Math.Log10(_replayGainScalar);
+
     public void SetExclusiveMode(bool enabled)
     {
         if (_disposed) return;

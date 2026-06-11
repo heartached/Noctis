@@ -745,6 +745,7 @@ public partial class SettingsViewModel : ViewModelBase
         _audioPlayer?.SetExclusiveMode(ExclusiveAudioEnabled);
         _audioPlayer?.ApplyReplayGain(ReplayGainMode ?? "Off", ReplayGainPreampDb);
         ApplyEqualizer();
+        _player?.RefreshSignalPath();
     }
 
     private void ApplyPlayerSettings()
@@ -770,6 +771,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         var (bands, preamp) = GetGraphicEqBands();
         _audioPlayer?.SetAdvancedEqualizer(EqualizerEnabled, bands, preamp);
+        _player?.RefreshSignalPath();
     }
 
     /// <summary>

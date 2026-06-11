@@ -47,6 +47,14 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Gapless playback (Settings > Audio): natural track changes hand off to a
     /// pre-decoded standby player instead of the audible stop/parse/start path.</summary>
     [ObservableProperty] private bool _gaplessEnabled = true;
+
+    // ── Signal path / quality badge (Roon-style) ──
+    /// <summary>Overall chain quality: "Bit-perfect", "Hi-Res Lossless", "Lossless", "Enhanced", "Lossy".</summary>
+    [ObservableProperty] private string _signalPathQuality = "";
+    /// <summary>Badge dot colour for the current quality tier (hex string).</summary>
+    [ObservableProperty] private string _signalPathColor = "#9CA3AF";
+    /// <summary>The audio chain, stage by stage, for the expanded badge flyout.</summary>
+    [ObservableProperty] private IReadOnlyList<SignalPathStage> _signalPathStages = Array.Empty<SignalPathStage>();
     [ObservableProperty] private AutoMixStrength _autoMixStrength = AutoMixStrength.Balanced;
     [ObservableProperty] private bool _autoMixRemoveSilence = true;
     [ObservableProperty] private bool _autoMixAvoidAlbums = true;
@@ -144,6 +152,10 @@ public partial class PlayerViewModel : ViewModelBase
         _audioPlayer.TrackEnded += OnTrackEnded;
         _audioPlayer.PlaybackError += OnPlaybackError;
         _audioPlayer.DurationResolved += OnDurationResolved;
+        // Output path can change after playback starts (exclusive engaged /
+        // fell back) — keep the signal-path badge in sync.
+        _audioPlayer.OutputModeChanged += (_, _) =>
+            Dispatcher.UIThread.Post(RefreshSignalPath);
 
         // Subscribe to library events
         _library.LibraryUpdated += OnLibraryUpdated;
@@ -740,7 +752,10 @@ public partial class PlayerViewModel : ViewModelBase
         // ramp engine, which slews the applied gain in small paced steps —
         // real-time yet click-free (raw per-pixel session writes crackle).
         _audioPlayer.Volume = value;
+        RefreshSignalPath();
     }
+
+    partial void OnIsMutedChanged(bool value) => RefreshSignalPath();
 
     /// <summary>
     /// Flush the final volume to VLC immediately — call on slider drag-end
@@ -756,6 +771,95 @@ public partial class PlayerViewModel : ViewModelBase
         // path changes can leave us here without a Play() call.
         if (_settings != null)
             _audioPlayer.ApplyReplayGain(_settings.ReplayGainMode, _settings.ReplayGainPreampDb);
+
+        RefreshSignalPath();
+        // The player applies ReplayGain / opens the output on a worker shortly
+        // after Play(); refresh once more so applied-gain and output format are
+        // accurate for the new track.
+        DispatcherTimer.RunOnce(RefreshSignalPath, TimeSpan.FromMilliseconds(800));
+    }
+
+    /// <summary>
+    /// Rebuild the quality badge + expanded chain (source → ReplayGain → EQ →
+    /// crossfade → output). Called on track changes, output-mode changes and by
+    /// Settings whenever an audio toggle is applied.
+    /// </summary>
+    public void RefreshSignalPath()
+    {
+        var track = CurrentTrack;
+        if (track == null)
+        {
+            SignalPathStages = Array.Empty<SignalPathStage>();
+            SignalPathQuality = "";
+            return;
+        }
+
+        var rgDb = _audioPlayer.ReplayGainAppliedDb;
+        var rgMode = _settings?.ReplayGainMode ?? "Off";
+        var rgOn = !string.Equals(rgMode, "Off", StringComparison.OrdinalIgnoreCase);
+        var eqOn = _settings?.EqualizerEnabled ?? false;
+        var soundCheckOn = _settings?.SoundCheckEnabled ?? false;
+        var crossfadeOn = _settings?.CrossfadeEnabled ?? false;
+        var exclusive = _audioPlayer.ExclusiveModeActive;
+        var volumeUnity = Volume >= 100 && (track.VolumeAdjust == 0) && !IsMuted;
+
+        var codec = !string.IsNullOrEmpty(track.CodecShortName)
+            ? track.CodecShortName
+            : Path.GetExtension(track.FilePath).TrimStart('.').ToUpperInvariant();
+        var sourceDetail = codec;
+        if (track.BitsPerSample > 0 && track.SampleRate > 0)
+            sourceDetail += $" {track.BitsPerSample}-bit / {track.SampleRate / 1000.0:0.#} kHz";
+        else if (track.SampleRate > 0)
+            sourceDetail += $" {track.SampleRate / 1000.0:0.#} kHz";
+        if (!track.IsLossless && track.Bitrate > 0)
+            sourceDetail += $" ({track.Bitrate} kbps)";
+
+        var rgDetail = !rgOn
+            ? "Off"
+            : Math.Abs(rgDb) > 0.01
+                ? $"{rgMode} — {rgDb:+0.0;-0.0} dB"
+                : $"{rgMode} — no tags (bypass)";
+
+        var eqDetail = eqOn
+            ? (_settings?.SelectedEqPresetIndex == 0 ? "Parametric (custom)" : _settings?.SelectedEqPresetName ?? "On")
+            : "Off";
+
+        var crossfadeDetail = crossfadeOn
+            ? $"{_settings?.CrossfadeDuration ?? 6:0.#} s"
+            : GaplessEnabled ? "Off (gapless)" : "Off";
+
+        SignalPathStages = new[]
+        {
+            new SignalPathStage("Source", sourceDetail, true),
+            new SignalPathStage("ReplayGain", rgDetail, rgOn),
+            new SignalPathStage("Equalizer", eqDetail, eqOn),
+            new SignalPathStage("Sound Check", soundCheckOn ? "On (loudness normalization)" : "Off", soundCheckOn),
+            new SignalPathStage("Crossfade", crossfadeDetail, crossfadeOn),
+            new SignalPathStage("Volume", volumeUnity ? "100% (unity)" : IsMuted ? "Muted" : $"{Volume}%", !volumeUnity),
+            new SignalPathStage("Output", _audioPlayer.OutputDescription, true),
+        };
+
+        var dspActive = (rgOn && Math.Abs(rgDb) > 0.01) || eqOn || soundCheckOn || crossfadeOn;
+        if (exclusive && !dspActive && volumeUnity)
+        {
+            SignalPathQuality = "Bit-perfect";
+            SignalPathColor = "#B197FC"; // violet — untouched samples reach the DAC
+        }
+        else if (track.IsLossless && !dspActive)
+        {
+            SignalPathQuality = track.IsHiResLossless ? "Hi-Res Lossless" : "Lossless";
+            SignalPathColor = "#4ADE80"; // green
+        }
+        else if (track.IsLossless)
+        {
+            SignalPathQuality = "Enhanced";
+            SignalPathColor = "#60A5FA"; // blue — lossless source with DSP applied
+        }
+        else
+        {
+            SignalPathQuality = dspActive ? "Lossy · Enhanced" : "Lossy";
+            SignalPathColor = "#9CA3AF"; // gray
+        }
     }
 
     partial void OnPositionFractionChanged(double value)

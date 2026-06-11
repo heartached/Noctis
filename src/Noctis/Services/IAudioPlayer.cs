@@ -65,6 +65,14 @@ public interface IAudioPlayer : IDisposable
     /// <summary>True while audio is actually flowing through an exclusive-mode device stream.</summary>
     bool ExclusiveModeActive { get; }
 
+    /// <summary>Short description of the active output path for the signal-path
+    /// display, e.g. "WASAPI Exclusive — 44.1 kHz / 24-bit".</summary>
+    string OutputDescription { get; }
+
+    /// <summary>ReplayGain currently applied to the output in dB. 0 = bypass
+    /// (mode off, or no tags on the current track).</summary>
+    double ReplayGainAppliedDb { get; }
+
     /// <summary>
     /// Apply ReplayGain to the currently loaded track based on its tags. Reads
     /// REPLAYGAIN_TRACK_GAIN / REPLAYGAIN_ALBUM_GAIN from the file and scales
