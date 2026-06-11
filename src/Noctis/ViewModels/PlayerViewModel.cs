@@ -22,6 +22,24 @@ public partial class PlayerViewModel : ViewModelBase
     private readonly IPersistenceService _persistence;
     private readonly IAnimatedCoverService _animatedCovers;
 
+    // ── Recently-played memory (feeds shuffle recency deprioritization) ──
+    private readonly LinkedList<Guid> _recentlyPlayedOrder = new();
+    private readonly HashSet<Guid> _recentlyPlayed = new();
+    private const int RecentlyPlayedCapacity = 50;
+
+    // Insertion-order tracking, not true LRU: re-playing an already-tracked id intentionally
+    // does not refresh its position. Acceptable for a shuffle deprioritization heuristic.
+    private void MarkRecentlyPlayed(Track t)
+    {
+        if (_recentlyPlayed.Add(t.Id)) _recentlyPlayedOrder.AddLast(t.Id);
+        while (_recentlyPlayedOrder.Count > RecentlyPlayedCapacity)
+        {
+            var oldest = _recentlyPlayedOrder.First!.Value;
+            _recentlyPlayedOrder.RemoveFirst();
+            _recentlyPlayed.Remove(oldest);
+        }
+    }
+
     // ── Observable properties bound to the playback bar ──
 
     [ObservableProperty] private Track? _currentTrack;
@@ -204,7 +222,7 @@ public partial class PlayerViewModel : ViewModelBase
                 else if (_library.Tracks.Count > 0)
                 {
                     // No track loaded — shuffle entire library
-                    var allTracks = Helpers.ShuffleHelper.WeightedShuffle(_library.Tracks);
+                    var allTracks = Helpers.ShuffleHelper.WeightedShuffle(_library.Tracks, recentlyPlayed: _recentlyPlayed);
                     IsShuffleEnabled = true;
                     ReplaceQueueAndPlay(allTracks, 0);
                 }
@@ -296,9 +314,9 @@ public partial class PlayerViewModel : ViewModelBase
                 // Save original queue order
                 _originalQueue = UpNext.ToList();
                 // Shuffle the queue, respecting SkipWhenShuffling and
-                // down-weighting "not liked" tracks.
+                // down-weighting "not liked" + recently-played tracks.
                 var shuffled = Helpers.ShuffleHelper.WeightedShuffle(
-                    UpNext.Where(t => !t.SkipWhenShuffling));
+                    UpNext.Where(t => !t.SkipWhenShuffling), recentlyPlayed: _recentlyPlayed);
                 UpNext.ReplaceAll(shuffled);
             }
             else if (_originalQueue.Count > 0)
@@ -470,6 +488,8 @@ public partial class PlayerViewModel : ViewModelBase
         if (CurrentTrack == null) return;
         var album = _library.GetAlbumById(CurrentTrack.AlbumId);
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
+        // No recency weighting here: the user explicitly chose to shuffle this one album,
+        // so every track on it should stay equally likely even if just played.
         var shuffled = Helpers.ShuffleHelper.WeightedShuffle(album.Tracks);
         ReplaceQueueAndPlay(shuffled, 0);
     }
@@ -492,6 +512,19 @@ public partial class PlayerViewModel : ViewModelBase
         _radioSeed = seed;
         IsRadioActive = true;
         IsShuffleEnabled = false;
+    }
+
+    /// <summary>
+    /// Hides a track from shuffle and radio for 30 days (Apple Music-style "suggest less"
+    /// but temporary). Reversible from Settings. App-only state — no file tag is written.
+    /// </summary>
+    private const int SnoozeDurationDays = 30;
+
+    [RelayCommand]
+    private async Task SnoozeForMonth(Track? track)
+    {
+        if (track == null) return;
+        await _library.SetTracksSnoozedAsync(new[] { track }, DateTime.UtcNow.AddDays(SnoozeDurationDays));
     }
 
     [RelayCommand]
@@ -996,6 +1029,7 @@ public partial class PlayerViewModel : ViewModelBase
         track.PlayCount++;
         track.LastPlayed = DateTime.UtcNow;
         _playHistory?.RecordPlay(track);
+        MarkRecentlyPlayed(track);
 
         // Apply per-track volume adjustment
         _audioPlayer.VolumeAdjust = track.VolumeAdjust;

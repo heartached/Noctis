@@ -38,4 +38,40 @@ public class ShuffleHelperTests
         // assert well under the 50% an unweighted shuffle would give.
         Assert.InRange(dislikedFirst / (double)runs, 0.05, 0.30);
     }
+
+    private static Track T() => new() { Id = Guid.NewGuid() };
+
+    [Fact]
+    public void ExcludesSnoozedTracks()
+    {
+        var normal = T();
+        var snoozed = T();
+        snoozed.SnoozedUntil = DateTime.UtcNow.AddDays(10);
+        var result = ShuffleHelper.WeightedShuffle(new[] { normal, snoozed });
+        Assert.Contains(result, t => t.Id == normal.Id);
+        Assert.DoesNotContain(result, t => t.Id == snoozed.Id);
+    }
+
+    [Fact]
+    public void ExpiredSnoozeIsEligible()
+    {
+        var t = T();
+        t.SnoozedUntil = DateTime.UtcNow.AddDays(-1);
+        Assert.Contains(ShuffleHelper.WeightedShuffle(new[] { t }), x => x.Id == t.Id);
+    }
+
+    [Fact]
+    public void RecentlyPlayedRanksLowerOnAverage()
+    {
+        var recent = T();
+        var fresh = T();
+        var recentlyPlayed = new HashSet<Guid> { recent.Id };
+        int freshFirst = 0;
+        for (int seed = 0; seed < 200; seed++)
+        {
+            var order = ShuffleHelper.WeightedShuffle(new[] { recent, fresh }, new Random(seed), recentlyPlayed);
+            if (order[0].Id == fresh.Id) freshFirst++;
+        }
+        Assert.True(freshFirst > 130, $"fresh-first {freshFirst}/200 should exceed ~65%");
+    }
 }

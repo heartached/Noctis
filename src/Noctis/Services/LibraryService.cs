@@ -518,6 +518,17 @@ public class LibraryService : ILibraryService
         QueueRatingTagWrites(changed);
     }
 
+    public async Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until)
+    {
+        var changed = tracks.Where(t => t.SnoozedUntil != until).ToList();
+        if (changed.Count == 0) return;
+
+        foreach (var track in changed)
+            track.SnoozedUntil = until;
+        // Snooze is app-only state — no file tag write (unlike rating/dislike).
+        await SaveAsync();
+    }
+
     /// <summary>
     /// Persists rating tags to the audio files on a worker thread (best effort —
     /// the library JSON saved above is the source of truth if a file is locked/read-only).

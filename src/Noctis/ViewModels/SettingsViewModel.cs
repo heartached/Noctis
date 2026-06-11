@@ -1791,6 +1791,30 @@ public partial class SettingsViewModel : ViewModelBase
         QueueEqualizerSave();
     }
 
+    // ── Snoozed tracks (hidden from shuffle + radio for a period) ──
+
+    /// <summary>Tracks currently snoozed, shown in a reversible Settings list.</summary>
+    public ObservableCollection<Track> SnoozedTracks { get; } = new();
+
+    /// <summary>True when at least one track is snoozed (drives the empty-state placeholder).</summary>
+    [ObservableProperty] private bool _hasSnoozedTracks;
+
+    public void RefreshSnoozedTracks()
+    {
+        SnoozedTracks.Clear();
+        foreach (var t in _library.Tracks.Where(t => t.IsSnoozed).OrderBy(t => t.SnoozedUntil))
+            SnoozedTracks.Add(t);
+        HasSnoozedTracks = SnoozedTracks.Count > 0;
+    }
+
+    [RelayCommand]
+    private async Task Unsnooze(Track? track)
+    {
+        if (track == null) return;
+        await _library.SetTracksSnoozedAsync(new[] { track }, null);
+        RefreshSnoozedTracks();
+    }
+
     // ── Library overview + Storage ──
 
     public void RefreshLibraryStats()
@@ -1820,6 +1844,7 @@ public partial class SettingsViewModel : ViewModelBase
         LosslessCount = losslessCount;
         LossyCount = tracks.Count - losslessCount;
         HiResCount = hiResCount;
+        RefreshSnoozedTracks();
         if (tracks.Count > 0)
         {
             var pct = (double)losslessCount / tracks.Count;

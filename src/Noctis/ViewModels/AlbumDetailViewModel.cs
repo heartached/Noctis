@@ -593,6 +593,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
 
     [RelayCommand]
+    private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
+
+    [RelayCommand]
     private void AddAlbumToQueue()
     {
         if (Tracks.Count == 0) return;

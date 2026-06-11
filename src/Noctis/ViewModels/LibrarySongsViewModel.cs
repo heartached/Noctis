@@ -211,6 +211,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
 
     [RelayCommand]
+    private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
+
+    [RelayCommand]
     private async Task AddToNewPlaylist(Track track)
     {
         var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };

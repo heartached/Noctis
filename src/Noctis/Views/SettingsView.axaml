@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Noctis.ViewModels"
+             xmlns:models="using:Noctis.Models"
              xmlns:sys="using:System"
              xmlns:conv="using:Noctis.Converters"
              xmlns:controls="using:Noctis.Controls"
@@ -1886,6 +1887,62 @@
                                           IsChecked="{Binding ScanOnStartup}"
                                           VerticalAlignment="Center"/>
                 </Grid>
+            </Border>
+
+            <!-- Snoozed tracks (hidden from shuffle + radio) -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Snoozed Tracks" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Hidden from shuffle and radio until their snooze expires. Un-snooze to bring one back early."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <TextBlock Text="No snoozed tracks."
+                               FontSize="13" Opacity="0.45"
+                               IsVisible="{Binding !HasSnoozedTracks}"/>
+
+                    <ItemsControl ItemsSource="{Binding SnoozedTracks}">
+                        <ItemsControl.Styles>
+                            <Style Selector="ItemsControl:empty">
+                                <Setter Property="IsVisible" Value="False"/>
+                            </Style>
+                        </ItemsControl.Styles>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:Track">
+                                <Border Padding="12,8" Margin="0,2" CornerRadius="6"
+                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                    <Grid ColumnDefinitions="*,Auto,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontSize="13" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Artist}"
+                                                       FontSize="12" Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding SnoozedUntil, StringFormat='Until {0:MMM d, yyyy}'}"
+                                                   FontSize="12" Opacity="0.5"
+                                                   VerticalAlignment="Center"
+                                                   Margin="12,0"/>
+                                        <Button Grid.Column="2"
+                                                Classes="pill-action"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).UnsnoozeCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="12,6"
+                                                CornerRadius="14"
+                                                Cursor="Hand"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="Un-snooze" FontSize="12"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
             </Border>
 
             <!-- ═══════════════════════════════════════════════════ -->

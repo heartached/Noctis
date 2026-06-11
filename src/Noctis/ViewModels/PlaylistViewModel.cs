@@ -334,6 +334,9 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
 
     [RelayCommand]
+    private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
+
+    [RelayCommand]
     private void ShuffleAll()
     {
         var tracks = Tracks.ToList();

@@ -73,6 +73,9 @@ public interface ILibraryService
     /// <summary>Sets the "not liked" flag on the given tracks, saves the library, and writes the file tags.</summary>
     Task SetTracksDislikedAsync(IReadOnlyList<Track> tracks, bool isDisliked);
 
+    /// <summary>Sets/clears the snooze expiry on the given tracks and saves the library.</summary>
+    Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until);
+
     /// <summary>Rebuilds indexes and raises LibraryUpdated after a track's metadata has been edited.</summary>
     void NotifyMetadataChanged();
 }

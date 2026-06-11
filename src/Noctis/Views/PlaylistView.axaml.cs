@@ -128,7 +128,8 @@ public partial class PlaylistView : UserControl
             removeCommand: vm.RemoveTrackCommand,
             convertCommand: vm.ConvertTracksCommand,
             scanReplayGainCommand: vm.ScanReplayGainCommand,
-            startRadioCommand: vm.StartRadioCommand);
+            startRadioCommand: vm.StartRadioCommand,
+            snoozeCommand: vm.SnoozeForMonthCommand);
     }
 
     private void DetachMenuFromOwner()

@@ -31,6 +31,7 @@ public sealed class TrackContextMenuBuilder
     public MenuItem PlayNext { get; private set; } = null!;
     public MenuItem AddToQueue { get; private set; } = null!;
     public MenuItem StartRadio { get; private set; } = null!;
+    public MenuItem SnoozeForMonth { get; private set; } = null!;
     public MenuItem AddToPlaylist { get; private set; } = null!;
     public MenuItem Favorite { get; private set; } = null!;
     public MenuItem Unfavorite { get; private set; } = null!;
@@ -74,6 +75,12 @@ public sealed class TrackContextMenuBuilder
         StartRadio = new MenuItem { Header = "Start Radio", IsVisible = false };
         StartRadio.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Shuffle%20ICON.png");
         items.Add(StartRadio);
+
+        // Hidden unless the view supplies a snoozeCommand in Bind().
+        SnoozeForMonth = new MenuItem { Header = "Snooze for a month", IsVisible = false };
+        // placeholder icon: no dedicated snooze glyph in resources
+        SnoozeForMonth.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Shuffle%20ICON.png");
+        items.Add(SnoozeForMonth);
 
         items.Add(new Separator());
 
@@ -155,7 +162,8 @@ public sealed class TrackContextMenuBuilder
         ICommand? addToExistingPlaylistCommand = null,
         ICommand? convertCommand = null,
         ICommand? scanReplayGainCommand = null,
-        ICommand? startRadioCommand = null)
+        ICommand? startRadioCommand = null,
+        ICommand? snoozeCommand = null)
     {
         Menu.DataContext = track;
 
@@ -182,6 +190,18 @@ public sealed class TrackContextMenuBuilder
         else
         {
             StartRadio.IsVisible = false;
+        }
+
+        // Snooze for a month is optional — only views that pass a snoozeCommand surface it.
+        if (snoozeCommand != null)
+        {
+            SnoozeForMonth.Command = snoozeCommand;
+            SnoozeForMonth.CommandParameter = track;
+            SnoozeForMonth.IsVisible = true;
+        }
+        else
+        {
+            SnoozeForMonth.IsVisible = false;
         }
 
         // Add to Playlist: opens unified dialog
