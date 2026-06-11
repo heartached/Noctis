@@ -46,11 +46,57 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Filter chips shown above the album grid; one entry per filter value.</summary>
     public ObservableCollection<ReleaseTypeChip> ReleaseTypeChips { get; }
 
+    /// <summary>Audio-quality filter chips (Lossless / Hi-Res), toggleable.</summary>
+    public ObservableCollection<QualityChip> QualityChips { get; } = new()
+    {
+        new QualityChip { Key = "lossless", Label = "Lossless" },
+        new QualityChip { Key = "hires", Label = "Hi-Res" },
+    };
+
+    /// <summary>Active quality filter: "" (off), "lossless", or "hires".</summary>
+    [ObservableProperty] private string _qualityFilter = string.Empty;
+
+    /// <summary>Grid sort: "default" (artist/recent floats), "dateadded", or "mostplayed".</summary>
+    [ObservableProperty] private string _albumSortMode = "default";
+
+    /// <summary>Label for the sort dropdown button.</summary>
+    public string AlbumSortLabel => AlbumSortMode switch
+    {
+        "dateadded" => "Date added",
+        "mostplayed" => "Most played",
+        _ => "Default",
+    };
+
+    partial void OnQualityFilterChanged(string value)
+    {
+        foreach (var chip in QualityChips)
+            chip.IsActive = chip.Key == value;
+        OnPropertyChanged(nameof(HasActiveFilter));
+        RebuildFilteredRows();
+    }
+
+    partial void OnAlbumSortModeChanged(string value)
+    {
+        OnPropertyChanged(nameof(AlbumSortLabel));
+        RebuildFilteredRows();
+    }
+
+    /// <summary>Toggles a quality chip; clicking the active chip clears the filter.</summary>
+    [RelayCommand]
+    private void SelectQualityChip(QualityChip? chip)
+    {
+        if (chip == null) return;
+        QualityFilter = chip.Key == QualityFilter ? string.Empty : chip.Key;
+    }
+
+    [RelayCommand]
+    private void SetAlbumSort(string mode) => AlbumSortMode = mode;
+
     partial void OnTileArtworkSizeChanged(double value)
     {
         OnPropertyChanged(nameof(TileRowHeight));
     }
-    public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter) || ReleaseTypeFilter.HasValue;
+    public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter) || ReleaseTypeFilter.HasValue || QualityFilter.Length > 0;
 
     /// <summary>Whether the view is filtered to a specific artist's discography.</summary>
     public bool IsArtistFiltered => !string.IsNullOrEmpty(ArtistFilterName);
@@ -151,7 +197,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // previous filter's content for a frame.
         Interlocked.Increment(ref _rebuildGeneration);
         var albums = _library.Albums.ToList();
-        var rows = BuildFilteredRows(albums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter);
+        var rows = BuildFilteredRows(albums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode);
         _allAlbums = albums;
         FilteredAlbumRows.ReplaceAll(rows);
     }
@@ -182,7 +228,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // rows on first paint — otherwise the grid flashes the previous (unfiltered)
         // album list for a frame before the async rebuild's UI post lands.
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
@@ -227,7 +273,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         OnPropertyChanged(nameof(HasActiveFilter));
 
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
@@ -240,10 +286,12 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var searchFilter = _currentFilter;
         var columns = ColumnsPerRow;
         var releaseTypeFilter = ReleaseTypeFilter;
+        var qualityFilter = QualityFilter;
+        var sortMode = AlbumSortMode;
 
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter);
+            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter, qualityFilter, sortMode);
 
             // Only apply if no newer rebuild was requested
             if (Volatile.Read(ref _rebuildGeneration) == generation)
@@ -257,7 +305,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
     private List<AlbumRow> BuildFilteredRows(
         List<Album> allAlbums, string artistFilter, string searchFilter, int columnsPerRow,
-        ReleaseType? releaseTypeFilter = null)
+        ReleaseType? releaseTypeFilter = null, string qualityFilter = "", string sortMode = "default")
     {
         var filtered = allAlbums.AsEnumerable();
 
@@ -272,6 +320,15 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 _ => filtered.Where(a => a.ReleaseType == releaseTypeFilter.Value),
             };
         }
+
+        // Quality chip: an album qualifies when every track meets the bar,
+        // matching the album-level quality badge semantics.
+        filtered = qualityFilter switch
+        {
+            "lossless" => filtered.Where(a => a.Tracks.Count > 0 && a.Tracks.All(t => t.IsLossless)),
+            "hires" => filtered.Where(a => a.Tracks.Count > 0 && a.Tracks.All(t => t.IsHiResLossless)),
+            _ => filtered,
+        };
 
         // Apply artist filter first. Match on the album-artist credit only (parsed
         // into individual collaborators, so credited collaboration albums like
@@ -312,6 +369,26 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
 
+        // Explicit sort modes replace the default ordering (and the recent-import
+        // float) when no artist/search filter narrows the grid.
+        if (sortMode != "default" && string.IsNullOrEmpty(artistFilter) && string.IsNullOrWhiteSpace(searchFilter))
+        {
+            filtered = sortMode switch
+            {
+                "dateadded" => filtered.OrderByDescending(a =>
+                    a.Tracks.Count > 0 ? a.Tracks.Max(t => t.DateAdded) : DateTime.MinValue),
+                "mostplayed" => filtered.OrderByDescending(a => a.Tracks.Sum(t => (long)t.PlayCount))
+                    .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
+                _ => filtered,
+            };
+
+            IEnumerable<Album> sortedAlbums = filtered;
+            if (_settings.CollapseAlbumEditions)
+                sortedAlbums = CollapseEditions(sortedAlbums);
+
+            return GroupIntoRows(sortedAlbums, columnsPerRow);
+        }
+
         // Float newly added albums to the top when not searching/filtering.
         // IsRecentImport only lives for the current session, so also float
         // anything added in the last 7 days — the placement survives a restart
@@ -348,11 +425,16 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (_settings.CollapseAlbumEditions && string.IsNullOrWhiteSpace(searchFilter))
             ordered = CollapseEditions(ordered);
 
-        // Group albums into rows of columnsPerRow for virtualized display
+        return GroupIntoRows(ordered, columnsPerRow);
+    }
+
+    /// <summary>Groups albums into fixed-width rows for the virtualized grid.</summary>
+    private static List<AlbumRow> GroupIntoRows(IEnumerable<Album> albums, int columnsPerRow)
+    {
         var rows = new List<AlbumRow>();
         var currentRow = new List<Album>();
 
-        foreach (var album in ordered)
+        foreach (var album in albums)
         {
             currentRow.Add(album);
             if (currentRow.Count == columnsPerRow)

@@ -211,6 +211,18 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnMinimizeToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnCloseToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
 
+    // ── Songs page optional columns ──
+
+    [ObservableProperty] private bool _showRatingColumn = true;
+    [ObservableProperty] private bool _showBpmColumn;
+    [ObservableProperty] private bool _showBitrateColumn;
+    [ObservableProperty] private bool _showSampleRateColumn;
+
+    partial void OnShowRatingColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowBpmColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowBitrateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowSampleRateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+
     // ── Web remote ──
 
     private WebRemoteServer? _webRemote;
@@ -640,6 +652,10 @@ public partial class SettingsViewModel : ViewModelBase
             MinimizeToTray = _settings.MinimizeToTray;
             CloseToTray = _settings.CloseToTray;
             WebRemoteEnabled = _settings.WebRemoteEnabled;
+            ShowRatingColumn = _settings.ShowRatingColumn;
+            ShowBpmColumn = _settings.ShowBpmColumn;
+            ShowBitrateColumn = _settings.ShowBitrateColumn;
+            ShowSampleRateColumn = _settings.ShowSampleRateColumn;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
@@ -822,6 +838,10 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MinimizeToTray = MinimizeToTray;
         _settings.CloseToTray = CloseToTray;
         _settings.WebRemoteEnabled = WebRemoteEnabled;
+        _settings.ShowRatingColumn = ShowRatingColumn;
+        _settings.ShowBpmColumn = ShowBpmColumn;
+        _settings.ShowBitrateColumn = ShowBitrateColumn;
+        _settings.ShowSampleRateColumn = ShowSampleRateColumn;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;

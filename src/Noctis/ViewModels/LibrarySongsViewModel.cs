@@ -389,6 +389,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             "Year" => sortAsc ? ordered.ThenBy(x => x.Track.Year).ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber) : ordered.ThenByDescending(x => x.Track.Year).ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber),
             "Plays" => sortAsc ? ordered.ThenBy(x => x.Track.PlayCount) : ordered.ThenByDescending(x => x.Track.PlayCount),
             "Rating" => sortAsc ? ordered.ThenBy(x => x.Track.Rating).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Rating).ThenBy(x => x.Track.Title),
+            "Bpm" => sortAsc ? ordered.ThenBy(x => x.Track.Bpm).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Bpm).ThenBy(x => x.Track.Title),
+            "Bitrate" => sortAsc ? ordered.ThenBy(x => x.Track.Bitrate).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Bitrate).ThenBy(x => x.Track.Title),
+            "SampleRate" => sortAsc ? ordered.ThenBy(x => x.Track.SampleRate).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.SampleRate).ThenBy(x => x.Track.Title),
             "Duration" => sortAsc ? ordered.ThenBy(x => x.Track.Duration) : ordered.ThenByDescending(x => x.Track.Duration),
             "Date Added" => sortAsc ? ordered.ThenBy(x => x.Track.DateAdded) : ordered.ThenByDescending(x => x.Track.DateAdded),
             _ => ordered.ThenBy(x => x.Track.Title)

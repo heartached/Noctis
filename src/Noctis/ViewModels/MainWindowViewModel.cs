@@ -227,6 +227,12 @@ public partial class MainWindowViewModel : ViewModelBase
         _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService, playHistory);
         _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence);
         _albumsVm = new LibraryAlbumsViewModel(library, Player, Sidebar, Settings);
+        // Keep the top-bar sort dropdown's label in sync with the Albums grid sort.
+        _albumsVm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumSortLabel))
+                TopBar.AlbumSortLabel = _albumsVm.AlbumSortLabel;
+        };
         _artistsVm = new LibraryArtistsViewModel(library);
         _artistsVm.SetArtistImageService(artistImageService);
         _playlistsVm = new LibraryPlaylistsViewModel(Sidebar, Player, library, persistence);
@@ -1538,9 +1544,15 @@ public partial class MainWindowViewModel : ViewModelBase
                    && !_isCoverFlowMode
                    && !_albumsVm.IsArtistFiltered;
         if (show)
-            TopBar.ShowReleaseTypeChips(_albumsVm.ReleaseTypeChips, _albumsVm.SelectReleaseTypeChipCommand);
+        {
+            TopBar.ShowReleaseTypeChips(_albumsVm.ReleaseTypeChips, _albumsVm.SelectReleaseTypeChipCommand,
+                _albumsVm.QualityChips, _albumsVm.SelectQualityChipCommand, _albumsVm.SetAlbumSortCommand);
+            TopBar.AlbumSortLabel = _albumsVm.AlbumSortLabel;
+        }
         else
+        {
             TopBar.HideReleaseTypeChips();
+        }
     }
 
     private void EnterCoverFlowMode()

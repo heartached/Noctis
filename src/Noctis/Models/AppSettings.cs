@@ -150,6 +150,12 @@ public class AppSettings
     /// <summary>TCP port for the web remote.</summary>
     public int WebRemotePort { get; set; } = 9420;
 
+    // ── Songs page optional columns ──
+    public bool ShowRatingColumn { get; set; } = true;
+    public bool ShowBpmColumn { get; set; }
+    public bool ShowBitrateColumn { get; set; }
+    public bool ShowSampleRateColumn { get; set; }
+
     /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
     /// original #66 alpha glass look.</summary>

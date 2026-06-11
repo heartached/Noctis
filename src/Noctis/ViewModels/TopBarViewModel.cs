@@ -227,10 +227,22 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<ReleaseTypeChip>? _releaseTypeChips;
     [ObservableProperty] private ICommand? _releaseTypeChipCommand;
 
-    public void ShowReleaseTypeChips(ObservableCollection<ReleaseTypeChip> chips, ICommand selectCommand)
+    // Quality chips + sort dropdown shown alongside the release-type strip;
+    // owned by LibraryAlbumsViewModel, mirrored here for top-bar placement.
+    [ObservableProperty] private ObservableCollection<QualityChip>? _qualityChips;
+    [ObservableProperty] private ICommand? _qualityChipCommand;
+    [ObservableProperty] private ICommand? _albumSortCommand;
+    [ObservableProperty] private string _albumSortLabel = "Default";
+
+    public void ShowReleaseTypeChips(ObservableCollection<ReleaseTypeChip> chips, ICommand selectCommand,
+        ObservableCollection<QualityChip>? qualityChips = null, ICommand? qualityCommand = null,
+        ICommand? sortCommand = null)
     {
         ReleaseTypeChips = chips;
         ReleaseTypeChipCommand = selectCommand;
+        QualityChips = qualityChips;
+        QualityChipCommand = qualityCommand;
+        AlbumSortCommand = sortCommand;
         HasReleaseTypeChips = true;
     }
 
