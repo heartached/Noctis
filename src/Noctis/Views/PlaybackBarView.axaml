@@ -642,10 +642,21 @@
                                            Margin="18,0,-12,0" />
 
                                 <Grid Grid.Column="1" Height="20" ClipToBounds="False">
+                                    <!-- Waveform seekbar (optional): replaces the plain track visuals;
+                                         the transparent Slider on top still handles seeking. -->
+                                    <controls:WaveformSeekBar Height="18"
+                                                              VerticalAlignment="Center"
+                                                              IsHitTestVisible="False"
+                                                              IsVisible="{Binding ShowWaveform}"
+                                                              Peaks="{Binding WaveformPeaks}"
+                                                              Fraction="{Binding PositionFraction}"
+                                                              PlayedBrush="{DynamicResource IslandSliderFilled}"
+                                                              UnplayedBrush="{DynamicResource IslandSliderUnfilled}"/>
                                     <Canvas x:Name="SeekVisual"
                                             Height="20"
                                             ClipToBounds="False"
-                                            IsHitTestVisible="False">
+                                            IsHitTestVisible="False"
+                                            IsVisible="{Binding !ShowWaveform}">
                                         <Border x:Name="SeekTrackBackground"
                                                 Height="3"
                                                 CornerRadius="2"

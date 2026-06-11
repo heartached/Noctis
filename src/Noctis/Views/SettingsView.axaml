@@ -1199,6 +1199,20 @@
                 </Grid>
             </Border>
 
+            <!-- Waveform seekbar -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Waveform Seekbar" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Show the track's waveform in the playback bar. Generated in the background with ffmpeg and cached; the normal slider is used while it generates."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding WaveformSeekbarEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Player bar opacity -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">

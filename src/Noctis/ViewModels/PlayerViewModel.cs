@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Threading;
 using Avalonia.Media.Imaging;
+using Microsoft.Extensions.DependencyInjection;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -364,6 +365,57 @@ public partial class PlayerViewModel : ViewModelBase
         SleepTimerRemainingText = remaining.TotalHours >= 1
             ? $"{(int)remaining.TotalHours}:{remaining.Minutes:00}:{remaining.Seconds:00}"
             : $"{remaining.Minutes}:{remaining.Seconds:00}";
+    }
+
+    // ── Waveform seekbar ──────────────────────────────────────
+
+    private int _waveformGeneration;
+
+    /// <summary>Normalized waveform peaks for the current track, or null while
+    /// generating / when the waveform seekbar is disabled or unavailable.</summary>
+    [ObservableProperty] private IReadOnlyList<float>? _waveformPeaks;
+
+    /// <summary>True when the playback bar should render the waveform instead of
+    /// the plain seek track (setting on + peaks ready).</summary>
+    [ObservableProperty] private bool _showWaveform;
+
+    /// <summary>Re-evaluates waveform state; called on track change and when the
+    /// Settings toggle flips.</summary>
+    public void RefreshWaveformMode() => UpdateWaveformForCurrentTrack();
+
+    private void UpdateWaveformForCurrentTrack()
+    {
+        var generation = ++_waveformGeneration;
+        var track = CurrentTrack;
+
+        // Plain slider remains visible until peaks arrive (or forever when off).
+        WaveformPeaks = null;
+        ShowWaveform = false;
+
+        if (_settings?.WaveformSeekbarEnabled != true || track == null)
+            return;
+
+        var service = App.Services?.GetService<IWaveformService>();
+        if (service == null)
+            return;
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                var peaks = await service.GetPeaksAsync(track);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (generation != _waveformGeneration) return;
+                    WaveformPeaks = peaks;
+                    ShowWaveform = peaks != null;
+                });
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error(DebugLogger.Category.Playback, "Waveform.Load", ex.Message);
+            }
+        });
     }
 
     [RelayCommand]
@@ -1081,6 +1133,7 @@ public partial class PlayerViewModel : ViewModelBase
 
         CurrentTrack = track;
         LoadAlbumArt(track);
+        UpdateWaveformForCurrentTrack();
         Duration = track.Duration;
         DurationText = FormatTime(track.Duration);
         RemainingTimeText = FormatTime(track.Duration);

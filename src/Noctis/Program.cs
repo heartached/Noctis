@@ -192,6 +192,7 @@ internal class Program
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().FfmpegPath ?? string.Empty,
                 sp.GetRequiredService<IMetadataService>()));
         services.AddSingleton<IReplayGainScannerService, ReplayGainScannerService>();
+        services.AddSingleton<IWaveformService, WaveformService>();
 
         // Library tools
         services.AddSingleton<IFileOrganizerService, FileOrganizerService>();

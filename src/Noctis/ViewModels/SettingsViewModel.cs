@@ -192,6 +192,15 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _miniPlayerTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _miniPlayerAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
+
+    /// <summary>Waveform seekbar in the playback bar (requires ffmpeg).</summary>
+    [ObservableProperty] private bool _waveformSeekbarEnabled;
+
+    partial void OnWaveformSeekbarEnabledChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+        _player?.RefreshWaveformMode();
+    }
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
     [ObservableProperty] private bool _collapseAlbumEditions;
@@ -577,6 +586,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerTitleMarqueeEnabled = _settings.MiniPlayerTitleMarqueeEnabled;
             MiniPlayerAlbumMarqueeEnabled = _settings.MiniPlayerAlbumMarqueeEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
+            WaveformSeekbarEnabled = _settings.WaveformSeekbarEnabled;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
@@ -755,6 +765,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MiniPlayerTitleMarqueeEnabled = MiniPlayerTitleMarqueeEnabled;
         _settings.MiniPlayerAlbumMarqueeEnabled = MiniPlayerAlbumMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
+        _settings.WaveformSeekbarEnabled = WaveformSeekbarEnabled;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;

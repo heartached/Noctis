@@ -134,6 +134,10 @@ public class AppSettings
     /// <summary>Whether animated cover art (looping MP4/WebM) plays for the currently playing track.</summary>
     public bool EnableAnimatedCovers { get; set; } = true;
 
+    /// <summary>Whether the playback bar shows a waveform seekbar (requires ffmpeg;
+    /// falls back to the plain slider while the waveform generates).</summary>
+    public bool WaveformSeekbarEnabled { get; set; }
+
     /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
     /// original #66 alpha glass look.</summary>
