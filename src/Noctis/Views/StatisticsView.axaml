@@ -52,6 +52,15 @@
             <TextBlock Grid.Column="0" Text="Listening Statistics"
                        FontSize="28" FontWeight="Bold" VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Button Classes="stats-tab"
+                        Command="{Binding OpenWrapCommand}"
+                        ToolTip.Tip="Your listening recap — top tracks, artists and minutes, with a shareable card">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource CameraIcon}" Width="13" Height="13" VerticalAlignment="Center"/>
+                        <TextBlock Text="Noctis Wrap" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Border Width="1" Height="18" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" VerticalAlignment="Center" Margin="2,0"/>
                 <Button Classes="stats-tab" Classes.active="{Binding IsOverviewTabSelected}"
                         Command="{Binding SelectTabCommand}" CommandParameter="Overview">
                     <TextBlock Text="Overview" FontSize="13" FontWeight="SemiBold"/>

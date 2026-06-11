@@ -38,6 +38,14 @@ public partial class StatisticsViewModel : ViewModelBase
     [RelayCommand]
     private void SelectTab(string tab) => SelectedTab = tab;
 
+    /// <summary>Opens the Noctis Wrap recap dialog over the current play log.</summary>
+    [RelayCommand]
+    private async Task OpenWrap()
+    {
+        var vm = new WrapViewModel(_playHistory, _library);
+        await Views.WrapDialog.ShowAsync(vm);
+    }
+
     // ── Overview cards ──
 
     [ObservableProperty] private int _totalTracks;

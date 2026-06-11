@@ -7,32 +7,30 @@ using Noctis.ViewModels;
 
 namespace Noctis.Views;
 
-public partial class LyricShareDialog : Window
+public partial class WrapDialog : Window
 {
-    public LyricShareDialog()
+    public WrapDialog()
     {
         InitializeComponent();
     }
 
-    public LyricShareDialog(LyricShareViewModel vm) : this()
+    public WrapDialog(WrapViewModel vm) : this()
     {
         DataContext = vm;
     }
 
-    private LyricShareViewModel? Vm => DataContext as LyricShareViewModel;
+    private WrapViewModel? Vm => DataContext as WrapViewModel;
 
     private void OnCloseClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();
 
     private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // Click outside the card closes the dialog.
         Close();
         e.Handled = true;
     }
 
     private void OnCardPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // Prevent clicks inside the card from reaching the overlay.
         e.Handled = true;
     }
 
@@ -56,9 +54,9 @@ public partial class LyricShareDialog : Window
             vm.ReportStatus(status);
     }
 
-    public static async Task ShowAsync(LyricShareViewModel vm)
+    public static async Task ShowAsync(WrapViewModel vm)
     {
-        var dialog = new LyricShareDialog(vm);
+        var dialog = new WrapDialog(vm);
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow is Window owner)
