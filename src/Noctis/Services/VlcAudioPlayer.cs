@@ -184,18 +184,14 @@ public class VlcAudioPlayer : IAudioPlayer
     private long _playbackSessionId;
     private long _lastPlayStartTicksUtc;
 
-    // Sound enhancer state
+    // Equalizer state. The UI-facing parametric EQ is mapped onto LibVLC's
+    // 10-band graphic equalizer upstream (see ParametricEqMath); this class
+    // only ever receives the resolved 10 amp values + preamp.
     private readonly object _equalizerLock = new();
     private Equalizer? _equalizer;
-    private bool _soundEnhancerEnabled;
-    private int _soundEnhancerLevel = 50;
-
-    // Advanced equalizer state
     private bool _advancedEqEnabled;
-    private int _advancedEqPresetIndex;
     private float[] _advancedEqBands = new float[10];
     private float _advancedEqPreamp;
-    private int _appliedAdvancedEqPresetIndex = -2;
     private long _advancedEqRequestVersion;
     private long _advancedEqAppliedVersion;
     private int _advancedEqApplyQueued;
@@ -873,79 +869,18 @@ public class VlcAudioPlayer : IAudioPlayer
         }
     }
 
-    public void SetSoundEnhancer(bool enabled, int level)
-    {
-        if (_disposed) return;
-
-        _soundEnhancerEnabled = enabled;
-        _soundEnhancerLevel = Math.Clamp(level, 0, 100);
-
-        // Advanced EQ takes priority over sound enhancer
-        if (_advancedEqEnabled) return;
-
-        if (enabled)
-        {
-            // Create an equalizer with a subtle enhancement profile.
-            // Boost lows and highs slightly to create a "wider" sound.
-            lock (_equalizerLock)
-            {
-                _equalizer?.Dispose();
-                _equalizer = new Equalizer();
-                _equalizer.SetPreamp(0f);
-
-                // Scale factor from level: 0 = no boost, 100 = full boost
-                double factor = _soundEnhancerLevel / 100.0;
-
-                // 10-band EQ: boost bass (bands 0-2) and treble (bands 7-9)
-                // Band frequencies approximate: 60Hz, 170Hz, 310Hz, 600Hz, 1kHz, 3kHz, 6kHz, 12kHz, 14kHz, 16kHz
-                float bassBoost = (float)(6.0 * factor);
-                float trebleBoost = (float)(4.0 * factor);
-
-                _equalizer.SetAmp(bassBoost, 0);    // 60Hz
-                _equalizer.SetAmp((float)(bassBoost * 0.7), 1);  // 170Hz
-                _equalizer.SetAmp((float)(bassBoost * 0.3), 2);  // 310Hz
-                _equalizer.SetAmp(0f, 3);            // 600Hz (neutral)
-                _equalizer.SetAmp(0f, 4);            // 1kHz (neutral)
-                _equalizer.SetAmp(0f, 5);            // 3kHz (neutral)
-                _equalizer.SetAmp((float)(trebleBoost * 0.3), 6);  // 6kHz
-                _equalizer.SetAmp((float)(trebleBoost * 0.7), 7);  // 12kHz
-                _equalizer.SetAmp(trebleBoost, 8);   // 14kHz
-                _equalizer.SetAmp(trebleBoost, 9);   // 16kHz
-
-                // Only apply to player if it's initialized
-                if (_player != null)
-                    _player.SetEqualizer(_equalizer);
-                if (_standbyPrepared)
-                    _standbyPlayer.SetEqualizer(_equalizer);
-            }
-        }
-        else
-        {
-            // Disable equalizer (only if player is initialized)
-            lock (_equalizerLock)
-            {
-                if (_player != null)
-                    _player.SetEqualizer(null);
-                if (_standbyPrepared)
-                    _standbyPlayer.SetEqualizer(null);
-                _equalizer?.Dispose();
-                _equalizer = null;
-            }
-        }
-    }
-
-    public void SetAdvancedEqualizer(bool enabled, int presetIndex, float[] customBands)
+    public void SetAdvancedEqualizer(bool enabled, float[] bands, float preampDb)
     {
         if (_disposed) return;
 
         lock (_equalizerLock)
         {
             _advancedEqEnabled = enabled;
-            _advancedEqPresetIndex = presetIndex;
-            if (customBands is { Length: 10 })
+            _advancedEqPreamp = Math.Clamp(preampDb, -20f, 20f);
+            if (bands is { Length: 10 })
             {
                 for (var i = 0; i < 10; i++)
-                    _advancedEqBands[i] = Math.Clamp(customBands[i], -12f, 12f);
+                    _advancedEqBands[i] = Math.Clamp(bands[i], -12f, 12f);
             }
         }
 
@@ -984,50 +919,25 @@ public class VlcAudioPlayer : IAudioPlayer
     private void ApplyAdvancedEqualizerSnapshot(long capturedVersion = long.MinValue)
     {
         bool enabled;
-        int presetIndex;
         float[] bands;
-        bool soundEnhancerEnabled;
-        int soundEnhancerLevel;
+        float preamp;
 
         lock (_equalizerLock)
         {
             enabled = _advancedEqEnabled;
-            presetIndex = _advancedEqPresetIndex;
             bands = (float[])_advancedEqBands.Clone();
-            soundEnhancerEnabled = _soundEnhancerEnabled;
-            soundEnhancerLevel = _soundEnhancerLevel;
+            preamp = _advancedEqPreamp;
         }
 
         if (enabled)
         {
             lock (_equalizerLock)
             {
-                if (presetIndex >= 0)
-                {
-                    // Keep native preset behavior (including preset preamp).
-                    _equalizer?.Dispose();
-                    _equalizer = new Equalizer((uint)presetIndex);
-                    _advancedEqPreamp = Math.Clamp(_equalizer.Preamp, -20f, 20f);
-                    _appliedAdvancedEqPresetIndex = presetIndex;
-                }
-                else
-                {
-                    // Avoid rebuilding native EQ every slider tick in custom mode.
-                    if (_equalizer == null || _appliedAdvancedEqPresetIndex >= 0)
-                    {
-                        _equalizer?.Dispose();
-                        _equalizer = new Equalizer();
-                    }
-
-                    // Preserve preamp when switching from preset -> custom, which
-                    // prevents sudden global volume drops while editing bands.
-                    _equalizer.SetPreamp(Math.Clamp(_advancedEqPreamp, -20f, 20f));
-
-                    for (uint i = 0; i < 10; i++)
-                        _equalizer.SetAmp(bands[i], i);
-
-                    _appliedAdvancedEqPresetIndex = presetIndex;
-                }
+                // Avoid rebuilding the native EQ every slider tick.
+                _equalizer ??= new Equalizer();
+                _equalizer.SetPreamp(Math.Clamp(preamp, -20f, 20f));
+                for (uint i = 0; i < 10; i++)
+                    _equalizer.SetAmp(bands[i], i);
 
                 if (_player != null)
                     _player.SetEqualizer(_equalizer);
@@ -1050,23 +960,14 @@ public class VlcAudioPlayer : IAudioPlayer
         }
         else
         {
-            // Disable advanced EQ. If sound enhancer is still on, re-apply it.
-            if (soundEnhancerEnabled)
+            lock (_equalizerLock)
             {
-                SetSoundEnhancer(true, soundEnhancerLevel);
-            }
-            else
-            {
-                lock (_equalizerLock)
-                {
-                    if (_player != null)
-                        _player.SetEqualizer(null);
-                    if (_standbyPrepared)
-                        _standbyPlayer.SetEqualizer(null);
-                    _equalizer?.Dispose();
-                    _equalizer = null;
-                    _appliedAdvancedEqPresetIndex = -2;
-                }
+                if (_player != null)
+                    _player.SetEqualizer(null);
+                if (_standbyPrepared)
+                    _standbyPlayer.SetEqualizer(null);
+                _equalizer?.Dispose();
+                _equalizer = null;
             }
         }
     }
@@ -1267,7 +1168,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 Equalizer? equalizerToApply = null;
                 lock (_equalizerLock)
                 {
-                    if ((_soundEnhancerEnabled || _advancedEqEnabled) && _equalizer != null)
+                    if (_advancedEqEnabled && _equalizer != null)
                         equalizerToApply = _equalizer;
                 }
 
@@ -1486,7 +1387,7 @@ public class VlcAudioPlayer : IAudioPlayer
             Equalizer? equalizerToApply = null;
             lock (_equalizerLock)
             {
-                if ((_soundEnhancerEnabled || _advancedEqEnabled) && _equalizer != null)
+                if (_advancedEqEnabled && _equalizer != null)
                     equalizerToApply = _equalizer;
             }
 

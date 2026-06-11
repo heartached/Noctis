@@ -48,9 +48,6 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Whether audio output is muted.</summary>
     bool IsMuted { get; set; }
 
-    /// <summary>Enables or disables the sound enhancer (equalizer boost).</summary>
-    void SetSoundEnhancer(bool enabled, int level);
-
     /// <summary>Enables or disables loudness normalization.</summary>
     void SetNormalization(bool enabled);
 
@@ -75,11 +72,12 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Cancels and releases any prepared inactive media item.</summary>
     void CancelPreparedNext();
 
-    /// <summary>Applies the advanced 10-band equalizer.</summary>
+    /// <summary>Applies the equalizer curve to the output.</summary>
     /// <param name="enabled">Whether to enable the EQ.</param>
-    /// <param name="presetIndex">VLC preset index (0+), or -1 for custom bands.</param>
-    /// <param name="customBands">10-element array of band amplitudes in dB (-12 to +12). Used when presetIndex is -1.</param>
-    void SetAdvancedEqualizer(bool enabled, int presetIndex, float[] customBands);
+    /// <param name="bands">10-element array of graphic band amplitudes in dB (-12 to +12),
+    /// typically produced by <see cref="ParametricEqMath.MapToGraphicBands"/>.</param>
+    /// <param name="preampDb">Pre-amplification in dB (-20 to +20).</param>
+    void SetAdvancedEqualizer(bool enabled, float[] bands, float preampDb);
 
     /// <summary>Loads and begins playing an audio file.</summary>
     void Play(string filePath);

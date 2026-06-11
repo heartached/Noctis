@@ -211,23 +211,14 @@ public partial class SettingsViewModel : ViewModelBase
             list.Add(EqPresetNames[i]);
         return list;
     }
-    [ObservableProperty] private float _eqBand0;
-    [ObservableProperty] private float _eqBand1;
-    [ObservableProperty] private float _eqBand2;
-    [ObservableProperty] private float _eqBand3;
-    [ObservableProperty] private float _eqBand4;
-    [ObservableProperty] private float _eqBand5;
-    [ObservableProperty] private float _eqBand6;
-    [ObservableProperty] private float _eqBand7;
-    [ObservableProperty] private float _eqBand8;
-    [ObservableProperty] private float _eqBand9;
+    /// <summary>Editable parametric EQ bands (frequency / gain / Q).</summary>
+    public ObservableCollection<EqBandViewModel> EqBands { get; } = new();
+
+    public bool CanAddEqBand => EqBands.Count < ParametricEqMath.MaxBands;
+    public bool CanRemoveEqBand => EqBands.Count > ParametricEqMath.MinBands;
 
     private bool _suppressEqNotify;
     private const int EqSaveDebounceMs = 280;
-
-    /// <summary>VLC band center frequencies for display labels.</summary>
-    public static readonly string[] EqBandLabels =
-        { "60Hz", "170Hz", "310Hz", "600Hz", "1K", "3K", "6K", "12K", "14K", "16K" };
 
     /// <summary>EQ preset names. Index 0 = Custom, 1-18 = VLC built-in presets.</summary>
     public static readonly string[] EqPresetNames =
@@ -548,22 +539,14 @@ public partial class SettingsViewModel : ViewModelBase
             _suppressEqNotify = true;
             EqualizerEnabled = _settings.EqualizerEnabled;
             int loadedIdx = Math.Clamp(_settings.EqualizerPresetIndex + 1, 0, EqPresetNames.Length - 1);
-            SyncCustomInVisiblePresets(loadedIdx == 0);
             SelectedEqPresetIndex = loadedIdx;
             SelectedEqPresetName = EqPresetNames[loadedIdx];
-            if (_settings.EqualizerBands is { Length: 10 })
-            {
-                EqBand0 = _settings.EqualizerBands[0];
-                EqBand1 = _settings.EqualizerBands[1];
-                EqBand2 = _settings.EqualizerBands[2];
-                EqBand3 = _settings.EqualizerBands[3];
-                EqBand4 = _settings.EqualizerBands[4];
-                EqBand5 = _settings.EqualizerBands[5];
-                EqBand6 = _settings.EqualizerBands[6];
-                EqBand7 = _settings.EqualizerBands[7];
-                EqBand8 = _settings.EqualizerBands[8];
-                EqBand9 = _settings.EqualizerBands[9];
-            }
+            // Parametric bands are the source of truth; settings files written
+            // before the parametric EQ migrate from the legacy 10-band gains.
+            var loadedBands = _settings.ParametricEqBands is { Count: > 0 } pb
+                ? pb
+                : ParametricEqMath.FromGraphicBands(_settings.EqualizerBands);
+            SetEqBands(loadedBands);
             _suppressEqNotify = false;
 
             // Music folders
@@ -711,7 +694,11 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.NetEaseEnabled = NetEaseEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
         _settings.EqualizerPresetIndex = SelectedEqPresetIndex - 1;
-        _settings.EqualizerBands = GetEqBands();
+        _settings.ParametricEqBands = EqBands
+            .Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q })
+            .ToList();
+        // Downgrade-safe mirror of the applied 10-band curve.
+        _settings.EqualizerBands = GetGraphicEqBands().bands;
         _settings.DiscordRichPresenceEnabled = DiscordRichPresenceEnabled;
         _settings.LastFmScrobblingEnabled = LastFmScrobblingEnabled;
         _settings.LastFmUsername = LastFmUsername;
@@ -733,8 +720,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer?.SetNormalization(SoundCheckEnabled);
         _audioPlayer?.SetCrossfade(false, (int)Math.Round(CrossfadeDuration));
-        int vlcPresetIndex = SelectedEqPresetIndex - 1;
-        _audioPlayer?.SetAdvancedEqualizer(EqualizerEnabled, vlcPresetIndex, GetEqBands());
+        ApplyEqualizer();
     }
 
     private void ApplyPlayerSettings()
@@ -752,8 +738,41 @@ public partial class SettingsViewModel : ViewModelBase
 
     private void ApplyEqualizer()
     {
-        int vlcPresetIndex = SelectedEqPresetIndex - 1;
-        _audioPlayer?.SetAdvancedEqualizer(EqualizerEnabled, vlcPresetIndex, GetEqBands());
+        var (bands, preamp) = GetGraphicEqBands();
+        _audioPlayer?.SetAdvancedEqualizer(EqualizerEnabled, bands, preamp);
+    }
+
+    /// <summary>
+    /// The 10-band graphic curve + preamp currently in effect. Named presets keep
+    /// LibVLC's exact preset bands and preamp; Custom maps the parametric bands
+    /// onto the graphic frequencies via <see cref="ParametricEqMath"/>.
+    /// </summary>
+    private (float[] bands, float preamp) GetGraphicEqBands()
+    {
+        if (SelectedEqPresetIndex > 0 &&
+            TryGetVlcPresetCurve(SelectedEqPresetIndex - 1, out var presetBands, out var presetPreamp))
+            return (presetBands, presetPreamp);
+
+        return (ParametricEqMath.MapToGraphicBands(
+            EqBands.Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q })), 0f);
+    }
+
+    private static bool TryGetVlcPresetCurve(int vlcPresetIndex, out float[] bands, out float preamp)
+    {
+        bands = new float[10];
+        preamp = 0f;
+        try
+        {
+            using var tempEq = new LibVLCSharp.Shared.Equalizer((uint)vlcPresetIndex);
+            for (uint i = 0; i < 10; i++)
+                bands[i] = Math.Clamp(tempEq.Amp(i), -12f, 12f);
+            preamp = Math.Clamp(tempEq.Preamp, -20f, 20f);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -769,12 +788,14 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         var index = Array.IndexOf(EqPresetNames, presetName);
-        if (index < 0) { ApplyEqualizer(); return; }
+        // index 0 = "Custom", 1 = "Flat" = VLC preset 0
+        if (index <= 0 || !TryGetVlcPresetCurve(index - 1, out var bands, out var preamp))
+        {
+            ApplyEqualizer();
+            return;
+        }
 
-        // VLC preset index: our index - 1 (index 0 = "Custom", 1 = "Flat" = VLC preset 0)
-        // Pass the preset index directly — VLC loads the preset's own bands.
-        int vlcPresetIndex = index - 1;
-        _audioPlayer?.SetAdvancedEqualizer(true, vlcPresetIndex, new float[10]);
+        _audioPlayer?.SetAdvancedEqualizer(true, bands, preamp);
     }
 
     private void QueueEqualizerSave()
@@ -800,16 +821,22 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    private float[] GetEqBands() =>
-        new[] { EqBand0, EqBand1, EqBand2, EqBand3, EqBand4, EqBand5, EqBand6, EqBand7, EqBand8, EqBand9 };
-
-    private void SetEqBands(float[] bands)
+    /// <summary>Replace the editable band list (count clamped to 5–10), without firing per-band edits.</summary>
+    private void SetEqBands(IEnumerable<ParametricEqBand> bands)
     {
-        if (bands is not { Length: 10 }) return;
+        var wasSuppressed = _suppressEqNotify;
         _suppressEqNotify = true;
-        EqBand0 = bands[0]; EqBand1 = bands[1]; EqBand2 = bands[2]; EqBand3 = bands[3]; EqBand4 = bands[4];
-        EqBand5 = bands[5]; EqBand6 = bands[6]; EqBand7 = bands[7]; EqBand8 = bands[8]; EqBand9 = bands[9];
-        _suppressEqNotify = false;
+        EqBands.Clear();
+        foreach (var b in bands.Take(ParametricEqMath.MaxBands))
+            EqBands.Add(new EqBandViewModel(b.FrequencyHz, b.GainDb, b.Q, OnEqBandEdited));
+        while (EqBands.Count < ParametricEqMath.MinBands)
+        {
+            EqBands.Add(new EqBandViewModel(
+                ParametricEqMath.GraphicBandFrequencies[EqBands.Count], 0, ParametricEqMath.DefaultQ, OnEqBandEdited));
+        }
+        _suppressEqNotify = wasSuppressed;
+        OnPropertyChanged(nameof(CanAddEqBand));
+        OnPropertyChanged(nameof(CanRemoveEqBand));
     }
 
     // ── Theme commands ──
@@ -1538,23 +1565,15 @@ public partial class SettingsViewModel : ViewModelBase
         // Mutating this collection on selection makes the popup re-layout and visibly shift.
     }
 
+    /// <summary>Populate the band editor from a VLC preset curve (one parametric band per graphic frequency).</summary>
     private void LoadPresetBands(int vlcPresetIndex)
     {
-        try
-        {
-            using var tempEq = new LibVLCSharp.Shared.Equalizer((uint)vlcPresetIndex);
-            var bands = new float[10];
-            for (uint i = 0; i < 10; i++)
-                bands[i] = Math.Clamp(tempEq.Amp(i), -12f, 12f);
-            SetEqBands(bands);
-        }
-        catch
-        {
-            SetEqBands(new float[10]);
-        }
+        TryGetVlcPresetCurve(vlcPresetIndex, out var bands, out _);
+        SetEqBands(ParametricEqMath.FromGraphicBands(bands));
     }
 
-    private void OnEqBandChanged()
+    /// <summary>A band's frequency / gain / Q was edited: switch to Custom, apply, save.</summary>
+    private void OnEqBandEdited()
     {
         if (_suppressEqNotify) return;
 
@@ -1571,16 +1590,25 @@ public partial class SettingsViewModel : ViewModelBase
         QueueEqualizerSave();
     }
 
-    partial void OnEqBand0Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand1Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand2Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand3Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand4Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand5Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand6Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand7Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand8Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand9Changed(float value) => OnEqBandChanged();
+    [RelayCommand]
+    private void AddEqBand()
+    {
+        if (!CanAddEqBand) return;
+        // New band starts neutral at 1 kHz so adding never changes the sound.
+        EqBands.Add(new EqBandViewModel(1000, 0, ParametricEqMath.DefaultQ, OnEqBandEdited));
+        OnPropertyChanged(nameof(CanAddEqBand));
+        OnPropertyChanged(nameof(CanRemoveEqBand));
+        OnEqBandEdited();
+    }
+
+    [RelayCommand]
+    private void RemoveEqBand(EqBandViewModel? band)
+    {
+        if (band == null || !CanRemoveEqBand || !EqBands.Remove(band)) return;
+        OnPropertyChanged(nameof(CanAddEqBand));
+        OnPropertyChanged(nameof(CanRemoveEqBand));
+        OnEqBandEdited();
+    }
 
     [RelayCommand]
     private void ResetEqualizer()
@@ -1589,10 +1617,10 @@ public partial class SettingsViewModel : ViewModelBase
         SelectedEqPresetIndex = 1; // "Flat"
         SelectedEqPresetName = "Flat";
         SyncCustomInVisiblePresets(false);
+        SetEqBands(ParametricEqMath.FromGraphicBands(null));
         _suppressEqNotify = false;
 
         ApplyEqualizer();
-        SetEqBands(new float[10]);
         QueueEqualizerSave();
     }
 
@@ -2080,8 +2108,7 @@ public partial class SettingsViewModel : ViewModelBase
             SelectedEqPresetIndex = 1; // Flat
             SelectedEqPresetName = "Flat";
             SyncCustomInVisiblePresets(false);
-            EqBand0 = 0; EqBand1 = 0; EqBand2 = 0; EqBand3 = 0; EqBand4 = 0;
-            EqBand5 = 0; EqBand6 = 0; EqBand7 = 0; EqBand8 = 0; EqBand9 = 0;
+            SetEqBands(ParametricEqMath.FromGraphicBands(null));
             _suppressEqNotify = false;
 
             // Music folders

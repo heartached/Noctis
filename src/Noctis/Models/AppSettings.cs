@@ -76,12 +76,6 @@ public class AppSettings
     /// <summary>Crossfade duration in seconds (1–12, fractional allowed).</summary>
     public double CrossfadeDuration { get; set; } = 6;
 
-    /// <summary>Whether the sound enhancer is enabled.</summary>
-    public bool SoundEnhancerEnabled { get; set; }
-
-    /// <summary>Sound enhancer intensity level (0–100).</summary>
-    public int SoundEnhancerLevel { get; set; } = 50;
-
     /// <summary>Whether loudness normalization (Sound Check) is enabled.</summary>
     public bool SoundCheckEnabled { get; set; }
 
@@ -131,8 +125,15 @@ public class AppSettings
     /// <summary>Selected EQ preset index. -1 = Custom, 0+ = VLC built-in preset.</summary>
     public int EqualizerPresetIndex { get; set; } = 0; // 0 = VLC "Flat" preset
 
-    /// <summary>Custom band amplitudes in dB (-12 to +12), one per VLC EQ band.</summary>
+    /// <summary>Legacy 10-band graphic amplitudes in dB (-12 to +12). Still read to
+    /// migrate pre-parametric settings and written as a downgrade-safe mirror of
+    /// the applied curve; <see cref="ParametricEqBands"/> is the source of truth.</summary>
     public float[] EqualizerBands { get; set; } = new float[10];
+
+    /// <summary>Parametric EQ bands (frequency / gain / Q). Null on settings files
+    /// written before the parametric EQ existed — migrated from
+    /// <see cref="EqualizerBands"/> on first load.</summary>
+    public List<ParametricEqBand>? ParametricEqBands { get; set; }
 
     // ── Integration settings ──
 
