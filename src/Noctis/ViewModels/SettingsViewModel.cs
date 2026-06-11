@@ -210,6 +210,47 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnMinimizeToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnCloseToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+
+    // ── Web remote ──
+
+    private WebRemoteServer? _webRemote;
+
+    /// <summary>Local-network web remote (phone control page). Off by default.</summary>
+    [ObservableProperty] private bool _webRemoteEnabled;
+
+    /// <summary>Display URL for the running remote, or empty when off.</summary>
+    [ObservableProperty] private string _webRemoteUrl = string.Empty;
+
+    partial void OnWebRemoteEnabledChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+        UpdateWebRemoteState();
+    }
+
+    private void UpdateWebRemoteState()
+    {
+        if (WebRemoteEnabled && _player != null)
+        {
+            try
+            {
+                _webRemote ??= new WebRemoteServer(_player);
+                if (!_webRemote.IsRunning)
+                    _webRemote.Start(_settings.WebRemotePort);
+                var ip = WebRemoteServer.GetLocalAddress() ?? "<this-pc-ip>";
+                WebRemoteUrl = $"http://{ip}:{_settings.WebRemotePort}";
+            }
+            catch (Exception ex)
+            {
+                WebRemoteUrl = $"Failed to start: {ex.Message}";
+                DebugLogger.Error(DebugLogger.Category.Error, "WebRemote.StartFailed", ex.Message);
+            }
+        }
+        else
+        {
+            _webRemote?.Stop();
+            WebRemoteUrl = string.Empty;
+        }
+    }
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
     [ObservableProperty] private bool _collapseAlbumEditions;
@@ -598,6 +639,7 @@ public partial class SettingsViewModel : ViewModelBase
             WaveformSeekbarEnabled = _settings.WaveformSeekbarEnabled;
             MinimizeToTray = _settings.MinimizeToTray;
             CloseToTray = _settings.CloseToTray;
+            WebRemoteEnabled = _settings.WebRemoteEnabled;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
@@ -779,6 +821,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.WaveformSeekbarEnabled = WaveformSeekbarEnabled;
         _settings.MinimizeToTray = MinimizeToTray;
         _settings.CloseToTray = CloseToTray;
+        _settings.WebRemoteEnabled = WebRemoteEnabled;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
