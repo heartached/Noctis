@@ -7,18 +7,28 @@
              x:DataType="vm:LibraryArtistsViewModel"
              Background="{DynamicResource AppMainBackground}">
 
+    <UserControl.Styles>
+        <!-- Keep portrait tiles visually static on hover/press (image is the affordance) -->
+        <Style Selector="Button.artist-tile:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.artist-tile:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="*">
         <!-- Right margin trimmed to 2 so the vertical scrollbar sits at the window edge. -->
         <DockPanel Grid.Row="0" Margin="16,8,2,16">
 
         <!-- Content area with overlay for empty state -->
         <Grid>
-            <!-- Single virtualized list with letter headers and artist rows -->
+            <!-- Artist grid: outer ListBox virtualizes rows, inner UniformGrid lays out 7 portraits per row -->
             <ListBox x:Name="ArtistListBox"
-                     ItemsSource="{Binding FlatArtistList}"
+                     ItemsSource="{Binding ArtistRows}"
                      Background="Transparent"
                      BorderThickness="0"
-                     Padding="0,0,0,115"
+                     Padding="0,8,0,115"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      SelectionMode="Single"
@@ -28,76 +38,69 @@
                         <Setter Property="Focusable" Value="False" />
                     </Style>
                 </ListBox.Styles>
-                <ListBox.DataTemplates>
-                    <!-- Letter header template -->
-                    <DataTemplate DataType="{x:Type m:ArtistHeaderItem}">
-                        <TextBlock Text="{Binding Letter}"
-                                   FontSize="18"
-                                   FontWeight="Bold"
-                                   Opacity="0.4"
-                                   Margin="0,8,0,4"
-                                   IsHitTestVisible="False" />
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="m:ArtistRow">
+                        <ItemsControl ItemsSource="{Binding Artists}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="7" Rows="1" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type m:Artist}">
+                                    <Button Classes="artist-tile"
+                                            Focusable="False"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="0"
+                                            Margin="4,6"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            Cursor="Hand"
+                                            Command="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).OpenArtistCommand, FallbackValue={x:Null}}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Spacing="10" HorizontalAlignment="Center">
+                                            <!-- Circular portrait with icon fallback -->
+                                            <Border Width="124" Height="124"
+                                                    CornerRadius="62"
+                                                    Background="#2E2E2E"
+                                                    ClipToBounds="True"
+                                                    HorizontalAlignment="Center">
+                                                <Panel>
+                                                    <PathIcon Data="{StaticResource ArtistsIcon}"
+                                                              Width="44"
+                                                              Height="44"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              Opacity="0.35" />
+                                                    <ctrl:CachedImage SourcePath="{Binding ImagePath}"
+                                                                      Stretch="UniformToFill"
+                                                                      Width="124"
+                                                                      Height="124"
+                                                                      IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                </Panel>
+                                            </Border>
+                                            <ctrl:HighlightTextBlock DisplayText="{Binding Name}"
+                                                                     HighlightText="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).SearchText, FallbackValue=''}"
+                                                                     FontSize="13"
+                                                                     FontWeight="SemiBold"
+                                                                     TextWrapping="NoWrap"
+                                                                     MaxLines="1"
+                                                                     TextTrimming="CharacterEllipsis"
+                                                                     TextAlignment="Center"
+                                                                     MaxWidth="132"
+                                                                     HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </DataTemplate>
-                    <!-- Artist data template -->
-                    <DataTemplate DataType="{x:Type m:ArtistDataItem}">
-                        <Button Classes="artist-item"
-                                Focusable="False"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Left"
-                                Padding="12,8"
-                                MinHeight="0"
-                                CornerRadius="6"
-                                Cursor="Hand"
-                                Command="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).OpenArtistCommand, FallbackValue={x:Null}}"
-                                CommandParameter="{Binding Artist}">
-                            <StackPanel Orientation="Horizontal" Spacing="16">
-                                <!-- Artist avatar with image or fallback -->
-                                <Border Width="40" Height="40"
-                                        CornerRadius="20"
-                                        Background="#505050"
-                                        ClipToBounds="True">
-                                    <Panel>
-                                        <PathIcon Data="{StaticResource ArtistsIcon}"
-                                                  Width="20"
-                                                  Height="20"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  Opacity="0.42" />
-                                        <ctrl:CachedImage SourcePath="{Binding Artist.ImagePath}"
-                                                          Stretch="UniformToFill"
-                                                          Width="40"
-                                                          Height="40"
-                                                          IsVisible="{Binding Artist.ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                    </Panel>
-                                </Border>
-                                <StackPanel VerticalAlignment="Center">
-                                    <ctrl:HighlightTextBlock DisplayText="{Binding Artist.Name}"
-                                                             HighlightText="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).SearchText}"
-                                                             FontSize="13"
-                                                             FontWeight="SemiBold"
-                                                             TextWrapping="NoWrap"
-                                                             MaxLines="1"
-                                                             TextTrimming="CharacterEllipsis"
-                                                             VerticalAlignment="Center" />
-                                    <TextBlock FontSize="11" Opacity="0.5">
-                                        <TextBlock.Text>
-                                            <MultiBinding StringFormat="{}{0} albums · {1} tracks">
-                                                <Binding Path="Artist.AlbumCount" />
-                                                <Binding Path="Artist.TrackCount" />
-                                            </MultiBinding>
-                                        </TextBlock.Text>
-                                    </TextBlock>
-                                </StackPanel>
-                            </StackPanel>
-                        </Button>
-                    </DataTemplate>
-                </ListBox.DataTemplates>
+                </ListBox.ItemTemplate>
             </ListBox>
 
             <!-- Empty state overlay -->
-            <StackPanel IsVisible="{Binding !FlatArtistList.Count}"
+            <StackPanel IsVisible="{Binding !ArtistRows.Count}"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="8">

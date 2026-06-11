@@ -370,6 +370,44 @@
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════ -->
+            <!-- APPEARS ON                                           -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel Margin="32,0" Spacing="12" IsVisible="{Binding AppearsOn.Count}">
+                <TextBlock Text="Appears On" FontSize="20" FontWeight="Bold"/>
+                <ItemsControl ItemsSource="{Binding AppearsOn}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="6" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type m:Album}">
+                            <Button Classes="album-tile" Focusable="False" Margin="4"
+                                    HorizontalAlignment="Stretch"
+                                    Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).OpenAlbumCommand}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Spacing="6">
+                                    <Border CornerRadius="6" ClipToBounds="True"
+                                            Background="#1AFFFFFF" HorizontalAlignment="Stretch"
+                                            Height="160">
+                                        <ctrl:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                          Stretch="UniformToFill"
+                                                          RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                    </Border>
+                                    <TextBlock FontSize="12" FontWeight="SemiBold"
+                                               Text="{Binding Name}"
+                                               TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                    <TextBlock FontSize="10" Opacity="0.55"
+                                               Text="{Binding Artist}"
+                                               TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════════ -->
             <!-- ABOUT                                                -->
             <!-- ═══════════════════════════════════════════════════ -->
             <Border Margin="32,8,32,0" Padding="28,24" CornerRadius="12"
@@ -410,6 +448,53 @@
                     </StackPanel>
                 </Grid>
             </Border>
+
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- SIMILAR ARTISTS (from the local library)             -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel Margin="32,0" Spacing="12" IsVisible="{Binding SimilarArtists.Count}">
+                <TextBlock Text="Similar Artists" FontSize="20" FontWeight="Bold"/>
+                <ItemsControl ItemsSource="{Binding SimilarArtists}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type m:Artist}">
+                            <Button Background="Transparent" BorderThickness="0"
+                                    Padding="0" Margin="0,0,28,12"
+                                    Cursor="Hand"
+                                    Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).OpenSimilarArtistCommand}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                    <Border Width="110" Height="110" CornerRadius="55"
+                                            Background="#2E2E2E" ClipToBounds="True"
+                                            HorizontalAlignment="Center">
+                                        <Panel>
+                                            <PathIcon Data="{StaticResource ArtistsIcon}"
+                                                      Width="38" Height="38"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      Opacity="0.35" />
+                                            <ctrl:CachedImage SourcePath="{Binding ImagePath}"
+                                                              Stretch="UniformToFill"
+                                                              Width="110" Height="110"
+                                                              IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        </Panel>
+                                    </Border>
+                                    <TextBlock Text="{Binding Name}"
+                                               FontSize="13" FontWeight="SemiBold"
+                                               TextAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxWidth="120"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
 
         </StackPanel>
     </ScrollViewer>

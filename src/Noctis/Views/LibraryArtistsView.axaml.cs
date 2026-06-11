@@ -22,14 +22,14 @@ public partial class LibraryArtistsView : UserControl
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_vm != null)
-            _vm.FlatArtistList.CollectionChanged -= OnFlatArtistListChanged;
+            _vm.ArtistRows.CollectionChanged -= OnArtistRowsChanged;
 
         _vm = DataContext as LibraryArtistsViewModel;
         if (_vm != null)
-            _vm.FlatArtistList.CollectionChanged += OnFlatArtistListChanged;
+            _vm.ArtistRows.CollectionChanged += OnArtistRowsChanged;
     }
 
-    private void OnFlatArtistListChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    private void OnArtistRowsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
         // Scroll to top when rows change due to an active filter (search text)
         // BUT skip if a scroll restore is pending (returning from artist detail)
@@ -57,7 +57,7 @@ public partial class LibraryArtistsView : UserControl
                 vm.SavedScrollOffset = sv.Offset.Y;
         }
         if (_vm != null)
-            _vm.FlatArtistList.CollectionChanged -= OnFlatArtistListChanged;
+            _vm.ArtistRows.CollectionChanged -= OnArtistRowsChanged;
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -78,8 +78,8 @@ public partial class LibraryArtistsView : UserControl
         // Re-subscribe to collection changes (unsubscribed in OnDetachedFromVisualTree)
         if (_vm != null)
         {
-            _vm.FlatArtistList.CollectionChanged -= OnFlatArtistListChanged;
-            _vm.FlatArtistList.CollectionChanged += OnFlatArtistListChanged;
+            _vm.ArtistRows.CollectionChanged -= OnArtistRowsChanged;
+            _vm.ArtistRows.CollectionChanged += OnArtistRowsChanged;
         }
 
         if (DataContext is LibraryArtistsViewModel vm && vm.SavedScrollOffset > 0)

@@ -36,6 +36,13 @@ public partial class ArtistDetailViewModel : ViewModelBase
     public ObservableCollection<Album> Singles { get; } = new();
     public ObservableCollection<Album> Eps { get; } = new();
     public ObservableCollection<Album> Compilations { get; } = new();
+
+    /// <summary>Albums by other artists (compilations, features) this artist appears on.</summary>
+    public ObservableCollection<Album> AppearsOn { get; } = new();
+
+    /// <summary>Artists from the local library with overlapping genres or shared track credits.</summary>
+    public ObservableCollection<Artist> SimilarArtists { get; } = new();
+
     [ObservableProperty] private Album? _featuredAlbum;
 
     // ── Bio fields ──
@@ -59,6 +66,7 @@ public partial class ArtistDetailViewModel : ViewModelBase
     public event EventHandler? BackRequested;
     public event EventHandler<Album>? AlbumOpened;
     public event EventHandler? SeeAllAlbumsRequested;
+    public event EventHandler<Artist>? SimilarArtistOpened;
 
     public ArtistDetailViewModel(
         Artist artist,
@@ -81,6 +89,9 @@ public partial class ArtistDetailViewModel : ViewModelBase
 
         BuildSections();
         _ = LoadEnrichmentsAsync();
+
+        // Token parsing over every library track is too heavy for the UI thread.
+        _ = Task.Run(ComputeLibraryConnections);
     }
 
     private string BuildTagline()
@@ -156,6 +167,78 @@ public partial class ArtistDetailViewModel : ViewModelBase
         foreach (var a in comps.OrderByDescending(a => a.Year)
                                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
             Compilations.Add(a);
+    }
+
+    /// <summary>
+    /// Scans the library's track credits once to derive "Appears On" (albums by
+    /// other artists that credit this artist) and "Similar Artists" (library
+    /// artists ranked by shared genres and direct track collaborations).
+    /// Runs on the thread pool; results are posted back to the UI thread.
+    /// </summary>
+    private void ComputeLibraryConnections()
+    {
+        var myName = _artist.Name;
+        var ownAlbumIds = _library.GetAlbumsByArtist(myName).Select(a => a.Id).ToHashSet();
+
+        var genresByArtist = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var collabCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var appearsOnAlbumIds = new HashSet<Guid>();
+
+        foreach (var track in _library.Tracks)
+        {
+            var tokens = Track.ParseArtistTokens(track.Artist);
+            if (tokens.Length == 0) continue;
+
+            var creditsMe = tokens.Contains(myName, StringComparer.OrdinalIgnoreCase);
+            var genre = track.Genre?.Trim();
+
+            foreach (var token in tokens)
+            {
+                if (!string.IsNullOrEmpty(genre))
+                {
+                    if (!genresByArtist.TryGetValue(token, out var genres))
+                        genresByArtist[token] = genres = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    genres.Add(genre);
+                }
+
+                if (creditsMe && !string.Equals(token, myName, StringComparison.OrdinalIgnoreCase))
+                    collabCounts[token] = collabCounts.GetValueOrDefault(token) + 1;
+            }
+
+            if (creditsMe && !ownAlbumIds.Contains(track.AlbumId))
+                appearsOnAlbumIds.Add(track.AlbumId);
+        }
+
+        var appearsOn = _library.Albums
+            .Where(a => appearsOnAlbumIds.Contains(a.Id))
+            .OrderByDescending(a => a.Year)
+            .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var myGenres = genresByArtist.GetValueOrDefault(myName) ?? new HashSet<string>();
+        var similar = _library.Artists
+            .Where(a => !string.Equals(a.Name, myName, StringComparison.OrdinalIgnoreCase))
+            .Select(a => new
+            {
+                Artist = a,
+                Score = 2 * (genresByArtist.TryGetValue(a.Name, out var g) ? g.Count(myGenres.Contains) : 0)
+                        + 3 * collabCounts.GetValueOrDefault(a.Name)
+            })
+            .Where(x => x.Score > 0)
+            .OrderByDescending(x => x.Score)
+            .ThenByDescending(x => x.Artist.TrackCount)
+            .Take(8)
+            .Select(x => x.Artist)
+            .ToList();
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            AppearsOn.Clear();
+            foreach (var a in appearsOn) AppearsOn.Add(a);
+
+            SimilarArtists.Clear();
+            foreach (var a in similar) SimilarArtists.Add(a);
+        });
     }
 
     private async Task LoadEnrichmentsAsync()
@@ -296,4 +379,11 @@ public partial class ArtistDetailViewModel : ViewModelBase
 
     [RelayCommand]
     private void SeeAllAlbums() => SeeAllAlbumsRequested?.Invoke(this, EventArgs.Empty);
+
+    [RelayCommand]
+    private void OpenSimilarArtist(Artist? artist)
+    {
+        if (artist == null) return;
+        SimilarArtistOpened?.Invoke(this, artist);
+    }
 }

@@ -1250,7 +1250,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnArtistOpened(object? sender, Artist artist)
     {
-        OpenArtistDiscography(artist.Name);
+        OpenArtistDetail(artist);
     }
 
     private void OpenArtistDetail(Artist artist)
@@ -1262,13 +1262,23 @@ public partial class MainWindowViewModel : ViewModelBase
         page.BackRequested += (_, _) => GoBackInHistory();
         page.AlbumOpened += (_, album) => OpenAlbumDetail(album);
         page.SeeAllAlbumsRequested += (_, _) => OpenArtistDiscography(artist.Name);
+        page.SimilarArtistOpened += (_, similar) => OpenArtistDetail(similar);
         CurrentView = page;
         RefreshBackButton();
     }
 
     private void OpenArtistDetailByName(string artistName)
     {
-        OpenArtistDiscography(Track.GetPrimaryArtist(artistName));
+        var primary = Track.GetPrimaryArtist(artistName);
+        var artist = _library.Artists.FirstOrDefault(a =>
+            string.Equals(a.Name, primary, StringComparison.OrdinalIgnoreCase));
+
+        // Artists not in the local index (e.g. featured-only credits) fall back
+        // to the filtered discography grid, which matches on track credits.
+        if (artist != null)
+            OpenArtistDetail(artist);
+        else
+            OpenArtistDiscography(primary);
     }
 
 
