@@ -2019,6 +2019,33 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Opens the LRC sync editor for the current track: tap-to-sync timestamps
+    /// while the song plays, plus per-line nudge buttons. Reloads lyrics on save.
+    /// </summary>
+    [RelayCommand]
+    private async Task OpenLrcEditor()
+    {
+        var track = _player.CurrentTrack;
+        if (track == null) return;
+
+        var synced = !string.IsNullOrWhiteSpace(_loadedSyncedLyrics) ? _loadedSyncedLyrics : track.SyncedLyrics;
+        var plain = !string.IsNullOrWhiteSpace(_loadedLyrics) ? _loadedLyrics : track.Lyrics;
+        if (string.IsNullOrWhiteSpace(synced) && string.IsNullOrWhiteSpace(plain))
+        {
+            ShowStatusText("No lyrics to sync — search lyrics first", 4000);
+            return;
+        }
+
+        var vm = new LrcEditorViewModel(track, _player, _metadata, synced, plain);
+        vm.Saved += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            if (_player.CurrentTrack == track)
+                LoadLyricsForTrack(track);
+        });
+        await Views.LrcEditorDialog.ShowAsync(vm);
+    }
+
+    /// <summary>
     /// Seeks playback to the timestamp of a clicked lyric line.
     /// </summary>
     [RelayCommand]
