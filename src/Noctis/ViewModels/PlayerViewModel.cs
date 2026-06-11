@@ -127,6 +127,7 @@ public partial class PlayerViewModel : ViewModelBase
     private long _queueVersion;
     private AutoMixPreparedTransitionSnapshot? _autoMixPreparedSnapshot;
     private SettingsViewModel? _settings;
+    private IPlayHistoryService? _playHistory; // injected for play/skip event logging
 
     public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers)
     {
@@ -194,6 +195,11 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Playback, "Next", $"queueLen={UpNext.Count}");
         CancelAutoMixTransition("user skipped");
         if (UpNext.Count == 0) return;
+
+        // A user skip before the halfway point counts as a skip in the play log.
+        if (CurrentTrack != null && PositionFraction < 0.5)
+            _playHistory?.RecordSkip(CurrentTrack);
+
         AdvanceQueue(QueueAdvanceReason.UserSkip);
     }
 
@@ -302,6 +308,9 @@ public partial class PlayerViewModel : ViewModelBase
 
     /// <summary>Sets the SettingsViewModel for per-track EQ and audio overrides.</summary>
     public void SetSettingsViewModel(SettingsViewModel settings) => _settings = settings;
+
+    /// <summary>Sets the play history log used for play/skip event recording.</summary>
+    public void SetPlayHistory(IPlayHistoryService playHistory) => _playHistory = playHistory;
 
     /// <summary>Sets the navigation action for the lyrics view.</summary>
     public void SetNavigateAction(Action<string> navigateAction)
@@ -847,6 +856,7 @@ public partial class PlayerViewModel : ViewModelBase
         // Update play count and last played time
         track.PlayCount++;
         track.LastPlayed = DateTime.UtcNow;
+        _playHistory?.RecordPlay(track);
 
         // Apply per-track volume adjustment
         _audioPlayer.VolumeAdjust = track.VolumeAdjust;

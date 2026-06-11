@@ -27,6 +27,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly ArtistImageService _artistImageService;
     private readonly ArtistBioService? _artistBioService;
     private readonly LoonClient _loon;
+    private readonly IPlayHistoryService _playHistory;
 
     // ── Settings modal ──
     [ObservableProperty] private bool _isSettingsModalOpen;
@@ -175,9 +176,11 @@ public partial class MainWindowViewModel : ViewModelBase
         ArtistBioService artistBioService,
         LoonClient loon,
         ILrcLibService lrcLib,
-        INetEaseService netEase)
+        INetEaseService netEase,
+        IPlayHistoryService playHistory)
     {
         _library = library;
+        _playHistory = playHistory;
         _persistence = persistence;
         _discord = discord;
         _lastFm = lastFm;
@@ -195,6 +198,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetAudioPlayer(audioPlayer);
         Settings.SetPlayer(Player);
         Player.SetSettingsViewModel(Settings);
+        Player.SetPlayHistory(playHistory);
         Settings.SetDiscordPresence(discord);
         Settings.SetLoonClient(loon);
         Settings.SetLastFm(lastFm);
@@ -241,7 +245,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
-        _statisticsVm = new StatisticsViewModel(library);
+        _statisticsVm = new StatisticsViewModel(library, playHistory);
         _coverFlowVm = new CoverFlowViewModel(Player);
 
         // Default view
@@ -467,6 +471,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Update volume in settings and save everything
         Settings.SetVolume(Player.Volume);
         await Settings.SaveAsync();
+        await _playHistory.FlushAsync();
 
         // Cleanup integrations
         await _discord.ClearAsync();
