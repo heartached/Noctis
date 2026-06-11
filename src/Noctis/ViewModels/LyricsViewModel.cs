@@ -1357,6 +1357,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             // Subscribe to new track's IsFavorite changes for metadata heart
             track.PropertyChanged += OnCurrentTrackPropertyChanged;
             OnPropertyChanged(nameof(ShowMetadataFavoriteHeart));
+            OnPropertyChanged(nameof(ShareAvailable));
 
             // Start sync timer only if synced lyrics exist and sync tab is active
             if (_hasSyncedLyrics && IsSyncTabSelected)
@@ -1457,6 +1458,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 _currentTrack.PropertyChanged -= OnCurrentTrackPropertyChanged;
             ClearLyricsState();
             OnPropertyChanged(nameof(ShowMetadataFavoriteHeart));
+            OnPropertyChanged(nameof(ShareAvailable));
             return;
         }
 
@@ -1983,6 +1985,37 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         var fractionalSeconds = fractionalUnit / divisor;
         return TimeSpan.FromMinutes(minutes) +
                TimeSpan.FromSeconds(wholeSeconds + fractionalSeconds);
+    }
+
+    /// <summary>Whether the lyric share-card entry point should be visible.</summary>
+    public bool ShareAvailable => _player.CurrentTrack != null && !IsSearching && !ShowSearchButton;
+
+    partial void OnShowSearchButtonChanged(bool value) => OnPropertyChanged(nameof(ShareAvailable));
+    partial void OnIsSearchingChanged(bool value) => OnPropertyChanged(nameof(ShareAvailable));
+
+    /// <summary>
+    /// Opens the share-card dialog with the current lyrics, pre-selecting the
+    /// active line so the snapshot starts where the song currently is.
+    /// </summary>
+    [RelayCommand]
+    private async Task ShareLyrics()
+    {
+        var track = _player.CurrentTrack;
+        if (track == null) return;
+
+        var source = IsSyncTabSelected && LyricLines.Count > 0
+            ? (IEnumerable<LyricLine>)LyricLines
+            : UnsyncedLines;
+        var shareable = source
+            .Where(l => !l.IsIntroPlaceholder && !string.IsNullOrWhiteSpace(l.Text))
+            .ToList();
+        if (shareable.Count == 0) return;
+
+        int preselect = _currentActiveLine != null ? shareable.IndexOf(_currentActiveLine) : 0;
+        if (preselect < 0) preselect = 0;
+
+        var vm = new LyricShareViewModel(track, shareable.Select(l => l.Text).ToList(), preselect);
+        await Views.LyricShareDialog.ShowAsync(vm);
     }
 
     /// <summary>

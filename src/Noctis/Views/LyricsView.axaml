@@ -688,11 +688,26 @@
                     </Button.Flyout>
                 </Button>
 
-                <!-- Bottom action row: Alternate source + save status (Save/Remove moved into player bar) -->
+                <!-- Bottom action row: Share + Alternate source + save status (Save/Remove moved into player bar) -->
                 <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Center"
                             Spacing="8"
                             Margin="0,24,0,0">
+                    <!-- Share lyric snapshot card -->
+                    <Button Classes="pill-btn"
+                            Padding="10,5"
+                            Height="30" MinHeight="30"
+                            IsVisible="{Binding ShareAvailable}"
+                            ToolTip.Tip="Share lyrics as an image card"
+                            Command="{Binding ShareLyricsCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <PathIcon Data="{StaticResource CameraIcon}"
+                                     Width="12" Height="12" Foreground="{Binding LyricsPrimaryFg}"
+                                     VerticalAlignment="Center"/>
+                            <TextBlock Text="Share" FontSize="11" Foreground="{Binding LyricsPrimaryFg}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
                     <!-- Switch to alternate lyrics source -->
                     <Button Classes="pill-btn"
                             Padding="10,5"

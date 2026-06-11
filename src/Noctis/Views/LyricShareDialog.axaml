@@ -1,0 +1,165 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.LyricShareDialog"
+        x:DataType="vm:LyricShareViewModel"
+        Title="Share lyrics"
+        CanResize="False"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        ShowInTaskbar="False">
+
+    <Window.Styles>
+        <Style Selector="Button.share-pill">
+            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.share-pill:pointerover">
+            <Setter Property="Background" Value="#33FFFFFF"/>
+        </Style>
+        <Style Selector="Button.share-pill.active">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+
+        <Style Selector="CheckBox.share-line">
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+    </Window.Styles>
+
+    <!-- Full-window dimmed overlay -->
+    <Border Background="#98000000" PointerPressed="OnOverlayPointerPressed">
+
+        <!-- Centered dialog card -->
+        <Border PointerPressed="OnCardPointerPressed"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Padding="22,18"
+                Width="880"
+                MaxHeight="700"
+                CornerRadius="12"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="1"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+            <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,Auto">
+
+                <!-- Header -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Spacing="2">
+                    <TextBlock Text="Share lyrics" FontSize="22" FontWeight="Bold"/>
+                    <TextBlock FontSize="13" Opacity="0.7">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0} — {1}">
+                                <Binding Path="TrackTitle"/>
+                                <Binding Path="TrackArtist"/>
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                </StackPanel>
+
+                <Button Grid.Row="0" Grid.Column="1"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Width="32" Height="32"
+                        Padding="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Cursor="Hand"
+                        Click="OnCloseClick">
+                    <PathIcon Data="{StaticResource DismissIcon}" Width="16" Height="16" Opacity="0.75"/>
+                </Button>
+
+                <!-- Body: line picker (left) + preview (right) -->
+                <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,16,Auto" Margin="0,16,0,0">
+                    <Border Grid.Column="0"
+                            Background="#18000000"
+                            CornerRadius="8"
+                            Padding="6">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding Lines}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SelectableLyricLine">
+                                        <CheckBox Classes="share-line"
+                                                  IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                  HorizontalAlignment="Stretch">
+                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
+                                        </CheckBox>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- Preview -->
+                    <Border Grid.Column="2"
+                            Width="320" Height="480"
+                            Background="#18000000"
+                            CornerRadius="8">
+                        <Panel>
+                            <TextBlock Text="Select lines to preview"
+                                       FontSize="13" Opacity="0.5"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding Preview, Converter={x:Static ObjectConverters.IsNull}}"/>
+                            <Image Source="{Binding Preview}"
+                                   Stretch="Uniform"
+                                   Margin="10"
+                                   RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                        </Panel>
+                    </Border>
+                </Grid>
+
+                <!-- Footer: format toggle + actions -->
+                <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="0,16,0,0">
+                    <Button Grid.Column="0"
+                            Classes="share-pill"
+                            Classes.active="{Binding IsSquare}"
+                            Content="1:1"
+                            Command="{Binding SelectSquareCommand}"/>
+                    <Button Grid.Column="1"
+                            Classes="share-pill"
+                            Classes.active="{Binding IsStory}"
+                            Content="9:16"
+                            Margin="8,0,0,0"
+                            Command="{Binding SelectStoryCommand}"/>
+
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding StatusText}"
+                               FontSize="12" Opacity="0.7"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"/>
+
+                    <Button Grid.Column="3"
+                            Classes="share-pill"
+                            Margin="0,0,8,0"
+                            Click="OnCopyClick"
+                            IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource CopyIcon}" Width="13" Height="13"/>
+                            <TextBlock Text="Copy" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="4"
+                            Classes="share-pill"
+                            Background="{DynamicResource AccentColorBrush}"
+                            Foreground="{DynamicResource AccentForegroundBrush}"
+                            Click="OnSaveClick"
+                            IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource SaveDiskIcon}" Width="13" Height="13"
+                                      Foreground="{DynamicResource AccentForegroundBrush}"/>
+                            <TextBlock Text="Save PNG" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Grid>
+        </Border>
+    </Border>
+</Window>
