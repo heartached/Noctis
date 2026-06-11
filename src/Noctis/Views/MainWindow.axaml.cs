@@ -552,6 +552,10 @@ public partial class MainWindow : Window
                 vm.ToggleDebugPanel();
                 e.Handled = true;
                 break;
+            case Key.K when e.KeyModifiers == KeyModifiers.Control:
+                _ = vm.OpenCommandPaletteAsync();
+                e.Handled = true;
+                break;
         }
     }
 

@@ -1237,6 +1237,13 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>Navigate to the Now Playing view (from clicking album art in playback bar).</summary>
+    /// <summary>Opens the Ctrl+K command palette over the current window.</summary>
+    public async Task OpenCommandPaletteAsync()
+    {
+        var vm = new CommandPaletteViewModel(this, _library);
+        await Views.CommandPaletteDialog.ShowAsync(vm);
+    }
+
     [RelayCommand]
     private void OpenNowPlaying()
     {
@@ -1276,7 +1283,7 @@ public partial class MainWindowViewModel : ViewModelBase
         RefreshBackButton();
     }
 
-    private void OpenArtistDetailByName(string artistName)
+    public void OpenArtistDetailByName(string artistName)
     {
         var primary = Track.GetPrimaryArtist(artistName);
         var artist = _library.Artists.FirstOrDefault(a =>
@@ -1315,7 +1322,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenAlbumDetail(album);
     }
 
-    private void OpenAlbumDetail(Album album, bool pushHistory = true, string? backButtonText = null)
+    public void OpenAlbumDetail(Album album, bool pushHistory = true, string? backButtonText = null)
     {
         if (pushHistory)
             PushCurrentViewToHistory();
