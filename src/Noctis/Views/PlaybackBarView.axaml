@@ -795,6 +795,50 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
+                                <MenuItem Header="Sleep Timer">
+                                    <MenuItem IsEnabled="False" IsVisible="{Binding IsSleepTimerActive}">
+                                        <MenuItem.Header>
+                                            <TextBlock FontSize="12" Opacity="0.7">
+                                                <Run Text="Pausing in"/>
+                                                <Run Text="{Binding SleepTimerRemainingText}"/>
+                                            </TextBlock>
+                                        </MenuItem.Header>
+                                    </MenuItem>
+                                    <Separator IsVisible="{Binding IsSleepTimerActive}"/>
+                                    <MenuItem Header="15 minutes"
+                                              Command="{Binding StartSleepTimerCommand}"
+                                              CommandParameter="15"/>
+                                    <MenuItem Header="30 minutes"
+                                              Command="{Binding StartSleepTimerCommand}"
+                                              CommandParameter="30"/>
+                                    <MenuItem Header="45 minutes"
+                                              Command="{Binding StartSleepTimerCommand}"
+                                              CommandParameter="45"/>
+                                    <MenuItem Header="1 hour"
+                                              Command="{Binding StartSleepTimerCommand}"
+                                              CommandParameter="60"/>
+                                    <MenuItem Header="End of track"
+                                              Command="{Binding ToggleStopAfterCurrentCommand}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                      IsVisible="{Binding StopAfterCurrentTrack}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator IsVisible="{Binding IsSleepTimerActive}"/>
+                                    <MenuItem Header="Cancel timer"
+                                              IsVisible="{Binding IsSleepTimerActive}"
+                                              Command="{Binding CancelSleepTimerCommand}"/>
+                                </MenuItem>
+                                <MenuItem Header="Stop After Current Track"
+                                          Command="{Binding ToggleStopAfterCurrentCommand}">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                  IsVisible="{Binding StopAfterCurrentTrack}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator />
                                 <MenuItem Header="Remove from Library" Classes="danger"
                                           Command="{Binding RemoveCurrentTrackFromLibraryCommand}">
                                     <MenuItem.Icon>

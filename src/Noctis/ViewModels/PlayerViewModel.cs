@@ -296,6 +296,76 @@ public partial class PlayerViewModel : ViewModelBase
         _audioPlayer.IsMuted = IsMuted;
     }
 
+    // ── Sleep timer ──────────────────────────────────────────
+
+    private DispatcherTimer? _sleepTimer;
+    private DateTime _sleepTimerEndsAtUtc;
+
+    /// <summary>True while a timed sleep timer is counting down.</summary>
+    [ObservableProperty] private bool _isSleepTimerActive;
+
+    /// <summary>Remaining time label, e.g. "29:54". Empty when inactive.</summary>
+    [ObservableProperty] private string _sleepTimerRemainingText = string.Empty;
+
+    /// <summary>When true, playback stops after the current track finishes (also the
+    /// sleep timer's "end of track" mode). One-shot: clears itself once it fires.</summary>
+    [ObservableProperty] private bool _stopAfterCurrentTrack;
+
+    /// <summary>Starts a timed sleep timer; parameter is minutes ("15"/"30"/"45"/"60").</summary>
+    [RelayCommand]
+    private void StartSleepTimer(string? minutes)
+    {
+        if (!int.TryParse(minutes, out var mins) || mins <= 0) return;
+
+        _sleepTimerEndsAtUtc = DateTime.UtcNow.AddMinutes(mins);
+        _sleepTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _sleepTimer.Tick -= OnSleepTimerTick;
+        _sleepTimer.Tick += OnSleepTimerTick;
+        _sleepTimer.Start();
+        IsSleepTimerActive = true;
+        UpdateSleepTimerRemaining();
+        DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Start", $"minutes={mins}");
+    }
+
+    [RelayCommand]
+    private void CancelSleepTimer()
+    {
+        _sleepTimer?.Stop();
+        IsSleepTimerActive = false;
+        SleepTimerRemainingText = string.Empty;
+        DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Cancel", null);
+    }
+
+    /// <summary>Toggles "stop after current track" (the sleep timer's end-of-track mode).</summary>
+    [RelayCommand]
+    private void ToggleStopAfterCurrent()
+    {
+        StopAfterCurrentTrack = !StopAfterCurrentTrack;
+        DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.StopAfterCurrent", $"enabled={StopAfterCurrentTrack}");
+    }
+
+    private void OnSleepTimerTick(object? sender, EventArgs e)
+    {
+        if (DateTime.UtcNow >= _sleepTimerEndsAtUtc)
+        {
+            CancelSleepTimer();
+            if (State == PlaybackState.Playing)
+                PlayPause();
+            DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Fired", "paused playback");
+            return;
+        }
+        UpdateSleepTimerRemaining();
+    }
+
+    private void UpdateSleepTimerRemaining()
+    {
+        var remaining = _sleepTimerEndsAtUtc - DateTime.UtcNow;
+        if (remaining < TimeSpan.Zero) remaining = TimeSpan.Zero;
+        SleepTimerRemainingText = remaining.TotalHours >= 1
+            ? $"{(int)remaining.TotalHours}:{remaining.Minutes:00}:{remaining.Seconds:00}"
+            : $"{remaining.Minutes}:{remaining.Seconds:00}";
+    }
+
     [RelayCommand]
     private void ToggleShuffle()
     {
@@ -1112,6 +1182,20 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (reason is QueueAdvanceReason.UserSkip or QueueAdvanceReason.Previous or QueueAdvanceReason.Error)
             CancelAutoMixTransition(reason == QueueAdvanceReason.Error ? "playback error" : "user skipped");
+
+        // "Stop after current track": when the track ends naturally, halt here
+        // instead of advancing. Queue and current track stay intact so PlayPause
+        // resumes from a sensible state. User skips bypass and clear the flag.
+        if (StopAfterCurrentTrack && reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix)
+        {
+            StopAfterCurrentTrack = false;
+            State = PlaybackState.Stopped;
+            DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.StoppedAfterTrack",
+                $"track={CurrentTrack?.Title}");
+            return;
+        }
+        if (StopAfterCurrentTrack && reason is QueueAdvanceReason.UserSkip or QueueAdvanceReason.Previous)
+            StopAfterCurrentTrack = false;
 
         // Handle repeat one mode — replay via PlayTrack() so PlayCount is
         // incremented, TrackStarted fires, and all state updates properly.
