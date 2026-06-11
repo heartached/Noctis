@@ -24,21 +24,36 @@ namespace Noctis.Services;
 /// the callback, so the PCM we receive already includes them; we apply only the
 /// user's volume.
 ///
-/// Gated by NOCTIS_WASAPI=1 and off by default. <see cref="TryCreate"/> returns
-/// null on non-Windows or device-init failure so the caller falls back to the
-/// existing LibVLC output path.
+/// Two entry points:
+///   - <see cref="TryCreate"/> — shared mode at the device mix rate. Used by the
+///     experimental NOCTIS_WASAPI=1 volume path, and as the graceful fallback
+///     when an exclusive open fails (device busy / format unsupported).
+///   - <see cref="TryCreateExclusive"/> — WASAPI exclusive mode at the SOURCE
+///     sample rate for bit-perfect output (Settings > Audio > Exclusive Mode).
+///     Negotiates the device's native bit depth (24 → 16 → float32); LibVLC's
+///     FL32 PCM is converted at the output, which is lossless for integer
+///     sources at the same rate as long as no DSP is active.
+///
+/// Both return null on non-Windows or device-init failure so the caller can
+/// fall back to another output path.
 /// </summary>
 [SupportedOSPlatform("windows")]
 internal sealed class WasapiGainOutput : IDisposable
 {
     private const int BytesPerSample = 4; // FL32
 
-    // Render format is matched to the default device's mix format (sample rate)
-    // so WASAPI shared mode accepts it without a format-unsupported failure (the
-    // usual cause of a silent WASAPI path on 44.1kHz endpoints). LibVLC is told
-    // this exact rate/channels via SetAudioFormat and downmixes/resamples to it.
+    // AUDCLNT_E_DEVICE_IN_USE: another client holds the endpoint exclusively.
+    private const int HrDeviceInUse = unchecked((int)0x8889000A);
+
+    // Render format. Shared mode matches the default device's mix format (sample
+    // rate) so WASAPI accepts it without a format-unsupported failure; exclusive
+    // mode uses the source rate handed in by the audio-setup callback. LibVLC is
+    // told this exact rate/channels and downmixes/resamples to it if needed.
     public int SampleRate { get; }
     public int Channels { get; }
+    public bool IsExclusive { get; }
+    /// <summary>Bit depth handed to the device (16/24 PCM or 32 float).</summary>
+    public int BitsPerSample { get; }
 
     private readonly BufferedWaveProvider _buffer;
     private readonly GainSampleProvider _gain;
@@ -58,9 +73,33 @@ internal sealed class WasapiGainOutput : IDisposable
         }
     }
 
+    /// <summary>
+    /// Open the default render device in WASAPI exclusive mode at the given
+    /// source rate. Returns null with a human-readable reason on failure
+    /// (device held exclusively elsewhere, rate/format not supported, ...).
+    /// </summary>
+    public static WasapiGainOutput? TryCreateExclusive(int sampleRate, int channels, out string? failureReason)
+    {
+        failureReason = null;
+        if (!OperatingSystem.IsWindows())
+        {
+            failureReason = "not supported on this platform";
+            return null;
+        }
+        try { return new WasapiGainOutput(sampleRate, channels); }
+        catch (Exception ex)
+        {
+            failureReason = (ex as System.Runtime.InteropServices.COMException)?.HResult == HrDeviceInUse
+                ? "audio device is in use by another app"
+                : $"device rejected {sampleRate / 1000.0:0.#} kHz exclusive output";
+            Diag($"TryCreateExclusive FAILED: {ex.GetType().Name}: {ex.Message}");
+            return null;
+        }
+    }
+
     private WasapiGainOutput()
     {
-        Diag("=== WasapiGainOutput init ===");
+        Diag("=== WasapiGainOutput init (shared) ===");
 
         int rate = 48000, channels = 2;
         try
@@ -79,9 +118,68 @@ internal sealed class WasapiGainOutput : IDisposable
 
         SampleRate = rate;
         Channels = channels;
+        IsExclusive = false;
+        BitsPerSample = 32;
 
-        var format = WaveFormat.CreateIeeeFloatWaveFormat(SampleRate, Channels);
-        _buffer = new BufferedWaveProvider(format)
+        (_buffer, _gain) = CreateInputChain(SampleRate, Channels);
+        _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 50);
+        _out.Init(_gain);
+        _out.Play();
+        Diag($"render format: FL32 {SampleRate}Hz {Channels}ch | WasapiOut state={_out.PlaybackState}");
+    }
+
+    private WasapiGainOutput(int sampleRate, int channels)
+    {
+        Diag($"=== WasapiGainOutput init (exclusive, {sampleRate}Hz {channels}ch) ===");
+
+        SampleRate = sampleRate;
+        Channels = channels;
+        IsExclusive = true;
+
+        (_buffer, _gain) = CreateInputChain(SampleRate, Channels);
+
+        // Exclusive mode requires a device-native format. Prefer 24-bit (covers
+        // hi-res sources), then 16-bit, then float32; first Init that the driver
+        // accepts wins. The gain stage stays in float upstream — at unity gain a
+        // float multiply by 1.0 is bit-exact, so integer sources stay bit-perfect.
+        Exception? lastError = null;
+        foreach (var bits in new[] { 24, 16, 32 })
+        {
+            IWaveProvider rendered = bits switch
+            {
+                24 => new SampleToWaveProvider24(_gain),
+                16 => new SampleToWaveProvider16(_gain),
+                _ => new SampleToWaveProvider(_gain),
+            };
+
+            var attempt = new WasapiOut(AudioClientShareMode.Exclusive, useEventSync: true, latency: 100);
+            try
+            {
+                attempt.Init(rendered);
+                attempt.Play();
+                _out = attempt;
+                BitsPerSample = bits;
+                Diag($"exclusive open OK: {bits}-bit {SampleRate}Hz {Channels}ch | state={attempt.PlaybackState}");
+                return;
+            }
+            catch (Exception ex)
+            {
+                Diag($"exclusive {bits}-bit init failed: {ex.GetType().Name}: {ex.Message}");
+                try { attempt.Dispose(); } catch { }
+                lastError = ex;
+                // Device held exclusively elsewhere — no format will succeed.
+                if ((ex as System.Runtime.InteropServices.COMException)?.HResult == HrDeviceInUse)
+                    break;
+            }
+        }
+
+        throw lastError ?? new InvalidOperationException("exclusive WASAPI init failed");
+    }
+
+    private static (BufferedWaveProvider buffer, GainSampleProvider gain) CreateInputChain(int sampleRate, int channels)
+    {
+        var format = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, channels);
+        var buffer = new BufferedWaveProvider(format)
         {
             // Bounded queue between LibVLC's decode thread and the WASAPI render
             // thread. Large enough to ride out GC/disk jitter, small enough that
@@ -91,11 +189,7 @@ internal sealed class WasapiGainOutput : IDisposable
             DiscardOnBufferOverflow = false,
             ReadFully = true, // return silence (not 0) when idle so WasapiOut keeps running
         };
-        _gain = new GainSampleProvider(_buffer.ToSampleProvider(), Channels, SampleRate);
-        _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 50);
-        _out.Init(_gain);
-        _out.Play();
-        Diag($"render format: FL32 {SampleRate}Hz {Channels}ch | WasapiOut state={_out.PlaybackState}");
+        return (buffer, new GainSampleProvider(buffer.ToSampleProvider(), channels, sampleRate));
     }
 
     /// <summary>

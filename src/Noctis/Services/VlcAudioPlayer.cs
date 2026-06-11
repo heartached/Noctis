@@ -105,6 +105,19 @@ public class VlcAudioPlayer : IAudioPlayer
     private MediaPlayer.LibVLCAudioResumeCb? _audioResumeCb;
     private MediaPlayer.LibVLCAudioFlushCb? _audioFlushCb;
     private MediaPlayer.LibVLCAudioDrainCb? _audioDrainCb;
+    private MediaPlayer.LibVLCAudioSetupCb? _audioSetupCb;
+    private MediaPlayer.LibVLCAudioCleanupCb? _audioCleanupCb;
+
+    // Settings-driven WASAPI exclusive output (Windows). When enabled, LibVLC's
+    // decoded PCM is routed via the audio callbacks to an exclusive-mode sink
+    // opened at the SOURCE sample rate (see AudioSetup). Like the experimental
+    // _wasapiOut path this is single-stream: crossfade and standby-prepare are
+    // gated off while enabled. The sink is created lazily per format by the
+    // audio-setup callback and reused across tracks with the same rate; an
+    // exclusive open failure falls back to a shared-mode sink + OutputModeChanged.
+    private volatile bool _exclusiveModeEnabled;
+    private volatile WasapiGainOutput? _exclusiveOut;
+    private readonly object _exclusiveSinkLock = new();
 
     private Media? _currentMedia;
     private Media? _standbyMedia;
@@ -215,6 +228,7 @@ public class VlcAudioPlayer : IAudioPlayer
     public event EventHandler<TimeSpan>? PositionChanged;
     public event EventHandler<string>? PlaybackError;
     public event EventHandler<TimeSpan>? DurationResolved;
+    public event EventHandler<string>? OutputModeChanged;
 
     public VlcAudioPlayer()
     {
@@ -561,11 +575,11 @@ public class VlcAudioPlayer : IAudioPlayer
         if (_crossfadeEnabled && _currentMedia != null)
             return;
 
-        // WASAPI path: the sink already tracks the live target per-sample, so a
-        // drag-release commit is just a final target set (no throttle to flush).
-        if (_wasapiOut != null)
+        // WASAPI sink path: the sink already tracks the live target per-sample, so
+        // a drag-release commit is just a final target set (no throttle to flush).
+        if (ActiveCallbackSink is { } commitSink)
         {
-            _wasapiOut.SetGainTarget(WasapiGainLevel());
+            commitSink.SetGainTarget(WasapiGainLevel());
             return;
         }
 
@@ -642,11 +656,11 @@ public class VlcAudioPlayer : IAudioPlayer
         target = Math.Clamp(target, 0, 100);
         if (_disposed) return;
 
-        // WASAPI path: hand the target straight to the sink, which interpolates
+        // WASAPI sink path: hand the target straight to the sink, which interpolates
         // the gain per-sample (click-free at any speed). No ramp worker needed.
-        if (_wasapiOut != null)
+        if (ActiveCallbackSink is { } sink)
         {
-            _wasapiOut.SetGainTarget(WasapiGainLevel());
+            sink.SetGainTarget(WasapiGainLevel());
             return;
         }
 
@@ -980,6 +994,200 @@ public class VlcAudioPlayer : IAudioPlayer
         // The flag is stored here and applied in PlayInternal when creating new media.
     }
 
+    public bool ExclusiveModeActive => _exclusiveOut is { IsExclusive: true };
+
+    public void SetExclusiveMode(bool enabled)
+    {
+        if (_disposed) return;
+        if (!OperatingSystem.IsWindows()) enabled = false;
+        // The experimental NOCTIS_WASAPI sink already owns the audio callbacks.
+        if (_wasapiOut != null) return;
+        if (_exclusiveModeEnabled == enabled) return;
+        _exclusiveModeEnabled = enabled;
+
+        // Switching output mechanisms requires fresh MediaPlayer instances:
+        // libvlc's audio callbacks cannot be unregistered once set, so the old
+        // players are torn down and rebuilt under the playback lock. The current
+        // track resumes at its position afterwards.
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try { _playbackLock.Wait(); }
+            catch (ObjectDisposedException) { return; }
+
+            try
+            {
+                if (!_disposed)
+                    RebuildOutputModeLocked(enabled);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.SwitchFailed", ex.Message);
+            }
+            finally
+            {
+                _playbackLock.Release();
+            }
+        });
+    }
+
+    /// <summary>
+    /// Tear down both MediaPlayers and recreate them wired for the requested
+    /// output mode. Must be called under _playbackLock on a worker thread.
+    /// </summary>
+    private void RebuildOutputModeLocked(bool exclusive)
+    {
+        var wasActive = _currentMedia != null && (_player.IsPlaying || _isPaused);
+        var resumePath = _currentMediaPath;
+        long resumeMs = 0;
+        if (wasActive)
+        {
+            try { resumeMs = Math.Max(0, _player.Time); } catch { }
+        }
+
+        ResetEndReachedPending();
+        Interlocked.Exchange(ref _latestSeekMs, -1);
+        _positionTimer.Stop();
+        ReleasePreparedNext();
+        try { _player.Stop(); } catch { }
+        var oldMedia = _currentMedia;
+        _currentMedia = null;
+        oldMedia?.Dispose();
+        _isPaused = false;
+
+        _player.EndReached -= OnEndReached;
+        _player.EncounteredError -= OnError;
+        _standbyPlayer.EndReached -= OnEndReached;
+        _standbyPlayer.EncounteredError -= OnError;
+        try { _player.Dispose(); } catch { }
+        try { _standbyPlayer.Dispose(); } catch { }
+
+        _player = new MediaPlayer(_libVlc);
+        _standbyPlayer = new MediaPlayer(_libVlc);
+        _player.EndReached += OnEndReached;
+        _player.EncounteredError += OnError;
+        _standbyPlayer.EndReached += OnEndReached;
+        _standbyPlayer.EncounteredError += OnError;
+
+        if (exclusive)
+        {
+            _audioSetupCb ??= AudioSetup;
+            _audioCleanupCb ??= AudioCleanup;
+            _audioPlayCb ??= AudioPlay;
+            _audioPauseCb ??= AudioPause;
+            _audioResumeCb ??= AudioResume;
+            _audioFlushCb ??= AudioFlush;
+            _audioDrainCb ??= AudioDrain;
+            // Format callback first so each track negotiates its own source rate.
+            _player.SetAudioFormatCallback(_audioSetupCb, _audioCleanupCb);
+            _player.SetAudioCallbacks(_audioPlayCb, _audioPauseCb, _audioResumeCb, _audioFlushCb, _audioDrainCb);
+            try { _player.Volume = 100; } catch { }
+            // The silent keep-warm stream is pointless while we hold the endpoint
+            // exclusively, and some drivers dislike the concurrent shared stream.
+            _keepAlive?.SetSuspended(true);
+            // The setup callback reports the negotiated format once audio flows.
+            OutputModeChanged?.Invoke(this, "Exclusive mode enabled");
+        }
+        else
+        {
+            lock (_exclusiveSinkLock)
+            {
+                _exclusiveOut?.Dispose();
+                _exclusiveOut = null;
+            }
+            _keepAlive?.SetSuspended(false);
+            if (_sessionVolume != null)
+            {
+                try { _player.Volume = 100; } catch { }
+                try { _standbyPlayer.Volume = 100; } catch { }
+            }
+            OutputModeChanged?.Invoke(this, "Shared output (system mixer)");
+        }
+
+        DebugLogger.Info(DebugLogger.Category.Playback, "Exclusive.ModeSwitched",
+            $"exclusive={exclusive}, resuming={wasActive}");
+
+        if (wasActive && !string.IsNullOrEmpty(resumePath) && File.Exists(resumePath))
+        {
+            Interlocked.Exchange(ref _pendingSeekMs, resumeMs > 1000 ? resumeMs : -1);
+            PlayInternal(resumePath);
+        }
+    }
+
+    /// <summary>
+    /// LibVLC audio-setup callback (decoder thread): negotiate the output format
+    /// for the new track. Opens (or reuses) the exclusive sink at the source
+    /// sample rate; on failure falls back to a shared-mode sink so playback
+    /// continues, raising OutputModeChanged either way.
+    /// </summary>
+    private int AudioSetup(ref IntPtr opaque, ref IntPtr format, ref uint rate, ref uint channels)
+    {
+        try
+        {
+            var requestedRate = (int)Math.Clamp(rate, 8000, 384000);
+            var requestedChannels = (int)Math.Clamp(channels, 1, 2);
+            string? notice = null;
+
+            lock (_exclusiveSinkLock)
+            {
+                // Reuse the open device stream when the format matches; otherwise
+                // close it (rate change, or a shared fallback that can retry
+                // exclusive now that the device may be free).
+                if (_exclusiveOut != null &&
+                    (!_exclusiveOut.IsExclusive ||
+                     _exclusiveOut.SampleRate != requestedRate ||
+                     _exclusiveOut.Channels != requestedChannels))
+                {
+                    _exclusiveOut.Dispose();
+                    _exclusiveOut = null;
+                }
+
+                if (_exclusiveOut == null)
+                {
+                    var sink = WasapiGainOutput.TryCreateExclusive(requestedRate, requestedChannels, out var reason);
+                    if (sink != null)
+                    {
+                        notice = $"Exclusive output active — {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}";
+                    }
+                    else
+                    {
+                        sink = WasapiGainOutput.TryCreate();
+                        notice = $"Exclusive mode unavailable ({reason}) — using shared output";
+                    }
+
+                    if (sink == null)
+                        return -1; // no usable output at all; VLC skips audio
+
+                    _exclusiveOut = sink;
+                    sink.SetGainTarget(WasapiGainLevel());
+                }
+
+                rate = (uint)_exclusiveOut.SampleRate;
+                channels = (uint)_exclusiveOut.Channels;
+            }
+
+            // "FL32" — LibVLC hands us float PCM; the sink converts to the
+            // negotiated device format at the output.
+            Marshal.Copy(new[] { (byte)'F', (byte)'L', (byte)'3', (byte)'2' }, 0, format, 4);
+
+            if (notice != null)
+            {
+                DebugLogger.Info(DebugLogger.Category.Playback, "Exclusive.Setup", notice);
+                OutputModeChanged?.Invoke(this, notice);
+            }
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.SetupFailed", ex.Message);
+            return -1;
+        }
+    }
+
+    /// <summary>LibVLC audio-cleanup callback: the track's audio output is going
+    /// away. Keep the device stream open for the next track (same-rate tracks
+    /// reuse it gaplessly); just drop any queued PCM.</summary>
+    private void AudioCleanup(IntPtr opaque) => _exclusiveOut?.Flush();
+
     public void ApplyReplayGain(string mode, double preampDb)
     {
         if (_disposed) return;
@@ -1110,9 +1318,9 @@ public class VlcAudioPlayer : IAudioPlayer
         if (_disposed || string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
             return;
 
-        // WASAPI path is single-stream (Phase 1): standby warmup would play the
-        // second player through LibVLC's own output, bypassing the sink. Skip it.
-        if (_wasapiOut != null)
+        // The WASAPI callback sinks are single-stream: standby warmup would play
+        // the second player through LibVLC's own output, bypassing the sink. Skip.
+        if (_wasapiOut != null || _exclusiveModeEnabled)
             return;
 
         var normalizedPath = Path.GetFullPath(filePath);
@@ -1283,9 +1491,10 @@ public class VlcAudioPlayer : IAudioPlayer
 
             var hadPreviousMedia = _currentMedia != null;
             var targetVolume = GetTargetVlcVolume();
-            // Crossfade needs two simultaneous streams; the WASAPI sink is single-
-            // stream in Phase 1, so disable the transition fade on that path.
-            var canTransitionFade = _crossfadeEnabled && hadPreviousMedia && !_player.Mute && _wasapiOut == null;
+            // Crossfade needs two simultaneous streams; the WASAPI callback sinks
+            // are single-stream, so disable the transition fade on those paths.
+            var canTransitionFade = _crossfadeEnabled && hadPreviousMedia && !_player.Mute &&
+                                    _wasapiOut == null && !_exclusiveModeEnabled;
             var fadeOutMs = canTransitionFade && _player.IsPlaying
                 ? Math.Clamp(_crossfadeDurationMs / 2, 100, 6000)
                 : 0;
@@ -1676,25 +1885,29 @@ public class VlcAudioPlayer : IAudioPlayer
     // moves as the transient crossfade fade layer; otherwise it carries the
     // curved + ReplayGain-scaled user level directly.
     private int GetTargetVlcVolume() =>
-        _sessionVolume != null || _wasapiOut != null
+        _sessionVolume != null || _wasapiOut != null || _exclusiveModeEnabled
             ? 100
             : ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
 
-    // Current user volume as a 0..1 amplitude for the WASAPI sink: the perceptual
-    // curve cubed to the same taper the OS-session path used, so the two sound
-    // identical at a given slider position. ReplayGain is NOT folded in here —
-    // LibVLC applies it upstream of the audio callback.
+    // Current user volume as a 0..1 amplitude for the WASAPI sinks: the perceptual
+    // curve (with the ReplayGain scalar folded in, matching the session path)
+    // cubed to the same taper the OS-session path used, so all paths sound
+    // identical at a given slider position.
     private float WasapiGainLevel() =>
-        CurvedVolumeToLevelMilli(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100))) / 1000f;
+        CurvedVolumeToLevelMilli(ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)))) / 1000f;
 
-    // ── Experimental WASAPI per-sample-gain output callbacks ─────────
-    // LibVLC delivers decoded FL32 PCM here (EQ + ReplayGain already applied); we
+    // The callback sink currently receiving LibVLC's decoded PCM: the
+    // experimental env-gated one, or the settings-driven exclusive-mode one.
+    private WasapiGainOutput? ActiveCallbackSink => _wasapiOut ?? _exclusiveOut;
+
+    // ── WASAPI output callbacks (experimental gain path + exclusive mode) ──
+    // LibVLC delivers decoded FL32 PCM here (EQ already applied upstream); we
     // forward it to the sink, which applies the user's volume per-sample. These
     // run on LibVLC's audio thread — they must never throw.
     private long _audioPlayCallCount;
     private void AudioPlay(IntPtr data, IntPtr samples, uint count, long pts)
     {
-        var sink = _wasapiOut;
+        var sink = ActiveCallbackSink;
         if (sink == null) return;
         var bytes = checked((int)count * sink.Channels * 4);
         if (Interlocked.Increment(ref _audioPlayCallCount) <= 3)
@@ -1712,10 +1925,10 @@ public class VlcAudioPlayer : IAudioPlayer
         finally { System.Buffers.ArrayPool<byte>.Shared.Return(buf); }
     }
 
-    private void AudioPause(IntPtr data, long pts) => _wasapiOut?.Pause();
-    private void AudioResume(IntPtr data, long pts) => _wasapiOut?.Resume();
-    private void AudioFlush(IntPtr data, long pts) => _wasapiOut?.Flush();
-    private void AudioDrain(IntPtr data) => _wasapiOut?.Drain();
+    private void AudioPause(IntPtr data, long pts) => ActiveCallbackSink?.Pause();
+    private void AudioResume(IntPtr data, long pts) => ActiveCallbackSink?.Resume();
+    private void AudioFlush(IntPtr data, long pts) => ActiveCallbackSink?.Flush();
+    private void AudioDrain(IntPtr data) => ActiveCallbackSink?.Drain();
 
     /// <summary>
     /// Push the current user level onto the OS audio session. LibVLC recreates
@@ -2169,6 +2382,11 @@ public class VlcAudioPlayer : IAudioPlayer
 
         _sessionVolume?.Dispose();
         _wasapiOut?.Dispose();
+        lock (_exclusiveSinkLock)
+        {
+            _exclusiveOut?.Dispose();
+            _exclusiveOut = null;
+        }
         _keepAlive?.Dispose();
 
         _currentMedia?.Dispose();

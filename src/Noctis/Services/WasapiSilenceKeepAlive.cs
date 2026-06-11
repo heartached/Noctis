@@ -65,6 +65,7 @@ internal sealed class WasapiSilenceKeepAlive : IDisposable
     private readonly int _idleStopMs;
     private long _lastActivityTicks;
     private volatile bool _disposed;
+    private volatile bool _suspended;
 
     public static WasapiSilenceKeepAlive? TryStart()
     {
@@ -96,6 +97,18 @@ internal sealed class WasapiSilenceKeepAlive : IDisposable
         if (_disposed) return;
         Volatile.Write(ref _lastActivityTicks, Environment.TickCount64);
         if (!_wake.IsSet) _wake.Set();
+    }
+
+    /// <summary>
+    /// Force-park the silent stream (used while WASAPI exclusive output holds the
+    /// endpoint — a concurrent shared stream is pointless there and some drivers
+    /// dislike it). Resuming follows the normal activity rules.
+    /// </summary>
+    public void SetSuspended(bool suspended)
+    {
+        if (_disposed) return;
+        _suspended = suspended;
+        if (!suspended) NotifyActivity();
     }
 
     private void Run()
@@ -145,8 +158,9 @@ internal sealed class WasapiSilenceKeepAlive : IDisposable
                 {
                     if (running)
                     {
-                        if (_idleStopMs > 0 &&
-                            Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks) > _idleStopMs)
+                        if (_suspended ||
+                            (_idleStopMs > 0 &&
+                             Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks) > _idleStopMs))
                         {
                             // Park: stop the stream so the OS audio power request is
                             // released (allows system auto-sleep) and the endpoint may
@@ -186,7 +200,10 @@ internal sealed class WasapiSilenceKeepAlive : IDisposable
                         if (_wake.Wait(1000))
                             _wake.Reset();
                         if (_disposed) break;
-                        if (Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks) > _idleStopMs)
+                        if (_suspended)
+                            continue;
+                        if (_idleStopMs > 0 &&
+                            Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks) > _idleStopMs)
                             continue;
 
                         if (DefaultDeviceChanged(enumerator, deviceId))

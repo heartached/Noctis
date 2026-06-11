@@ -21,6 +21,10 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Fires when the actual duration is resolved from the decoder (may differ from metadata).</summary>
     event EventHandler<TimeSpan>? DurationResolved;
 
+    /// <summary>Fires when the active output path changes (exclusive engaged, fell back to shared, ...)
+    /// with a short human-readable status. May fire on a non-UI thread.</summary>
+    event EventHandler<string>? OutputModeChanged;
+
     /// <summary>Current playback state.</summary>
     PlaybackState State { get; }
 
@@ -50,6 +54,16 @@ public interface IAudioPlayer : IDisposable
 
     /// <summary>Enables or disables loudness normalization.</summary>
     void SetNormalization(bool enabled);
+
+    /// <summary>
+    /// Enables Windows WASAPI exclusive-mode output for bit-perfect playback.
+    /// Falls back to shared mode (with an <see cref="OutputModeChanged"/> notice)
+    /// when the device refuses the exclusive open. No-op on other platforms.
+    /// </summary>
+    void SetExclusiveMode(bool enabled);
+
+    /// <summary>True while audio is actually flowing through an exclusive-mode device stream.</summary>
+    bool ExclusiveModeActive { get; }
 
     /// <summary>
     /// Apply ReplayGain to the currently loaded track based on its tags. Reads

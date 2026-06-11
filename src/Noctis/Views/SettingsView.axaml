@@ -1202,6 +1202,23 @@
                 </Grid>
             </Border>
 
+            <!-- Exclusive mode (Windows WASAPI) -->
+            <Border Classes="setting-card" IsVisible="{Binding IsExclusiveAudioSupported}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Exclusive Mode" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Bit-perfect output: takes exclusive control of the audio device at the track's sample rate. Crossfade is unavailable while active; falls back to shared output if the device is busy."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding ExclusiveAudioStatus}"
+                                   IsVisible="{Binding ExclusiveAudioStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding ExclusiveAudioEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Equalizer (lives under Playback — no redundant header) -->
             <Border Classes="setting-card" Padding="22,16,38,16" ClipToBounds="False">
                 <StackPanel Spacing="16">

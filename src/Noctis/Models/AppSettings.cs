@@ -79,6 +79,9 @@ public class AppSettings
     /// <summary>Whether loudness normalization (Sound Check) is enabled.</summary>
     public bool SoundCheckEnabled { get; set; }
 
+    /// <summary>Windows only: WASAPI exclusive-mode output for bit-perfect playback.</summary>
+    public bool ExclusiveAudioEnabled { get; set; }
+
     /// <summary>Whether long playback-bar track titles should scroll while playing.</summary>
     public bool TrackTitleMarqueeEnabled { get; set; } = true;
 

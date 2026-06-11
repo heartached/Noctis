@@ -196,6 +196,14 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _replayGainMode = "Off";
     [ObservableProperty] private double _replayGainPreampDb;
 
+    // ── Exclusive mode (Windows WASAPI) ──
+
+    public bool IsExclusiveAudioSupported => OperatingSystem.IsWindows();
+    [ObservableProperty] private bool _exclusiveAudioEnabled;
+    /// <summary>Live output-path status from the player ("Exclusive output active — 44.1 kHz / 24-bit",
+    /// "Exclusive mode unavailable (device in use) — using shared output", ...).</summary>
+    [ObservableProperty] private string _exclusiveAudioStatus = "";
+
     // ── Equalizer ──
 
     [ObservableProperty] private bool _equalizerEnabled = true;
@@ -411,6 +419,8 @@ public partial class SettingsViewModel : ViewModelBase
     public void SetAudioPlayer(IAudioPlayer audioPlayer)
     {
         _audioPlayer = audioPlayer;
+        audioPlayer.OutputModeChanged += (_, status) =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => ExclusiveAudioStatus = status);
         ApplyAudioSettings();
     }
 
@@ -533,6 +543,7 @@ public partial class SettingsViewModel : ViewModelBase
             RefreshFfmpegStatus();
             ReplayGainMode = string.IsNullOrEmpty(_settings.ReplayGainMode) ? "Off" : _settings.ReplayGainMode;
             ReplayGainPreampDb = _settings.ReplayGainPreampDb;
+            ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
             NetEaseEnabled = _settings.NetEaseEnabled;
 
             // Equalizer
@@ -691,6 +702,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.FfmpegPath = FfmpegPath ?? string.Empty;
         _settings.ReplayGainMode = ReplayGainMode ?? "Off";
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
+        _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
         _settings.NetEaseEnabled = NetEaseEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
         _settings.EqualizerPresetIndex = SelectedEqPresetIndex - 1;
@@ -720,6 +732,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer?.SetNormalization(SoundCheckEnabled);
         _audioPlayer?.SetCrossfade(false, (int)Math.Round(CrossfadeDuration));
+        _audioPlayer?.SetExclusiveMode(ExclusiveAudioEnabled);
         ApplyEqualizer();
     }
 
@@ -1119,6 +1132,13 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSoundCheckEnabledChanged(bool value)
     {
         ApplyAudioSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnExclusiveAudioEnabledChanged(bool value)
+    {
+        _audioPlayer?.SetExclusiveMode(value);
+        if (!value) ExclusiveAudioStatus = "";
         _ = SaveAsync();
     }
 
@@ -2089,6 +2109,7 @@ public partial class SettingsViewModel : ViewModelBase
             CrossfadeEnabled = false;
             CrossfadeDuration = 6;
             SoundCheckEnabled = false;
+            ExclusiveAudioEnabled = false;
             TrackTitleMarqueeEnabled = true;
             ArtistMarqueeEnabled = true;
             CoverFlowMarqueeEnabled = true;
