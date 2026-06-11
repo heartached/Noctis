@@ -52,6 +52,12 @@ public class AppSettings
     /// <summary>Whether to scan for new/changed music files on startup.</summary>
     public bool ScanOnStartup { get; set; } = true;
 
+    /// <summary>
+    /// Whether to continuously watch the media folders and update the library in
+    /// near-real-time as files are added/removed/changed (FileSystemWatcher).
+    /// </summary>
+    public bool WatchFoldersEnabled { get; set; } = true;
+
     /// <summary>When true, the in-app updater also offers GitHub pre-releases. Off = stable channel only.</summary>
     public bool IncludePrereleaseUpdates { get; set; } = false;
 

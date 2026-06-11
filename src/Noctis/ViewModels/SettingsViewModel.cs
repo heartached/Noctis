@@ -281,6 +281,8 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private bool _scanOnStartup = true;
 
+    [ObservableProperty] private bool _watchFoldersEnabled = true;
+
     // ── Library overview stats ──
 
     [ObservableProperty] private int _totalSongs;
@@ -542,6 +544,7 @@ public partial class SettingsViewModel : ViewModelBase
             RebuildAccentSwatches();
 
             ScanOnStartup = _settings.ScanOnStartup;
+            WatchFoldersEnabled = _settings.WatchFoldersEnabled;
             IncludePrereleaseUpdates = _settings.IncludePrereleaseUpdates;
 
             // Playback
@@ -710,6 +713,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AccentPresetName = ActiveAccentName;
 
         _settings.ScanOnStartup = ScanOnStartup;
+        _settings.WatchFoldersEnabled = WatchFoldersEnabled;
         _settings.MusicFolders = MusicFolders.ToList();
         _settings.FolderRules = FolderRules
             .Where(r => !string.IsNullOrWhiteSpace(r.Path))
@@ -1193,6 +1197,14 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _settings.ScanOnStartup = value;
         _ = SaveAsync();
+    }
+
+    partial void OnWatchFoldersEnabledChanged(bool value)
+    {
+        _settings.WatchFoldersEnabled = value;
+        _ = SaveAsync();
+        // Start/stop the filesystem watchers to match the new preference.
+        App.Services?.GetService<ILibraryWatcherService>()?.Refresh();
     }
 
     partial void OnIncludePrereleaseUpdatesChanged(bool value)
@@ -2028,6 +2040,16 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(MediaFolderDisplay));
         await SaveAsync();
         MusicFoldersChanged?.Invoke(this, EventArgs.Empty);
+
+        // Scan the library automatically so the user doesn't have to press "Scan".
+        // A full scan over all folders reuses the unchanged-file fast path, so only
+        // the newly added folder's files actually get read.
+        var folders = MusicFolders.ToList();
+        _ = Task.Run(async () =>
+        {
+            try { await _library.ScanAsync(folders); }
+            catch (Exception ex) { Debug.WriteLine($"[Settings] Auto-scan after folder add failed: {ex.Message}"); }
+        });
     }
 
     [RelayCommand]
@@ -2296,6 +2318,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Preferences
             ScanOnStartup = true;
+            WatchFoldersEnabled = true;
             IncludePrereleaseUpdates = false;
 
             // Playback

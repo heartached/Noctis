@@ -237,11 +237,16 @@ public partial class MainWindowViewModel : ViewModelBase
         };
         // Settings is a modal overlay and folder add/remove doesn't fire LibraryUpdated,
         // so explicitly rebuild the Folders tree when the media-folder set changes.
-        Settings.MusicFoldersChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+        Settings.MusicFoldersChanged += (_, _) =>
         {
-            _foldersVm.MarkDirty();
-            _foldersVm.Refresh();
-        });
+            // Keep the filesystem watchers in sync with the media-folder set.
+            App.Services?.GetService<ILibraryWatcherService>()?.Refresh();
+            Dispatcher.UIThread.Post(() =>
+            {
+                _foldersVm.MarkDirty();
+                _foldersVm.Refresh();
+            });
+        };
         _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
@@ -381,6 +386,10 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
             });
         }
+
+        // Begin continuous folder watching now that settings + library are loaded.
+        try { App.Services?.GetService<ILibraryWatcherService>()?.Refresh(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Watcher start failed: {ex.Message}"); }
 
         // Silently check GitHub for a newer release so the About page can surface
         // a passive "Update available" badge without the user clicking anything.

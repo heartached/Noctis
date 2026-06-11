@@ -140,6 +140,14 @@ internal class Program
         services.AddSingleton<IPlaylistInteropService, PlaylistInteropService>();
         services.AddSingleton<IOfflineCacheService, OfflineCacheService>();
         services.AddSingleton<ILibraryService, LibraryService>();
+        // Continuous folder watching. Reads MusicFolders/WatchFoldersEnabled lazily
+        // through the canonical SettingsViewModel so toggling in Settings takes effect
+        // without a restart (same accessor pattern as AudioConverter below).
+        services.AddSingleton<ILibraryWatcherService>(sp =>
+            new LibraryWatcherService(
+                sp.GetRequiredService<ILibraryService>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings()));
         services.AddSingleton<IUnifiedLibraryService, UnifiedLibraryService>();
         services.AddSingleton<ISyncService, NavidromeSyncService>();
         services.AddSingleton<IAudioPlayer, VlcAudioPlayer>();
