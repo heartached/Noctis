@@ -2127,6 +2127,10 @@ public partial class SettingsViewModel : ViewModelBase
         => await MetadataHelper.OpenMetadataFinderDialog();
 
     [RelayCommand]
+    private async Task OpenPlaylistImport()
+        => await MetadataHelper.OpenPlaylistImportDialog();
+
+    [RelayCommand]
     private async Task Rescan()
     {
         if (IsScanning) return;

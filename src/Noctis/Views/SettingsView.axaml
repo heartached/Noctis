@@ -2003,6 +2003,26 @@
                 </StackPanel>
             </Border>
 
+            <!-- Import Playlist (Library group) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Import Playlist" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Import an Exportify CSV or TuneMyMusic JSON export, match tracks to your library, and see what's missing."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Classes="pill-action"
+                            Command="{Binding OpenPlaylistImportCommand}"
+                            Padding="14,8" CornerRadius="16" Cursor="Hand"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="Import…" FontSize="13" VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+            </Border>
+
             <!-- Snoozed tracks (hidden from shuffle + radio) -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">

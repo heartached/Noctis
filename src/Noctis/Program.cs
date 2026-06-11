@@ -200,6 +200,7 @@ internal class Program
                 sp.GetRequiredService<HttpClient>(),
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
                       ?? new Noctis.Models.AppSettings()));
+        services.AddSingleton<IPlaylistImportService, PlaylistImportService>();
 
         // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process
         // (reusing AudioConverterService for ffmpeg discovery) and runs managed DSP;

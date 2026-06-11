@@ -82,6 +82,15 @@ public static class MetadataHelper
         string.IsNullOrWhiteSpace(t.Artist) || t.Artist == "Unknown Artist" ||
         string.IsNullOrWhiteSpace(t.Album) || t.Album == "Unknown Album";
 
+    /// <summary>Opens the playlist-import tool (Exportify CSV / TuneMyMusic JSON).</summary>
+    public static async Task OpenPlaylistImportDialog()
+    {
+        var service = App.Services!.GetRequiredService<IPlaylistImportService>();
+        var vm = new PlaylistImportViewModel(service);
+        var window = new PlaylistImportDialog(vm);
+        await ShowDialogOwned(window);
+    }
+
     public static async Task OpenAudioConverterDialog(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;
