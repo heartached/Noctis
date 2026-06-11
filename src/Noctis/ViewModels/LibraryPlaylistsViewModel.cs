@@ -115,6 +115,14 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
     private Playlist? ResolvePlaylist(PlaylistNavItem item)
         => Playlists.FirstOrDefault(p => p.Id == item.PlaylistId);
 
+    /// <summary>Pins/unpins the playlist at the top of the sidebar.</summary>
+    [RelayCommand]
+    private async Task TogglePin(PlaylistNavItem item)
+    {
+        if (item.PlaylistId is not Guid id) return;
+        await _sidebar.TogglePinAsync(id);
+    }
+
     [RelayCommand]
     private void OpenPlaylist(PlaylistNavItem item)
     {

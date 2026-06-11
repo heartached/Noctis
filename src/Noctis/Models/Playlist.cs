@@ -26,6 +26,12 @@ public class Playlist
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime ModifiedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Pinned playlists sort to the top of the sidebar.</summary>
+    public bool IsPinned { get; set; }
+
+    /// <summary>Sidebar folder name. Empty = not in a folder.</summary>
+    public string Folder { get; set; } = string.Empty;
+
     /// <summary>Whether this is a smart (rule-based) playlist vs a manual playlist.</summary>
     public bool IsSmartPlaylist { get; set; }
 

@@ -134,10 +134,10 @@
                                Opacity="0.5"
                                VerticalAlignment="Center" />
 
-                    <!-- User playlists with artwork thumbnails (scrolls when >12) -->
+                    <!-- User playlists: pinned first, then folders, then loose playlists -->
                     <ListBox Classes="sidebar"
                              x:Name="PlaylistList"
-                             ItemsSource="{Binding PlaylistItems}"
+                             ItemsSource="{Binding SidebarRows}"
                              SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
                              SelectionChanged="OnNavListSelectionChanged"
                              MaxHeight="528"
@@ -145,9 +145,58 @@
                              Margin="6,0,6,4">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="m:PlaylistNavItem">
+                                <Panel>
+
+                                <!-- Folder header row -->
                                 <StackPanel Orientation="Horizontal" Spacing="10"
                                             ToolTip.Tip="{Binding Label}"
+                                            IsVisible="{Binding IsFolder}"
                                             HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                                    <Border Width="28" Height="28"
+                                            CornerRadius="8"
+                                            VerticalAlignment="Center"
+                                            Background="#22808080">
+                                        <Panel>
+                                            <PathIcon Data="{StaticResource ChevronRightIcon}"
+                                                      Width="11" Height="11"
+                                                      Opacity="0.8"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      IsVisible="{Binding !IsExpanded}" />
+                                            <PathIcon Data="{StaticResource ChevronRightIcon}"
+                                                      Width="11" Height="11"
+                                                      Opacity="0.8"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      RenderTransform="rotate(90deg)"
+                                                      IsVisible="{Binding IsExpanded}" />
+                                        </Panel>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center" Spacing="1"
+                                                IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">
+                                        <TextBlock Text="{Binding Label}"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="120" />
+                                        <TextBlock FontSize="11"
+                                                   Opacity="0.5">
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0} playlists">
+                                                    <Binding Path="TrackCount" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Playlist row -->
+                                <StackPanel Orientation="Horizontal" Spacing="10"
+                                            ToolTip.Tip="{Binding Label}"
+                                            IsVisible="{Binding !IsFolder}"
+                                            HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                                    <!-- Indent for playlists inside an expanded folder -->
+                                    <Border Width="14" IsVisible="{Binding IsInFolder}" />
                                     <!-- Playlist artwork thumbnail -->
                                     <Border Width="28" Height="28"
                                             CornerRadius="14"
@@ -199,10 +248,17 @@
                                     <!-- Playlist name and track count (only when expanded) -->
                                     <StackPanel VerticalAlignment="Center" Spacing="1"
                                                 IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">
-                                        <TextBlock Text="{Binding Label}"
-                                                   FontSize="13"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   MaxWidth="120" />
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="{Binding Label}"
+                                                       FontSize="13"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxWidth="120" />
+                                            <PathIcon Data="{StaticResource PinIcon}"
+                                                      Width="10" Height="10"
+                                                      Opacity="0.55"
+                                                      VerticalAlignment="Center"
+                                                      IsVisible="{Binding IsPinned}" />
+                                        </StackPanel>
                                         <TextBlock FontSize="11"
                                                    Opacity="0.5"
                                                    TextTrimming="CharacterEllipsis">
@@ -214,6 +270,8 @@
                                         </TextBlock>
                                     </StackPanel>
                                 </StackPanel>
+
+                                </Panel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>

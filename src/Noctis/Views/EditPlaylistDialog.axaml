@@ -159,6 +159,30 @@
                              TextWrapping="Wrap"
                              MinHeight="70" />
                 </StackPanel>
+
+                <!-- Sidebar folder + pin -->
+                <Grid ColumnDefinitions="*,12,Auto">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="Sidebar Folder" FontSize="13" FontWeight="SemiBold" />
+                        <TextBox Text="{Binding PlaylistFolder}"
+                                 Classes="crisp-input"
+                                 Watermark="No folder"
+                                 CornerRadius="999" />
+                        <TextBlock FontSize="10" Opacity="0.5"
+                                   TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding HasExistingFolders}">
+                            <Run Text="Existing:"/>
+                            <Run Text="{Binding ExistingFoldersHint}"/>
+                        </TextBlock>
+                    </StackPanel>
+                    <CheckBox Grid.Column="2"
+                              IsChecked="{Binding IsPinned}"
+                              VerticalAlignment="Top"
+                              Margin="0,22,0,0"
+                              ToolTip.Tip="Pinned playlists stay at the top of the sidebar">
+                        <TextBlock Text="Pin" FontSize="13"/>
+                    </CheckBox>
+                </Grid>
             </StackPanel>
         </DockPanel>
     </Border>

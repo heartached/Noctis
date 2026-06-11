@@ -20,15 +20,18 @@ public partial class SidebarViewModel : ViewModelBase
     private readonly IPersistenceService _persistence;
     private readonly ILibraryService _library;
 
-    private const int MaxVisiblePlaylists = 12;
-
     [ObservableProperty] private NavItem? _selectedNavItem;
-    [ObservableProperty] private bool _showShowAll;
     [ObservableProperty] private bool _isExpanded;
     [ObservableProperty] private int _favoritesCount;
 
-    /// <summary>Playlists visible in the sidebar (capped to 10).</summary>
-    public ObservableCollection<PlaylistNavItem> VisiblePlaylistItems { get; } = new();
+    /// <summary>Folders the user has collapsed this session (default expanded).</summary>
+    private readonly HashSet<string> _collapsedFolders = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Flattened sidebar playlist rows: pinned playlists first, then folder
+    /// headers with their (indented) playlists, then loose playlists.
+    /// </summary>
+    public ObservableCollection<PlaylistNavItem> SidebarRows { get; } = new();
 
     /// <summary>Main navigation items (Home, Songs, Albums, Artists, Playlists, Settings).</summary>
     public ObservableCollection<NavItem> NavItems { get; } = new()
@@ -68,11 +71,28 @@ public partial class SidebarViewModel : ViewModelBase
 
     private bool _suppressNavigationRequest;
 
-    partial void OnSelectedNavItemChanged(NavItem? value)
+    partial void OnSelectedNavItemChanged(NavItem? oldValue, NavItem? newValue)
     {
         if (_suppressNavigationRequest) return;
-        if (value != null)
-            NavigationRequested?.Invoke(this, value.Key);
+
+        // Folder headers toggle expansion instead of navigating; restore the
+        // previously selected item so the highlight doesn't move.
+        if (newValue is PlaylistNavItem { IsFolder: true } folder)
+        {
+            ToggleFolder(folder.Label);
+            Dispatcher.UIThread.Post(() => SetSelectedNavItemSilently(oldValue));
+            return;
+        }
+
+        if (newValue != null)
+            NavigationRequested?.Invoke(this, newValue.Key);
+    }
+
+    private void ToggleFolder(string folderName)
+    {
+        if (!_collapsedFolders.Remove(folderName))
+            _collapsedFolders.Add(folderName);
+        RebuildSidebarRows();
     }
 
     /// <summary>Sets SelectedNavItem without firing NavigationRequested. Used to restore the
@@ -107,27 +127,96 @@ public partial class SidebarViewModel : ViewModelBase
             PlaylistItems.Add(BuildPlaylistNavItem(pl));
         }
 
-        RefreshVisiblePlaylists();
+        RebuildSidebarRows();
     }
 
-    /// <summary>Rebuilds the visible playlist list (capped to 10).</summary>
-    public void RefreshVisiblePlaylists()
+    /// <summary>
+    /// Rebuilds the flattened sidebar rows: pinned playlists, then folders
+    /// (alphabetical) with their playlists when expanded, then loose playlists.
+    /// </summary>
+    public void RebuildSidebarRows()
     {
-        VisiblePlaylistItems.Clear();
-        foreach (var item in PlaylistItems.Take(MaxVisiblePlaylists))
-            VisiblePlaylistItems.Add(item);
-
-        ShowShowAll = PlaylistItems.Count > MaxVisiblePlaylists;
+        SidebarRows.Clear();
+        foreach (var row in BuildRows(PlaylistItems, _collapsedFolders))
+            SidebarRows.Add(row);
     }
 
-    [RelayCommand]
-    private void ShowAllPlaylists()
+    /// <summary>
+    /// Pure row-ordering logic, kept static for unit tests. Mutates IsInFolder
+    /// on playlist items and synthesizes folder header rows.
+    /// </summary>
+    public static List<PlaylistNavItem> BuildRows(
+        IEnumerable<PlaylistNavItem> items, ISet<string> collapsedFolders)
     {
-        SelectedNavItem = NavItems.First(n => n.Key == "playlists");
+        var rows = new List<PlaylistNavItem>();
+        var all = items.ToList();
+
+        foreach (var item in all.Where(i => i.IsPinned))
+        {
+            item.IsInFolder = false;
+            rows.Add(item);
+        }
+
+        var unpinned = all.Where(i => !i.IsPinned).ToList();
+
+        var folders = unpinned
+            .Where(i => !string.IsNullOrWhiteSpace(i.Folder))
+            .GroupBy(i => i.Folder.Trim(), StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in folders)
+        {
+            var expanded = !collapsedFolders.Contains(group.Key);
+            rows.Add(new PlaylistNavItem
+            {
+                Key = $"folder:{group.Key}",
+                Label = group.Key,
+                IsFolder = true,
+                IsExpanded = expanded,
+                TrackCount = group.Count(),
+            });
+
+            if (!expanded) continue;
+            foreach (var item in group)
+            {
+                item.IsInFolder = true;
+                rows.Add(item);
+            }
+        }
+
+        foreach (var item in unpinned.Where(i => string.IsNullOrWhiteSpace(i.Folder)))
+        {
+            item.IsInFolder = false;
+            rows.Add(item);
+        }
+
+        return rows;
+    }
+
+    /// <summary>Existing folder names, for suggestions in the edit dialog.</summary>
+    public IReadOnlyList<string> GetFolderNames() =>
+        Playlists
+            .Select(p => p.Folder.Trim())
+            .Where(f => f.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    /// <summary>Pins/unpins a playlist in the sidebar and persists.</summary>
+    public async Task TogglePinAsync(Guid playlistId)
+    {
+        var playlist = Playlists.FirstOrDefault(p => p.Id == playlistId);
+        if (playlist == null) return;
+
+        playlist.IsPinned = !playlist.IsPinned;
+        var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistId);
+        if (navItem != null) navItem.IsPinned = playlist.IsPinned;
+
+        RebuildSidebarRows();
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
 
     /// <summary>Builds a PlaylistNavItem with resolved artwork for sidebar display.</summary>
-
     private PlaylistNavItem BuildPlaylistNavItem(Playlist pl)
     {
         var item = new PlaylistNavItem
@@ -139,6 +228,8 @@ public partial class SidebarViewModel : ViewModelBase
             TrackCount = pl.TrackIds.Count,
             CoverArtPath = pl.CoverArtPath,
             Color = pl.Color,
+            IsPinned = pl.IsPinned,
+            Folder = pl.Folder,
         };
 
         // Resolve up to 4 unique album arts for collage thumbnail
@@ -210,7 +301,7 @@ public partial class SidebarViewModel : ViewModelBase
         };
         Playlists.Add(playlist);
         PlaylistItems.Add(BuildPlaylistNavItem(playlist));
-        RefreshVisiblePlaylists();
+        RebuildSidebarRows();
 
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
@@ -235,7 +326,7 @@ public partial class SidebarViewModel : ViewModelBase
 
         var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistId);
         if (navItem != null) PlaylistItems.Remove(navItem);
-        RefreshVisiblePlaylists();
+        RebuildSidebarRows();
 
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
@@ -351,7 +442,7 @@ public partial class SidebarViewModel : ViewModelBase
 
         Playlists.Add(playlist);
         PlaylistItems.Add(BuildPlaylistNavItem(playlist));
-        RefreshVisiblePlaylists();
+        RebuildSidebarRows();
 
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
@@ -369,7 +460,10 @@ public partial class SidebarViewModel : ViewModelBase
             Art1 = currentNavItem?.Art1,
             Art2 = currentNavItem?.Art2,
             Art3 = currentNavItem?.Art3,
-            Art4 = currentNavItem?.Art4
+            Art4 = currentNavItem?.Art4,
+            IsPinned = playlist.IsPinned,
+            PlaylistFolder = playlist.Folder,
+            ExistingFoldersHint = string.Join(", ", GetFolderNames()),
         };
         var dialog = new EditPlaylistDialog { DataContext = dialogVm };
 
@@ -402,6 +496,8 @@ public partial class SidebarViewModel : ViewModelBase
 
         playlist.Name = newName;
         playlist.Description = newDescription;
+        playlist.IsPinned = dialogVm.IsPinned;
+        playlist.Folder = dialogVm.PlaylistFolder.Trim();
         playlist.ModifiedAt = DateTime.UtcNow;
 
         // Handle cover art changes
@@ -436,8 +532,11 @@ public partial class SidebarViewModel : ViewModelBase
             navItem.Art2 = rebuilt.Art2;
             navItem.Art3 = rebuilt.Art3;
             navItem.Art4 = rebuilt.Art4;
+            navItem.IsPinned = rebuilt.IsPinned;
+            navItem.Folder = rebuilt.Folder;
         }
 
+        RebuildSidebarRows();
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
 
@@ -475,7 +574,7 @@ public partial class SidebarViewModel : ViewModelBase
 
         Playlists.Add(createdPlaylist);
         PlaylistItems.Add(BuildPlaylistNavItem(createdPlaylist));
-        RefreshVisiblePlaylists();
+        RebuildSidebarRows();
 
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
