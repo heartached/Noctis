@@ -54,10 +54,95 @@
                         Spacing="0"
                         IsVisible="{Binding HasQueue}">
 
+                <!-- Collage area: same queue window as the carousel, scattered at
+                     varying sizes with the playing cover largest. -->
+                <Viewbox Height="460" Stretch="Uniform" IsVisible="{Binding IsCollageMode}">
+                    <Canvas Width="1160" Height="460">
+                        <!-- History side -->
+                        <Border Canvas.Left="18" Canvas.Top="185" Width="80" Height="80" CornerRadius="6" ClipToBounds="True"
+                                IsVisible="{Binding Prev7ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding Prev7ArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                        <Border Canvas.Left="108" Canvas.Top="118" Width="128" Height="128" CornerRadius="7" ClipToBounds="True"
+                                IsVisible="{Binding Prev6ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding Prev6ArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                        <Border Canvas.Left="150" Canvas.Top="262" Width="96" Height="96" CornerRadius="6" ClipToBounds="True"
+                                IsVisible="{Binding Prev5ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding Prev5ArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                        <Border Canvas.Left="252" Canvas.Top="62" Width="186" Height="186" CornerRadius="9" ClipToBounds="True"
+                                BoxShadow="0 8 24 0 #50000000"
+                                IsVisible="{Binding OffPreviousArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding OffPreviousArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                        <Border Canvas.Left="268" Canvas.Top="268" Width="122" Height="122" CornerRadius="7" ClipToBounds="True"
+                                IsVisible="{Binding EdgePreviousArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding EdgePreviousArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                        <Border Canvas.Left="402" Canvas.Top="290" Width="142" Height="142" CornerRadius="8" ClipToBounds="True"
+                                IsVisible="{Binding FarPreviousArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding FarPreviousArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                        <Border Canvas.Left="452" Canvas.Top="22" Width="150" Height="150" CornerRadius="8" ClipToBounds="True"
+                                IsVisible="{Binding PreviousArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding PreviousArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+
+                        <!-- Currently playing: biggest tile -->
+                        <Border Canvas.Left="528" Canvas.Top="160" Width="218" Height="218" CornerRadius="10" ClipToBounds="True"
+                                ZIndex="10"
+                                BoxShadow="0 12 36 0 #70000000"
+                                IsVisible="{Binding CenterArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <Panel>
+                                <ctrl:CachedImage SourcePath="{Binding CenterArtworkPath}" Stretch="UniformToFill"/>
+                                <PathIcon Data="{StaticResource HeartFillIcon}"
+                                          Width="18" Height="18"
+                                          Foreground="#E74856"
+                                          HorizontalAlignment="Right"
+                                          VerticalAlignment="Bottom"
+                                          Margin="0,0,10,10"
+                                          IsVisible="{Binding CenterIsFavorite}" />
+                            </Panel>
+                        </Border>
+
+                        <!-- Up-next side -->
+                        <Border Canvas.Left="612" Canvas.Top="22" Width="128" Height="128" CornerRadius="7" ClipToBounds="True"
+                                IsVisible="{Binding NextArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding NextArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                        <Border Canvas.Left="758" Canvas.Top="88" Width="96" Height="96" CornerRadius="6" ClipToBounds="True"
+                                IsVisible="{Binding FarNextArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding FarNextArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                        <Border Canvas.Left="766" Canvas.Top="196" Width="150" Height="150" CornerRadius="8" ClipToBounds="True"
+                                IsVisible="{Binding EdgeNextArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding EdgeNextArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                        <Border Canvas.Left="652" Canvas.Top="392" Width="62" Height="62" CornerRadius="5" ClipToBounds="True"
+                                IsVisible="{Binding OffNextArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding OffNextArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                        <Border Canvas.Left="930" Canvas.Top="160" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
+                                IsVisible="{Binding Next5ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding Next5ArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                        <Border Canvas.Left="1028" Canvas.Top="228" Width="72" Height="72" CornerRadius="5" ClipToBounds="True"
+                                IsVisible="{Binding Next6ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding Next6ArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                        <Border Canvas.Left="938" Canvas.Top="300" Width="56" Height="56" CornerRadius="5" ClipToBounds="True"
+                                IsVisible="{Binding Next7ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <ctrl:CachedImage SourcePath="{Binding Next7ArtworkPath}" Stretch="UniformToFill"/>
+                        </Border>
+                    </Canvas>
+                </Viewbox>
+
                 <!-- Carousel area -->
                 <Grid HorizontalAlignment="Stretch"
                       Height="460"
-                      Margin="0,0">
+                      Margin="0,0"
+                      IsVisible="{Binding !IsCollageMode}">
 
                     <!-- 15-item carousel: center + 7 each side -->
                     <!-- Solid artwork + subtle dark overlay for depth (no transparency/see-through) -->
@@ -492,6 +577,29 @@
                          Foreground="White"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center" />
+            </Button>
+
+            <!-- Carousel / Collage toggle -->
+            <Button HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Margin="0,4,16,0"
+                    Background="#B0000000"
+                    BorderBrush="#40FFFFFF"
+                    BorderThickness="1"
+                    CornerRadius="999"
+                    Padding="12,6"
+                    Cursor="Hand"
+                    Command="{Binding ToggleCollageModeCommand}"
+                    IsVisible="{Binding HasQueue}"
+                    Opacity="0.85"
+                    ToolTip.Tip="Switch between the carousel and the cover collage">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Data="{StaticResource AlbumsIcon}" Width="12" Height="12" Foreground="White"/>
+                    <TextBlock Text="Collage" FontSize="11" FontWeight="SemiBold" Foreground="White"
+                               IsVisible="{Binding !IsCollageMode}"/>
+                    <TextBlock Text="Carousel" FontSize="11" FontWeight="SemiBold" Foreground="White"
+                               IsVisible="{Binding IsCollageMode}"/>
+                </StackPanel>
             </Button>
 
             <!-- Empty state when nothing is playing -->

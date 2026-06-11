@@ -68,6 +68,12 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _centerIsFavorite;
     [ObservableProperty] private bool _hasQueue;
 
+    /// <summary>Collage sub-mode: scattered covers at varying sizes instead of the carousel.</summary>
+    [ObservableProperty] private bool _isCollageMode;
+
+    [RelayCommand]
+    private void ToggleCollageMode() => IsCollageMode = !IsCollageMode;
+
     public PlayerViewModel Player => _player;
 
     public CoverFlowViewModel(PlayerViewModel player)
