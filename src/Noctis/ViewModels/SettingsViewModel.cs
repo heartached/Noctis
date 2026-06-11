@@ -201,6 +201,15 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
         _player?.RefreshWaveformMode();
     }
+
+    /// <summary>Minimize hides the main window to the system tray.</summary>
+    [ObservableProperty] private bool _minimizeToTray;
+
+    /// <summary>Close hides the main window to the system tray instead of exiting.</summary>
+    [ObservableProperty] private bool _closeToTray;
+
+    partial void OnMinimizeToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnCloseToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
     [ObservableProperty] private bool _collapseAlbumEditions;
@@ -587,6 +596,8 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerAlbumMarqueeEnabled = _settings.MiniPlayerAlbumMarqueeEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
             WaveformSeekbarEnabled = _settings.WaveformSeekbarEnabled;
+            MinimizeToTray = _settings.MinimizeToTray;
+            CloseToTray = _settings.CloseToTray;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
@@ -766,6 +777,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MiniPlayerAlbumMarqueeEnabled = MiniPlayerAlbumMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
         _settings.WaveformSeekbarEnabled = WaveformSeekbarEnabled;
+        _settings.MinimizeToTray = MinimizeToTray;
+        _settings.CloseToTray = CloseToTray;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;

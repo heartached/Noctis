@@ -630,6 +630,29 @@
                 </Grid>
             </Border>
 
+            <!-- System tray -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="System Tray" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Keep Noctis running in the tray. The tray icon offers play/pause, next and previous, and shows the current track."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Minimize to tray" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding MinimizeToTray}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Close to tray" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding CloseToTray}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <!-- Text Animation group -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">

@@ -18,6 +18,8 @@ public partial class MainWindow : Window
     private static readonly IBrush InactiveToggleBg = Brushes.Transparent;
 
     private TaskbarIntegrationService? _taskbar;
+    private TrayIcon? _trayIcon;
+    private bool _exitRequestedFromTray;
     private EventHandler<string>? _themeChangedHandler;
     private EventHandler<string>? _accentChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _playerPropertyChangedHandler;
@@ -182,6 +184,9 @@ public partial class MainWindow : Window
 
                 // Initialize taskbar thumbnail buttons (Previous / Play-Pause / Next)
                 InitializeTaskbarButtons(vm);
+
+                // System tray icon (minimize/close-to-tray + playback controls)
+                InitializeTrayIcon(vm);
             }
         };
 
@@ -193,8 +198,22 @@ public partial class MainWindow : Window
 
         // Drag-drop handlers are registered in OnLoaded (after visual tree is ready).
 
-        Closing += (_, _) => CaptureWindowPlacement();
+        Closing += OnMainWindowClosing;
         Closed += OnWindowClosed;
+
+        // Minimize-to-tray: hide the window when it minimizes and the setting is on.
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property != WindowStateProperty || WindowState != WindowState.Minimized)
+                return;
+            if (_trayIcon != null
+                && DataContext is MainWindowViewModel trayVm
+                && trayVm.Settings.MinimizeToTray
+                && _miniPlayer == null)
+            {
+                Hide();
+            }
+        };
 
         // If the main window goes down (OS shutdown, etc.) take the mini player with it
         // so it can't outlive the app shell as an orphaned topmost window.
@@ -231,6 +250,99 @@ public partial class MainWindow : Window
         }
     }
 
+    // ── System tray ──
+
+    private void InitializeTrayIcon(MainWindowViewModel vm)
+    {
+        if (_trayIcon != null) return;
+
+        try
+        {
+            var iconUri = new Uri("avares://Noctis/Assets/Icons/Noctis.ico");
+            var icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(iconUri));
+
+            var menu = new NativeMenu();
+
+            var show = new NativeMenuItem("Show Noctis");
+            show.Click += (_, _) => ShowFromTray();
+            menu.Items.Add(show);
+            menu.Items.Add(new NativeMenuItemSeparator());
+
+            var playPause = new NativeMenuItem("Play / Pause");
+            playPause.Click += (_, _) => vm.Player.PlayPauseCommand.Execute(null);
+            menu.Items.Add(playPause);
+
+            var previous = new NativeMenuItem("Previous");
+            previous.Click += (_, _) => vm.Player.PreviousCommand.Execute(null);
+            menu.Items.Add(previous);
+
+            var next = new NativeMenuItem("Next");
+            next.Click += (_, _) => vm.Player.NextCommand.Execute(null);
+            menu.Items.Add(next);
+
+            menu.Items.Add(new NativeMenuItemSeparator());
+            var exit = new NativeMenuItem("Exit");
+            exit.Click += (_, _) =>
+            {
+                _exitRequestedFromTray = true;
+                Close();
+            };
+            menu.Items.Add(exit);
+
+            _trayIcon = new TrayIcon
+            {
+                Icon = icon,
+                ToolTipText = "Noctis",
+                Menu = menu,
+                IsVisible = true,
+            };
+            _trayIcon.Clicked += (_, _) => ShowFromTray();
+            TrayIcon.SetIcons(Application.Current!, new TrayIcons { _trayIcon });
+
+            // Current track in the tooltip.
+            vm.Player.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName != nameof(PlayerViewModel.CurrentTrack)) return;
+                var track = vm.Player.CurrentTrack;
+                _trayIcon.ToolTipText = track == null
+                    ? "Noctis"
+                    : $"Noctis — {track.Title} · {track.Artist}";
+            };
+        }
+        catch (Exception ex)
+        {
+            // Tray support is best-effort (e.g. some Linux DEs have no tray).
+            DebugLogger.Error(DebugLogger.Category.UI, "TrayIcon.Init", ex.Message);
+        }
+    }
+
+    private void ShowFromTray()
+    {
+        Show();
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    private void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        // Close-to-tray: intercept user-initiated closes only. OS shutdown and
+        // explicit app shutdown (tray Exit) always pass through.
+        if (!_exitRequestedFromTray
+            && e.CloseReason == WindowCloseReason.WindowClosing
+            && _trayIcon != null
+            && _miniPlayer == null
+            && DataContext is MainWindowViewModel vm
+            && vm.Settings.CloseToTray)
+        {
+            e.Cancel = true;
+            Hide();
+            return;
+        }
+
+        CaptureWindowPlacement();
+    }
+
     private void CaptureWindowPlacement()
     {
         if (DataContext is not MainWindowViewModel vm) return;
@@ -260,6 +372,12 @@ public partial class MainWindow : Window
     private void OnWindowClosed(object? sender, EventArgs e)
     {
         _taskbar?.Dispose();
+        if (_trayIcon != null)
+        {
+            _trayIcon.IsVisible = false;
+            _trayIcon.Dispose();
+            _trayIcon = null;
+        }
 
         // Unsubscribe from all event handlers to prevent memory leak
         if (DataContext is MainWindowViewModel vm)

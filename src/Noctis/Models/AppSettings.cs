@@ -138,6 +138,12 @@ public class AppSettings
     /// falls back to the plain slider while the waveform generates).</summary>
     public bool WaveformSeekbarEnabled { get; set; }
 
+    /// <summary>Minimizing the main window hides it to the system tray.</summary>
+    public bool MinimizeToTray { get; set; }
+
+    /// <summary>Closing the main window hides it to the system tray instead of exiting.</summary>
+    public bool CloseToTray { get; set; }
+
     /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
     /// original #66 alpha glass look.</summary>
