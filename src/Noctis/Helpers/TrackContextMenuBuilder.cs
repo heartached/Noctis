@@ -30,6 +30,7 @@ public sealed class TrackContextMenuBuilder
     public MenuItem Shuffle { get; private set; } = null!;
     public MenuItem PlayNext { get; private set; } = null!;
     public MenuItem AddToQueue { get; private set; } = null!;
+    public MenuItem StartRadio { get; private set; } = null!;
     public MenuItem AddToPlaylist { get; private set; } = null!;
     public MenuItem Favorite { get; private set; } = null!;
     public MenuItem Unfavorite { get; private set; } = null!;
@@ -68,6 +69,11 @@ public sealed class TrackContextMenuBuilder
         AddToQueue = new MenuItem { Header = "Add to Queue" };
         AddToQueue.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Queue%20ICON.png");
         items.Add(AddToQueue);
+
+        // Hidden unless the view supplies a startRadioCommand in Bind().
+        StartRadio = new MenuItem { Header = "Start Radio", IsVisible = false };
+        StartRadio.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Shuffle%20ICON.png");
+        items.Add(StartRadio);
 
         items.Add(new Separator());
 
@@ -148,7 +154,8 @@ public sealed class TrackContextMenuBuilder
         ObservableCollection<Playlist>? playlists = null,
         ICommand? addToExistingPlaylistCommand = null,
         ICommand? convertCommand = null,
-        ICommand? scanReplayGainCommand = null)
+        ICommand? scanReplayGainCommand = null,
+        ICommand? startRadioCommand = null)
     {
         Menu.DataContext = track;
 
@@ -164,6 +171,18 @@ public sealed class TrackContextMenuBuilder
 
         AddToQueue.Command = addToQueueCommand;
         AddToQueue.CommandParameter = track;
+
+        // Start Radio is optional — only views that pass a startRadioCommand surface it.
+        if (startRadioCommand != null)
+        {
+            StartRadio.Command = startRadioCommand;
+            StartRadio.CommandParameter = track;
+            StartRadio.IsVisible = true;
+        }
+        else
+        {
+            StartRadio.IsVisible = false;
+        }
 
         // Add to Playlist: opens unified dialog
         AddToPlaylist.Command = addToPlaylistCommand;

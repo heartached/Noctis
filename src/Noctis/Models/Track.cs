@@ -183,6 +183,12 @@ public partial class Track : ObservableObject
     [ObservableProperty]
     private bool _isDisliked;
 
+    /// <summary>When set and in the future, the track is hidden from shuffle and radio until this time.</summary>
+    public DateTime? SnoozedUntil { get; set; }
+    /// <summary>True when the track is currently snoozed (SnoozedUntil in the future).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsSnoozed => SnoozedUntil is { } until && until > DateTime.UtcNow;
+
     /// <summary>Offline cache state for this track.</summary>
     public OfflineState OfflineState { get; set; } = OfflineState.None;
 

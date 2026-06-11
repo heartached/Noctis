@@ -588,6 +588,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     [RelayCommand]
     private void AddToQueue(Track track) => _player.AddToQueue(track);
+
+    [RelayCommand]
+    private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
+
     [RelayCommand]
     private void AddAlbumToQueue()
     {
@@ -664,24 +668,6 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         // Refresh hearts visibility
         OnPropertyChanged(nameof(IsAlbumFavorited));
         OnPropertyChanged(nameof(ShowTrackRowHearts));
-    }
-
-    /// <summary>True when every album track is flagged "not liked" (album-level toggle state).</summary>
-    public bool IsAlbumDisliked => Tracks.Count > 0 && Tracks.All(t => t.IsDisliked);
-
-    [RelayCommand]
-    private async Task RateAlbum(string stars)
-    {
-        if (!int.TryParse(stars, out var rating) || Tracks.Count == 0) return;
-        await _library.SetTracksRatingAsync(Tracks.ToList(), rating);
-    }
-
-    [RelayCommand]
-    private async Task ToggleAlbumDisliked()
-    {
-        if (Tracks.Count == 0) return;
-        await _library.SetTracksDislikedAsync(Tracks.ToList(), !IsAlbumDisliked);
-        OnPropertyChanged(nameof(IsAlbumDisliked));
     }
 
     [RelayCommand]

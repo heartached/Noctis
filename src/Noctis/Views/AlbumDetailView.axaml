@@ -405,24 +405,6 @@
                                 <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <!-- Album-wide rating: applies the stars to every track on the album.
-                             "Not Liked" suggests the whole album less during shuffle. -->
-                        <MenuItem Header="Rate">
-                            <MenuItem.Icon>
-                                <PathIcon Data="{StaticResource StarIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                            </MenuItem.Icon>
-                            <MenuItem Header="None" Command="{Binding RateAlbumCommand}" CommandParameter="0" />
-                            <MenuItem Header="★" Command="{Binding RateAlbumCommand}" CommandParameter="1" />
-                            <MenuItem Header="★★" Command="{Binding RateAlbumCommand}" CommandParameter="2" />
-                            <MenuItem Header="★★★" Command="{Binding RateAlbumCommand}" CommandParameter="3" />
-                            <MenuItem Header="★★★★" Command="{Binding RateAlbumCommand}" CommandParameter="4" />
-                            <MenuItem Header="★★★★★" Command="{Binding RateAlbumCommand}" CommandParameter="5" />
-                            <Separator />
-                            <MenuItem Header="Not Liked"
-                                      ToggleType="CheckBox"
-                                      IsChecked="{Binding IsAlbumDisliked, Mode=OneWay}"
-                                      Command="{Binding ToggleAlbumDislikedCommand}" />
-                        </MenuItem>
                         <MenuItem Header="Metadata"
                                   Command="{Binding OpenAlbumMetadataCommand}">
                             <MenuItem.Icon>
@@ -435,7 +417,7 @@
                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Scan ReplayGain (Album)"
+                        <MenuItem Header="Scan ReplayGain"
                                   Command="{Binding ScanAlbumReplayGainCommand}">
                             <MenuItem.Icon>
                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
@@ -518,6 +500,13 @@
                                           CommandParameter="{Binding}">
                                     <MenuItem.Icon>
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Start Radio"
+                                          Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).StartRadioCommand}"
+                                          CommandParameter="{Binding}">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
@@ -735,6 +724,13 @@
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Start Radio"
+                                                  Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).StartRadioCommand}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />

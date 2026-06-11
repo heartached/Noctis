@@ -140,6 +140,14 @@ public partial class PlayerViewModel : ViewModelBase
     private SettingsViewModel? _settings;
     private IPlayHistoryService? _playHistory; // injected for play/skip event logging
 
+    // ── Track Radio ──
+    private readonly IRadioService _radioService = new RadioService();
+    [ObservableProperty] private bool _isRadioActive;
+    private Track? _radioSeed;
+    private bool _radioRefillInFlight;
+    private const int RadioRefillThreshold = 5;
+    private const int RadioBatchSize = 25;
+
     public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers)
     {
         _audioPlayer = audioPlayer;
@@ -466,6 +474,26 @@ public partial class PlayerViewModel : ViewModelBase
         ReplaceQueueAndPlay(shuffled, 0);
     }
 
+    /// <summary>
+    /// Starts an endless "Track Radio" seeded from <paramref name="seed"/>: builds a
+    /// queue of similar tracks from the user's own library and keeps refilling it as
+    /// it drains (see the radio refill in <see cref="AdvanceQueueCore"/>).
+    /// </summary>
+    [RelayCommand]
+    private void StartRadio(Track? seed)
+    {
+        if (seed == null) return;
+        var exclude = new HashSet<Guid> { seed.Id };
+        var batch = _radioService.BuildSimilar(seed, _library.Tracks, RadioBatchSize, exclude);
+        var queue = new List<Track> { seed };
+        queue.AddRange(batch);
+        // ReplaceQueueAndPlay clears IsRadioActive/_radioSeed; re-arm radio afterward.
+        ReplaceQueueAndPlay(queue, 0);
+        _radioSeed = seed;
+        IsRadioActive = true;
+        IsShuffleEnabled = false;
+    }
+
     [RelayCommand]
     private async Task ToggleCurrentTrackFavorite()
     {
@@ -548,6 +576,10 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "ReplaceQueueAndPlay", $"tracks={tracks.Count}, startIdx={startIndex}");
         if (tracks.Count == 0) return;
         if (startIndex < 0 || startIndex >= tracks.Count) startIndex = 0;
+        // Any non-radio queue replacement (album/playlist/shuffle/etc.) ends radio so
+        // it stops refilling. StartRadio re-enables IsRadioActive after calling this.
+        IsRadioActive = false;
+        _radioSeed = null;
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
 
@@ -1074,6 +1106,7 @@ public partial class PlayerViewModel : ViewModelBase
             var next = UpNext[0];
             UpNext.RemoveAt(0);
             PlayTrack(next);
+            RefillRadioIfNeeded();
         }
         else if (RepeatMode == RepeatMode.All && History.Count > 0)
         {
@@ -1095,6 +1128,51 @@ public partial class PlayerViewModel : ViewModelBase
                 $"queueCount={UpNext.Count}, historyCount={History.Count}, repeat={RepeatMode}");
             StopAndClear();
         }
+    }
+
+    /// <summary>
+    /// When Track Radio is active and the queue is running low, appends another batch
+    /// of similar tracks so playback never runs dry. Excludes everything already played
+    /// or queued so the radio doesn't repeat itself.
+    ///
+    /// The similarity scan (<see cref="IRadioService.BuildSimilar"/>) is O(library size)
+    /// and runs at every track transition once the queue drains, so it is offloaded to the
+    /// ThreadPool to avoid stuttering the UI thread on large libraries. The candidate pool
+    /// and exclude set are snapshotted on the UI thread first so the background enumeration
+    /// can't race library mutations; results are marshaled back to append to <see cref="UpNext"/>
+    /// (which is bound to the UI). A re-entrancy guard prevents overlapping transitions from
+    /// launching concurrent refills.
+    /// </summary>
+    private void RefillRadioIfNeeded()
+    {
+        if (!IsRadioActive || _radioSeed == null || UpNext.Count > RadioRefillThreshold)
+            return;
+        if (_radioRefillInFlight)
+            return;
+
+        // Snapshot on the UI thread so the background scan can't race library mutations
+        // or live queue collections.
+        var seed = _radioSeed;
+        var snapshot = _library.Tracks.ToList();
+        var exclude = new HashSet<Guid>(History.Select(t => t.Id));
+        foreach (var t in UpNext) exclude.Add(t.Id);
+        if (CurrentTrack != null) exclude.Add(CurrentTrack.Id);
+        exclude.Add(seed.Id);
+
+        _radioRefillInFlight = true;
+        _ = Task.Run(() =>
+        {
+            var more = _radioService.BuildSimilar(seed, snapshot, RadioBatchSize, exclude);
+            Dispatcher.UIThread.Post(() =>
+            {
+                _radioRefillInFlight = false;
+                // The user may have replaced the queue (or re-seeded radio) during the hop;
+                // discard a stale batch rather than polluting the new queue.
+                if (!IsRadioActive || !ReferenceEquals(_radioSeed, seed))
+                    return;
+                foreach (var t in more) UpNext.Add(t);
+            });
+        });
     }
 
     private void GoBackInQueue(QueueAdvanceReason reason = QueueAdvanceReason.Previous)

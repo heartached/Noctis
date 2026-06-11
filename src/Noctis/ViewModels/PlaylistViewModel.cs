@@ -331,6 +331,9 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     private void AddToQueue(Track track) => _player.AddToQueue(track);
 
     [RelayCommand]
+    private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
+
+    [RelayCommand]
     private void ShuffleAll()
     {
         var tracks = Tracks.ToList();
