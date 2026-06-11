@@ -1973,6 +1973,36 @@
                 </Grid>
             </Border>
 
+            <!-- Find Metadata (Library group) -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Find Metadata" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="Identify poorly-tagged tracks via acoustic fingerprint (AcoustID) or text search, and review proposed tags before applying."
+                                           FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Classes="pill-action"
+                                Command="{Binding OpenMetadataFinderCommand}"
+                                Padding="14,8" CornerRadius="16" Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Find…" FontSize="13" VerticalAlignment="Center"/>
+                        </Button>
+                    </Grid>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="AcoustID API key (optional — enables fingerprinting)" FontSize="12" Opacity="0.6"/>
+                        <TextBox Text="{Binding AcoustIdApiKey}" PasswordChar="•" Watermark="Your AcoustID application key"/>
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="fpcalc path (optional — blank to search PATH)" FontSize="12" Opacity="0.6"/>
+                        <TextBox Text="{Binding FpcalcPath}" Watermark="Path to fpcalc / fpcalc.exe"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <!-- Snoozed tracks (hidden from shuffle + radio) -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">

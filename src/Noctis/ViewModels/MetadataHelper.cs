@@ -63,6 +63,25 @@ public static class MetadataHelper
         await ShowDialogOwned(window);
     }
 
+    /// <summary>Opens the metadata finder over poorly-tagged local tracks.</summary>
+    public static async Task OpenMetadataFinderDialog()
+    {
+        var library = App.Services!.GetRequiredService<ILibraryService>();
+        var finder = App.Services!.GetRequiredService<IMetadataFinderService>();
+        var metadata = App.Services!.GetRequiredService<IMetadataService>();
+        var candidates = library.Tracks
+            .Where(t => t.SourceType == SourceType.Local && IsPoorlyTagged(t))
+            .ToList();
+        var vm = new MetadataFinderViewModel(candidates, finder, metadata, library);
+        var window = new MetadataFinderDialog(vm);
+        await ShowDialogOwned(window);
+    }
+
+    private static bool IsPoorlyTagged(Track t) =>
+        string.IsNullOrWhiteSpace(t.Title) ||
+        string.IsNullOrWhiteSpace(t.Artist) || t.Artist == "Unknown Artist" ||
+        string.IsNullOrWhiteSpace(t.Album) || t.Album == "Unknown Album";
+
     public static async Task OpenAudioConverterDialog(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;

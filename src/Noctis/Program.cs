@@ -195,6 +195,11 @@ internal class Program
         // Library tools
         services.AddSingleton<IFileOrganizerService, FileOrganizerService>();
         services.AddSingleton<IDuplicateFinderService, DuplicateFinderService>();
+        services.AddSingleton<IMetadataFinderService>(sp =>
+            new MetadataFinderService(
+                sp.GetRequiredService<HttpClient>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings()));
 
         // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process
         // (reusing AudioConverterService for ffmpeg discovery) and runs managed DSP;

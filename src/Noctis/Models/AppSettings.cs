@@ -67,6 +67,12 @@ public class AppSettings
     /// <summary>Destination root for organized files. Empty = first media folder.</summary>
     public string OrganizeTargetRoot { get; set; } = string.Empty;
 
+    /// <summary>AcoustID application API key for fingerprint metadata lookups. Empty = disabled.</summary>
+    public string AcoustIdApiKey { get; set; } = string.Empty;
+
+    /// <summary>Optional explicit path to the Chromaprint <c>fpcalc</c> binary. Empty = search PATH.</summary>
+    public string FpcalcPath { get; set; } = string.Empty;
+
     /// <summary>When true, the in-app updater also offers GitHub pre-releases. Off = stable channel only.</summary>
     public bool IncludePrereleaseUpdates { get; set; } = false;
 

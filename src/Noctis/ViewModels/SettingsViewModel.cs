@@ -285,6 +285,8 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private string _organizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
     [ObservableProperty] private string _organizeTargetRoot = string.Empty;
+    [ObservableProperty] private string _acoustIdApiKey = string.Empty;
+    [ObservableProperty] private string _fpcalcPath = string.Empty;
 
     // ── Library overview stats ──
 
@@ -550,6 +552,8 @@ public partial class SettingsViewModel : ViewModelBase
             WatchFoldersEnabled = _settings.WatchFoldersEnabled;
             OrganizePattern = _settings.OrganizePattern;
             OrganizeTargetRoot = _settings.OrganizeTargetRoot;
+            AcoustIdApiKey = _settings.AcoustIdApiKey;
+            FpcalcPath = _settings.FpcalcPath;
             IncludePrereleaseUpdates = _settings.IncludePrereleaseUpdates;
 
             // Playback
@@ -721,6 +725,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.WatchFoldersEnabled = WatchFoldersEnabled;
         _settings.OrganizePattern = OrganizePattern;
         _settings.OrganizeTargetRoot = OrganizeTargetRoot;
+        _settings.AcoustIdApiKey = AcoustIdApiKey;
+        _settings.FpcalcPath = FpcalcPath;
         _settings.MusicFolders = MusicFolders.ToList();
         _settings.FolderRules = FolderRules
             .Where(r => !string.IsNullOrWhiteSpace(r.Path))
@@ -1369,6 +1375,20 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnNetEaseEnabledChanged(bool value)
     {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnAcoustIdApiKeyChanged(string value)
+    {
+        _settings.AcoustIdApiKey = value ?? string.Empty;
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnFpcalcPathChanged(string value)
+    {
+        _settings.FpcalcPath = value ?? string.Empty;
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
@@ -2103,6 +2123,10 @@ public partial class SettingsViewModel : ViewModelBase
         => await MetadataHelper.OpenDuplicateFinderDialog();
 
     [RelayCommand]
+    private async Task OpenMetadataFinder()
+        => await MetadataHelper.OpenMetadataFinderDialog();
+
+    [RelayCommand]
     private async Task Rescan()
     {
         if (IsScanning) return;
@@ -2336,6 +2360,8 @@ public partial class SettingsViewModel : ViewModelBase
             WatchFoldersEnabled = true;
             OrganizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
             OrganizeTargetRoot = string.Empty;
+            AcoustIdApiKey = string.Empty;
+            FpcalcPath = string.Empty;
             IncludePrereleaseUpdates = false;
 
             // Playback
