@@ -69,9 +69,20 @@ public partial class App : Application
                 DataContext = mainVm
             };
 
+            // Background BPM/key analysis: kick a backfill pass after each library
+            // update (initial scan, incremental rescans, imports), plus one now to
+            // cover tracks already present from persisted JSON. StartBackfill is a
+            // no-op when disabled, ffmpeg is unavailable, or a pass is already running,
+            // and all heavy work runs off the UI thread (out-of-process ffmpeg + DSP).
+            var analysisCoordinator = Services!.GetRequiredService<Noctis.Services.AudioAnalysis.AudioAnalysisCoordinator>();
+            var library = Services!.GetRequiredService<ILibraryService>();
+            library.LibraryUpdated += (_, _) => analysisCoordinator.StartBackfill();
+            analysisCoordinator.StartBackfill();
+
             // Graceful shutdown: save state before exit
             desktop.ShutdownRequested += async (_, _) =>
             {
+                analysisCoordinator.Stop();
                 await mainVm.ShutdownAsync();
             };
         }

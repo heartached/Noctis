@@ -124,6 +124,12 @@ public class AppSettings
     /// <summary>Whether long artist/album names in the Lyrics page should scroll.</summary>
     public bool LyricsArtistMarqueeEnabled { get; set; } = true;
 
+    /// <summary>Whether long track titles in the mini player should scroll.</summary>
+    public bool MiniPlayerTitleMarqueeEnabled { get; set; } = true;
+
+    /// <summary>Whether long album titles in the mini player should scroll.</summary>
+    public bool MiniPlayerAlbumMarqueeEnabled { get; set; } = true;
+
     // ── Equalizer settings ──
 
     /// <summary>Whether the advanced equalizer is enabled.</summary>
@@ -215,4 +221,12 @@ public class AppSettings
 
     /// <summary>Pre-amp in dB applied on top of the RG tag value.</summary>
     public double ReplayGainPreampDb { get; set; } = 0.0;
+
+    // ── Audio analysis (BPM / key) ──
+
+    /// <summary>Whether background BPM + musical-key analysis runs (scan-time + backfill).</summary>
+    public bool BpmKeyAnalysisEnabled { get; set; } = true;
+
+    /// <summary>When true, computed BPM/key are also written to file tags (TBPM/TKEY). Off by default.</summary>
+    public bool WriteAnalysisToTags { get; set; } = false;
 }

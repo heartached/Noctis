@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using Noctis.Helpers;
 using Noctis.Services;
+using Noctis.Services.AudioAnalysis;
 using Noctis.Services.Loon;
 using Noctis.ViewModels;
 
@@ -182,6 +183,21 @@ internal class Program
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().FfmpegPath ?? string.Empty,
                 sp.GetRequiredService<IMetadataService>()));
         services.AddSingleton<IReplayGainScannerService, ReplayGainScannerService>();
+
+        // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process
+        // (reusing AudioConverterService for ffmpeg discovery) and runs managed DSP;
+        // results cache in library.db and fill Track.Bpm/MusicalKey when missing.
+        services.AddSingleton<IAudioAnalysisService>(sp =>
+            new AudioAnalysisService(sp.GetRequiredService<IAudioConverterService>()));
+        services.AddSingleton<IAudioAnalysisStore>(sp =>
+            new AudioAnalysisStore(sp.GetRequiredService<IPersistenceService>()));
+        services.AddSingleton<AudioAnalysisCoordinator>(sp =>
+            new AudioAnalysisCoordinator(
+                sp.GetRequiredService<IAudioAnalysisService>(),
+                sp.GetRequiredService<IAudioAnalysisStore>(),
+                sp.GetRequiredService<ILibraryService>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings()));
 
         // ViewModels — MainWindowViewModel is the root, created once
         services.AddSingleton<MainWindowViewModel>();
