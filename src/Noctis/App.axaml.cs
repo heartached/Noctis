@@ -39,6 +39,7 @@ public partial class App : Application
             [typeof(StatisticsViewModel)] = () => new StatisticsView(),
             [typeof(QueueViewModel)] = () => new QueueView(),
             [typeof(SettingsViewModel)] = () => new SettingsView(),
+            [typeof(ListenLaterViewModel)] = () => new ListenLaterView(),
         });
         DataTemplates.Insert(0, cachedLocator);
         CachedLocator = cachedLocator;

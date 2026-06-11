@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Avalonia.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
@@ -530,6 +531,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (tracks.Count == 0) return;
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
         CtrlSelectedAlbums.Clear();
+    }
+
+    /// <summary>Bookmarks the album in the Listen Later list.</summary>
+    [RelayCommand]
+    private void AddAlbumToListenLater(Album album)
+    {
+        if (album == null) return;
+        App.Services?.GetService<IListenLaterService>()?.AddAlbum(album);
     }
 
     [RelayCommand]

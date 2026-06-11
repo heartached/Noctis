@@ -23,6 +23,7 @@ public partial class SidebarViewModel : ViewModelBase
     [ObservableProperty] private NavItem? _selectedNavItem;
     [ObservableProperty] private bool _isExpanded;
     [ObservableProperty] private int _favoritesCount;
+    [ObservableProperty] private int _listenLaterCount;
 
     /// <summary>Folders the user has collapsed this session (default expanded).</summary>
     private readonly HashSet<string> _collapsedFolders = new(StringComparer.OrdinalIgnoreCase);
@@ -49,6 +50,12 @@ public partial class SidebarViewModel : ViewModelBase
     public ObservableCollection<NavItem> FavoritesItems { get; } = new()
     {
         new NavItem { Key = "favorites", Label = "Favorites", IconGlyph = "FavoritesIcon" },
+    };
+
+    /// <summary>Listen Later navigation item (below Favorites).</summary>
+    public ObservableCollection<NavItem> ListenLaterItems { get; } = new()
+    {
+        new NavItem { Key = "listenlater", Label = "Listen Later", IconGlyph = "PlaylistsIcon" },
     };
 
     /// <summary>User-created playlists shown in sidebar with artwork thumbnails.</summary>

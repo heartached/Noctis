@@ -146,6 +146,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly QueueViewModel _queueVm;
     private readonly LyricsViewModel _lyricsVm;
     private readonly StatisticsViewModel _statisticsVm;
+    private readonly ListenLaterViewModel _listenLaterVm;
     private readonly CoverFlowViewModel _coverFlowVm;
     /// <summary>True when the global Cover Flow overlay is active. Survives sidebar navigation between toggle-eligible sections; auto-exits when navigating to an ineligible section.</summary>
     private bool _isCoverFlowMode;
@@ -177,7 +178,8 @@ public partial class MainWindowViewModel : ViewModelBase
         LoonClient loon,
         ILrcLibService lrcLib,
         INetEaseService netEase,
-        IPlayHistoryService playHistory)
+        IPlayHistoryService playHistory,
+        IListenLaterService listenLater)
     {
         _library = library;
         _playHistory = playHistory;
@@ -252,6 +254,14 @@ public partial class MainWindowViewModel : ViewModelBase
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
         _statisticsVm = new StatisticsViewModel(library, playHistory);
         _coverFlowVm = new CoverFlowViewModel(Player);
+        _listenLaterVm = new ListenLaterViewModel(listenLater, library, Player);
+        _listenLaterVm.AlbumOpened += (_, album) => OpenAlbumDetail(album);
+        _listenLaterVm.ArtistOpened += (_, name) => OpenArtistDetailByName(name);
+
+        // Keep the sidebar bookmark count live.
+        Sidebar.ListenLaterCount = listenLater.Items.Count;
+        listenLater.Changed += (_, _) => Dispatcher.UIThread.Post(() =>
+            Sidebar.ListenLaterCount = listenLater.Items.Count);
 
         // Default view
         _currentView = _homeVm;
@@ -1125,6 +1135,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 "playlists" => RefreshAndReturnPlaylists(_playlistsVm),
                 "favorites" => RefreshAndReturnFavorites(_favoritesVm),
                 "statistics" => RefreshAndReturnStatistics(_statisticsVm),
+                "listenlater" => RefreshAndReturnListenLater(),
                 "queue" => _queueVm,
                 "lyrics" => EnsureLyricsAndReturn(_lyricsVm),
                 "settings" => RefreshAndReturnSettings(),
@@ -1147,6 +1158,7 @@ public partial class MainWindowViewModel : ViewModelBase
             "playlists" => "Playlists",
             "favorites" => "Favorites",
             "statistics" => "Statistics",
+            "listenlater" => "Listen Later",
             "queue" => "Queue",
             "lyrics" => "Lyrics",
             "settings" => "Settings",
@@ -1227,6 +1239,12 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         vm.Refresh();
         return vm;
+    }
+
+    private ListenLaterViewModel RefreshAndReturnListenLater()
+    {
+        _listenLaterVm.Refresh();
+        return _listenLaterVm;
     }
 
     private SettingsViewModel RefreshAndReturnSettings()

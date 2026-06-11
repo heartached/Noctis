@@ -119,6 +119,48 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
+                    <!-- Listen Later -->
+                    <ListBox Classes="sidebar"
+                             x:Name="ListenLaterList"
+                             ItemsSource="{Binding ListenLaterItems}"
+                             SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
+                             SelectionChanged="OnNavListSelectionChanged"
+                             Margin="6,0,6,4">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="m:NavItem">
+                                <StackPanel Orientation="Horizontal" Spacing="10"
+                                            ToolTip.Tip="{Binding Label}"
+                                            HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                                    <!-- Bookmark thumbnail -->
+                                    <Border Width="28" Height="28"
+                                            CornerRadius="14"
+                                            ClipToBounds="True"
+                                            VerticalAlignment="Center"
+                                            Background="#22808080">
+                                        <PathIcon Data="{StaticResource BookmarkIcon}"
+                                                  Width="13" Height="13"
+                                                  Opacity="0.85"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center" Spacing="1"
+                                                IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">
+                                        <TextBlock Text="{Binding Label}"
+                                                   FontSize="13" />
+                                        <TextBlock FontSize="11"
+                                                   Opacity="0.5">
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0} saved">
+                                                    <Binding Path="$parent[UserControl].((vm:SidebarViewModel)DataContext).ListenLaterCount" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
                     <!-- Horizontal divider below Favorites -->
                     <Border Height="1"
                             Background="{DynamicResource IslandForeground}"

@@ -7,8 +7,11 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Converters;
 using Noctis.Models;
+using Noctis.Services;
 
 namespace Noctis.Helpers;
 
@@ -33,6 +36,7 @@ public sealed class TrackContextMenuBuilder
     public MenuItem StartRadio { get; private set; } = null!;
     public MenuItem SnoozeForMonth { get; private set; } = null!;
     public MenuItem AddToPlaylist { get; private set; } = null!;
+    public MenuItem ListenLater { get; private set; } = null!;
     public MenuItem Favorite { get; private set; } = null!;
     public MenuItem Unfavorite { get; private set; } = null!;
     public MenuItem Metadata { get; private set; } = null!;
@@ -87,6 +91,14 @@ public sealed class TrackContextMenuBuilder
         AddToPlaylist = new MenuItem { Header = "Add to Playlist" };
         AddToPlaylist.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Playlists%20ICON.png");
         items.Add(AddToPlaylist);
+
+        ListenLater = new MenuItem { Header = "Listen Later" };
+        ListenLater.Icon = new PathIcon
+        {
+            Width = 14, Height = 14,
+            Data = (Geometry)resourceHost.FindResource("BookmarkIcon")!
+        };
+        items.Add(ListenLater);
 
         items.Add(new Separator());
 
@@ -207,6 +219,10 @@ public sealed class TrackContextMenuBuilder
         // Add to Playlist: opens unified dialog
         AddToPlaylist.Command = addToPlaylistCommand;
         AddToPlaylist.CommandParameter = track;
+
+        // Listen Later: self-contained — bookmarks the track via the shared service.
+        ListenLater.Command = new RelayCommand(() =>
+            App.Services?.GetService<IListenLaterService>()?.AddTrack(track));
 
         // Favorites
         Favorite.Command = toggleFavoriteCommand;

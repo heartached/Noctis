@@ -183,6 +183,7 @@ internal class Program
         services.AddSingleton<ILrcLibService, LrcLibService>();
         services.AddSingleton<INetEaseService, NetEaseService>();
         services.AddSingleton<IPlayHistoryService, PlayHistoryService>();
+        services.AddSingleton<IListenLaterService, ListenLaterService>();
         // AudioConverter resolves the ffmpeg path lazily, so the user can change
         // it in Settings without restarting. Read through MainWindowViewModel —
         // it's the canonical owner of the SettingsViewModel instance.
