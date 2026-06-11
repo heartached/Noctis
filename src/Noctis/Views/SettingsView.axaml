@@ -1317,6 +1317,34 @@
                 </Grid>
             </Border>
 
+            <!-- Audio analysis: tempo & key detection -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Analyze tempo &amp; key" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Detect BPM and musical key for your library in the background. Powers AutoMix transitions and Track Radio."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding BpmKeyAnalysisEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Audio analysis: write detected BPM/key into file tags -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Save analysis to file tags" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Also write detected BPM/key into each file's tags (TBPM/TKEY). Off by default; only affects tracks analyzed after this is enabled."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding WriteAnalysisToTags}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Exclusive mode (Windows WASAPI) -->
             <Border Classes="setting-card" IsVisible="{Binding IsExclusiveAudioSupported}">
                 <Grid ColumnDefinitions="*,Auto">

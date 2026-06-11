@@ -214,6 +214,11 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private bool _gaplessPlaybackEnabled = true;
 
+    // ── Audio analysis (background BPM/key detection) ──
+
+    [ObservableProperty] private bool _bpmKeyAnalysisEnabled = true;
+    [ObservableProperty] private bool _writeAnalysisToTags;
+
     // ── Exclusive mode (Windows WASAPI) ──
 
     public bool IsExclusiveAudioSupported => OperatingSystem.IsWindows();
@@ -572,6 +577,8 @@ public partial class SettingsViewModel : ViewModelBase
             ReplayGainPreampDb = _settings.ReplayGainPreampDb;
             ReplayGainEnabled = !string.Equals(ReplayGainMode, "Off", StringComparison.OrdinalIgnoreCase);
             GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
+            BpmKeyAnalysisEnabled = _settings.BpmKeyAnalysisEnabled;
+            WriteAnalysisToTags = _settings.WriteAnalysisToTags;
             ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
             NetEaseEnabled = _settings.NetEaseEnabled;
 
@@ -739,6 +746,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ReplayGainMode = ReplayGainMode ?? "Off";
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
+        _settings.BpmKeyAnalysisEnabled = BpmKeyAnalysisEnabled;
+        _settings.WriteAnalysisToTags = WriteAnalysisToTags;
         _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
         _settings.NetEaseEnabled = NetEaseEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
@@ -1384,6 +1393,18 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer?.SetGapless(value);
         if (_player != null) _player.GaplessEnabled = value;
+        _ = SaveAsync();
+    }
+
+    partial void OnBpmKeyAnalysisEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnWriteAnalysisToTagsChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
 
@@ -2287,6 +2308,8 @@ public partial class SettingsViewModel : ViewModelBase
             SoundCheckEnabled = false;
             ExclusiveAudioEnabled = false;
             GaplessPlaybackEnabled = true;
+            BpmKeyAnalysisEnabled = true;
+            WriteAnalysisToTags = false;
             ReplayGainMode = "Auto";
             TrackTitleMarqueeEnabled = true;
             ArtistMarqueeEnabled = true;
