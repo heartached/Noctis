@@ -224,7 +224,7 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
         // Create content ViewModels
-        _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService);
+        _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService, playHistory);
         _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence);
         _albumsVm = new LibraryAlbumsViewModel(library, Player, Sidebar, Settings);
         _artistsVm = new LibraryArtistsViewModel(library);

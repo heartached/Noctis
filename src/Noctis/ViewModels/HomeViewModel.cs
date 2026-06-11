@@ -19,6 +19,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private readonly ILibraryService _library;
     private readonly SidebarViewModel _sidebar;
     private readonly ArtistImageService? _artistImages;
+    private readonly IPlayHistoryService? _playHistory;
     private readonly DispatcherTimer _refreshDebounce;
     private readonly EventHandler _libraryUpdatedHandler;
     private readonly EventHandler _favoritesChangedHandler;
@@ -39,6 +40,20 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// <summary>Top artists by total play count across all their tracks.</summary>
     public BulkObservableCollection<Artist> TopArtists { get; } = new();
 
+    // ── Time-aware rows (local play history) ──
+
+    /// <summary>Tracks the user keeps playing around this time of day.</summary>
+    public BulkObservableCollection<Track> TimeRotationTracks { get; } = new();
+
+    /// <summary>Most-played tracks of the last two weeks.</summary>
+    public BulkObservableCollection<Track> HeavyRotationTracks { get; } = new();
+
+    /// <summary>Tracks recently played again after a long break.</summary>
+    public BulkObservableCollection<Track> RediscoveredTracks { get; } = new();
+
+    /// <summary>Title of the time-of-day row ("Morning rotation" etc.).</summary>
+    [ObservableProperty] private string _timeRotationTitle = HomeRowsBuilder.DaypartLabel(DateTime.Now.Hour);
+
     [ObservableProperty] private string _greeting = GetGreeting();
 
     /// <summary>Fires when the user wants to open an album's detail view.</summary>
@@ -47,12 +62,14 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// <summary>Exposes the sidebar's playlists for the Add to Playlist submenu.</summary>
     public ObservableCollection<Playlist> Playlists => _sidebar.Playlists;
 
-    public HomeViewModel(PlayerViewModel player, ILibraryService library, SidebarViewModel sidebar, ArtistImageService? artistImages = null)
+    public HomeViewModel(PlayerViewModel player, ILibraryService library, SidebarViewModel sidebar,
+        ArtistImageService? artistImages = null, IPlayHistoryService? playHistory = null)
     {
         _player = player;
         _library = library;
         _sidebar = sidebar;
         _artistImages = artistImages;
+        _playHistory = playHistory;
 
         // Subscribe to track changes for real-time updates
         _player.TrackStarted += OnTrackStarted;
@@ -105,6 +122,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         if (!_isDirty && TopSongs.Count > 0)
         {
             Greeting = GetGreeting();
+            // Time-aware rows depend on the clock and the play log, both of which
+            // move without dirtying the library — rebuild them on every visit.
+            _ = RefreshTimeAwareRowsAsync();
             return;
         }
         _isDirty = false;
@@ -181,11 +201,58 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 {
                     Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(TopArtists)));
                 });
+
+            await RefreshTimeAwareRowsAsync();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[HomeVM] Refresh failed: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Rebuilds the three play-history rows (time-of-day, heavy rotation,
+    /// rediscovered). Ranking runs off the UI thread; track resolution drops
+    /// IDs that no longer exist in the library.
+    /// </summary>
+    private async Task RefreshTimeAwareRowsAsync()
+    {
+        if (_playHistory == null) return;
+
+        var now = DateTime.Now;
+        TimeRotationTitle = HomeRowsBuilder.DaypartLabel(now.Hour);
+
+        var events = _playHistory.Events;
+        var (timeIds, heavyIds, rediscoveredIds) = await Task.Run(() => (
+            HomeRowsBuilder.BuildTimeOfDayRotation(events, now),
+            HomeRowsBuilder.BuildHeavyRotation(events, now),
+            HomeRowsBuilder.BuildRediscovered(events, now)));
+
+        List<Track> Resolve(List<Guid> ids) =>
+            ids.Select(_library.GetTrackById).OfType<Track>().ToList();
+
+        TimeRotationTracks.ReplaceAll(Resolve(timeIds));
+        HeavyRotationTracks.ReplaceAll(Resolve(heavyIds));
+        RediscoveredTracks.ReplaceAll(Resolve(rediscoveredIds));
+    }
+
+    /// <summary>Plays a track from one of the time-aware rows, queueing the rest of its row.</summary>
+    [RelayCommand]
+    private void PlayTimeRotation(Track track) => PlayFromRow(TimeRotationTracks, track);
+
+    [RelayCommand]
+    private void PlayHeavyRotation(Track track) => PlayFromRow(HeavyRotationTracks, track);
+
+    [RelayCommand]
+    private void PlayRediscovered(Track track) => PlayFromRow(RediscoveredTracks, track);
+
+    private void PlayFromRow(BulkObservableCollection<Track> row, Track track)
+    {
+        var tracks = row.ToList();
+        var index = tracks.IndexOf(track);
+        if (index < 0) index = 0;
+        if (tracks.Count == 0) return;
+        _player.ReplaceQueueAndPlay(tracks, index);
     }
 
     private static string GetGreeting()

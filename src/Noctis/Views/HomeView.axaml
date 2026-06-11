@@ -15,6 +15,24 @@
         <conv:TrackPlaylistCommandParameterConverter x:Key="TrackPlaylistParamConverter" />
     </UserControl.Resources>
 
+    <UserControl.Styles>
+        <!-- Track pill for the play-history rows (same look as the Top Songs pills) -->
+        <Style Selector="Button.home-history-pill">
+            <Setter Property="Background" Value="{DynamicResource HomeCardBackground}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Height" Value="56"/>
+            <Setter Property="Margin" Value="3,3"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Button.home-history-pill:pointerover">
+            <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}"/>
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="*">
         <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
@@ -511,6 +529,137 @@
                                                    MaxLines="1"
                                                    Margin="0,1,0,0" />
                                     </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- ── Time-aware rows from local play history ── -->
+
+                <!-- Morning/Afternoon/Evening/Late night rotation -->
+                <StackPanel Spacing="14" IsVisible="{Binding TimeRotationTracks.Count}">
+                    <TextBlock Text="{Binding TimeRotationTitle}" FontSize="22" FontWeight="Bold" />
+                    <ItemsControl ItemsSource="{Binding TimeRotationTracks}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="3" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="m:Track">
+                                <Button Classes="browse-item home-history-pill"
+                                        Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayTimeRotationCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Grid ColumnDefinitions="56,*">
+                                        <Border Grid.Column="0" Width="56" Height="56" CornerRadius="6,0,0,6"
+                                                ClipToBounds="True"
+                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                            <Panel>
+                                                <TextBlock Text="&#x266A;" FontSize="16" Opacity="0.2"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                                <Image Source="{Binding AlbumArtworkPath, Converter={StaticResource ArtworkConverter}}"
+                                                       Stretch="UniformToFill"
+                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                       IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            </Panel>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
+                                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                            <TextBlock Text="{Binding Artist}" FontSize="11" Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Heavy rotation (last two weeks) -->
+                <StackPanel Spacing="14" IsVisible="{Binding HeavyRotationTracks.Count}">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Heavy rotation" FontSize="22" FontWeight="Bold" />
+                        <TextBlock Text="On repeat these past two weeks" FontSize="12" Opacity="0.5" />
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding HeavyRotationTracks}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="3" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="m:Track">
+                                <Button Classes="browse-item home-history-pill"
+                                        Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayHeavyRotationCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Grid ColumnDefinitions="56,*">
+                                        <Border Grid.Column="0" Width="56" Height="56" CornerRadius="6,0,0,6"
+                                                ClipToBounds="True"
+                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                            <Panel>
+                                                <TextBlock Text="&#x266A;" FontSize="16" Opacity="0.2"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                                <Image Source="{Binding AlbumArtworkPath, Converter={StaticResource ArtworkConverter}}"
+                                                       Stretch="UniformToFill"
+                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                       IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            </Panel>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
+                                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                            <TextBlock Text="{Binding Artist}" FontSize="11" Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- Recently rediscovered -->
+                <StackPanel Spacing="14" IsVisible="{Binding RediscoveredTracks.Count}">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Recently rediscovered" FontSize="22" FontWeight="Bold" />
+                        <TextBlock Text="Back in your ears after a long break" FontSize="12" Opacity="0.5" />
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding RediscoveredTracks}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="3" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="m:Track">
+                                <Button Classes="browse-item home-history-pill"
+                                        Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayRediscoveredCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Grid ColumnDefinitions="56,*">
+                                        <Border Grid.Column="0" Width="56" Height="56" CornerRadius="6,0,0,6"
+                                                ClipToBounds="True"
+                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                            <Panel>
+                                                <TextBlock Text="&#x266A;" FontSize="16" Opacity="0.2"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                                <Image Source="{Binding AlbumArtworkPath, Converter={StaticResource ArtworkConverter}}"
+                                                       Stretch="UniformToFill"
+                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                       IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            </Panel>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
+                                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                            <TextBlock Text="{Binding Artist}" FontSize="11" Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                        </StackPanel>
+                                    </Grid>
                                 </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
