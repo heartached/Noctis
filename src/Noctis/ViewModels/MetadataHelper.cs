@@ -54,6 +54,15 @@ public static class MetadataHelper
         await ShowDialogOwned(window);
     }
 
+    /// <summary>Opens the duplicate-finder tool over the local library.</summary>
+    public static async Task OpenDuplicateFinderDialog()
+    {
+        var service = App.Services!.GetRequiredService<IDuplicateFinderService>();
+        var vm = new DuplicateFinderViewModel(service);
+        var window = new DuplicateFinderDialog(vm);
+        await ShowDialogOwned(window);
+    }
+
     public static async Task OpenAudioConverterDialog(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;

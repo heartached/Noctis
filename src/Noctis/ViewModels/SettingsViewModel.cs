@@ -2099,6 +2099,10 @@ public partial class SettingsViewModel : ViewModelBase
         => await MetadataHelper.OpenOrganizeFilesDialog(this);
 
     [RelayCommand]
+    private async Task OpenDuplicateFinder()
+        => await MetadataHelper.OpenDuplicateFinderDialog();
+
+    [RelayCommand]
     private async Task Rescan()
     {
         if (IsScanning) return;

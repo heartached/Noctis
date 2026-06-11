@@ -194,6 +194,7 @@ internal class Program
 
         // Library tools
         services.AddSingleton<IFileOrganizerService, FileOrganizerService>();
+        services.AddSingleton<IDuplicateFinderService, DuplicateFinderService>();
 
         // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process
         // (reusing AudioConverterService for ffmpeg discovery) and runs managed DSP;
