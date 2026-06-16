@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Loon;
@@ -43,6 +44,7 @@ public partial class SettingsViewModel : ViewModelBase
     public const string TabAppearance = "Appearance";
     public const string TabAudio = "Audio";
     public const string TabLibrary = "Library";
+    public const string TabStatistics = "Statistics";
     public const string TabIntegrations = "Integrations";
     public const string TabAbout = "About";
 
@@ -52,6 +54,7 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsAppearanceTabSelected => SelectedSettingsTab == TabAppearance;
     public bool IsAudioTabSelected => SelectedSettingsTab == TabAudio;
     public bool IsLibraryTabSelected => SelectedSettingsTab == TabLibrary;
+    public bool IsStatisticsTabSelected => SelectedSettingsTab == TabStatistics;
     public bool IsIntegrationsTabSelected => SelectedSettingsTab == TabIntegrations;
     public bool IsAboutTabSelected => SelectedSettingsTab == TabAbout;
 
@@ -59,6 +62,7 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsAppearanceTabVisible => IsAppearanceTabSelected;
     public bool IsAudioTabVisible => IsAudioTabSelected;
     public bool IsLibraryTabVisible => IsLibraryTabSelected;
+    public bool IsStatisticsTabVisible => IsStatisticsTabSelected;
     public bool IsIntegrationsTabVisible => IsIntegrationsTabSelected;
     public bool IsAboutTabVisible => IsAboutTabSelected;
 
@@ -68,14 +72,25 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsAppearanceTabSelected));
         OnPropertyChanged(nameof(IsAudioTabSelected));
         OnPropertyChanged(nameof(IsLibraryTabSelected));
+        OnPropertyChanged(nameof(IsStatisticsTabSelected));
         OnPropertyChanged(nameof(IsIntegrationsTabSelected));
         OnPropertyChanged(nameof(IsAboutTabSelected));
         OnPropertyChanged(nameof(IsGeneralTabVisible));
         OnPropertyChanged(nameof(IsAppearanceTabVisible));
         OnPropertyChanged(nameof(IsAudioTabVisible));
         OnPropertyChanged(nameof(IsLibraryTabVisible));
+        OnPropertyChanged(nameof(IsStatisticsTabVisible));
         OnPropertyChanged(nameof(IsIntegrationsTabVisible));
         OnPropertyChanged(nameof(IsAboutTabVisible));
+
+        // Transient validation hints (e.g. ListenBrainz "Token required") are tied to
+        // a Connect click, not to persisted state — drop them when navigating tabs so
+        // they don't reappear when returning to Integrations.
+        ListenBrainzError = "";
+
+        // Play counts change during the session without a LibraryUpdated event,
+        // so recompute stats whenever the Statistics tab is opened.
+        if (value == TabStatistics) RefreshLibraryStats();
     }
 
     [RelayCommand]
@@ -117,7 +132,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Accent colour ──
 
-    /// <summary>Ten curated swatches; the active one is highlighted in the UI.</summary>
+    /// <summary>Curated swatches from App.AccentPresets; the active one is highlighted in the UI.</summary>
     public ObservableCollection<AccentSwatch> AccentSwatches { get; } = new();
 
     [ObservableProperty] private string _activeAccentHex = "#E74856";
@@ -193,15 +208,6 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _miniPlayerAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
 
-    /// <summary>Waveform seekbar in the playback bar (requires ffmpeg).</summary>
-    [ObservableProperty] private bool _waveformSeekbarEnabled;
-
-    partial void OnWaveformSeekbarEnabledChanged(bool value)
-    {
-        if (_settingsLoaded) _ = SaveAsync();
-        _player?.RefreshWaveformMode();
-    }
-
     /// <summary>Minimize hides the main window to the system tray.</summary>
     [ObservableProperty] private bool _minimizeToTray;
 
@@ -213,11 +219,13 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Songs page optional columns ──
 
+    [ObservableProperty] private bool _showGenreColumn = true;
     [ObservableProperty] private bool _showRatingColumn = true;
     [ObservableProperty] private bool _showBpmColumn;
     [ObservableProperty] private bool _showBitrateColumn;
     [ObservableProperty] private bool _showSampleRateColumn;
 
+    partial void OnShowGenreColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowRatingColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBpmColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBitrateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -249,7 +257,7 @@ public partial class SettingsViewModel : ViewModelBase
                 if (!_webRemote.IsRunning)
                     _webRemote.Start(_settings.WebRemotePort);
                 var ip = WebRemoteServer.GetLocalAddress() ?? "<this-pc-ip>";
-                WebRemoteUrl = $"http://{ip}:{_settings.WebRemotePort}";
+                WebRemoteUrl = $"http://{ip}:{_settings.WebRemotePort}/?k={_webRemote.Token}";
             }
             catch (Exception ex)
             {
@@ -271,6 +279,11 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private bool _lrcLibEnabled = true;
     [ObservableProperty] private bool _netEaseEnabled = true;
+
+    // ── Metadata Providers ──
+    [ObservableProperty] private bool _acoustIdEnabled = true;
+    [ObservableProperty] private bool _musicBrainzEnabled = true;
+    [ObservableProperty] private bool _deezerEnabled = true;
 
     [ObservableProperty] private string _ffmpegPath = string.Empty;
     [ObservableProperty] private string _ffmpegStatus = string.Empty;
@@ -369,6 +382,16 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _totalFileSize = "0 MB";
     [ObservableProperty] private string _totalListeningTime = "0 min";
 
+    // ── Listening statistics ──
+
+    [ObservableProperty] private string _totalPlays = "0";
+    [ObservableProperty] private string _timeListened = "0 min";
+    [ObservableProperty] private string _avgTrackLength = "0:00";
+    [ObservableProperty] private int _likedTracks;
+
+    public BulkObservableCollection<StatItem> TopArtists { get; } = new();
+    public BulkObservableCollection<StatItem> TopAlbums { get; } = new();
+
     // ── Audio quality ──
 
     [ObservableProperty] private int _losslessCount;
@@ -437,6 +460,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _isCheckingForUpdate;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
+    [NotifyPropertyChangedFor(nameof(ShowInAppUpdateButton))]
+    [NotifyPropertyChangedFor(nameof(ShowManualUpdateButton))]
     private bool _isUpdateAvailable;
     [ObservableProperty] private bool _isDownloadingUpdate;
     [ObservableProperty] private double _downloadProgress;
@@ -448,6 +473,22 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _includePrereleaseUpdates;
 
     public bool ShowCheckForUpdatesButton => !IsUpdateAvailable && !IsReadyToInstall;
+
+    /// <summary>True when this copy can update itself via the bundled installer
+    /// (Inno install on Windows, or any non-Windows build). False for Scoop /
+    /// portable copies, which update through their own channel.</summary>
+    public bool CanInstallInApp => UpdateService.SupportsInAppUpdate;
+
+    /// <summary>Shows the in-app "Update available" (download &amp; install) button.</summary>
+    public bool ShowInAppUpdateButton => IsUpdateAvailable && CanInstallInApp;
+
+    /// <summary>Shows the "Update available" button that opens GitHub for Scoop /
+    /// portable copies, which can't safely use the in-app installer.</summary>
+    public bool ShowManualUpdateButton => IsUpdateAvailable && !CanInstallInApp;
+
+    /// <summary>Manager-specific update guidance for Scoop / portable copies
+    /// (e.g. "Update with: scoop update noctis"); null for in-app-updatable builds.</summary>
+    public string? ExternalUpdateHint => UpdateService.ExternalUpdateHint;
 
     // ── Events ──
 
@@ -648,10 +689,10 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerTitleMarqueeEnabled = _settings.MiniPlayerTitleMarqueeEnabled;
             MiniPlayerAlbumMarqueeEnabled = _settings.MiniPlayerAlbumMarqueeEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
-            WaveformSeekbarEnabled = _settings.WaveformSeekbarEnabled;
             MinimizeToTray = _settings.MinimizeToTray;
             CloseToTray = _settings.CloseToTray;
             WebRemoteEnabled = _settings.WebRemoteEnabled;
+            ShowGenreColumn = _settings.ShowGenreColumn;
             ShowRatingColumn = _settings.ShowRatingColumn;
             ShowBpmColumn = _settings.ShowBpmColumn;
             ShowBitrateColumn = _settings.ShowBitrateColumn;
@@ -662,6 +703,11 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
+
+            // Metadata providers
+            AcoustIdEnabled = _settings.AcoustIdEnabled;
+            MusicBrainzEnabled = _settings.MusicBrainzEnabled;
+            DeezerEnabled = _settings.DeezerEnabled;
             FfmpegPath = _settings.FfmpegPath;
             RefreshFfmpegStatus();
             ReplayGainMode = string.IsNullOrEmpty(_settings.ReplayGainMode) ? "Off" : _settings.ReplayGainMode;
@@ -834,10 +880,10 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MiniPlayerTitleMarqueeEnabled = MiniPlayerTitleMarqueeEnabled;
         _settings.MiniPlayerAlbumMarqueeEnabled = MiniPlayerAlbumMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
-        _settings.WaveformSeekbarEnabled = WaveformSeekbarEnabled;
         _settings.MinimizeToTray = MinimizeToTray;
         _settings.CloseToTray = CloseToTray;
         _settings.WebRemoteEnabled = WebRemoteEnabled;
+        _settings.ShowGenreColumn = ShowGenreColumn;
         _settings.ShowRatingColumn = ShowRatingColumn;
         _settings.ShowBpmColumn = ShowBpmColumn;
         _settings.ShowBitrateColumn = ShowBitrateColumn;
@@ -846,6 +892,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
         _settings.LrcLibEnabled = LrcLibEnabled;
+        _settings.AcoustIdEnabled = AcoustIdEnabled;
+        _settings.MusicBrainzEnabled = MusicBrainzEnabled;
+        _settings.DeezerEnabled = DeezerEnabled;
         _settings.FfmpegPath = FfmpegPath ?? string.Empty;
         _settings.ReplayGainMode = ReplayGainMode ?? "Off";
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
@@ -1454,6 +1503,11 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnEnableAnimatedCoversChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnLrcLibEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
@@ -1461,6 +1515,24 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnNetEaseEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnAcoustIdEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnMusicBrainzEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnDeezerEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
@@ -1976,18 +2048,31 @@ public partial class SettingsViewModel : ViewModelBase
         // over the same collection plus a redundant tracks.Count subtraction.
         long totalBytes = 0;
         long totalDurationTicks = 0;
+        long totalPlays = 0;
+        long playedTicks = 0;
         int losslessCount = 0;
         int hiResCount = 0;
+        int likedCount = 0;
         foreach (var t in tracks)
         {
             totalBytes += t.FileSize;
             totalDurationTicks += t.Duration.Ticks;
+            totalPlays += t.PlayCount;
+            playedTicks += t.Duration.Ticks * t.PlayCount;
             if (t.IsLossless) losslessCount++;
             if (t.IsHiResLossless) hiResCount++;
+            if (t.IsFavorite) likedCount++;
         }
 
         TotalFileSize = FormatLibrarySize(totalBytes);
         TotalListeningTime = FormatDuration(TimeSpan.FromTicks(totalDurationTicks));
+        TotalPlays = FormatCount(totalPlays);
+        TimeListened = FormatDuration(TimeSpan.FromTicks(playedTicks));
+        AvgTrackLength = tracks.Count > 0
+            ? TimeSpan.FromTicks(totalDurationTicks / tracks.Count).ToString(@"m\:ss")
+            : "0:00";
+        LikedTracks = likedCount;
+        RefreshTopPlayed(tracks);
         LosslessCount = losslessCount;
         LossyCount = tracks.Count - losslessCount;
         HiResCount = hiResCount;
@@ -2007,6 +2092,62 @@ public partial class SettingsViewModel : ViewModelBase
             LossyPercentageText = "0%";
             HiResPercentageText = "0%";
         }
+    }
+
+    private void RefreshTopPlayed(IReadOnlyList<Track> tracks)
+    {
+        var artists = tracks
+            .Where(t => !string.IsNullOrWhiteSpace(t.Artist))
+            .GroupBy(t => t.Artist.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(g => new StatItem
+            {
+                Label = g.Key,
+                SubLabel = g.Count() == 1 ? "1 track" : $"{g.Count()} tracks",
+                Value = g.Sum(t => t.PlayCount),
+                ValueLabel = $"{g.Sum(t => t.PlayCount)} plays"
+            })
+            .Where(i => i.Value > 0)
+            .OrderByDescending(i => i.Value)
+            .Take(5)
+            .ToList();
+        ApplyRanks(artists);
+        TopArtists.ReplaceAll(artists);
+
+        var albumsById = _library.Albums.ToDictionary(a => a.Id);
+        var albums = tracks
+            .Where(t => !string.IsNullOrWhiteSpace(t.Album))
+            .GroupBy(t => t.AlbumId)
+            .Select(g =>
+            {
+                albumsById.TryGetValue(g.Key, out var album);
+                var plays = g.Sum(t => t.PlayCount);
+                return new StatItem
+                {
+                    Label = album?.Name ?? g.First().Album,
+                    SubLabel = album?.Artist ?? g.First().Artist,
+                    Value = plays,
+                    ValueLabel = $"{plays} plays"
+                };
+            })
+            .Where(i => i.Value > 0)
+            .OrderByDescending(i => i.Value)
+            .Take(5)
+            .ToList();
+        ApplyRanks(albums);
+        TopAlbums.ReplaceAll(albums);
+    }
+
+    private static void ApplyRanks(List<StatItem> items)
+    {
+        for (var i = 0; i < items.Count; i++)
+            items[i].Rank = i + 1;
+    }
+
+    private static string FormatCount(long count)
+    {
+        if (count >= 1_000_000) return $"{count / 1_000_000.0:0.#}M";
+        if (count >= 1_000) return $"{count / 1_000.0:0.#}K";
+        return count.ToString();
     }
 
     private static string FormatLibrarySize(long bytes)
@@ -2155,15 +2296,10 @@ public partial class SettingsViewModel : ViewModelBase
         await SaveAsync();
         MusicFoldersChanged?.Invoke(this, EventArgs.Empty);
 
-        // Scan the library automatically so the user doesn't have to press "Scan".
-        // A full scan over all folders reuses the unchanged-file fast path, so only
-        // the newly added folder's files actually get read.
-        var folders = MusicFolders.ToList();
-        _ = Task.Run(async () =>
-        {
-            try { await _library.ScanAsync(folders); }
-            catch (Exception ex) { Debug.WriteLine($"[Settings] Auto-scan after folder add failed: {ex.Message}"); }
-        });
+        // Auto-scan so the user doesn't have to press "Scan". Routed through the
+        // shared flow so the spinner shows and the Scan button disables while it
+        // runs. The unchanged-file fast path means only the new folder is read.
+        _ = RunLibraryScanAsync();
     }
 
     [RelayCommand]
@@ -2174,6 +2310,9 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(MediaFolderDisplay));
         await SaveAsync();
         MusicFoldersChanged?.Invoke(this, EventArgs.Empty);
+
+        // Re-scan so tracks from the removed folder drop out of the library.
+        _ = RunLibraryScanAsync();
     }
 
     private void SetScanStatus(string text, bool autoClear = false)
@@ -2218,11 +2357,19 @@ public partial class SettingsViewModel : ViewModelBase
         => await MetadataHelper.OpenPlaylistImportDialog();
 
     [RelayCommand]
-    private async Task Rescan()
+    private Task Rescan() => RunLibraryScanAsync();
+
+    /// <summary>
+    /// Shared library-scan flow used by the Scan button and by automatic scans
+    /// after a media folder is added or removed. Drives <see cref="IsScanning"/>
+    /// and <see cref="ScanStatusText"/> so the UI (spinner + disabled button)
+    /// reflects every scan, however it was triggered.
+    /// </summary>
+    private async Task RunLibraryScanAsync()
     {
         if (IsScanning) return;
         IsScanning = true;
-        ScanStatusText = "Starting scan...";
+        ScanStatusText = "Scanning Library";
         ScanProgress = 0;
 
         try
@@ -2249,7 +2396,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (IsScanning) return;
         IsScanning = true;
-        ScanStatusText = "Rebuilding library index...";
+        ScanStatusText = "Rebuilding library index";
         ScanProgress = 0;
 
         try
@@ -2483,6 +2630,11 @@ public partial class SettingsViewModel : ViewModelBase
             LrcLibEnabled = true;
             NetEaseEnabled = true;
 
+            // Metadata providers
+            AcoustIdEnabled = true;
+            MusicBrainzEnabled = true;
+            DeezerEnabled = true;
+
             // Equalizer
             _suppressEqNotify = true;
             EqualizerEnabled = true;
@@ -2681,7 +2833,9 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 LatestVersionTag = update.TagName;
                 IsLatestPrerelease = update.IsPrerelease;
-                UpdateStatusText = $"{update.TagName} is available.";
+                UpdateStatusText = CanInstallInApp
+                    ? $"{update.TagName} is available."
+                    : $"{update.TagName} is available. {ExternalUpdateHint}";
                 IsUpdateAvailable = true;
             }
         }
@@ -2799,6 +2953,17 @@ public partial class SettingsViewModel : ViewModelBase
     private void OpenGitHub()
     {
         Helpers.PlatformHelper.OpenUrl("https://github.com/heartached/Noctis");
+    }
+
+    /// <summary>Opens the GitHub release page for the available update — used by
+    /// Scoop / portable copies that can't safely run the in-app installer.</summary>
+    [RelayCommand]
+    private void OpenLatestRelease()
+    {
+        var url = string.IsNullOrEmpty(LatestVersionTag)
+            ? "https://github.com/heartached/Noctis/releases/latest"
+            : $"https://github.com/heartached/Noctis/releases/tag/{LatestVersionTag}";
+        Helpers.PlatformHelper.OpenUrl(url);
     }
 
     [RelayCommand]

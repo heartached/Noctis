@@ -14,16 +14,18 @@ public sealed class MetadataFinderService : IMetadataFinderService
 {
     private readonly HttpClient _http;
     private readonly Func<AppSettings> _settings;
+    private readonly DeezerMetadataService _deezer;
 
     // MusicBrainz asks for <= 1 request/second; AcoustID allows ~3/second. A single gate at
     // the slower rate keeps us well-behaved for both without per-host bookkeeping.
     private readonly SemaphoreSlim _rateGate = new(1, 1);
     private DateTime _lastRequestUtc = DateTime.MinValue;
 
-    public MetadataFinderService(HttpClient http, Func<AppSettings> settings)
+    public MetadataFinderService(HttpClient http, Func<AppSettings> settings, DeezerMetadataService deezer)
     {
         _http = http;
         _settings = settings;
+        _deezer = deezer;
     }
 
     public bool HasFingerprinting => ResolveFpcalc() != null;
@@ -32,10 +34,12 @@ public sealed class MetadataFinderService : IMetadataFinderService
 
     public async Task<IReadOnlyList<TagSuggestion>> IdentifyAsync(Track track, CancellationToken ct = default)
     {
+        var settings = _settings();
         var fpcalc = ResolveFpcalc();
-        var apiKey = _settings().AcoustIdApiKey;
+        var apiKey = settings.AcoustIdApiKey;
 
-        if (fpcalc != null && !string.IsNullOrWhiteSpace(apiKey))
+        // 1. AcoustID fingerprint — most accurate, but optional (toggle + fpcalc + key).
+        if (settings.AcoustIdEnabled && fpcalc != null && !string.IsNullOrWhiteSpace(apiKey))
         {
             try
             {
@@ -52,15 +56,34 @@ public sealed class MetadataFinderService : IMetadataFinderService
             catch { /* fall through to text search */ }
         }
 
-        // Text-search fallback (also the no-key / no-fpcalc path).
-        try
+        // 2. MusicBrainz text search — primary tag source.
+        if (settings.MusicBrainzEnabled)
         {
-            var url = MusicBrainzApi.BuildRecordingSearchUrl(track.PrimaryArtist, track.Title, track.Album);
-            var json = await GetAsync(url, ct).ConfigureAwait(false);
-            return MusicBrainzApi.ParseRecordingSearch(json);
+            try
+            {
+                var url = MusicBrainzApi.BuildRecordingSearchUrl(track.PrimaryArtist, track.Title, track.Album);
+                var json = await GetAsync(url, ct).ConfigureAwait(false);
+                var hits = MusicBrainzApi.ParseRecordingSearch(json);
+                if (hits.Count > 0) return hits;
+            }
+            catch (OperationCanceledException) { throw; }
+            catch { /* fall through to Deezer */ }
         }
-        catch (OperationCanceledException) { throw; }
-        catch { return Array.Empty<TagSuggestion>(); }
+
+        // 3. Deezer fallback — redundancy when MusicBrainz is disabled, down, or empty.
+        if (settings.DeezerEnabled)
+        {
+            try
+            {
+                var hits = await _deezer.SearchAsync(track.PrimaryArtist, track.Title, track.Album, ct)
+                    .ConfigureAwait(false);
+                if (hits.Count > 0) return hits;
+            }
+            catch (OperationCanceledException) { throw; }
+            catch { /* no source produced a match */ }
+        }
+
+        return Array.Empty<TagSuggestion>();
     }
 
     private async Task<string> GetAsync(string url, CancellationToken ct)

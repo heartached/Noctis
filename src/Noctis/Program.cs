@@ -177,13 +177,12 @@ internal class Program
         services.AddSingleton<ILastFmService, LastFmService>();
         services.AddSingleton<IListenBrainzService, ListenBrainzService>();
         services.AddSingleton<ArtistImageService>();
-        services.AddSingleton<ArtistBioService>();
         services.AddSingleton<ITunesArtworkService>();
         services.AddSingleton<UpdateService>();
         services.AddSingleton<ILrcLibService, LrcLibService>();
         services.AddSingleton<INetEaseService, NetEaseService>();
         services.AddSingleton<IPlayHistoryService, PlayHistoryService>();
-        services.AddSingleton<IListenLaterService, ListenLaterService>();
+        services.AddSingleton<DeezerMetadataService>();
         // AudioConverter resolves the ffmpeg path lazily, so the user can change
         // it in Settings without restarting. Read through MainWindowViewModel —
         // it's the canonical owner of the SettingsViewModel instance.
@@ -192,7 +191,6 @@ internal class Program
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().FfmpegPath ?? string.Empty,
                 sp.GetRequiredService<IMetadataService>()));
         services.AddSingleton<IReplayGainScannerService, ReplayGainScannerService>();
-        services.AddSingleton<IWaveformService, WaveformService>();
 
         // Library tools
         services.AddSingleton<IFileOrganizerService, FileOrganizerService>();
@@ -201,7 +199,8 @@ internal class Program
             new MetadataFinderService(
                 sp.GetRequiredService<HttpClient>(),
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
-                      ?? new Noctis.Models.AppSettings()));
+                      ?? new Noctis.Models.AppSettings(),
+                sp.GetRequiredService<DeezerMetadataService>()));
         services.AddSingleton<IPlaylistImportService, PlaylistImportService>();
 
         // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process

@@ -134,10 +134,6 @@ public class AppSettings
     /// <summary>Whether animated cover art (looping MP4/WebM) plays for the currently playing track.</summary>
     public bool EnableAnimatedCovers { get; set; } = true;
 
-    /// <summary>Whether the playback bar shows a waveform seekbar (requires ffmpeg;
-    /// falls back to the plain slider while the waveform generates).</summary>
-    public bool WaveformSeekbarEnabled { get; set; }
-
     /// <summary>Minimizing the main window hides it to the system tray.</summary>
     public bool MinimizeToTray { get; set; }
 
@@ -151,6 +147,7 @@ public class AppSettings
     public int WebRemotePort { get; set; } = 9420;
 
     // ── Songs page optional columns ──
+    public bool ShowGenreColumn { get; set; } = true;
     public bool ShowRatingColumn { get; set; } = true;
     public bool ShowBpmColumn { get; set; }
     public bool ShowBitrateColumn { get; set; }
@@ -259,6 +256,17 @@ public class AppSettings
 
     /// <summary>Whether NetEase Cloud Music online lyrics search is enabled.</summary>
     public bool NetEaseEnabled { get; set; } = true;
+
+    // ── Metadata providers ──
+
+    /// <summary>Whether AcoustID acoustic-fingerprint identification is used (needs fpcalc + key).</summary>
+    public bool AcoustIdEnabled { get; set; } = true;
+
+    /// <summary>Whether MusicBrainz is used as the primary tag source.</summary>
+    public bool MusicBrainzEnabled { get; set; } = true;
+
+    /// <summary>Whether Deezer is used as a fallback tag source for redundancy.</summary>
+    public bool DeezerEnabled { get; set; } = true;
 
     // ── Audio Converter ──
 
