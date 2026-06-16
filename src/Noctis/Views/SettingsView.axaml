@@ -1980,6 +1980,15 @@
                                               IsChecked="{Binding DeezerEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="iTunes / Apple Music" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Artwork &amp; animated covers — no key" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding ITunesEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                 </StackPanel>
             </Border>
 

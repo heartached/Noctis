@@ -10,7 +10,7 @@ namespace Noctis.Services;
 /// developer token is required; everything used here is part of the same
 /// surface area as bendodson.com/projects/itunes-artwork-finder.
 /// </summary>
-public sealed class ITunesArtworkService
+public sealed class ITunesArtworkService : IAlbumArtworkSearch
 {
     private const string SearchUrl = "https://itunes.apple.com/search";
     private const string LookupUrl = "https://itunes.apple.com/lookup";

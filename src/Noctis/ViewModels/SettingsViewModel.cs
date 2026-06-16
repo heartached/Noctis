@@ -284,6 +284,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _acoustIdEnabled = true;
     [ObservableProperty] private bool _musicBrainzEnabled = true;
     [ObservableProperty] private bool _deezerEnabled = true;
+    [ObservableProperty] private bool _iTunesEnabled = true;
 
     [ObservableProperty] private string _ffmpegPath = string.Empty;
     [ObservableProperty] private string _ffmpegStatus = string.Empty;
@@ -708,6 +709,7 @@ public partial class SettingsViewModel : ViewModelBase
             AcoustIdEnabled = _settings.AcoustIdEnabled;
             MusicBrainzEnabled = _settings.MusicBrainzEnabled;
             DeezerEnabled = _settings.DeezerEnabled;
+            ITunesEnabled = _settings.ITunesEnabled;
             FfmpegPath = _settings.FfmpegPath;
             RefreshFfmpegStatus();
             ReplayGainMode = string.IsNullOrEmpty(_settings.ReplayGainMode) ? "Off" : _settings.ReplayGainMode;
@@ -895,6 +897,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AcoustIdEnabled = AcoustIdEnabled;
         _settings.MusicBrainzEnabled = MusicBrainzEnabled;
         _settings.DeezerEnabled = DeezerEnabled;
+        _settings.ITunesEnabled = ITunesEnabled;
         _settings.FfmpegPath = FfmpegPath ?? string.Empty;
         _settings.ReplayGainMode = ReplayGainMode ?? "Off";
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
@@ -1533,6 +1536,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnDeezerEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnITunesEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
@@ -2634,6 +2643,7 @@ public partial class SettingsViewModel : ViewModelBase
             AcoustIdEnabled = true;
             MusicBrainzEnabled = true;
             DeezerEnabled = true;
+            ITunesEnabled = true;
 
             // Equalizer
             _suppressEqNotify = true;

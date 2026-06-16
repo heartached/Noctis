@@ -183,6 +183,14 @@ internal class Program
         services.AddSingleton<INetEaseService, NetEaseService>();
         services.AddSingleton<IPlayHistoryService, PlayHistoryService>();
         services.AddSingleton<DeezerMetadataService>();
+        services.AddSingleton<IAlbumArtworkSearch>(sp => sp.GetRequiredService<ITunesArtworkService>());
+        services.AddSingleton<AutoMatchCoordinator>(sp =>
+            new AutoMatchCoordinator(
+                sp.GetRequiredService<IMetadataFinderService>(),
+                sp.GetRequiredService<IAlbumArtworkSearch>(),
+                sp.GetRequiredService<ILrcLibService>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings()));
         // AudioConverter resolves the ffmpeg path lazily, so the user can change
         // it in Settings without restarting. Read through MainWindowViewModel —
         // it's the canonical owner of the SettingsViewModel instance.

@@ -268,6 +268,9 @@ public class AppSettings
     /// <summary>Whether Deezer is used as a fallback tag source for redundancy.</summary>
     public bool DeezerEnabled { get; set; } = true;
 
+    /// <summary>Whether iTunes/Apple Music is used for artwork and animated covers.</summary>
+    public bool ITunesEnabled { get; set; } = true;
+
     // ── Audio Converter ──
 
     /// <summary>Override path to ffmpeg. Empty = auto-detect (app dir, then PATH).</summary>
