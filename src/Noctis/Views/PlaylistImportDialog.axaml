@@ -34,6 +34,7 @@
                                    FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         <Button Grid.Column="1" Content="Close" Command="{Binding CloseCommand}"
                                 Width="90" Padding="0,8" FontWeight="Bold"
+                                Classes="danger-pill"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
                                 Margin="0,0,8,0" Cursor="Hand" />
                         <Button Grid.Column="2" Content="Create" Command="{Binding CreateCommand}"

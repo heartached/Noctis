@@ -20,21 +20,21 @@ public class IconKeyToGeometryConverter : IValueConverter
     private static readonly IReadOnlyDictionary<string, string> IconMap =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["HomeIcon"] = "avares://Noctis/Assets/Icons/Home%20ICON.png",
-            ["SongsIcon"] = "avares://Noctis/Assets/Icons/Songs%20ICON.png",
-            ["AlbumsIcon"] = "avares://Noctis/Assets/Icons/Albums%20ICON.png",
-            ["ArtistsIcon"] = "avares://Noctis/Assets/Icons/Artists%20ICON.png",
-            ["FoldersIcon"] = "avares://Noctis/Assets/Icons/Folder%20ICON.png",
+            ["HomeIcon"] = "avares://Noctis/Assets/Icons/Home%20icon.png",
+            ["SongsIcon"] = "avares://Noctis/Assets/Icons/Songs%20icon.png",
+            ["AlbumsIcon"] = "avares://Noctis/Assets/Icons/Albums%20icon.png",
+            ["ArtistsIcon"] = "avares://Noctis/Assets/Icons/Artists%20icon.png",
+            ["FoldersIcon"] = "avares://Noctis/Assets/Icons/Folder%20icon.png",
 
-            ["PlaylistsIcon"] = "avares://Noctis/Assets/Icons/Playlists%20ICON.png",
-            ["FavoritesIcon"] = "avares://Noctis/Assets/Icons/Your%20Favorites%20ICON.png",
-            ["SettingsIcon"] = "avares://Noctis/Assets/Icons/Settings%20ICON.png",
+            ["PlaylistsIcon"] = "avares://Noctis/Assets/Icons/Playlist%20icon.png",
+            ["FavoritesIcon"] = "avares://Noctis/Assets/Icons/Favorites%20icon.png",
+            ["SettingsIcon"] = "avares://Noctis/Assets/Icons/Settings%20icon.png",
             // Fallback for smart playlist rows in sidebar.
-            ["SmartPlaylistIcon"] = "avares://Noctis/Assets/Icons/Playlists%20ICON.png"
+            ["SmartPlaylistIcon"] = "avares://Noctis/Assets/Icons/Playlist%20icon.png"
         };
 
     private static readonly ConcurrentDictionary<string, Bitmap?> BitmapCache = new();
-    private const string FallbackUri = "avares://Noctis/Assets/Icons/Playlists%20ICON.png";
+    private const string FallbackUri = "avares://Noctis/Assets/Icons/Playlist%20icon.png";
 
     /// <summary>
     /// Target pixel size for pre-scaled icons.
@@ -60,10 +60,21 @@ public class IconKeyToGeometryConverter : IValueConverter
             {
                 var assetUri = new Uri(u);
                 using var stream = AssetLoader.Open(assetUri);
-                using var full = new Bitmap(stream);
-                return full.CreateScaledBitmap(
-                    new PixelSize(ScaledSize, ScaledSize),
-                    BitmapInterpolationMode.HighQuality);
+                var full = new Bitmap(stream);
+
+                // Pre-scale only large sources (e.g. 512px originals) so the
+                // OpacityMask path gets a clean small bitmap. Small sources
+                // (already ≤ ScaledSize) are returned as-is — upscaling them
+                // here would only add blur before the render-time downscale.
+                if (full.PixelSize.Width <= ScaledSize && full.PixelSize.Height <= ScaledSize)
+                    return full;
+
+                using (full)
+                {
+                    return full.CreateScaledBitmap(
+                        new PixelSize(ScaledSize, ScaledSize),
+                        BitmapInterpolationMode.HighQuality);
+                }
             }
             catch
             {

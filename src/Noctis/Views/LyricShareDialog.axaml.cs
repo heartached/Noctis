@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
+using Avalonia.Threading;
 using Noctis.Helpers;
 using Noctis.ViewModels;
 
@@ -17,9 +18,24 @@ public partial class LyricShareDialog : Window
     public LyricShareDialog(LyricShareViewModel vm) : this()
     {
         DataContext = vm;
+        vm.ScrollToLineRequested += OnScrollToLine;
+        Closed += (_, _) => vm.Detach();
     }
 
     private LyricShareViewModel? Vm => DataContext as LyricShareViewModel;
+
+    /// <summary>Brings the currently-playing lyric line into view during playback sync.</summary>
+    private void OnScrollToLine(int index)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (this.FindControl<ItemsControl>("LineItems") is not { } list)
+                return;
+            if (index < 0 || index >= list.ItemCount)
+                return;
+            list.ContainerFromIndex(index)?.BringIntoView();
+        });
+    }
 
     private void OnCloseClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();
 

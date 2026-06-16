@@ -388,6 +388,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             "Genre" => sortAsc ? ordered.ThenBy(x => x.Track.Genre).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Genre).ThenBy(x => x.Track.Title),
             "Year" => sortAsc ? ordered.ThenBy(x => x.Track.Year).ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber) : ordered.ThenByDescending(x => x.Track.Year).ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber),
             "Plays" => sortAsc ? ordered.ThenBy(x => x.Track.PlayCount) : ordered.ThenByDescending(x => x.Track.PlayCount),
+            // First click (ascending) groups favorites at the top — that's what
+            // clicking a "Favorites" header is for; the second click flips it.
+            "IsFavorite" => sortAsc ? ordered.ThenByDescending(x => x.Track.IsFavorite).ThenBy(x => x.Track.Title) : ordered.ThenBy(x => x.Track.IsFavorite).ThenBy(x => x.Track.Title),
             "Rating" => sortAsc ? ordered.ThenBy(x => x.Track.Rating).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Rating).ThenBy(x => x.Track.Title),
             "Bpm" => sortAsc ? ordered.ThenBy(x => x.Track.Bpm).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Bpm).ThenBy(x => x.Track.Title),
             "Bitrate" => sortAsc ? ordered.ThenBy(x => x.Track.Bitrate).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Bitrate).ThenBy(x => x.Track.Title),
@@ -485,11 +488,8 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         return 1000;
     }
 
-    private static string RemoveWhitespace(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-            return string.Empty;
-
-        return string.Concat(value.Where(c => !char.IsWhiteSpace(c)));
-    }
+    // Normalizes a value into a comparable search key: strips whitespace, punctuation
+    // (e.g. the apostrophe in "Don't") and accents so queries match regardless. Name kept
+    // for its call sites; see Helpers/SearchText for the shared implementation.
+    private static string RemoveWhitespace(string value) => Noctis.Helpers.SearchText.Normalize(value);
 }

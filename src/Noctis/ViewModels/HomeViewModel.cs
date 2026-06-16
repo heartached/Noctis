@@ -223,13 +223,26 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         TimeRotationTitle = HomeRowsBuilder.DaypartLabel(now.Hour);
 
         var events = _playHistory.Events;
-        var (timeIds, heavyIds, rediscoveredIds) = await Task.Run(() => (
-            HomeRowsBuilder.BuildTimeOfDayRotation(events, now),
-            HomeRowsBuilder.BuildHeavyRotation(events, now),
-            HomeRowsBuilder.BuildRediscovered(events, now)));
 
-        List<Track> Resolve(List<Guid> ids) =>
-            ids.Select(_library.GetTrackById).OfType<Track>().ToList();
+        // Dedupe rows against Most Listened To and each other so every row
+        // shows tracks the user hasn't already seen further up the page.
+        var exclude = TopSongs.Select(t => t.Id).ToHashSet();
+        var (timeIds, heavyIds, rediscoveredIds) = await Task.Run(() =>
+        {
+            var heavy = HomeRowsBuilder.BuildHeavyRotation(events, now, exclude: exclude);
+            exclude.UnionWith(heavy);
+            var time = HomeRowsBuilder.BuildTimeOfDayRotation(events, now, exclude: exclude);
+            exclude.UnionWith(time);
+            var rediscovered = HomeRowsBuilder.BuildRediscovered(events, now, exclude: exclude);
+            return (time, heavy, rediscovered);
+        });
+
+        // Hide a row entirely when it has too few tracks to earn its header.
+        List<Track> Resolve(List<Guid> ids)
+        {
+            var tracks = ids.Select(_library.GetTrackById).OfType<Track>().ToList();
+            return tracks.Count >= HomeRowsBuilder.MinRowItems ? tracks : new List<Track>();
+        }
 
         TimeRotationTracks.ReplaceAll(Resolve(timeIds));
         HeavyRotationTracks.ReplaceAll(Resolve(heavyIds));
@@ -350,13 +363,30 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void ShuffleTopSongs()
+    private void ShuffleTopSongs() => ShuffleRow(TopSongs);
+
+    [RelayCommand]
+    private void ShuffleTimeRotation() => ShuffleRow(TimeRotationTracks);
+
+    [RelayCommand]
+    private void ShuffleHeavyRotation() => ShuffleRow(HeavyRotationTracks);
+
+    [RelayCommand]
+    private void ShuffleRediscovered() => ShuffleRow(RediscoveredTracks);
+
+    private void ShuffleRow(IEnumerable<Track> row)
     {
-        var tracks = TopSongs.ToList();
+        var tracks = row.ToList();
         if (tracks.Count == 0) return;
         var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
+
+    [RelayCommand]
+    private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
+
+    [RelayCommand]
+    private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
 
     /// <summary>Fires when the user wants to view a track's album.</summary>
     public event EventHandler<Track>? ViewAlbumRequested;

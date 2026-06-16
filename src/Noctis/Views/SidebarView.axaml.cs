@@ -93,7 +93,7 @@ public partial class SidebarView : UserControl
         return false;
     }
 
-    private ListBox[] GetNavLists() => new[] { NavList, FavoritesList, ListenLaterList, PlaylistList };
+    private ListBox[] GetNavLists() => new[] { NavList, FavoritesList, PlaylistList };
 
     private void UnsubscribeFromViewModel()
     {

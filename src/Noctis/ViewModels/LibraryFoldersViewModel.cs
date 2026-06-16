@@ -12,7 +12,7 @@ namespace Noctis.ViewModels;
 /// ViewModel for the "Folders" library view — browses tracks by on-disk folder hierarchy
 /// under the user's configured music roots.
 /// </summary>
-public partial class LibraryFoldersViewModel : ViewModelBase, IDisposable
+public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisposable
 {
     private readonly ILibraryService _library;
     private readonly PlayerViewModel _player;
@@ -20,6 +20,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, IDisposable
 
     private EventHandler? _libraryUpdatedHandler;
     private bool _isDirty = true;
+    private string _currentFilter = string.Empty;
 
     /// <summary>Root nodes of the folder forest (one per configured music root).</summary>
     public ObservableCollection<FolderNode> RootNodes { get; } = new();
@@ -84,16 +85,36 @@ public partial class LibraryFoldersViewModel : ViewModelBase, IDisposable
         }
     }
 
-    partial void OnSelectedNodeChanged(FolderNode? value)
+    partial void OnSelectedNodeChanged(FolderNode? value) => RebuildTrackPane();
+
+    /// <summary>Applies the top-bar search filter ("Find in Folders"). Empty clears it.</summary>
+    public void ApplyFilter(string query)
     {
-        if (value == null)
+        _currentFilter = query ?? string.Empty;
+        RebuildTrackPane();
+    }
+
+    private void RebuildTrackPane()
+    {
+        var hasFilter = !string.IsNullOrWhiteSpace(_currentFilter);
+        var sink = new List<Track>();
+
+        if (SelectedNode != null)
+            Collect(SelectedNode, sink);
+        else if (hasFilter)
+            // No folder selected: search across all roots so the box still works.
+            foreach (var root in RootNodes)
+                Collect(root, sink);
+
+        if (hasFilter)
         {
-            SelectedFolderTracks.ReplaceAll(Array.Empty<Track>());
-            return;
+            var q = _currentFilter.Trim();
+            sink = sink.Where(t =>
+                (t.Title?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (t.Artist?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (t.Album?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
         }
 
-        var sink = new List<Track>();
-        Collect(value, sink);
         SelectedFolderTracks.ReplaceAll(sink);
     }
 

@@ -720,8 +720,10 @@ public partial class PlaybackBarView : UserControl
         return PillSliderVisualHelper.GetValueFromPointer(slider, position, VolumeThumbSize);
     }
 
-    private const double IslandBaseWidth = 650;
-    private const double IslandLyricsPageWidth = 390;
+    // Slim bar (3 transport, 4 right icons) — narrower than the old 5+5 layout.
+    private const double IslandBaseWidth = 590;
+    // Lyrics page hides the center track-info, so the pill only holds transport + right icons.
+    private const double IslandLyricsPageWidth = 340;
     private static readonly TimeSpan VolumeFlyoutCloseDelay = TimeSpan.FromMilliseconds(140);
     // Matches the slowest entrance/exit transition on VolumeFlyoutContent (Y = 0.18s) so the
     // popup stays alive long enough for the slide-down + fade-out to finish before it unmaps.
@@ -856,7 +858,9 @@ public partial class PlaybackBarView : UserControl
         e.Handled = true;
     }
 
-    private void OnLyricsDisplayMenuItemPointerEntered(object? sender, PointerEventArgs e)
+    // Expands a submenu the instant the pointer enters its parent item, skipping the
+    // default hover delay. Shared by the Sleep Timer and Lyrics Display menu items.
+    private void OnExpandSubMenuPointerEntered(object? sender, PointerEventArgs e)
     {
         if (sender is MenuItem item)
             item.IsSubMenuOpen = true;

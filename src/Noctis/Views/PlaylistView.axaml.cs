@@ -237,6 +237,11 @@ public partial class PlaylistView : UserControl
         if (!e.GetCurrentPoint(item).Properties.IsLeftButtonPressed) return;
         if (DataContext is not PlaylistViewModel vm) return;
         if (vm.IsSmartPlaylist) return;
+        // No reordering while a search filter is active: indexes refer to the
+        // filtered view, and persisting from it would drop the hidden tracks.
+        if (!string.IsNullOrWhiteSpace(vm.SearchText)) return;
+        // No reordering while a non-Manual sort is active (displayed order != saved order).
+        if (vm.SortMode != PlaylistSortMode.Manual) return;
         if (item.DataContext is not Track track) return;
 
         _dragTrack = track;
@@ -369,7 +374,7 @@ public partial class PlaylistView : UserControl
 
         var posInList = e.GetPosition(TrackList);
         var toIndex = GetPlaylistDropTargetIndex(posInList);
-        if (toIndex < 0) toIndex = vm.Tracks.Count - 1;
+        if (toIndex < 0) return; // no realized rows to target — treat as cancel
         if (toIndex >= vm.Tracks.Count) toIndex = vm.Tracks.Count - 1;
 
         if (_dragSourceIndex != toIndex)
@@ -378,6 +383,13 @@ public partial class PlaylistView : UserControl
 
     private int GetPlaylistDropTargetIndex(Point posInList)
     {
+        // Virtualized list: only realized containers are inspectable. If the
+        // pointer isn't over one (e.g. the padding gap below the last row),
+        // fall back to the vertically nearest realized row instead of the list
+        // end, so the committed move matches what the drop indicator implied.
+        int nearestIndex = -1;
+        double nearestDistance = double.MaxValue;
+
         for (int i = 0; i < TrackList.ItemCount; i++)
         {
             var container = TrackList.ContainerFromIndex(i);
@@ -388,15 +400,19 @@ public partial class PlaylistView : UserControl
 
             var top = itemPos.Value.Y;
             var bottom = top + container.Bounds.Height;
-            var midpoint = top + container.Bounds.Height / 2;
 
-            if (posInList.Y < midpoint && posInList.Y >= top)
+            if (posInList.Y >= top && posInList.Y < bottom)
                 return i;
-            if (posInList.Y >= midpoint && posInList.Y < bottom)
-                return i;
+
+            var distance = posInList.Y < top ? top - posInList.Y : posInList.Y - bottom;
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestIndex = i;
+            }
         }
 
-        return TrackList.ItemCount - 1;
+        return nearestIndex;
     }
 
     private void ResetPlaylistDragState()

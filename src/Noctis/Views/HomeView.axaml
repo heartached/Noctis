@@ -12,7 +12,6 @@
 
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
-        <conv:TrackPlaylistCommandParameterConverter x:Key="TrackPlaylistParamConverter" />
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -67,6 +66,7 @@
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Stretch"
                                         helpers:DragFileBehavior.EnableFileDrag="True"
+                                        ContextRequested="OnTopSongContextRequested"
                                         Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayTopSongCommand}"
                                         CommandParameter="{Binding}">
                                     <Button.Styles>
@@ -74,112 +74,6 @@
                                             <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}" />
                                         </Style>
                                     </Button.Styles>
-                                    <Button.ContextMenu>
-                                        <ContextMenu DataContext="{Binding}" Opening="OnContextMenuOpening">
-                                            <MenuItem Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).PlayTopSongCommand}"
-                                                      CommandParameter="{Binding}"
-                                                      MaxWidth="400">
-                                                <MenuItem.Header>
-                                                    <TextBlock Text="Play"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               FontWeight="Normal"
-                                                               FontSize="14"
-                                                               FontFamily="{Binding $parent[MenuItem].FontFamily}" />
-                                                </MenuItem.Header>
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Shuffle"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ShuffleTopSongsCommand}">
-                                                <MenuItem.Icon>
-                                                    <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Play Next"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).PlayNextCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Add to Queue"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).AddToQueueCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <Separator />
-                                            <MenuItem x:Name="AddToPlaylistMenuItem1" Header="Add to Playlist"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).AddTrackToNewPlaylistCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <Separator />
-                                            <MenuItem Header="Favorites"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ToggleTrackFavoriteCommand}"
-                                                      CommandParameter="{Binding}"
-                                                      IsVisible="{Binding !IsFavorite}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Your%20Favorites%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Remove from Favorites"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ToggleTrackFavoriteCommand}"
-                                                      CommandParameter="{Binding}"
-                                                      IsVisible="{Binding IsFavorite}">
-                                                <MenuItem.Icon>
-                                                    <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Metadata"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).OpenTrackMetadataCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Convert File"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ConvertTrackCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Scan ReplayGain"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ScanTrackReplayGainCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Search Lyrics"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).SearchLyricsTrackCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Show Folder"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ShowInExplorerTrackCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Folder%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <Separator />
-                                            <MenuItem Header="Remove from Library" Classes="danger"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).RemoveTrackFromLibraryCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                        </ContextMenu>
-                                    </Button.ContextMenu>
 
                                     <!-- Pill content: artwork + title + explicit badge + play count -->
                                     <Grid ColumnDefinitions="56,*,Auto">
@@ -283,6 +177,14 @@
                                         <Style Selector="Button:pointerover Border#ArtistAvatar">
                                             <Setter Property="RenderTransform" Value="scale(1.04)" />
                                         </Style>
+                                        <!-- Keep the tile transparent on hover/press: only the
+                                             avatar scales, no gray square behind it. -->
+                                        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                        <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
                                     </Button.Styles>
                                     <StackPanel Spacing="10" HorizontalAlignment="Center">
                                         <Border x:Name="ArtistAvatar"
@@ -331,26 +233,8 @@
                                FontSize="22"
                                FontWeight="Bold" />
 
-                    <!-- Empty state -->
-                    <StackPanel IsVisible="{Binding !RecentlyPlayedAlbums.Count}"
-                                HorizontalAlignment="Center"
-                                Spacing="4"
-                                Margin="0,32">
-                        <TextBlock Text="No recently played music yet"
-                                   FontSize="16"
-                                   Opacity="0.5"
-                                   HorizontalAlignment="Center"
-                                   TextAlignment="Center" />
-                        <TextBlock Text="Start playing some music!"
-                                   FontSize="13"
-                                   Opacity="0.3"
-                                   HorizontalAlignment="Center"
-                                   TextAlignment="Center" />
-                    </StackPanel>
-
                     <!-- Album cards -->
-                    <ItemsControl ItemsSource="{Binding RecentlyPlayedAlbums}"
-                                  IsVisible="{Binding RecentlyPlayedAlbums.Count}">
+                    <ItemsControl ItemsSource="{Binding RecentlyPlayedAlbums}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <UniformGrid Columns="5" VerticalAlignment="Top" />
@@ -363,115 +247,9 @@
                                         HorizontalAlignment="Stretch"
                                         VerticalAlignment="Top"
                                         helpers:DragFileBehavior.EnableFileDrag="True"
+                                        ContextRequested="OnRecentAlbumContextRequested"
                                         Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).OpenAlbumCommand}"
                                         CommandParameter="{Binding}">
-                                    <Button.ContextMenu>
-                                        <ContextMenu DataContext="{Binding}" Opening="OnContextMenuOpening">
-                                            <MenuItem Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).PlayAlbumCommand}"
-                                                      CommandParameter="{Binding}"
-                                                      MaxWidth="400">
-                                                <MenuItem.Header>
-                                                    <TextBlock Text="Play"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               FontWeight="Normal"
-                                                               FontSize="14"
-                                                               FontFamily="{Binding $parent[MenuItem].FontFamily}" />
-                                                </MenuItem.Header>
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Shuffle"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ShuffleAlbumCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Play Next"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).PlayNextAlbumCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Add to Queue"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).AddAlbumToQueueCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <Separator />
-                                            <MenuItem x:Name="AddToPlaylistMenuItem2" Header="Add to Playlist"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).AddAlbumToNewPlaylistCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <Separator />
-                                            <MenuItem Header="Favorites"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ToggleAlbumFavoritesCommand}"
-                                                      CommandParameter="{Binding}"
-                                                      IsVisible="{Binding !IsAllTracksFavorite}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Your%20Favorites%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Remove from Favorites"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ToggleAlbumFavoritesCommand}"
-                                                      CommandParameter="{Binding}"
-                                                      IsVisible="{Binding IsAllTracksFavorite}">
-                                                <MenuItem.Icon>
-                                                    <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856" />
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Metadata"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).OpenMetadataCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Convert Album"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ConvertAlbumCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Scan ReplayGain"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ScanAlbumReplayGainCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Search Lyrics"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).SearchLyricsAlbumCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="Show Folder"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ShowInExplorerAlbumCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Folder%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <Separator />
-                                            <MenuItem Header="Remove from Library" Classes="danger"
-                                                      Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).RemoveFromLibraryCommand}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                        </ContextMenu>
-                                    </Button.ContextMenu>
                                     <StackPanel Spacing="0">
                                         <Border CornerRadius="6"
                                                 ClipToBounds="True"
@@ -549,6 +327,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="m:Track">
                                 <Button Classes="browse-item home-history-pill"
+                                        ContextRequested="OnTimeRotationContextRequested"
                                         Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayTimeRotationCommand}"
                                         CommandParameter="{Binding}">
                                     <Grid ColumnDefinitions="56,*">
@@ -593,6 +372,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="m:Track">
                                 <Button Classes="browse-item home-history-pill"
+                                        ContextRequested="OnHeavyRotationContextRequested"
                                         Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayHeavyRotationCommand}"
                                         CommandParameter="{Binding}">
                                     <Grid ColumnDefinitions="56,*">
@@ -637,6 +417,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="m:Track">
                                 <Button Classes="browse-item home-history-pill"
+                                        ContextRequested="OnRediscoveredContextRequested"
                                         Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayRediscoveredCommand}"
                                         CommandParameter="{Binding}">
                                     <Grid ColumnDefinitions="56,*">

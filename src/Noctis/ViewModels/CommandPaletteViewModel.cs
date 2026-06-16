@@ -165,7 +165,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
                 Subtitle = "Artist",
                 Category = "Artist",
                 Icon = Icon("ArtistsIcon"),
-                Execute = () => _main.OpenArtistDetailByName(name),
+                Execute = () => _main.OpenArtistByName(name),
             }, score));
         }
 

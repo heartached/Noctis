@@ -70,6 +70,12 @@
                                 BorderBrush="#1FFFFFFF"
                                 PointerPressed="OnSpectrumPointerPressed"
                                 PointerMoved="OnSpectrumPointerMoved">
+                            <!-- ClipToBounds clips to the rectangle, not the rounded corners,
+                                 so the square gradient layers poke out at the corners without
+                                 an explicit rounded clip geometry. -->
+                            <Border.Clip>
+                                <RectangleGeometry Rect="0,0,360,142" RadiusX="8" RadiusY="8"/>
+                            </Border.Clip>
                             <Grid>
                                 <Rectangle x:Name="HueWash" Margin="-1"/>
                                 <Border Margin="-1">
@@ -97,6 +103,9 @@
                                 ClipToBounds="True"
                                 PointerPressed="OnHuePointerPressed"
                                 PointerMoved="OnHuePointerMoved">
+                            <Border.Clip>
+                                <RectangleGeometry Rect="0,0,360,20" RadiusX="10" RadiusY="10"/>
+                            </Border.Clip>
                             <Grid>
                                 <Border CornerRadius="10">
                                     <Border.Background>

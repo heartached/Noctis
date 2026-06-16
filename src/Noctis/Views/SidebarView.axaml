@@ -94,12 +94,21 @@
                                             ClipToBounds="True"
                                             VerticalAlignment="Center"
                                             Background="{DynamicResource AccentColorBrush}">
-                                        <PathIcon Data="{StaticResource HeartFillIcon}"
-                                                  Width="14" Height="14"
-                                                  Foreground="{DynamicResource AccentForegroundBrush}"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  Margin="0,0,-1,-1" />
+                                        <!-- Heart badge. Width/Height = icon SIZE.
+                                             To nudge position, change X and Y below:
+                                               X  -> sideways  (positive = RIGHT, negative = LEFT)
+                                               Y  -> up/down    (positive = DOWN,  negative = UP)
+                                             1 = 1 pixel. -->
+                                        <Path Data="{StaticResource FavoritesFilledIcon}"
+                                              Width="14" Height="10"
+                                              Stretch="Uniform"
+                                              Fill="{DynamicResource AccentForegroundBrush}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center">
+                                            <Path.RenderTransform>
+                                                <TranslateTransform X="1.3" Y="0" />
+                                            </Path.RenderTransform>
+                                        </Path>
                                     </Border>
                                     <StackPanel VerticalAlignment="Center" Spacing="1"
                                                 IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">
@@ -110,48 +119,6 @@
                                             <TextBlock.Text>
                                                 <MultiBinding StringFormat="{}{0} songs">
                                                     <Binding Path="$parent[UserControl].((vm:SidebarViewModel)DataContext).FavoritesCount" />
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-
-                    <!-- Listen Later -->
-                    <ListBox Classes="sidebar"
-                             x:Name="ListenLaterList"
-                             ItemsSource="{Binding ListenLaterItems}"
-                             SelectedItem="{Binding SelectedNavItem, Mode=OneWay}"
-                             SelectionChanged="OnNavListSelectionChanged"
-                             Margin="6,0,6,4">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate x:DataType="m:NavItem">
-                                <StackPanel Orientation="Horizontal" Spacing="10"
-                                            ToolTip.Tip="{Binding Label}"
-                                            HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
-                                    <!-- Bookmark thumbnail -->
-                                    <Border Width="28" Height="28"
-                                            CornerRadius="14"
-                                            ClipToBounds="True"
-                                            VerticalAlignment="Center"
-                                            Background="#22808080">
-                                        <PathIcon Data="{StaticResource BookmarkIcon}"
-                                                  Width="13" Height="13"
-                                                  Opacity="0.85"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center" />
-                                    </Border>
-                                    <StackPanel VerticalAlignment="Center" Spacing="1"
-                                                IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">
-                                        <TextBlock Text="{Binding Label}"
-                                                   FontSize="13" />
-                                        <TextBlock FontSize="11"
-                                                   Opacity="0.5">
-                                            <TextBlock.Text>
-                                                <MultiBinding StringFormat="{}{0} saved">
-                                                    <Binding Path="$parent[UserControl].((vm:SidebarViewModel)DataContext).ListenLaterCount" />
                                                 </MultiBinding>
                                             </TextBlock.Text>
                                         </TextBlock>
@@ -295,9 +262,10 @@
                                                        FontSize="13"
                                                        TextTrimming="CharacterEllipsis"
                                                        MaxWidth="120" />
-                                            <PathIcon Data="{StaticResource PinIcon}"
-                                                      Width="10" Height="10"
-                                                      Opacity="0.55"
+                                            <PathIcon Data="{StaticResource StarIcon}"
+                                                      Width="11" Height="11"
+                                                      Foreground="#F1C40F"
+                                                      Opacity="0.9"
                                                       VerticalAlignment="Center"
                                                       IsVisible="{Binding IsPinned}" />
                                         </StackPanel>

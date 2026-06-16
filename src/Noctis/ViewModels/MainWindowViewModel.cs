@@ -25,7 +25,6 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IListenBrainzService _listenBrainz;
     private readonly ISyncService _syncService;
     private readonly ArtistImageService _artistImageService;
-    private readonly ArtistBioService? _artistBioService;
     private readonly LoonClient _loon;
     private readonly IPlayHistoryService _playHistory;
 
@@ -146,7 +145,6 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly QueueViewModel _queueVm;
     private readonly LyricsViewModel _lyricsVm;
     private readonly StatisticsViewModel _statisticsVm;
-    private readonly ListenLaterViewModel _listenLaterVm;
     private readonly CoverFlowViewModel _coverFlowVm;
     /// <summary>True when the global Cover Flow overlay is active. Survives sidebar navigation between toggle-eligible sections; auto-exits when navigating to an ineligible section.</summary>
     private bool _isCoverFlowMode;
@@ -174,12 +172,10 @@ public partial class MainWindowViewModel : ViewModelBase
         IListenBrainzService listenBrainz,
         ISyncService syncService,
         ArtistImageService artistImageService,
-        ArtistBioService artistBioService,
         LoonClient loon,
         ILrcLibService lrcLib,
         INetEaseService netEase,
-        IPlayHistoryService playHistory,
-        IListenLaterService listenLater)
+        IPlayHistoryService playHistory)
     {
         _library = library;
         _playHistory = playHistory;
@@ -189,7 +185,6 @@ public partial class MainWindowViewModel : ViewModelBase
         _listenBrainz = listenBrainz;
         _syncService = syncService;
         _artistImageService = artistImageService;
-        _artistBioService = artistBioService;
         _loon = loon;
 
         // Create long-lived ViewModels
@@ -205,7 +200,6 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetLoonClient(loon);
         Settings.SetLastFm(lastFm);
         Settings.SetListenBrainz(listenBrainz);
-        Settings.SetArtistImageService(artistImageService);
         Settings.SetUpdateService(App.Services!.GetRequiredService<UpdateService>());
         Settings.SettingsReset += async (_, _) => await Sidebar.LoadPlaylistsAsync();
 
@@ -260,14 +254,6 @@ public partial class MainWindowViewModel : ViewModelBase
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
         _statisticsVm = new StatisticsViewModel(library, playHistory);
         _coverFlowVm = new CoverFlowViewModel(Player);
-        _listenLaterVm = new ListenLaterViewModel(listenLater, library, Player);
-        _listenLaterVm.AlbumOpened += (_, album) => OpenAlbumDetail(album);
-        _listenLaterVm.ArtistOpened += (_, name) => OpenArtistDetailByName(name);
-
-        // Keep the sidebar bookmark count live.
-        Sidebar.ListenLaterCount = listenLater.Items.Count;
-        listenLater.Changed += (_, _) => Dispatcher.UIThread.Post(() =>
-            Sidebar.ListenLaterCount = listenLater.Items.Count);
 
         // Default view
         _currentView = _homeVm;
@@ -326,7 +312,6 @@ public partial class MainWindowViewModel : ViewModelBase
         // Wire up Search Lyrics action on ViewModels with track context menus
         _homeVm.SetSearchLyricsAction(SearchLyricsForTrack);
         _songsVm.SetSearchLyricsAction(SearchLyricsForTrack);
-        _favoritesVm.SetSearchLyricsAction(SearchLyricsForTrack);
         Player.SetSearchLyricsAction(SearchLyricsForTrack);
 
         // Wire up View Artist action on ViewModels that display artist names
@@ -336,6 +321,13 @@ public partial class MainWindowViewModel : ViewModelBase
         Player.SetViewArtistAction(ViewArtistByName);
         _coverFlowVm.SetViewArtistAction(ViewArtistByName);
         _coverFlowVm.SetViewAlbumAction(track => OnViewAlbumFromTrack(this, track));
+
+        // Mirror the Cover Flow sub-mode (Carousel/Collage) into the top-bar pill segment.
+        _coverFlowVm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CoverFlowViewModel.IsCollageMode))
+                TopBar.IsCollageMode = _coverFlowVm.IsCollageMode;
+        };
 
         // Forward Player.HasContent changes to IsPlaybackBarVisible
         // and close lyrics panel when playback ends
@@ -531,6 +523,15 @@ public partial class MainWindowViewModel : ViewModelBase
             var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            // Per dropped folder: its audio files (original paths) and whether any sit
+            // directly in the folder. A curated collection (downloaded playlist) has
+            // files directly inside it; a library root only contains album subfolders.
+            var folderAudioFiles = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            var folderHasTopLevelAudio = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // Maps each original file path to its final imported path (managed-root copy
+            // or as-is), so we can resolve a folder's tracks after import.
+            var originalToFinal = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
             foreach (var rawPath in input)
             {
                 var normalized = TryNormalizePath(rawPath);
@@ -571,12 +572,23 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 try
                 {
+                    var perFolder = new List<string>();
                     foreach (var file in Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories))
                     {
                         var ext = Path.GetExtension(file);
-                        if (MetadataService.SupportedExtensions.Contains(ext))
-                            files.Add(file);
+                        if (!MetadataService.SupportedExtensions.Contains(ext)) continue;
+                        files.Add(file);
+                        perFolder.Add(file);
+
+                        // Directly inside the dropped folder (not in a subfolder)?
+                        if (string.Equals(Path.GetDirectoryName(file), folder, StringComparison.OrdinalIgnoreCase))
+                            folderHasTopLevelAudio.Add(folder);
                     }
+                    // Natural-ish order by file name so disc/track prefixes ("1-01", "1-02")
+                    // become the playlist order.
+                    perFolder.Sort((a, b) => string.Compare(
+                        Path.GetFileName(a), Path.GetFileName(b), StringComparison.OrdinalIgnoreCase));
+                    folderAudioFiles[folder] = perFolder;
                 }
                 catch (Exception ex)
                 {
@@ -616,6 +628,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     {
                         System.Diagnostics.Debug.WriteLine($"[DropImport]   {file} → already under library root, importing as-is");
                         importTargets.Add(file);
+                        originalToFinal[file] = file;
                         continue;
                     }
 
@@ -626,7 +639,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
                     System.Diagnostics.Debug.WriteLine($"[DropImport]   {file} → copied to: {copiedPath}");
                     if (!string.IsNullOrWhiteSpace(copiedPath))
+                    {
                         importTargets.Add(copiedPath);
+                        originalToFinal[file] = copiedPath!;
+                    }
                 }
 
                 System.Diagnostics.Debug.WriteLine($"[DropImport] importTargets={importTargets.Count} beforeCount={beforeCount}");
@@ -662,10 +678,70 @@ public partial class MainWindowViewModel : ViewModelBase
             _favoritesVm.Refresh();
             Settings.RefreshLibraryStats();
             Settings.RefreshStorageInfo();
+
+            await OfferFolderPlaylistsAsync(folderAudioFiles, folderHasTopLevelAudio, originalToFinal);
         }
         finally
         {
             _dropImportLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// After a folder drop, offers to keep a curated collection together as a playlist.
+    /// Only triggers for a folder that directly contains audio files spanning two or
+    /// more distinct albums (a downloaded playlist), not a single album or a library
+    /// root made of album subfolders.
+    /// </summary>
+    private async Task OfferFolderPlaylistsAsync(
+        Dictionary<string, List<string>> folderAudioFiles,
+        HashSet<string> folderHasTopLevelAudio,
+        Dictionary<string, string> originalToFinal)
+    {
+        if (folderAudioFiles.Count == 0) return;
+
+        // Resolve imported tracks by their final file path.
+        var tracksByPath = new Dictionary<string, Track>(StringComparer.OrdinalIgnoreCase);
+        foreach (var t in _library.Tracks)
+        {
+            if (!string.IsNullOrWhiteSpace(t.FilePath))
+                tracksByPath[t.FilePath] = t;
+        }
+
+        foreach (var (folder, originalFiles) in folderAudioFiles)
+        {
+            if (!folderHasTopLevelAudio.Contains(folder)) continue;
+
+            // Map this folder's files (in name order) to imported tracks.
+            var tracks = new List<Track>(originalFiles.Count);
+            foreach (var original in originalFiles)
+            {
+                if (originalToFinal.TryGetValue(original, out var final) &&
+                    tracksByPath.TryGetValue(final, out var track))
+                {
+                    tracks.Add(track);
+                }
+            }
+
+            if (tracks.Count < 2) continue;
+
+            // A single-album folder is a normal album — leave it alone.
+            var distinctAlbums = tracks.Select(t => t.AlbumId).Distinct().Count();
+            if (distinctAlbums < 2) continue;
+
+            var name = Path.GetFileName(folder.TrimEnd(
+                Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            if (string.IsNullOrWhiteSpace(name)) continue;
+
+            // Don't re-prompt if a playlist with this name already exists (e.g. re-drop).
+            if (Sidebar.ManualPlaylistExists(name)) continue;
+
+            var confirmed = await Views.ConfirmationDialog.ShowAsync(
+                $"\"{name}\" contains {tracks.Count} tracks from {distinctAlbums} different albums.\n\n" +
+                $"Create a playlist named \"{name}\" with these tracks?");
+            if (!confirmed) continue;
+
+            await Sidebar.CreatePlaylistFromTracksAsync(name, tracks);
         }
     }
 
@@ -721,9 +797,18 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void RefreshBackButton()
     {
-        TopBar.SearchWatermark = CurrentView is PlaylistFeaturedArtistsViewModel
-            ? "Find in Featured Artists"
-            : $"Find in {TopBar.CurrentTabName}";
+        TopBar.SearchWatermark = CurrentView switch
+        {
+            PlaylistFeaturedArtistsViewModel => "Find in Featured Artists",
+            MoreByArtistViewModel => "Find in Albums",
+            _ => $"Find in {TopBar.CurrentTabName}"
+        };
+
+        // Search visibility follows the tab name (hidden on Home/Settings/Lyrics and
+        // in Cover Flow), except the More By page which is searchable regardless of
+        // the tab it was opened from (the tab name doesn't change on detail pages).
+        TopBar.IsSearchVisible = CurrentView is MoreByArtistViewModel
+            || (!_isCoverFlowMode && TopBar.CurrentTabName is not ("Home" or "Settings" or "Lyrics"));
 
         if (CurrentView is MoreByArtistViewModel mbaVm)
         {
@@ -1150,7 +1235,6 @@ public partial class MainWindowViewModel : ViewModelBase
                 "playlists" => RefreshAndReturnPlaylists(_playlistsVm),
                 "favorites" => RefreshAndReturnFavorites(_favoritesVm),
                 "statistics" => RefreshAndReturnStatistics(_statisticsVm),
-                "listenlater" => RefreshAndReturnListenLater(),
                 "queue" => _queueVm,
                 "lyrics" => EnsureLyricsAndReturn(_lyricsVm),
                 "settings" => RefreshAndReturnSettings(),
@@ -1173,7 +1257,6 @@ public partial class MainWindowViewModel : ViewModelBase
             "playlists" => "Playlists",
             "favorites" => "Favorites",
             "statistics" => "Statistics",
-            "listenlater" => "Listen Later",
             "queue" => "Queue",
             "lyrics" => "Lyrics",
             "settings" => "Settings",
@@ -1189,7 +1272,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (key == "songs")
             SetupSongsTopBarActions();
         else if (key == "playlists")
-            TopBar.ShowPlaylistActions(_playlistsVm.CreateSmartPlaylistCommand);
+            TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand, _playlistsVm.ImportPlaylistCommand);
         else if (key == "favorites")
             TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
 
@@ -1256,12 +1339,6 @@ public partial class MainWindowViewModel : ViewModelBase
         return vm;
     }
 
-    private ListenLaterViewModel RefreshAndReturnListenLater()
-    {
-        _listenLaterVm.Refresh();
-        return _listenLaterVm;
-    }
-
     private SettingsViewModel RefreshAndReturnSettings()
     {
         Settings.RefreshLibraryStats();
@@ -1299,35 +1376,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnArtistOpened(object? sender, Artist artist)
     {
-        OpenArtistDetail(artist);
+        OpenArtistDiscography(artist.Name);
     }
 
-    private void OpenArtistDetail(Artist artist)
+    /// <summary>Opens the artist's discography grid from any artist credit string.</summary>
+    public void OpenArtistByName(string artistName)
     {
-        PushCurrentViewToHistory();
-        ClearAllTopBarActions();
-
-        var page = new ArtistDetailViewModel(artist, _library, Player, _artistImageService, _artistBioService, _albumsVm);
-        page.BackRequested += (_, _) => GoBackInHistory();
-        page.AlbumOpened += (_, album) => OpenAlbumDetail(album);
-        page.SeeAllAlbumsRequested += (_, _) => OpenArtistDiscography(artist.Name);
-        page.SimilarArtistOpened += (_, similar) => OpenArtistDetail(similar);
-        CurrentView = page;
-        RefreshBackButton();
-    }
-
-    public void OpenArtistDetailByName(string artistName)
-    {
-        var primary = Track.GetPrimaryArtist(artistName);
-        var artist = _library.Artists.FirstOrDefault(a =>
-            string.Equals(a.Name, primary, StringComparison.OrdinalIgnoreCase));
-
-        // Artists not in the local index (e.g. featured-only credits) fall back
-        // to the filtered discography grid, which matches on track credits.
-        if (artist != null)
-            OpenArtistDetail(artist);
-        else
-            OpenArtistDiscography(primary);
+        OpenArtistDiscography(Track.GetPrimaryArtist(artistName));
     }
 
 
@@ -1336,6 +1391,12 @@ public partial class MainWindowViewModel : ViewModelBase
         PushCurrentViewToHistory();
         ClearAllTopBarActions();
         SetupGlobalViewModeToggle();
+
+        // Re-scope the top-bar search to the detail view (the history entry above
+        // captured the grid's query, so Back restores it). Without this the grid's
+        // stale query lingers in the box and the watermark stays "Find in Playlists".
+        TopBar.SearchText = string.Empty;
+        TopBar.CurrentTabName = "Playlist";
 
         var detail = new PlaylistViewModel(playlist, Player, _library, _persistence, Sidebar, _artistImageService);
         detail.BackRequested += (_, _) => GoBackInHistory();
@@ -1380,6 +1441,9 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         PushCurrentViewToHistory();
         ClearAllTopBarActions();
+        // The originating page's query is captured in history for back-restore;
+        // the More By grid starts unfiltered.
+        TopBar.SearchText = string.Empty;
 
         var page = new MoreByArtistViewModel(artistName, albums, Player, _albumsVm);
         page.BackRequested += (_, _) => GoBackInHistory();
@@ -1430,6 +1494,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         PushCurrentViewToHistory();
         ClearAllTopBarActions();
+        // The originating page's query is captured in history for back-restore;
+        // the featured-artists grid starts unfiltered.
+        TopBar.SearchText = string.Empty;
 
         var page = new PlaylistFeaturedArtistsViewModel(artists);
         page.SetViewArtistAction(ViewArtistByName);
@@ -1500,9 +1567,11 @@ public partial class MainWindowViewModel : ViewModelBase
             selectPlain: () => _lyricsVm.SelectPlainLyricsCommand.Execute(null),
             openBackgroundColor: () => _lyricsVm.OpenBackgroundColorPickerCommand.Execute(null),
             removeLyrics: () => _lyricsVm.RemoveLyricsCommand.Execute(null),
+            shareLyrics: () => _lyricsVm.ShareLyricsCommand.Execute(null),
             isSyncedActive: _lyricsVm.IsSyncTabSelected,
             isPlainActive: _lyricsVm.IsUnsyncTabSelected,
-            isSyncedAvailable: _lyricsVm.HasSyncedLyricsAvailable);
+            isSyncedAvailable: _lyricsVm.HasSyncedLyricsAvailable,
+            canShare: _lyricsVm.ShareAvailable);
 
         _lyricsVm.PropertyChanged -= OnLyricsVmPropertyChanged;
         _lyricsVm.PropertyChanged += OnLyricsVmPropertyChanged;
@@ -1518,12 +1587,14 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (e.PropertyName == nameof(LyricsViewModel.IsSyncTabSelected)
             || e.PropertyName == nameof(LyricsViewModel.IsUnsyncTabSelected)
-            || e.PropertyName == nameof(LyricsViewModel.HasSyncedLyricsAvailable))
+            || e.PropertyName == nameof(LyricsViewModel.HasSyncedLyricsAvailable)
+            || e.PropertyName == nameof(LyricsViewModel.ShareAvailable))
         {
             Player.UpdateLyricsPageState(
                 isSyncedActive: _lyricsVm.IsSyncTabSelected,
                 isPlainActive: _lyricsVm.IsUnsyncTabSelected,
-                isSyncedAvailable: _lyricsVm.HasSyncedLyricsAvailable);
+                isSyncedAvailable: _lyricsVm.HasSyncedLyricsAvailable,
+                canShare: _lyricsVm.ShareAvailable);
         }
     }
 
@@ -1536,7 +1607,9 @@ public partial class MainWindowViewModel : ViewModelBase
         TopBar.ShowViewModeToggle(
             new RelayCommand(ExitCoverFlowMode),
             new RelayCommand(EnterCoverFlowMode),
-            _isCoverFlowMode);
+            _isCoverFlowMode,
+            _coverFlowVm.ToggleCollageModeCommand,
+            _coverFlowVm.IsCollageMode);
 
         // Home and Cover Flow do not use the top-bar search field.
         if (_isCoverFlowMode || _currentSectionKey == "home")
@@ -1544,14 +1617,13 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Shows the release-type filter chips next to the title only on the Albums grid
-    /// (Library mode, not artist-filtered). Cover Flow and artist discography hide them.
+    /// Shows the release-type filter chips on the Albums grid (Library mode),
+    /// including the artist discography page. Cover Flow hides them.
     /// </summary>
     private void UpdateReleaseTypeChips()
     {
         var show = ReferenceEquals(CurrentView, _albumsVm)
-                   && !_isCoverFlowMode
-                   && !_albumsVm.IsArtistFiltered;
+                   && !_isCoverFlowMode;
         if (show)
         {
             TopBar.ShowReleaseTypeChips(_albumsVm.ReleaseTypeChips, _albumsVm.SelectReleaseTypeChipCommand,
@@ -1628,7 +1700,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (ReferenceEquals(view, _songsVm))
             SetupSongsTopBarActions();
         else if (ReferenceEquals(view, _playlistsVm))
-            TopBar.ShowPlaylistActions(_playlistsVm.CreateSmartPlaylistCommand);
+            TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand, _playlistsVm.ImportPlaylistCommand);
         else if (ReferenceEquals(view, _favoritesVm))
             TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
         else if (ReferenceEquals(view, _lyricsVm))
@@ -1783,18 +1855,18 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void ViewArtistFromLyrics(string artistName)
     {
-        OpenArtistDetailByName(artistName);
+        OpenArtistByName(artistName);
     }
 
     private void ViewArtistFromAlbumDetail(string artistName)
     {
-        OpenArtistDetailByName(artistName);
+        OpenArtistByName(artistName);
     }
 
     /// <summary>Navigates to the artist discography page from any track/artist link click.</summary>
     private void ViewArtistByName(string artistName)
     {
-        OpenArtistDetailByName(artistName);
+        OpenArtistByName(artistName);
     }
 
     /// <summary>Toggles between lyrics view and previous view.</summary>

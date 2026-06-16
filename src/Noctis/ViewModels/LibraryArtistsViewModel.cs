@@ -213,11 +213,8 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         }
     }
 
-    private static string RemoveWhitespace(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-            return string.Empty;
-
-        return string.Concat(value.Where(c => !char.IsWhiteSpace(c)));
-    }
+    // Normalizes a value into a comparable search key: strips whitespace, punctuation
+    // (e.g. the apostrophe in "Don't") and accents so queries match regardless. Name kept
+    // for its call sites; see Helpers/SearchText for the shared implementation.
+    private static string RemoveWhitespace(string value) => Noctis.Helpers.SearchText.Normalize(value);
 }

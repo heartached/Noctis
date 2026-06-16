@@ -36,7 +36,6 @@ public sealed class TrackContextMenuBuilder
     public MenuItem StartRadio { get; private set; } = null!;
     public MenuItem SnoozeForMonth { get; private set; } = null!;
     public MenuItem AddToPlaylist { get; private set; } = null!;
-    public MenuItem ListenLater { get; private set; } = null!;
     public MenuItem Favorite { get; private set; } = null!;
     public MenuItem Unfavorite { get; private set; } = null!;
     public MenuItem Metadata { get; private set; } = null!;
@@ -72,7 +71,7 @@ public sealed class TrackContextMenuBuilder
         items.Add(PlayNext);
 
         AddToQueue = new MenuItem { Header = "Add to Queue" };
-        AddToQueue.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Queue%20ICON.png");
+        AddToQueue.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Queue%20icon.png", 17);
         items.Add(AddToQueue);
 
         // Hidden unless the view supplies a startRadioCommand in Bind().
@@ -89,21 +88,13 @@ public sealed class TrackContextMenuBuilder
         items.Add(new Separator());
 
         AddToPlaylist = new MenuItem { Header = "Add to Playlist" };
-        AddToPlaylist.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Playlists%20ICON.png");
+        AddToPlaylist.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Playlist%20icon.png");
         items.Add(AddToPlaylist);
-
-        ListenLater = new MenuItem { Header = "Listen Later" };
-        ListenLater.Icon = new PathIcon
-        {
-            Width = 14, Height = 14,
-            Data = (Geometry)resourceHost.FindResource("BookmarkIcon")!
-        };
-        items.Add(ListenLater);
 
         items.Add(new Separator());
 
         Favorite = new MenuItem { Header = "Favorites" };
-        Favorite.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Your%20Favorites%20ICON.png");
+        Favorite.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Favorites%20icon.png");
         items.Add(Favorite);
 
         Unfavorite = new MenuItem { Header = "Remove from Favorites" };
@@ -115,16 +106,16 @@ public sealed class TrackContextMenuBuilder
         };
         items.Add(Unfavorite);
 
-        Metadata = new MenuItem { Header = "Metadata" };
-        Metadata.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
+        Metadata = new MenuItem { Header = "Studio" };
+        Metadata.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20icon.png");
         items.Add(Metadata);
 
         Convert = new MenuItem { Header = "Convert File", IsVisible = false };
-        Convert.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
+        Convert.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20icon.png");
         items.Add(Convert);
 
         ScanReplayGain = new MenuItem { Header = "Scan ReplayGain", IsVisible = false };
-        ScanReplayGain.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
+        ScanReplayGain.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20icon.png");
         items.Add(ScanReplayGain);
 
         SearchLyrics = new MenuItem { Header = "Search Lyrics" };
@@ -132,7 +123,7 @@ public sealed class TrackContextMenuBuilder
         items.Add(SearchLyrics);
 
         ShowFolder = new MenuItem { Header = "Show Folder" };
-        ShowFolder.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Folder%20ICON.png");
+        ShowFolder.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Folder%20icon.png");
         items.Add(ShowFolder);
 
         items.Add(new Separator());
@@ -143,10 +134,8 @@ public sealed class TrackContextMenuBuilder
             Remove.Classes.Add("danger");
         if (removeIconUri != null)
         {
-            var iconBorder = CreatePngIcon(removeIconUri);
-            if (isDanger)
-                iconBorder.Background = new SolidColorBrush(Color.Parse("#E74856"));
-            Remove.Icon = iconBorder;
+            Remove.Icon = CreatePngIcon(removeIconUri, 14,
+                isDanger ? new SolidColorBrush(Color.Parse("#E74856")) : null);
         }
         else
             Remove.Icon = new PathIcon { Width = 14, Height = 14, Data = (Geometry)resourceHost.FindResource("TrashIcon")! };
@@ -220,10 +209,6 @@ public sealed class TrackContextMenuBuilder
         AddToPlaylist.Command = addToPlaylistCommand;
         AddToPlaylist.CommandParameter = track;
 
-        // Listen Later: self-contained — bookmarks the track via the shared service.
-        ListenLater.Command = new RelayCommand(() =>
-            App.Services?.GetService<IListenLaterService>()?.AddTrack(track));
-
         // Favorites
         Favorite.Command = toggleFavoriteCommand;
         Favorite.CommandParameter = track;
@@ -281,10 +266,16 @@ public sealed class TrackContextMenuBuilder
 
     // ── Shared helpers ──
 
-    public static Avalonia.Controls.Border CreatePngIcon(string assetUri)
+    public static Avalonia.Controls.Border CreatePngIcon(string assetUri, double size = 14, IBrush? color = null)
     {
-        var border = new Avalonia.Controls.Border { Width = 14, Height = 14 };
-        border[!Avalonia.Controls.Border.BackgroundProperty] = border.GetResourceObservable("SystemControlForegroundBaseHighBrush").ToBinding();
+        var border = new Avalonia.Controls.Border { Width = size, Height = size };
+        // A fixed color must win over the themed-foreground resource binding, which
+        // otherwise fires on attach (when the menu opens) and overrides a directly
+        // assigned Background. So only bind to the resource when no color is given.
+        if (color != null)
+            border.Background = color;
+        else
+            border[!Avalonia.Controls.Border.BackgroundProperty] = border.GetResourceObservable("SystemControlForegroundBaseHighBrush").ToBinding();
         RenderOptions.SetBitmapInterpolationMode(border, BitmapInterpolationMode.HighQuality);
         border.OpacityMask = new ImageBrush
         {

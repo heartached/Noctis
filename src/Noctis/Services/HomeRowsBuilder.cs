@@ -8,6 +8,12 @@ namespace Noctis.Services;
 /// </summary>
 public static class HomeRowsBuilder
 {
+    /// <summary>
+    /// Minimum number of tracks a history row needs to be worth showing;
+    /// rows shorter than this are hidden entirely.
+    /// </summary>
+    public const int MinRowItems = 4;
+
     /// <summary>Row title for the time-of-day rotation, based on the current hour.</summary>
     public static string DaypartLabel(int hour) => hour switch
     {
@@ -22,7 +28,8 @@ public static class HomeRowsBuilder
     /// within ±2 hours of the current hour over the past 90 days, at least 2 plays.
     /// </summary>
     public static List<Guid> BuildTimeOfDayRotation(
-        IReadOnlyList<PlayHistoryEvent> events, DateTime nowLocal, int top = 6)
+        IReadOnlyList<PlayHistoryEvent> events, DateTime nowLocal, int top = 6,
+        ISet<Guid>? exclude = null)
     {
         var cutoff = nowLocal.AddDays(-90);
         int center = nowLocal.Hour;
@@ -34,7 +41,7 @@ public static class HomeRowsBuilder
         }
 
         return events
-            .Where(e => !e.Skipped)
+            .Where(e => !e.Skipped && (exclude == null || !exclude.Contains(e.TrackId)))
             .Select(e => new { e.TrackId, Local = e.PlayedAtUtc.ToLocalTime() })
             .Where(x => x.Local >= cutoff && InWindow(x.Local.Hour))
             .GroupBy(x => x.TrackId)
@@ -47,11 +54,13 @@ public static class HomeRowsBuilder
 
     /// <summary>Most-played tracks of the last two weeks (min 3 non-skipped plays).</summary>
     public static List<Guid> BuildHeavyRotation(
-        IReadOnlyList<PlayHistoryEvent> events, DateTime nowLocal, int top = 6)
+        IReadOnlyList<PlayHistoryEvent> events, DateTime nowLocal, int top = 6,
+        ISet<Guid>? exclude = null)
     {
         var cutoff = nowLocal.AddDays(-14);
         return events
-            .Where(e => !e.Skipped && e.PlayedAtUtc.ToLocalTime() >= cutoff)
+            .Where(e => !e.Skipped && e.PlayedAtUtc.ToLocalTime() >= cutoff
+                        && (exclude == null || !exclude.Contains(e.TrackId)))
             .GroupBy(e => e.TrackId)
             .Where(g => g.Count() >= 3)
             .OrderByDescending(g => g.Count())
@@ -66,13 +75,14 @@ public static class HomeRowsBuilder
     /// Ordered by gap length, longest rediscovery first.
     /// </summary>
     public static List<Guid> BuildRediscovered(
-        IReadOnlyList<PlayHistoryEvent> events, DateTime nowLocal, int top = 6)
+        IReadOnlyList<PlayHistoryEvent> events, DateTime nowLocal, int top = 6,
+        ISet<Guid>? exclude = null)
     {
         var recentCutoff = nowLocal.AddDays(-14);
         var minGap = TimeSpan.FromDays(60);
 
         return events
-            .Where(e => !e.Skipped)
+            .Where(e => !e.Skipped && (exclude == null || !exclude.Contains(e.TrackId)))
             .GroupBy(e => e.TrackId)
             .Select(g =>
             {

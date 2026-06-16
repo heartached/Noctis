@@ -325,13 +325,10 @@
                         HorizontalAlignment="Center"
                         ClipToBounds="False"
                         Width="760">
-                <StackPanel.Transitions>
-                    <Transitions>
-                        <DoubleTransition Property="Width" Duration="0:0:0.25">
-                            <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
-                        </DoubleTransition>
-                    </Transitions>
-                </StackPanel.Transitions>
+                <!-- No size transitions here: code-behind sizes the cover/stack/lyrics
+                     from the window on attach and resize, and any transition turned
+                     those instant layout snaps into a visible grow/zoom every time the
+                     page opened or the window was minimized/maximized. -->
 
                 <!-- Album Art -->
                 <Border x:Name="AlbumArtBorder"
@@ -340,16 +337,6 @@
                         ClipToBounds="True"
                         HorizontalAlignment="Center"
                         BoxShadow="0 16 50 0 #60000000">
-                    <Border.Transitions>
-                        <Transitions>
-                            <DoubleTransition Property="Width" Duration="0:0:0.25">
-                                <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
-                            </DoubleTransition>
-                            <DoubleTransition Property="Height" Duration="0:0:0.25">
-                                <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
-                            </DoubleTransition>
-                        </Transitions>
-                    </Border.Transitions>
                     <Panel>
                         <Border Background="#333344">
                             <TextBlock Text="&#x266B;"
@@ -688,26 +675,11 @@
                     </Button.Flyout>
                 </Button>
 
-                <!-- Bottom action row: Share + Alternate source + save status (Save/Remove moved into player bar) -->
+                <!-- Bottom action row: Edit Sync + Alternate source + save status (Share moved into player-bar ⋯ menu) -->
                 <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Center"
                             Spacing="8"
                             Margin="0,24,0,0">
-                    <!-- Share lyric snapshot card -->
-                    <Button Classes="pill-btn"
-                            Padding="10,5"
-                            Height="30" MinHeight="30"
-                            IsVisible="{Binding ShareAvailable}"
-                            ToolTip.Tip="Share lyrics as an image card"
-                            Command="{Binding ShareLyricsCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <PathIcon Data="{StaticResource CameraIcon}"
-                                     Width="12" Height="12" Foreground="{Binding LyricsPrimaryFg}"
-                                     VerticalAlignment="Center"/>
-                            <TextBlock Text="Share" FontSize="11" Foreground="{Binding LyricsPrimaryFg}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-
                     <!-- LRC sync editor -->
                     <Button Classes="pill-btn"
                             Padding="10,5"
@@ -752,13 +724,9 @@
         <!-- ══════════════════════════════════════════════════════ -->
         <Grid x:Name="RightPanel" Grid.Column="1" Grid.RowSpan="2"
               RenderTransformOrigin="0.5,0.5">
-            <Grid.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25">
-                        <TransformOperationsTransition.Easing><CubicEaseOut/></TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Grid.Transitions>
+            <!-- No RenderTransform transition: the wide-mode 1.1x scale is applied
+                 by code-behind on attach/resize; a transition made it zoom in every
+                 time the page opened or the window was minimized/maximized. -->
 
             <!-- (Color picker moved to left panel bottom) -->
 
@@ -846,13 +814,9 @@
                                   MaxWidth="640"
                                   FontSize="46"
                                   HorizontalAlignment="Left">
-                        <ItemsControl.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="MaxWidth" Duration="0:0:0.25">
-                                    <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
-                                </DoubleTransition>
-                            </Transitions>
-                        </ItemsControl.Transitions>
+                        <!-- No MaxWidth transition: width is set from the window on
+                             attach/resize and a transition animated the lyric column
+                             width on every open and minimize/maximize. -->
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="m:LyricLine">
                                 <Button Background="Transparent"

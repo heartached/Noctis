@@ -1773,7 +1773,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             // Skip intro placeholder "..."
             if (line.Timestamp == TimeSpan.Zero && line.Text == "...") continue;
-            batch.Add(new LyricLine { Text = line.Text, IsActive = true });
+            batch.Add(new LyricLine { Text = LyricsTextHelper.CleanDisplayText(line.Text), IsActive = true });
         }
         UnsyncedLines.ReplaceAll(batch);
     }
@@ -1828,6 +1828,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     private static string SoftWrapText(string text, int maxWidth = 25)
     {
+        // Strip exotic Unicode (NBSP, separators, zero-width, replacement) that render
+        // as empty boxes; this is the common funnel for every displayed lyric line.
+        text = LyricsTextHelper.CleanDisplayText(text);
         if (text.Length <= maxWidth) return text;
 
         // Find the space closest to the midpoint for two balanced halves
@@ -1889,15 +1892,23 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var matches = LrcTimestampRegex().Matches(trimmed);
             if (matches.Count > 0)
             {
-                // Get the text after all timestamps
+                // Get the text after all timestamps. For enhanced ("A2") LRC this
+                // body carries inline <mm:ss.xx> word tags, which we split into
+                // per-word karaoke timings and strip from the displayed text.
                 var lastMatch = matches[^1];
-                var text = trimmed[(lastMatch.Index + lastMatch.Length)..].Trim();
+                var body = trimmed[(lastMatch.Index + lastMatch.Length)..];
+                var (text, words) = EnhancedLrcParser.ParseLine(body);
 
                 // Skip empty timestamp lines — LRC files often end with
                 // [03:24.00] (no text) as an end marker. If parsed, this empty
                 // line becomes the "active" line and deactivates the previous
                 // real lyric, making lyrics appear to stop early.
                 if (string.IsNullOrWhiteSpace(text)) continue;
+
+                // Word timings are absolute; attaching them to a multi-timestamp
+                // (compressed) line would misalign the later occurrences, so only
+                // carry word-level data when the line has a single timestamp.
+                var lineWords = matches.Count == 1 ? words : null;
 
                 // Create a LyricLine for each timestamp (handles multi-timestamp lines)
                 foreach (Match match in matches)
@@ -1909,11 +1920,20 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                         if (adjusted < TimeSpan.Zero)
                             adjusted = TimeSpan.Zero;
 
-                        lines.Add(new LyricLine
+                        var line = new LyricLine
                         {
                             Timestamp = adjusted,
                             Text = SoftWrapText(text)
-                        });
+                        };
+
+                        if (lineWords != null)
+                        {
+                            var shifted = offsetMs == 0 ? lineWords : ShiftWords(lineWords, offsetMs);
+                            line.Words = shifted;
+                            line.EndTimestamp = shifted[^1].End;
+                        }
+
+                        lines.Add(line);
                     }
                 }
             }
@@ -1934,6 +1954,22 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         });
 
         return lines;
+    }
+
+    /// <summary>Applies the global LRC offset to absolute word timings.</summary>
+    private static List<WordTiming> ShiftWords(List<WordTiming> words, int offsetMs)
+    {
+        var delta = TimeSpan.FromMilliseconds(offsetMs);
+        var shifted = new List<WordTiming>(words.Count);
+        foreach (var w in words)
+        {
+            var start = w.Start + delta;
+            if (start < TimeSpan.Zero) start = TimeSpan.Zero;
+            TimeSpan? end = w.End.HasValue ? w.End.Value + delta : null;
+            if (end < TimeSpan.Zero) end = TimeSpan.Zero;
+            shifted.Add(new WordTiming { Text = w.Text, Start = start, End = end });
+        }
+        return shifted;
     }
 
     private static int ParseLrcOffsetMilliseconds(string[] rawLines)
@@ -2003,9 +2039,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         var track = _player.CurrentTrack;
         if (track == null) return;
 
-        var source = IsSyncTabSelected && LyricLines.Count > 0
-            ? (IEnumerable<LyricLine>)LyricLines
-            : UnsyncedLines;
+        // Prefer the synced lines whenever they carry timestamps so the share dialog's
+        // playback-sync (follow-along) works, even if the plain tab is currently showing.
+        bool hasSynced = LyricLines.Count > 0 && LyricLines.Any(l => l.Timestamp.HasValue);
+        var source = hasSynced ? (IEnumerable<LyricLine>)LyricLines : UnsyncedLines;
         var shareable = source
             .Where(l => !l.IsIntroPlaceholder && !string.IsNullOrWhiteSpace(l.Text))
             .ToList();
@@ -2014,7 +2051,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         int preselect = _currentActiveLine != null ? shareable.IndexOf(_currentActiveLine) : 0;
         if (preselect < 0) preselect = 0;
 
-        var vm = new LyricShareViewModel(track, shareable.Select(l => l.Text).ToList(), preselect);
+        var vm = new LyricShareViewModel(
+            track,
+            shareable.Select(l => l.Text).ToList(),
+            shareable.Select(l => l.Timestamp).ToList(),
+            _player,
+            preselect);
         await Views.LyricShareDialog.ShowAsync(vm);
     }
 

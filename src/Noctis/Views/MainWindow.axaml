@@ -63,8 +63,8 @@
                             Margin="0,0,12,0"
                             IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsLyricsViewActive, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
 
-                    <!-- Page action buttons (e.g. Songs: Shuffle, Queue, Options) -->
-                    <Border IsVisible="{Binding HasPageActions}"
+                    <!-- Page action buttons (e.g. Songs: Shuffle, Queue, Options). Hidden in Cover Flow mode. -->
+                    <Border IsVisible="{Binding PageActionsVisible}"
                             Background="{DynamicResource AccentColorBrush}"
                             BorderBrush="{DynamicResource AccentBorderBrush}"
                             BorderThickness="1"
@@ -82,10 +82,10 @@
                                     BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
                                     Command="{Binding PageQueueCommand}" Tag="QueueToggle"
                                     ToolTip.Tip="Queue" VerticalAlignment="Center">
-                                <Border Width="14" Height="14" Background="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"
+                                <Border Width="17" Height="17" Background="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"
                                         RenderOptions.BitmapInterpolationMode="HighQuality">
                                     <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" />
+                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20icon.png" Stretch="Uniform" />
                                     </Border.OpacityMask>
                                 </Border>
                             </Button>
@@ -114,46 +114,18 @@
                                     <MenuItem x:Name="PageSortByMenuItem"
                                               Header="Sort By"
                                               PointerEntered="OnPageSortByMenuItemPointerEntered">
-                                        <MenuItem Header="Title" Command="{Binding PageSortCommand}" CommandParameter="Title">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                         IsVisible="{Binding PageSortByTitle}" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="Album" Command="{Binding PageSortCommand}" CommandParameter="Album">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                         IsVisible="{Binding PageSortByAlbum}" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="Artist" Command="{Binding PageSortCommand}" CommandParameter="Artist">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                         IsVisible="{Binding PageSortByArtist}" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="Genre" Command="{Binding PageSortCommand}" CommandParameter="Genre">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                         IsVisible="{Binding PageSortByGenre}" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
+                                        <!-- Only sorts without a clickable column header; everything
+                                             else is sorted by clicking the column headers directly. -->
                                         <MenuItem Header="Year" Command="{Binding PageSortCommand}" CommandParameter="Year">
                                             <MenuItem.Icon>
                                                 <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
                                                          IsVisible="{Binding PageSortByYear}" />
                                             </MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="Time" Command="{Binding PageSortCommand}" CommandParameter="Time">
+                                        <MenuItem Header="Date Added" Command="{Binding PageSortCommand}" CommandParameter="Date Added">
                                             <MenuItem.Icon>
                                                 <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                         IsVisible="{Binding PageSortByTime}" />
-                                            </MenuItem.Icon>
-                                        </MenuItem>
-                                        <MenuItem Header="Plays" Command="{Binding PageSortCommand}" CommandParameter="Plays">
-                                            <MenuItem.Icon>
-                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                         IsVisible="{Binding PageSortByPlays}" />
+                                                         IsVisible="{Binding PageSortByDateAdded}" />
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
@@ -179,11 +151,38 @@
                     <!-- Playlist action buttons -->
                     <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasPlaylistActions}">
                         <Button Classes="accent-btn" Background="{DynamicResource AccentColorBrush}"
-                                Padding="12,10" CornerRadius="999" Cursor="Hand"
-                                Command="{Binding PageCreateSmartPlaylistCommand}"
-                                ToolTip.Tip="Create Smart Playlist" VerticalAlignment="Center">
-                            <PathIcon Data="{StaticResource SmartPlaylistIcon}" Width="15" Height="15"
-                                     VerticalAlignment="Center" Foreground="{DynamicResource AccentForegroundBrush}" />
+                                Padding="14,8" CornerRadius="999" Cursor="Hand"
+                                ToolTip.Tip="New Playlist" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="New" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentForegroundBrush}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                            helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                    <MenuItem Header="New Playlist"
+                                              Command="{Binding PageCreatePlaylistCommand}">
+                                        <MenuItem.Icon>
+                                            <Border Width="16" Height="16" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlist%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="New Smart Playlist"
+                                              Command="{Binding PageCreateSmartPlaylistCommand}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource SmartPlaylistIcon}" Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Header="Import Playlist…"
+                                              Command="{Binding PageImportPlaylistCommand}">
+                                        <MenuItem.Icon>
+                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Arrow%20Down%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
                         </Button>
                     </StackPanel>
 
@@ -264,6 +263,21 @@
                                     BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
                                     Background="Transparent" Opacity="0.5" ToolTip.Tip="Cover Flow"
                                     Content="Cover Flow" FontSize="12" FontWeight="SemiBold" />
+                            <!-- Collage sub-mode: compact icon segment, only while Cover Flow is active -->
+                            <Button x:Name="AlbumsCollageModeBtn"
+                                    Command="{Binding ToggleCollageModeCommand}"
+                                    IsVisible="{Binding IsCoverFlowMode}"
+                                    BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
+                                    Background="Transparent" Opacity="0.5" ToolTip.Tip="Cover Collage">
+                                <!-- Theme-aware tint: PNG alpha masks the foreground brush (flips for light/dark). -->
+                                <Border Width="14" Height="14"
+                                        Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                        RenderOptions.BitmapInterpolationMode="HighQuality">
+                                    <Border.OpacityMask>
+                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Collage%20icon.png" Stretch="Uniform" />
+                                    </Border.OpacityMask>
+                                </Border>
+                            </Button>
                         </StackPanel>
                     </Border>
 
@@ -367,6 +381,30 @@
                         BoxShadow="-2 0 12 0 #40000000"
                         ZIndex="20">
 
+                    <Panel>
+
+                    <!-- Aurora glow: the now-playing cover, blurred and bled from the top edge,
+                         gives the header an ambient colour wash drawn from the artwork itself. -->
+                    <Border VerticalAlignment="Top" Height="230" IsHitTestVisible="False" ClipToBounds="True"
+                            IsVisible="{Binding Player.CurrentTrack.AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <Border.OpacityMask>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                                <GradientStop Offset="0" Color="#FFFFFFFF"/>
+                                <GradientStop Offset="1" Color="#00FFFFFF"/>
+                            </LinearGradientBrush>
+                        </Border.OpacityMask>
+                        <Panel>
+                            <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                                                  Stretch="UniformToFill" Opacity="0.42">
+                                <controls:CachedImage.Effect>
+                                    <BlurEffect Radius="60"/>
+                                </controls:CachedImage.Effect>
+                            </controls:CachedImage>
+                            <!-- keep header text readable over bright art -->
+                            <Border Background="#59000000"/>
+                        </Panel>
+                    </Border>
+
                     <DockPanel>
                         <!-- "Currently Playing" big header + Clear pill on the right -->
                         <Grid DockPanel.Dock="Top" Margin="20,16,20,8"
@@ -392,34 +430,59 @@
                                     VerticalAlignment="Center" />
                         </Grid>
 
-                        <!-- Now-playing track card -->
+                        <!-- Now-playing track card (Aurora: larger art, live progress, equalizer) -->
                         <Border DockPanel.Dock="Top"
-                                Margin="20,2,20,6"
+                                Margin="20,4,20,8"
                                 IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <Grid ColumnDefinitions="Auto,*">
+                            <Border.Styles>
+                                <Style Selector="ProgressBar.np-progress">
+                                    <Setter Property="Height" Value="4"/>
+                                    <Setter Property="MinHeight" Value="4"/>
+                                    <Setter Property="CornerRadius" Value="99"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}"/>
+                                    <Setter Property="Background" Value="#26FFFFFF"/>
+                                </Style>
+                                <Style Selector="ProgressBar.np-progress /template/ Border#PART_Indicator">
+                                    <Setter Property="CornerRadius" Value="99"/>
+                                </Style>
+                            </Border.Styles>
+                            <Grid ColumnDefinitions="Auto,*,Auto">
                                 <Border Grid.Column="0"
-                                        Width="48" Height="48"
-                                        CornerRadius="6"
+                                        Width="56" Height="56"
+                                        CornerRadius="8"
                                         ClipToBounds="True"
-                                        VerticalAlignment="Center">
+                                        VerticalAlignment="Center"
+                                        BoxShadow="0 6 16 0 #66000000">
                                     <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
                                                           Stretch="UniformToFill" />
                                 </Border>
-                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Player.CurrentTrack.Title}"
-                                               FontSize="14"
+                                               FontSize="15"
                                                FontWeight="SemiBold"
                                                Foreground="White"
                                                TextTrimming="CharacterEllipsis"
                                                MaxLines="1" />
                                     <TextBlock Text="{Binding Player.CurrentTrack.Artist}"
-                                               FontSize="11"
+                                               FontSize="12"
                                                FontWeight="Bold"
                                                Foreground="{DynamicResource AccentColorBrush}"
                                                TextTrimming="CharacterEllipsis"
                                                MaxLines="1"
                                                Margin="0,2,0,0" />
+                                    <ProgressBar Classes="np-progress"
+                                                 Minimum="0" Maximum="1"
+                                                 Value="{Binding Player.PositionFraction}"
+                                                 Margin="8,10,0,0" />
                                 </StackPanel>
+                                <!-- Now-playing EQ — the same EqVisualizer used in the track/album lists
+                                     (5 sine bars that ease flat on pause). -->
+                                <controls:EqVisualizer Grid.Column="2"
+                                                       Width="34" Height="22"
+                                                       VerticalAlignment="Center"
+                                                       Margin="8,0,2,0"
+                                                       Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                       IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}" />
                             </Grid>
                         </Border>
 
@@ -441,11 +504,18 @@
                                     Command="{Binding Player.SaveQueueAsPlaylistCommand}"
                                     IsVisible="{Binding !!Player.UpNext.Count}">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
-                                    <PathIcon Data="{StaticResource PlaylistsIcon}"
-                                              Width="12" Height="12"
-                                              Foreground="White"
-                                              Opacity="0.55"
-                                              VerticalAlignment="Center" />
+                                    <!-- Uses the same PNG the Playlists nav renders (not the generic list
+                                         glyph); nudged up a touch to sit centred with the label. -->
+                                    <Border Width="13" Height="13"
+                                            Margin="0,-3,0,0"
+                                            VerticalAlignment="Center"
+                                            Opacity="0.55"
+                                            Background="White"
+                                            RenderOptions.BitmapInterpolationMode="HighQuality">
+                                        <Border.OpacityMask>
+                                            <ImageBrush Source="avares://Noctis/Assets/Icons/Playlist%20icon.png" Stretch="Uniform" />
+                                        </Border.OpacityMask>
+                                    </Border>
                                     <TextBlock Text="Save as playlist"
                                                FontSize="11"
                                                FontWeight="SemiBold"
@@ -657,6 +727,7 @@
                             </Border>
                         </Grid>
                     </DockPanel>
+                    </Panel>
                 </Border>
 
             </Grid>

@@ -49,6 +49,12 @@ public partial class MainWindow : Window
         if (DataContext is not MainWindowViewModel vm) return;
 
         _miniPlayer = new MiniPlayerWindow { DataContext = vm.Player };
+        // The mini player's DataContext is the PlayerViewModel, which has no view of
+        // Settings, so the animated-cover gate is bound here (live, so toggling the
+        // setting while the mini player is open takes effect immediately).
+        _miniPlayer.AnimatedArt.Bind(
+            Noctis.Controls.AnimatedCoverImage.IsActiveProperty,
+            new Avalonia.Data.Binding(nameof(SettingsViewModel.EnableAnimatedCovers)) { Source = vm.Settings });
         _miniPlayer.Closed += OnMiniPlayerClosed;
 
         // Place it near the top-right of the screen the main window is on.
@@ -113,11 +119,11 @@ public partial class MainWindow : Window
                 // Wire up albums view-mode toggle visuals
                 _topBarPropertyChangedHandler = (_, e) =>
                 {
-                    if (e.PropertyName == nameof(TopBarViewModel.IsCoverFlowMode))
-                        UpdateViewModeToggleVisuals(vm.TopBar.IsCoverFlowMode);
+                    if (e.PropertyName is nameof(TopBarViewModel.IsCoverFlowMode) or nameof(TopBarViewModel.IsCollageMode))
+                        UpdateViewModeToggleVisuals(vm.TopBar.IsCoverFlowMode, vm.TopBar.IsCollageMode);
                 };
                 vm.TopBar.PropertyChanged += _topBarPropertyChangedHandler;
-                UpdateViewModeToggleVisuals(vm.TopBar.IsCoverFlowMode);
+                UpdateViewModeToggleVisuals(vm.TopBar.IsCoverFlowMode, vm.TopBar.IsCollageMode);
 
                 // Wire lyrics panel + sidebar hover
                 _sidebarWrapper = this.FindControl<Border>("SidebarWrapper");
@@ -263,31 +269,17 @@ public partial class MainWindow : Window
 
             var menu = new NativeMenu();
 
-            var show = new NativeMenuItem("Show Noctis");
-            show.Click += (_, _) => ShowFromTray();
-            menu.Items.Add(show);
-            menu.Items.Add(new NativeMenuItemSeparator());
+            var open = new NativeMenuItem("Open Noctis");
+            open.Click += (_, _) => ShowFromTray();
+            menu.Items.Add(open);
 
-            var playPause = new NativeMenuItem("Play / Pause");
-            playPause.Click += (_, _) => vm.Player.PlayPauseCommand.Execute(null);
-            menu.Items.Add(playPause);
-
-            var previous = new NativeMenuItem("Previous");
-            previous.Click += (_, _) => vm.Player.PreviousCommand.Execute(null);
-            menu.Items.Add(previous);
-
-            var next = new NativeMenuItem("Next");
-            next.Click += (_, _) => vm.Player.NextCommand.Execute(null);
-            menu.Items.Add(next);
-
-            menu.Items.Add(new NativeMenuItemSeparator());
-            var exit = new NativeMenuItem("Exit");
-            exit.Click += (_, _) =>
+            var quit = new NativeMenuItem("Quit");
+            quit.Click += (_, _) =>
             {
                 _exitRequestedFromTray = true;
                 Close();
             };
-            menu.Items.Add(exit);
+            menu.Items.Add(quit);
 
             _trayIcon = new TrayIcon
             {
@@ -298,16 +290,6 @@ public partial class MainWindow : Window
             };
             _trayIcon.Clicked += (_, _) => ShowFromTray();
             TrayIcon.SetIcons(Application.Current!, new TrayIcons { _trayIcon });
-
-            // Current track in the tooltip.
-            vm.Player.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName != nameof(PlayerViewModel.CurrentTrack)) return;
-                var track = vm.Player.CurrentTrack;
-                _trayIcon.ToolTipText = track == null
-                    ? "Noctis"
-                    : $"Noctis — {track.Title} · {track.Artist}";
-            };
         }
         catch (Exception ex)
         {
@@ -679,7 +661,7 @@ public partial class MainWindow : Window
 
     // ── Albums toggle visuals ──
 
-    private void UpdateViewModeToggleVisuals(bool isCoverFlow)
+    private void UpdateViewModeToggleVisuals(bool isCoverFlow, bool isCollage = false)
     {
         if (AlbumsLibraryModeBtn != null)
         {
@@ -690,6 +672,11 @@ public partial class MainWindow : Window
         {
             AlbumsUpNextModeBtn.Background = isCoverFlow ? ActiveToggleBg : InactiveToggleBg;
             AlbumsUpNextModeBtn.Opacity = isCoverFlow ? 1.0 : 0.5;
+        }
+        if (AlbumsCollageModeBtn != null)
+        {
+            AlbumsCollageModeBtn.Background = isCollage ? ActiveToggleBg : InactiveToggleBg;
+            AlbumsCollageModeBtn.Opacity = isCollage ? 1.0 : 0.5;
         }
     }
 

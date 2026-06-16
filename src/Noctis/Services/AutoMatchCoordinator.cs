@@ -7,52 +7,70 @@ using Noctis.Models;
 namespace Noctis.Services;
 
 /// <summary>
-/// Fans out a single "Auto-match" request to the enabled metadata providers and merges the
-/// results into one <see cref="AutoMatchProposal"/>: tags via <see cref="IMetadataFinderService"/>
-/// (which already honours the AcoustID/MusicBrainz/Deezer toggles), cover art via
-/// <see cref="IAlbumArtworkSearch"/>, and lyrics via <see cref="ILrcLibService"/>. Each provider is
-/// independent — one failing or returning nothing never sinks the others. All work runs off the
-/// UI thread (callers await from a background context).
+/// Resolves a single "Search metadata" request into one best <see cref="TagSuggestion"/>. The
+/// identify chain (AcoustID/MusicBrainz/Deezer, honouring their own toggles) picks the best
+/// title/artist/album/year; a Deezer enrichment pass then fills the rich fields (genre, track #,
+/// disc #, bpm, isrc, track count, album artist). Identify wins for the core fields; enrichment
+/// only fills blanks. All work runs off the UI thread (callers await from a background context).
 /// </summary>
 public sealed class AutoMatchCoordinator
 {
     private readonly IMetadataFinderService _finder;
-    private readonly IAlbumArtworkSearch _artwork;
-    private readonly ILrcLibService _lyrics;
+    private readonly DeezerMetadataService _deezer;
     private readonly Func<AppSettings> _settings;
 
     public AutoMatchCoordinator(
         IMetadataFinderService finder,
-        IAlbumArtworkSearch artwork,
-        ILrcLibService lyrics,
+        DeezerMetadataService deezer,
         Func<AppSettings> settings)
     {
         _finder = finder;
-        _artwork = artwork;
-        _lyrics = lyrics;
+        _deezer = deezer;
         _settings = settings;
     }
 
-    /// <summary>
-    /// Returns a merged proposal for the track. Tag identification owns its own provider toggles;
-    /// artwork and lyrics are gated here by their respective settings.
-    /// </summary>
-    public async Task<AutoMatchProposal> MatchAsync(Track track, CancellationToken ct = default)
+    /// <summary>Returns the best merged tag suggestion for the track, or null when nothing matched.</summary>
+    public async Task<TagSuggestion?> MatchAsync(Track track, CancellationToken ct = default)
     {
         var settings = _settings();
 
-        var tags = await TryTagsAsync(track, ct).ConfigureAwait(false);
-        var art = settings.ITunesEnabled
-            ? await TryArtworkAsync(track, ct).ConfigureAwait(false)
-            : null;
-        var (synced, plain) = settings.LrcLibEnabled
-            ? await TryLyricsAsync(track).ConfigureAwait(false)
-            : (null, null);
+        var identify = await TryIdentifyAsync(track, ct).ConfigureAwait(false);
 
-        return new AutoMatchProposal(tags, art, synced, plain);
+        TagSuggestion? enrich = null;
+        if (settings.DeezerEnabled)
+        {
+            var artist = identify?.Artist is { Length: > 0 } a ? a : track.PrimaryArtist;
+            var title = identify?.Title is { Length: > 0 } t ? t : track.Title;
+            var album = identify?.Album is { Length: > 0 } al ? al : track.Album;
+            enrich = await TryEnrichAsync(artist, title, album, ct).ConfigureAwait(false);
+        }
+
+        return Merge(identify, enrich);
     }
 
-    private async Task<TagSuggestion?> TryTagsAsync(Track track, CancellationToken ct)
+    /// <summary>Identify wins for core fields; enrich fills any field identify left blank.</summary>
+    public static TagSuggestion? Merge(TagSuggestion? identify, TagSuggestion? enrich)
+    {
+        if (identify is null) return enrich;
+        if (enrich is null) return identify;
+
+        return identify with
+        {
+            Year = identify.Year ?? enrich.Year,
+            AlbumArtist = Coalesce(identify.AlbumArtist, enrich.AlbumArtist),
+            Genre = Coalesce(identify.Genre, enrich.Genre),
+            TrackNumber = identify.TrackNumber ?? enrich.TrackNumber,
+            TrackCount = identify.TrackCount ?? enrich.TrackCount,
+            DiscNumber = identify.DiscNumber ?? enrich.DiscNumber,
+            Bpm = identify.Bpm ?? enrich.Bpm,
+            Isrc = Coalesce(identify.Isrc, enrich.Isrc),
+        };
+    }
+
+    private static string? Coalesce(string? a, string? b)
+        => string.IsNullOrWhiteSpace(a) ? b : a;
+
+    private async Task<TagSuggestion?> TryIdentifyAsync(Track track, CancellationToken ct)
     {
         try
         {
@@ -63,37 +81,10 @@ public sealed class AutoMatchCoordinator
         catch { return null; }
     }
 
-    private async Task<ITunesArtworkService.ArtworkCandidate?> TryArtworkAsync(Track track, CancellationToken ct)
+    private async Task<TagSuggestion?> TryEnrichAsync(string artist, string title, string album, CancellationToken ct)
     {
-        try
-        {
-            var artist = !string.IsNullOrWhiteSpace(track.AlbumArtist) ? track.AlbumArtist : track.PrimaryArtist;
-            var results = await _artwork.SearchAlbumsAsync(artist, track.Album, 1, ct).ConfigureAwait(false);
-            return results.FirstOrDefault();
-        }
+        try { return await _deezer.EnrichAsync(artist, title, album, ct).ConfigureAwait(false); }
         catch (OperationCanceledException) { throw; }
         catch { return null; }
-    }
-
-    private async Task<(string? Synced, string? Plain)> TryLyricsAsync(Track track)
-    {
-        try
-        {
-            var result = await _lyrics
-                .GetLyricsAsync(track.PrimaryArtist, track.Title, track.Duration.TotalSeconds)
-                .ConfigureAwait(false);
-
-            if (result is null || !result.HasLyrics)
-            {
-                var alts = await _lyrics.SearchLyricsAsync(track.PrimaryArtist, track.Title).ConfigureAwait(false);
-                result = alts.FirstOrDefault(r => r.HasLyrics);
-            }
-
-            return result is null
-                ? (null, null)
-                : (result.HasSyncedLyrics ? result.SyncedLyrics : null, result.PlainLyrics);
-        }
-        catch (OperationCanceledException) { throw; }
-        catch { return (null, null); }
     }
 }

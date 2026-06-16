@@ -47,6 +47,9 @@ public partial class EditPlaylistDialogViewModel : ViewModelBase
 
     public bool HasExistingFolders => ExistingFoldersHint.Length > 0;
 
+    /// <summary>Existing sidebar folder names, offered as dropdown suggestions in the folder field.</summary>
+    public IReadOnlyList<string> ExistingFolders { get; init; } = Array.Empty<string>();
+
     /// <summary>Fires when the user clicks Save with valid input.</summary>
     public event EventHandler<(string Name, string Description)>? PlaylistSaved;
 

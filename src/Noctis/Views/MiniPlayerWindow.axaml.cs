@@ -14,6 +14,9 @@ namespace Noctis.Views;
 /// </summary>
 public partial class MiniPlayerWindow : Window
 {
+    private const int CloseAnimationMs = 170;
+    private bool _closeAnimationDone;
+
     public MiniPlayerWindow()
     {
         InitializeComponent();
@@ -23,6 +26,29 @@ public partial class MiniPlayerWindow : Window
         SeekSlider.AddHandler(PointerPressedEvent, OnSeekPointerPressed, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         SeekSlider.AddHandler(PointerReleasedEvent, OnSeekPointerReleased, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         SeekSlider.PointerCaptureLost += (_, _) => (DataContext as PlayerViewModel)?.EndSeek();
+
+        // The root border starts faded/scaled-down in XAML; flipping the values
+        // once the window is shown lets its transitions play the open animation.
+        Opened += (_, _) =>
+        {
+            RootBorder.Opacity = 1;
+            RootBorder.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1)");
+        };
+    }
+
+    // Any close path (close button, toggling from the player bar) first plays the
+    // reverse fade/scale, then really closes once the animation has run.
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        if (!_closeAnimationDone)
+        {
+            e.Cancel = true;
+            _closeAnimationDone = true;
+            RootBorder.Opacity = 0;
+            RootBorder.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(0.92)");
+            Avalonia.Threading.DispatcherTimer.RunOnce(Close, TimeSpan.FromMilliseconds(CloseAnimationMs));
+        }
+        base.OnClosing(e);
     }
 
     private void OnSeekPointerPressed(object? sender, PointerPressedEventArgs e) =>

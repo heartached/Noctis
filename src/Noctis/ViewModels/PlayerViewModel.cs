@@ -90,6 +90,7 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _isLyricsSyncedActive;
     [ObservableProperty] private bool _isLyricsPlainActive;
     [ObservableProperty] private bool _isLyricsSyncedAvailable;
+    [ObservableProperty] private bool _canShareLyrics;
 
     /// <summary>
     /// Path to the current track's artwork file (or null if none).
@@ -107,6 +108,7 @@ public partial class PlayerViewModel : ViewModelBase
     private Action? _selectLyricsPlain;
     private Action? _openLyricsBackgroundColor;
     private Action? _removeLyrics;
+    private Action? _shareLyrics;
 
     public string PlayPauseTooltip => State == PlaybackState.Playing ? "Pause" : "Play";
 
@@ -308,6 +310,10 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Remaining time label, e.g. "29:54". Empty when inactive.</summary>
     [ObservableProperty] private string _sleepTimerRemainingText = string.Empty;
 
+    /// <summary>Active timed-sleep duration in minutes (15/30/45/60); 0 when no timed
+    /// sleep timer is running. Drives the checkmark on the selected menu option.</summary>
+    [ObservableProperty] private int _sleepTimerMinutes;
+
     /// <summary>When true, playback stops after the current track finishes (also the
     /// sleep timer's "end of track" mode). One-shot: clears itself once it fires.</summary>
     [ObservableProperty] private bool _stopAfterCurrentTrack;
@@ -324,6 +330,7 @@ public partial class PlayerViewModel : ViewModelBase
         _sleepTimer.Tick += OnSleepTimerTick;
         _sleepTimer.Start();
         IsSleepTimerActive = true;
+        SleepTimerMinutes = mins;
         UpdateSleepTimerRemaining();
         DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Start", $"minutes={mins}");
     }
@@ -333,6 +340,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         _sleepTimer?.Stop();
         IsSleepTimerActive = false;
+        SleepTimerMinutes = 0;
         SleepTimerRemainingText = string.Empty;
         DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Cancel", null);
     }
@@ -365,57 +373,6 @@ public partial class PlayerViewModel : ViewModelBase
         SleepTimerRemainingText = remaining.TotalHours >= 1
             ? $"{(int)remaining.TotalHours}:{remaining.Minutes:00}:{remaining.Seconds:00}"
             : $"{remaining.Minutes}:{remaining.Seconds:00}";
-    }
-
-    // ── Waveform seekbar ──────────────────────────────────────
-
-    private int _waveformGeneration;
-
-    /// <summary>Normalized waveform peaks for the current track, or null while
-    /// generating / when the waveform seekbar is disabled or unavailable.</summary>
-    [ObservableProperty] private IReadOnlyList<float>? _waveformPeaks;
-
-    /// <summary>True when the playback bar should render the waveform instead of
-    /// the plain seek track (setting on + peaks ready).</summary>
-    [ObservableProperty] private bool _showWaveform;
-
-    /// <summary>Re-evaluates waveform state; called on track change and when the
-    /// Settings toggle flips.</summary>
-    public void RefreshWaveformMode() => UpdateWaveformForCurrentTrack();
-
-    private void UpdateWaveformForCurrentTrack()
-    {
-        var generation = ++_waveformGeneration;
-        var track = CurrentTrack;
-
-        // Plain slider remains visible until peaks arrive (or forever when off).
-        WaveformPeaks = null;
-        ShowWaveform = false;
-
-        if (_settings?.WaveformSeekbarEnabled != true || track == null)
-            return;
-
-        var service = App.Services?.GetService<IWaveformService>();
-        if (service == null)
-            return;
-
-        Task.Run(async () =>
-        {
-            try
-            {
-                var peaks = await service.GetPeaksAsync(track);
-                Dispatcher.UIThread.Post(() =>
-                {
-                    if (generation != _waveformGeneration) return;
-                    WaveformPeaks = peaks;
-                    ShowWaveform = peaks != null;
-                });
-            }
-            catch (Exception ex)
-            {
-                DebugLogger.Error(DebugLogger.Category.Playback, "Waveform.Load", ex.Message);
-            }
-        });
     }
 
     [RelayCommand]
@@ -532,6 +489,9 @@ public partial class PlayerViewModel : ViewModelBase
     [RelayCommand]
     private void RemoveCurrentTrackLyrics() => _removeLyrics?.Invoke();
 
+    [RelayCommand]
+    private void ShareCurrentTrackLyrics() => _shareLyrics?.Invoke();
+
     /// <summary>
     /// Called by MainWindowViewModel when the lyrics view becomes the current view.
     /// Wires the three pass-through commands and seeds the active-state flags.
@@ -541,17 +501,21 @@ public partial class PlayerViewModel : ViewModelBase
         Action selectPlain,
         Action openBackgroundColor,
         Action removeLyrics,
+        Action shareLyrics,
         bool isSyncedActive,
         bool isPlainActive,
-        bool isSyncedAvailable)
+        bool isSyncedAvailable,
+        bool canShare)
     {
         _selectLyricsSynced = selectSynced;
         _selectLyricsPlain = selectPlain;
         _openLyricsBackgroundColor = openBackgroundColor;
         _removeLyrics = removeLyrics;
+        _shareLyrics = shareLyrics;
         IsLyricsSyncedActive = isSyncedActive;
         IsLyricsPlainActive = isPlainActive;
         IsLyricsSyncedAvailable = isSyncedAvailable;
+        CanShareLyrics = canShare;
         IsLyricsPageActive = true;
     }
 
@@ -564,21 +528,24 @@ public partial class PlayerViewModel : ViewModelBase
         _selectLyricsPlain = null;
         _openLyricsBackgroundColor = null;
         _removeLyrics = null;
+        _shareLyrics = null;
         IsLyricsPageActive = false;
         IsLyricsSyncedActive = false;
         IsLyricsPlainActive = false;
         IsLyricsSyncedAvailable = false;
+        CanShareLyrics = false;
     }
 
     /// <summary>
     /// Called by MainWindowViewModel whenever the lyrics view's Synced/Plain selection
     /// or synced-availability changes, to keep the menu's checkmarks accurate.
     /// </summary>
-    public void UpdateLyricsPageState(bool isSyncedActive, bool isPlainActive, bool isSyncedAvailable)
+    public void UpdateLyricsPageState(bool isSyncedActive, bool isPlainActive, bool isSyncedAvailable, bool canShare)
     {
         IsLyricsSyncedActive = isSyncedActive;
         IsLyricsPlainActive = isPlainActive;
         IsLyricsSyncedAvailable = isSyncedAvailable;
+        CanShareLyrics = canShare;
     }
 
     /// <summary>Sets the sidebar ViewModel for playlist access.</summary>
@@ -1148,7 +1115,6 @@ public partial class PlayerViewModel : ViewModelBase
 
         CurrentTrack = track;
         LoadAlbumArt(track);
-        UpdateWaveformForCurrentTrack();
         Duration = track.Duration;
         DurationText = FormatTime(track.Duration);
         RemainingTimeText = FormatTime(track.Duration);

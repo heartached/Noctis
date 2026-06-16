@@ -26,6 +26,8 @@ public partial class LyricsView : UserControl
     private const double ColorPickerAutoDismissSeconds = 3;
     private bool _isNarrowMode;
     private DispatcherTimer? _resizeRecenterTimer;
+    private Window? _hostWindow;
+    private bool _recenterOnNextLayout;
     private bool _isTimelineSeekDragging;
     private bool _isJumpingOnAttach;
     private readonly TranslateTransform _lyricsTimelineThumbTransform = new();
@@ -61,6 +63,31 @@ public partial class LyricsView : UserControl
             colorPickerFlyout.Opened += OnColorPickerFlyoutOpened;
             colorPickerFlyout.Closed += OnColorPickerFlyoutClosed;
         }
+
+        // After a min/maximize/restore the lyrics rewrap; re-anchor the active line on the
+        // very next layout pass (guarded by the flag) so it snaps into place instead of
+        // sitting at a stale offset for the ~200ms the resize-settle timer would take.
+        LayoutUpdated += OnLyricsLayoutUpdated;
+    }
+
+    private void OnLyricsLayoutUpdated(object? sender, EventArgs e)
+    {
+        if (!_recenterOnNextLayout) return;
+        _recenterOnNextLayout = false;
+
+        if (DataContext is not LyricsViewModel vm) return;
+        if (!vm.IsSyncTabSelected || vm.IsAutoFollowPaused || vm.ActiveLineIndex < 0) return;
+
+        _lastScrolledIndex = -1; // force the jump even if the index didn't change
+        JumpToActiveLineWhenReady(vm.ActiveLineIndex);
+    }
+
+    private void OnHostWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property != Window.WindowStateProperty) return;
+        // Defer to the next layout pass, when the rewrapped line heights are final.
+        if (DataContext is LyricsViewModel { IsSyncTabSelected: true, IsAutoFollowPaused: false, ActiveLineIndex: >= 0 })
+            _recenterOnNextLayout = true;
     }
 
     private void OnColorPickerFlyoutOpened(object? sender, EventArgs e)
@@ -125,6 +152,13 @@ public partial class LyricsView : UserControl
         // Reset scroll guard so re-entering the page always scrolls to the active line
         _lastScrolledIndex = -1;
 
+        // Watch window min/maximize/restore so we can re-anchor the active line cleanly.
+        if (e.Root is Window window)
+        {
+            _hostWindow = window;
+            _hostWindow.PropertyChanged += OnHostWindowPropertyChanged;
+        }
+
         if (DataContext is LyricsViewModel vm)
         {
             vm.IsAutoFollowPaused = false;
@@ -154,6 +188,12 @@ public partial class LyricsView : UserControl
         if (_subscribedVm != null)
         {
             _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
+        }
+
+        if (_hostWindow != null)
+        {
+            _hostWindow.PropertyChanged -= OnHostWindowPropertyChanged;
+            _hostWindow = null;
         }
 
         base.OnDetachedFromVisualTree(e);

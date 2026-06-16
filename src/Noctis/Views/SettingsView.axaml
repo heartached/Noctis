@@ -1951,12 +1951,12 @@
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="10">
-                    <TextBlock Text="Sources used by Find/Identify to fetch track tags, in order."
+                    <TextBlock Text="Tag sources for Find/Identify, in order."
                                FontSize="12" Opacity="0.5" Margin="0,0,0,4"/>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Text="AcoustID fingerprint" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Identifies tracks by their audio — needs fpcalc + API key" FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="Audio match. Needs fpcalc + API key." FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding AcoustIdEnabled}"
@@ -1965,7 +1965,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Text="MusicBrainz" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Primary tag source — open catalog, no key" FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="Primary source, no key." FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding MusicBrainzEnabled}"
@@ -1974,7 +1974,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Text="Deezer" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Fallback source — fast, no key" FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="Fast fallback, no key." FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding DeezerEnabled}"
@@ -1983,7 +1983,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Text="iTunes / Apple Music" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Artwork &amp; animated covers — no key" FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="Artwork &amp; covers, no key." FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding ITunesEnabled}"
@@ -2401,29 +2401,6 @@
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
-
-                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.2"/>
-
-                    <!-- Fetch Artist Images -->
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0">
-                            <StackPanel Spacing="2">
-                                <TextBlock Text="Fetch Artist Images" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Download missing artist profile images from Deezer."
-                                           FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </StackPanel>
-                        <Button Grid.Column="1"
-                                Command="{Binding FetchArtistImagesCommand}"
-                                Classes="pill-action"
-                                Padding="14,8"
-                                CornerRadius="16"
-                                Cursor="Hand"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="Fetch Images" FontSize="13"
-                                       VerticalAlignment="Center"/>
-                        </Button>
-                    </Grid>
 
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.2"/>
 

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -129,7 +130,8 @@ public partial class OrganizeFilesViewModel : ViewModelBase
             if (!string.IsNullOrEmpty(targetRoot) &&
                 move.TargetPath.StartsWith(targetRoot, StringComparison.OrdinalIgnoreCase))
                 rel = move.TargetPath.Substring(targetRoot.Length).TrimStart('\\', '/');
-            TargetRelative = rel;
+            TargetRelativeFull = rel;
+            TargetRelative = DisplayPath.MiddleEllipsis(rel);
             ActionText = move.Action switch
             {
                 OrganizeAction.Skip => "Already organized",
@@ -140,6 +142,7 @@ public partial class OrganizeFilesViewModel : ViewModelBase
 
         public string SourceName { get; }
         public string TargetRelative { get; }
+        public string TargetRelativeFull { get; }
         public string ActionText { get; }
     }
 }

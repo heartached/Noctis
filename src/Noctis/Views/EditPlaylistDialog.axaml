@@ -18,6 +18,39 @@
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
     </Window.Resources>
 
+    <Window.Styles>
+        <!-- Folder field: rounded pill AutoCompleteBox matching the other inputs -->
+        <Style Selector="AutoCompleteBox.folder-input">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="AutoCompleteBox.folder-input /template/ TextBox#PART_TextBox">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="12,8" />
+        </Style>
+        <Style Selector="AutoCompleteBox.folder-input /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="White" />
+        </Style>
+        <Style Selector="AutoCompleteBox.folder-input:pointerover /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="White" />
+        </Style>
+        <Style Selector="AutoCompleteBox.folder-input:focus-within /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <!-- Suggestion dropdown: give it an opaque background so dialog content
+             behind the transparent window doesn't bleed through the popup. -->
+        <Style Selector="AutoCompleteBox.folder-input /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource AppMainBackground}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BorderBrush" Value="#33FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="AutoCompleteBox.folder-input /template/ ListBox#PART_SelectingItemsControl">
+            <Setter Property="Background" Value="{DynamicResource AppMainBackground}" />
+        </Style>
+    </Window.Styles>
+
 <!-- Full-window dimmed overlay that captures all input -->
     <Border Background="#50000000"
             PointerPressed="OnOverlayPointerPressed"
@@ -164,24 +197,23 @@
                 <Grid ColumnDefinitions="*,12,Auto">
                     <StackPanel Grid.Column="0" Spacing="4">
                         <TextBlock Text="Sidebar Folder" FontSize="13" FontWeight="SemiBold" />
-                        <TextBox Text="{Binding PlaylistFolder}"
-                                 Classes="crisp-input"
-                                 Watermark="No folder"
-                                 CornerRadius="999" />
-                        <TextBlock FontSize="10" Opacity="0.5"
-                                   TextTrimming="CharacterEllipsis"
-                                   IsVisible="{Binding HasExistingFolders}">
-                            <Run Text="Existing:"/>
-                            <Run Text="{Binding ExistingFoldersHint}"/>
-                        </TextBlock>
+                        <AutoCompleteBox Text="{Binding PlaylistFolder, Mode=TwoWay}"
+                                         ItemsSource="{Binding ExistingFolders}"
+                                         Classes="folder-input"
+                                         Watermark="No folder"
+                                         FilterMode="ContainsOrdinal"
+                                         MinimumPrefixLength="0" />
+                        <TextBlock Text="Pick an existing folder or type a new name to group playlists in the sidebar."
+                                   FontSize="10" Opacity="0.5"
+                                   TextWrapping="Wrap" />
                     </StackPanel>
                     <CheckBox Grid.Column="2"
+                              Classes="metadata-pill-checkbox"
+                              Content="Star"
                               IsChecked="{Binding IsPinned}"
                               VerticalAlignment="Top"
-                              Margin="0,22,0,0"
-                              ToolTip.Tip="Pinned playlists stay at the top of the sidebar">
-                        <TextBlock Text="Pin" FontSize="13"/>
-                    </CheckBox>
+                              Margin="0,28,0,0"
+                              ToolTip.Tip="Starred playlists stay at the top of the sidebar" />
                 </Grid>
             </StackPanel>
         </DockPanel>

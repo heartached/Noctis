@@ -53,10 +53,9 @@
                     <StackPanel Orientation="Horizontal" Spacing="0">
                         <TextBlock FontSize="17" Opacity="0.75" VerticalAlignment="Center">
                             <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0} · {1} · {2} tracks">
+                                <MultiBinding StringFormat="{}{0} · {1}">
                                     <Binding Path="Album.Genre" />
                                     <Binding Path="Album.Year" />
-                                    <Binding Path="Album.TrackCount" />
                                 </MultiBinding>
                             </TextBlock.Text>
                         </TextBlock>
@@ -84,6 +83,17 @@
                                 Spacing="8"
                                 Margin="0,8,0,0"
                                 IsVisible="{Binding IsAlbumDescriptionEditing}">
+                        <Button Content="Cancel"
+                                Command="{Binding CancelAlbumDescriptionEditCommand}"
+                                Padding="12,6"
+                                FontSize="12"
+                                FontWeight="Bold"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                Classes="album-desc-btn"
+                                IsVisible="{Binding IsAlbumDescriptionEditing}" />
                         <Button Content="Save"
                                 Command="{Binding SaveAlbumDescriptionEditCommand}"
                                 Padding="12,6"
@@ -96,17 +106,6 @@
                                 Classes="album-desc-btn"
                                 IsVisible="{Binding IsAlbumDescriptionEditing}"
                                 IsEnabled="{Binding HasAlbumDescriptionChanges}" />
-                        <Button Content="Cancel"
-                                Command="{Binding CancelAlbumDescriptionEditCommand}"
-                                Padding="12,6"
-                                FontSize="12"
-                                FontWeight="Bold"
-                                CornerRadius="999"
-                                Cursor="Hand"
-                                Background="{DynamicResource AccentColorBrush}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                Classes="album-desc-btn"
-                                IsVisible="{Binding IsAlbumDescriptionEditing}" />
                     </StackPanel>
                 </StackPanel>
 
@@ -158,7 +157,9 @@
                     <Grid>
                         <TextBlock Text="{Binding AlbumDescriptionFull}"
                                    FontSize="15"
-                                   LineHeight="24"
+                                   LineHeight="27"
+                                   Opacity="0.9"
+                                   Margin="0,0,18,0"
                                    TextWrapping="Wrap"
                                    IsVisible="{Binding !IsAlbumDescriptionEditing}" />
                         <TextBox Text="{Binding AlbumDescriptionEditorText}"
@@ -166,6 +167,8 @@
                                  TextWrapping="Wrap"
                                  VerticalContentAlignment="Top"
                                  FontSize="15"
+                                 LineHeight="27"
+                                 Padding="10,8"
                                  MinHeight="240"
                                  IsVisible="{Binding IsAlbumDescriptionEditing}" />
                     </Grid>

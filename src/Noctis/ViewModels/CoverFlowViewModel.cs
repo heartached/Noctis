@@ -21,7 +21,7 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
     public void SetViewAlbumAction(Action<Track> action) => _viewAlbumAction = action;
 
-    // ── Current carousel state (center + 7 on each side) ──
+    // ── Current carousel state (center + 7 on each side; collage shows up to ±10) ──
 
     [ObservableProperty] private Track? _centerTrack;
 
@@ -33,6 +33,9 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private Track? _prev5Track;         // -5
     [ObservableProperty] private Track? _prev6Track;         // -6
     [ObservableProperty] private Track? _prev7Track;         // -7
+    [ObservableProperty] private Track? _prev8Track;         // -8
+    [ObservableProperty] private Track? _prev9Track;         // -9
+    [ObservableProperty] private Track? _prev10Track;        // -10
 
     // Next side (UpNext queue)
     [ObservableProperty] private Track? _nextTrack;          // +1
@@ -42,6 +45,31 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private Track? _next5Track;         // +5
     [ObservableProperty] private Track? _next6Track;         // +6
     [ObservableProperty] private Track? _next7Track;         // +7
+    [ObservableProperty] private Track? _next8Track;         // +8
+    [ObservableProperty] private Track? _next9Track;         // +9
+    [ObservableProperty] private Track? _next10Track;        // +10
+    [ObservableProperty] private Track? _next11Track;        // +11 (collage 12th slot)
+    // Extra collage-only slots (+12..+23) so the constellation can show up to 24 covers.
+    [ObservableProperty] private Track? _next12Track;        // +12
+    [ObservableProperty] private Track? _next13Track;        // +13
+    [ObservableProperty] private Track? _next14Track;        // +14
+    [ObservableProperty] private Track? _next15Track;        // +15
+    [ObservableProperty] private Track? _next16Track;        // +16
+    [ObservableProperty] private Track? _next17Track;        // +17
+    [ObservableProperty] private Track? _next18Track;        // +18
+    [ObservableProperty] private Track? _next19Track;        // +19
+    [ObservableProperty] private Track? _next20Track;        // +20
+    [ObservableProperty] private Track? _next21Track;        // +21
+    [ObservableProperty] private Track? _next22Track;        // +22
+    [ObservableProperty] private Track? _next23Track;        // +23
+    [ObservableProperty] private Track? _next24Track;        // +24
+    [ObservableProperty] private Track? _next25Track;        // +25
+    [ObservableProperty] private Track? _next26Track;        // +26
+    [ObservableProperty] private Track? _next27Track;        // +27
+    [ObservableProperty] private Track? _next28Track;        // +28
+    [ObservableProperty] private Track? _next29Track;        // +29
+    [ObservableProperty] private Track? _next30Track;        // +30
+    [ObservableProperty] private Track? _next31Track;        // +31
 
     [ObservableProperty] private string _centerTitle = string.Empty;
     [ObservableProperty] private string _centerArtist = string.Empty;
@@ -60,16 +88,33 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private string? _prev5ArtworkPath;
     [ObservableProperty] private string? _prev6ArtworkPath;
     [ObservableProperty] private string? _prev7ArtworkPath;
+    [ObservableProperty] private string? _prev8ArtworkPath;
+    [ObservableProperty] private string? _prev9ArtworkPath;
+    [ObservableProperty] private string? _prev10ArtworkPath;
     [ObservableProperty] private string? _next5ArtworkPath;
     [ObservableProperty] private string? _next6ArtworkPath;
     [ObservableProperty] private string? _next7ArtworkPath;
+    [ObservableProperty] private string? _next8ArtworkPath;
+    [ObservableProperty] private string? _next9ArtworkPath;
+    [ObservableProperty] private string? _next10ArtworkPath;
 
     [ObservableProperty] private bool _centerIsExplicit;
     [ObservableProperty] private bool _centerIsFavorite;
-    [ObservableProperty] private bool _hasQueue;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowCarousel))]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
+    private bool _hasQueue;
 
-    /// <summary>Collage sub-mode: scattered covers at varying sizes instead of the carousel.</summary>
-    [ObservableProperty] private bool _isCollageMode;
+    /// <summary>Collage sub-mode: a static, decorative library-artwork showcase instead of the carousel.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowCarousel))]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
+    private bool _isCollageMode;
+
+    /// <summary>Carousel (queue-driven) shows only outside collage mode and when a queue exists.</summary>
+    public bool ShowCarousel => !IsCollageMode && HasQueue;
+    /// <summary>"Nothing playing" empty state — carousel mode with no queue.</summary>
+    public bool ShowEmptyState => !IsCollageMode && !HasQueue;
 
     [RelayCommand]
     private void ToggleCollageMode() => IsCollageMode = !IsCollageMode;
@@ -157,6 +202,15 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
         Prev7Track = history.Count > 6 ? history[6] : null;
         Prev7ArtworkPath = Prev7Track?.AlbumArtworkPath;
 
+        Prev8Track = history.Count > 7 ? history[7] : null;
+        Prev8ArtworkPath = Prev8Track?.AlbumArtworkPath;
+
+        Prev9Track = history.Count > 8 ? history[8] : null;
+        Prev9ArtworkPath = Prev9Track?.AlbumArtworkPath;
+
+        Prev10Track = history.Count > 9 ? history[9] : null;
+        Prev10ArtworkPath = Prev10Track?.AlbumArtworkPath;
+
         // Next items from UpNext queue
         NextTrack = upNext.Count > 0 ? upNext[0] : null;
         NextArtworkPath = NextTrack?.AlbumArtworkPath;
@@ -178,6 +232,38 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
 
         Next7Track = upNext.Count > 6 ? upNext[6] : null;
         Next7ArtworkPath = Next7Track?.AlbumArtworkPath;
+
+        Next8Track = upNext.Count > 7 ? upNext[7] : null;
+        Next8ArtworkPath = Next8Track?.AlbumArtworkPath;
+
+        Next9Track = upNext.Count > 8 ? upNext[8] : null;
+        Next9ArtworkPath = Next9Track?.AlbumArtworkPath;
+
+        Next10Track = upNext.Count > 9 ? upNext[9] : null;
+        Next10ArtworkPath = Next10Track?.AlbumArtworkPath;
+
+        // Collage-only slots +11..+23 (artwork bound directly off the Track in the view).
+        Next11Track = upNext.Count > 10 ? upNext[10] : null;
+        Next12Track = upNext.Count > 11 ? upNext[11] : null;
+        Next13Track = upNext.Count > 12 ? upNext[12] : null;
+        Next14Track = upNext.Count > 13 ? upNext[13] : null;
+        Next15Track = upNext.Count > 14 ? upNext[14] : null;
+        Next16Track = upNext.Count > 15 ? upNext[15] : null;
+        Next17Track = upNext.Count > 16 ? upNext[16] : null;
+        Next18Track = upNext.Count > 17 ? upNext[17] : null;
+        Next19Track = upNext.Count > 18 ? upNext[18] : null;
+        Next20Track = upNext.Count > 19 ? upNext[19] : null;
+        Next21Track = upNext.Count > 20 ? upNext[20] : null;
+        Next22Track = upNext.Count > 21 ? upNext[21] : null;
+        Next23Track = upNext.Count > 22 ? upNext[22] : null;
+        Next24Track = upNext.Count > 23 ? upNext[23] : null;
+        Next25Track = upNext.Count > 24 ? upNext[24] : null;
+        Next26Track = upNext.Count > 25 ? upNext[25] : null;
+        Next27Track = upNext.Count > 26 ? upNext[26] : null;
+        Next28Track = upNext.Count > 27 ? upNext[27] : null;
+        Next29Track = upNext.Count > 28 ? upNext[28] : null;
+        Next30Track = upNext.Count > 29 ? upNext[29] : null;
+        Next31Track = upNext.Count > 30 ? upNext[30] : null;
     }
 
     private void OnCenterTrackPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

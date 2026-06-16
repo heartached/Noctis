@@ -39,14 +39,13 @@
                                 Margin="0,0,8,0" Cursor="Hand" />
                         <Button Grid.Column="2" Content="Close" Command="{Binding CloseCommand}"
                                 Width="90" Padding="0,8" FontWeight="Bold"
+                                Classes="danger-pill"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
                                 Margin="0,0,8,0" Cursor="Hand" />
                         <Button Grid.Column="3" Command="{Binding DeleteSelectedCommand}"
                                 IsEnabled="{Binding HasSelection}"
                                 Width="140" Padding="0,8"
-                                Classes="accent-btn"
-                                Background="{DynamicResource AccentColorBrush}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                Classes="danger-ghost-pill"
                                 FontWeight="SemiBold"
                                 HorizontalContentAlignment="Center" CornerRadius="999" Cursor="Hand">
                             <TextBlock>
@@ -70,21 +69,25 @@
                                         <ItemsControl ItemsSource="{Binding Rows}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="vm:DuplicateFinderViewModel+DupRow">
-                                                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,3">
-                                                        <CheckBox Grid.Column="0" IsChecked="{Binding Delete}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                                        <StackPanel Grid.Column="1" Spacing="1">
-                                                            <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                            <TextBlock Text="{Binding FolderPath}" FontSize="10" Opacity="0.5" TextTrimming="CharacterEllipsis" />
-                                                            <TextBlock Text="{Binding Quality}" FontSize="11" Opacity="0.7" />
-                                                        </StackPanel>
-                                                        <Border Grid.Column="2" VerticalAlignment="Center"
+                                                    <!-- DockPanel (badge docked right, text fills the rest) so long
+                                                         file paths can never push the Keep badge off the card. -->
+                                                    <DockPanel Margin="0,3">
+                                                        <CheckBox DockPanel.Dock="Left" Classes="metadata-pill-checkbox"
+                                                                  IsChecked="{Binding Delete}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                        <Border DockPanel.Dock="Right" VerticalAlignment="Center"
                                                                 IsVisible="{Binding IsSuggestedKeep}"
                                                                 Background="{DynamicResource AccentColorBrush}"
                                                                 CornerRadius="999" Padding="8,3" Margin="8,0,0,0">
                                                             <TextBlock Text="Keep" FontSize="10" FontWeight="SemiBold"
                                                                        Foreground="{DynamicResource AccentForegroundBrush}" />
                                                         </Border>
-                                                    </Grid>
+                                                        <StackPanel Spacing="1" Margin="0,0,8,0">
+                                                            <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Text="{Binding FolderPath}" FontSize="10" Opacity="0.5" TextTrimming="CharacterEllipsis"
+                                                                       ToolTip.Tip="{Binding FolderPathFull}" />
+                                                            <TextBlock Text="{Binding Quality}" FontSize="11" Opacity="0.7" />
+                                                        </StackPanel>
+                                                    </DockPanel>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Noctis.Models;
@@ -20,67 +22,69 @@ public class AutoMatchCoordinatorTests
         FilePath = "C:/music/lucid.flac",
     };
 
-    private static AppSettings AllEnabled() => new()
-    {
-        ITunesEnabled = true,
-        LrcLibEnabled = true,
-        AcoustIdEnabled = true,
-        MusicBrainzEnabled = true,
-        DeezerEnabled = true,
-    };
+    private static AppSettings DeezerOff() => new() { DeezerEnabled = false };
+
+    // Deezer enrichment uses a live HttpClient; with Deezer disabled the coordinator
+    // returns only the identify result, so we can drive these tests offline.
+    private static DeezerMetadataService NoNetworkDeezer()
+        => new(new HttpClient(new ThrowingHandler()));
 
     [Fact]
-    public async Task MatchAsync_AggregatesAllProviders()
+    public async Task MatchAsync_ReturnsIdentifyResult_WhenDeezerDisabled()
     {
-        var finder = new FakeFinder(new TagSuggestion("Lucid Dreams", "Juice WRLD", "Goodbye & Good Riddance", 2018, 0.9, "MusicBrainz"));
-        var art = new FakeArtwork(new ITunesArtworkService.ArtworkCandidate(1, "Goodbye & Good Riddance", "Juice WRLD", "thumb", "std", "hi", "view"));
-        var lyrics = new FakeLyrics(new LrcLibResult { SyncedLyrics = "[00:01.00]line", PlainLyrics = "line" });
+        var finder = new FakeFinder(new TagSuggestion(
+            "Lucid Dreams", "Juice WRLD", "Goodbye & Good Riddance", 2018, 0.9, "MusicBrainz"));
 
-        var coord = new AutoMatchCoordinator(finder, art, lyrics, AllEnabled);
-        var p = await coord.MatchAsync(SampleTrack());
+        var coord = new AutoMatchCoordinator(finder, NoNetworkDeezer(), DeezerOff);
+        var hit = await coord.MatchAsync(SampleTrack());
 
-        Assert.NotNull(p.Tags);
-        Assert.Equal("MusicBrainz", p.Tags!.Source);
-        Assert.NotNull(p.Artwork);
-        Assert.Equal("hi", p.Artwork!.HiResUrl);
-        Assert.Equal("[00:01.00]line", p.SyncedLyrics);
-        Assert.Equal("line", p.PlainLyrics);
-        Assert.True(p.HasAnything);
+        Assert.NotNull(hit);
+        Assert.Equal("MusicBrainz", hit!.Source);
+        Assert.Equal("Lucid Dreams", hit.Title);
+        Assert.Equal(2018, hit.Year);
     }
 
     [Fact]
-    public async Task MatchAsync_OneProviderThrows_OthersStillPopulate()
+    public async Task MatchAsync_FinderThrows_ReturnsNull_WhenDeezerDisabled()
     {
         var finder = new FakeFinder(throws: true);
-        var art = new FakeArtwork(new ITunesArtworkService.ArtworkCandidate(1, "A", "B", "t", "s", "hi", "v"));
-        var lyrics = new FakeLyrics(new LrcLibResult { PlainLyrics = "words" });
 
-        var coord = new AutoMatchCoordinator(finder, art, lyrics, AllEnabled);
-        var p = await coord.MatchAsync(SampleTrack());
+        var coord = new AutoMatchCoordinator(finder, NoNetworkDeezer(), DeezerOff);
+        var hit = await coord.MatchAsync(SampleTrack());
 
-        Assert.Null(p.Tags);           // finder threw → tags null
-        Assert.NotNull(p.Artwork);     // art survived
-        Assert.Equal("words", p.PlainLyrics);
+        Assert.Null(hit);
     }
 
     [Fact]
-    public async Task MatchAsync_RespectsDisabledToggles()
+    public void Merge_PrefersIdentifyCore_FillsRichFromEnrich()
     {
-        var finder = new FakeFinder(new TagSuggestion("t", "a", "al", null, 0.5, "Deezer"));
-        var art = new FakeArtwork(new ITunesArtworkService.ArtworkCandidate(1, "A", "B", "t", "s", "hi", "v"));
-        var lyrics = new FakeLyrics(new LrcLibResult { SyncedLyrics = "[00:01.00]x" });
-        var settings = new AppSettings { ITunesEnabled = false, LrcLibEnabled = false };
+        var identify = new TagSuggestion("Lucid Dreams", "Juice WRLD", "Goodbye & Good Riddance", 2018, 0.9, "MusicBrainz");
+        var enrich = new TagSuggestion("LUCID DREAMS", "JW", "GBGR", 2017, 0.0, "Deezer",
+            AlbumArtist: "Juice WRLD", Genre: "Rap/Hip Hop", TrackNumber: 8, TrackCount: 17,
+            DiscNumber: 1, Bpm: 84, Isrc: "USUM71808193");
 
-        var coord = new AutoMatchCoordinator(finder, art, lyrics, () => settings);
-        var p = await coord.MatchAsync(SampleTrack());
+        var merged = AutoMatchCoordinator.Merge(identify, enrich);
 
-        Assert.NotNull(p.Tags);        // tag finder owns its own toggles, always invoked
-        Assert.Null(p.Artwork);        // iTunes disabled
-        Assert.Null(p.SyncedLyrics);   // lyrics disabled
-        Assert.False(art.WasCalled);   // disabled → never called
+        // Core fields come from identify.
+        Assert.Equal("Lucid Dreams", merged!.Title);
+        Assert.Equal("Juice WRLD", merged.Artist);
+        Assert.Equal("Goodbye & Good Riddance", merged.Album);
+        Assert.Equal(2018, merged.Year);
+        // Rich fields filled from enrich.
+        Assert.Equal("Rap/Hip Hop", merged.Genre);
+        Assert.Equal(8, merged.TrackNumber);
+        Assert.Equal(17, merged.TrackCount);
+        Assert.Equal(84, merged.Bpm);
+        Assert.Equal("USUM71808193", merged.Isrc);
     }
 
-    // ── Fakes ──
+    [Fact]
+    public void Merge_NullIdentify_ReturnsEnrich()
+    {
+        var enrich = new TagSuggestion("t", "a", "al", 2020, 0.0, "Deezer", Genre: "Pop");
+        var merged = AutoMatchCoordinator.Merge(null, enrich);
+        Assert.Equal("Pop", merged!.Genre);
+    }
 
     private sealed class FakeFinder : IMetadataFinderService
     {
@@ -97,28 +101,9 @@ public class AutoMatchCoordinatorTests
         }
     }
 
-    private sealed class FakeArtwork : IAlbumArtworkSearch
+    private sealed class ThrowingHandler : HttpMessageHandler
     {
-        private readonly ITunesArtworkService.ArtworkCandidate? _candidate;
-        public bool WasCalled { get; private set; }
-        public FakeArtwork(ITunesArtworkService.ArtworkCandidate? candidate) { _candidate = candidate; }
-        public Task<IReadOnlyList<ITunesArtworkService.ArtworkCandidate>> SearchAlbumsAsync(
-            string artist, string album, int limit = 8, CancellationToken ct = default)
-        {
-            WasCalled = true;
-            IReadOnlyList<ITunesArtworkService.ArtworkCandidate> list =
-                _candidate is null ? Array.Empty<ITunesArtworkService.ArtworkCandidate>() : new[] { _candidate };
-            return Task.FromResult(list);
-        }
-    }
-
-    private sealed class FakeLyrics : ILrcLibService
-    {
-        private readonly LrcLibResult? _result;
-        public FakeLyrics(LrcLibResult? result) { _result = result; }
-        public Task<LrcLibResult?> GetLyricsAsync(string artist, string trackName, double durationSeconds)
-            => Task.FromResult(_result);
-        public Task<List<LrcLibResult>> SearchLyricsAsync(string artist, string trackName)
-            => Task.FromResult(new List<LrcLibResult>());
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+            => throw new HttpRequestException("no network in test");
     }
 }

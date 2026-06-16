@@ -23,7 +23,6 @@ public partial class SidebarViewModel : ViewModelBase
     [ObservableProperty] private NavItem? _selectedNavItem;
     [ObservableProperty] private bool _isExpanded;
     [ObservableProperty] private int _favoritesCount;
-    [ObservableProperty] private int _listenLaterCount;
 
     /// <summary>Folders the user has collapsed this session (default expanded).</summary>
     private readonly HashSet<string> _collapsedFolders = new(StringComparer.OrdinalIgnoreCase);
@@ -50,12 +49,6 @@ public partial class SidebarViewModel : ViewModelBase
     public ObservableCollection<NavItem> FavoritesItems { get; } = new()
     {
         new NavItem { Key = "favorites", Label = "Favorites", IconGlyph = "FavoritesIcon" },
-    };
-
-    /// <summary>Listen Later navigation item (below Favorites).</summary>
-    public ObservableCollection<NavItem> ListenLaterItems { get; } = new()
-    {
-        new NavItem { Key = "listenlater", Label = "Listen Later", IconGlyph = "PlaylistsIcon" },
     };
 
     /// <summary>User-created playlists shown in sidebar with artwork thumbnails.</summary>
@@ -384,6 +377,63 @@ public partial class SidebarViewModel : ViewModelBase
         PlaylistTracksChanged?.Invoke(this, playlistId);
     }
 
+    /// <summary>Opens the search-driven "Add Songs" picker for a manual playlist and
+    /// appends the chosen tracks via <see cref="AddTracksToPlaylist"/>.</summary>
+    public async Task OpenAddSongsAsync(Playlist playlist)
+    {
+        if (playlist == null || playlist.IsSmartPlaylist) return;
+
+        var dialogVm = new AddSongsDialogViewModel(_library.Tracks.ToList(), playlist.TrackIds);
+        var dialog = new AddSongsDialog { DataContext = dialogVm };
+
+        IReadOnlyList<Track>? chosen = null;
+        dialogVm.SongsChosen += (_, tracks) => chosen = tracks;
+        dialogVm.CloseRequested += (_, _) => dialog.Close();
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow is Window owner)
+        {
+            DialogHelper.SizeToOwner(dialog, owner);
+            await dialog.ShowDialog(owner);
+        }
+        else
+        {
+            dialog.Show();
+            return;
+        }
+
+        if (chosen != null && chosen.Count > 0)
+            await AddTracksToPlaylist(playlist.Id, chosen);
+    }
+
+    /// <summary>
+    /// Creates a manual playlist with the given name and tracks directly (no dialog),
+    /// persists it, and returns it. Used by folder-import to keep a dropped collection
+    /// (e.g. a downloaded playlist folder) together as a single playlist.
+    /// </summary>
+    public async Task<Playlist> CreatePlaylistFromTracksAsync(string name, IEnumerable<Track> tracks)
+    {
+        var playlist = new Playlist
+        {
+            Name = string.IsNullOrWhiteSpace(name) ? "New Playlist" : name.Trim(),
+            Color = Playlist.GetRandomColor()
+        };
+        foreach (var t in tracks)
+            playlist.TrackIds.Add(t.Id);
+
+        Playlists.Add(playlist);
+        PlaylistItems.Add(BuildPlaylistNavItem(playlist));
+        RebuildSidebarRows();
+
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        return playlist;
+    }
+
+    /// <summary>True if a manual (non-smart) playlist with this name already exists.</summary>
+    public bool ManualPlaylistExists(string name) =>
+        Playlists.Any(p => !p.IsSmartPlaylist &&
+                           string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+
     /// <summary>Opens the unified "Add to Playlist" dialog for a single track.</summary>
     public Task CreatePlaylistWithTrackAsync(Track track)
         => OpenAddToPlaylistAsync(new List<Track> { track });
@@ -471,6 +521,7 @@ public partial class SidebarViewModel : ViewModelBase
             IsPinned = playlist.IsPinned,
             PlaylistFolder = playlist.Folder,
             ExistingFoldersHint = string.Join(", ", GetFolderNames()),
+            ExistingFolders = GetFolderNames(),
         };
         var dialog = new EditPlaylistDialog { DataContext = dialogVm };
 

@@ -13,7 +13,6 @@
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry" />
-        <conv:TrackPlaylistCommandParameterConverter x:Key="TrackPlaylistParamConverter" />
     </UserControl.Resources>
 
     <Grid RowDefinitions="*">
@@ -23,20 +22,25 @@
 
         <!-- Column headers (sortable). Optional columns (Rating, BPM, Bitrate, Sample
              rate) live in Auto columns whose cells carry fixed widths, so hidden
-             columns collapse to zero in both the header and the rows. -->
+             columns collapse to zero in both the header and the rows.
+             Margin 1,_,9,_ mirrors the track-list row insets (1px ListBoxItem border
+             each side + 8px right padding) so header cells sit exactly over row cells. -->
         <Grid DockPanel.Dock="Top"
-              ColumnDefinitions="*,80,*,*,*,80,Auto,55,Auto,Auto,Auto,42"
-              Margin="0,0,0,8">
+              ColumnDefinitions="*,80,*,*,Auto,80,Auto,55,Auto,Auto,Auto,42"
+              Margin="1,0,9,8">
             <Button Grid.Column="0" Content="Title" Command="{Binding SortCommand}" CommandParameter="Title"
                     Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="1" Content="Time" Command="{Binding SortCommand}" CommandParameter="Time"
-                    Background="Transparent" BorderThickness="0" Padding="0" Margin="-4,0,0,0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+                    Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             <Button Grid.Column="2" Content="Artist" Command="{Binding SortCommand}" CommandParameter="Artist"
-                    Background="Transparent" BorderThickness="0" Padding="0" Margin="-1,0,0,0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
+                    Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="3" Content="Album" Command="{Binding SortCommand}" CommandParameter="Album"
-                    Background="Transparent" BorderThickness="0" Padding="0" Margin="-4,0,0,0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
-            <Button Grid.Column="4" Content="Genre" Command="{Binding SortCommand}" CommandParameter="Genre"
-                    Background="Transparent" BorderThickness="0" Padding="0" Margin="-8,0,0,0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
+                    Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
+            <Border Grid.Column="4" Width="110"
+                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowGenreColumn, FallbackValue=True}">
+                <Button Content="Genre" Command="{Binding SortCommand}" CommandParameter="Genre"
+                        Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
+            </Border>
             <Button Grid.Column="5" Content="Favorites" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
                     Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             <Border Grid.Column="6" Width="84"
@@ -45,7 +49,7 @@
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             </Border>
             <Button Grid.Column="7" Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
-                    Background="Transparent" BorderThickness="0" Padding="0" Margin="-10,0,0,0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+                    Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             <Border Grid.Column="8" Width="48"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowBpmColumn, FallbackValue=False}">
                 <Button Content="BPM" Command="{Binding SortCommand}" CommandParameter="Bpm"
@@ -71,6 +75,8 @@
                 <PathIcon Data="{StaticResource MoreDotsIcon}" Width="12" Height="12"/>
                 <Button.Flyout>
                     <MenuFlyout Placement="BottomEdgeAlignedRight">
+                        <MenuItem Header="Genre" ToggleType="CheckBox" StaysOpenOnClick="True"
+                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowGenreColumn, Mode=TwoWay}"/>
                         <MenuItem Header="Rating" ToggleType="CheckBox" StaysOpenOnClick="True"
                                   IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowRatingColumn, Mode=TwoWay}"/>
                         <MenuItem Header="BPM" ToggleType="CheckBox" StaysOpenOnClick="True"
@@ -102,7 +108,7 @@
             </ListBox.Styles>
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="m:Track">
-                    <Grid ColumnDefinitions="*,80,*,*,*,80,Auto,55,Auto,Auto,Auto,42"
+                    <Grid ColumnDefinitions="*,80,*,*,Auto,80,Auto,55,Auto,Auto,Auto,42"
                           Margin="0,2"
                           Background="Transparent"
                           helpers:DragFileBehavior.EnableFileDrag="True"
@@ -150,7 +156,7 @@
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
                                                          FontSize="12"
                                                          FontWeight="SemiBold"
-                                                         Foreground="{DynamicResource AccentTextBrush}"
+                                                         Foreground="{DynamicResource AccentTextExactBrush}"
                                                          TextTrimming="CharacterEllipsis"
                                                          VerticalAlignment="Center" />
                         </Button>
@@ -163,18 +169,21 @@
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
                                                          FontSize="12"
                                                          FontWeight="SemiBold"
-                                                         Foreground="{DynamicResource AccentTextBrush}"
+                                                         Foreground="{DynamicResource AccentTextExactBrush}"
                                                          TextTrimming="CharacterEllipsis"
                                                          VerticalAlignment="Center" />
                         </Button>
-                        <controls:HighlightTextBlock Grid.Column="4"
-                                                     DisplayText="{Binding Genre}"
-                                                     HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
-                                                     FontSize="12"
-                                                     FontWeight="SemiBold"
-                                                     Foreground="{DynamicResource AccentTextBrush}"
-                                                     TextTrimming="CharacterEllipsis"
-                                                     VerticalAlignment="Center" />
+                        <Border Grid.Column="4" Width="110"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowGenreColumn, FallbackValue=True}">
+                            <controls:HighlightTextBlock DisplayText="{Binding Genre}"
+                                                         HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
+                                                         FontSize="12"
+                                                         FontWeight="SemiBold"
+                                                         Foreground="{DynamicResource AccentTextExactBrush}"
+                                                         TextTrimming="CharacterEllipsis"
+                                                         HorizontalAlignment="Left"
+                                                         VerticalAlignment="Center" />
+                        </Border>
                         <PathIcon Grid.Column="5"
                                  Data="{StaticResource HeartFillIcon}"
                                  Width="12" Height="12"
@@ -237,7 +246,7 @@
                                 Click="OnOptionsButtonClick">
                             <PathIcon Data="{StaticResource MoreDotsIcon}"
                                      Width="14" Height="14"
-                                     Foreground="{DynamicResource AccentTextBrush}"
+                                     Foreground="{DynamicResource AccentTextExactBrush}"
                                      HorizontalAlignment="Center"
                                      VerticalAlignment="Center" />
                         </Button>

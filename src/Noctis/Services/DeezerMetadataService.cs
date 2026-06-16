@@ -35,4 +35,63 @@ public sealed class DeezerMetadataService
         catch (OperationCanceledException) { throw; }
         catch { return Array.Empty<TagSuggestion>(); }
     }
+
+    /// <summary>
+    /// Returns a fully-populated tag suggestion for the best Deezer match of (artist, title, album),
+    /// following the search hit through <c>/track/{id}</c> and <c>/album/{id}</c> to fill genre,
+    /// track #, disc #, bpm, isrc, track count, album artist and year. Null on miss/failure.
+    /// </summary>
+    public async Task<TagSuggestion?> EnrichAsync(
+        string artist, string title, string album, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(title) && string.IsNullOrWhiteSpace(artist))
+            return null;
+
+        try
+        {
+            // 1. Find the best matching track id via search.
+            var searchUrl = DeezerApi.BuildSearchUrl(artist, title, album);
+            var searchJson = await GetStringAsync(searchUrl, ct).ConfigureAwait(false);
+            if (searchJson is null) return null;
+            var bestId = DeezerApi.FirstTrackId(searchJson);
+            if (bestId is null) return null;
+
+            // 2. Pull the full track record.
+            var trackJson = await GetStringAsync(DeezerApi.BuildTrackUrl(bestId.Value), ct).ConfigureAwait(false);
+            var track = trackJson is null ? null : DeezerApi.ParseTrack(trackJson);
+            if (track is null) return null;
+
+            // 3. Pull the album record for genre/track-count/year/album-artist.
+            DeezerApi.DeezerAlbum? alb = null;
+            if (track.AlbumId > 0)
+            {
+                var albumJson = await GetStringAsync(DeezerApi.BuildAlbumUrl(track.AlbumId), ct).ConfigureAwait(false);
+                if (albumJson is not null) alb = DeezerApi.ParseAlbum(albumJson);
+            }
+
+            return new TagSuggestion(
+                Title: track.Title,
+                Artist: track.Artist,
+                Album: alb?.Title ?? album,
+                Year: alb?.Year,
+                Confidence: 0.0,
+                Source: "Deezer",
+                AlbumArtist: track.AlbumArtist ?? alb?.AlbumArtist,
+                Genre: alb?.Genre,
+                TrackNumber: track.TrackNumber,
+                TrackCount: alb?.TrackCount,
+                DiscNumber: track.DiscNumber,
+                Bpm: track.Bpm,
+                Isrc: track.Isrc);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch { return null; }
+    }
+
+    private async Task<string?> GetStringAsync(string url, CancellationToken ct)
+    {
+        using var resp = await _http.GetAsync(url, ct).ConfigureAwait(false);
+        if (!resp.IsSuccessStatusCode) return null;
+        return await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+    }
 }

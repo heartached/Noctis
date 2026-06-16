@@ -538,6 +538,18 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    private async Task EditAlbumDescription()
+    {
+        AlbumDescriptionEditorText = !string.IsNullOrWhiteSpace(AlbumDescriptionFull)
+            ? AlbumDescriptionFull
+            : AlbumDescription;
+        IsAlbumDescriptionEditing = true;
+        await Views.AlbumDescriptionDialog.ShowAsync(this);
+        // Dialog closed — clean up state
+        IsAlbumDescriptionEditing = false;
+    }
+
+    [RelayCommand]
     private void CloseAlbumDescription()
     {
         IsAlbumDescriptionEditing = false;

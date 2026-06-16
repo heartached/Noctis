@@ -9,6 +9,26 @@ public enum ShareCardFormat
     Story
 }
 
+/// <summary>How the lyric text color is chosen on the card.</summary>
+public enum ShareTextColor
+{
+    /// <summary>Pick dark or light text automatically from the card color.</summary>
+    Auto,
+    /// <summary>Force white lyrics.</summary>
+    White,
+    /// <summary>Force black lyrics.</summary>
+    Black
+}
+
+/// <summary>How the card background color is chosen.</summary>
+public enum ShareBackground
+{
+    /// <summary>Derive the background from the album artwork's average color.</summary>
+    Artwork,
+    /// <summary>Use a solid color chosen by the user (<see cref="LyricCardSpec.SolidColorHex"/>).</summary>
+    Solid
+}
+
 /// <summary>Everything needed to render a lyric snapshot card.</summary>
 public sealed record LyricCardSpec
 {
@@ -17,6 +37,13 @@ public sealed record LyricCardSpec
     public string? ArtworkPath { get; init; }
     public required IReadOnlyList<string> Lines { get; init; }
     public ShareCardFormat Format { get; init; } = ShareCardFormat.Square;
+    public ShareTextColor TextColor { get; init; } = ShareTextColor.Auto;
+    /// <summary>Draws an "E" explicit badge after the title when true.</summary>
+    public bool IsExplicit { get; init; }
+    /// <summary>Whether the background is derived from artwork or a solid color.</summary>
+    public ShareBackground Background { get; init; } = ShareBackground.Artwork;
+    /// <summary>Solid background color (e.g. "#1A1A2E"); used when <see cref="Background"/> is Solid.</summary>
+    public string? SolidColorHex { get; init; }
 }
 
 /// <summary>Everything needed to render a Noctis Wrap recap card.</summary>
@@ -43,10 +70,16 @@ public static class ShareCardRenderer
 {
     private const int CanvasWidth = 1080;
     private const float Pad = 96f;
-    private const float ArtSize = 112f;
-    private const float HeaderToLyricsGap = 72f;
-    private const float LyricsToFooterGap = 84f;
-    private const float FooterHeight = 48f;
+
+    // Spotify-style floating card geometry.
+    private const float CardMargin = 90f;       // gap between canvas edge and the inner card
+    private const float CardRadius = 56f;        // inner card corner radius
+    private const float CardPad = 84f;           // padding inside the inner card
+    private const float ArtSize = 96f;           // small album thumbnail on the card
+    private const float ArtTextGap = 28f;        // gap between thumbnail and title/artist
+    private const float HeaderToLyricsGap = 64f; // gap between header row and lyrics block
+    private const float LyricsToFooterGap = 64f; // gap between lyrics block and wordmark
+    private const float FooterHeight = 44f;
 
     public static byte[] RenderLyricCard(LyricCardSpec spec)
     {
@@ -54,27 +87,63 @@ public static class ShareCardRenderer
         int h = spec.Format == ShareCardFormat.Story ? 1920 : 1080;
 
         using var art = LoadArtwork(spec.ArtworkPath);
-        var bg = DeriveBackground(art);
-        bool darkText = UseDarkText(bg.Red, bg.Green, bg.Blue);
+        // Artwork mode fills the whole card with the heavily-blurred cover (matching the
+        // lyrics page); falls back to a solid surround only when there's no artwork to blur.
+        bool photoBg = spec.Background == ShareBackground.Artwork && art != null;
+
+        var surround = spec.Background == ShareBackground.Solid
+                       && SKColor.TryParse(spec.SolidColorHex, out var solid)
+            ? solid
+            : DeriveBackground(art);
+        // The card floats slightly lighter than the surround, Spotify-style.
+        var cardColor = Lighten(surround, 0.12f);
+
+        bool darkText = spec.TextColor switch
+        {
+            ShareTextColor.Black => true,
+            ShareTextColor.White => false,
+            // Auto: the blurred-photo background carries a dark scrim, so white stays
+            // legible; on a flat card, pick from the card's own lightness.
+            _ => !photoBg && UseDarkText(cardColor.Red, cardColor.Green, cardColor.Blue),
+        };
         var fg = darkText ? new SKColor(0x12, 0x12, 0x12) : SKColors.White;
-        var fgSubtle = fg.WithAlpha(185);
+        var fgSubtle = fg.WithAlpha((byte)(darkText ? 160 : 195));
 
         using var surface = SKSurface.Create(new SKImageInfo(w, h));
         var canvas = surface.Canvas;
-        canvas.Clear(bg);
+        if (photoBg)
+        {
+            canvas.Clear(SKColors.Black);
+            DrawBlurredCover(canvas, art!, w, h);
+            // Dark scrim keeps lyrics readable over bright covers (same as the lyrics page).
+            using var scrim = new SKPaint { Color = new SKColor(0, 0, 0, 0x99) };
+            canvas.DrawRect(0, 0, w, h, scrim);
+        }
+        else
+        {
+            canvas.Clear(surround);
+        }
 
         using var boldFace = ResolveTypeface(bold: true);
         using var regularFace = ResolveTypeface(bold: false);
 
-        float contentW = w - Pad * 2;
+        // ── Inner card horizontal bounds ────────────────────────────────
+        float cardLeft = CardMargin;
+        float cardRight = w - CardMargin;
+        float cardW = cardRight - cardLeft;
+        float contentW = cardW - CardPad * 2;
+        float contentX = cardLeft + CardPad;
 
-        using var titlePaint = TextPaint(boldFace, 40, fg);
-        using var artistPaint = TextPaint(regularFace, 33, fgSubtle);
+        using var titlePaint = TextPaint(boldFace, 38, fg);
+        using var artistPaint = TextPaint(regularFace, 31, fgSubtle);
 
         // ── Measure pass: lyric font auto-shrinks until the block fits ──
+        float headerH = ArtSize;
         float footerBlock = LyricsToFooterGap + FooterHeight;
-        float maxLyricsH = h - Pad * 2 - ArtSize - HeaderToLyricsGap - footerBlock;
-        float lyricSize = 64;
+        // Available height for lyrics depends on the card height, which differs by format.
+        float cardMaxH = h - CardMargin * 2;
+        float maxLyricsH = cardMaxH - CardPad * 2 - headerH - HeaderToLyricsGap - footerBlock;
+        float lyricSize = 60;
         List<string> wrapped;
         float lineHeight;
         using var lyricPaint = TextPaint(boldFace, lyricSize, fg);
@@ -82,26 +151,61 @@ public static class ShareCardRenderer
         {
             lyricPaint.TextSize = lyricSize;
             wrapped = WrapAll(spec.Lines, contentW, s => lyricPaint.MeasureText(s));
-            lineHeight = lyricSize * 1.3f;
-            if (wrapped.Count * lineHeight <= maxLyricsH || lyricSize <= 34)
+            lineHeight = lyricSize * 1.32f;
+            if (wrapped.Count * lineHeight <= maxLyricsH || lyricSize <= 32)
                 break;
             lyricSize -= 4;
         }
 
         float lyricsH = wrapped.Count * lineHeight;
-        float blockH = ArtSize + HeaderToLyricsGap + lyricsH + footerBlock;
+        float contentH = headerH + HeaderToLyricsGap + lyricsH + footerBlock;
 
-        // Square: anchor at top padding. Story: center the whole block vertically.
-        float y = spec.Format == ShareCardFormat.Story
-            ? Math.Max(Pad, (h - blockH) / 2f)
-            : Pad;
+        // ── Inner card vertical bounds ──────────────────────────────────
+        // Story: the card hugs its content and floats in the vertical center.
+        // Square: the card fills the area between the margins.
+        float cardTop, cardH;
+        if (spec.Format == ShareCardFormat.Story)
+        {
+            cardH = Math.Min(contentH + CardPad * 2, cardMaxH);
+            cardTop = (h - cardH) / 2f;
+        }
+        else
+        {
+            cardTop = CardMargin;
+            cardH = cardMaxH;
+        }
+
+        var cardRect = new SKRect(cardLeft, cardTop, cardRight, cardTop + cardH);
+        if (photoBg)
+        {
+            // Frosted panel: a translucent lighter card lifts off the blurred backdrop so the
+            // Spotify-style square still reads, while the artwork stays visible around it.
+            using var fill = new SKPaint { IsAntialias = true, Color = new SKColor(255, 255, 255, 0x30) };
+            canvas.DrawRoundRect(cardRect, CardRadius, CardRadius, fill);
+            using var border = new SKPaint
+            {
+                IsAntialias = true,
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 1.5f,
+                Color = new SKColor(255, 255, 255, 0x42),
+            };
+            canvas.DrawRoundRect(cardRect, CardRadius, CardRadius, border);
+        }
+        else
+        {
+            using var cardPaint = new SKPaint { IsAntialias = true, Color = cardColor };
+            canvas.DrawRoundRect(cardRect, CardRadius, CardRadius, cardPaint);
+        }
+
+        // Center the whole content block vertically within the card.
+        float contentTop = cardTop + (cardH - contentH) / 2f;
 
         // ── Header: album art + title/artist ────────────────────────────
-        var artRect = new SKRect(Pad, y, Pad + ArtSize, y + ArtSize);
+        var artRect = new SKRect(contentX, contentTop, contentX + ArtSize, contentTop + ArtSize);
         if (art != null)
         {
             using var artPaint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
-            using var rounded = new SKRoundRect(artRect, 14);
+            using var rounded = new SKRoundRect(artRect, 12);
             canvas.Save();
             canvas.ClipRoundRect(rounded, antialias: true);
             canvas.DrawBitmap(art, artRect, artPaint);
@@ -110,33 +214,68 @@ public static class ShareCardRenderer
         else
         {
             using var placeholder = new SKPaint { IsAntialias = true, Color = fg.WithAlpha(28) };
-            canvas.DrawRoundRect(artRect, 14, 14, placeholder);
+            canvas.DrawRoundRect(artRect, 12, 12, placeholder);
         }
 
-        float textX = Pad + ArtSize + 30;
-        float textMaxW = contentW - ArtSize - 30;
-        canvas.DrawText(Ellipsize(spec.Title, textMaxW, s => titlePaint.MeasureText(s)),
-            textX, y + ArtSize / 2f - 8, titlePaint);
+        float textX = contentX + ArtSize + ArtTextGap;
+        float textMaxW = contentW - ArtSize - ArtTextGap;
+        float titleBaseline = contentTop + ArtSize / 2f - 6;
+        // Reserve room for the explicit badge so it never collides with the title.
+        float badgeReserve = spec.IsExplicit ? titlePaint.TextSize * 0.72f + 14 : 0;
+        var titleText = Ellipsize(spec.Title, textMaxW - badgeReserve, s => titlePaint.MeasureText(s));
+        canvas.DrawText(titleText, textX, titleBaseline, titlePaint);
+        if (spec.IsExplicit)
+        {
+            float badgeX = textX + titlePaint.MeasureText(titleText) + 14;
+            DrawExplicitBadge(canvas, regularFace, fg, cardColor,
+                badgeX, titleBaseline - titlePaint.TextSize * 0.34f, titlePaint.TextSize);
+        }
         canvas.DrawText(Ellipsize(spec.Artist, textMaxW, s => artistPaint.MeasureText(s)),
-            textX, y + ArtSize / 2f + 36, artistPaint);
+            textX, contentTop + ArtSize / 2f + 32, artistPaint);
 
         // ── Lyric lines ─────────────────────────────────────────────────
-        float baseline = y + ArtSize + HeaderToLyricsGap + lyricSize;
+        float baseline = contentTop + headerH + HeaderToLyricsGap + lyricSize;
         foreach (var line in wrapped)
         {
-            canvas.DrawText(line, Pad, baseline, lyricPaint);
+            canvas.DrawText(line, contentX, baseline, lyricPaint);
             baseline += lineHeight;
         }
 
         // ── Footer wordmark ─────────────────────────────────────────────
-        float footerY = spec.Format == ShareCardFormat.Story
-            ? y + blockH - FooterHeight
-            : h - Pad - FooterHeight;
-        DrawWordmark(canvas, boldFace, fg, Pad, footerY);
+        float footerY = contentTop + headerH + HeaderToLyricsGap + lyricsH + LyricsToFooterGap;
+        DrawWordmark(canvas, boldFace, fg, contentX, footerY);
 
         using var image = surface.Snapshot();
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         return data.ToArray();
+    }
+
+    /// <summary>
+    /// Fills the whole canvas with the cover art, scaled UniformToFill plus a small
+    /// overscan and heavily Gaussian-blurred — the lyrics-page backdrop look.
+    /// </summary>
+    private static void DrawBlurredCover(SKCanvas canvas, SKBitmap art, int w, int h)
+    {
+        // Cover the canvas, then a little extra so the blur's soft edges never reveal black.
+        float scale = Math.Max((float)w / art.Width, (float)h / art.Height) * 1.18f;
+        float dw = art.Width * scale;
+        float dh = art.Height * scale;
+        var dest = new SKRect((w - dw) / 2f, (h - dh) / 2f, (w + dw) / 2f, (h + dh) / 2f);
+        using var paint = new SKPaint
+        {
+            IsAntialias = true,
+            FilterQuality = SKFilterQuality.High,
+            ImageFilter = SKImageFilter.CreateBlur(48f, 48f),
+        };
+        canvas.DrawBitmap(art, dest, paint);
+    }
+
+    /// <summary>Blends a color toward white by <paramref name="amount"/> (0–1).</summary>
+    private static SKColor Lighten(SKColor c, float amount)
+    {
+        amount = Math.Clamp(amount, 0f, 1f);
+        byte Mix(byte v) => (byte)(v + (255 - v) * amount);
+        return new SKColor(Mix(c.Red), Mix(c.Green), Mix(c.Blue));
     }
 
     /// <summary>
@@ -258,22 +397,90 @@ public static class ShareCardRenderer
         Color = color,
     };
 
-    /// <summary>Draws a small quarter-note glyph followed by the "Noctis" wordmark.</summary>
+    /// <summary>Draws the Noctis app logo followed by the "Noctis" wordmark.</summary>
     private static void DrawWordmark(SKCanvas canvas, SKTypeface boldFace, SKColor fg, float x, float y)
     {
-        using var paint = new SKPaint { IsAntialias = true, Color = fg };
+        float logoSize = FooterHeight;
+        float textX;
 
-        // Quarter note: filled note-head ellipse + stem.
-        float headCx = x + 13;
-        float headCy = y + FooterHeight - 12;
-        canvas.Save();
-        canvas.RotateDegrees(-20, headCx, headCy);
-        canvas.DrawOval(headCx, headCy, 13, 10, paint);
-        canvas.Restore();
-        canvas.DrawRect(headCx + 8.5f, headCy - 38, 4f, 38, paint);
+        // Nudge the logo vertically relative to the "Noctis" text.
+        // Negative = move logo UP, positive = move logo DOWN. (Pixels at 1080px render width.)
+        const float logoNudgeY = -3f;
+
+        var logo = LoadLogo();
+        if (logo != null)
+        {
+            float logoTop = y + logoNudgeY;
+            var dest = new SKRect(x, logoTop, x + logoSize, logoTop + logoSize);
+            using var p = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
+            canvas.DrawBitmap(logo, dest, p);
+            textX = x + logoSize + 14;
+        }
+        else
+        {
+            // Fallback: quarter-note glyph (used when the logo asset can't be loaded).
+            using var paint = new SKPaint { IsAntialias = true, Color = fg };
+            float headCx = x + 13;
+            float headCy = y + FooterHeight - 12;
+            canvas.Save();
+            canvas.RotateDegrees(-20, headCx, headCy);
+            canvas.DrawOval(headCx, headCy, 13, 10, paint);
+            canvas.Restore();
+            canvas.DrawRect(headCx + 8.5f, headCy - 38, 4f, 38, paint);
+            textX = x + 42;
+        }
 
         using var textPaint = TextPaint(boldFace, 38, fg);
-        canvas.DrawText("Noctis", x + 42, y + FooterHeight - 8, textPaint);
+        canvas.DrawText("Noctis", textX, y + logoSize - 13, textPaint);
+    }
+
+    /// <summary>Draws a small rounded "E" explicit badge centered vertically on <paramref name="centerY"/>.</summary>
+    private static void DrawExplicitBadge(SKCanvas canvas, SKTypeface face, SKColor fg, SKColor cardColor,
+        float x, float centerY, float refSize)
+    {
+        float size = refSize * 0.72f;
+        var rect = new SKRect(x, centerY - size / 2f, x + size, centerY + size / 2f);
+        using var bgPaint = new SKPaint { IsAntialias = true, Color = fg.WithAlpha(215) };
+        canvas.DrawRoundRect(rect, 4, 4, bgPaint);
+
+        using var letterPaint = TextPaint(face, size * 0.66f, cardColor);
+        letterPaint.TextAlign = SKTextAlign.Center;
+        letterPaint.FakeBoldText = true;
+        var metrics = letterPaint.FontMetrics;
+        float baseline = centerY - (metrics.Ascent + metrics.Descent) / 2f;
+        canvas.DrawText("E", rect.MidX, baseline, letterPaint);
+    }
+
+    private static SKBitmap? _logo;
+    private static bool _logoLoadAttempted;
+    private static readonly object _logoLock = new();
+
+    /// <summary>Loads and caches the app logo from Avalonia resources. Null if unavailable.</summary>
+    private static SKBitmap? LoadLogo()
+    {
+        if (_logoLoadAttempted) return _logo;
+        lock (_logoLock)
+        {
+            if (_logoLoadAttempted) return _logo;
+            try
+            {
+                var uri = new Uri("avares://Noctis/Assets/Icons/Noctis%20Logo%20Clean.png");
+                using var stream = Avalonia.Platform.AssetLoader.Open(uri);
+                var raw = SKBitmap.Decode(stream);
+                if (raw != null)
+                {
+                    var resized = raw.Resize(new SKImageInfo(160, 160), SKFilterQuality.High);
+                    if (resized != null) { _logo = resized; raw.Dispose(); }
+                    else _logo = raw;
+                }
+            }
+            catch
+            {
+                _logo = null;
+            }
+            _logoLoadAttempted = true;
+        }
+        return _logo;
     }
 
     // ─────────────────────────────────────────────────────────────────────

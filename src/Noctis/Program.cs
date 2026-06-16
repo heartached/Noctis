@@ -187,8 +187,7 @@ internal class Program
         services.AddSingleton<AutoMatchCoordinator>(sp =>
             new AutoMatchCoordinator(
                 sp.GetRequiredService<IMetadataFinderService>(),
-                sp.GetRequiredService<IAlbumArtworkSearch>(),
-                sp.GetRequiredService<ILrcLibService>(),
+                sp.GetRequiredService<DeezerMetadataService>(),
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
                       ?? new Noctis.Models.AppSettings()));
         // AudioConverter resolves the ffmpeg path lazily, so the user can change

@@ -40,6 +40,7 @@
                                 Margin="0,0,8,0" Cursor="Hand" />
                         <Button Grid.Column="2" Content="Close" Command="{Binding CancelCommand}"
                                 Width="90" Padding="0,8" FontWeight="Bold"
+                                Classes="danger-pill"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
                                 Margin="0,0,8,0" Cursor="Hand" />
                         <Button Grid.Column="3" Content="Apply" Command="{Binding ApplySelectedCommand}"

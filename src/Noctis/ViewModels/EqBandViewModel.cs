@@ -45,7 +45,9 @@ public partial class EqBandViewModel : ObservableObject
 
     partial void OnGainDbChanged(double value)
     {
-        var clamped = Math.Clamp(value, ParametricEqMath.MinGainDb, ParametricEqMath.MaxGainDb);
+        // Snap to 0.1 dB so the un-snapped slider still yields tidy stored values.
+        var clamped = Math.Clamp(Math.Round(value * 10) / 10,
+            ParametricEqMath.MinGainDb, ParametricEqMath.MaxGainDb);
         if (Math.Abs(clamped - value) > 0.0001)
         {
             GainDb = clamped;

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -51,16 +51,109 @@ public partial class HomeView : UserControl
         MultiSelectHelper.HandleAlbumSelectAll(e, allTiles, _selectedTiles);
     }
 
-    private void OnContextMenuOpening(object? sender, CancelEventArgs e)
-    {
-        // Close any menu still open from a previous rapid right-click so menus
-        // don't stack on top of each other.
-        ContextMenuCoordinator.NotifyOpening(sender as ContextMenu);
+    // ── Context menus (shared builders, same menus as Songs/Playlist views) ──
 
+    private TrackContextMenuBuilder? _trackMenuBuilder;
+    private AlbumContextMenuBuilder? _albumMenuBuilder;
+    private Control? _menuOwner;
+
+    private void OnTopSongContextRequested(object? sender, ContextRequestedEventArgs e)
+        => OpenTrackMenu(sender, e, static vm => vm.PlayTopSongCommand, static vm => vm.ShuffleTopSongsCommand);
+
+    private void OnTimeRotationContextRequested(object? sender, ContextRequestedEventArgs e)
+        => OpenTrackMenu(sender, e, static vm => vm.PlayTimeRotationCommand, static vm => vm.ShuffleTimeRotationCommand);
+
+    private void OnHeavyRotationContextRequested(object? sender, ContextRequestedEventArgs e)
+        => OpenTrackMenu(sender, e, static vm => vm.PlayHeavyRotationCommand, static vm => vm.ShuffleHeavyRotationCommand);
+
+    private void OnRediscoveredContextRequested(object? sender, ContextRequestedEventArgs e)
+        => OpenTrackMenu(sender, e, static vm => vm.PlayRediscoveredCommand, static vm => vm.ShuffleRediscoveredCommand);
+
+    private void OpenTrackMenu(object? sender, ContextRequestedEventArgs e,
+        Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand)
+    {
+        if (sender is not Control owner || owner.DataContext is not Track track) return;
+        if (DataContext is not HomeViewModel vm) return;
+
+        if (_trackMenuBuilder == null)
+        {
+            _trackMenuBuilder = new TrackContextMenuBuilder();
+            _trackMenuBuilder.Build("Remove from Library", null, this);
+        }
+
+        _trackMenuBuilder.Bind(
+            track,
+            playCommand: playCommand(vm),
+            shuffleCommand: shuffleCommand(vm),
+            playNextCommand: vm.PlayNextCommand,
+            addToQueueCommand: vm.AddToQueueCommand,
+            addToPlaylistCommand: vm.AddTrackToNewPlaylistCommand,
+            toggleFavoriteCommand: vm.ToggleTrackFavoriteCommand,
+            openMetadataCommand: vm.OpenTrackMetadataCommand,
+            searchLyricsCommand: vm.SearchLyricsTrackCommand,
+            showInExplorerCommand: vm.ShowInExplorerTrackCommand,
+            removeCommand: vm.RemoveTrackFromLibraryCommand,
+            convertCommand: vm.ConvertTrackCommand,
+            scanReplayGainCommand: vm.ScanTrackReplayGainCommand,
+            startRadioCommand: vm.StartRadioCommand,
+            snoozeCommand: vm.SnoozeForMonthCommand);
+
+        OpenMenu(_trackMenuBuilder.Menu, owner);
+        e.Handled = true;
+    }
+
+    private void OnRecentAlbumContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (sender is not Control owner || owner.DataContext is not Album album) return;
         if (DataContext is not HomeViewModel vm) return;
 
         // Push ctrl-selected albums to ViewModel so commands can operate on all of them
         vm.CtrlSelectedAlbums = MultiSelectHelper.GetSelectedData<Album>(_selectedTiles);
+
+        if (_albumMenuBuilder == null)
+        {
+            _albumMenuBuilder = new AlbumContextMenuBuilder();
+            _albumMenuBuilder.Build("Remove from Library", this);
+        }
+
+        _albumMenuBuilder.Bind(
+            album,
+            playCommand: vm.PlayAlbumCommand,
+            shuffleCommand: vm.ShuffleAlbumCommand,
+            playNextCommand: vm.PlayNextAlbumCommand,
+            addToQueueCommand: vm.AddAlbumToQueueCommand,
+            addToPlaylistCommand: vm.AddAlbumToNewPlaylistCommand,
+            toggleFavoritesCommand: vm.ToggleAlbumFavoritesCommand,
+            openMetadataCommand: vm.OpenMetadataCommand,
+            showInExplorerCommand: vm.ShowInExplorerAlbumCommand,
+            removeCommand: vm.RemoveFromLibraryCommand,
+            convertCommand: vm.ConvertAlbumCommand,
+            scanReplayGainCommand: vm.ScanAlbumReplayGainCommand,
+            searchLyricsCommand: vm.SearchLyricsAlbumCommand);
+
+        OpenMenu(_albumMenuBuilder.Menu, owner);
+        e.Handled = true;
+    }
+
+    private void OpenMenu(ContextMenu menu, Control owner)
+    {
+        // Close any menu still open from a previous rapid right-click so menus
+        // don't stack on top of each other.
+        ContextMenuCoordinator.NotifyOpening(menu);
+        if (menu.IsOpen)
+            menu.Close();
+
+        // Detach from the previous owner so Open() doesn't throw
+        // "Cannot show ContextMenu on a different control".
+        if (_menuOwner != null && !ReferenceEquals(_menuOwner, owner))
+            _menuOwner.ContextMenu = null;
+        if (menu.Parent is Control prev && !ReferenceEquals(prev, owner))
+            prev.ContextMenu = null;
+
+        _menuOwner = owner;
+        owner.ContextMenu = menu;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(owner);
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)

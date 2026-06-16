@@ -254,6 +254,28 @@ public partial class Track : ObservableObject
     /// <summary>Audio codec description from TagLib# (e.g., "FLAC", "Apple Lossless", "MPEG Audio Layer 3").</summary>
     public string Codec { get; set; } = string.Empty;
 
+    /// <summary>Canonical album-artist for Various-Artists compilations.</summary>
+    public const string VariousArtists = "Various Artists";
+
+    /// <summary>
+    /// Resolves the effective album-artist used for both grouping and display.
+    /// An explicit album-artist tag always wins (it already groups correctly).
+    /// Otherwise a compilation-flagged track is filed under <see cref="VariousArtists"/>
+    /// so a Various-Artists release stays as one album instead of fragmenting into
+    /// one album per performer; non-compilation tracks fall back to the performer.
+    /// Mirrors iTunes/Apple Music behavior.
+    /// </summary>
+    public static string ResolveAlbumArtist(string? explicitAlbumArtist, string? performer, bool isCompilation)
+    {
+        if (!string.IsNullOrWhiteSpace(explicitAlbumArtist))
+            return explicitAlbumArtist;
+        if (isCompilation)
+            return VariousArtists;
+        if (!string.IsNullOrWhiteSpace(performer))
+            return performer;
+        return "Unknown Artist";
+    }
+
     /// <summary>
     /// Generates a deterministic album ID from AlbumArtist and Album name.
     /// </summary>

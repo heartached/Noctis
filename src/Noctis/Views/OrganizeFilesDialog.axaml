@@ -39,6 +39,7 @@
                                 Margin="0,0,8,0" Cursor="Hand" />
                         <Button Grid.Column="2" Content="Close" Command="{Binding CloseCommand}"
                                 Width="90" Padding="0,8" FontWeight="Bold"
+                                Classes="danger-pill"
                                 HorizontalContentAlignment="Center" CornerRadius="999"
                                 Margin="0,0,8,0" Cursor="Hand" />
                         <Button Grid.Column="3" Content="Apply" Command="{Binding ApplyCommand}"
@@ -52,46 +53,53 @@
                     </Grid>
                 </Border>
 
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                              Padding="24,4,24,8">
-                    <StackPanel Spacing="12">
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="Folder pattern" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
-                            <TextBox Text="{Binding Pattern}" Watermark="{}{AlbumArtist}/{Album}/{TrackNo} {Title}" />
-                            <TextBlock Text="Tokens: {AlbumArtist} {Artist} {Album} {Title} {TrackNo} {DiscNo} {Year} {Genre}"
-                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" />
-                        </StackPanel>
-
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="Destination folder (blank = first media folder)" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
-                            <TextBox Text="{Binding TargetRoot}" Watermark="First media folder" />
-                        </StackPanel>
-
-                        <Button Content="Update preview" Command="{Binding PreviewCommand}"
-                                HorizontalAlignment="Left" Padding="14,8" CornerRadius="16" Cursor="Hand" />
-
-                        <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
-
-                        <TextBlock Text="Preview" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
-                        <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" MaxHeight="420">
-                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding Rows}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:OrganizeFilesViewModel+OrganizeRow">
-                                            <Grid ColumnDefinitions="*,Auto" Margin="0,3">
-                                                <StackPanel Grid.Column="0" Spacing="1">
-                                                    <TextBlock Text="{Binding SourceName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding TargetRelative}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis" />
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="1" Text="{Binding ActionText}" FontSize="11" Opacity="0.75"
-                                                           VerticalAlignment="Center" Margin="12,0,0,0" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </Border>
+                <!-- Form stays pinned at the top; only the preview list scrolls, so the
+                     mouse wheel always works on one predictable scroll region. -->
+                <StackPanel DockPanel.Dock="Top" Margin="24,4,24,0" Spacing="12">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Folder pattern" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
+                        <TextBox Text="{Binding Pattern}" Watermark="{}{AlbumArtist}/{Album}/{TrackNo} {Title}"
+                                 CornerRadius="999" Padding="14,8" />
+                        <TextBlock Text="Tokens: {AlbumArtist} {Artist} {Album} {Title} {TrackNo} {DiscNo} {Year} {Genre}"
+                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap" />
                     </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Destination folder (blank = first media folder)" FontSize="12" FontWeight="SemiBold" Opacity="0.75" />
+                        <TextBox Text="{Binding TargetRoot}" Watermark="First media folder"
+                                 CornerRadius="999" Padding="14,8" />
+                    </StackPanel>
+
+                    <Button Content="Update preview" Command="{Binding PreviewCommand}"
+                            HorizontalAlignment="Left" Padding="14,8" CornerRadius="16" Cursor="Hand" />
+
+                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.5" />
+
+                    <TextBlock Text="Preview" FontSize="13" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
+                </StackPanel>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                              Padding="24,2,24,8">
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:OrganizeFilesViewModel+OrganizeRow">
+                                <Border Background="#10FFFFFF" CornerRadius="8" Padding="12,8" Margin="0,0,0,6">
+                                    <DockPanel>
+                                        <Border DockPanel.Dock="Right" VerticalAlignment="Center"
+                                                Background="#22FFFFFF" CornerRadius="999"
+                                                Padding="10,3" Margin="12,0,0,0">
+                                            <TextBlock Text="{Binding ActionText}" FontSize="11" Opacity="0.85" />
+                                        </Border>
+                                        <StackPanel Spacing="1" Margin="0,0,8,0">
+                                            <TextBlock Text="{Binding SourceName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding TargetRelative}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis"
+                                                       ToolTip.Tip="{Binding TargetRelativeFull}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </ScrollViewer>
             </DockPanel>
         </Border>

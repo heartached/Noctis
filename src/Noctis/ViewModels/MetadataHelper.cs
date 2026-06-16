@@ -126,7 +126,8 @@ public static class MetadataHelper
         var lrcLib = App.Services!.GetService<ILrcLibService>();
 
         var vm = new MetadataViewModel(tracks[0], metadata, library, persistence, animatedCovers,
-            albumScoped: true, albumTracks: tracks.ToList(), itunes: itunes, lrcLib: lrcLib, multiSelect: true);
+            albumScoped: true, albumTracks: tracks.ToList(), itunes: itunes, lrcLib: lrcLib, multiSelect: true,
+            autoMatch: App.Services!.GetService<AutoMatchCoordinator>());
 
         var window = new MetadataWindow(vm);
         await ShowDialogOwned(window);
@@ -149,7 +150,7 @@ public static class MetadataHelper
         var animatedCovers = new AnimatedCoverService(persistence);
         var itunes = App.Services!.GetService<ITunesArtworkService>();
         var lrcLib = App.Services!.GetService<ILrcLibService>();
-        var vm = new MetadataViewModel(track, metadata, library, persistence, animatedCovers, albumScoped, albumTracks, itunes, lrcLib);
+        var vm = new MetadataViewModel(track, metadata, library, persistence, animatedCovers, albumScoped, albumTracks, itunes, lrcLib, autoMatch: App.Services!.GetService<AutoMatchCoordinator>());
 
         vm.ChangesSaved += (_, _) =>
         {

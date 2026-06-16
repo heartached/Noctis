@@ -107,4 +107,54 @@ public class HomeRowsBuilderTests
 
         Assert.Empty(HomeRowsBuilder.BuildRediscovered(events, Now));
     }
+
+    [Fact]
+    public void TimeOfDayRotation_OmitsExcludedTracks()
+    {
+        var kept = Guid.NewGuid();
+        var excluded = Guid.NewGuid();
+        var events = new List<PlayHistoryEvent>
+        {
+            Play(kept, Now.AddDays(-1)),
+            Play(kept, Now.AddDays(-2)),
+            Play(excluded, Now.AddDays(-1)),
+            Play(excluded, Now.AddDays(-2)),
+        };
+
+        var ids = HomeRowsBuilder.BuildTimeOfDayRotation(
+            events, Now, exclude: new HashSet<Guid> { excluded });
+
+        Assert.Equal(new[] { kept }, ids);
+    }
+
+    [Fact]
+    public void HeavyRotation_OmitsExcludedTracks()
+    {
+        var kept = Guid.NewGuid();
+        var excluded = Guid.NewGuid();
+        var events = new List<PlayHistoryEvent>();
+        for (int i = 0; i < 3; i++) events.Add(Play(kept, Now.AddDays(-i - 1)));
+        for (int i = 0; i < 5; i++) events.Add(Play(excluded, Now.AddDays(-i - 1)));
+
+        var ids = HomeRowsBuilder.BuildHeavyRotation(
+            events, Now, exclude: new HashSet<Guid> { excluded });
+
+        Assert.Equal(new[] { kept }, ids);
+    }
+
+    [Fact]
+    public void Rediscovered_OmitsExcludedTracks()
+    {
+        var excluded = Guid.NewGuid();
+        var events = new List<PlayHistoryEvent>
+        {
+            Play(excluded, Now.AddDays(-100)),
+            Play(excluded, Now.AddDays(-3)),
+        };
+
+        var ids = HomeRowsBuilder.BuildRediscovered(
+            events, Now, exclude: new HashSet<Guid> { excluded });
+
+        Assert.Empty(ids);
+    }
 }

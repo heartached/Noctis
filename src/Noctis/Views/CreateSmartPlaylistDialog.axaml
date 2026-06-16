@@ -3,6 +3,7 @@
         xmlns:vm="using:Noctis.ViewModels"
         xmlns:m="using:Noctis.Models"
         xmlns:svc="using:Noctis.Services"
+        xmlns:conv="using:Noctis.Converters"
         x:Class="Noctis.Views.CreateSmartPlaylistDialog"
         x:DataType="vm:CreateSmartPlaylistDialogViewModel"
         Title="Create Smart Playlist"
@@ -12,6 +13,10 @@
         Background="Transparent"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
+
+    <Window.Resources>
+        <conv:SmartPlaylistDisplayNameConverter x:Key="DisplayName" />
+    </Window.Resources>
 
     <!-- Scoped outlines so input rows + the Cancel pill stay visible on light themes
          where the dialog body and inputs share a (near-)white surface. -->
@@ -25,11 +30,6 @@
             <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style Selector="NumericUpDown.limit-pill-number">
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-        </Style>
-        <!-- Cancel button (no accent-btn class) — outline so it doesn't vanish on white. -->
-        <Style Selector="Button.dialog-cancel">
             <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
             <Setter Property="BorderThickness" Value="1" />
         </Style>
@@ -63,7 +63,7 @@
                 <Button Grid.Column="2"
                         Content="Cancel"
                         Command="{Binding CancelCommand}"
-                        Classes="dialog-cancel"
+                        BorderThickness="0"
                         Width="100"
                         Padding="0,8"
                         FontWeight="Bold"
@@ -147,7 +147,13 @@
                                               Padding="14,0"
                                               VerticalAlignment="Center"
                                               VerticalContentAlignment="Center"
-                                              HorizontalAlignment="Stretch" />
+                                              HorizontalAlignment="Stretch">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="m:RuleField">
+                                                <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
 
                                     <!-- Operator dropdown -->
                                     <ComboBox Grid.Column="1"
@@ -158,7 +164,13 @@
                                               Padding="14,0"
                                               VerticalAlignment="Center"
                                               VerticalContentAlignment="Center"
-                                              HorizontalAlignment="Stretch" />
+                                              HorizontalAlignment="Stretch">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="m:RuleOperator">
+                                                <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
 
                                     <!-- Value input(s) -->
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
@@ -243,7 +255,13 @@
                               CornerRadius="999"
                               Padding="14,0"
                               VerticalAlignment="Center"
-                              VerticalContentAlignment="Center" />
+                              VerticalContentAlignment="Center">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="m:SmartPlaylistSortBy">
+                                <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
                 </StackPanel>
 
             </StackPanel>

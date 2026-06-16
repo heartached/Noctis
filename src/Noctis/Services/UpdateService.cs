@@ -55,6 +55,93 @@ public sealed class UpdateService
         }
     }
 
+    // ── Install-source detection ──
+    // The in-app updater on Windows always runs the Inno Setup .exe, which
+    // installs to the Inno location. That's correct only when THIS copy is the
+    // Inno install (also how winget/Chocolatey install — they wrap the same
+    // setup and upgrade in place). A Scoop or manually-extracted (portable)
+    // copy would instead get a second, parallel install, so for those we steer
+    // the user to their own update path. Inno writes its uninstall entry under
+    // AppId + "_is1"; per-user installs (PrivilegesRequired=lowest) land in
+    // HKCU, elevated ones in HKLM.
+    private const string InnoUninstallSubKey =
+        @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{E8A3B5F1-7C2D-4A9E-B6F0-1D3E5A7C9B2F}_is1";
+
+    private static InstallSource? _cachedSource;
+
+    /// <summary>How this running copy was installed (computed once per process).</summary>
+    public static InstallSource Source => _cachedSource ??= DetectSource();
+
+    /// <summary>
+    /// True when the in-app installer is the right update mechanism: any
+    /// non-Windows platform (macOS .dmg / Linux have no Inno install to clash
+    /// with) or a Windows copy installed by the Inno setup. False for Scoop /
+    /// portable copies, where running the setup would create a second install.
+    /// </summary>
+    public static bool SupportsInAppUpdate => Source == InstallSource.Installed;
+
+    /// <summary>
+    /// Short guidance for updating a package-manager / portable copy, or null
+    /// when the in-app updater should be used instead.
+    /// </summary>
+    public static string? ExternalUpdateHint => Source switch
+    {
+        InstallSource.Scoop => "Update with: scoop update noctis",
+        InstallSource.Portable => "Download the new version from GitHub.",
+        _ => null
+    };
+
+    private static InstallSource DetectSource()
+    {
+        if (!OperatingSystem.IsWindows())
+            return InstallSource.Installed;
+
+        return ClassifyInstall(AppContext.BaseDirectory, TryGetInnoInstallLocation());
+    }
+
+    /// <summary>
+    /// Pure classification from the running directory and the install path the
+    /// Inno uninstaller recorded (null when no entry matches this AppId).
+    /// Extracted so it can be unit-tested without touching the registry.
+    /// </summary>
+    public static InstallSource ClassifyInstall(string appDirectory, string? innoInstallLocation)
+    {
+        static string Norm(string p) => p.Replace('/', '\\').TrimEnd('\\').ToLowerInvariant();
+
+        var appDir = Norm(appDirectory);
+
+        if (!string.IsNullOrEmpty(innoInstallLocation) && Norm(innoInstallLocation) == appDir)
+            return InstallSource.Installed;
+
+        // Scoop lays apps out under ...\scoop\apps\<name>\<version>\.
+        if (appDir.Contains(@"\scoop\apps\"))
+            return InstallSource.Scoop;
+
+        return InstallSource.Portable;
+    }
+
+    private static string? TryGetInnoInstallLocation()
+    {
+        try
+        {
+            foreach (var root in new[]
+                     {
+                         Microsoft.Win32.Registry.CurrentUser,
+                         Microsoft.Win32.Registry.LocalMachine
+                     })
+            {
+                using var key = root.OpenSubKey(InnoUninstallSubKey);
+                if (key?.GetValue("InstallLocation") is string loc && !string.IsNullOrWhiteSpace(loc))
+                    return loc;
+            }
+        }
+        catch
+        {
+            // Registry unreadable — treat as "no Inno entry" (portable).
+        }
+        return null;
+    }
+
     /// <summary>
     /// Checks the latest GitHub release. Returns null if up-to-date or on error.
     /// Pre-releases are only considered when <paramref name="includePrereleases"/> is true.
@@ -328,4 +415,16 @@ public sealed class UpdateInfo
     public string? InstallerUrl { get; init; }
     public long InstallerSize { get; init; }
     public required string ReleaseUrl { get; init; }
+}
+
+/// <summary>How the running copy of Noctis was installed.</summary>
+public enum InstallSource
+{
+    /// <summary>Installed by the Inno Setup installer — also how winget and
+    /// Chocolatey install (they wrap the same setup). The in-app updater applies.</summary>
+    Installed,
+    /// <summary>Running from a Scoop-managed directory; update via <c>scoop update</c>.</summary>
+    Scoop,
+    /// <summary>Portable / manually-extracted copy with no installer.</summary>
+    Portable
 }

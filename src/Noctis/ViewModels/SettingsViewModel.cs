@@ -26,7 +26,6 @@ public partial class SettingsViewModel : ViewModelBase
     private LoonClient? _loon;
     private ILastFmService? _lastFm;
     private IListenBrainzService? _listenBrainz;
-    private ArtistImageService? _artistImageService;
     private UpdateService? _updateService;
     private CancellationTokenSource? _updateCts;
     private string? _downloadedInstallerPath;
@@ -583,8 +582,6 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Sets the Last.fm service reference.</summary>
     public void SetLastFm(ILastFmService lastFm) => _lastFm = lastFm;
     public void SetListenBrainz(IListenBrainzService listenBrainz) => _listenBrainz = listenBrainz;
-
-    public void SetArtistImageService(ArtistImageService svc) => _artistImageService = svc;
 
     public void SetUpdateService(UpdateService updateService) => _updateService = updateService;
 
@@ -2699,40 +2696,6 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshStorageInfo();
 
         SettingsReset?.Invoke(this, EventArgs.Empty);
-    }
-
-    [RelayCommand]
-    private async Task FetchArtistImages()
-    {
-        if (_artistImageService is null) return;
-
-        var artists = _library.Artists;
-        if (artists.Count == 0)
-        {
-            SetScanStatus("No artists in library.", autoClear: true);
-            return;
-        }
-
-        ScanStatusText = $"Fetching artist images for {artists.Count} artists...";
-
-        try
-        {
-            var fetched = 0;
-            await _artistImageService.FetchAndCacheAsync(artists, (artist, _) =>
-            {
-                fetched++;
-                Dispatcher.UIThread.Post(() =>
-                    ScanStatusText = $"Fetched {fetched} artist image(s)...");
-            });
-
-            SetScanStatus(fetched > 0
-                ? $"Fetched {fetched} new artist image(s)."
-                : "All artist images are already cached.", autoClear: true);
-        }
-        catch (Exception ex)
-        {
-            SetScanStatus($"Failed to fetch artist images: {ex.Message}", autoClear: true);
-        }
     }
 
     [RelayCommand]

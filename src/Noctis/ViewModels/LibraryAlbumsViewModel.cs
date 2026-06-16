@@ -615,14 +615,6 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         CtrlSelectedAlbums.Clear();
     }
 
-    /// <summary>Bookmarks the album in the Listen Later list.</summary>
-    [RelayCommand]
-    private void AddAlbumToListenLater(Album album)
-    {
-        if (album == null) return;
-        App.Services?.GetService<IListenLaterService>()?.AddAlbum(album);
-    }
-
     [RelayCommand]
     private async Task AddToExistingPlaylist(object[] parameters)
     {
@@ -877,11 +869,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         }
     }
 
-    private static string RemoveWhitespace(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-            return string.Empty;
-
-        return string.Concat(value.Where(c => !char.IsWhiteSpace(c)));
-    }
+    // Normalizes a value into a comparable search key: strips whitespace, punctuation
+    // (e.g. the apostrophe in "Don't") and accents so queries match regardless. Name kept
+    // for its call sites; see Helpers/SearchText for the shared implementation.
+    private static string RemoveWhitespace(string value) => Noctis.Helpers.SearchText.Normalize(value);
 }

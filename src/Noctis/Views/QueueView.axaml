@@ -68,10 +68,43 @@
 
             <!-- Up Next section -->
             <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,8">
-                <TextBlock Grid.Column="0"
-                           Text="Up Next"
-                           FontSize="18"
-                           FontWeight="SemiBold" />
+                <!-- Title + Shuffle/Repeat toggles. These live here (not in the slim Home
+                     playback bar) so set-once controls stay out of the bar's way. -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="Up Next"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                    <Button Command="{Binding Player.ToggleShuffleCommand}"
+                            Background="Transparent" BorderThickness="0" Padding="6,4"
+                            Cursor="Hand" VerticalAlignment="Center"
+                            ToolTip.Tip="Shuffle">
+                        <Panel>
+                            <PathIcon Data="{StaticResource ShuffleIcon}" Width="15" Height="15"
+                                      Opacity="0.55"
+                                      IsVisible="{Binding !Player.IsShuffleEnabled}" />
+                            <PathIcon Data="{StaticResource ShuffleIcon}" Width="15" Height="15"
+                                      Foreground="{DynamicResource AccentColorBrush}"
+                                      IsVisible="{Binding Player.IsShuffleEnabled}" />
+                        </Panel>
+                    </Button>
+                    <Button Command="{Binding Player.CycleRepeatCommand}"
+                            Background="Transparent" BorderThickness="0" Padding="6,4"
+                            Cursor="Hand" VerticalAlignment="Center"
+                            ToolTip.Tip="Repeat">
+                        <Panel>
+                            <PathIcon Data="{StaticResource RepeatAllIcon}" Width="15" Height="15"
+                                      Opacity="0.55"
+                                      IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}" />
+                            <PathIcon Data="{StaticResource RepeatAllIcon}" Width="15" Height="15"
+                                      Foreground="{DynamicResource AccentColorBrush}"
+                                      IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}" />
+                            <PathIcon Data="{StaticResource RepeatOneIcon}" Width="15" Height="15"
+                                      Foreground="{DynamicResource AccentColorBrush}"
+                                      IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}" />
+                        </Panel>
+                    </Button>
+                </StackPanel>
                 <Button Grid.Column="1"
                         Command="{Binding Player.SaveQueueAsPlaylistCommand}"
                         Background="Transparent"

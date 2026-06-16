@@ -9,7 +9,14 @@ public sealed record TagSuggestion(
     string Album,
     int? Year,
     double Confidence,
-    string Source);
+    string Source,
+    string? AlbumArtist = null,
+    string? Genre = null,
+    int? TrackNumber = null,
+    int? TrackCount = null,
+    int? DiscNumber = null,
+    int? Bpm = null,
+    string? Isrc = null);
 
 /// <summary>
 /// Pure helpers for the AcoustID lookup API: URL construction and response parsing.

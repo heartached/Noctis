@@ -5,7 +5,7 @@
         xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.MetadataWindow"
         x:DataType="vm:MetadataViewModel"
-        Title="Metadata"
+        Title="Studio"
         CanResize="False"
         SystemDecorations="None"
         Background="Transparent"
@@ -40,6 +40,11 @@
             <Setter Property="BorderThickness" Value="1.5" />
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
             <Setter Property="UseLayoutRounding" Value="True" />
+        </Style>
+
+        <!-- Greyed out when disabled (e.g. start/stop time whose checkbox is unticked) -->
+        <Style Selector="TextBox.metadata-info-field:disabled">
+            <Setter Property="Opacity" Value="0.4" />
         </Style>
 
         <Style Selector="AutoCompleteBox.metadata-info-field">
@@ -104,33 +109,47 @@
             <Setter Property="CornerRadius" Value="999" />
         </Style>
 
+        <!-- Sidebar tab rows: full-width vertical list, accent bar + tint when selected -->
         <Style Selector="TabItem">
-            <Setter Property="Padding" Value="0,0,0,6" />
-            <Setter Property="Margin" Value="0,0,28,0" />
-            <Setter Property="MinHeight" Value="38" />
+            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Grid RowDefinitions="*,3"
-                          Background="Transparent"
-                          Cursor="Hand">
-                        <TextBlock Grid.Row="0"
-                                   Text="{TemplateBinding Header}"
-                                   FontSize="{TemplateBinding FontSize}"
-                                   FontWeight="{TemplateBinding FontWeight}"
-                                   Foreground="{TemplateBinding Foreground}"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,0,6" />
-                        <Border x:Name="SelectionIndicator"
-                                Grid.Row="1"
-                                Height="3"
-                                CornerRadius="2"
-                                Background="{DynamicResource AccentColorBrush}"
-                                IsVisible="False" />
-                    </Grid>
+                    <Border x:Name="SidebarRow"
+                            Background="Transparent"
+                            CornerRadius="7"
+                            Cursor="Hand">
+                        <Panel>
+                            <Border x:Name="SelectionIndicator"
+                                    Width="3" Height="16"
+                                    CornerRadius="2"
+                                    Margin="5,0,0,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    Background="{DynamicResource AccentColorBrush}"
+                                    IsVisible="False" />
+                            <TextBlock Text="{TemplateBinding Header}"
+                                       FontSize="{TemplateBinding FontSize}"
+                                       FontWeight="{TemplateBinding FontWeight}"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Center"
+                                       Margin="16,8,12,8"
+                                       TextTrimming="CharacterEllipsis" />
+                        </Panel>
+                    </Border>
                 </ControlTemplate>
             </Setter>
+        </Style>
+
+        <Style Selector="TabItem:pointerover /template/ Border#SidebarRow">
+            <Setter Property="Background" Value="#14FFFFFF" />
+        </Style>
+
+        <Style Selector="TabItem:selected /template/ Border#SidebarRow">
+            <Setter Property="Background" Value="#1FFFFFFF" />
         </Style>
 
         <Style Selector="TabItem:selected /template/ Border#SelectionIndicator">
@@ -141,47 +160,28 @@
             <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
         </Style>
 
-        <Style Selector="TabItem:pointerover">
-            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
-        </Style>
-
-        <Style Selector="TabItem:selected:pointerover">
-            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
-        </Style>
-
-        <Style Selector="ScrollViewer.metadata-tab-strip-scroll">
-            <Setter Property="Background" Value="Transparent" />
-        </Style>
-
-        <Style Selector="ScrollViewer.metadata-tab-strip-scroll /template/ Border">
-            <Setter Property="Background" Value="Transparent" />
+        <!-- Per-line nudge / clear buttons in the Synced Lyrics inline editor -->
+        <Style Selector="Button.synced-nudge">
+            <Setter Property="Background" Value="#1AFFFFFF" />
             <Setter Property="BorderThickness" Value="0" />
-        </Style>
-
-        <!-- Chevron arrows that appear at the tab strip edges when there's overflow -->
-        <Style Selector="Button.metadata-tab-chevron">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Width" Value="21" />
+            <Setter Property="Height" Value="19" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="Width" Value="28" />
-            <Setter Property="Height" Value="28" />
-            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="FontSize" Value="11" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
-        <Style Selector="Button.metadata-tab-chevron /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-        </Style>
-        <Style Selector="Button.metadata-tab-chevron:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#22FFFFFF" />
-        </Style>
-        <Style Selector="Button.metadata-tab-chevron:pressed /template/ ContentPresenter">
+        <Style Selector="Button.synced-nudge:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#33FFFFFF" />
         </Style>
+        <Style Selector="Button.synced-nudge:disabled">
+            <Setter Property="Opacity" Value="0.35" />
+        </Style>
 
-        <!-- Tab strip: one horizontally-scrollable row, no visible scrollbar.
-             Chevron buttons + edge fades appear only when there's overflow. -->
+        <!-- Tab nav: vertical sidebar list on the left, selected content on the right. -->
         <Style Selector="TabControl">
             <Setter Property="Template">
                 <ControlTemplate>
@@ -190,54 +190,31 @@
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="{TemplateBinding CornerRadius}"
                             Padding="{TemplateBinding Padding}">
-                        <DockPanel>
-                            <Grid DockPanel.Dock="Top">
-                                <Button Name="PART_TabStripLeft"
-                                        Grid.Column="0"
-                                        Classes="metadata-tab-chevron"
-                                        IsVisible="False"
-                                        Margin="6,0,0,6"
-                                        HorizontalAlignment="Left"
-                                        ZIndex="1"
-                                        ToolTip.Tip="Scroll left">
-                                    <PathIcon Data="{StaticResource ChevronLeftIcon}"
-                                              Width="14" Height="14" />
-                                </Button>
-
-                                <ScrollViewer Name="PART_TabStripScroller"
-                                              Grid.Column="0"
-                                              Classes="metadata-tab-strip-scroll"
-                                              Margin="24,0,0,0"
-                                              HorizontalScrollBarVisibility="Hidden"
-                                              VerticalScrollBarVisibility="Disabled">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0"
+                                    Width="168"
+                                    Padding="10,14"
+                                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                                    BorderThickness="0,0,1,0">
+                                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                              VerticalScrollBarVisibility="Auto">
                                     <ItemsPresenter Name="PART_ItemsPresenter"
                                                     ItemsPanel="{TemplateBinding ItemsPanel}" />
                                 </ScrollViewer>
-
-                                <Button Name="PART_TabStripRight"
-                                        Grid.Column="0"
-                                        Classes="metadata-tab-chevron"
-                                        IsVisible="False"
-                                        Margin="0,0,8,6"
-                                        HorizontalAlignment="Right"
-                                        ZIndex="1"
-                                        ToolTip.Tip="Scroll right">
-                                    <PathIcon Data="{StaticResource ChevronRightIcon}"
-                                              Width="14" Height="14" />
-                                </Button>
-                            </Grid>
+                            </Border>
                             <ContentPresenter Name="PART_SelectedContentHost"
+                                              Grid.Column="1"
                                               Content="{TemplateBinding SelectedContent}"
                                               ContentTemplate="{TemplateBinding SelectedContentTemplate}"
                                               HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-                        </DockPanel>
+                        </Grid>
                     </Border>
                 </ControlTemplate>
             </Setter>
             <Setter Property="ItemsPanel">
                 <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" />
+                    <StackPanel Orientation="Vertical" />
                 </ItemsPanelTemplate>
             </Setter>
         </Style>
@@ -263,7 +240,7 @@
         <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
                 CornerRadius="16"
                 ClipToBounds="True"
-                Width="700" Height="700"
+                Width="780" Height="700"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
@@ -398,7 +375,7 @@
                         Command="{Binding SaveCommand}"
                         Width="100"
                         Padding="0,10"
-                        Classes="accent-btn"
+                        Classes="accent-btn accent-pill"
                             Background="{DynamicResource AccentColorBrush}"
                         Foreground="{DynamicResource AccentForegroundBrush}"
                         FontWeight="Bold"
@@ -419,6 +396,51 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="16" Margin="24,16,24,24">
+                        <!-- Search metadata: find & review tag changes -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ShowSearchMetadata}">
+                            <Button Content="⌕  Search metadata"
+                                    Classes="accent-pill"
+                                    Command="{Binding SearchMetadataCommand}"
+                                    HorizontalAlignment="Left"
+                                    Padding="11,5"
+                                    FontSize="12"
+                                    CornerRadius="999"
+                                    FontWeight="SemiBold"
+                                    Cursor="Hand" />
+                            <TextBlock Text="{Binding SearchMetadataStatus}"
+                                       IsVisible="{Binding HasSearchMetadataStatus}"
+                                       FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                            <Border IsVisible="{Binding IsSearchMetadataOpen}"
+                                    Background="#1AFFFFFF"
+                                    BorderBrush="#33808080" BorderThickness="1"
+                                    CornerRadius="10" Padding="16">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Found metadata — review changes"
+                                               FontWeight="SemiBold" FontSize="13" />
+                                    <ItemsControl ItemsSource="{Binding MetadataChanges}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:MetadataChangeRow">
+                                                <CheckBox IsChecked="{Binding Apply}" Margin="0,2">
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Field}" FontSize="11" Opacity="0.5" />
+                                                        <TextBlock Text="{Binding Display}" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </CheckBox>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                        <Button Content="Cancel" Command="{Binding CloseSearchMetadataCommand}"
+                                                Padding="10,4" FontSize="12" CornerRadius="999" Cursor="Hand" />
+                                        <Button Content="Apply" Command="{Binding ApplySearchMetadataCommand}"
+                                                Classes="accent-pill"
+                                                Padding="10,4" FontSize="12" CornerRadius="999"
+                                                FontWeight="SemiBold" Cursor="Hand" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
                         <!-- Title (per-track; hidden when editing a whole album) -->
                         <StackPanel Spacing="4" IsVisible="{Binding ShowTrackFields}">
                             <TextBlock Text="title" FontSize="12" Opacity="0.5" />
@@ -781,11 +803,108 @@
             <TabItem Header="Artwork" FontSize="14" FontWeight="SemiBold">
                 <DockPanel Margin="24,16">
                     <!-- Artwork action buttons (centered row below preview) -->
-                    <StackPanel DockPanel.Dock="Bottom"
+                    <StackPanel x:Name="ArtworkButtonsBar"
+                                DockPanel.Dock="Bottom"
                                 Orientation="Horizontal"
                                 HorizontalAlignment="Center"
                                 Spacing="12"
                                 Margin="0,16,0,0">
+                        <!-- Search results open centered above this button bar (opened from code-behind). -->
+                        <FlyoutBase.AttachedFlyout>
+                            <Flyout Placement="Top" ShowMode="Standard">
+                                <Panel>
+                                    <!-- Compact "Searching..." pill (shown while loading, before results exist) -->
+                                    <Border CornerRadius="999"
+                                            Padding="16,8"
+                                            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                                            HorizontalAlignment="Center"
+                                            IsVisible="{Binding !HasArtworkSearchResults}">
+                                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                            <ProgressBar Width="60" Height="3" IsIndeterminate="True"
+                                                         IsVisible="{Binding IsSearchingArtwork}" />
+                                            <TextBlock Text="{Binding ArtworkSearchStatus}"
+                                                       FontSize="12"
+                                                       Opacity="0.85"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Full results card -->
+                                    <Border Padding="14" CornerRadius="12" MinWidth="500" MaxWidth="580"
+                                            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                                            IsVisible="{Binding HasArtworkSearchResults}">
+                                    <StackPanel Spacing="10">
+                                        <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled">
+                                            <ItemsControl ItemsSource="{Binding ArtworkSearchResults}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel Orientation="Horizontal"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Padding="4" Margin="0,0,8,8"
+                                                                ToolTip.Tip="{Binding CollectionName}">
+                                                            <StackPanel Spacing="4" Width="110">
+                                                                <Border CornerRadius="6" ClipToBounds="True"
+                                                                        Width="100" Height="100"
+                                                                        Background="#1AFFFFFF">
+                                                                    <Image Source="{Binding Thumbnail}"
+                                                                           Stretch="UniformToFill"
+                                                                           RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                                                </Border>
+                                                                <TextBlock Text="{Binding CollectionName}"
+                                                                           FontSize="11" FontWeight="SemiBold"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           MaxLines="1"/>
+                                                                <TextBlock Text="{Binding ArtistName}"
+                                                                           FontSize="10" Opacity="0.55"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           MaxLines="1"/>
+                                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                                    <Button Content="Standard"
+                                                                            Padding="7,3"
+                                                                            FontSize="10"
+                                                                            FontWeight="Bold"
+                                                                            CornerRadius="999"
+                                                                            Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectStandardArtworkResultCommand}"
+                                                                            CommandParameter="{Binding}" />
+                                                                    <Button Content="Highest"
+                                                                            Padding="7,3"
+                                                                            FontSize="10"
+                                                                            FontWeight="Bold"
+                                                                            CornerRadius="999"
+                                                                            Classes="accent-btn"
+                                                                            Background="{DynamicResource AccentColorBrush}"
+                                                                            Foreground="{DynamicResource AccentForegroundBrush}"
+                                                                            Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectHighestArtworkResultCommand}"
+                                                                            CommandParameter="{Binding}" />
+                                                                </StackPanel>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+
+                                        <!-- Downloading indicator (shown after Standard/Highest is clicked) -->
+                                        <StackPanel Orientation="Horizontal"
+                                                    HorizontalAlignment="Center"
+                                                    Spacing="8"
+                                                    IsVisible="{Binding IsDownloadingArtwork}">
+                                            <ProgressBar Width="60" Height="3" IsIndeterminate="True"
+                                                         VerticalAlignment="Center"/>
+                                            <TextBlock Text="Downloading…"
+                                                       FontSize="11"
+                                                       Opacity="0.75"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    </Border>
+                                </Panel>
+                            </Flyout>
+                        </FlyoutBase.AttachedFlyout>
+
                         <Button Content="Add Artwork"
                                 Command="{Binding AddArtworkCommand}"
                                 CommandParameter="{Binding $parent[Window]}"
@@ -805,102 +924,7 @@
                                 CornerRadius="999"
                                 Cursor="Hand"
                                 FontWeight="SemiBold"
-                                FontSize="11">
-                            <Button.Flyout>
-                                <Flyout Placement="Top" ShowMode="Standard"
-                                        HorizontalOffset="-60"
-                                        IsOpen="{Binding IsArtworkSearchOpen, Mode=TwoWay}">
-                                    <Panel>
-                                        <!-- Compact "Searching..." pill (shown while loading, before results exist) -->
-                                        <Border CornerRadius="999"
-                                                Padding="16,8"
-                                                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                                                HorizontalAlignment="Center"
-                                                IsVisible="{Binding !HasArtworkSearchResults}">
-                                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                                <ProgressBar Width="60" Height="3" IsIndeterminate="True"
-                                                             IsVisible="{Binding IsSearchingArtwork}" />
-                                                <TextBlock Text="{Binding ArtworkSearchStatus}"
-                                                           FontSize="12"
-                                                           Opacity="0.85"
-                                                           VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Full results card -->
-                                        <Border Padding="14" CornerRadius="12" MinWidth="500" MaxWidth="580"
-                                                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                                                IsVisible="{Binding HasArtworkSearchResults}">
-                                        <StackPanel Spacing="10">
-                                            <ScrollViewer MaxHeight="320" HorizontalScrollBarVisibility="Disabled">
-                                                <ItemsControl ItemsSource="{Binding ArtworkSearchResults}">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate>
-                                                            <WrapPanel Orientation="Horizontal"/>
-                                                        </ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Border Padding="4" Margin="0,0,8,8"
-                                                                    ToolTip.Tip="{Binding CollectionName}">
-                                                                <StackPanel Spacing="4" Width="110">
-                                                                    <Border CornerRadius="6" ClipToBounds="True"
-                                                                            Width="100" Height="100"
-                                                                            Background="#1AFFFFFF">
-                                                                        <Image Source="{Binding Thumbnail}"
-                                                                               Stretch="UniformToFill"
-                                                                               RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                                                                    </Border>
-                                                                    <TextBlock Text="{Binding CollectionName}"
-                                                                               FontSize="11" FontWeight="SemiBold"
-                                                                               TextTrimming="CharacterEllipsis"
-                                                                               MaxLines="1"/>
-                                                                    <TextBlock Text="{Binding ArtistName}"
-                                                                               FontSize="10" Opacity="0.55"
-                                                                               TextTrimming="CharacterEllipsis"
-                                                                               MaxLines="1"/>
-                                                                    <StackPanel Orientation="Horizontal" Spacing="4">
-                                                                        <Button Content="Standard"
-                                                                                Padding="7,3"
-                                                                                FontSize="10"
-                                                                                CornerRadius="999"
-                                                                                Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectStandardArtworkResultCommand}"
-                                                                                CommandParameter="{Binding}" />
-                                                                        <Button Content="Highest"
-                                                                                Padding="7,3"
-                                                                                FontSize="10"
-                                                                                CornerRadius="999"
-                                                                                Classes="accent-btn"
-                                                                                Background="{DynamicResource AccentColorBrush}"
-                                                                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                                                                Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).SelectHighestArtworkResultCommand}"
-                                                                                CommandParameter="{Binding}" />
-                                                                    </StackPanel>
-                                                                </StackPanel>
-                                                            </Border>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </ScrollViewer>
-
-                                            <!-- Downloading indicator (shown after Standard/Highest is clicked) -->
-                                            <StackPanel Orientation="Horizontal"
-                                                        HorizontalAlignment="Center"
-                                                        Spacing="8"
-                                                        IsVisible="{Binding IsDownloadingArtwork}">
-                                                <ProgressBar Width="60" Height="3" IsIndeterminate="True"
-                                                             VerticalAlignment="Center"/>
-                                                <TextBlock Text="Downloading…"
-                                                           FontSize="11"
-                                                           Opacity="0.75"
-                                                           VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                        </Border>
-                                    </Panel>
-                                </Flyout>
-                            </Button.Flyout>
-                        </Button>
+                                FontSize="11" />
                         <Button Content="Download"
                                 Command="{Binding DownloadArtworkCommand}"
                                 CommandParameter="{Binding $parent[Window]}"
@@ -1160,6 +1184,13 @@
                                    FontSize="14"
                                    VerticalAlignment="Center"
                                    Margin="-4,0,0,0" />
+                        <Button Content="Share"
+                                Command="{Binding ShareLyricsCommand}"
+                                Margin="20,0,0,0"
+                                Padding="14,6"
+                                CornerRadius="999"
+                                VerticalAlignment="Center"
+                                Cursor="Hand" />
                     </StackPanel>
                     <TextBox Text="{Binding Lyrics}"
                              AcceptsReturn="True"
@@ -1191,6 +1222,16 @@
                                        VerticalAlignment="Center"
                                        Margin="-4,0,0,0" />
                         </StackPanel>
+
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding SyncedLyricsSearchStatus}"
+                                   FontSize="12"
+                                   Opacity="0.75"
+                                   VerticalAlignment="Center"
+                                   Margin="16,0,0,0"
+                                   TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding SyncedLyricsSearchStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
                         <StackPanel Grid.Column="2"
                                     Orientation="Horizontal"
                                     VerticalAlignment="Center"
@@ -1203,13 +1244,16 @@
                                     Cursor="Hand"
                                     FontWeight="SemiBold"
                                     FontSize="12" />
-                            <TextBlock Text="{Binding SyncedLyricsSearchStatus}"
-                                       FontSize="12"
-                                       Opacity="0.75"
-                                       VerticalAlignment="Center"
-                                       IsVisible="{Binding SyncedLyricsSearchStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                             <Button Content="Search lyrics"
                                     Command="{Binding SearchSyncedLyricsCommand}"
+                                    Padding="14,6"
+                                    CornerRadius="999"
+                                    Cursor="Hand"
+                                    FontWeight="SemiBold"
+                                    FontSize="12" />
+                            <Button Content="✎  Edit synced lyrics"
+                                    Click="OnEditSyncedLyricsClick"
+                                    IsEnabled="{Binding HasCustomSyncedLyrics}"
                                     Classes="accent-btn"
                                     Background="{DynamicResource AccentColorBrush}"
                                     Foreground="{DynamicResource AccentForegroundBrush}"
@@ -1220,15 +1264,36 @@
                                     FontSize="12" />
                         </StackPanel>
                     </Grid>
-                    <TextBox Text="{Binding SyncedLyrics}"
-                             AcceptsReturn="True"
-                             TextWrapping="Wrap"
-                             VerticalContentAlignment="Top"
-                             MinHeight="300"
-                             BorderBrush="#44E04060"
-                             BorderThickness="1"
-                             FontFamily="Consolas, Menlo, Monaco, Courier New, monospace"
-                             IsEnabled="{Binding HasCustomSyncedLyrics}" />
+
+                    <!-- Read-only preview; full per-line editing opens in the roomy pop-out editor. -->
+                    <Border BorderBrush="#44E04060"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            IsEnabled="{Binding HasCustomSyncedLyrics}">
+                        <Panel MinHeight="300">
+                            <TextBlock Text="No synced lyrics yet. Use “Search lyrics”, or tick Enable then “Edit synced lyrics” to add them."
+                                       IsVisible="{Binding !HasSyncedLines}"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       MaxWidth="380"
+                                       Opacity="0.6"
+                                       FontSize="13"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Margin="24" />
+                            <TextBox IsVisible="{Binding HasSyncedLines}"
+                                     Text="{Binding SyncedLyrics}"
+                                     IsReadOnly="True"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     FontFamily="Consolas, Menlo, Monaco, Courier New, monospace"
+                                     FontSize="12" />
+                        </Panel>
+                    </Border>
                 </DockPanel>
             </TabItem>
 
@@ -1272,7 +1337,7 @@
                             <TextBox Classes="metadata-info-field"
                                      Grid.Column="2"
                                      Text="{Binding StartTime}"
-                                     IsReadOnly="{Binding !HasStartTime}"
+                                     IsEnabled="{Binding HasStartTime}"
                                      Width="130"
                                      CornerRadius="999"
                                      Padding="14,6"
@@ -1288,7 +1353,7 @@
                             <TextBox Classes="metadata-info-field"
                                      Grid.Column="2"
                                      Text="{Binding StopTime}"
-                                     IsReadOnly="{Binding !HasStopTime}"
+                                     IsEnabled="{Binding HasStopTime}"
                                      Width="130"
                                      CornerRadius="999"
                                      Padding="14,6"

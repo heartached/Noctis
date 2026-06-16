@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Avalonia.Threading;
@@ -16,6 +17,10 @@ namespace Noctis.Services;
 /// Security posture (LAN-only by design):
 /// - Off by default; started only from the Settings toggle.
 /// - Requests from non-private remote addresses are rejected outright.
+/// - Every route requires the per-session access token (the "k" query value
+///   baked into the URL shown in Settings). This blocks other LAN devices
+///   that don't have the link, and CSRF/DNS-rebinding pages that can reach
+///   the port but can't know the token. A new token is minted on each start.
 /// - Only fixed routes are served; no filesystem paths are exposed.
 /// </summary>
 public sealed class WebRemoteServer : IDisposable
@@ -27,12 +32,16 @@ public sealed class WebRemoteServer : IDisposable
     public int Port { get; private set; }
     public bool IsRunning => _listener != null;
 
+    /// <summary>Per-session access token required on every request; regenerated on Start.</summary>
+    public string Token { get; private set; } = string.Empty;
+
     public WebRemoteServer(PlayerViewModel player) => _player = player;
 
     public void Start(int port)
     {
         Stop();
         Port = port;
+        Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant();
         _cts = new CancellationTokenSource();
         _listener = new TcpListener(IPAddress.Any, port);
         _listener.Start();
@@ -140,6 +149,8 @@ public sealed class WebRemoteServer : IDisposable
                     $"Content-Type: {contentType}; charset=utf-8\r\n" +
                     $"Content-Length: {payload.Length}\r\n" +
                     "Cache-Control: no-store\r\n" +
+                    "X-Content-Type-Options: nosniff\r\n" +
+                    "Referrer-Policy: no-referrer\r\n" +
                     "Connection: close\r\n\r\n";
                 await stream.WriteAsync(Encoding.ASCII.GetBytes(header), ct);
                 await stream.WriteAsync(payload, ct);
@@ -171,6 +182,11 @@ public sealed class WebRemoteServer : IDisposable
     {
         var path = target.Split('?')[0];
         var query = ParseQuery(target);
+
+        // Every route — including the page itself — requires the session token,
+        // so LAN devices without the link and cross-origin pages get nothing.
+        if (!IsAuthorized(query))
+            return ("403 Forbidden", "text/plain", "forbidden");
 
         switch (method, path)
         {
@@ -207,6 +223,13 @@ public sealed class WebRemoteServer : IDisposable
                 return ("404 Not Found", "text/plain", "not found");
         }
     }
+
+    /// <summary>Constant-time check of the "k" query value against the session token.</summary>
+    private bool IsAuthorized(Dictionary<string, string> query) =>
+        Token.Length > 0
+        && query.TryGetValue("k", out var k)
+        && CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(k), Encoding.UTF8.GetBytes(Token));
 
     private static Dictionary<string, string> ParseQuery(string target)
     {
@@ -300,13 +323,15 @@ public sealed class WebRemoteServer : IDisposable
 </div>
 <script>
 let seeking = false, voling = false;
+const KEY = new URLSearchParams(location.search).get('k') || '';
+function withKey(qs) { return (qs ? qs + '&' : '?') + 'k=' + encodeURIComponent(KEY); }
 function fmt(ms) {
   const s = Math.floor(ms / 1000);
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 }
-function post(action, qs) { fetch('/api/' + action + (qs || ''), { method: 'POST' }).then(refresh); }
+function post(action, qs) { fetch('/api/' + action + withKey(qs), { method: 'POST' }).then(refresh); }
 function refresh() {
-  fetch('/api/status').then(r => r.json()).then(s => {
+  fetch('/api/status' + withKey()).then(r => r.json()).then(s => {
     document.getElementById('title').textContent = s.title;
     document.getElementById('artist').textContent = s.artist;
     document.getElementById('playBtn').innerHTML = s.isPlaying ? '&#10074;&#10074;' : '&#9654;';

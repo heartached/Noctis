@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -100,7 +101,8 @@ public partial class DuplicateFinderViewModel : ViewModelBase
         {
             TrackId = t.Id;
             FileName = Path.GetFileName(t.FilePath);
-            FolderPath = Path.GetDirectoryName(t.FilePath) ?? string.Empty;
+            FolderPathFull = Path.GetDirectoryName(t.FilePath) ?? string.Empty;
+            FolderPath = DisplayPath.MiddleEllipsis(FolderPathFull);
             Quality = BuildQuality(t);
             IsSuggestedKeep = suggestedKeep;
             _delete = !suggestedKeep; // default: keep the best copy, delete the rest
@@ -109,6 +111,7 @@ public partial class DuplicateFinderViewModel : ViewModelBase
         public Guid TrackId { get; }
         public string FileName { get; }
         public string FolderPath { get; }
+        public string FolderPathFull { get; }
         public string Quality { get; }
         public bool IsSuggestedKeep { get; }
 

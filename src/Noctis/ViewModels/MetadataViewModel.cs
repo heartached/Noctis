@@ -30,6 +30,20 @@ public partial class MetadataViewModel : ViewModelBase
     private readonly Dictionary<string, string> _albumLoaded = new();
     private bool _loadedIsCompilation;
     private bool _loadedShowComposerInAllViews;
+    private int _loadedRating;
+    private bool _loadedIsDisliked;
+    private bool _loadedUseWorkAndMovement;
+    // Album-scoped Options snapshot — only fields the user actually changes are
+    // fanned out to every track, so per-track Options (volume, EQ, start/stop, …)
+    // aren't clobbered with the first track's values on an unrelated save.
+    private bool _loadedSkipWhenShuffling;
+    private bool _loadedRememberPlaybackPosition;
+    private string _loadedMediaKind = string.Empty;
+    private string _loadedReleaseTypeOverride = "Auto";
+    private long _loadedStartTimeMs;
+    private long _loadedStopTimeMs;
+    private int _loadedVolumeAdjust;
+    private string _loadedEqPreset = string.Empty;
 
     // ── Tab selection ──
     [ObservableProperty] private int _selectedTabIndex;
@@ -121,6 +135,15 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private string _syncedLyrics = string.Empty;
     [ObservableProperty] private bool _hasCustomLyrics;
     [ObservableProperty] private bool _hasCustomSyncedLyrics;
+
+    // ── Synced lyrics manual editor ──
+    // Per-line timestamp editing (type/nudge/clear) presented instead of the raw
+    // [mm:ss.xx] textarea. The list is the source the user touches; edits flow back
+    // into SyncedLyrics (which Save still reads). EditSyncedAsText swaps to the raw
+    // box as a power-user / bulk-paste escape hatch.
+    public ObservableCollection<SyncedLyricEditorLine> SyncedLyricLines { get; } = new();
+    [ObservableProperty] private bool _editSyncedAsText;
+    [ObservableProperty] private bool _hasSyncedLines;
 
     // ── Options tab ──
     [ObservableProperty] private bool _skipWhenShuffling;
@@ -236,12 +259,31 @@ public partial class MetadataViewModel : ViewModelBase
     public string DiscCountWatermark => Watermark(nameof(DiscCount));
     public string BpmWatermark => Watermark(nameof(Bpm));
     public string CommentWatermark => Watermark(nameof(Comment));
+    public string WorkNameWatermark => Watermark(nameof(WorkName));
+    public string MovementNameWatermark => Watermark(nameof(MovementName));
+    public string MovementNumberWatermark => Watermark(nameof(MovementNumber));
+    public string MovementCountWatermark => Watermark(nameof(MovementCount));
 
     /// <summary>Formatted play count display with last played date.</summary>
     public string PlayCountDisplay
     {
         get
         {
+            // Album-scoped: aggregate across every track — total plays and the
+            // most recent "last played" of the album.
+            if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
+            {
+                var total = _albumTracks.Sum(t => t.PlayCount);
+                var lastPlayed = _albumTracks
+                    .Where(t => t.LastPlayed.HasValue)
+                    .Select(t => t.LastPlayed!.Value)
+                    .DefaultIfEmpty()
+                    .Max();
+                return lastPlayed != default
+                    ? $"{total} (Last Played {lastPlayed.ToLocalTime():M/d/yyyy, h:mm tt})"
+                    : total.ToString();
+            }
+
             if (_track.LastPlayed.HasValue)
             {
                 var lastPlayed = _track.LastPlayed.Value.ToLocalTime();
@@ -295,7 +337,7 @@ public partial class MetadataViewModel : ViewModelBase
     /// <summary>Fires when the window should close.</summary>
     public event EventHandler? CloseRequested;
 
-    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null, ITunesArtworkService? itunes = null, ILrcLibService? lrcLib = null, bool multiSelect = false)
+    public MetadataViewModel(Track track, IMetadataService metadata, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers, bool albumScoped = false, List<Track>? albumTracks = null, ITunesArtworkService? itunes = null, ILrcLibService? lrcLib = null, bool multiSelect = false, AutoMatchCoordinator? autoMatch = null)
     {
         _track = track;
         _metadata = metadata;
@@ -304,6 +346,7 @@ public partial class MetadataViewModel : ViewModelBase
         _animatedCovers = animatedCovers;
         _itunes = itunes;
         _lrcLib = lrcLib;
+        _autoMatch = autoMatch;
         _albumScoped = albumScoped;
         _albumTracks = albumTracks;
         _multiSelect = multiSelect;
@@ -319,6 +362,166 @@ public partial class MetadataViewModel : ViewModelBase
 
         if (_multiSelect)
             RebuildRenamePreview();
+    }
+
+    // ── Search metadata (tag lookup → before/after review) ──────────────────
+    // One button matches the track (or every track of an album) via
+    // AutoMatchCoordinator, then shows a per-field "old → new" review. Applying
+    // ticked rows writes into the live edit fields; nothing persists until Save.
+    private readonly AutoMatchCoordinator? _autoMatch;
+
+    [ObservableProperty] private bool _isSearchingMetadata;
+    [ObservableProperty] private bool _isSearchMetadataOpen;
+    [ObservableProperty] private string _searchMetadataStatus = string.Empty;
+
+    /// <summary>Reviewable field changes from the last search (one row per differing field).</summary>
+    public ObservableCollection<MetadataChangeRow> MetadataChanges { get; } = new();
+
+    // Album-scoped per-track matches, staged until the user applies + saves.
+    private readonly Dictionary<Track, TagSuggestion> _albumMatches = new();
+    private bool _albumPerTrackApproved;
+
+    public bool HasSearchMetadataStatus => !string.IsNullOrWhiteSpace(SearchMetadataStatus);
+    partial void OnSearchMetadataStatusChanged(string value) => OnPropertyChanged(nameof(HasSearchMetadataStatus));
+
+    /// <summary>Search button shows for single tracks and whole albums, but not arbitrary multi-select.</summary>
+    public bool ShowSearchMetadata => !_multiSelect;
+
+    [RelayCommand]
+    private async Task SearchMetadata()
+    {
+        if (_autoMatch == null) { SearchMetadataStatus = "Search metadata unavailable."; return; }
+        if (IsSearchingMetadata) return;
+
+        IsSearchingMetadata = true;
+        IsSearchMetadataOpen = false;
+        SearchMetadataStatus = "Searching…";
+        MetadataChanges.Clear();
+        _albumMatches.Clear();
+        _albumPerTrackApproved = false;
+
+        try
+        {
+            if (_albumScoped && _albumTracks is { Count: > 0 })
+                await SearchAlbumMetadataAsync();
+            else
+                await SearchSingleTrackMetadataAsync();
+        }
+        catch (Exception ex)
+        {
+            SearchMetadataStatus = $"Search failed: {ex.Message}";
+        }
+        finally
+        {
+            IsSearchingMetadata = false;
+        }
+    }
+
+    private async Task SearchSingleTrackMetadataAsync()
+    {
+        var hit = await _autoMatch!.MatchAsync(_track);
+        if (hit is null) { SearchMetadataStatus = "No new metadata found."; return; }
+
+        AddRow("title", Title, hit.Title, v => Title = v);
+        AddRow("artist", Artist, hit.Artist, v => Artist = v);
+        AddRow("album", Album, hit.Album, v => Album = v);
+        AddRow("album artist", AlbumArtist, hit.AlbumArtist, v => AlbumArtist = v);
+        AddRow("year", Year, hit.Year?.ToString(), v => Year = v);
+        AddRow("genre", Genre, hit.Genre, v => Genre = v);
+        AddRow("track #", TrackNumber, hit.TrackNumber?.ToString(), v => TrackNumber = v);
+        AddRow("track count", TrackCount, hit.TrackCount?.ToString(), v => TrackCount = v);
+        AddRow("disc #", DiscNumber, hit.DiscNumber?.ToString(), v => DiscNumber = v);
+        AddRow("bpm", Bpm, hit.Bpm?.ToString(), v => Bpm = v);
+        AddRow("isrc", Isrc, hit.Isrc, v => Isrc = v);
+
+        if (MetadataChanges.Count > 0)
+        {
+            IsSearchMetadataOpen = true;
+            SearchMetadataStatus = $"Found {MetadataChanges.Count} change(s) — review below.";
+        }
+        else
+        {
+            SearchMetadataStatus = "No new metadata found.";
+        }
+    }
+
+    private async Task SearchAlbumMetadataAsync()
+    {
+        TagSuggestion? representative = null;
+        int matched = 0;
+
+        // Match each track individually so per-track titles/numbers are correct.
+        foreach (var t in _albumTracks!)
+        {
+            var hit = await _autoMatch!.MatchAsync(t);
+            if (hit is null) continue;
+            _albumMatches[t] = hit;
+            representative ??= hit;
+            matched++;
+        }
+
+        if (matched == 0) { SearchMetadataStatus = "No new metadata found for this album."; return; }
+
+        // Shared (album-wide) fields are reviewed as rows and fanned out on Save.
+        AddRow("album", Album, representative!.Album, v => Album = v);
+        AddRow("album artist", AlbumArtist, representative.AlbumArtist, v => AlbumArtist = v);
+        AddRow("year", Year, representative.Year?.ToString(), v => Year = v);
+        AddRow("genre", Genre, representative.Genre, v => Genre = v);
+
+        var sharedCount = MetadataChanges.Count;
+        IsSearchMetadataOpen = true;
+        SearchMetadataStatus =
+            $"Matched {matched} of {_albumTracks!.Count} tracks. " +
+            (sharedCount > 0 ? "Review album fields below." : "Apply to update per-track titles & numbers.");
+    }
+
+    private void AddRow(string field, string? oldValue, string? newValue, Action<string> setter)
+    {
+        var row = MetadataChangeRow.TryCreate(field, oldValue, newValue, () => setter(newValue!.Trim()));
+        if (row != null) MetadataChanges.Add(row);
+    }
+
+    [RelayCommand]
+    private void ApplySearchMetadata()
+    {
+        foreach (var row in MetadataChanges)
+            row.ApplyIfChecked();
+
+        // Album per-track matches are applied to each Track during Save.
+        _albumPerTrackApproved = _albumScoped;
+
+        IsSearchMetadataOpen = false;
+        SearchMetadataStatus = "Applied. Click Save to keep.";
+    }
+
+    [RelayCommand]
+    private void CloseSearchMetadata()
+    {
+        IsSearchMetadataOpen = false;
+        SearchMetadataStatus = string.Empty;
+        MetadataChanges.Clear();
+        _albumMatches.Clear();
+        _albumPerTrackApproved = false;
+    }
+
+    // Opens the Spotify-style share card for the current lyrics (plain, else synced
+    // with timestamps stripped). Reuses the existing LyricShareDialog.
+    [RelayCommand]
+    private async Task ShareLyrics()
+    {
+        var source = !string.IsNullOrWhiteSpace(Lyrics)
+            ? Lyrics
+            : LyricsTextHelper.StripTimestamps(SyncedLyrics ?? string.Empty);
+        var lines = (source ?? string.Empty)
+            .Replace("\r\n", "\n")
+            .Split('\n')
+            .Select(l => l.Trim())
+            .Where(l => l.Length > 0)
+            .ToList();
+        if (lines.Count == 0) return;
+
+        var vm = new LyricShareViewModel(_track, lines, 0);
+        await Noctis.Views.LyricShareDialog.ShowAsync(vm);
     }
 
     // ── Album-scoped (whole-album) editing ──────────────────────────────────
@@ -338,6 +541,14 @@ public partial class MetadataViewModel : ViewModelBase
         DiscCount = CommonIntOrMixed(nameof(DiscCount), t => t.DiscCount);
         Bpm = CommonIntOrMixed(nameof(Bpm), t => t.Bpm);
 
+        // Work & Movement (classical): treat like the other shared fields —
+        // a value common to every track shows as-is, otherwise blank/"Mixed".
+        UseWorkAndMovement = _albumTracks!.All(t => t.UseWorkAndMovement);
+        WorkName = CommonStrOrMixed(nameof(WorkName), t => t.WorkName);
+        MovementName = CommonStrOrMixed(nameof(MovementName), t => t.MovementName);
+        MovementNumber = CommonIntOrMixed(nameof(MovementNumber), t => t.MovementNumber);
+        MovementCount = CommonIntOrMixed(nameof(MovementCount), t => t.MovementCount);
+
         var genre0 = _track.Genre ?? string.Empty;
         if (_albumTracks!.All(t => (t.Genre ?? string.Empty) == genre0))
             Genre = genre0;
@@ -345,6 +556,11 @@ public partial class MetadataViewModel : ViewModelBase
 
         IsCompilation = _albumTracks!.All(t => t.IsCompilation);
         ShowComposerInAllViews = _albumTracks!.All(t => t.ShowComposerInAllViews);
+
+        // Rating is album-wide here: show the shared value when every track agrees,
+        // otherwise show none. "Not Liked" is checked only when the whole album is disliked.
+        Rating = _albumTracks!.All(t => t.Rating == _track.Rating) ? _track.Rating : 0;
+        IsDisliked = _albumTracks!.All(t => t.IsDisliked);
 
         // Album / Album Artist are shared within a single album, so they stay as-is in
         // album-scoped mode. A multi-select can span albums, so show Mixed when they differ.
@@ -388,8 +604,25 @@ public partial class MetadataViewModel : ViewModelBase
         _albumLoaded[nameof(DiscCount)] = DiscCount;
         _albumLoaded[nameof(Bpm)] = Bpm;
         _albumLoaded[nameof(Comment)] = Comment;
+        _albumLoaded[nameof(WorkName)] = WorkName;
+        _albumLoaded[nameof(MovementName)] = MovementName;
+        _albumLoaded[nameof(MovementNumber)] = MovementNumber;
+        _albumLoaded[nameof(MovementCount)] = MovementCount;
         _loadedIsCompilation = IsCompilation;
         _loadedShowComposerInAllViews = ShowComposerInAllViews;
+        _loadedRating = Rating;
+        _loadedIsDisliked = IsDisliked;
+        _loadedUseWorkAndMovement = UseWorkAndMovement;
+
+        // Options (loaded from the first track) — snapshot for change detection.
+        _loadedSkipWhenShuffling = SkipWhenShuffling;
+        _loadedRememberPlaybackPosition = RememberPlaybackPosition;
+        _loadedMediaKind = MediaKind;
+        _loadedReleaseTypeOverride = ReleaseTypeOverride;
+        _loadedStartTimeMs = HasStartTime ? ParseTimeToMs(StartTime) : 0;
+        _loadedStopTimeMs = HasStopTime ? ParseTimeToMs(StopTime) : 0;
+        _loadedVolumeAdjust = VolumeAdjust;
+        _loadedEqPreset = SelectedEqPreset == "None" ? string.Empty : SelectedEqPreset;
     }
 
     private bool AlbumFieldChanged(string key, string current)
@@ -455,8 +688,16 @@ public partial class MetadataViewModel : ViewModelBase
         bool discCountChg = AlbumFieldChanged(nameof(DiscCount), DiscCount);
         bool bpmChg = AlbumFieldChanged(nameof(Bpm), Bpm);
         bool commentChg = AlbumFieldChanged(nameof(Comment), Comment);
+        bool workNameChg = AlbumFieldChanged(nameof(WorkName), WorkName);
+        bool movementNameChg = AlbumFieldChanged(nameof(MovementName), MovementName);
+        bool movementNumberChg = AlbumFieldChanged(nameof(MovementNumber), MovementNumber);
+        bool movementCountChg = AlbumFieldChanged(nameof(MovementCount), MovementCount);
+        bool useWorkChg = UseWorkAndMovement != _loadedUseWorkAndMovement;
         bool compChg = IsCompilation != _loadedIsCompilation;
         bool showComposerChg = ShowComposerInAllViews != _loadedShowComposerInAllViews;
+        bool ratingChg = Rating != _loadedRating;
+        bool dislikedChg = IsDisliked != _loadedIsDisliked;
+        int ratingVal = Math.Clamp(Rating, 0, 5);
 
         int yearVal = int.TryParse(Year, out var yr) ? yr : 0;
         int trackNumberVal = int.TryParse(TrackNumber, out var tn) ? tn : 0;
@@ -464,6 +705,8 @@ public partial class MetadataViewModel : ViewModelBase
         int discNumberVal = int.TryParse(DiscNumber, out var dn) ? Math.Max(1, dn) : 1;
         int discCountVal = int.TryParse(DiscCount, out var dc) ? Math.Max(1, dc) : 1;
         int bpmVal = int.TryParse(Bpm, out var bp) ? Math.Max(0, bp) : 0;
+        int movementNumberVal = int.TryParse(MovementNumber, out var mvn) ? Math.Max(0, mvn) : 0;
+        int movementCountVal = int.TryParse(MovementCount, out var mvc) ? Math.Max(0, mvc) : 0;
 
         foreach (var t in _albumTracks)
         {
@@ -480,9 +723,34 @@ public partial class MetadataViewModel : ViewModelBase
             if (discCountChg) t.DiscCount = discCountVal;
             if (bpmChg) t.Bpm = bpmVal;
             if (commentChg) t.Comment = Comment;
+            if (useWorkChg) t.UseWorkAndMovement = UseWorkAndMovement;
+            if (workNameChg) t.WorkName = WorkName;
+            if (movementNameChg) t.MovementName = MovementName;
+            if (movementNumberChg) t.MovementNumber = movementNumberVal;
+            if (movementCountChg) t.MovementCount = movementCountVal;
             if (compChg) t.IsCompilation = IsCompilation;
             if (showComposerChg) t.ShowComposerInAllViews = ShowComposerInAllViews;
+            if (ratingChg) t.Rating = ratingVal;
+            if (dislikedChg) t.IsDisliked = IsDisliked;
             if (albumChg || albumArtistChg) t.AlbumId = Track.ComputeAlbumId(t.AlbumArtist, t.Album);
+        }
+    }
+
+    /// <summary>
+    /// Writes each track's staged per-track match (title, track #, disc #, bpm) onto that Track,
+    /// so the album Save loop persists them. Only runs when the user applied a "Search metadata"
+    /// album result. Shared fields (album/artist/year/genre) are handled by ApplyAlbumScopedDetails.
+    /// </summary>
+    private void ApplyAlbumPerTrackMatches()
+    {
+        if (!_albumPerTrackApproved || _albumMatches.Count == 0) return;
+
+        foreach (var (t, hit) in _albumMatches)
+        {
+            if (!string.IsNullOrWhiteSpace(hit.Title)) t.Title = hit.Title;
+            if (hit.TrackNumber is > 0) t.TrackNumber = hit.TrackNumber.Value;
+            if (hit.DiscNumber is > 0) t.DiscNumber = hit.DiscNumber.Value;
+            if (hit.Bpm is > 0) t.Bpm = hit.Bpm.Value;
         }
     }
 
@@ -577,6 +845,7 @@ public partial class MetadataViewModel : ViewModelBase
         Lyrics = plainFromTrack ?? string.Empty;
         HasCustomLyrics = !string.IsNullOrWhiteSpace(Lyrics);
         HasCustomSyncedLyrics = !string.IsNullOrWhiteSpace(SyncedLyrics);
+        RebuildSyncedLinesFromText();
 
         // Options
         SkipWhenShuffling = _track.SkipWhenShuffling;
@@ -999,7 +1268,59 @@ public partial class MetadataViewModel : ViewModelBase
         SyncedLyrics = string.Empty;
         HasCustomSyncedLyrics = false;
         SyncedLyricsSearchStatus = string.Empty;
+        RebuildSyncedLinesFromText();
     }
+
+    // ── Synced lyrics manual editor plumbing ──
+
+    /// <summary>
+    /// (Re)populates the editable line list from the current text. Prefers the
+    /// synced LRC; when there is none, seeds from the plain lyrics so the user can
+    /// manually time them. Untimestamped lines round-trip safely — Save only writes
+    /// synced lyrics once they actually contain timestamps.
+    /// </summary>
+    private void RebuildSyncedLinesFromText()
+    {
+        foreach (var line in SyncedLyricLines)
+            line.Changed -= OnSyncedLineChanged;
+        SyncedLyricLines.Clear();
+
+        var source = !string.IsNullOrWhiteSpace(SyncedLyrics) ? SyncedLyrics : Lyrics;
+        foreach (var (time, text) in LrcEditorViewModel.ParseLrc(source ?? string.Empty))
+        {
+            var line = new SyncedLyricEditorLine(time, text);
+            line.Changed += OnSyncedLineChanged;
+            SyncedLyricLines.Add(line);
+        }
+
+        HasSyncedLines = SyncedLyricLines.Count > 0;
+    }
+
+    private void OnSyncedLineChanged() => RebuildSyncedTextFromLines();
+
+    /// <summary>Regenerates the SyncedLyrics LRC text from the edited lines, in list order.</summary>
+    private void RebuildSyncedTextFromLines()
+    {
+        SyncedLyrics = string.Join("\n", SyncedLyricLines.Select(l =>
+            l.Timestamp is { } t
+                ? $"[{LrcEditorViewModel.FormatTimestamp(t)}]{l.Text}"
+                : l.Text));
+    }
+
+    // Switching back from the raw-text escape hatch re-parses whatever the user typed.
+    partial void OnEditSyncedAsTextChanged(bool value)
+    {
+        if (!value) RebuildSyncedLinesFromText();
+    }
+
+    [RelayCommand]
+    private void NudgeSyncedLineBack(SyncedLyricEditorLine? line) => line?.Nudge(forward: false);
+
+    [RelayCommand]
+    private void NudgeSyncedLineForward(SyncedLyricEditorLine? line) => line?.Nudge(forward: true);
+
+    [RelayCommand]
+    private void ClearSyncedLineTimestamp(SyncedLyricEditorLine? line) => line?.ClearTimestamp();
 
     [RelayCommand]
     private async Task SearchSyncedLyrics()
@@ -1028,6 +1349,7 @@ public partial class MetadataViewModel : ViewModelBase
                 SyncedLyrics = synced;
                 HasCustomSyncedLyrics = true;
                 SyncedLyricsSearchStatus = "Lyrics found";
+                RebuildSyncedLinesFromText();
             }
             else
             {
@@ -1292,6 +1614,7 @@ public partial class MetadataViewModel : ViewModelBase
             // Album-scoped: fan out only the Details fields the user actually
             // changed to every album track (per-track values are preserved).
             ApplyAlbumScopedDetails();
+            ApplyAlbumPerTrackMatches();
         }
 
         // Apply Lyrics (plain + synced) — defensively strip timestamps from plain
@@ -1317,19 +1640,35 @@ public partial class MetadataViewModel : ViewModelBase
         _track.VolumeAdjust = VolumeAdjust;
         _track.EqPreset = SelectedEqPreset == "None" ? string.Empty : SelectedEqPreset;
 
-        // Fan out options to all album tracks when album-scoped
+        // Fan out options to all album tracks when album-scoped — but only the
+        // fields the user actually changed, so per-track Options on the other
+        // tracks (volume, EQ, start/stop, …) aren't overwritten with the first
+        // track's values on an unrelated save.
         if (_albumScoped && _albumTracks != null)
         {
+            long startMs = HasStartTime ? ParseTimeToMs(StartTime) : 0;
+            long stopMs = HasStopTime ? ParseTimeToMs(StopTime) : 0;
+            string eqVal = SelectedEqPreset == "None" ? string.Empty : SelectedEqPreset;
+
+            bool skipChg = SkipWhenShuffling != _loadedSkipWhenShuffling;
+            bool rememberChg = RememberPlaybackPosition != _loadedRememberPlaybackPosition;
+            bool mediaKindChg = MediaKind != _loadedMediaKind;
+            bool releaseTypeChg = !string.Equals(ReleaseTypeOverride, _loadedReleaseTypeOverride, StringComparison.OrdinalIgnoreCase);
+            bool startChg = startMs != _loadedStartTimeMs;
+            bool stopChg = stopMs != _loadedStopTimeMs;
+            bool volumeChg = VolumeAdjust != _loadedVolumeAdjust;
+            bool eqChg = eqVal != _loadedEqPreset;
+
             foreach (var t in _albumTracks)
             {
-                t.SkipWhenShuffling = SkipWhenShuffling;
-                t.RememberPlaybackPosition = RememberPlaybackPosition;
-                t.MediaKind = MediaKind;
-                t.StartTimeMs = HasStartTime ? ParseTimeToMs(StartTime) : 0;
-                t.StopTimeMs = HasStopTime ? ParseTimeToMs(StopTime) : 0;
-                t.VolumeAdjust = VolumeAdjust;
-                t.EqPreset = SelectedEqPreset == "None" ? string.Empty : SelectedEqPreset;
-                ApplyReleaseTypeOverride(t);
+                if (skipChg) t.SkipWhenShuffling = SkipWhenShuffling;
+                if (rememberChg) t.RememberPlaybackPosition = RememberPlaybackPosition;
+                if (mediaKindChg) t.MediaKind = MediaKind;
+                if (startChg) t.StartTimeMs = startMs;
+                if (stopChg) t.StopTimeMs = stopMs;
+                if (volumeChg) t.VolumeAdjust = VolumeAdjust;
+                if (eqChg) t.EqPreset = eqVal;
+                if (releaseTypeChg) ApplyReleaseTypeOverride(t);
             }
         }
 
@@ -1384,34 +1723,31 @@ public partial class MetadataViewModel : ViewModelBase
         }
         catch { /* Best effort — sidecar write is non-fatal */ }
 
-        // Handle artwork changes
+        // Handle artwork changes. Artwork is per-album in Noctis (the persisted
+        // PNG is keyed by AlbumId and every track carries its own embedded copy),
+        // so embed the new cover in every track of the album and refresh each
+        // affected album's cached PNG. For a single-track edit we resolve the
+        // album's tracks from the library — this mirrors the Remove path, so the
+        // other tracks don't keep stale embedded art that a later load resurrects.
         if (_newArtworkData != null)
         {
-            if (_multiSelect && _albumTracks != null)
+            var artTargets = _albumTracks
+                ?? _library.Tracks.Where(t => t.AlbumId == _track.AlbumId).ToList();
+            if (artTargets.Count == 0) artTargets = new List<Track> { _track };
+
+            foreach (var albumId in artTargets.Select(t => t.AlbumId).Distinct())
             {
-                // Apply the chosen image to every selected track and refresh each
-                // affected album's cached cover.
-                foreach (var albumId in _albumTracks.Select(t => t.AlbumId).Distinct())
+                _persistence.SaveArtwork(albumId, _newArtworkData);
+                ArtworkCache.Invalidate(_persistence.GetArtworkPath(albumId));
+            }
+            await Task.Run(() =>
+            {
+                foreach (var t in artTargets)
                 {
-                    _persistence.SaveArtwork(albumId, _newArtworkData);
-                    ArtworkCache.Invalidate(_persistence.GetArtworkPath(albumId));
+                    try { _metadata.WriteAlbumArt(t.FilePath, _newArtworkData); } catch { }
+                    t.AlbumArtworkPath = null;
                 }
-                var artTargets = _albumTracks.ToList();
-                await Task.Run(() =>
-                {
-                    foreach (var t in artTargets)
-                    {
-                        try { _metadata.WriteAlbumArt(t.FilePath, _newArtworkData); } catch { }
-                        t.AlbumArtworkPath = null;
-                    }
-                });
-            }
-            else
-            {
-                _metadata.WriteAlbumArt(_track.FilePath, _newArtworkData);
-                _persistence.SaveArtwork(_track.AlbumId, _newArtworkData);
-                ArtworkCache.Invalidate(_persistence.GetArtworkPath(_track.AlbumId));
-            }
+            });
         }
         else if (_artworkRemoved)
         {
@@ -1543,8 +1879,20 @@ public partial class MetadataViewModel : ViewModelBase
     private void ResetPlayCount()
     {
         PlayCount = "0";
-        _track.PlayCount = 0;
-        _track.LastPlayed = null;
+        // Album-scoped: clear every track of the album, not just the first one.
+        if (_albumScoped && _albumTracks != null)
+        {
+            foreach (var t in _albumTracks)
+            {
+                t.PlayCount = 0;
+                t.LastPlayed = null;
+            }
+        }
+        else
+        {
+            _track.PlayCount = 0;
+            _track.LastPlayed = null;
+        }
         OnPropertyChanged(nameof(PlayCountDisplay));
     }
 

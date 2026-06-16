@@ -193,4 +193,20 @@ public class Album
     public bool HasReleaseDate => !string.IsNullOrWhiteSpace(ReleaseDateFormatted);
 
     public override string ToString() => $"{Artist} - {Name}";
+
+    /// <summary>
+    /// Deterministically selects the track whose embedded/folder art represents the album,
+    /// using the same ordering as the album track list (lowest disc, then track, then title;
+    /// disc/track 0 sink appropriately). Returns null for an empty set. Keeping this stable
+    /// ensures the cached cover does not vary between scans for mixed-art albums.
+    /// </summary>
+    public static Track? SelectArtworkRepresentative(IReadOnlyList<Track>? tracks)
+    {
+        if (tracks == null || tracks.Count == 0) return null;
+        return tracks
+            .OrderBy(t => t.DiscNumber <= 0 ? 1 : t.DiscNumber)
+            .ThenBy(t => t.TrackNumber <= 0 ? int.MaxValue : t.TrackNumber)
+            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
+            .First();
+    }
 }

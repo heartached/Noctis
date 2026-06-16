@@ -63,9 +63,6 @@
         <DataTemplate DataType="{x:Type vm:MoreByArtistViewModel}">
             <views:MoreByArtistView />
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:ArtistDetailViewModel}">
-            <views:ArtistDetailView />
-        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:LibraryArtistsViewModel}">
             <views:LibraryArtistsView />
         </DataTemplate>

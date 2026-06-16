@@ -17,6 +17,7 @@ public partial class SettingsView : UserControl
 {
     private const double PreampThumbSize = 14;
     private const double PreampDefault = 0.0;
+    private const double CrossfadeDurationDefault = 6.0; // matches the Settings reset value
 
     private SettingsViewModel? _trackedViewModel;
     private readonly TranslateTransform _preampThumbTransform = new();
@@ -222,6 +223,28 @@ public partial class SettingsView : UserControl
     {
         if (DataContext is SettingsViewModel vm)
             vm.ReplayGainPreampDb = PreampDefault;
+    }
+
+    // Double-tapping the crossfade duration slider restores the default duration
+    // (same affordance as the ReplayGain pre-amp slider).
+    private void OnCrossfadeSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+        {
+            vm.CrossfadeDuration = CrossfadeDurationDefault;
+            e.Handled = true;
+        }
+    }
+
+    // Double-tapping an EQ gain slider resets that band to 0 dB (same affordance
+    // as the ReplayGain pre-amp slider).
+    private void OnEqGainSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Slider { DataContext: EqBandViewModel band })
+        {
+            band.GainDb = 0;
+            e.Handled = true;
+        }
     }
 
     private void OnPreampSliderPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)

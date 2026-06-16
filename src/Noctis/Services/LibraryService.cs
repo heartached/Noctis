@@ -98,9 +98,6 @@ public class LibraryService : ILibraryService
 
         await Task.Run(() =>
         {
-            // Track which album IDs have had art extraction attempted to avoid redundant work
-            var artExtracted = new ConcurrentDictionary<Guid, byte>();
-
             foreach (var folder in includeRoots)
             {
                 if (!Directory.Exists(folder)) continue;
@@ -153,17 +150,6 @@ public class LibraryService : ILibraryService
                                 track.SourceType = SourceType.Local;
                             newTracks.Add(track);
                             Interlocked.Increment(ref changedCount);
-
-                            // Extract and cache album artwork if we don't have it yet
-                            var artPath = _persistence.GetArtworkPath(track.AlbumId);
-                            if (!File.Exists(artPath) && artExtracted.TryAdd(track.AlbumId, 0))
-                            {
-                                var artBytes = _metadata.ExtractAlbumArt(filePath);
-                                if (artBytes != null)
-                                {
-                                    _persistence.SaveArtwork(track.AlbumId, artBytes);
-                                }
-                            }
                         }
                         else
                         {
@@ -185,6 +171,34 @@ public class LibraryService : ILibraryService
         }, ct);
 
         // If scan was cancelled, don't replace the library with partial data
+        if (ct.IsCancellationRequested) return;
+
+        // Deterministic album-art extraction. Previously art was pulled inside the parallel
+        // scan loop, so whichever thread won the race set the album cover — non-deterministic
+        // for albums whose tracks carry differing embedded art (e.g. compilations). Here we
+        // pick each album's representative track (lowest disc/track) so the cached cover is
+        // stable across scans. Same number of extractions as before (one per uncached album).
+        await Task.Run(() =>
+        {
+            var artGroups = newTracks
+                .Where(t => t.SourceType == SourceType.Local)
+                .GroupBy(t => t.AlbumId)
+                .Where(g => !File.Exists(_persistence.GetArtworkPath(g.Key)))
+                .ToList();
+
+            Parallel.ForEach(artGroups,
+                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = ct },
+                g =>
+                {
+                    if (ct.IsCancellationRequested) return;
+                    var rep = Album.SelectArtworkRepresentative(g.ToList());
+                    if (rep == null) return;
+                    var artBytes = _metadata.ExtractAlbumArt(rep.FilePath);
+                    if (artBytes != null)
+                        _persistence.SaveArtwork(g.Key, artBytes);
+                });
+        }, ct);
+
         if (ct.IsCancellationRequested) return;
 
         // Fast path: every existing track was found and unchanged, and no new or
