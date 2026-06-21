@@ -47,7 +47,7 @@ internal sealed class WindowsSessionVolume
         try
         {
             var inst = new WindowsSessionVolume();
-            inst._enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
+            inst._enumerator = (IMMDeviceEnumerator)CoreAudioComInterop.CreateMMDeviceEnumerator();
             return inst; // sessions are resolved lazily once audio plays
         }
         catch
@@ -122,7 +122,7 @@ internal sealed class WindowsSessionVolume
         var keepAliveId = WasapiSilenceKeepAlive.SessionInstanceId;
         try
         {
-            _enumerator ??= (IMMDeviceEnumerator)new MMDeviceEnumerator();
+            _enumerator ??= (IMMDeviceEnumerator)CoreAudioComInterop.CreateMMDeviceEnumerator();
             if (_enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eConsole, out var device) < 0 || device == null)
                 return;
 
@@ -264,8 +264,10 @@ internal sealed class WindowsSessionVolume
     // stubbed parameterless (slot position is by declaration order, and they're
     // never invoked). All use PreserveSig and return the HRESULT.
 
-    [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
-    private class MMDeviceEnumerator { }
+    // The MMDeviceEnumerator coclass is activated via CoreAudioComInterop
+    // (Type.GetTypeFromCLSID) rather than a private [ComImport] coclass, so it
+    // can't collide with the other Core Audio consumers' coclasses for the same
+    // CLSID. See CoreAudioComInterop for the full rationale.
 
     private enum EDataFlow { eRender, eCapture, eAll }
     private enum ERole { eConsole, eMultimedia, eCommunications }

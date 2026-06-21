@@ -122,7 +122,7 @@ internal sealed class WasapiSilenceKeepAlive : IDisposable
             IAudioRenderClient? render = null;
             try
             {
-                enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
+                enumerator = (IMMDeviceEnumerator)CoreAudioComInterop.CreateMMDeviceEnumerator();
                 Check(enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out device));
                 var deviceId = GetDeviceId(device);
 
@@ -312,8 +312,12 @@ internal sealed class WasapiSilenceKeepAlive : IDisposable
     // ── Minimal Core Audio COM interop (same pattern as WindowsSessionVolume:
     // full vtable in declaration order, unused slots stubbed, PreserveSig) ──
 
-    [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
-    private class MMDeviceEnumeratorComObject { }
+    // The MMDeviceEnumerator coclass is activated via CoreAudioComInterop
+    // (Type.GetTypeFromCLSID), NOT a private [ComImport] coclass. Declaring a
+    // second coclass for this CLSID (as WindowsSessionVolume and NAudio also do)
+    // collided in the CLR's per-CLSID coclass binding and made this whole stream
+    // throw InvalidCastException on activation — never warming the engine. See
+    // CoreAudioComInterop for the full rationale.
 
     private enum EDataFlow { eRender, eCapture, eAll }
     private enum ERole { eConsole, eMultimedia, eCommunications }

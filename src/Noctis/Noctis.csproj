@@ -26,6 +26,11 @@
     <NoWarn>CS8625;CS0067;MVVMTK0039;CA1416</NoWarn>
   </PropertyGroup>
 
+  <!-- Expose internal services (e.g. the Core Audio COM interop) to the test project. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Noctis.Tests" />
+  </ItemGroup>
+
   <!-- Avalonia UI -->
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.17" />

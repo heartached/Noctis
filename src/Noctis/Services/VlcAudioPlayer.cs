@@ -236,6 +236,14 @@ public class VlcAudioPlayer : IAudioPlayer
 
     public VlcAudioPlayer()
     {
+        // Bind the Core Audio MMDeviceEnumerator CLSID to NAudio's coclass FIRST,
+        // before the session-volume / keep-alive / WASAPI paths activate it. NAudio
+        // (WasapiGainOutput, exclusive + per-sample output) requires its own coclass
+        // cast to succeed; if anything else binds the CLSID first, NAudio's sinks
+        // throw and LibVLC ends up with no audio output at all. See CoreAudioComInterop.
+        if (OperatingSystem.IsWindows())
+            CoreAudioComInterop.EnsureInitialized();
+
         try
         {
             // On macOS the VideoLAN.LibVLC.Mac NuGet has shifting layouts between
