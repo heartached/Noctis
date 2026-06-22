@@ -239,7 +239,7 @@
                 </StackPanel>
 
                 <!-- Footer: format / text-color / sync toggles + actions -->
-                <Grid Grid.Row="3" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,16,0,0">
+                <Grid Grid.Row="3" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,16,0,0">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <!-- Aspect -->
                         <Button Classes="share-pill"
@@ -295,6 +295,17 @@
                         </StackPanel>
                     </Button>
                     <Button Grid.Column="3"
+                            Classes="share-pill"
+                            Margin="0,0,8,0"
+                            Click="OnSaveVideoClick"
+                            IsEnabled="{Binding CanExportVideo}"
+                            ToolTip.Tip="Save an MP4 clip — this lyric card with the song audio">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource SaveDiskIcon}" Width="13" Height="13"/>
+                            <TextBlock Text="Save Video" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="4"
                             Classes="share-pill accent"
                             Click="OnSaveClick"
                             IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">

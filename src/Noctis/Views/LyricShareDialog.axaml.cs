@@ -62,6 +62,21 @@ public partial class LyricShareDialog : Window
             vm.ReportStatus(status);
     }
 
+    private async void OnSaveVideoClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var vm = Vm;
+        if (vm is null || !vm.CanExportVideo)
+            return;
+
+        var path = await MediaExportHelper.PickMp4PathAsync(this, vm.SuggestedVideoFileName);
+        if (path is null)
+            return; // cancelled
+
+        vm.ReportStatus("Rendering clip…");
+        var status = await vm.ExportClipAsync(path);
+        vm.ReportStatus(status);
+    }
+
     private async void OnCopyClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         var vm = Vm;

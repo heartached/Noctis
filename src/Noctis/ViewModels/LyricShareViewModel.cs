@@ -5,6 +5,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -65,6 +66,9 @@ public partial class LyricShareViewModel : ViewModelBase
     [ObservableProperty] private Bitmap? _preview;
     [ObservableProperty] private string _statusText = string.Empty;
 
+    /// <summary>True while an MP4 clip is being rendered (disables the export buttons).</summary>
+    [ObservableProperty] private bool _isRendering;
+
     [ObservableProperty] private ShareTextColor _textColor = ShareTextColor.Auto;
 
     // ── Background color ────────────────────────────────────────────────
@@ -118,6 +122,23 @@ public partial class LyricShareViewModel : ViewModelBase
             return name + ".png";
         }
     }
+
+    /// <summary>Suggested file name for the clip save dialog (mirrors the PNG name).</summary>
+    public string SuggestedVideoFileName => Path.ChangeExtension(SuggestedFileName, ".mp4");
+
+    /// <summary>
+    /// True when a card is rendered AND the track has a real local audio file AND we're
+    /// not already rendering — i.e. the Save Video button should be enabled.
+    /// </summary>
+    public bool CanExportVideo =>
+        !IsRendering
+        && CurrentPng != null
+        && !string.IsNullOrWhiteSpace(_track.FilePath)
+        && File.Exists(_track.FilePath);
+
+    // CanExportVideo has no backing field, so raise it manually when its inputs change.
+    partial void OnPreviewChanged(Bitmap? value) => OnPropertyChanged(nameof(CanExportVideo));
+    partial void OnIsRenderingChanged(bool value) => OnPropertyChanged(nameof(CanExportVideo));
 
     public LyricShareViewModel(Track track, IReadOnlyList<string> lines, int preselectIndex = 0)
         : this(track, lines, null, null, preselectIndex)
@@ -388,6 +409,42 @@ public partial class LyricShareViewModel : ViewModelBase
     }
 
     public void ReportStatus(string message) => StatusText = message;
+
+    /// <summary>Derives the clip's audio window from the selected lines and playback position.</summary>
+    public ShareClipTiming GetClipTiming()
+    {
+        var lines = Lines.Select(l => new ShareClipLine(l.Timestamp, l.IsSelected)).ToList();
+        double? position = _player?.Position.TotalSeconds;
+        return ShareClipTiming.Compute(lines, position);
+    }
+
+    /// <summary>
+    /// Renders the current card + matching audio slice to an MP4 at <paramref name="outputPath"/>.
+    /// Returns a status string for the dialog (never throws). ffmpeg is resolved from the
+    /// app's audio-converter service; absence is reported, not fatal.
+    /// </summary>
+    public async Task<string> ExportClipAsync(string outputPath)
+    {
+        if (CurrentPng is not { } png)
+            return "Nothing to export";
+        if (string.IsNullOrWhiteSpace(_track.FilePath) || !File.Exists(_track.FilePath))
+            return "No audio file for this track";
+
+        var ffmpeg = App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath();
+        if (string.IsNullOrWhiteSpace(ffmpeg))
+            return "ffmpeg not found — set its path in Settings";
+
+        IsRendering = true;
+        try
+        {
+            var (ok, error) = await ShareClipRenderer.RenderAsync(ffmpeg, png, _track.FilePath, outputPath, GetClipTiming());
+            return ok ? "Saved" : $"Clip failed: {error}";
+        }
+        finally
+        {
+            IsRendering = false;
+        }
+    }
 
     /// <summary>Unsubscribes from the player so the dialog can be garbage-collected.</summary>
     public void Detach()
