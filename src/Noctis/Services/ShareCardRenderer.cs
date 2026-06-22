@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using SkiaSharp;
 
 namespace Noctis.Services;
@@ -143,6 +145,10 @@ public static class ShareCardRenderer
         // Available height for lyrics depends on the card height, which differs by format.
         float cardMaxH = h - CardMargin * 2;
         float maxLyricsH = cardMaxH - CardPad * 2 - headerH - HeaderToLyricsGap - footerBlock;
+        // Normalize exotic whitespace before measuring/wrapping: Skia's single-typeface
+        // DrawText does no font fallback, so a non-breaking/narrow/zero-width space the lyric
+        // source slipped in would paint as a .notdef "tofu" box (and dodge the space-based wrap).
+        var renderLines = spec.Lines.Select(SanitizeForRender).ToList();
         float lyricSize = 60;
         List<string> wrapped;
         float lineHeight;
@@ -150,7 +156,7 @@ public static class ShareCardRenderer
         while (true)
         {
             lyricPaint.TextSize = lyricSize;
-            wrapped = WrapAll(spec.Lines, contentW, s => lyricPaint.MeasureText(s));
+            wrapped = WrapAll(renderLines, contentW, s => lyricPaint.MeasureText(s));
             lineHeight = lyricSize * 1.32f;
             if (wrapped.Count * lineHeight <= maxLyricsH || lyricSize <= 32)
                 break;
@@ -222,7 +228,7 @@ public static class ShareCardRenderer
         float titleBaseline = contentTop + ArtSize / 2f - 6;
         // Reserve room for the explicit badge so it never collides with the title.
         float badgeReserve = spec.IsExplicit ? titlePaint.TextSize * 0.72f + 14 : 0;
-        var titleText = Ellipsize(spec.Title, textMaxW - badgeReserve, s => titlePaint.MeasureText(s));
+        var titleText = Ellipsize(SanitizeForRender(spec.Title), textMaxW - badgeReserve, s => titlePaint.MeasureText(s));
         canvas.DrawText(titleText, textX, titleBaseline, titlePaint);
         if (spec.IsExplicit)
         {
@@ -230,7 +236,7 @@ public static class ShareCardRenderer
             DrawExplicitBadge(canvas, regularFace, fg, cardColor,
                 badgeX, titleBaseline - titlePaint.TextSize * 0.34f, titlePaint.TextSize);
         }
-        canvas.DrawText(Ellipsize(spec.Artist, textMaxW, s => artistPaint.MeasureText(s)),
+        canvas.DrawText(Ellipsize(SanitizeForRender(spec.Artist), textMaxW, s => artistPaint.MeasureText(s)),
             textX, contentTop + ArtSize / 2f + 32, artistPaint);
 
         // ── Lyric lines ─────────────────────────────────────────────────
@@ -538,6 +544,53 @@ public static class ShareCardRenderer
         if (current.Length > 0)
             result.Add(current);
         return result;
+    }
+
+    /// <summary>
+    /// Normalizes text for SkiaSharp's single-typeface <c>DrawText</c>, which does no font
+    /// fallback — any glyph the render font lacks is painted as a .notdef "tofu" box. Lyrics
+    /// from online sources often join words with exotic spaces (non-breaking U+00A0, narrow
+    /// no-break U+202F, thin/figure spaces) or zero-width / formatting marks (ZWSP, word
+    /// joiner, BOM) that fonts like Inter can't draw. Every such separator is folded to a
+    /// single plain ASCII space — NOT dropped, so "leave​her" becomes "leave her", not
+    /// "leaveher" — with runs collapsed and the ends trimmed.
+    /// </summary>
+    public static string SanitizeForRender(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return string.Empty;
+
+        var sb = new StringBuilder(text.Length);
+        bool wroteNonSpace = false;
+        bool pendingSpace = false;
+        foreach (var ch in text)
+        {
+            bool isSeparator = ch == ' ' || CharUnicodeInfo.GetUnicodeCategory(ch) is
+                UnicodeCategory.SpaceSeparator       // NBSP, narrow/thin/ideographic spaces, …
+                or UnicodeCategory.LineSeparator
+                or UnicodeCategory.ParagraphSeparator
+                or UnicodeCategory.Format            // ZWSP, ZWNJ, ZWJ, word joiner, BOM, …
+                or UnicodeCategory.Control;          // tab, stray control characters
+
+            if (isSeparator)
+            {
+                // Defer the space: this collapses runs and drops leading/trailing whitespace
+                // (a pending space is only flushed once a following non-space char arrives).
+                if (wroteNonSpace)
+                    pendingSpace = true;
+            }
+            else
+            {
+                if (pendingSpace)
+                {
+                    sb.Append(' ');
+                    pendingSpace = false;
+                }
+                sb.Append(ch);
+                wroteNonSpace = true;
+            }
+        }
+        return sb.ToString();
     }
 
     /// <summary>Whether a background color is light enough to need dark text.</summary>

@@ -39,13 +39,50 @@ public class ShareCardRendererTests
     }
 
     [Theory]
-    [InlineData(0, 0, 0, false)]        // black bg → white text
-    [InlineData(255, 255, 255, true)]   // white bg → dark text
-    [InlineData(26, 26, 46, false)]     // app navy → white text
-    [InlineData(160, 160, 160, true)]   // light gray (like the Spotify gray card) → dark text
+    [InlineData(0, 0, 0, false)]        // black bg -> white text
+    [InlineData(255, 255, 255, true)]   // white bg -> dark text
+    [InlineData(26, 26, 46, false)]     // app navy -> white text
+    [InlineData(160, 160, 160, true)]   // light gray (like the Spotify gray card) -> dark text
     public void UseDarkText_PicksByLuminance(byte r, byte g, byte b, bool expectDark)
     {
         Assert.Equal(expectDark, ShareCardRenderer.UseDarkText(r, g, b));
+    }
+
+    [Fact]
+    public void SanitizeForRender_FoldsExoticSpaces_ToPlainSpace()
+    {
+        // The culprits seen rendering as tofu boxes on the share card: non-breaking (U+00A0),
+        // narrow no-break (U+202F), thin (U+2009) and ideographic (U+3000) spaces. Each folds
+        // to a plain ASCII space so the single render font always has a glyph for it.
+        var input = "the right ****, only lunch time　now";
+        Assert.Equal("the right ****, only lunch time now",
+            ShareCardRenderer.SanitizeForRender(input));
+    }
+
+    [Fact]
+    public void SanitizeForRender_TurnsZeroWidthSeparatorsIntoSpaces_NotJoinedWords()
+    {
+        // Lyric providers join words with a zero-width / format char the render font can't
+        // draw. It must become a real space ("leave her"), not vanish ("leaveher").
+        Assert.Equal("leave her", ShareCardRenderer.SanitizeForRender("leave​her"));   // ZWSP
+        Assert.Equal("keep her", ShareCardRenderer.SanitizeForRender("keep⁠her"));     // word joiner
+        Assert.Equal("doesn't make", ShareCardRenderer.SanitizeForRender("doesn't﻿make")); // BOM/ZWNBSP
+        Assert.Equal("mamacita, yeah", ShareCardRenderer.SanitizeForRender("mamacita,​yeah"));
+    }
+
+    [Fact]
+    public void SanitizeForRender_CollapsesRuns_TrimsEnds_AndFoldsTab()
+    {
+        // A leading BOM, doubled separators, a tab and trailing whitespace all reduce to
+        // single interior spaces with trimmed ends.
+        Assert.Equal("a b c", ShareCardRenderer.SanitizeForRender("﻿a ​b\tc  "));
+    }
+
+    [Fact]
+    public void SanitizeForRender_LeavesPlainTextUntouched()
+    {
+        var input = "I done did the right ****, only on the wrong night";
+        Assert.Equal(input, ShareCardRenderer.SanitizeForRender(input));
     }
 
     [Fact]
