@@ -48,7 +48,7 @@ jobs:
           VERSION="${TAG#v}"
           REPO="${{ github.repository }}"
           ZIP_URL="https://github.com/$REPO/releases/download/$TAG/Noctis-windows-x64.zip"
-          SETUP_URL="https://github.com/$REPO/releases/download/$TAG/Noctis-Setup.exe"
+          SETUP_URL="https://github.com/$REPO/releases/download/$TAG/Noctis-v$VERSION-Setup.exe"
           curl -fsSL -o noctis-win.zip "$ZIP_URL"
           curl -fsSL -o noctis-setup.exe "$SETUP_URL"
           ZIP_SHA=$(sha256sum noctis-win.zip | cut -d' ' -f1)
