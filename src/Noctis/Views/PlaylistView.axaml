@@ -276,7 +276,7 @@
                                     <MenuItem Header="Add to Queue"
                                               Command="{Binding AddAllToQueueCommand}">
                                         <MenuItem.Icon>
-                                            <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />

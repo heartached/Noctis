@@ -20,15 +20,15 @@ public class IconKeyToGeometryConverter : IValueConverter
     private static readonly IReadOnlyDictionary<string, string> IconMap =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["HomeIcon"] = "avares://Noctis/Assets/Icons/Home%20icon.png",
-            ["SongsIcon"] = "avares://Noctis/Assets/Icons/Songs%20icon.png",
-            ["AlbumsIcon"] = "avares://Noctis/Assets/Icons/Albums%20icon.png",
-            ["ArtistsIcon"] = "avares://Noctis/Assets/Icons/Artists%20icon.png",
-            ["FoldersIcon"] = "avares://Noctis/Assets/Icons/Folder%20icon.png",
+            ["HomeIcon"] = "avares://Noctis/Assets/Icons/Home%20ICON.png",
+            ["SongsIcon"] = "avares://Noctis/Assets/Icons/Songs%20ICON.png",
+            ["AlbumsIcon"] = "avares://Noctis/Assets/Icons/Albums%20ICON.png",
+            ["ArtistsIcon"] = "avares://Noctis/Assets/Icons/Artists%20ICON.png",
+            ["FoldersIcon"] = "avares://Noctis/Assets/Icons/Folder%20ICON.png",
 
             ["PlaylistsIcon"] = "avares://Noctis/Assets/Icons/Playlist%20icon.png",
             ["FavoritesIcon"] = "avares://Noctis/Assets/Icons/Favorites%20icon.png",
-            ["SettingsIcon"] = "avares://Noctis/Assets/Icons/Settings%20icon.png",
+            ["SettingsIcon"] = "avares://Noctis/Assets/Icons/Settings%20ICON.png",
             // Fallback for smart playlist rows in sidebar.
             ["SmartPlaylistIcon"] = "avares://Noctis/Assets/Icons/Playlist%20icon.png"
         };

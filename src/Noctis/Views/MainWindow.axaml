@@ -85,7 +85,7 @@
                                 <Border Width="17" Height="17" Background="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"
                                         RenderOptions.BitmapInterpolationMode="HighQuality">
                                     <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20icon.png" Stretch="Uniform" />
+                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" />
                                     </Border.OpacityMask>
                                 </Border>
                             </Button>
