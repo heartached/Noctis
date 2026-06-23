@@ -180,6 +180,7 @@ public sealed class UpdateService
             best = candidates[0];
 
         var installerAsset = FindInstallerAsset(best.Release);
+        var checksumsAsset = FindChecksumsAsset(best.Release);
 
         return new UpdateInfo
         {
@@ -189,6 +190,8 @@ public sealed class UpdateService
             InstallerApiUrl = installerAsset?.Url,
             InstallerUrl = installerAsset?.BrowserDownloadUrl,
             InstallerSize = installerAsset?.Size ?? 0,
+            InstallerAssetName = installerAsset?.Name,
+            ChecksumsApiUrl = checksumsAsset?.Url,
             ReleaseUrl = best.Release.HtmlUrl ?? $"https://github.com/heartached/Noctis/releases/tag/{best.Release.TagName}"
         };
     }
@@ -228,6 +231,17 @@ public sealed class UpdateService
     /// Downloads the installer to %TEMP%. Reports progress 0-100.
     /// Returns the path to the downloaded file.
     /// </summary>
+    /// <summary>
+    /// Locates a SHA-256 checksums manifest asset on the release, if one is published
+    /// (e.g. "SHA256SUMS" or "checksums.txt"). When present, the downloaded installer is
+    /// verified against it before launch; when absent, the updater falls back to size-only.
+    /// </summary>
+    private static GitHubAsset? FindChecksumsAsset(GitHubRelease release)
+        => release.Assets?.FirstOrDefault(a =>
+            a.Name != null &&
+            (a.Name.Contains("SHA256", StringComparison.OrdinalIgnoreCase) ||
+             a.Name.Equals("checksums.txt", StringComparison.OrdinalIgnoreCase)));
+
     public Task<string> DownloadInstallerAsync(
         UpdateInfo update,
         IProgress<double>? progress = null,
@@ -236,14 +250,22 @@ public sealed class UpdateService
         if (update.InstallerApiUrl is null)
             throw new InvalidOperationException("In-app updates require the GitHub release asset API URL.");
 
-        return DownloadInstallerAsync(update.InstallerApiUrl, update.InstallerSize, progress, ct);
+        return DownloadInstallerAsync(
+            update.InstallerApiUrl, update.InstallerSize,
+            update.ChecksumsApiUrl, update.InstallerAssetName, progress, ct);
     }
 
     private async Task<string> DownloadInstallerAsync(
         string url, long expectedSize,
+        string? checksumsUrl, string? assetName,
         IProgress<double>? progress,
         CancellationToken ct)
     {
+        // The installer is launched with elevation, so only ever pull it from GitHub over
+        // HTTPS — never from a host smuggled into a tampered API response.
+        if (!IsTrustedGitHubUrl(url))
+            throw new InvalidOperationException("Refusing to download an update from an untrusted (non-GitHub) URL.");
+
         var tempPath = Path.Combine(Path.GetTempPath(),
             OperatingSystem.IsMacOS() ? "Noctis-Update.dmg" : "Noctis-Update-Setup.exe");
 
@@ -274,6 +296,7 @@ public sealed class UpdateService
             }
 
             await fileStream.FlushAsync(ct);
+            await fileStream.DisposeAsync(); // release the handle before validating / hashing
 
             // Validate file size if GitHub reported one
             if (expectedSize > 0)
@@ -284,6 +307,27 @@ public sealed class UpdateService
                     File.Delete(tempPath);
                     throw new InvalidOperationException(
                         $"Download corrupted: expected {expectedSize} bytes, got {actualSize}.");
+                }
+            }
+
+            // Hash verification: when the release ships a checksums manifest, verify the
+            // installer's SHA-256 before it is ever launched with elevation. Fail closed if
+            // the manifest is present but lacks (or contradicts) this file's entry. Releases
+            // without a manifest fall back to the size check above.
+            if (!string.IsNullOrEmpty(checksumsUrl))
+            {
+                if (!IsTrustedGitHubUrl(checksumsUrl))
+                    throw new InvalidOperationException("Refusing to fetch update checksums from an untrusted URL.");
+
+                var manifest = await DownloadTextAsync(checksumsUrl, ct);
+                var expectedHash = ParseSha256FromChecksums(manifest, assetName ?? Path.GetFileName(tempPath));
+                var actualHash = await ComputeSha256Async(tempPath, ct);
+
+                if (expectedHash == null || !string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Delete(tempPath);
+                    throw new InvalidOperationException(
+                        "Update failed SHA-256 verification — the download may be incomplete or tampered.");
                 }
             }
 
@@ -367,6 +411,69 @@ public sealed class UpdateService
         return Version.TryParse(raw, out var v) ? v : null;
     }
 
+    // ── Security helpers ──
+
+    /// <summary>
+    /// True only for HTTPS URLs whose host is GitHub (or a GitHub asset CDN). The in-app
+    /// updater downloads and then launches an elevated installer, so every URL it fetches
+    /// must be pinned to GitHub — never a host smuggled in via a tampered API response.
+    /// </summary>
+    internal static bool IsTrustedGitHubUrl(string? url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+        if (uri.Scheme != Uri.UriSchemeHttps) return false;
+        var host = uri.Host;
+        return host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("api.github.com", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".github.com", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Extracts the expected lowercase SHA-256 for <paramref name="fileName"/> from a
+    /// standard sha256sum-format manifest ("&lt;hex&gt;  &lt;name&gt;" or "&lt;hex&gt; *&lt;name&gt;").
+    /// Returns null when no line matches that file name.
+    /// </summary>
+    internal static string? ParseSha256FromChecksums(string? content, string? fileName)
+    {
+        if (string.IsNullOrEmpty(content) || string.IsNullOrEmpty(fileName)) return null;
+
+        foreach (var rawLine in content.Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (line.Length == 0 || line[0] == '#') continue;
+
+            var sep = line.IndexOfAny(new[] { ' ', '\t' });
+            if (sep <= 0) continue;
+
+            var hash = line[..sep].Trim();
+            var name = line[(sep + 1)..].TrimStart('*', ' ', '\t').Trim();
+
+            if (hash.Length == 64 && hash.All(Uri.IsHexDigit) &&
+                name.Equals(fileName, StringComparison.OrdinalIgnoreCase))
+                return hash.ToLowerInvariant();
+        }
+        return null;
+    }
+
+    private async Task<string> DownloadTextAsync(string url, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Accept.Add(
+            new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/octet-stream"));
+        using var response = await _http.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync(ct);
+    }
+
+    private static async Task<string> ComputeSha256Async(string path, CancellationToken ct)
+    {
+        await using var fs = File.OpenRead(path);
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var hash = await sha.ComputeHashAsync(fs, ct);
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
     // ── GitHub API DTOs ──
 
     private sealed class GitHubRelease
@@ -414,6 +521,10 @@ public sealed class UpdateInfo
     /// <summary>Browser download URL reserved for manual downloads and website links.</summary>
     public string? InstallerUrl { get; init; }
     public long InstallerSize { get; init; }
+    /// <summary>Installer asset file name, used to match its line in the checksums manifest.</summary>
+    public string? InstallerAssetName { get; init; }
+    /// <summary>GitHub API asset URL of the SHA-256 checksums manifest, when the release publishes one.</summary>
+    public string? ChecksumsApiUrl { get; init; }
     public required string ReleaseUrl { get; init; }
 }
 

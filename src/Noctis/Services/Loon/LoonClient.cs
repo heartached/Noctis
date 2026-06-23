@@ -199,16 +199,48 @@ public sealed class LoonClient : IDisposable
 
     // ── Handle incoming requests ──
 
+    /// <summary>
+    /// Resolves a relay-requested artwork path to an absolute file path, returning null
+    /// when the request escapes <paramref name="artworkDirectory"/> (path traversal).
+    /// The relay controls the request string, so callers must reject a null result rather
+    /// than read an arbitrary file off the local disk.
+    /// </summary>
+    internal static string? ResolveArtworkPath(string artworkDirectory, string requestPath)
+    {
+        if (string.IsNullOrEmpty(requestPath)) return null;
+
+        var fileName = requestPath.StartsWith("artwork/", StringComparison.Ordinal)
+            ? requestPath["artwork/".Length..]
+            : requestPath;
+        if (string.IsNullOrEmpty(fileName)) return null;
+
+        var root = Path.GetFullPath(artworkDirectory);
+        string fullPath;
+        try { fullPath = Path.GetFullPath(Path.Combine(root, fileName)); }
+        catch { return null; } // illegal characters etc.
+
+        var rootWithSep = root.EndsWith(Path.DirectorySeparatorChar)
+            ? root
+            : root + Path.DirectorySeparatorChar;
+
+        return fullPath.StartsWith(rootWithSep, StringComparison.Ordinal) ? fullPath : null;
+    }
+
     private async Task HandleRequestAsync(RequestMessage request, CancellationToken ct)
     {
         try
         {
-            // path is like "artwork/abc123.jpg"
-            var fileName = request.Path;
-            if (fileName.StartsWith("artwork/"))
-                fileName = fileName["artwork/".Length..];
-
-            var filePath = Path.Combine(_artworkDirectory, fileName);
+            // path is like "artwork/abc123.jpg". The relay supplies this string, so guard
+            // against path traversal ("artwork/../../secret") before touching the filesystem —
+            // otherwise a malicious or compromised relay could read arbitrary local files.
+            var filePath = ResolveArtworkPath(_artworkDirectory, request.Path);
+            if (filePath == null)
+            {
+                Debug.WriteLine($"[Loon] Rejected out-of-bounds request {request.Id}: {request.Path}");
+                await SendAsync(LoonMessageCodec.EncodeEmptyResponse(request.Id), ct);
+                return;
+            }
+            var fileName = Path.GetFileName(filePath);
 
             if (!File.Exists(filePath))
             {
