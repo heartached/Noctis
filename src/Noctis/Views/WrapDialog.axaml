@@ -12,21 +12,52 @@
         ShowInTaskbar="False">
 
     <Window.Styles>
+        <!-- Pill buttons. Background/CornerRadius are set on the templated
+             ContentPresenter (not the Button) so the rounded shape and the
+             accent colour survive :pointerover — matching the Statistics tabs. -->
         <Style Selector="Button.share-pill">
-            <Setter Property="Background" Value="#22FFFFFF"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Padding" Value="14,7"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
-        <Style Selector="Button.share-pill:pointerover">
+        <Style Selector="Button.share-pill /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Button.share-pill:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#33FFFFFF"/>
         </Style>
-        <Style Selector="Button.share-pill.active">
+        <!-- Coloured pills: keep the accent on hover -->
+        <Style Selector="Button.share-pill.active /template/ ContentPresenter,
+                         Button.share-pill.accent /template/ ContentPresenter,
+                         Button.share-pill.active:pointerover /template/ ContentPresenter,
+                         Button.share-pill.accent:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
+        <Style Selector="Button.share-pill.active, Button.share-pill.accent">
             <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+
+        <!-- Year picker: pill-shaped combo box with rounded item highlights,
+             matching the rounded menu rows in the Songs section. -->
+        <Style Selector="ComboBox">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Padding" Value="14,4"/>
+        </Style>
+        <!-- Round every border in the template so the outline hugs the pill on all edges -->
+        <Style Selector="ComboBox /template/ Border">
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="ComboBoxItem">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Margin" Value="3,1"/>
+            <Setter Property="Padding" Value="11,6"/>
+        </Style>
+        <Style Selector="ComboBoxItem /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="999"/>
         </Style>
 
         <Style Selector="TextBlock.wrap-stat-value">
@@ -74,11 +105,6 @@
                         <Run Text="Noctis Wrap"/>
                         <Run Text="{Binding PeriodLabel}" Foreground="{DynamicResource AccentTextBrush}"/>
                     </TextBlock>
-                    <Border Background="#33FFB300" CornerRadius="999" Padding="8,3"
-                            VerticalAlignment="Center"
-                            IsVisible="{Binding IsTestData}">
-                        <TextBlock Text="TEST DATA" FontSize="10" FontWeight="Bold" Foreground="#FFD54F"/>
-                    </Border>
                 </StackPanel>
 
                 <Button Grid.Row="0" Grid.Column="1"
@@ -101,19 +127,19 @@
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Spacing="12">
 
-                            <!-- Period + data-source pills -->
-                            <StackPanel Orientation="Horizontal" Spacing="8">
+                            <!-- Year picker + (current-year-only) granularity toggle -->
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <ComboBox ItemsSource="{Binding AvailableYears}"
+                                          SelectedItem="{Binding SelectedYear}"
+                                          MinWidth="96"
+                                          VerticalAlignment="Center"
+                                          ToolTip.Tip="Browse your saved Wrap years"/>
                                 <Button Classes="share-pill" Classes.active="{Binding IsYearMode}"
-                                        Content="This year" Command="{Binding SelectYearCommand}"/>
+                                        Content="Full year" Command="{Binding SelectYearCommand}"
+                                        IsVisible="{Binding IsCurrentYear}"/>
                                 <Button Classes="share-pill" Classes.active="{Binding IsMonthMode}"
-                                        Content="This month" Command="{Binding SelectMonthCommand}"/>
-                                <Border Width="1" Height="18" Background="#30FFFFFF" VerticalAlignment="Center"/>
-                                <Button Classes="share-pill" Classes.active="{Binding IsTestData}"
-                                        Content="Test data" Command="{Binding UseTestDataCommand}"
-                                        ToolTip.Tip="Fill with random stats to preview the layout and card"/>
-                                <Button Classes="share-pill" Content="Real data"
-                                        Command="{Binding UseRealDataCommand}"
-                                        IsVisible="{Binding IsTestData}"/>
+                                        Content="This month" Command="{Binding SelectMonthCommand}"
+                                        IsVisible="{Binding IsCurrentYear}"/>
                             </StackPanel>
 
                             <TextBlock Text="No plays recorded for this period yet. Listen to some music (or use Test data to preview)."
@@ -293,9 +319,7 @@
                         </StackPanel>
                     </Button>
                     <Button Grid.Column="4"
-                            Classes="share-pill"
-                            Background="{DynamicResource AccentColorBrush}"
-                            Foreground="{DynamicResource AccentForegroundBrush}"
+                            Classes="share-pill accent"
                             Click="OnSaveClick"
                             IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <StackPanel Orientation="Horizontal" Spacing="6">

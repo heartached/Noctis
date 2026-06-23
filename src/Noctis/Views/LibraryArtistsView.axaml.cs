@@ -1,8 +1,11 @@
+using System.IO;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Models;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
@@ -17,6 +20,60 @@ public partial class LibraryArtistsView : UserControl
         InitializeComponent();
 
         DataContextChanged += OnDataContextChanged;
+    }
+
+    private async void OnChangeArtistImageClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control control || control.DataContext is not Artist artist) return;
+        if (DataContext is not LibraryArtistsViewModel vm) return;
+
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Select Artist Picture",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("Images")
+                {
+                    Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp", "*.gif" }
+                }
+            }
+        });
+
+        if (files.Count == 0) return;
+
+        byte[] data;
+        try
+        {
+            await using var stream = await files[0].OpenReadAsync();
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            data = ms.ToArray();
+        }
+        catch
+        {
+            return;
+        }
+
+        if (data.Length == 0) return;
+        await vm.ChangeArtistImageAsync(artist, data);
+    }
+
+    private async void OnSearchArtistImageClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control control || control.DataContext is not Artist artist) return;
+        if (DataContext is LibraryArtistsViewModel vm)
+            await vm.SearchArtistImageAsync(artist);
+    }
+
+    private void OnRemoveArtistImageClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control control || control.DataContext is not Artist artist) return;
+        if (DataContext is LibraryArtistsViewModel vm)
+            vm.RemoveArtistImage(artist);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)

@@ -132,6 +132,16 @@
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     IsVisible="{Binding IsPageTitleVisible}">
+            <!-- "Back to Settings" pill, in front of the Statistics page title -->
+            <Button Classes="pill"
+                    IsVisible="{Binding IsStatsBackVisible}"
+                    Command="{Binding StatsBackCommand}"
+                    Background="#E74856"
+                    Padding="16,7"
+                    VerticalAlignment="Center">
+                <TextBlock Text="Back" FontSize="13" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+            </Button>
+
             <TextBlock Text="{Binding PageTitleDisplay}"
                        VerticalAlignment="Center"
                        FontSize="22"

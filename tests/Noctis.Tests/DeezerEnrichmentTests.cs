@@ -14,7 +14,7 @@ public class DeezerEnrichmentTests
       "disk_number": 1,
       "bpm": 83.9,
       "artist": { "name": "Juice WRLD" },
-      "album": { "id": 14801948, "title": "Goodbye & Good Riddance" },
+      "album": { "id": 14801948, "title": "Goodbye & Good Riddance", "release_date": "2018-05-23" },
       "contributors": [ { "name": "Juice WRLD", "role": "Main" } ]
     }
     """;
@@ -42,6 +42,7 @@ public class DeezerEnrichmentTests
         Assert.Equal(1, t.DiscNumber);
         Assert.Equal(84, t.Bpm);            // 83.9 rounds to 84
         Assert.Equal("Juice WRLD", t.AlbumArtist);
+        Assert.Equal(2018, t.AlbumYear);    // from the nested album.release_date (original date)
     }
 
     [Fact]

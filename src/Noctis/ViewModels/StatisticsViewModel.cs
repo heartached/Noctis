@@ -24,6 +24,14 @@ public partial class StatisticsViewModel : ViewModelBase
 
     [ObservableProperty] private string _selectedTab = TabOverview;
 
+    /// <summary>Raised by the top-bar Back button (shown when opened from
+    /// Settings → "View All Stats") so the shell can return to the section the
+    /// user was in before opening Settings.</summary>
+    public event EventHandler? BackRequested;
+
+    [RelayCommand]
+    private void GoBack() => BackRequested?.Invoke(this, EventArgs.Empty);
+
     public bool IsOverviewTabSelected => SelectedTab == TabOverview;
     public bool IsQualityTabSelected => SelectedTab == TabQuality;
     public bool IsHistoryTabSelected => SelectedTab == TabHistory;
@@ -56,6 +64,13 @@ public partial class StatisticsViewModel : ViewModelBase
     [ObservableProperty] private string _listeningTime = "";
     [ObservableProperty] private string _avgTrackLength = "";
     [ObservableProperty] private int _likedTracks;
+
+    // ── Streak + this-week cards ──
+
+    [ObservableProperty] private string _currentStreakText = "";
+    [ObservableProperty] private string _longestStreakSubText = "";
+    [ObservableProperty] private string _playsThisWeekText = "";
+    [ObservableProperty] private string _weekDeltaText = "";
 
     // ── Quality report ──
 
@@ -94,14 +109,14 @@ public partial class StatisticsViewModel : ViewModelBase
         var tracks = _library.Tracks;
         var events = _playHistory.Events;
 
-        ComputeOverview(tracks);
+        ComputeOverview(tracks, events);
         ComputeQuality(tracks);
         ComputeHistory(tracks, events);
     }
 
     // ── Overview ──
 
-    private void ComputeOverview(IReadOnlyList<Track> tracks)
+    private void ComputeOverview(IReadOnlyList<Track> tracks, IReadOnlyList<PlayHistoryEvent> events)
     {
         TotalTracks = tracks.Count;
         TotalAlbums = _library.Albums.Count;
@@ -110,11 +125,24 @@ public partial class StatisticsViewModel : ViewModelBase
 
         var plays = tracks.Sum(t => (long)t.PlayCount);
         TotalPlays = FormatCount(plays);
-        ListeningTime = FormatDuration(TimeSpan.FromTicks(tracks.Sum(t => t.Duration.Ticks * t.PlayCount)));
-        AvgTrackLength = tracks.Count > 0
-            ? TimeSpan.FromTicks((long)tracks.Average(t => t.Duration.Ticks)).ToString(@"m\:ss")
-            : "0:00";
+
+        // Listening time / average reflect what was actually played (skips excluded).
+        var byId = new Dictionary<Guid, Track>(tracks.Count);
+        foreach (var t in tracks) byId[t.Id] = t;
+        var listening = ListeningStatsCalculator.Compute(events, byId);
+
+        ListeningTime = FormatDuration(TimeSpan.FromTicks(listening.TimeListenedTicks));
+        AvgTrackLength = listening.AvgListenedTrackLengthTicks > 0
+            ? TimeSpan.FromTicks(listening.AvgListenedTrackLengthTicks).ToString(@"m\:ss")
+            : tracks.Count > 0
+                ? TimeSpan.FromTicks((long)tracks.Average(t => t.Duration.Ticks)).ToString(@"m\:ss")
+                : "0:00";
         LikedTracks = tracks.Count(t => t.IsFavorite);
+
+        CurrentStreakText = FormatDays(listening.CurrentStreakDays);
+        LongestStreakSubText = $"Longest: {FormatDays(listening.LongestStreakDays)}";
+        PlaysThisWeekText = listening.PlaysThisWeek.ToString();
+        WeekDeltaText = FormatWeekDelta(listening.PlaysThisWeek, listening.PlaysLastWeek);
 
         ComputeTopArtists(tracks);
         ComputeTopAlbums(tracks);
@@ -351,6 +379,15 @@ public partial class StatisticsViewModel : ViewModelBase
         if (duration.TotalHours >= 1)
             return $"{(int)duration.TotalHours}h {duration.Minutes}m";
         return $"{(int)duration.TotalMinutes} min";
+    }
+
+    private static string FormatDays(int days) => days == 1 ? "1 day" : $"{days} days";
+
+    private static string FormatWeekDelta(int thisWeek, int lastWeek)
+    {
+        var diff = thisWeek - lastWeek;
+        if (diff == 0) return lastWeek == 0 ? "No plays last week" : "Same as last week";
+        return diff > 0 ? $"▲ {diff} vs last week" : $"▼ {-diff} vs last week";
     }
 
     private static string FormatCount(long count)

@@ -13,6 +13,23 @@
         ShowInTaskbar="False">
 
     <Window.Styles>
+        <!-- Circular loading spinner (matches the Scan Library indicator): a rotating arc. -->
+        <Style Selector="Ellipse.loading-spinner">
+            <Setter Property="Width" Value="14"/>
+            <Setter Property="Height" Value="14"/>
+            <Setter Property="Stroke" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+            <Setter Property="StrokeDashArray" Value="11,5"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+            <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+            <Style.Animations>
+                <Animation Duration="0:0:0.85" IterationCount="INFINITE" Easing="LinearEasing">
+                    <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0"/></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="RotateTransform.Angle" Value="360"/></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
         <Style Selector="TextBox.metadata-info-field">
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="Padding" Value="14,10" />
@@ -181,6 +198,50 @@
             <Setter Property="Opacity" Value="0.35" />
         </Style>
 
+        <!-- Calm rows for the Timestamp Lyrics tab: each line stays quiet until you
+             hover or edit it. Hovering brings its nudge/clear cluster to full strength;
+             focusing the timestamp marks the line with an accent bar. -->
+        <Style Selector="Border.synced-row">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="0,7" />
+            <Setter Property="Margin" Value="0,1" />
+        </Style>
+        <Style Selector="Border.synced-row:pointerover">
+            <Setter Property="Background" Value="#14FFFFFF" />
+        </Style>
+        <Style Selector="Border.synced-row:focus-within">
+            <Setter Property="Background" Value="#1FFFFFFF" />
+        </Style>
+
+        <Style Selector="Border.synced-accent">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.synced-row:focus-within Border.synced-accent">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="StackPanel.synced-ctl">
+            <Setter Property="Opacity" Value="0.16" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.synced-row:pointerover StackPanel.synced-ctl">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="Border.synced-row:focus-within StackPanel.synced-ctl">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
         <!-- Tab nav: vertical sidebar list on the left, selected content on the right. -->
         <Style Selector="TabControl">
             <Setter Property="Template">
@@ -240,7 +301,7 @@
         <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
                 CornerRadius="16"
                 ClipToBounds="True"
-                Width="780" Height="700"
+                Width="820" Height="740"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
@@ -407,9 +468,16 @@
                                     CornerRadius="999"
                                     FontWeight="SemiBold"
                                     Cursor="Hand" />
-                            <TextBlock Text="{Binding SearchMetadataStatus}"
-                                       IsVisible="{Binding HasSearchMetadataStatus}"
-                                       FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal" Spacing="8"
+                                        IsVisible="{Binding HasSearchMetadataStatus}"
+                                        VerticalAlignment="Center">
+                                <Ellipse Classes="loading-spinner"
+                                         IsVisible="{Binding IsSearchingMetadata}"
+                                         VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding SearchMetadataStatus}"
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
                             <Border IsVisible="{Binding IsSearchMetadataOpen}"
                                     Background="#1AFFFFFF"
                                     BorderBrush="#33808080" BorderThickness="1"
@@ -420,7 +488,7 @@
                                     <ItemsControl ItemsSource="{Binding MetadataChanges}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:MetadataChangeRow">
-                                                <CheckBox IsChecked="{Binding Apply}" Margin="0,2">
+                                                <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding Apply}" Margin="0,2">
                                                     <StackPanel>
                                                         <TextBlock Text="{Binding Field}" FontSize="11" Opacity="0.5" />
                                                         <TextBlock Text="{Binding Display}" TextWrapping="Wrap" />
@@ -444,7 +512,7 @@
                         <!-- Title (per-track; hidden when editing a whole album) -->
                         <StackPanel Spacing="4" IsVisible="{Binding ShowTrackFields}">
                             <TextBlock Text="title" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Title}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
                         <!-- Use Work & Movement -->
@@ -455,7 +523,7 @@
                         <!-- Work Name (visible only when Work & Movement is enabled) -->
                         <StackPanel Spacing="4" IsVisible="{Binding UseWorkAndMovement}">
                             <TextBlock Text="work name" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding WorkName}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding WorkName, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
                         <!-- Movement index + count + title -->
@@ -463,22 +531,22 @@
                               IsVisible="{Binding UseWorkAndMovement}">
                             <StackPanel Grid.Column="0" Spacing="4">
                                 <TextBlock Text="movement" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding MovementNumber}" Width="80" />
+                                <TextBox Classes="metadata-info-field" Text="{Binding MovementNumber, UpdateSourceTrigger=PropertyChanged}" Width="80" />
                             </StackPanel>
                             <StackPanel Grid.Column="2" Spacing="4">
                                 <TextBlock Text="of" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding MovementCount}" Width="80" />
+                                <TextBox Classes="metadata-info-field" Text="{Binding MovementCount, UpdateSourceTrigger=PropertyChanged}" Width="80" />
                             </StackPanel>
                             <StackPanel Grid.Column="4" Spacing="4">
                                 <TextBlock Text="title" FontSize="12" Opacity="0.5" />
-                                <TextBox Classes="metadata-info-field" Text="{Binding MovementName}" />
+                                <TextBox Classes="metadata-info-field" Text="{Binding MovementName, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </Grid>
 
                         <!-- Album -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="album" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Album}" Watermark="{Binding AlbumWatermark}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Album, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding AlbumWatermark}" />
                         </StackPanel>
 
                         <!-- Album is compilation -->
@@ -489,25 +557,25 @@
                         <!-- Artist -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="artist" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Artist}" Watermark="{Binding ArtistWatermark}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Artist, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding ArtistWatermark}" />
                         </StackPanel>
 
                         <!-- Album Artist -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="album artist" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding AlbumArtist}" Watermark="{Binding AlbumArtistWatermark}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding AlbumArtist, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding AlbumArtistWatermark}" />
                         </StackPanel>
 
                         <!-- Performer (per-track; hidden when editing a whole album) -->
                         <StackPanel Spacing="4" IsVisible="{Binding ShowTrackFields}">
                             <TextBlock Text="performer" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Performer}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Performer, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
                         <!-- Composer -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="composer" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Composer}" Watermark="{Binding ComposerWatermark}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Composer, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding ComposerWatermark}" />
                         </StackPanel>
 
                         <!-- Show composer in all views -->
@@ -518,7 +586,7 @@
                         <!-- Grouping -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="grouping" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Grouping}" Watermark="{Binding GroupingWatermark}" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Grouping, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding GroupingWatermark}" />
                         </StackPanel>
 
                         <!-- Genre -->
@@ -536,23 +604,23 @@
                         <!-- Year -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="year" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Year}" Watermark="{Binding YearWatermark}" Width="120" HorizontalAlignment="Left" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding YearWatermark}" Width="120" HorizontalAlignment="Left" />
                         </StackPanel>
 
                         <!-- Track number -->
                         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                             <TextBlock Text="track" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Width="36" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding TrackNumber}" Watermark="{Binding TrackNumberWatermark}" Width="80" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding TrackNumber, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding TrackNumberWatermark}" Width="80" />
                             <TextBlock Text="of" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding TrackCount}" Watermark="{Binding TrackCountWatermark}" Width="80" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding TrackCount, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding TrackCountWatermark}" Width="80" />
                         </StackPanel>
 
                         <!-- Disc number -->
                         <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                             <TextBlock Text="disc" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Width="36" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding DiscNumber}" Watermark="{Binding DiscNumberWatermark}" Width="80" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding DiscNumber, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding DiscNumberWatermark}" Width="80" />
                             <TextBlock Text="of" FontSize="12" Opacity="0.5" VerticalAlignment="Center" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding DiscCount}" Watermark="{Binding DiscCountWatermark}" Width="80" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding DiscCount, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding DiscCountWatermark}" Width="80" />
                         </StackPanel>
 
                         <!-- Rating (per-track; hidden for album-scoped edits) -->
@@ -576,7 +644,7 @@
                         <!-- BPM -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="bpm" FontSize="12" Opacity="0.5" />
-                            <TextBox Classes="metadata-info-field" Text="{Binding Bpm}" Watermark="{Binding BpmWatermark}" Width="120" HorizontalAlignment="Left" />
+                            <TextBox Classes="metadata-info-field" Text="{Binding Bpm, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding BpmWatermark}" Width="120" HorizontalAlignment="Left" />
                         </StackPanel>
 
                         <!-- Play Count -->
@@ -596,7 +664,7 @@
                         <StackPanel Spacing="4">
                             <TextBlock Text="comment" FontSize="12" Opacity="0.5" />
                             <TextBox Classes="metadata-info-field"
-                                     Text="{Binding Comment}" Watermark="{Binding CommentWatermark}" />
+                                     Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding CommentWatermark}" />
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
@@ -1184,7 +1252,7 @@
                                    FontSize="14"
                                    VerticalAlignment="Center"
                                    Margin="-4,0,0,0" />
-                        <Button Content="Share"
+                        <Button Content="Share lyrics"
                                 Command="{Binding ShareLyricsCommand}"
                                 Margin="20,0,0,0"
                                 Padding="14,6"
@@ -1251,17 +1319,6 @@
                                     Cursor="Hand"
                                     FontWeight="SemiBold"
                                     FontSize="12" />
-                            <Button Content="✎  Edit synced lyrics"
-                                    Click="OnEditSyncedLyricsClick"
-                                    IsEnabled="{Binding HasCustomSyncedLyrics}"
-                                    Classes="accent-btn"
-                                    Background="{DynamicResource AccentColorBrush}"
-                                    Foreground="{DynamicResource AccentForegroundBrush}"
-                                    Padding="14,6"
-                                    CornerRadius="999"
-                                    Cursor="Hand"
-                                    FontWeight="SemiBold"
-                                    FontSize="12" />
                         </StackPanel>
                     </Grid>
 
@@ -1271,7 +1328,7 @@
                             CornerRadius="6"
                             IsEnabled="{Binding HasCustomSyncedLyrics}">
                         <Panel MinHeight="300">
-                            <TextBlock Text="No synced lyrics yet. Use “Search lyrics”, or tick Enable then “Edit synced lyrics” to add them."
+                            <TextBlock Text="No synced lyrics yet. Use “Search lyrics” to add them."
                                        IsVisible="{Binding !HasSyncedLines}"
                                        TextWrapping="Wrap"
                                        TextAlignment="Center"
@@ -1294,6 +1351,110 @@
                                      FontSize="12" />
                         </Panel>
                     </Border>
+                </DockPanel>
+            </TabItem>
+
+            <!-- ═══════════ TIMESTAMP LYRICS TAB ═══════════ -->
+            <!-- Inline twin of the roomy pop-out editor. Binds the same MetadataViewModel,
+                 so per-line edits flow through SyncedLyricLines and persist on Save. -->
+            <TabItem Header="Timestamp Lyrics" FontSize="14" FontWeight="SemiBold" IsVisible="{Binding ShowSyncedLyricsTab}">
+                <DockPanel Margin="24,16">
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="Hover over a line to nudge its timing."
+                               FontSize="12" Opacity="0.5"
+                               Margin="0,0,0,12"
+                               TextTrimming="CharacterEllipsis" />
+
+                        <Border BorderBrush="#44E04060"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Background="#18000000">
+                            <Panel MinHeight="300">
+                                <TextBlock Text="No synced lyrics yet. Use “Search lyrics” on the Synced Lyrics tab to add them."
+                                           IsVisible="{Binding !HasSyncedLines}"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           MaxWidth="420"
+                                           Opacity="0.6"
+                                           FontSize="13"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Margin="24" />
+
+                                <ScrollViewer IsVisible="{Binding HasSyncedLines}"
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled"
+                                              Padding="14,10,18,0">
+                                    <!-- A real trailing spacer (below) carries the bottom gap. Neither
+                                         ScrollViewer.Padding nor a content Margin is reliably folded into
+                                         Avalonia's scroll extent, so the final row would otherwise stay
+                                         clipped at the bottom edge. -->
+                                    <StackPanel>
+                                    <ItemsControl ItemsSource="{Binding SyncedLyricLines}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:SyncedLyricEditorLine">
+                                                <Border Classes="synced-row">
+                                                    <Grid ColumnDefinitions="3,Auto,*,Auto">
+                                                        <!-- Accent bar: marks the line currently being edited -->
+                                                        <Border Grid.Column="0"
+                                                                Classes="synced-accent"
+                                                                Width="3"
+                                                                CornerRadius="999"
+                                                                Margin="0,3" />
+                                                        <TextBox Grid.Column="1"
+                                                                 Text="{Binding TimestampText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                 Watermark="--:--.--"
+                                                                 FontFamily="Consolas, Menlo, Monaco, Courier New, monospace"
+                                                                 FontSize="12"
+                                                                 Width="92"
+                                                                 Margin="11,0,0,0"
+                                                                 Padding="10,5"
+                                                                 Classes="pill-input"
+                                                                 VerticalAlignment="Center"
+                                                                 VerticalContentAlignment="Center"
+                                                                 HorizontalContentAlignment="Center"
+                                                                 ToolTip.Tip="Type a timestamp (mm:ss.xx); blank clears it" />
+                                                        <TextBlock Grid.Column="2"
+                                                                   Text="{Binding Text}"
+                                                                   FontSize="14"
+                                                                   VerticalAlignment="Center"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="14,0,14,0" />
+                                                        <StackPanel Grid.Column="3"
+                                                                    Classes="synced-ctl"
+                                                                    Orientation="Horizontal"
+                                                                    Spacing="6"
+                                                                    Margin="0,0,16,0"
+                                                                    VerticalAlignment="Center">
+                                                            <Button Classes="synced-nudge"
+                                                                    Content="−"
+                                                                    ToolTip.Tip="Nudge 0.1s earlier"
+                                                                    IsEnabled="{Binding HasTimestamp}"
+                                                                    Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).NudgeSyncedLineBackCommand}"
+                                                                    CommandParameter="{Binding}" />
+                                                            <Button Classes="synced-nudge"
+                                                                    Content="+"
+                                                                    ToolTip.Tip="Nudge 0.1s later"
+                                                                    IsEnabled="{Binding HasTimestamp}"
+                                                                    Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).NudgeSyncedLineForwardCommand}"
+                                                                    CommandParameter="{Binding}" />
+                                                            <Button Classes="synced-nudge"
+                                                                    Content="✕"
+                                                                    ToolTip.Tip="Clear timestamp"
+                                                                    IsEnabled="{Binding HasTimestamp}"
+                                                                    Command="{Binding $parent[Window].((vm:MetadataViewModel)DataContext).ClearSyncedLineTimestampCommand}"
+                                                                    CommandParameter="{Binding}" />
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                        <Border Height="24" />
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Panel>
+                        </Border>
                 </DockPanel>
             </TabItem>
 

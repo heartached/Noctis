@@ -19,6 +19,7 @@ public partial class SettingsViewModel : ViewModelBase
 {
     private readonly IPersistenceService _persistence;
     private readonly ILibraryService _library;
+    private readonly IPlayHistoryService _playHistory;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private IAudioPlayer? _audioPlayer;
     private PlayerViewModel? _player;
@@ -280,10 +281,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _netEaseEnabled = true;
 
     // ── Metadata Providers ──
-    [ObservableProperty] private bool _acoustIdEnabled = true;
-    [ObservableProperty] private bool _musicBrainzEnabled = true;
     [ObservableProperty] private bool _deezerEnabled = true;
-    [ObservableProperty] private bool _iTunesEnabled = true;
+    [ObservableProperty] private bool _musicBrainzEnabled = true;
 
     [ObservableProperty] private string _ffmpegPath = string.Empty;
     [ObservableProperty] private string _ffmpegStatus = string.Empty;
@@ -306,7 +305,18 @@ public partial class SettingsViewModel : ViewModelBase
     // ── Exclusive mode (Windows WASAPI) ──
 
     public bool IsExclusiveAudioSupported => OperatingSystem.IsWindows();
-    [ObservableProperty] private bool _exclusiveAudioEnabled;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanUseSongTransitions))]
+    [NotifyPropertyChangedFor(nameof(SongTransitionsOpacity))]
+    private bool _exclusiveAudioEnabled;
+
+    /// <summary>Song transitions need two overlapping audio streams; Exclusive Mode is
+    /// single-stream, so every transition style (AutoMix and Crossfade) is unavailable
+    /// while it's active. Drives the Song Transitions card's enabled state.</summary>
+    public bool CanUseSongTransitions => !ExclusiveAudioEnabled;
+
+    /// <summary>Grays the Song Transitions card while it's unavailable (exclusive on).</summary>
+    public double SongTransitionsOpacity => ExclusiveAudioEnabled ? 0.5 : 1.0;
     /// <summary>Live output-path status from the player ("Exclusive output active — 44.1 kHz / 24-bit",
     /// "Exclusive mode unavailable (device in use) — using shared output", ...).</summary>
     [ObservableProperty] private string _exclusiveAudioStatus = "";
@@ -369,8 +379,6 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private string _organizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
     [ObservableProperty] private string _organizeTargetRoot = string.Empty;
-    [ObservableProperty] private string _acoustIdApiKey = string.Empty;
-    [ObservableProperty] private string _fpcalcPath = string.Empty;
 
     // ── Library overview stats ──
 
@@ -457,7 +465,15 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsPrereleaseBuild => UpdateService.IsPrereleaseBuild;
 
     [ObservableProperty] private string _updateStatusText = "";
-    [ObservableProperty] private bool _isCheckingForUpdate;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CheckForUpdatesButtonText))]
+    private bool _isCheckingForUpdate;
+
+    /// <summary>True briefly after a manual check finds no newer release; drives the
+    /// inline "You're up to date" label on the Check-for-Updates button.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CheckForUpdatesButtonText))]
+    private bool _isUpToDate;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
     [NotifyPropertyChangedFor(nameof(ShowInAppUpdateButton))]
@@ -473,6 +489,14 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _includePrereleaseUpdates;
 
     public bool ShowCheckForUpdatesButton => !IsUpdateAvailable && !IsReadyToInstall;
+
+    /// <summary>Label for the Check-for-Updates pill, reflecting progress/result inline:
+    /// "Checking..." while polling, "You're up to date" briefly when no update is found,
+    /// otherwise the default call to action.</summary>
+    public string CheckForUpdatesButtonText =>
+        IsCheckingForUpdate ? "Checking..."
+        : IsUpToDate ? "You're up to date"
+        : "Check for Updates";
 
     /// <summary>True when this copy can update itself via the bundled installer
     /// (Inno install on Windows, or any non-Windows build). False for Scoop /
@@ -501,10 +525,15 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Fires when a media folder is added or removed so the Folders view can rebuild its tree.</summary>
     public event EventHandler? MusicFoldersChanged;
 
-    public SettingsViewModel(IPersistenceService persistence, ILibraryService library)
+    /// <summary>Raised when the user asks to open the full standalone Statistics page
+    /// from the Settings → Statistics tab. The shell closes the modal and navigates.</summary>
+    public event EventHandler? OpenStatisticsRequested;
+
+    public SettingsViewModel(IPersistenceService persistence, ILibraryService library, IPlayHistoryService playHistory)
     {
         _persistence = persistence;
         _library = library;
+        _playHistory = playHistory;
         _settings = new AppSettings();
 
         _library.ScanProgress += (_, count) =>
@@ -561,8 +590,15 @@ public partial class SettingsViewModel : ViewModelBase
     public void SetAudioPlayer(IAudioPlayer audioPlayer)
     {
         _audioPlayer = audioPlayer;
+        // Only surface the output-mode status while Exclusive Mode is enabled (it
+        // describes the exclusive/fell-back-to-shared state). When exclusive is off
+        // the line stays hidden. This also prevents a flicker: toggling exclusive
+        // OFF clears the status synchronously (card shrinks), and without this gate
+        // the async "Shared output…" notice would immediately re-populate it (card
+        // grows again) — a visible shrink-then-grow that jolted the toggle/text.
         audioPlayer.OutputModeChanged += (_, status) =>
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => ExclusiveAudioStatus = status);
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                ExclusiveAudioStatus = ExclusiveAudioEnabled ? status : "");
         ApplyAudioSettings();
     }
 
@@ -662,8 +698,6 @@ public partial class SettingsViewModel : ViewModelBase
             WatchFoldersEnabled = _settings.WatchFoldersEnabled;
             OrganizePattern = _settings.OrganizePattern;
             OrganizeTargetRoot = _settings.OrganizeTargetRoot;
-            AcoustIdApiKey = _settings.AcoustIdApiKey;
-            FpcalcPath = _settings.FpcalcPath;
             IncludePrereleaseUpdates = _settings.IncludePrereleaseUpdates;
 
             // Playback
@@ -703,10 +737,8 @@ public partial class SettingsViewModel : ViewModelBase
             LrcLibEnabled = _settings.LrcLibEnabled;
 
             // Metadata providers
-            AcoustIdEnabled = _settings.AcoustIdEnabled;
-            MusicBrainzEnabled = _settings.MusicBrainzEnabled;
             DeezerEnabled = _settings.DeezerEnabled;
-            ITunesEnabled = _settings.ITunesEnabled;
+            MusicBrainzEnabled = _settings.MusicBrainzEnabled;
             FfmpegPath = _settings.FfmpegPath;
             RefreshFfmpegStatus();
             ReplayGainMode = string.IsNullOrEmpty(_settings.ReplayGainMode) ? "Off" : _settings.ReplayGainMode;
@@ -849,8 +881,6 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.WatchFoldersEnabled = WatchFoldersEnabled;
         _settings.OrganizePattern = OrganizePattern;
         _settings.OrganizeTargetRoot = OrganizeTargetRoot;
-        _settings.AcoustIdApiKey = AcoustIdApiKey;
-        _settings.FpcalcPath = FpcalcPath;
         _settings.MusicFolders = MusicFolders.ToList();
         _settings.FolderRules = FolderRules
             .Where(r => !string.IsNullOrWhiteSpace(r.Path))
@@ -891,10 +921,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
         _settings.LrcLibEnabled = LrcLibEnabled;
-        _settings.AcoustIdEnabled = AcoustIdEnabled;
-        _settings.MusicBrainzEnabled = MusicBrainzEnabled;
         _settings.DeezerEnabled = DeezerEnabled;
-        _settings.ITunesEnabled = ITunesEnabled;
+        _settings.MusicBrainzEnabled = MusicBrainzEnabled;
         _settings.FfmpegPath = FfmpegPath ?? string.Empty;
         _settings.ReplayGainMode = ReplayGainMode ?? "Off";
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
@@ -1520,12 +1548,6 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
-    partial void OnAcoustIdEnabledChanged(bool value)
-    {
-        if (_suspendSettingPersistence) return;
-        _ = SaveAsync();
-    }
-
     partial void OnMusicBrainzEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
@@ -1534,26 +1556,6 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnDeezerEnabledChanged(bool value)
     {
-        if (_suspendSettingPersistence) return;
-        _ = SaveAsync();
-    }
-
-    partial void OnITunesEnabledChanged(bool value)
-    {
-        if (_suspendSettingPersistence) return;
-        _ = SaveAsync();
-    }
-
-    partial void OnAcoustIdApiKeyChanged(string value)
-    {
-        _settings.AcoustIdApiKey = value ?? string.Empty;
-        if (_suspendSettingPersistence) return;
-        _ = SaveAsync();
-    }
-
-    partial void OnFpcalcPathChanged(string value)
-    {
-        _settings.FpcalcPath = value ?? string.Empty;
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
@@ -2055,28 +2057,34 @@ public partial class SettingsViewModel : ViewModelBase
         long totalBytes = 0;
         long totalDurationTicks = 0;
         long totalPlays = 0;
-        long playedTicks = 0;
         int losslessCount = 0;
         int hiResCount = 0;
         int likedCount = 0;
+        var tracksById = new Dictionary<Guid, Track>(tracks.Count);
         foreach (var t in tracks)
         {
             totalBytes += t.FileSize;
             totalDurationTicks += t.Duration.Ticks;
             totalPlays += t.PlayCount;
-            playedTicks += t.Duration.Ticks * t.PlayCount;
             if (t.IsLossless) losslessCount++;
             if (t.IsHiResLossless) hiResCount++;
             if (t.IsFavorite) likedCount++;
+            tracksById[t.Id] = t;
         }
+
+        // Listening time / average reflect what was actually played (skips excluded),
+        // computed from the play log — see ListeningStatsCalculator.
+        var listening = ListeningStatsCalculator.Compute(_playHistory.Events, tracksById);
 
         TotalFileSize = FormatLibrarySize(totalBytes);
         TotalListeningTime = FormatDuration(TimeSpan.FromTicks(totalDurationTicks));
         TotalPlays = FormatCount(totalPlays);
-        TimeListened = FormatDuration(TimeSpan.FromTicks(playedTicks));
-        AvgTrackLength = tracks.Count > 0
-            ? TimeSpan.FromTicks(totalDurationTicks / tracks.Count).ToString(@"m\:ss")
-            : "0:00";
+        TimeListened = FormatDuration(TimeSpan.FromTicks(listening.TimeListenedTicks));
+        AvgTrackLength = listening.AvgListenedTrackLengthTicks > 0
+            ? TimeSpan.FromTicks(listening.AvgListenedTrackLengthTicks).ToString(@"m\:ss")
+            : tracks.Count > 0
+                ? TimeSpan.FromTicks(totalDurationTicks / tracks.Count).ToString(@"m\:ss")
+                : "0:00";
         LikedTracks = likedCount;
         RefreshTopPlayed(tracks);
         LosslessCount = losslessCount;
@@ -2604,8 +2612,6 @@ public partial class SettingsViewModel : ViewModelBase
             WatchFoldersEnabled = true;
             OrganizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
             OrganizeTargetRoot = string.Empty;
-            AcoustIdApiKey = string.Empty;
-            FpcalcPath = string.Empty;
             IncludePrereleaseUpdates = false;
 
             // Playback
@@ -2637,10 +2643,8 @@ public partial class SettingsViewModel : ViewModelBase
             NetEaseEnabled = true;
 
             // Metadata providers
-            AcoustIdEnabled = true;
-            MusicBrainzEnabled = true;
             DeezerEnabled = true;
-            ITunesEnabled = true;
+            MusicBrainzEnabled = true;
 
             // Equalizer
             _suppressEqNotify = true;
@@ -2778,8 +2782,11 @@ public partial class SettingsViewModel : ViewModelBase
         IsUpdateAvailable = false;
         IsDownloadingUpdate = false;
         IsReadyToInstall = false;
+        IsUpToDate = false;
         DownloadProgress = 0;
-        UpdateStatusText = "Checking for updates...";
+        // The button itself now shows "Checking..." while polling, so keep the
+        // separate status line empty for this state to avoid duplicate text.
+        UpdateStatusText = "";
         IsCheckingForUpdate = true;
         _downloadedInstallerPath = null;
 
@@ -2793,7 +2800,9 @@ public partial class SettingsViewModel : ViewModelBase
 
             if (update is null)
             {
-                UpdateStatusText = "You're on the latest version.";
+                // Show the result inline on the button ("You're up to date")
+                // rather than as a separate status line.
+                IsUpToDate = true;
                 _ = ClearUpdateStatusAfterDelay();
             }
             else if (update.InstallerApiUrl is null)
@@ -2919,7 +2928,10 @@ public partial class SettingsViewModel : ViewModelBase
     {
         await Task.Delay(5000);
         if (!IsUpdateAvailable && !IsDownloadingUpdate && !IsReadyToInstall)
+        {
             UpdateStatusText = "";
+            IsUpToDate = false;   // reverts the button label to "Check for Updates"
+        }
     }
 
     [RelayCommand]
@@ -2943,6 +2955,18 @@ public partial class SettingsViewModel : ViewModelBase
     private void OpenDiscord()
     {
         Helpers.PlatformHelper.OpenUrl("https://discord.gg/BNCDZQUVx7");
+    }
+
+    [RelayCommand]
+    private void OpenWebsite()
+    {
+        Helpers.PlatformHelper.OpenUrl("https://noctisapp.cc/");
+    }
+
+    [RelayCommand]
+    private void OpenStatisticsPage()
+    {
+        OpenStatisticsRequested?.Invoke(this, EventArgs.Empty);
     }
 }
 

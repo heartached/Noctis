@@ -163,6 +163,58 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         ArtistOpened?.Invoke(this, artist);
     }
 
+    /// <summary>
+    /// Sets a user-picked image as the artist's portrait. Evicts any stale cached
+    /// bitmap and rebuilds the row so the tile (bound to a non-observable Artist)
+    /// reflects the new image immediately.
+    /// </summary>
+    public async Task ChangeArtistImageAsync(Artist artist, byte[] imageData)
+    {
+        if (_artistImageService == null || artist == null)
+            return;
+
+        var newPath = await _artistImageService.SetCustomImageAsync(artist, imageData);
+        if (string.IsNullOrEmpty(newPath))
+            return;
+
+        ArtworkCache.Invalidate(newPath);
+        ApplyFilter(_currentFilter);
+    }
+
+    /// <summary>
+    /// Re-downloads the artist's portrait from the online services (clearing any prior
+    /// removal), restoring the auto-fetched photo. No-op if nothing is found.
+    /// </summary>
+    public async Task SearchArtistImageAsync(Artist artist)
+    {
+        if (_artistImageService == null || artist == null)
+            return;
+
+        var newPath = await _artistImageService.RefetchImageAsync(artist);
+        if (string.IsNullOrEmpty(newPath))
+            return;
+
+        ArtworkCache.Invalidate(newPath);
+        ApplyFilter(_currentFilter);
+    }
+
+    /// <summary>
+    /// Removes the artist's portrait and suppresses future auto-download, falling
+    /// back to the placeholder icon. Rebuilds the row to reflect the change.
+    /// </summary>
+    public void RemoveArtistImage(Artist artist)
+    {
+        if (_artistImageService == null || artist == null)
+            return;
+
+        var oldPath = artist.ImagePath;
+        _artistImageService.RemoveImage(artist);
+
+        if (!string.IsNullOrEmpty(oldPath))
+            ArtworkCache.Invalidate(oldPath);
+        ApplyFilter(_currentFilter);
+    }
+
     private static bool MatchesSearch(string? source, string query, string queryNoSpaces)
     {
         if (string.IsNullOrWhiteSpace(source))

@@ -91,8 +91,6 @@ public class AutoMatchCoordinatorTests
         private readonly TagSuggestion? _hit;
         private readonly bool _throws;
         public FakeFinder(TagSuggestion? hit = null, bool throws = false) { _hit = hit; _throws = throws; }
-        public bool HasFingerprinting => false;
-        public bool HasApiKey => false;
         public Task<IReadOnlyList<TagSuggestion>> IdentifyAsync(Track track, CancellationToken ct = default)
         {
             if (_throws) throw new InvalidOperationException("boom");

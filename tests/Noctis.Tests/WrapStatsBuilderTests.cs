@@ -143,20 +143,6 @@ public class WrapStatsBuilderTests
     }
 
     [Fact]
-    public void BuildTestData_ProducesPlausibleStats()
-    {
-        var stats = WrapStatsBuilder.BuildTestData();
-
-        Assert.True(stats.TotalPlays > 0);
-        Assert.True(stats.TotalMinutes > 0);
-        Assert.Equal(5, stats.TopTracks.Count);
-        Assert.Equal(5, stats.TopArtists.Count);
-        // Ranked descending by plays
-        Assert.True(stats.TopTracks[0].Plays >= stats.TopTracks[4].Plays);
-        Assert.Equal(stats.TopGenres[0].Name, stats.TopGenre);
-    }
-
-    [Fact]
     public void RenderWrapCard_ProducesPng()
     {
         var png = ShareCardRenderer.RenderWrapCard(new WrapCardSpec

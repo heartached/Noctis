@@ -406,6 +406,38 @@
                     </Border>
 
                     <DockPanel>
+                        <DockPanel.Styles>
+                            <!-- Artist credit acts as a link: no button chrome, subtle highlight
+                                 behind the name on hover/press (matching the player bar's artist link). -->
+                            <Style Selector="Button.queue-link">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                            </Style>
+                            <!-- Opt out of the global button hover/press zoom. -->
+                            <Style Selector="Button.queue-link:pointerover">
+                                <Setter Property="RenderTransform" Value="scale(1)"/>
+                            </Style>
+                            <Style Selector="Button.queue-link:pressed">
+                                <Setter Property="RenderTransform" Value="scale(1)"/>
+                            </Style>
+                            <Style Selector="Button.queue-link /template/ ContentPresenter#PART_ContentPresenter">
+                                <Setter Property="Background" Value="Transparent"/>
+                            </Style>
+                            <Style Selector="Button.queue-link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                <Setter Property="Background" Value="Transparent"/>
+                            </Style>
+                            <Style Selector="Button.queue-link:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                                <Setter Property="Background" Value="Transparent"/>
+                            </Style>
+                            <Style Selector="Button.queue-link:pointerover Border.artist-text-hover">
+                                <Setter Property="Background" Value="#22FFFFFF"/>
+                            </Style>
+                            <Style Selector="Button.queue-link:pressed Border.artist-text-hover">
+                                <Setter Property="Background" Value="#33FFFFFF"/>
+                            </Style>
+                        </DockPanel.Styles>
                         <!-- "Currently Playing" big header + Clear pill on the right -->
                         <Grid DockPanel.Dock="Top" Margin="20,16,20,8"
                               ColumnDefinitions="*,Auto">
@@ -457,19 +489,42 @@
                                                           Stretch="UniformToFill" />
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Player.CurrentTrack.Title}"
-                                               FontSize="15"
-                                               FontWeight="SemiBold"
-                                               Foreground="White"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1" />
-                                    <TextBlock Text="{Binding Player.CurrentTrack.Artist}"
-                                               FontSize="12"
-                                               FontWeight="Bold"
-                                               Foreground="{DynamicResource AccentColorBrush}"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1"
-                                               Margin="0,2,0,0" />
+                                    <Grid ColumnDefinitions="Auto,Auto">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Player.CurrentTrack.Title}"
+                                                   FontSize="15"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="White"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxLines="1"
+                                                   MaxWidth="190" />
+                                        <Border Grid.Column="1"
+                                                Classes="explicit-badge compact"
+                                                Margin="6,0,0,0"
+                                                IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
+                                                ToolTip.Tip="Explicit"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="E"
+                                                       Classes="explicit-badge-text compact"
+                                                       FontSize="9"
+                                                       Opacity="0.9" />
+                                        </Border>
+                                    </Grid>
+                                    <Button Classes="queue-link"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,2,0,0"
+                                            Command="{Binding Player.ViewCurrentArtistCommand}">
+                                        <Border Classes="artist-text-hover"
+                                                CornerRadius="2"
+                                                Padding="2,0,3,0">
+                                            <TextBlock Text="{Binding Player.CurrentTrack.Artist}"
+                                                       FontSize="12"
+                                                       FontWeight="Bold"
+                                                       Foreground="{DynamicResource AccentColorBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="1" />
+                                        </Border>
+                                    </Button>
                                     <ProgressBar Classes="np-progress"
                                                  Minimum="0" Maximum="1"
                                                  Value="{Binding Player.PositionFraction}"
@@ -634,13 +689,22 @@
                                                                    Opacity="0.9" />
                                                     </Border>
                                                 </Grid>
-                                                <TextBlock Text="{Binding ArtistDisplay}"
-                                                           FontSize="11"
-                                                           FontWeight="Bold"
-                                                           Foreground="{DynamicResource AccentColorBrush}"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           MaxLines="1"
-                                                           Margin="0,2,0,0" />
+                                                <Button Classes="queue-link"
+                                                        HorizontalAlignment="Left"
+                                                        Margin="0,2,0,0"
+                                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.ViewArtistCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <Border Classes="artist-text-hover"
+                                                            CornerRadius="2"
+                                                            Padding="2,0,3,0">
+                                                        <TextBlock Text="{Binding ArtistDisplay}"
+                                                                   FontSize="11"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="{DynamicResource AccentColorBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   MaxLines="1" />
+                                                    </Border>
+                                                </Button>
                                             </StackPanel>
                                             <!-- Track duration -->
                                             <TextBlock Grid.Column="2"

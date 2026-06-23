@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Serialization;
 using Noctis.Models;
 
 namespace Noctis.Services;
@@ -10,6 +11,7 @@ public sealed class WrapEntry
     public string Name { get; init; } = string.Empty;
     public string Subtitle { get; init; } = string.Empty;
     public int Plays { get; init; }
+    [JsonIgnore]
     public string PlaysLabel => Plays == 1 ? "1 play" : $"{Plays} plays";
 }
 
@@ -162,53 +164,6 @@ public static class WrapStatsBuilder
             TopAlbumArtworkPath = albumGroups.Count > 0
                 ? albumGroups[0].First().Track!.AlbumArtworkPath
                 : null,
-        };
-    }
-
-    /// <summary>
-    /// Random placeholder stats for previewing/tuning the Wrap UI and share card
-    /// without needing a year of real play history.
-    /// </summary>
-    public static WrapStats BuildTestData()
-    {
-        var rng = Random.Shared;
-        string[] artists = { "Within Temptation", "Nightwish", "Lacuna Coil", "Gracie Abrams", "New West", "Arctic Monkeys", "Massive Attack", "Epica" };
-        string[] tracks = { "Those Eyes", "Close To You", "Ghost Love Score", "Our Solemn Hour", "Heaven", "Storytime", "505", "Teardrop" };
-        string[] albums = { "The Silent Force", "Once", "Comalies", "The Secret of Us", "AM", "Mezzanine" };
-        string[] genres = { "Symphonic Metal", "Indie Pop", "Gothic Metal", "Alternative Rock", "Trip-Hop" };
-
-        List<WrapEntry> Pick(string[] pool, bool subtitled)
-        {
-            var picked = pool.OrderBy(_ => rng.Next()).Take(TopCount).ToArray();
-            var plays = Enumerable.Range(0, TopCount)
-                .Select(_ => rng.Next(12, 320))
-                .OrderByDescending(p => p)
-                .ToArray();
-            return picked.Select((name, i) => new WrapEntry
-            {
-                Rank = i + 1,
-                Name = name,
-                Subtitle = subtitled ? artists[rng.Next(artists.Length)] : string.Empty,
-                Plays = plays[i],
-            }).ToList();
-        }
-
-        var topGenres = Pick(genres, subtitled: false);
-        return new WrapStats
-        {
-            PeriodLabel = DateTime.Now.Year.ToString(),
-            TotalPlays = rng.Next(1_500, 18_000),
-            TotalMinutes = rng.Next(5_000, 90_000),
-            UniqueTracks = rng.Next(300, 2_500),
-            UniqueArtists = rng.Next(60, 600),
-            UniqueAlbums = rng.Next(40, 400),
-            LosslessPercent = rng.Next(20, 100),
-            HiResPercent = rng.Next(0, 40),
-            TopGenre = topGenres[0].Name,
-            TopTracks = Pick(tracks, subtitled: true),
-            TopArtists = Pick(artists, subtitled: false),
-            TopAlbums = Pick(albums, subtitled: true),
-            TopGenres = topGenres,
         };
     }
 }

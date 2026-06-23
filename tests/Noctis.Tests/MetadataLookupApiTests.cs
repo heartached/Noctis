@@ -7,64 +7,6 @@ namespace Noctis.Tests;
 public class MetadataLookupApiTests
 {
     [Fact]
-    public void AcoustId_BuildLookupUrl_EncodesAndRoundsDuration()
-    {
-        var url = AcoustIdApi.BuildLookupUrl("my key", 241.7, "FP+abc/def");
-        Assert.Contains("client=my%20key", url);
-        Assert.Contains("duration=242", url);
-        Assert.Contains("fingerprint=FP%2Babc%2Fdef", url);
-        Assert.Contains("meta=recordings+releasegroups", url);
-    }
-
-    [Fact]
-    public void AcoustId_ParseLookup_ExtractsTopRecording()
-    {
-        const string json = """
-        {
-          "status": "ok",
-          "results": [
-            {
-              "score": 0.95,
-              "recordings": [
-                {
-                  "title": "Bohemian Rhapsody",
-                  "artists": [{ "name": "Queen" }],
-                  "releasegroups": [{ "title": "A Night at the Opera", "type": "Album" }]
-                }
-              ]
-            }
-          ]
-        }
-        """;
-
-        var hits = AcoustIdApi.ParseLookup(json);
-        var top = hits.First();
-        Assert.Equal("Bohemian Rhapsody", top.Title);
-        Assert.Equal("Queen", top.Artist);
-        Assert.Equal("A Night at the Opera", top.Album);
-        Assert.Equal("AcoustID", top.Source);
-        Assert.Equal(0.95, top.Confidence, 3);
-    }
-
-    [Fact]
-    public void AcoustId_ParseLookup_JoinsMultipleArtists()
-    {
-        const string json = """
-        { "results": [ { "score": 0.8, "recordings": [
-            { "title": "Song", "artists": [ { "name": "A" }, { "name": "B" } ] } ] } ] }
-        """;
-        var top = AcoustIdApi.ParseLookup(json).First();
-        Assert.Equal("A, B", top.Artist);
-    }
-
-    [Fact]
-    public void AcoustId_ParseLookup_EmptyOnNoResults()
-    {
-        Assert.Empty(AcoustIdApi.ParseLookup("""{ "status": "ok", "results": [] }"""));
-        Assert.Empty(AcoustIdApi.ParseLookup(""));
-    }
-
-    [Fact]
     public void MusicBrainz_BuildSearchUrl_QuotesFields()
     {
         var url = MusicBrainzApi.BuildRecordingSearchUrl("Queen", "Bohemian Rhapsody", "A Night at the Opera");

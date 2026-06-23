@@ -39,11 +39,7 @@ public partial class MetadataFinderViewModel : ViewModelBase
         foreach (var t in candidates)
             Rows.Add(new MetaRow(t, RecomputeSelection));
 
-        SourceHint = _finder.HasFingerprinting
-            ? (_finder.HasApiKey
-                ? "Using acoustic fingerprint (fpcalc + AcoustID), then MusicBrainz/Deezer."
-                : "fpcalc found, but no AcoustID API key — set one in Settings. Using MusicBrainz/Deezer text search.")
-            : "fpcalc not found — using MusicBrainz/Deezer text search by current tags. Toggle sources in Settings.";
+        SourceHint = "Identifying by current tags via Deezer, then MusicBrainz. Toggle sources in Settings.";
 
         StatusMessage = Rows.Count == 0
             ? "No poorly-tagged tracks found."

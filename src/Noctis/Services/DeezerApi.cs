@@ -51,7 +51,7 @@ public static class DeezerApi
     /// <summary>Per-track fields parsed from a Deezer <c>/track/{id}</c> payload.</summary>
     public sealed record DeezerTrack(
         long AlbumId, string Title, string Artist, string? AlbumArtist,
-        int? TrackNumber, int? DiscNumber, int? Bpm, string? Isrc);
+        int? TrackNumber, int? DiscNumber, int? Bpm, string? Isrc, int? AlbumYear);
 
     /// <summary>Album-level fields parsed from a Deezer <c>/album/{id}</c> payload.</summary>
     public sealed record DeezerAlbum(
@@ -81,7 +81,17 @@ public static class DeezerApi
             if (bpm is 0) bpm = null;
             var isrc = GetStringOrNull(root, "isrc");
 
-            return new DeezerTrack(albumId, title, artist, albumArtist, trackNo, discNo, bpm, isrc);
+            // Prefer the release date carried on the nested album object — this is the original
+            // release Deezer shows in its UI. The standalone /album/{id} endpoint can report a
+            // later re-delivery date for re-released editions (e.g. "Bonus Track Version").
+            int? albumYear = null;
+            if (root.TryGetProperty("album", out var albEl) && albEl.ValueKind == JsonValueKind.Object)
+            {
+                var rel = GetStringOrNull(albEl, "release_date");
+                if (rel is { Length: >= 4 } && int.TryParse(rel.AsSpan(0, 4), out var ay)) albumYear = ay;
+            }
+
+            return new DeezerTrack(albumId, title, artist, albumArtist, trackNo, discNo, bpm, isrc, albumYear);
         }
         catch (JsonException) { return null; }
     }

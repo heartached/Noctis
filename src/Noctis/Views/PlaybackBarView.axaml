@@ -326,10 +326,14 @@
     </UserControl.Styles>
 
         <!-- Dynamic Island: Single unified glass pill-shaped container -->
+        <!-- The outline is a 1.5px ring rather than 1px: at 1px the semi-transparent stroke
+             snaps cleanly along the straight top/bottom edges but anti-aliases to partial
+             coverage around the rounded ends, so the corners looked faded. 1.5px gives the
+             curve enough width to read at the same strength as the edges. -->
         <Border x:Name="IslandBorder"
                 Classes="island"
                 BorderBrush="#40FFFFFF"
-                BorderThickness="1"
+                BorderThickness="1.5"
                 CornerRadius="999"
                 Padding="12,0,12,0"
                 HorizontalAlignment="Center"

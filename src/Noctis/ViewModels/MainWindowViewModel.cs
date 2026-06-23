@@ -191,7 +191,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Player = new PlayerViewModel(audioPlayer, library, persistence, new AnimatedCoverService(persistence));
         Sidebar = new SidebarViewModel(persistence, library);
         TopBar = new TopBarViewModel();
-        Settings = new SettingsViewModel(persistence, library);
+        Settings = new SettingsViewModel(persistence, library, playHistory);
         Settings.SetAudioPlayer(audioPlayer);
         Settings.SetPlayer(Player);
         Player.SetSettingsViewModel(Settings);
@@ -253,6 +253,20 @@ public partial class MainWindowViewModel : ViewModelBase
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
         _statisticsVm = new StatisticsViewModel(library, playHistory);
+        _statisticsVm.BackRequested += (_, _) =>
+        {
+            // Return to whatever section the user was in before opening Settings →
+            // "View All Stats". Statistics isn't a toggle-eligible section, so
+            // _currentSectionKey still holds that origin (e.g. "artists").
+            Navigate(_currentSectionKey);
+        };
+        Settings.OpenStatisticsRequested += (_, _) =>
+        {
+            CloseSettings();
+            Navigate("statistics");
+            TopBar.StatsBackCommand = _statisticsVm.GoBackCommand;
+            TopBar.IsStatsBackVisible = true;
+        };
         _coverFlowVm = new CoverFlowViewModel(Player);
 
         // Default view
@@ -1194,6 +1208,10 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         DebugLogger.Info(DebugLogger.Category.UI, "Navigate", $"key={key}, from={GetCurrentViewKey()}, coverFlow={_isCoverFlowMode}");
         ClearNavigationHistory();
+
+        // The Statistics "Back to Settings" pill only applies to the View All Stats
+        // entry point, which re-enables it right after this call returns.
+        TopBar.IsStatsBackVisible = false;
 
         var goingToEligibleSection = ToggleEligibleSections.Contains(key);
 

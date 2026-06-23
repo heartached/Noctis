@@ -70,6 +70,14 @@ public class VlcAudioPlayer : IAudioPlayer
     private const int StandbyWarmupPollMs = 25;
     private const int DeferredCleanupDelayMs = 1000;
     private const double DualFadeHeadroom = 0.88;
+    // AutoMix no-silence handoff: the incoming track fades in from this fraction of the
+    // user level (not silence), so there's no audible gap the moment the outgoing stops.
+    private const double NoSilenceFadeInFloor = 0.35;
+    // AutoMix overlap blend: while both tracks play, the shared session sits at this
+    // fraction of the user level so their summed loudness (~+3 dB for two sources) stays
+    // near the user's level instead of jumping. The incoming then rises back to full once
+    // the outgoing stops. One shared control moves (no per-stream fade) → no thrash/stutter.
+    private const double OverlapBlendLevel = 0.7;
 
     private readonly LibVLC _libVlc;
     private MediaPlayer _player;
@@ -216,6 +224,15 @@ public class VlcAudioPlayer : IAudioPlayer
     private bool _crossfadeEnabled;
     private int _crossfadeDurationMs = 6000;
     private AutoMixFadeCurve _crossfadeFadeCurve = AutoMixFadeCurve.SmoothEase;
+    // When false (AutoMix's no-silence handoff), the outgoing track is NOT faded out
+    // early — it plays until the caller triggers the handoff near its end, then a short
+    // click-safe dip hands straight to the incoming, which fades in. Eliminates the
+    // mid-transition dead air of the fade-out → fade-in sequence.
+    private volatile bool _crossfadeFadeOut = true;
+    // When true (AutoMix), both tracks play simultaneously through the crossover (overlap
+    // blend) instead of one-at-a-time. The shared session level dips through the blend and
+    // rises on the incoming. Session path only.
+    private volatile bool _crossfadeOverlap;
 
     // Gapless state: with a prepared standby and no crossfade, track changes
     // hand off to the standby player instantly at full volume.
@@ -747,6 +764,12 @@ public class VlcAudioPlayer : IAudioPlayer
         return Math.Clamp((int)Math.Round(amp * 1000.0), 0, 1000);
     }
 
+    // Inverse of the mmdevice cubic taper: the LibVLC player volume (0–100) whose open
+    // sets the shared session to the given amplitude-milli (0–1000). Used to start the
+    // overlap's incoming player matched to the current session so its open doesn't blip.
+    private static int MilliToPlayerVolume(int milli) =>
+        (int)Math.Round(Math.Cbrt(Math.Clamp(milli, 0, 1000) / 1000.0) * 100.0);
+
     /// <summary>
     /// Apply one ramp level (0–1000 per-mille amplitude). On Windows this is a
     /// float write to the OS audio session (sub-percent resolution, click-free);
@@ -890,6 +913,49 @@ public class VlcAudioPlayer : IAudioPlayer
             var next = (int)Math.Round(fromVolume + ((toVolume - fromVolume) * eased));
             SetPlayerVolumeGuarded(_player, next);
 
+            if (i < steps)
+                Thread.Sleep(sleepMs);
+        }
+    }
+
+    /// <summary>
+    /// Click-free volume fade rode on the OS audio session (ISimpleAudioVolume),
+    /// stepped in the amplitude-milli domain (0–1000). The OS ramps each step
+    /// sample-accurately, so this never produces the float_mixer "block gain"
+    /// crackle that stepping MediaPlayer.Volume causes. Session path only — the
+    /// caller guarantees _sessionVolume != null and that exactly ONE stream is
+    /// audible (so there's no shared-session collision). Lands on toMilli even if
+    /// cancelled, and syncs the slider ramp baseline so a later drag glides true.
+    /// </summary>
+    private void FadeSessionLevelBlocking(int fromMilli, int toMilli, int durationMs, CancellationToken cancel)
+    {
+        var sv = _sessionVolume;
+        if (sv == null) return;
+        fromMilli = Math.Clamp(fromMilli, 0, 1000);
+        toMilli = Math.Clamp(toMilli, 0, 1000);
+        durationMs = Math.Max(0, durationMs);
+
+        if (durationMs == 0 || fromMilli == toMilli)
+        {
+            sv.SetLevel(toMilli / 1000.0);
+            Volatile.Write(ref _rampCurrentMilli, toMilli);
+            return;
+        }
+
+        var steps = Math.Max(1, durationMs / FadeStepMs);
+        var sleepMs = Math.Max(1, durationMs / steps);
+        for (var i = 1; i <= steps; i++)
+        {
+            if (_disposed || cancel.IsCancellationRequested)
+            {
+                sv.SetLevel(toMilli / 1000.0);
+                Volatile.Write(ref _rampCurrentMilli, toMilli);
+                return;
+            }
+            var eased = AutoMixFadeMath.SmoothFadeProgress((double)i / steps);
+            var milli = (int)Math.Round(fromMilli + ((toMilli - fromMilli) * eased));
+            sv.SetLevel(milli / 1000.0);
+            Volatile.Write(ref _rampCurrentMilli, milli);
             if (i < steps)
                 Thread.Sleep(sleepMs);
         }
@@ -1342,12 +1408,14 @@ public class VlcAudioPlayer : IAudioPlayer
             : null;
     }
 
-    public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase)
+    public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false)
     {
         if (_disposed) return;
         _crossfadeEnabled = enabled;
         _crossfadeDurationMs = Math.Clamp(durationSeconds, 1, 12) * 1000;
         _crossfadeFadeCurve = fadeCurve;
+        _crossfadeFadeOut = fadeOut;
+        _crossfadeOverlap = overlap;
     }
 
     public void SetGapless(bool enabled)
@@ -1548,11 +1616,22 @@ public class VlcAudioPlayer : IAudioPlayer
                 ? Math.Clamp(_crossfadeDurationMs - fadeOutMs, 100, 12000)
                 : 0;
 
-            if (canTransitionFade &&
-                TryStartPreparedAutoMix(filePath, targetVolume, sessionId, cancel, instantHandoff: false))
+            if (canTransitionFade)
             {
-                Interlocked.Exchange(ref _pendingSeekMs, -1);
-                return;
+                // Windows OS-session path: both players share ONE volume control, so a
+                // true overlap collides on it (the transition stutter). Use the click-free
+                // sequential fade instead. On the per-player path (non-Windows / OSVOL off)
+                // the two volumes are independent, so the dual-stream overlap works.
+                var crossfadeStarted = _sessionVolume != null
+                    ? (_crossfadeOverlap
+                        ? TryStartOverlapFade(filePath, sessionId, cancel)
+                        : TryStartSequentialFade(filePath, sessionId, cancel))
+                    : TryStartPreparedAutoMix(filePath, targetVolume, sessionId, cancel, instantHandoff: false);
+                if (crossfadeStarted)
+                {
+                    Interlocked.Exchange(ref _pendingSeekMs, -1);
+                    return;
+                }
             }
 
             // Gapless: no crossfade, but the next track was prepared on the
@@ -1843,6 +1922,311 @@ public class VlcAudioPlayer : IAudioPlayer
         }
     }
 
+    /// <summary>
+    /// Windows OS-session crossfade — a click-free SEQUENTIAL fade. On mmdevice both
+    /// MediaPlayers share ONE volume control (the process audio session), so a true
+    /// overlap is impossible: driving both at once collides on that single control,
+    /// which is the source of the transition stutter. Instead this fades the outgoing
+    /// out, hands off to the pre-decoded standby (opened at volume 0 so its session
+    /// starts silent — no blip), then fades the incoming in. Only one stream is ever
+    /// audible, and both fades ride the OS session level (sample-accurate, click-free).
+    /// Caller guarantees a prepared standby for filePath and _sessionVolume != null;
+    /// returns false (uncommitted) when the standby isn't usable so the caller can fall
+    /// back to the single-player path.
+    /// </summary>
+    private bool TryStartSequentialFade(string filePath, long sessionId, CancellationToken cancel)
+    {
+        var normalizedPath = Path.GetFullPath(filePath);
+        if (_sessionVolume is not { } sessionVolume ||
+            !_standbyPrepared || _standbyMedia == null ||
+            string.IsNullOrWhiteSpace(_standbyPath) ||
+            !string.Equals(_standbyPath, normalizedPath, StringComparison.OrdinalIgnoreCase))
+        {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Crossfade.FallbackSinglePlayer", $"path={Path.GetFileName(filePath)}");
+            return false;
+        }
+
+        try
+        {
+            ResetEndReachedPending();
+            // Park the slider ramp + any trailing write so they can't fight the fade.
+            lock (_volumeWriteLock)
+            {
+                _volumeTrailingCts?.Cancel();
+                _volumeTrailingCts = null;
+                _pendingVolumeTarget = -1;
+            }
+            Volatile.Write(ref _rampTargetMilli, Volatile.Read(ref _rampCurrentMilli));
+
+            var userMilli = CurvedVolumeToLevelMilli(
+                ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100))));
+            var startMilli = Math.Clamp(Volatile.Read(ref _rampCurrentMilli), 0, 1000);
+            if (startMilli <= 0) startMilli = userMilli;
+            int fadeOutMs, fadeInMs;
+            if (_crossfadeFadeOut)
+            {
+                // Crossfade: split the duration into a fade-out then a fade-in (brief dip).
+                fadeOutMs = Math.Clamp(_crossfadeDurationMs / 2, 100, 6000);
+                fadeInMs = Math.Clamp(_crossfadeDurationMs - fadeOutMs, 100, 12000);
+            }
+            else
+            {
+                // AutoMix no-silence handoff: the caller already held the outgoing track
+                // until it was nearly over, so only a short click-safe dip is needed before
+                // the swap; the incoming then fades in over the full duration. No dead air.
+                fadeOutMs = 150;
+                fadeInMs = Math.Clamp(_crossfadeDurationMs, 100, 12000);
+            }
+
+            DebugLogger.Info(DebugLogger.Category.Playback, "Crossfade.SeqStart",
+                $"path={Path.GetFileName(filePath)}, durationMs={_crossfadeDurationMs}, fadeOut={_crossfadeFadeOut}, fadeOutMs={fadeOutMs}, fadeInMs={fadeInMs}");
+
+            // 1. Fade the outgoing out via the OS session (only it is audible → no collision).
+            FadeSessionLevelBlocking(startMilli, 0, fadeOutMs, cancel);
+            if (_disposed || cancel.IsCancellationRequested)
+            {
+                sessionVolume.SetLevel(userMilli / 1000.0); // a new Play() cancelled us; restore + let it take over
+                ReleasePreparedNext();
+                return true;
+            }
+
+            // 2. Stop the outgoing, start the pre-decoded standby. Force its volume to 0
+            //    first so LibVLC opens the new session silent (no full-volume blip).
+            var outgoingPlayer = _player;
+            var outgoingMedia = _currentMedia;
+
+            try { _standbyPlayer.Volume = 0; } catch { }
+            _standbyPlayer.Mute = _player.Mute;
+            Interlocked.Exchange(ref _lastPlayStartTicksUtc, DateTime.UtcNow.Ticks);
+            _standbyPlayer.Play(_standbyMedia);
+            var seekMs = Math.Max(_standbyStartPositionMs, Interlocked.Read(ref _pendingSeekMs));
+            if (seekMs > 0) _standbyPlayer.Time = seekMs;
+
+            if (!WaitForStandbyPlaybackReady(_standbyPlayer, sessionId, cancel, out var warmupMs))
+            {
+                DebugLogger.Warn(DebugLogger.Category.Playback, "Crossfade.FallbackSinglePlayer", $"standby not ready; warmupMs={warmupMs}");
+                try { _standbyPlayer.Stop(); } catch { }
+                sessionVolume.SetLevel(userMilli / 1000.0);
+                ReleasePreparedNext();
+                return false;
+            }
+
+            // 3. Swap → the standby becomes the active player.
+            _player = _standbyPlayer;
+            _currentMedia = _standbyMedia;
+            _standbyPlayer = outgoingPlayer;
+            _standbyMedia = null;
+            _standbyPath = null;
+            _standbyStartPositionMs = -1;
+            Interlocked.Exchange(ref _standbyPreparedTicksUtc, 0);
+            _standbyPrepared = false;
+            _isPaused = false;
+            ResetEndReachedPending();
+
+            // AutoMix's no-silence handoff fades the incoming in from an audible floor
+            // (not silence) so there's no dead-air gap when the outgoing stops; plain
+            // Crossfade keeps its intentional from-zero dip.
+            var fadeInFromMilli = _crossfadeFadeOut ? 0 : (int)Math.Round(userMilli * NoSilenceFadeInFloor);
+
+            // The incoming opened its own OS session — drop the outgoing's dead one and
+            // wait (briefly) until the new session is controllable so the fade-in applies.
+            // It plays silent (player volume 0) during this poll, so there's nothing to hear yet.
+            sessionVolume.Invalidate();
+            for (var waited = 0; waited < 400 && !sessionVolume.SetLevel(fadeInFromMilli / 1000.0); waited += 10)
+            {
+                if (_disposed || cancel.IsCancellationRequested) break;
+                Thread.Sleep(10);
+            }
+
+            // Carry the EQ onto the now-active player.
+            Equalizer? eqToApply = null;
+            lock (_equalizerLock)
+            {
+                if (_advancedEqEnabled && _equalizer != null)
+                    eqToApply = _equalizer;
+            }
+            if (eqToApply != null)
+                _player.SetEqualizer(eqToApply);
+
+            _positionTimer.Start();
+            DebugLogger.Info(DebugLogger.Category.Playback, "Crossfade.SeqSwap", $"session={sessionId}, warmupMs={warmupMs}");
+
+            // 4. Fade the incoming in via the OS session (from the audible floor for the
+            //    no-silence handoff, from zero for plain Crossfade).
+            FadeSessionLevelBlocking(fadeInFromMilli, userMilli, fadeInMs, cancel);
+
+            _crossfadeEnabled = false;
+            lock (_volumeWriteLock)
+            {
+                _lastWrittenVolume = ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
+                _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
+            }
+
+            // Re-assert in case the session resolved late, then tear down the outgoing.
+            ScheduleSessionVolumeReassert(sessionId);
+            QueueInactivePlayerCleanup(_standbyPlayer, outgoingMedia, sessionId);
+
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                Thread.Sleep(150);
+                if (!_disposed && sessionId == CurrentSessionId && _player.IsPlaying)
+                {
+                    var len = _player.Length;
+                    if (len > 0)
+                        DurationResolved?.Invoke(this, TimeSpan.FromMilliseconds(len));
+                }
+            });
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn(DebugLogger.Category.Playback, "Crossfade.FallbackSinglePlayer", ex.Message);
+            ReleasePreparedNext();
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// AutoMix overlap blend (Windows OS-session path). Both tracks play simultaneously
+    /// through the crossover: the incoming starts ALONGSIDE the still-playing outgoing and
+    /// both sit at <see cref="OverlapBlendLevel"/> of the user level (so their summed
+    /// loudness stays steady); after the blend window the outgoing is stopped and the
+    /// incoming rises back to full. Only the single shared session level moves — a handful
+    /// of click-free OS-ramp writes, NOT the per-stream volume storm that collides and
+    /// stutters. Caller guarantees a prepared standby for filePath and _sessionVolume != null;
+    /// returns false (uncommitted) when the standby isn't usable so the caller can fall back.
+    /// </summary>
+    private bool TryStartOverlapFade(string filePath, long sessionId, CancellationToken cancel)
+    {
+        var normalizedPath = Path.GetFullPath(filePath);
+        if (_sessionVolume is not { } sessionVolume ||
+            !_standbyPrepared || _standbyMedia == null ||
+            string.IsNullOrWhiteSpace(_standbyPath) ||
+            !string.Equals(_standbyPath, normalizedPath, StringComparison.OrdinalIgnoreCase))
+        {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Crossfade.FallbackSinglePlayer", $"path={Path.GetFileName(filePath)}");
+            return false;
+        }
+
+        try
+        {
+            ResetEndReachedPending();
+            lock (_volumeWriteLock)
+            {
+                _volumeTrailingCts?.Cancel();
+                _volumeTrailingCts = null;
+                _pendingVolumeTarget = -1;
+            }
+            Volatile.Write(ref _rampTargetMilli, Volatile.Read(ref _rampCurrentMilli));
+
+            var userMilli = CurvedVolumeToLevelMilli(
+                ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100))));
+            var blendMilli = Math.Clamp((int)Math.Round(userMilli * OverlapBlendLevel), 1, 1000);
+            var holdMs = Math.Clamp(_crossfadeDurationMs, 800, 6000);
+            var riseMs = Math.Clamp(_crossfadeDurationMs / 2, 600, 3000);
+
+            DebugLogger.Info(DebugLogger.Category.Playback, "Crossfade.OverlapStart",
+                $"path={Path.GetFileName(filePath)}, holdMs={holdMs}, riseMs={riseMs}, blendMilli={blendMilli}");
+
+            var outgoingPlayer = _player;
+            var outgoingMedia = _currentMedia;
+
+            // 1. Start the incoming ALONGSIDE the outgoing, opened at the blend level so its
+            //    session open ducks the shared volume to the blend (no +3 dB summed jump).
+            //    Both are now audible together — the overlap.
+            try { _standbyPlayer.Volume = MilliToPlayerVolume(blendMilli); } catch { }
+            _standbyPlayer.Mute = _player.Mute;
+            Interlocked.Exchange(ref _lastPlayStartTicksUtc, DateTime.UtcNow.Ticks);
+            _standbyPlayer.Play(_standbyMedia);
+            var seekMs = Math.Max(_standbyStartPositionMs, Interlocked.Read(ref _pendingSeekMs));
+            if (seekMs > 0) _standbyPlayer.Time = seekMs;
+
+            if (!WaitForStandbyPlaybackReady(_standbyPlayer, sessionId, cancel, out var warmupMs))
+            {
+                DebugLogger.Warn(DebugLogger.Category.Playback, "Crossfade.FallbackSinglePlayer", $"standby not ready; warmupMs={warmupMs}");
+                try { _standbyPlayer.Stop(); } catch { }
+                sessionVolume.SetLevel(userMilli / 1000.0);
+                ReleasePreparedNext();
+                return false;
+            }
+            // Pin the shared session exactly at the blend level (corrects the open's cubic).
+            sessionVolume.SetLevel(blendMilli / 1000.0);
+            Volatile.Write(ref _rampCurrentMilli, blendMilli);
+            DebugLogger.Info(DebugLogger.Category.Playback, "Crossfade.OverlapBoth", $"warmupMs={warmupMs}");
+
+            // 2. Hold the blend while BOTH play (the audible overlap). Cancellable.
+            for (var waited = 0; waited < holdMs; waited += 50)
+            {
+                if (_disposed || cancel.IsCancellationRequested)
+                {
+                    sessionVolume.SetLevel(userMilli / 1000.0);
+                    ReleasePreparedNext();
+                    return true;
+                }
+                Thread.Sleep(50);
+            }
+
+            // 3. Stop the outgoing (it's been heard through its ending) and swap → the
+            //    incoming is now the active player, still at the blend level.
+            try { outgoingPlayer.Stop(); } catch { }
+            _player = _standbyPlayer;
+            _currentMedia = _standbyMedia;
+            _standbyPlayer = outgoingPlayer;
+            _standbyMedia = null;
+            _standbyPath = null;
+            _standbyStartPositionMs = -1;
+            Interlocked.Exchange(ref _standbyPreparedTicksUtc, 0);
+            _standbyPrepared = false;
+            _isPaused = false;
+            ResetEndReachedPending();
+
+            Equalizer? eqToApply = null;
+            lock (_equalizerLock)
+            {
+                if (_advancedEqEnabled && _equalizer != null)
+                    eqToApply = _equalizer;
+            }
+            if (eqToApply != null)
+                _player.SetEqualizer(eqToApply);
+
+            _positionTimer.Start();
+            DebugLogger.Info(DebugLogger.Category.Playback, "Crossfade.OverlapSwap", $"session={sessionId}");
+
+            // 4. Rise the incoming back to the full user level.
+            FadeSessionLevelBlocking(blendMilli, userMilli, riseMs, cancel);
+
+            _crossfadeEnabled = false;
+            lock (_volumeWriteLock)
+            {
+                _lastWrittenVolume = ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
+                _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
+            }
+
+            ScheduleSessionVolumeReassert(sessionId);
+            QueueInactivePlayerCleanup(_standbyPlayer, outgoingMedia, sessionId);
+
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                Thread.Sleep(150);
+                if (!_disposed && sessionId == CurrentSessionId && _player.IsPlaying)
+                {
+                    var len = _player.Length;
+                    if (len > 0)
+                        DurationResolved?.Invoke(this, TimeSpan.FromMilliseconds(len));
+                }
+            });
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn(DebugLogger.Category.Playback, "Crossfade.FallbackSinglePlayer", ex.Message);
+            ReleasePreparedNext();
+            return false;
+        }
+    }
+
     private bool WaitForStandbyPlaybackReady(MediaPlayer standby, long sessionId, CancellationToken cancel, out long elapsedMs)
     {
         var start = Environment.TickCount64;
@@ -1884,16 +2268,37 @@ public class VlcAudioPlayer : IAudioPlayer
             try
             {
                 Thread.Sleep(DeferredCleanupDelayMs);
+                if (_disposed) return;
                 DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.CleanupStart", $"session={sessionId}");
-                SetPlayerVolumeGuarded(inactivePlayer, 0);
-                inactivePlayer.Stop();
-                inactivePlayer.SetEqualizer(null);
-                inactiveMedia?.Dispose();
+
+                // CRITICAL: do NOT zero this player's Volume on the OS-session path. On
+                // Windows mmdevice MediaPlayer.Volume IS the shared process audio session
+                // (ISimpleAudioVolume), so silencing the outgoing player here also silenced
+                // the now-active track — and the throw below left the session stuck at 0 for
+                // the rest of the track (decoder kept running → "plays but no audio"). Only
+                // pre-silence on the legacy per-player path; Stop() tears down this player's
+                // own stream silently either way. Each step is isolated so a single failure
+                // can't skip the media Dispose (a leak) or the volume re-assert.
+                if (_sessionVolume == null)
+                {
+                    try { SetPlayerVolumeGuarded(inactivePlayer, 0); } catch { /* legacy per-player path */ }
+                }
+                try { inactivePlayer.Stop(); }
+                catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupStep", $"Stop: {ex.GetType().Name}: {ex.Message}"); }
+                try { inactivePlayer.SetEqualizer(null); }
+                catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupStep", $"SetEqualizer: {ex.GetType().Name}"); }
+                try { inactiveMedia?.Dispose(); }
+                catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupStep", $"Dispose: {ex.GetType().Name}"); }
+
+                // Belt-and-suspenders: ensure the shared session carries the user's level
+                // for whatever is actually playing now, regardless of what teardown touched.
+                ReapplySessionVolume();
+
                 DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.CleanupEnd", $"session={sessionId}, elapsedMs={Environment.TickCount64 - cleanupStart}");
             }
             catch (Exception ex)
             {
-                DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupFailed", ex.Message);
+                DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupFailed", $"{ex.GetType().Name}: {ex.Message}");
             }
         });
     }

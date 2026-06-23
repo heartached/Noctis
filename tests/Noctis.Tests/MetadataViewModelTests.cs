@@ -162,6 +162,30 @@ public class MetadataViewModelTests
             Assert.Contains(t.FilePath, meta.WrittenArtPaths);
     }
 
+    // ── Genre: off-list values (from a metadata search) must be displayable ──
+
+    [Fact]
+    public void Genre_SetToValueOutsideBuiltInList_IsAddedToGenreOptions()
+    {
+        // A genre applied from an online search (e.g. Deezer's "Rap/Hip Hop") isn't in the
+        // built-in list. The ComboBox can only display a value present in GenreOptions, so the
+        // VM must add it — otherwise the box shows its placeholder ("Mixed") and the applied
+        // genre looks like it never took.
+        var album = Album("A", "X", 1);
+        using var p = new TestPersistenceService();
+        var meta = new FakeMetadataService();
+        var library = new FakeLibraryService { TrackList = album.ToList() };
+        var vm = new MetadataViewModel(album[0], meta, library, p, new FakeAnimatedCoverService(),
+            albumScoped: false, albumTracks: null);
+
+        Assert.DoesNotContain("Rap/Hip Hop", vm.GenreOptions);
+
+        vm.Genre = "Rap/Hip Hop";
+
+        Assert.Contains("Rap/Hip Hop", vm.GenreOptions);
+        Assert.Equal("Rap/Hip Hop", vm.Genre);
+    }
+
     // ── Helpers ──
 
     private static List<Track> Album(string album, string albumArtist, int count)

@@ -680,21 +680,6 @@
                             HorizontalAlignment="Center"
                             Spacing="8"
                             Margin="0,24,0,0">
-                    <!-- LRC sync editor -->
-                    <Button Classes="pill-btn"
-                            Padding="10,5"
-                            Height="30" MinHeight="30"
-                            IsVisible="{Binding ShareAvailable}"
-                            ToolTip.Tip="Sync lyric timestamps to the music (tap-to-sync + nudge)"
-                            Command="{Binding OpenLrcEditorCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <PathIcon Data="{StaticResource EditIcon}"
-                                     Width="12" Height="12" Foreground="{Binding LyricsPrimaryFg}"
-                                     VerticalAlignment="Center"/>
-                            <TextBlock Text="Edit Sync" FontSize="11" Foreground="{Binding LyricsPrimaryFg}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-
                     <!-- Switch to alternate lyrics source -->
                     <Button Classes="pill-btn"
                             Padding="10,5"

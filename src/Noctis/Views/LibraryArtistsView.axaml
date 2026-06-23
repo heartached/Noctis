@@ -59,6 +59,28 @@
                                             Cursor="Hand"
                                             Command="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).OpenArtistCommand, FallbackValue={x:Null}}"
                                             CommandParameter="{Binding}">
+                                        <Button.ContextMenu>
+                                            <ContextMenu DataContext="{Binding}">
+                                                <MenuItem Header="Change Picture" Click="OnChangeArtistImageClick">
+                                                    <MenuItem.Icon>
+                                                        <PathIcon Data="{StaticResource CameraIcon}" Width="14" Height="14"
+                                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Find Picture Online" Click="OnSearchArtistImageClick">
+                                                    <MenuItem.Icon>
+                                                        <PathIcon Data="{StaticResource SearchGlobeIcon}" Width="14" Height="14"
+                                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Remove Picture" Classes="danger" Click="OnRemoveArtistImageClick"
+                                                          IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                    <MenuItem.Icon>
+                                                        <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
                                         <StackPanel Spacing="10" HorizontalAlignment="Center">
                                             <!-- Circular portrait with icon fallback -->
                                             <Border Width="124" Height="124"

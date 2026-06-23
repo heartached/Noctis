@@ -1101,6 +1101,32 @@
         <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
     </Style>
 
+    <!-- Perfect pill outline for compact text inputs (e.g. timestamp boxes). Rounds the
+         control AND its inner PART_BorderElement to a full pill, and uses a 1.5px stroke so
+         the curved ends read as strongly as the straight edges — the same trick the player
+         bar's island outline uses. Matches the metadata fields' look but works app-wide. -->
+    <Style Selector="TextBox.pill-input">
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+    <Style Selector="TextBox.pill-input /template/ Border#PART_BorderElement">
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+    <Style Selector="TextBox.pill-input:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+    </Style>
+    <Style Selector="TextBox.pill-input:focus-within /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+    </Style>
+
     <!-- Round circle checkbox with check mark -->
     <Style Selector="CheckBox.metadata-pill-checkbox">
         <Setter Property="Cursor" Value="Hand" />

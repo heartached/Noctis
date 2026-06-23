@@ -26,14 +26,34 @@ public sealed class DeezerMetadataService
 
         try
         {
-            var url = DeezerApi.BuildSearchUrl(artist, title, album);
-            using var resp = await _http.GetAsync(url, ct).ConfigureAwait(false);
-            if (!resp.IsSuccessStatusCode) return Array.Empty<TagSuggestion>();
-            var json = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-            return DeezerApi.ParseSearch(json);
+            var json = await SearchJsonWithAlbumFallbackAsync(artist, title, album, ct).ConfigureAwait(false);
+            return json is null ? Array.Empty<TagSuggestion>() : DeezerApi.ParseSearch(json);
         }
         catch (OperationCanceledException) { throw; }
         catch { return Array.Empty<TagSuggestion>(); }
+    }
+
+    /// <summary>
+    /// Runs a Deezer search, first with a normalized album hint (edition suffixes stripped) and,
+    /// if that returns nothing, again with just artist + title. The album hint sharpens matches for
+    /// common tracks while the drop-album retry keeps popular/deluxe albums from coming back empty.
+    /// </summary>
+    private async Task<string?> SearchJsonWithAlbumFallbackAsync(
+        string artist, string title, string album, CancellationToken ct)
+    {
+        var normalizedAlbum = AlbumTitleNormalizer.Normalize(album);
+
+        var json = await GetStringAsync(DeezerApi.BuildSearchUrl(artist, title, normalizedAlbum), ct)
+            .ConfigureAwait(false);
+
+        if (!string.IsNullOrWhiteSpace(normalizedAlbum) && DeezerApi.FirstTrackId(json ?? string.Empty) is null)
+        {
+            var retry = await GetStringAsync(DeezerApi.BuildSearchUrl(artist, title, string.Empty), ct)
+                .ConfigureAwait(false);
+            if (DeezerApi.FirstTrackId(retry ?? string.Empty) is not null) return retry;
+        }
+
+        return json;
     }
 
     /// <summary>
@@ -49,9 +69,9 @@ public sealed class DeezerMetadataService
 
         try
         {
-            // 1. Find the best matching track id via search.
-            var searchUrl = DeezerApi.BuildSearchUrl(artist, title, album);
-            var searchJson = await GetStringAsync(searchUrl, ct).ConfigureAwait(false);
+            // 1. Find the best matching track id via search (album hint normalized, with a
+            //    drop-album retry so deluxe/anniversary editions still resolve).
+            var searchJson = await SearchJsonWithAlbumFallbackAsync(artist, title, album, ct).ConfigureAwait(false);
             if (searchJson is null) return null;
             var bestId = DeezerApi.FirstTrackId(searchJson);
             if (bestId is null) return null;
@@ -73,7 +93,9 @@ public sealed class DeezerMetadataService
                 Title: track.Title,
                 Artist: track.Artist,
                 Album: alb?.Title ?? album,
-                Year: alb?.Year,
+                // The nested album date (original release, matching Deezer's UI) wins over the
+                // /album/{id} date, which can be a later re-delivery date for re-releases.
+                Year: track.AlbumYear ?? alb?.Year,
                 Confidence: 0.0,
                 Source: "Deezer",
                 AlbumArtist: track.AlbumArtist ?? alb?.AlbumArtist,

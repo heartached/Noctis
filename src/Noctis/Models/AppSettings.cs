@@ -67,12 +67,6 @@ public class AppSettings
     /// <summary>Destination root for organized files. Empty = first media folder.</summary>
     public string OrganizeTargetRoot { get; set; } = string.Empty;
 
-    /// <summary>AcoustID application API key for fingerprint metadata lookups. Empty = disabled.</summary>
-    public string AcoustIdApiKey { get; set; } = string.Empty;
-
-    /// <summary>Optional explicit path to the Chromaprint <c>fpcalc</c> binary. Empty = search PATH.</summary>
-    public string FpcalcPath { get; set; } = string.Empty;
-
     /// <summary>When true, the in-app updater also offers GitHub pre-releases. Off = stable channel only.</summary>
     public bool IncludePrereleaseUpdates { get; set; } = false;
 
@@ -259,17 +253,11 @@ public class AppSettings
 
     // ── Metadata providers ──
 
-    /// <summary>Whether AcoustID acoustic-fingerprint identification is used (needs fpcalc + key).</summary>
-    public bool AcoustIdEnabled { get; set; } = true;
-
-    /// <summary>Whether MusicBrainz is used as the primary tag source.</summary>
-    public bool MusicBrainzEnabled { get; set; } = true;
-
-    /// <summary>Whether Deezer is used as a fallback tag source for redundancy.</summary>
+    /// <summary>Whether Deezer is used as the primary tag source (keyless).</summary>
     public bool DeezerEnabled { get; set; } = true;
 
-    /// <summary>Whether iTunes/Apple Music is used for artwork and animated covers.</summary>
-    public bool ITunesEnabled { get; set; } = true;
+    /// <summary>Whether MusicBrainz is used as the fallback tag source.</summary>
+    public bool MusicBrainzEnabled { get; set; } = true;
 
     // ── Audio Converter ──
 

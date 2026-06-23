@@ -86,6 +86,16 @@ public partial class MetadataViewModel : ViewModelBase
 
     partial void OnHasArtworkChanged(bool value) => OnPropertyChanged(nameof(ShowAlbumArtPlaceholderText));
 
+    // The genre ComboBox can only display a value that exists in GenreOptions. A genre applied at
+    // runtime (e.g. "Rap/Hip Hop" from a Deezer metadata search) isn't in the built-in list, so
+    // without this the ComboBox would show no selection and fall back to its "Mixed" placeholder
+    // even though Genre is set. Inserting the value keeps the box in sync with the applied genre.
+    partial void OnGenreChanged(string value)
+    {
+        if (!string.IsNullOrWhiteSpace(value) && !GenreOptions.Contains(value))
+            GenreOptions.Insert(0, value);
+    }
+
     // ── Rename-by-pattern (multi-select only) ──
     [ObservableProperty] private bool _applyRename;
     [ObservableProperty] private string _renamePattern = "%tracknumber2% - %title%";
@@ -139,10 +149,8 @@ public partial class MetadataViewModel : ViewModelBase
     // ── Synced lyrics manual editor ──
     // Per-line timestamp editing (type/nudge/clear) presented instead of the raw
     // [mm:ss.xx] textarea. The list is the source the user touches; edits flow back
-    // into SyncedLyrics (which Save still reads). EditSyncedAsText swaps to the raw
-    // box as a power-user / bulk-paste escape hatch.
+    // into SyncedLyrics (which Save still reads).
     public ObservableCollection<SyncedLyricEditorLine> SyncedLyricLines { get; } = new();
-    [ObservableProperty] private bool _editSyncedAsText;
     [ObservableProperty] private bool _hasSyncedLines;
 
     // ── Options tab ──
@@ -293,8 +301,11 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Genre list bound to the genre ComboBox — includes the track's current genre if it's not in the built-in list.</summary>
-    public List<string> GenreOptions { get; } = new();
+    /// <summary>Genre list bound to the genre ComboBox — includes the track's current genre (and any
+    /// genre applied later, e.g. from a metadata search) when it's not in the built-in list, so the
+    /// ComboBox can actually display it instead of falling back to its placeholder. Observable so
+    /// runtime additions reach the bound ComboBox.</summary>
+    public ObservableCollection<string> GenreOptions { get; } = new();
 
     /// <summary>Available genres for the genre dropdown.</summary>
     public static readonly string[] AvailableGenres = new[]
@@ -395,7 +406,7 @@ public partial class MetadataViewModel : ViewModelBase
 
         IsSearchingMetadata = true;
         IsSearchMetadataOpen = false;
-        SearchMetadataStatus = "Searching…";
+        SearchMetadataStatus = "Searching";
         MetadataChanges.Clear();
         _albumMatches.Clear();
         _albumPerTrackApproved = false;
@@ -420,7 +431,7 @@ public partial class MetadataViewModel : ViewModelBase
     private async Task SearchSingleTrackMetadataAsync()
     {
         var hit = await _autoMatch!.MatchAsync(_track);
-        if (hit is null) { SearchMetadataStatus = "No new metadata found."; return; }
+        if (hit is null) { SearchMetadataStatus = "No metadata found online for this track."; return; }
 
         AddRow("title", Title, hit.Title, v => Title = v);
         AddRow("artist", Artist, hit.Artist, v => Artist = v);
@@ -441,7 +452,8 @@ public partial class MetadataViewModel : ViewModelBase
         }
         else
         {
-            SearchMetadataStatus = "No new metadata found.";
+            // A match was found, but every field already agrees with it.
+            SearchMetadataStatus = "Tags already match the online data — nothing to update.";
         }
     }
 
@@ -460,7 +472,7 @@ public partial class MetadataViewModel : ViewModelBase
             matched++;
         }
 
-        if (matched == 0) { SearchMetadataStatus = "No new metadata found for this album."; return; }
+        if (matched == 0) { SearchMetadataStatus = "No metadata found online for this album."; return; }
 
         // Shared (album-wide) fields are reviewed as rows and fanned out on Save.
         AddRow("album", Album, representative!.Album, v => Album = v);
@@ -772,11 +784,13 @@ public partial class MetadataViewModel : ViewModelBase
         Artist = _track.Artist;
         AlbumArtist = _track.AlbumArtist;
         Album = _track.Album;
-        Genre = _track.Genre;
+        // Build the genre options before assigning Genre so the ComboBox can bind the current value.
         GenreOptions.Clear();
         if (!string.IsNullOrWhiteSpace(_track.Genre) && !AvailableGenres.Contains(_track.Genre))
             GenreOptions.Add(_track.Genre);
-        GenreOptions.AddRange(AvailableGenres);
+        foreach (var g in AvailableGenres)
+            GenreOptions.Add(g);
+        Genre = _track.Genre;
         Composer = _track.Composer;
         TrackNumber = _track.TrackNumber > 0 ? _track.TrackNumber.ToString() : string.Empty;
         TrackCount = _track.TrackCount > 0 ? _track.TrackCount.ToString() : string.Empty;
@@ -1305,12 +1319,6 @@ public partial class MetadataViewModel : ViewModelBase
             l.Timestamp is { } t
                 ? $"[{LrcEditorViewModel.FormatTimestamp(t)}]{l.Text}"
                 : l.Text));
-    }
-
-    // Switching back from the raw-text escape hatch re-parses whatever the user typed.
-    partial void OnEditSyncedAsTextChanged(bool value)
-    {
-        if (!value) RebuildSyncedLinesFromText();
     }
 
     [RelayCommand]

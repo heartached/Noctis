@@ -846,10 +846,13 @@
                     <!-- Row 1: logo + version on left, update button on right -->
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
-                            <Border Width="40" Height="40" CornerRadius="20"
-                                    ClipToBounds="True">
-                                <Image Source="avares://Noctis/Assets/Icons/Noctis%20Logo.png"
-                                       Stretch="UniformToFill"
+                            <!-- White note, transparent corners, plus a small transparent margin
+                                 baked into the asset so the circle's cardinal points have room to
+                                 antialiase (the source circle is full-bleed and would otherwise
+                                 render with flat spots at 12/3/6/9 o'clock). No clip needed. -->
+                            <Border Width="40" Height="40">
+                                <Image Source="avares://Noctis/Assets/Icons/Noctis%20Logo%20Padded.png"
+                                       Stretch="Uniform"
                                        RenderOptions.BitmapInterpolationMode="HighQuality"/>
                             </Border>
                             <StackPanel VerticalAlignment="Center" Spacing="2">
@@ -861,9 +864,9 @@
                                     <Border IsVisible="{Binding IsPrereleaseBuild}"
                                             Background="#E74856"
                                             CornerRadius="9"
-                                            Padding="8,2"
+                                            Padding="8,3,8,1"
                                             VerticalAlignment="Center">
-                                        <TextBlock Text="Pre-release"
+                                        <TextBlock Text="Pre-Release"
                                                    FontSize="10"
                                                    FontWeight="SemiBold"
                                                    Foreground="White"
@@ -881,7 +884,7 @@
                                     Padding="16,6"
                                     Background="#E74856"
                                     IsVisible="{Binding ShowCheckForUpdatesButton}">
-                                <TextBlock Text="Check for Updates" FontSize="12" Foreground="White"/>
+                                <TextBlock Text="{Binding CheckForUpdatesButtonText}" FontSize="12" Foreground="White"/>
                             </Button>
 
                             <!-- Update Available button (replaces Check when a new release is detected).
@@ -967,6 +970,20 @@
                                           Width="14" Height="14"
                                           Foreground="#5865F2" />
                                 <TextBlock Text="Join Discord"
+                                           FontSize="12" Opacity="0.85"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="social-link"
+                                Command="{Binding OpenWebsiteCommand}"
+                                Margin="-6,0,0,0"
+                                HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Image Source="avares://Noctis/Assets/Icons/Noctis%20Logo%20Padded.png"
+                                       Width="18" Height="18"
+                                       Stretch="Uniform"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality" />
+                                <TextBlock Text="Official Website"
                                            FontSize="12" Opacity="0.85"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -1243,8 +1260,13 @@
                                                         BorderBrush="#22000000"
                                                         BorderThickness="1"
                                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                <Border Width="44" Height="44" CornerRadius="22"
+                                                <!-- Selection ring sits on the colour's own edge (same
+                                                     40px box) so the white overlaps the disc's rim — no
+                                                     dark border or anti-alias seam shows between the
+                                                     colour and the white outline. -->
+                                                <Border Width="40" Height="40" CornerRadius="20"
                                                         BorderBrush="White" BorderThickness="2"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                                         IsVisible="{Binding IsActive}"/>
                                             </Panel>
                                         </Button>
@@ -1285,7 +1307,7 @@
                                                            FontSize="20" FontWeight="Light"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Border>
-                                            <Border Width="44" Height="44" CornerRadius="22"
+                                            <Border Width="40" Height="40" CornerRadius="20"
                                                     BorderBrush="White" BorderThickness="2"
                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     IsVisible="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).IsCustomAccentSelected}"/>
@@ -1344,14 +1366,24 @@
 
             <TextBlock Classes="section-title" Text="PLAYBACK" Margin="0,4,0,10"/>
 
-            <!-- Song Transitions (Apple-style; drives the AutoMix engine) -->
-            <Border Classes="setting-card">
+            <!-- Song Transitions (Apple-style; drives the AutoMix engine).
+                 Disabled + grayed while Exclusive Mode is on: every transition style
+                 needs two overlapping streams, which single-stream exclusive output
+                 can't provide. -->
+            <Border Classes="setting-card"
+                    IsEnabled="{Binding CanUseSongTransitions}"
+                    Opacity="{Binding SongTransitionsOpacity}">
                 <StackPanel Spacing="14">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="Song Transitions" FontSize="15" FontWeight="SemiBold"/>
                             <TextBlock Text="Songs blend smoothly into each other. Albums still play without transitions."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                            <TextBlock Text="Unavailable while Exclusive Mode is on."
+                                       IsVisible="{Binding ExclusiveAudioEnabled}"
+                                       FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AccentColorBrush}"
+                                       TextWrapping="Wrap" Margin="0,4,0,0"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding SongTransitionsEnabled}"
@@ -1436,7 +1468,7 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="Exclusive Mode" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Bit-perfect output at the track's sample rate. Crossfade is unavailable while active."
+                        <TextBlock Text="Bit-perfect output at the track's sample rate. Song transitions (AutoMix &amp; Crossfade) are unavailable while active."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         <TextBlock Text="{Binding ExclusiveAudioStatus}"
                                    IsVisible="{Binding ExclusiveAudioStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
@@ -1951,30 +1983,12 @@
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="10">
-                    <TextBlock Text="Tag sources for Find/Identify, in order."
+                    <TextBlock Text="Tag sources for Search metadata, in order."
                                FontSize="12" Opacity="0.5" Margin="0,0,0,4"/>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="AcoustID fingerprint" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Audio match. Needs fpcalc + API key." FontSize="11" Opacity="0.5"/>
-                        </StackPanel>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding AcoustIdEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="MusicBrainz" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Primary source, no key." FontSize="11" Opacity="0.5"/>
-                        </StackPanel>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding MusicBrainzEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Text="Deezer" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Fast fallback, no key." FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="Music streaming catalog" FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding DeezerEnabled}"
@@ -1982,11 +1996,11 @@
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="iTunes / Apple Music" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Artwork &amp; covers, no key." FontSize="11" Opacity="0.5"/>
+                            <TextBlock Text="MusicBrainz" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Open music encyclopedia" FontSize="11" Opacity="0.5"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding ITunesEnabled}"
+                                              IsChecked="{Binding MusicBrainzEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                 </StackPanel>
@@ -2104,7 +2118,7 @@
                             Command="{Binding OpenOrganizeFilesCommand}"
                             Padding="14,8" CornerRadius="16" Cursor="Hand"
                             VerticalAlignment="Center">
-                        <TextBlock Text="Organize…" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Text="Organize" FontSize="13" VerticalAlignment="Center"/>
                     </Button>
                 </Grid>
             </Border>
@@ -2124,36 +2138,29 @@
                             Command="{Binding OpenDuplicateFinderCommand}"
                             Padding="14,8" CornerRadius="16" Cursor="Hand"
                             VerticalAlignment="Center">
-                        <TextBlock Text="Find…" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Text="Find" FontSize="13" VerticalAlignment="Center"/>
                     </Button>
                 </Grid>
             </Border>
 
             <!-- Find Metadata (Library group) -->
             <Border Classes="setting-card">
-                <StackPanel Spacing="12">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0">
-                            <StackPanel Spacing="2">
-                                <TextBlock Text="Find Metadata" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Identify poorly-tagged tracks and review proposed tags before applying."
-                                           FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                            </StackPanel>
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Find Metadata" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Identify poorly-tagged tracks and review proposed tags before applying."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
-                        <Button Grid.Column="1"
-                                Classes="pill-action"
-                                Command="{Binding OpenMetadataFinderCommand}"
-                                Padding="14,8" CornerRadius="16" Cursor="Hand"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="Find…" FontSize="13" VerticalAlignment="Center"/>
-                        </Button>
-                    </Grid>
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="AcoustID API key (optional — enables fingerprinting)" FontSize="12" Opacity="0.6"/>
-                        <TextBox Text="{Binding AcoustIdApiKey}" PasswordChar="•" Watermark="Your AcoustID application key"
-                                 CornerRadius="999" Padding="14,8" MaxWidth="360" HorizontalAlignment="Left"/>
                     </StackPanel>
-                </StackPanel>
+                    <Button Grid.Column="1"
+                            Classes="pill-action"
+                            Command="{Binding OpenMetadataFinderCommand}"
+                            Padding="14,8" CornerRadius="16" Cursor="Hand"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="Find" FontSize="13" VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
             </Border>
 
             <!-- Import Playlist (Library group) -->
@@ -2171,7 +2178,7 @@
                             Command="{Binding OpenPlaylistImportCommand}"
                             Padding="14,8" CornerRadius="16" Cursor="Hand"
                             VerticalAlignment="Center">
-                        <TextBlock Text="Import…" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Text="Import" FontSize="13" VerticalAlignment="Center"/>
                     </Button>
                 </Grid>
             </Border>
@@ -2658,6 +2665,14 @@
                     </StackPanel>
                 </Border>
             </Grid>
+
+            <Button Classes="pill"
+                    Command="{Binding OpenStatisticsPageCommand}"
+                    HorizontalAlignment="Center"
+                    Margin="0,16,0,0"
+                    Padding="16,8">
+                <TextBlock Text="View All Stats  →" FontSize="13"/>
+            </Button>
 
             </StackPanel>
 

@@ -95,12 +95,6 @@ public partial class MetadataWindow : Window
             vm.IsArtworkSearchOpen = false;
     }
 
-    private async void OnEditSyncedLyricsClick(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is MetadataViewModel vm)
-            await SyncedLyricsEditorWindow.ShowAsync(vm, this);
-    }
-
     private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         e.Handled = true;

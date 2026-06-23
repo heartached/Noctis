@@ -478,6 +478,14 @@ public partial class PlayerViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void ViewArtist(Track? track)
+    {
+        var artist = track?.Artist;
+        if (!string.IsNullOrWhiteSpace(artist))
+            _viewArtistAction?.Invoke(artist);
+    }
+
+    [RelayCommand]
     private void SetLyricsSynced() => _selectLyricsSynced?.Invoke();
 
     [RelayCommand]
@@ -1672,8 +1680,19 @@ public partial class PlayerViewModel : ViewModelBase
         }
 
         var remaining = transitionEnd - position;
-        if (plan.Duration > TimeSpan.Zero && remaining > plan.Duration)
+        var overlapBlend = AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.AutoMix;
+        if (overlapBlend)
+        {
+            // AutoMix: start the overlap blend this far from the end so both tracks play
+            // together through the crossover (the old's ending + the new's start), with no
+            // early fade-out and no dead air.
+            if (remaining > TimeSpan.FromSeconds(AutoMixOverlapLeadSeconds))
+                return false;
+        }
+        else if (plan.Duration > TimeSpan.Zero && remaining > plan.Duration)
+        {
             return false;
+        }
 
         if (string.IsNullOrWhiteSpace(nextTrack.FilePath) || !File.Exists(nextTrack.FilePath))
         {
@@ -1700,10 +1719,18 @@ public partial class PlayerViewModel : ViewModelBase
         _autoMixAdvanceQueued = true;
         Interlocked.Exchange(ref _pendingAutoMixNextStartMs, (long)plan.NextTrackStartPosition.TotalMilliseconds);
         _autoMixTransitionArmedUntilUtc = DateTime.UtcNow.AddSeconds(3);
-        _audioPlayer.SetCrossfade(
-            plan.TransitionType is AutoMixTransitionType.SimpleCrossfade or AutoMixTransitionType.BeatMatchedCrossfade or AutoMixTransitionType.SafeFade,
-            Math.Max(1, (int)Math.Round(plan.Duration.TotalSeconds)),
-            plan.FadeCurve);
+        if (overlapBlend)
+        {
+            // Overlap blend: both tracks play together through the crossover.
+            _audioPlayer.SetCrossfade(true, AutoMixOverlapSeconds, plan.FadeCurve, overlap: true);
+        }
+        else
+        {
+            _audioPlayer.SetCrossfade(
+                plan.TransitionType is AutoMixTransitionType.SimpleCrossfade or AutoMixTransitionType.BeatMatchedCrossfade or AutoMixTransitionType.SafeFade,
+                Math.Max(1, (int)Math.Round(plan.Duration.TotalSeconds)),
+                plan.FadeCurve);
+        }
         AdvanceQueue(QueueAdvanceReason.AutoMix);
         return true;
     }
@@ -1727,6 +1754,13 @@ public partial class PlayerViewModel : ViewModelBase
     // past us into the EndReached path.
     private const double GaplessPrepareLeadSeconds = 8.0;
     private const double GaplessHandoffLeadSeconds = 0.3;
+
+    // AutoMix overlap blend: both tracks play together through the crossover. The blend is
+    // triggered AutoMixOverlapSeconds (plus a small margin so the old stops just before its
+    // natural end) from the end; the engine holds both at the blend level for that long,
+    // then stops the old and rises the new back to full.
+    private const int AutoMixOverlapSeconds = 3;
+    private const double AutoMixOverlapLeadSeconds = AutoMixOverlapSeconds + 1.0;
 
     private bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration)
     {

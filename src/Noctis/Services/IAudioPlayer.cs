@@ -85,8 +85,11 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Path to the currently loaded media, or null. Used to re-apply RG.</summary>
     string? CurrentMediaPath { get; }
 
-    /// <summary>Enables or disables the next track transition fade.</summary>
-    void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase);
+    /// <summary>Enables or disables the next track transition fade. When
+    /// <paramref name="fadeOut"/> is false (AutoMix's no-silence handoff) the outgoing
+    /// track is not faded out early. When <paramref name="overlap"/> is true (AutoMix
+    /// overlap blend) both tracks play simultaneously through the crossover.</summary>
+    void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false);
 
     /// <summary>
     /// Enables gapless playback: when the next track was prepared via

@@ -14,12 +14,19 @@ public partial class WrapViewModel : ViewModelBase
 {
     private readonly IPlayHistoryService _playHistory;
     private readonly ILibraryService _library;
+    private readonly IWrapArchiveService _archive;
+    private readonly Dictionary<Guid, Models.Track> _tracksById = new();
+    private readonly int _currentYear = DateTime.Now.Year;
     private WrapStats _stats = new();
     private int _renderGeneration;
 
+    [ObservableProperty] private List<int> _availableYears = new();
+    [ObservableProperty] private int _selectedYear;
     [ObservableProperty] private bool _isYearMode = true;
     [ObservableProperty] private bool _isMonthMode;
-    [ObservableProperty] private bool _isTestData;
+
+    /// <summary>True when the live current year is selected (enables the month toggle).</summary>
+    public bool IsCurrentYear => SelectedYear == _currentYear;
 
     [ObservableProperty] private string _periodLabel = "";
     [ObservableProperty] private string _totalPlaysText = "0";
@@ -48,24 +55,40 @@ public partial class WrapViewModel : ViewModelBase
 
     public string SuggestedFileName => $"Noctis Wrap {_stats.PeriodLabel}.png";
 
-    public WrapViewModel(IPlayHistoryService playHistory, ILibraryService library)
+    public WrapViewModel(IPlayHistoryService playHistory, ILibraryService library, IWrapArchiveService? archive = null)
     {
         _playHistory = playHistory;
         _library = library;
-        LoadReal();
+        _archive = archive ?? new WrapArchiveService();
+
+        foreach (var t in _library.Tracks)
+            _tracksById[t.Id] = t;
+
+        // Freeze finished years before the 10k-event log trims them away.
+        _archive.EnsureArchived(_playHistory.Events, _tracksById, _currentYear);
+
+        var years = new List<int> { _currentYear };
+        years.AddRange(_archive.ArchivedYears.Where(y => y != _currentYear));
+        AvailableYears = years;
+
+        _selectedYear = _currentYear;
+        Load();
     }
 
-    private void LoadReal()
+    private void Load()
     {
-        var now = DateTime.Now;
-        var tracksById = new Dictionary<Guid, Models.Track>();
-        foreach (var t in _library.Tracks)
-            tracksById[t.Id] = t;
-
-        var stats = WrapStatsBuilder.Build(
-            _playHistory.Events, tracksById, now.Year, IsMonthMode ? now.Month : null);
-        IsTestData = false;
-        Apply(stats);
+        if (SelectedYear == _currentYear)
+        {
+            var stats = WrapStatsBuilder.Build(
+                _playHistory.Events, _tracksById, _currentYear, IsMonthMode ? DateTime.Now.Month : null);
+            Apply(stats);
+        }
+        else
+        {
+            var stats = _archive.GetYear(SelectedYear)
+                        ?? new WrapStats { PeriodLabel = SelectedYear.ToString() };
+            Apply(stats);
+        }
     }
 
     private void Apply(WrapStats stats)
@@ -89,14 +112,22 @@ public partial class WrapViewModel : ViewModelBase
         RefreshPreview();
     }
 
+    partial void OnSelectedYearChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsCurrentYear));
+        // Archived years are full-year snapshots only; drop month granularity.
+        if (value != _currentYear && IsMonthMode) { IsYearMode = true; return; }
+        Load();
+    }
+
     partial void OnIsYearModeChanged(bool value)
     {
-        if (value) { IsMonthMode = false; LoadReal(); }
+        if (value) { IsMonthMode = false; Load(); }
     }
 
     partial void OnIsMonthModeChanged(bool value)
     {
-        if (value) { IsYearMode = false; LoadReal(); }
+        if (value) { IsYearMode = false; Load(); }
     }
 
     [RelayCommand]
@@ -104,17 +135,6 @@ public partial class WrapViewModel : ViewModelBase
 
     [RelayCommand]
     private void SelectMonth() => IsMonthMode = true;
-
-    /// <summary>Fills the dialog with random placeholder stats for UI/card tuning.</summary>
-    [RelayCommand]
-    private void UseTestData()
-    {
-        IsTestData = true;
-        Apply(WrapStatsBuilder.BuildTestData());
-    }
-
-    [RelayCommand]
-    private void UseRealData() => LoadReal();
 
     partial void OnIsSquareChanged(bool value)
     {
