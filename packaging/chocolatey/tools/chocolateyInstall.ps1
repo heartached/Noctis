@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $packageName  = 'noctis'
 $version      = $env:ChocolateyPackageVersion
-$url64        = "https://github.com/heartached/Noctis/releases/download/v$version/Noctis-Setup.exe"
+$url64        = "https://github.com/heartached/Noctis/releases/download/v$version/Noctis-v$version-Setup.exe"
 
 $packageArgs = @{
   packageName    = $packageName

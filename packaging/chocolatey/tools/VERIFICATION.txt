@@ -10,11 +10,11 @@ GitHub Releases:
 
 The installer URL embedded in tools\chocolateyInstall.ps1 is:
 
-  https://github.com/heartached/Noctis/releases/download/v<version>/Noctis-Setup.exe
+  https://github.com/heartached/Noctis/releases/download/v<version>/Noctis-v<version>-Setup.exe
 
 To verify the SHA256 checksum of the downloaded installer:
 
-  PowerShell:  Get-FileHash .\Noctis-Setup.exe -Algorithm SHA256
+  PowerShell:  Get-FileHash .\Noctis-v<version>-Setup.exe -Algorithm SHA256
 
 Compare the result with the `checksum64` value in tools\chocolateyInstall.ps1.
 
