@@ -18,6 +18,8 @@ public partial class MainWindow : Window
     private static readonly IBrush InactiveToggleBg = Brushes.Transparent;
 
     private TaskbarIntegrationService? _taskbar;
+    private TrayIcon? _trayIcon;
+    private bool _exitRequestedFromTray;
     private EventHandler<string>? _themeChangedHandler;
     private EventHandler<string>? _accentChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _playerPropertyChangedHandler;
@@ -29,6 +31,59 @@ public partial class MainWindow : Window
     private Border? _lyricsPanelWrapper;
     private DockPanel? _contentDockPanel;
     private DockPanel? _rootPanel;
+    private MiniPlayerWindow? _miniPlayer;
+
+    /// <summary>
+    /// Opens the compact always-on-top mini player (hiding the main window), or closes
+    /// it if it's already open. Closing the mini player restores the main window.
+    /// Triggered by clicking the cover art in the bottom player bar.
+    /// </summary>
+    public void ToggleMiniPlayer()
+    {
+        if (_miniPlayer != null)
+        {
+            _miniPlayer.Close(); // Closed handler below restores the main window
+            return;
+        }
+
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        _miniPlayer = new MiniPlayerWindow { DataContext = vm.Player };
+        // The mini player's DataContext is the PlayerViewModel, which has no view of
+        // Settings, so the animated-cover gate is bound here (live, so toggling the
+        // setting while the mini player is open takes effect immediately).
+        _miniPlayer.AnimatedArt.Bind(
+            Noctis.Controls.AnimatedCoverImage.IsActiveProperty,
+            new Avalonia.Data.Binding(nameof(SettingsViewModel.EnableAnimatedCovers)) { Source = vm.Settings });
+        _miniPlayer.Closed += OnMiniPlayerClosed;
+
+        // Place it near the top-right of the screen the main window is on.
+        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        if (screen != null)
+        {
+            var area = screen.WorkingArea;
+            var scale = screen.Scaling;
+            var width = (int)(_miniPlayer.Width * scale);
+            _miniPlayer.Position = new PixelPoint(
+                area.X + area.Width - width - (int)(24 * scale),
+                area.Y + (int)(24 * scale));
+        }
+
+        _miniPlayer.Show();
+        Hide();
+    }
+
+    private void OnMiniPlayerClosed(object? sender, System.EventArgs e)
+    {
+        if (sender is MiniPlayerWindow mini)
+            mini.Closed -= OnMiniPlayerClosed;
+        _miniPlayer = null;
+
+        Show();
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+        Activate();
+    }
 
     public MainWindow()
     {
@@ -64,11 +119,11 @@ public partial class MainWindow : Window
                 // Wire up albums view-mode toggle visuals
                 _topBarPropertyChangedHandler = (_, e) =>
                 {
-                    if (e.PropertyName == nameof(TopBarViewModel.IsCoverFlowMode))
-                        UpdateViewModeToggleVisuals(vm.TopBar.IsCoverFlowMode);
+                    if (e.PropertyName is nameof(TopBarViewModel.IsCoverFlowMode) or nameof(TopBarViewModel.IsCollageMode))
+                        UpdateViewModeToggleVisuals(vm.TopBar.IsCoverFlowMode, vm.TopBar.IsCollageMode);
                 };
                 vm.TopBar.PropertyChanged += _topBarPropertyChangedHandler;
-                UpdateViewModeToggleVisuals(vm.TopBar.IsCoverFlowMode);
+                UpdateViewModeToggleVisuals(vm.TopBar.IsCoverFlowMode, vm.TopBar.IsCollageMode);
 
                 // Wire lyrics panel + sidebar hover
                 _sidebarWrapper = this.FindControl<Border>("SidebarWrapper");
@@ -135,6 +190,9 @@ public partial class MainWindow : Window
 
                 // Initialize taskbar thumbnail buttons (Previous / Play-Pause / Next)
                 InitializeTaskbarButtons(vm);
+
+                // System tray icon (minimize/close-to-tray + playback controls)
+                InitializeTrayIcon(vm);
             }
         };
 
@@ -146,8 +204,34 @@ public partial class MainWindow : Window
 
         // Drag-drop handlers are registered in OnLoaded (after visual tree is ready).
 
-        Closing += (_, _) => CaptureWindowPlacement();
+        Closing += OnMainWindowClosing;
         Closed += OnWindowClosed;
+
+        // Minimize-to-tray: hide the window when it minimizes and the setting is on.
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property != WindowStateProperty || WindowState != WindowState.Minimized)
+                return;
+            if (_trayIcon != null
+                && DataContext is MainWindowViewModel trayVm
+                && trayVm.Settings.MinimizeToTray
+                && _miniPlayer == null)
+            {
+                Hide();
+            }
+        };
+
+        // If the main window goes down (OS shutdown, etc.) take the mini player with it
+        // so it can't outlive the app shell as an orphaned topmost window.
+        Closed += (_, _) =>
+        {
+            if (_miniPlayer is { } mini)
+            {
+                mini.Closed -= OnMiniPlayerClosed;
+                _miniPlayer = null;
+                mini.Close();
+            }
+        };
     }
 
     private void RestoreWindowPlacement(AppSettings settings)
@@ -170,6 +254,75 @@ public partial class MainWindow : Window
         {
             WindowState = savedState == WindowState.Minimized ? WindowState.Normal : savedState;
         }
+    }
+
+    // ── System tray ──
+
+    private void InitializeTrayIcon(MainWindowViewModel vm)
+    {
+        if (_trayIcon != null) return;
+
+        try
+        {
+            var iconUri = new Uri("avares://Noctis/Assets/Icons/Noctis.ico");
+            var icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(iconUri));
+
+            var menu = new NativeMenu();
+
+            var open = new NativeMenuItem("Open Noctis");
+            open.Click += (_, _) => ShowFromTray();
+            menu.Items.Add(open);
+
+            var quit = new NativeMenuItem("Quit");
+            quit.Click += (_, _) =>
+            {
+                _exitRequestedFromTray = true;
+                Close();
+            };
+            menu.Items.Add(quit);
+
+            _trayIcon = new TrayIcon
+            {
+                Icon = icon,
+                ToolTipText = "Noctis",
+                Menu = menu,
+                IsVisible = true,
+            };
+            _trayIcon.Clicked += (_, _) => ShowFromTray();
+            TrayIcon.SetIcons(Application.Current!, new TrayIcons { _trayIcon });
+        }
+        catch (Exception ex)
+        {
+            // Tray support is best-effort (e.g. some Linux DEs have no tray).
+            DebugLogger.Error(DebugLogger.Category.UI, "TrayIcon.Init", ex.Message);
+        }
+    }
+
+    private void ShowFromTray()
+    {
+        Show();
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    private void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        // Close-to-tray: intercept user-initiated closes only. OS shutdown and
+        // explicit app shutdown (tray Exit) always pass through.
+        if (!_exitRequestedFromTray
+            && e.CloseReason == WindowCloseReason.WindowClosing
+            && _trayIcon != null
+            && _miniPlayer == null
+            && DataContext is MainWindowViewModel vm
+            && vm.Settings.CloseToTray)
+        {
+            e.Cancel = true;
+            Hide();
+            return;
+        }
+
+        CaptureWindowPlacement();
     }
 
     private void CaptureWindowPlacement()
@@ -201,6 +354,12 @@ public partial class MainWindow : Window
     private void OnWindowClosed(object? sender, EventArgs e)
     {
         _taskbar?.Dispose();
+        if (_trayIcon != null)
+        {
+            _trayIcon.IsVisible = false;
+            _trayIcon.Dispose();
+            _trayIcon = null;
+        }
 
         // Unsubscribe from all event handlers to prevent memory leak
         if (DataContext is MainWindowViewModel vm)
@@ -493,12 +652,16 @@ public partial class MainWindow : Window
                 vm.ToggleDebugPanel();
                 e.Handled = true;
                 break;
+            case Key.K when e.KeyModifiers == KeyModifiers.Control:
+                _ = vm.OpenCommandPaletteAsync();
+                e.Handled = true;
+                break;
         }
     }
 
     // ── Albums toggle visuals ──
 
-    private void UpdateViewModeToggleVisuals(bool isCoverFlow)
+    private void UpdateViewModeToggleVisuals(bool isCoverFlow, bool isCollage = false)
     {
         if (AlbumsLibraryModeBtn != null)
         {
@@ -509,6 +672,11 @@ public partial class MainWindow : Window
         {
             AlbumsUpNextModeBtn.Background = isCoverFlow ? ActiveToggleBg : InactiveToggleBg;
             AlbumsUpNextModeBtn.Opacity = isCoverFlow ? 1.0 : 0.5;
+        }
+        if (AlbumsCollageModeBtn != null)
+        {
+            AlbumsCollageModeBtn.Background = isCollage ? ActiveToggleBg : InactiveToggleBg;
+            AlbumsCollageModeBtn.Opacity = isCollage ? 1.0 : 0.5;
         }
     }
 

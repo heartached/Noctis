@@ -36,6 +36,20 @@ public partial class EditPlaylistDialogViewModel : ViewModelBase
     public string? PendingCoverArtFile { get; private set; }
     public bool CoverArtRemoved { get; private set; }
 
+    /// <summary>Whether the playlist is pinned to the top of the sidebar.</summary>
+    [ObservableProperty] private bool _isPinned;
+
+    /// <summary>Sidebar folder name (empty = no folder). Folders are created by typing a new name.</summary>
+    [ObservableProperty] private string _playlistFolder = string.Empty;
+
+    /// <summary>Comma-separated existing folder names, shown as a hint under the folder box.</summary>
+    public string ExistingFoldersHint { get; init; } = string.Empty;
+
+    public bool HasExistingFolders => ExistingFoldersHint.Length > 0;
+
+    /// <summary>Existing sidebar folder names, offered as dropdown suggestions in the folder field.</summary>
+    public IReadOnlyList<string> ExistingFolders { get; init; } = Array.Empty<string>();
+
     /// <summary>Fires when the user clicks Save with valid input.</summary>
     public event EventHandler<(string Name, string Description)>? PlaylistSaved;
 

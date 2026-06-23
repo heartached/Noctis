@@ -52,6 +52,21 @@ public class AppSettings
     /// <summary>Whether to scan for new/changed music files on startup.</summary>
     public bool ScanOnStartup { get; set; } = true;
 
+    /// <summary>
+    /// Whether to continuously watch the media folders and update the library in
+    /// near-real-time as files are added/removed/changed (FileSystemWatcher).
+    /// </summary>
+    public bool WatchFoldersEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Folder/filename template for the auto-organize tool. Tokens:
+    /// {AlbumArtist} {Artist} {Album} {Title} {TrackNo} {DiscNo} {Year} {Genre}.
+    /// </summary>
+    public string OrganizePattern { get; set; } = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
+
+    /// <summary>Destination root for organized files. Empty = first media folder.</summary>
+    public string OrganizeTargetRoot { get; set; } = string.Empty;
+
     /// <summary>When true, the in-app updater also offers GitHub pre-releases. Off = stable channel only.</summary>
     public bool IncludePrereleaseUpdates { get; set; } = false;
 
@@ -76,14 +91,24 @@ public class AppSettings
     /// <summary>Crossfade duration in seconds (1–12, fractional allowed).</summary>
     public double CrossfadeDuration { get; set; } = 6;
 
-    /// <summary>Whether the sound enhancer is enabled.</summary>
-    public bool SoundEnhancerEnabled { get; set; }
-
-    /// <summary>Sound enhancer intensity level (0–100).</summary>
-    public int SoundEnhancerLevel { get; set; } = 50;
+    /// <summary>Master toggle for Apple-style song transitions (drives AutoMixTransitionMode).</summary>
+    public bool SongTransitionsEnabled { get; set; }
+    /// <summary>Transition style when enabled: "AutoMix" (key/tempo aware) or "Crossfade" (fixed duration).</summary>
+    public string TransitionStyle { get; set; } = "Crossfade";
+    /// <summary>AutoMix strength: "Subtle", "Balanced", or "Extended".</summary>
+    public string SongTransitionStrength { get; set; } = "Balanced";
+    /// <summary>Whether AutoMix beat-matches when BPM/key metadata is available.</summary>
+    public bool SongTransitionBeatMatch { get; set; } = true;
 
     /// <summary>Whether loudness normalization (Sound Check) is enabled.</summary>
     public bool SoundCheckEnabled { get; set; }
+
+    /// <summary>Windows only: WASAPI exclusive-mode output for bit-perfect playback.</summary>
+    public bool ExclusiveAudioEnabled { get; set; }
+
+    /// <summary>Gapless playback: natural track changes hand off to a pre-decoded
+    /// standby player instead of an audible stop/start. On by default.</summary>
+    public bool GaplessPlaybackEnabled { get; set; } = true;
 
     /// <summary>Whether long playback-bar track titles should scroll while playing.</summary>
     public bool TrackTitleMarqueeEnabled { get; set; } = true;
@@ -102,6 +127,25 @@ public class AppSettings
 
     /// <summary>Whether animated cover art (looping MP4/WebM) plays for the currently playing track.</summary>
     public bool EnableAnimatedCovers { get; set; } = true;
+
+    /// <summary>Minimizing the main window hides it to the system tray.</summary>
+    public bool MinimizeToTray { get; set; }
+
+    /// <summary>Closing the main window hides it to the system tray instead of exiting.</summary>
+    public bool CloseToTray { get; set; }
+
+    /// <summary>Whether the local-network web remote is enabled (off by default).</summary>
+    public bool WebRemoteEnabled { get; set; }
+
+    /// <summary>TCP port for the web remote.</summary>
+    public int WebRemotePort { get; set; } = 9420;
+
+    // ── Songs page optional columns ──
+    public bool ShowGenreColumn { get; set; } = true;
+    public bool ShowRatingColumn { get; set; } = true;
+    public bool ShowBpmColumn { get; set; }
+    public bool ShowBitrateColumn { get; set; }
+    public bool ShowSampleRateColumn { get; set; }
 
     /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
@@ -123,6 +167,12 @@ public class AppSettings
     /// <summary>Whether long artist/album names in the Lyrics page should scroll.</summary>
     public bool LyricsArtistMarqueeEnabled { get; set; } = true;
 
+    /// <summary>Whether long track titles in the mini player should scroll.</summary>
+    public bool MiniPlayerTitleMarqueeEnabled { get; set; } = true;
+
+    /// <summary>Whether long album titles in the mini player should scroll.</summary>
+    public bool MiniPlayerAlbumMarqueeEnabled { get; set; } = true;
+
     // ── Equalizer settings ──
 
     /// <summary>Whether the advanced equalizer is enabled.</summary>
@@ -131,8 +181,15 @@ public class AppSettings
     /// <summary>Selected EQ preset index. -1 = Custom, 0+ = VLC built-in preset.</summary>
     public int EqualizerPresetIndex { get; set; } = 0; // 0 = VLC "Flat" preset
 
-    /// <summary>Custom band amplitudes in dB (-12 to +12), one per VLC EQ band.</summary>
+    /// <summary>Legacy 10-band graphic amplitudes in dB (-12 to +12). Still read to
+    /// migrate pre-parametric settings and written as a downgrade-safe mirror of
+    /// the applied curve; <see cref="ParametricEqBands"/> is the source of truth.</summary>
     public float[] EqualizerBands { get; set; } = new float[10];
+
+    /// <summary>Parametric EQ bands (frequency / gain / Q). Null on settings files
+    /// written before the parametric EQ existed — migrated from
+    /// <see cref="EqualizerBands"/> on first load.</summary>
+    public List<ParametricEqBand>? ParametricEqBands { get; set; }
 
     // ── Integration settings ──
 
@@ -194,6 +251,14 @@ public class AppSettings
     /// <summary>Whether NetEase Cloud Music online lyrics search is enabled.</summary>
     public bool NetEaseEnabled { get; set; } = true;
 
+    // ── Metadata providers ──
+
+    /// <summary>Whether Deezer is used as the primary tag source (keyless).</summary>
+    public bool DeezerEnabled { get; set; } = true;
+
+    /// <summary>Whether MusicBrainz is used as the fallback tag source.</summary>
+    public bool MusicBrainzEnabled { get; set; } = true;
+
     // ── Audio Converter ──
 
     /// <summary>Override path to ffmpeg. Empty = auto-detect (app dir, then PATH).</summary>
@@ -201,9 +266,18 @@ public class AppSettings
 
     // ── ReplayGain ──
 
-    /// <summary>"Off", "Track", "Album", or "Auto" (album when same-album sequence else track).</summary>
-    public string ReplayGainMode { get; set; } = "Off";
+    /// <summary>"Off", "Track", "Album", or "Auto" (album when same-album sequence else track).
+    /// On by default ("Auto") for fresh installs; stored values are respected.</summary>
+    public string ReplayGainMode { get; set; } = "Auto";
 
     /// <summary>Pre-amp in dB applied on top of the RG tag value.</summary>
     public double ReplayGainPreampDb { get; set; } = 0.0;
+
+    // ── Audio analysis (BPM / key) ──
+
+    /// <summary>Whether background BPM + musical-key analysis runs (scan-time + backfill).</summary>
+    public bool BpmKeyAnalysisEnabled { get; set; } = true;
+
+    /// <summary>When true, computed BPM/key are also written to file tags (TBPM/TKEY). Off by default.</summary>
+    public bool WriteAnalysisToTags { get; set; } = false;
 }

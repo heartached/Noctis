@@ -73,7 +73,7 @@
                                                   Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).AddPlaylistToQueueCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
@@ -81,7 +81,7 @@
                                                   Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).OpenPlaylistCommand}"
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
-                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlist%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="Edit Playlist"
@@ -89,6 +89,22 @@
                                                   CommandParameter="{Binding}">
                                             <MenuItem.Icon>
                                                 <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Edit%20Playlist%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Star in Sidebar"
+                                                  IsVisible="{Binding !IsPinned}"
+                                                  Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).TogglePinCommand}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource StarIcon}" Width="14" Height="14" Foreground="#F1C40F" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Unstar from Sidebar"
+                                                  IsVisible="{Binding IsPinned}"
+                                                  Command="{Binding $parent[UserControl].((vm:LibraryPlaylistsViewModel)DataContext).TogglePinCommand}"
+                                                  CommandParameter="{Binding}">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource StarIcon}" Width="14" Height="14" Foreground="#F1C40F" />
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
@@ -165,8 +181,8 @@
                 </ItemsControl>
             </ScrollViewer>
 
-            <!-- Empty state overlay -->
-            <StackPanel IsVisible="{Binding !FilteredPlaylists.Count}"
+            <!-- Empty state overlay: no playlists at all -->
+            <StackPanel IsVisible="{Binding ShowNoPlaylists}"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="8">
@@ -176,6 +192,23 @@
                            HorizontalAlignment="Center"
                            TextAlignment="Center" />
                 <TextBlock Text="Create a new playlist to get started"
+                           FontSize="13"
+                           Opacity="0.3"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+            </StackPanel>
+
+            <!-- Empty state overlay: search matched nothing -->
+            <StackPanel IsVisible="{Binding ShowNoResults}"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="8">
+                <TextBlock Text="No results"
+                           FontSize="18"
+                           Opacity="0.5"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+                <TextBlock Text="No playlists match your search"
                            FontSize="13"
                            Opacity="0.3"
                            HorizontalAlignment="Center"

@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Noctis.Models;
 
 namespace Noctis.Services;
@@ -43,6 +42,9 @@ public static class AutoMixTransitionPlanner
             return AutoMixTransitionPlan.None("AutoMix skipped: track too short", currentSilence, nextSilence);
 
         if (options.Mode == AutoMixTransitionMode.Crossfade)
+        {
+            // Plain crossfade honours the user's Settings > Audio duration.
+            var crossfadeSeconds = Math.Clamp(options.CrossfadeDurationSeconds, 1, 12);
             return CreateCrossfadePlan(
                 current,
                 next,
@@ -50,12 +52,13 @@ public static class AutoMixTransitionPlanner
                 currentSilence,
                 nextSilence,
                 AutoMixTransitionType.SimpleCrossfade,
-                TimeSpan.FromSeconds(6),
-                "AutoMix planned: SimpleCrossfade 6s");
+                TimeSpan.FromSeconds(crossfadeSeconds),
+                $"AutoMix planned: SimpleCrossfade {crossfadeSeconds:0.#}s");
+        }
 
         var missingBpm = current.Bpm <= 0 || next.Bpm <= 0;
-        var missingKey = NormalizeCamelotKey(current.MusicalKey) == null ||
-                         NormalizeCamelotKey(next.MusicalKey) == null;
+        var missingKey = AutoMixKeyTempo.NormalizeCamelotKey(current.MusicalKey) == null ||
+                         AutoMixKeyTempo.NormalizeCamelotKey(next.MusicalKey) == null;
         var silenceTrim = options.RemoveSilenceBetweenSongs &&
                           (currentSilence.EndSilence >= TimeSpan.FromSeconds(1.5) ||
                            nextSilence.StartSilence >= TimeSpan.FromSeconds(1.5));
@@ -90,10 +93,10 @@ public static class AutoMixTransitionPlanner
                 missingKey);
         }
 
-        var tempoCompatible = IsTempoCompatible(current.Bpm, next.Bpm);
+        var tempoCompatible = AutoMixKeyTempo.IsTempoCompatible(current.Bpm, next.Bpm);
         var keyCompatible = !options.BeatMatchWhenMetadataAvailable ||
                             missingKey ||
-                            AreKeysCompatible(current.MusicalKey, next.MusicalKey);
+                            AutoMixKeyTempo.AreKeysCompatible(current.MusicalKey, next.MusicalKey);
 
         if (options.BeatMatchWhenMetadataAvailable && tempoCompatible && keyCompatible)
         {
@@ -186,14 +189,10 @@ public static class AutoMixTransitionPlanner
             ExcludedContentTerms.Any(term => value.Contains(term, StringComparison.OrdinalIgnoreCase)));
     }
 
-    public static bool IsTempoCompatible(int currentBpm, int nextBpm) =>
-        currentBpm > 0 &&
-        nextBpm > 0 &&
-        GetNormalizedBpmDifference(currentBpm, nextBpm) <= 10;
-
-    public static TimeSpan ClampTransitionDuration(TimeSpan requested, Track current, Track next, AutoMixStrength strength)
+    public static TimeSpan ClampTransitionDuration(
+        TimeSpan requested, Track current, Track next, AutoMixStrength strength, double? maxSecondsOverride = null)
     {
-        var maxByStrength = strength switch
+        var maxByStrength = maxSecondsOverride ?? strength switch
         {
             AutoMixStrength.Subtle => 6,
             AutoMixStrength.Extended => 12,
@@ -245,7 +244,11 @@ public static class AutoMixTransitionPlanner
                               nextSilence.StartSilence > TimeSpan.Zero);
         var duration = type == AutoMixTransitionType.SilenceTrim
             ? TimeSpan.Zero
-            : ClampTransitionDuration(requestedDuration, current, next, options.Strength);
+            : ClampTransitionDuration(
+                requestedDuration, current, next, options.Strength,
+                // Plain crossfade honours the full Settings range (1-12s) instead
+                // of the AutoMix strength cap; the 20%-of-track limit still applies.
+                options.Mode == AutoMixTransitionMode.Crossfade ? 12 : null);
         var transitionEnd = GetTransitionEnd(current) - currentSilence.EndSilence;
         if (transitionEnd < TimeSpan.Zero)
             transitionEnd = TimeSpan.Zero;
@@ -296,86 +299,4 @@ public static class AutoMixTransitionPlanner
         return Math.Max(0, durationMs / 1000d);
     }
 
-    private static double GetNormalizedBpmDifference(int currentBpm, int nextBpm)
-    {
-        var current = Math.Clamp(currentBpm, 40, 240);
-        var candidates = new[]
-        {
-            Math.Clamp(nextBpm, 40, 240),
-            Math.Clamp(nextBpm * 2, 40, 240),
-            Math.Clamp(nextBpm / 2.0, 40, 240)
-        };
-
-        return candidates.Min(candidate => Math.Abs(current - candidate));
-    }
-
-    private static bool AreKeysCompatible(string? currentKey, string? nextKey)
-    {
-        var current = NormalizeCamelotKey(currentKey);
-        var next = NormalizeCamelotKey(nextKey);
-        if (current == null || next == null)
-            return true;
-
-        if (current.Value.Number == next.Value.Number)
-            return true;
-
-        return current.Value.Mode == next.Value.Mode &&
-               Math.Abs(current.Value.Number - next.Value.Number) is 1 or 11;
-    }
-
-    private static (int Number, char Mode)? NormalizeCamelotKey(string? key)
-    {
-        if (string.IsNullOrWhiteSpace(key))
-            return null;
-
-        var normalized = key.Trim().ToUpperInvariant().Replace(" ", "");
-        var match = Regex.Match(normalized, @"^(\d{1,2})([AB])$");
-        if (!match.Success)
-        {
-            normalized = normalized
-                .Replace("MINOR", "M")
-                .Replace("MIN", "M")
-                .Replace("MAJOR", "")
-                .Replace("MAJ", "")
-                .Replace("-", "")
-                .Replace("_", "");
-
-            var isMinor = normalized.EndsWith("M", StringComparison.Ordinal);
-            var root = isMinor ? normalized[..^1] : normalized;
-            return (root, isMinor) switch
-            {
-                ("G#" or "AB", true) => (1, 'A'),
-                ("D#" or "EB", true) => (2, 'A'),
-                ("A#" or "BB", true) => (3, 'A'),
-                ("F", true) => (4, 'A'),
-                ("C", true) => (5, 'A'),
-                ("G", true) => (6, 'A'),
-                ("D", true) => (7, 'A'),
-                ("A", true) => (8, 'A'),
-                ("E", true) => (9, 'A'),
-                ("B", true) => (10, 'A'),
-                ("F#" or "GB", true) => (11, 'A'),
-                ("C#" or "DB", true) => (12, 'A'),
-                ("B" or "CB", false) => (1, 'B'),
-                ("F#" or "GB", false) => (2, 'B'),
-                ("C#" or "DB", false) => (3, 'B'),
-                ("G#" or "AB", false) => (4, 'B'),
-                ("D#" or "EB", false) => (5, 'B'),
-                ("A#" or "BB", false) => (6, 'B'),
-                ("F", false) => (7, 'B'),
-                ("C", false) => (8, 'B'),
-                ("G", false) => (9, 'B'),
-                ("D", false) => (10, 'B'),
-                ("A", false) => (11, 'B'),
-                ("E", false) => (12, 'B'),
-                _ => null
-            };
-        }
-
-        var number = int.Parse(match.Groups[1].Value);
-        if (number < 1 || number > 12)
-            return null;
-
-        return (number, match.Groups[2].Value[0]);
-    }
 }

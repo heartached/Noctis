@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using Noctis.Helpers;
 using Noctis.Services;
+using Noctis.Services.AudioAnalysis;
 using Noctis.Services.Loon;
 using Noctis.ViewModels;
 
@@ -77,7 +78,8 @@ internal class Program
     private static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
 
     public static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<App>()
+    {
+        var builder = AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
             // Skia keeps decoded bitmaps as GPU textures in a bounded cache.
@@ -88,6 +90,42 @@ internal class Program
             // holds the visible+nearby cover textures for a 10K-track library.
             .With(new SkiaOptions { MaxGpuResourceSizeBytes = 256L * 1024 * 1024 })
             .LogToTrace();
+
+        // The app's default font is the embedded Inter, which carries no
+        // CJK/Hangul glyphs. Windows resolves missing glyphs through the system
+        // font manager automatically, but on macOS/Linux that lookup doesn't
+        // reliably engage for embedded fonts, so Korean/Japanese/Chinese lyrics
+        // rendered as "?" boxes. Provide an explicit fallback chain of each
+        // platform's stock CJK-capable fonts.
+        if (OperatingSystem.IsMacOS())
+        {
+            builder = builder.With(new Avalonia.Media.FontManagerOptions
+            {
+                FontFallbacks = new[]
+                {
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("PingFang SC") },
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Hiragino Sans") },
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Apple SD Gothic Neo") },
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Apple Color Emoji") },
+                }
+            });
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            builder = builder.With(new Avalonia.Media.FontManagerOptions
+            {
+                FontFallbacks = new[]
+                {
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Sans CJK SC") },
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Sans CJK KR") },
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Sans CJK JP") },
+                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Color Emoji") },
+                }
+            });
+        }
+
+        return builder;
+    }
 
     /// <summary>
     /// Registers all services and ViewModels in the DI container.
@@ -102,6 +140,14 @@ internal class Program
         services.AddSingleton<IPlaylistInteropService, PlaylistInteropService>();
         services.AddSingleton<IOfflineCacheService, OfflineCacheService>();
         services.AddSingleton<ILibraryService, LibraryService>();
+        // Continuous folder watching. Reads MusicFolders/WatchFoldersEnabled lazily
+        // through the canonical SettingsViewModel so toggling in Settings takes effect
+        // without a restart (same accessor pattern as AudioConverter below).
+        services.AddSingleton<ILibraryWatcherService>(sp =>
+            new LibraryWatcherService(
+                sp.GetRequiredService<ILibraryService>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings()));
         services.AddSingleton<IUnifiedLibraryService, UnifiedLibraryService>();
         services.AddSingleton<ISyncService, NavidromeSyncService>();
         services.AddSingleton<IAudioPlayer, VlcAudioPlayer>();
@@ -131,11 +177,19 @@ internal class Program
         services.AddSingleton<ILastFmService, LastFmService>();
         services.AddSingleton<IListenBrainzService, ListenBrainzService>();
         services.AddSingleton<ArtistImageService>();
-        services.AddSingleton<ArtistBioService>();
         services.AddSingleton<ITunesArtworkService>();
         services.AddSingleton<UpdateService>();
         services.AddSingleton<ILrcLibService, LrcLibService>();
         services.AddSingleton<INetEaseService, NetEaseService>();
+        services.AddSingleton<IPlayHistoryService, PlayHistoryService>();
+        services.AddSingleton<DeezerMetadataService>();
+        services.AddSingleton<IAlbumArtworkSearch>(sp => sp.GetRequiredService<ITunesArtworkService>());
+        services.AddSingleton<AutoMatchCoordinator>(sp =>
+            new AutoMatchCoordinator(
+                sp.GetRequiredService<IMetadataFinderService>(),
+                sp.GetRequiredService<DeezerMetadataService>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings()));
         // AudioConverter resolves the ffmpeg path lazily, so the user can change
         // it in Settings without restarting. Read through MainWindowViewModel —
         // it's the canonical owner of the SettingsViewModel instance.
@@ -144,6 +198,32 @@ internal class Program
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().FfmpegPath ?? string.Empty,
                 sp.GetRequiredService<IMetadataService>()));
         services.AddSingleton<IReplayGainScannerService, ReplayGainScannerService>();
+
+        // Library tools
+        services.AddSingleton<IFileOrganizerService, FileOrganizerService>();
+        services.AddSingleton<IDuplicateFinderService, DuplicateFinderService>();
+        services.AddSingleton<IMetadataFinderService>(sp =>
+            new MetadataFinderService(
+                sp.GetRequiredService<HttpClient>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings(),
+                sp.GetRequiredService<DeezerMetadataService>()));
+        services.AddSingleton<IPlaylistImportService, PlaylistImportService>();
+
+        // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process
+        // (reusing AudioConverterService for ffmpeg discovery) and runs managed DSP;
+        // results cache in library.db and fill Track.Bpm/MusicalKey when missing.
+        services.AddSingleton<IAudioAnalysisService>(sp =>
+            new AudioAnalysisService(sp.GetRequiredService<IAudioConverterService>()));
+        services.AddSingleton<IAudioAnalysisStore>(sp =>
+            new AudioAnalysisStore(sp.GetRequiredService<IPersistenceService>()));
+        services.AddSingleton<AudioAnalysisCoordinator>(sp =>
+            new AudioAnalysisCoordinator(
+                sp.GetRequiredService<IAudioAnalysisService>(),
+                sp.GetRequiredService<IAudioAnalysisStore>(),
+                sp.GetRequiredService<ILibraryService>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings()));
 
         // ViewModels — MainWindowViewModel is the root, created once
         services.AddSingleton<MainWindowViewModel>();

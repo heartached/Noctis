@@ -1,8 +1,11 @@
+using System.IO;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Models;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
@@ -19,17 +22,71 @@ public partial class LibraryArtistsView : UserControl
         DataContextChanged += OnDataContextChanged;
     }
 
+    private async void OnChangeArtistImageClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control control || control.DataContext is not Artist artist) return;
+        if (DataContext is not LibraryArtistsViewModel vm) return;
+
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Select Artist Picture",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("Images")
+                {
+                    Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp", "*.gif" }
+                }
+            }
+        });
+
+        if (files.Count == 0) return;
+
+        byte[] data;
+        try
+        {
+            await using var stream = await files[0].OpenReadAsync();
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            data = ms.ToArray();
+        }
+        catch
+        {
+            return;
+        }
+
+        if (data.Length == 0) return;
+        await vm.ChangeArtistImageAsync(artist, data);
+    }
+
+    private async void OnSearchArtistImageClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control control || control.DataContext is not Artist artist) return;
+        if (DataContext is LibraryArtistsViewModel vm)
+            await vm.SearchArtistImageAsync(artist);
+    }
+
+    private void OnRemoveArtistImageClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control control || control.DataContext is not Artist artist) return;
+        if (DataContext is LibraryArtistsViewModel vm)
+            vm.RemoveArtistImage(artist);
+    }
+
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_vm != null)
-            _vm.FlatArtistList.CollectionChanged -= OnFlatArtistListChanged;
+            _vm.ArtistRows.CollectionChanged -= OnArtistRowsChanged;
 
         _vm = DataContext as LibraryArtistsViewModel;
         if (_vm != null)
-            _vm.FlatArtistList.CollectionChanged += OnFlatArtistListChanged;
+            _vm.ArtistRows.CollectionChanged += OnArtistRowsChanged;
     }
 
-    private void OnFlatArtistListChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    private void OnArtistRowsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
         // Scroll to top when rows change due to an active filter (search text)
         // BUT skip if a scroll restore is pending (returning from artist detail)
@@ -57,7 +114,7 @@ public partial class LibraryArtistsView : UserControl
                 vm.SavedScrollOffset = sv.Offset.Y;
         }
         if (_vm != null)
-            _vm.FlatArtistList.CollectionChanged -= OnFlatArtistListChanged;
+            _vm.ArtistRows.CollectionChanged -= OnArtistRowsChanged;
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -78,8 +135,8 @@ public partial class LibraryArtistsView : UserControl
         // Re-subscribe to collection changes (unsubscribed in OnDetachedFromVisualTree)
         if (_vm != null)
         {
-            _vm.FlatArtistList.CollectionChanged -= OnFlatArtistListChanged;
-            _vm.FlatArtistList.CollectionChanged += OnFlatArtistListChanged;
+            _vm.ArtistRows.CollectionChanged -= OnArtistRowsChanged;
+            _vm.ArtistRows.CollectionChanged += OnArtistRowsChanged;
         }
 
         if (DataContext is LibraryArtistsViewModel vm && vm.SavedScrollOffset > 0)

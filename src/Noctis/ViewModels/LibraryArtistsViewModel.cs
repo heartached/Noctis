@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -9,11 +8,16 @@ using Noctis.Services;
 namespace Noctis.ViewModels;
 
 /// <summary>
-/// ViewModel for the artists list view.
-/// Shows artists in a flat virtualized list with letter headers.
+/// ViewModel for the artists grid view.
+/// Shows artists as a virtualized grid of circular portraits: the outer
+/// ListBox virtualizes <see cref="ArtistRow"/>s, each row lays out
+/// <see cref="ArtistsPerRow"/> portraits in a non-virtualizing UniformGrid.
 /// </summary>
 public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisposable
 {
+    /// <summary>Number of portrait columns per virtualized grid row.</summary>
+    public const int ArtistsPerRow = 7;
+
     private readonly ILibraryService _library;
     private ArtistImageService? _artistImageService;
 
@@ -30,10 +34,10 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
-    /// <summary>Flat list of letter headers and artist items for virtualized display.</summary>
-    public BulkObservableCollection<ArtistListItem> FlatArtistList { get; } = new();
+    /// <summary>Rows of artists for the virtualized grid display.</summary>
+    public BulkObservableCollection<ArtistRow> ArtistRows { get; } = new();
 
-    /// <summary>Fires when the user wants to view a specific artist's albums.</summary>
+    /// <summary>Fires when the user opens a specific artist's page.</summary>
     public event EventHandler<Artist>? ArtistOpened;
 
     public LibraryArtistsViewModel(ILibraryService library)
@@ -51,7 +55,7 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
 
     public void Refresh()
     {
-        if (!_isDirty && FlatArtistList.Count > 0)
+        if (!_isDirty && ArtistRows.Count > 0)
             return;
         _isDirty = false;
 
@@ -96,39 +100,35 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         _currentFilter = query;
         OnPropertyChanged(nameof(HasActiveFilter));
 
-        var filtered = _allArtists.AsEnumerable();
+        IEnumerable<Artist> filtered;
         if (!string.IsNullOrWhiteSpace(query))
         {
             var q = query.Trim();
             var qNoSpaces = RemoveWhitespace(q);
-            filtered = filtered.Where(a =>
-                MatchesSearch(a.Name, q, qNoSpaces));
-
-            filtered = filtered
+            filtered = _allArtists
+                .Where(a => MatchesSearch(a.Name, q, qNoSpaces))
                 .OrderBy(a => RankMatch(a.Name, q, qNoSpaces))
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
-
-        // Build flat list with letter headers interleaved
-        var items = new List<ArtistListItem>();
-        var groups = filtered
-            .GroupBy(a =>
-            {
-                var firstChar = char.ToUpperInvariant(a.Name.FirstOrDefault());
-                return char.IsLetter(firstChar) ? firstChar : '#';
-            })
-            .OrderBy(g => g.Key == '#' ? 'Z' + 1 : g.Key);
-
-        foreach (var group in groups)
+        else
         {
-            items.Add(new ArtistHeaderItem { Letter = group.Key });
-            foreach (var artist in group.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
-            {
-                items.Add(new ArtistDataItem { Artist = artist });
-            }
+            filtered = _allArtists.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
 
-        FlatArtistList.ReplaceAll(items);
+        // Chunk into fixed-width rows so the outer ListBox can virtualize
+        var rows = new List<ArtistRow>();
+        ArtistRow? row = null;
+        foreach (var artist in filtered)
+        {
+            if (row == null || row.Artists.Count == ArtistsPerRow)
+            {
+                row = new ArtistRow();
+                rows.Add(row);
+            }
+            row.Artists.Add(artist);
+        }
+
+        ArtistRows.ReplaceAll(rows);
     }
 
     partial void OnSearchTextChanged(string value)
@@ -161,6 +161,58 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     private void OpenArtist(Artist artist)
     {
         ArtistOpened?.Invoke(this, artist);
+    }
+
+    /// <summary>
+    /// Sets a user-picked image as the artist's portrait. Evicts any stale cached
+    /// bitmap and rebuilds the row so the tile (bound to a non-observable Artist)
+    /// reflects the new image immediately.
+    /// </summary>
+    public async Task ChangeArtistImageAsync(Artist artist, byte[] imageData)
+    {
+        if (_artistImageService == null || artist == null)
+            return;
+
+        var newPath = await _artistImageService.SetCustomImageAsync(artist, imageData);
+        if (string.IsNullOrEmpty(newPath))
+            return;
+
+        ArtworkCache.Invalidate(newPath);
+        ApplyFilter(_currentFilter);
+    }
+
+    /// <summary>
+    /// Re-downloads the artist's portrait from the online services (clearing any prior
+    /// removal), restoring the auto-fetched photo. No-op if nothing is found.
+    /// </summary>
+    public async Task SearchArtistImageAsync(Artist artist)
+    {
+        if (_artistImageService == null || artist == null)
+            return;
+
+        var newPath = await _artistImageService.RefetchImageAsync(artist);
+        if (string.IsNullOrEmpty(newPath))
+            return;
+
+        ArtworkCache.Invalidate(newPath);
+        ApplyFilter(_currentFilter);
+    }
+
+    /// <summary>
+    /// Removes the artist's portrait and suppresses future auto-download, falling
+    /// back to the placeholder icon. Rebuilds the row to reflect the change.
+    /// </summary>
+    public void RemoveArtistImage(Artist artist)
+    {
+        if (_artistImageService == null || artist == null)
+            return;
+
+        var oldPath = artist.ImagePath;
+        _artistImageService.RemoveImage(artist);
+
+        if (!string.IsNullOrEmpty(oldPath))
+            ArtworkCache.Invalidate(oldPath);
+        ApplyFilter(_currentFilter);
     }
 
     private static bool MatchesSearch(string? source, string query, string queryNoSpaces)
@@ -213,11 +265,8 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         }
     }
 
-    private static string RemoveWhitespace(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-            return string.Empty;
-
-        return string.Concat(value.Where(c => !char.IsWhiteSpace(c)));
-    }
+    // Normalizes a value into a comparable search key: strips whitespace, punctuation
+    // (e.g. the apostrophe in "Don't") and accents so queries match regardless. Name kept
+    // for its call sites; see Helpers/SearchText for the shared implementation.
+    private static string RemoveWhitespace(string value) => Noctis.Helpers.SearchText.Normalize(value);
 }

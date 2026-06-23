@@ -43,6 +43,54 @@ public static class MetadataHelper
         await ShowDialogOwned(window);
     }
 
+    /// <summary>Opens the auto-organize tool over all local library tracks.</summary>
+    public static async Task OpenOrganizeFilesDialog(SettingsViewModel settings)
+    {
+        var library = App.Services!.GetRequiredService<ILibraryService>();
+        var service = App.Services!.GetRequiredService<IFileOrganizerService>();
+        var tracks = library.Tracks.Where(t => t.SourceType == SourceType.Local).ToList();
+        var vm = new OrganizeFilesViewModel(tracks, service, settings);
+        var window = new OrganizeFilesDialog(vm);
+        await ShowDialogOwned(window);
+    }
+
+    /// <summary>Opens the duplicate-finder tool over the local library.</summary>
+    public static async Task OpenDuplicateFinderDialog()
+    {
+        var service = App.Services!.GetRequiredService<IDuplicateFinderService>();
+        var vm = new DuplicateFinderViewModel(service);
+        var window = new DuplicateFinderDialog(vm);
+        await ShowDialogOwned(window);
+    }
+
+    /// <summary>Opens the metadata finder over poorly-tagged local tracks.</summary>
+    public static async Task OpenMetadataFinderDialog()
+    {
+        var library = App.Services!.GetRequiredService<ILibraryService>();
+        var finder = App.Services!.GetRequiredService<IMetadataFinderService>();
+        var metadata = App.Services!.GetRequiredService<IMetadataService>();
+        var candidates = library.Tracks
+            .Where(t => t.SourceType == SourceType.Local && IsPoorlyTagged(t))
+            .ToList();
+        var vm = new MetadataFinderViewModel(candidates, finder, metadata, library);
+        var window = new MetadataFinderDialog(vm);
+        await ShowDialogOwned(window);
+    }
+
+    private static bool IsPoorlyTagged(Track t) =>
+        string.IsNullOrWhiteSpace(t.Title) ||
+        string.IsNullOrWhiteSpace(t.Artist) || t.Artist == "Unknown Artist" ||
+        string.IsNullOrWhiteSpace(t.Album) || t.Album == "Unknown Album";
+
+    /// <summary>Opens the playlist-import tool (Exportify CSV / TuneMyMusic JSON).</summary>
+    public static async Task OpenPlaylistImportDialog()
+    {
+        var service = App.Services!.GetRequiredService<IPlaylistImportService>();
+        var vm = new PlaylistImportViewModel(service);
+        var window = new PlaylistImportDialog(vm);
+        await ShowDialogOwned(window);
+    }
+
     public static async Task OpenAudioConverterDialog(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;
@@ -78,7 +126,8 @@ public static class MetadataHelper
         var lrcLib = App.Services!.GetService<ILrcLibService>();
 
         var vm = new MetadataViewModel(tracks[0], metadata, library, persistence, animatedCovers,
-            albumScoped: true, albumTracks: tracks.ToList(), itunes: itunes, lrcLib: lrcLib, multiSelect: true);
+            albumScoped: true, albumTracks: tracks.ToList(), itunes: itunes, lrcLib: lrcLib, multiSelect: true,
+            autoMatch: App.Services!.GetService<AutoMatchCoordinator>());
 
         var window = new MetadataWindow(vm);
         await ShowDialogOwned(window);
@@ -101,7 +150,7 @@ public static class MetadataHelper
         var animatedCovers = new AnimatedCoverService(persistence);
         var itunes = App.Services!.GetService<ITunesArtworkService>();
         var lrcLib = App.Services!.GetService<ILrcLibService>();
-        var vm = new MetadataViewModel(track, metadata, library, persistence, animatedCovers, albumScoped, albumTracks, itunes, lrcLib);
+        var vm = new MetadataViewModel(track, metadata, library, persistence, animatedCovers, albumScoped, albumTracks, itunes, lrcLib, autoMatch: App.Services!.GetService<AutoMatchCoordinator>());
 
         vm.ChangesSaved += (_, _) =>
         {

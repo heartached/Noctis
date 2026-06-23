@@ -12,9 +12,10 @@ namespace Noctis.ViewModels;
 /// Dedicated page for the "More By {Artist}" carousel — shows the same set of
 /// related albums as the carousel, in a scrollable grid.
 /// </summary>
-public partial class MoreByArtistViewModel : ViewModelBase
+public partial class MoreByArtistViewModel : ViewModelBase, ISearchable
 {
     private readonly PlayerViewModel? _player;
+    private readonly List<Album> _allAlbums = new();
 
     public string ArtistName { get; }
 
@@ -44,8 +45,21 @@ public partial class MoreByArtistViewModel : ViewModelBase
         ArtistName = artistName ?? string.Empty;
         _player = player;
         LibraryAlbumsVm = libraryAlbumsVm;
-        foreach (var album in albums)
+        _allAlbums.AddRange(albums);
+        foreach (var album in _allAlbums)
             Albums.Add(album);
+    }
+
+    /// <summary>Filters the album grid by album name via the top-bar search field.</summary>
+    public void ApplyFilter(string query)
+    {
+        var q = query?.Trim() ?? string.Empty;
+        Albums.Clear();
+        foreach (var album in _allAlbums)
+        {
+            if (q.Length == 0 || (album.Name?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false))
+                Albums.Add(album);
+        }
     }
 
     [RelayCommand]
@@ -73,7 +87,7 @@ public partial class MoreByArtistViewModel : ViewModelBase
         if (_player == null) return;
         var tracks = GetAllTracks();
         if (tracks.Count == 0) return;
-        var shuffled = tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 

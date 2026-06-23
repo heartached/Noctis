@@ -52,6 +52,63 @@ public class ArtistImageService
     public bool HasCachedImage(Guid artistId)
         => File.Exists(GetCachedImagePath(artistId));
 
+    /// <summary>Sentinel marking an artist whose image the user explicitly removed,
+    /// so the background fetcher leaves it blank instead of re-downloading.</summary>
+    private string GetRemovedMarkerPath(Guid artistId)
+        => Path.Combine(_artistArtworkDir, $"{artistId}.removed");
+
+    public bool IsImageRemoved(Guid artistId)
+        => File.Exists(GetRemovedMarkerPath(artistId));
+
+    /// <summary>
+    /// Saves a user-picked image as the artist's portrait, overriding any auto-fetched
+    /// art and clearing a prior "removed" marker. Returns the cached path, or null on failure.
+    /// </summary>
+    public async Task<string?> SetCustomImageAsync(Artist artist, byte[] imageData)
+    {
+        if (imageData == null || imageData.Length == 0)
+            return null;
+
+        var cachedPath = GetCachedImagePath(artist.Id);
+        try
+        {
+            await File.WriteAllBytesAsync(cachedPath, imageData);
+
+            var marker = GetRemovedMarkerPath(artist.Id);
+            if (File.Exists(marker))
+                File.Delete(marker);
+
+            artist.ImagePath = cachedPath;
+            return cachedPath;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ArtistImage] Failed to set custom image for '{artist.Name}': {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Removes the artist's portrait (custom or auto-fetched) and marks it so the
+    /// background fetcher won't re-download it. The grid falls back to the placeholder.
+    /// </summary>
+    public void RemoveImage(Artist artist)
+    {
+        try
+        {
+            var cachedPath = GetCachedImagePath(artist.Id);
+            if (File.Exists(cachedPath))
+                File.Delete(cachedPath);
+
+            File.WriteAllText(GetRemovedMarkerPath(artist.Id), string.Empty);
+            artist.ImagePath = null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ArtistImage] Failed to remove image for '{artist.Name}': {ex.Message}");
+        }
+    }
+
     /// <summary>
     /// Fetches and caches artist images in the background.
     /// Calls onImageReady for each artist that gets a new image.
@@ -70,6 +127,16 @@ public class ArtistImageService
             foreach (var artist in artists)
             {
                 var cachedPath = GetCachedImagePath(artist.Id);
+
+                // Honor an explicit user removal: keep the portrait blank instead of
+                // re-downloading. Checked before the cache hit so a lingering file
+                // (e.g. from a fetch that raced the removal) never resurfaces.
+                if (File.Exists(GetRemovedMarkerPath(artist.Id)))
+                {
+                    if (artist.ImagePath != null)
+                        artist.ImagePath = null;
+                    continue;
+                }
 
                 // Skip if already cached
                 if (File.Exists(cachedPath))
@@ -96,24 +163,12 @@ public class ArtistImageService
 
                 try
                 {
-                    var imageUrl = await GetDeezerArtistImageUrlAsync(artistName);
-                    if (!string.IsNullOrWhiteSpace(imageUrl))
+                    if (await TryDownloadAndSaveAsync(artistName, cachedPath))
                     {
-                        using var request = new HttpRequestMessage(HttpMethod.Get, imageUrl);
-                        using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-                        if (response.IsSuccessStatusCode &&
-                            response.Content.Headers.ContentType?.MediaType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true)
-                        {
-                            var imageData = await response.Content.ReadAsByteArrayAsync();
-                            if (imageData.Length > 0)
-                            {
-                                await File.WriteAllBytesAsync(cachedPath, imageData);
-                                artist.ImagePath = cachedPath;
-                                onImageReady?.Invoke(artist, cachedPath);
-                                _failedArtistCooldownUntil.Remove(artistName);
-                                continue;
-                            }
-                        }
+                        artist.ImagePath = cachedPath;
+                        onImageReady?.Invoke(artist, cachedPath);
+                        _failedArtistCooldownUntil.Remove(artistName);
+                        continue;
                     }
                 }
                 catch (Exception ex)
@@ -137,6 +192,68 @@ public class ArtistImageService
         {
             _fetchGate.Release();
         }
+    }
+
+    /// <summary>
+    /// Looks the artist up online and re-downloads their photo, clearing any prior
+    /// "removed" marker so the restored image isn't suppressed on the next refresh.
+    /// Use to bring a portrait back after Remove, or to refresh a custom one.
+    /// Returns the cached path, or null if nothing was found.
+    /// </summary>
+    public async Task<string?> RefetchImageAsync(Artist artist)
+    {
+        if (artist == null || string.IsNullOrWhiteSpace(artist.Name) || artist.Name == "Unknown Artist")
+            return null;
+
+        var artistName = artist.Name.Trim();
+        var cachedPath = GetCachedImagePath(artist.Id);
+
+        try
+        {
+            var marker = GetRemovedMarkerPath(artist.Id);
+            if (File.Exists(marker))
+                File.Delete(marker);
+        }
+        catch { }
+
+        try
+        {
+            if (await TryDownloadAndSaveAsync(artistName, cachedPath))
+            {
+                artist.ImagePath = cachedPath;
+                return cachedPath;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ArtistImage] Refetch failed for '{artist.Name}': {ex.Message}");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves the artist's Deezer photo and writes it to <paramref name="cachedPath"/>.
+    /// Returns true if an image was downloaded and saved.
+    /// </summary>
+    private async Task<bool> TryDownloadAndSaveAsync(string artistName, string cachedPath)
+    {
+        var imageUrl = await GetDeezerArtistImageUrlAsync(artistName);
+        if (string.IsNullOrWhiteSpace(imageUrl))
+            return false;
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, imageUrl);
+        using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+        if (!response.IsSuccessStatusCode ||
+            response.Content.Headers.ContentType?.MediaType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) != true)
+            return false;
+
+        var imageData = await response.Content.ReadAsByteArrayAsync();
+        if (imageData.Length == 0)
+            return false;
+
+        await File.WriteAllBytesAsync(cachedPath, imageData);
+        return true;
     }
 
     /// <summary>

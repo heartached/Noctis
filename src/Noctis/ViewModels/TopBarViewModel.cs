@@ -15,7 +15,13 @@ public partial class TopBarViewModel : ViewModelBase
 {
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private bool _isSearchFocused;
-    [ObservableProperty] private string _currentTabName = "Library";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PageTitleDisplay))]
+    private string _currentTabName = "Library";
+
+    /// <summary>Header title: reflects the Cover Flow / Collage view when active, otherwise the section name.
+    /// Collage is a Cover Flow sub-mode, so its label only applies while Cover Flow is active.</summary>
+    public string PageTitleDisplay => IsCoverFlowMode ? (IsCollageMode ? "Cover Collage" : "Cover Flow") : CurrentTabName;
     [ObservableProperty] private string _searchWatermark = "Find in Library";
     [ObservableProperty] private bool _isSearchVisible = true;
 
@@ -31,6 +37,12 @@ public partial class TopBarViewModel : ViewModelBase
     // Optional title shown next to the Back button (e.g., "More By {Artist}")
     [ObservableProperty] private string _backContextTitle = "";
     [ObservableProperty] private bool _isBackContextTitleVisible;
+
+    // Compact "Back" pill shown after the page title on the Statistics page when it
+    // was opened from Settings → "View All Stats". Distinct from the generic back
+    // button so the page title ("Statistics") stays visible in front of it.
+    [ObservableProperty] private bool _isStatsBackVisible;
+    [ObservableProperty] private ICommand? _statsBackCommand;
 
     public void ShowBackButton(string text, ICommand command, string? contextTitle = null)
     {
@@ -77,19 +89,35 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private bool _isPageTitleVisible;
 
     // Page action buttons (set by navigation for pages that have them)
-    [ObservableProperty] private bool _hasPageActions;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PageActionsVisible))]
+    private bool _hasPageActions;
     [ObservableProperty] private ICommand? _pageShuffleCommand;
     [ObservableProperty] private ICommand? _pageQueueCommand;
 
+    /// <summary>Page actions (Shuffle/Queue/Options) are hidden in Cover Flow mode — they don't apply there.</summary>
+    public bool PageActionsVisible => HasPageActions && !IsCoverFlowMode;
+
     // Playlist-specific action buttons
     [ObservableProperty] private bool _hasPlaylistActions;
+    [ObservableProperty] private ICommand? _pageCreatePlaylistCommand;
     [ObservableProperty] private ICommand? _pageCreateSmartPlaylistCommand;
+    [ObservableProperty] private ICommand? _pageImportPlaylistCommand;
 
     // Global view mode toggle (Library / Cover Flow) — shown on Home, Songs, Albums, Artists, Folders, Playlists, Favorites
     [ObservableProperty] private bool _hasViewModeToggle;
-    [ObservableProperty] private bool _isCoverFlowMode;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PageActionsVisible))]
+    [NotifyPropertyChangedFor(nameof(PageTitleDisplay))]
+    private bool _isCoverFlowMode;
     [ObservableProperty] private ICommand? _setLibraryModeCommand;
     [ObservableProperty] private ICommand? _setCoverFlowModeCommand;
+
+    // Cover Flow sub-mode (Carousel / Collage) — icon segment shown on the pill only while Cover Flow is active
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PageTitleDisplay))]
+    private bool _isCollageMode;
+    [ObservableProperty] private ICommand? _toggleCollageModeCommand;
 
     // Artist discography action buttons
     [ObservableProperty] private bool _hasArtistActions;
@@ -111,26 +139,18 @@ public partial class TopBarViewModel : ViewModelBase
     public bool PageShowAllItems => !PageShowOnlyFavorites;
     public bool PageSortDescending => !PageSortAscending;
 
-    // Per-field active-sort flags used to render checkmarks in the Sort By submenu
-    public bool PageSortByTitle  => string.Equals(PageSortColumn, "Title",  StringComparison.OrdinalIgnoreCase);
-    public bool PageSortByAlbum  => string.Equals(PageSortColumn, "Album",  StringComparison.OrdinalIgnoreCase);
-    public bool PageSortByArtist => string.Equals(PageSortColumn, "Artist", StringComparison.OrdinalIgnoreCase);
-    public bool PageSortByGenre  => string.Equals(PageSortColumn, "Genre",  StringComparison.OrdinalIgnoreCase);
-    public bool PageSortByYear   => string.Equals(PageSortColumn, "Year",   StringComparison.OrdinalIgnoreCase);
-    public bool PageSortByTime   => string.Equals(PageSortColumn, "Time",   StringComparison.OrdinalIgnoreCase);
-    public bool PageSortByPlays  => string.Equals(PageSortColumn, "Plays",  StringComparison.OrdinalIgnoreCase);
+    // Per-field active-sort flags used to render checkmarks in the Sort By submenu.
+    // Only sorts without a clickable column header live in the menu; the rest are
+    // sorted directly from the Songs page column headers.
+    public bool PageSortByYear      => string.Equals(PageSortColumn, "Year",       StringComparison.OrdinalIgnoreCase);
+    public bool PageSortByDateAdded => string.Equals(PageSortColumn, "Date Added", StringComparison.OrdinalIgnoreCase);
 
     partial void OnPageShowOnlyFavoritesChanged(bool value) => OnPropertyChanged(nameof(PageShowAllItems));
     partial void OnPageSortAscendingChanged(bool value) => OnPropertyChanged(nameof(PageSortDescending));
     partial void OnPageSortColumnChanged(string value)
     {
-        OnPropertyChanged(nameof(PageSortByTitle));
-        OnPropertyChanged(nameof(PageSortByAlbum));
-        OnPropertyChanged(nameof(PageSortByArtist));
-        OnPropertyChanged(nameof(PageSortByGenre));
         OnPropertyChanged(nameof(PageSortByYear));
-        OnPropertyChanged(nameof(PageSortByTime));
-        OnPropertyChanged(nameof(PageSortByPlays));
+        OnPropertyChanged(nameof(PageSortByDateAdded));
     }
 
     public void ShowPageActions(
@@ -164,16 +184,20 @@ public partial class TopBarViewModel : ViewModelBase
         PageSortCommand = null;
     }
 
-    public void ShowPlaylistActions(ICommand createSmartPlaylistCommand)
+    public void ShowPlaylistActions(ICommand createPlaylistCommand, ICommand createSmartPlaylistCommand, ICommand importPlaylistCommand)
     {
+        PageCreatePlaylistCommand = createPlaylistCommand;
         PageCreateSmartPlaylistCommand = createSmartPlaylistCommand;
+        PageImportPlaylistCommand = importPlaylistCommand;
         HasPlaylistActions = true;
     }
 
     public void HidePlaylistActions()
     {
         HasPlaylistActions = false;
+        PageCreatePlaylistCommand = null;
         PageCreateSmartPlaylistCommand = null;
+        PageImportPlaylistCommand = null;
     }
 
     public void ShowArtistActions(ICommand shuffleCommand, ICommand playCommand)
@@ -204,11 +228,14 @@ public partial class TopBarViewModel : ViewModelBase
         PagePlayFavoritesCommand = null;
     }
 
-    public void ShowViewModeToggle(ICommand setLibraryMode, ICommand setCoverFlowMode, bool isCoverFlowMode)
+    public void ShowViewModeToggle(ICommand setLibraryMode, ICommand setCoverFlowMode, bool isCoverFlowMode,
+        ICommand? toggleCollageMode = null, bool isCollageMode = false)
     {
         SetLibraryModeCommand = setLibraryMode;
         SetCoverFlowModeCommand = setCoverFlowMode;
         IsCoverFlowMode = isCoverFlowMode;
+        ToggleCollageModeCommand = toggleCollageMode;
+        IsCollageMode = isCollageMode;
         HasViewModeToggle = true;
     }
 
@@ -218,6 +245,8 @@ public partial class TopBarViewModel : ViewModelBase
         SetLibraryModeCommand = null;
         SetCoverFlowModeCommand = null;
         IsCoverFlowMode = false;
+        ToggleCollageModeCommand = null;
+        IsCollageMode = false;
     }
 
     // Release-type filter chips (All / Albums / Singles / EPs / Other) — shown next
@@ -227,10 +256,22 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ObservableCollection<ReleaseTypeChip>? _releaseTypeChips;
     [ObservableProperty] private ICommand? _releaseTypeChipCommand;
 
-    public void ShowReleaseTypeChips(ObservableCollection<ReleaseTypeChip> chips, ICommand selectCommand)
+    // Quality chips + sort dropdown shown alongside the release-type strip;
+    // owned by LibraryAlbumsViewModel, mirrored here for top-bar placement.
+    [ObservableProperty] private ObservableCollection<QualityChip>? _qualityChips;
+    [ObservableProperty] private ICommand? _qualityChipCommand;
+    [ObservableProperty] private ICommand? _albumSortCommand;
+    [ObservableProperty] private string _albumSortLabel = "Default";
+
+    public void ShowReleaseTypeChips(ObservableCollection<ReleaseTypeChip> chips, ICommand selectCommand,
+        ObservableCollection<QualityChip>? qualityChips = null, ICommand? qualityCommand = null,
+        ICommand? sortCommand = null)
     {
         ReleaseTypeChips = chips;
         ReleaseTypeChipCommand = selectCommand;
+        QualityChips = qualityChips;
+        QualityChipCommand = qualityCommand;
+        AlbumSortCommand = sortCommand;
         HasReleaseTypeChips = true;
     }
 

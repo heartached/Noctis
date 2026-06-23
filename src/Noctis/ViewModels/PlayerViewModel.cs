@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Threading;
 using Avalonia.Media.Imaging;
+using Microsoft.Extensions.DependencyInjection;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -21,6 +22,24 @@ public partial class PlayerViewModel : ViewModelBase
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
     private readonly IAnimatedCoverService _animatedCovers;
+
+    // ── Recently-played memory (feeds shuffle recency deprioritization) ──
+    private readonly LinkedList<Guid> _recentlyPlayedOrder = new();
+    private readonly HashSet<Guid> _recentlyPlayed = new();
+    private const int RecentlyPlayedCapacity = 50;
+
+    // Insertion-order tracking, not true LRU: re-playing an already-tracked id intentionally
+    // does not refresh its position. Acceptable for a shuffle deprioritization heuristic.
+    private void MarkRecentlyPlayed(Track t)
+    {
+        if (_recentlyPlayed.Add(t.Id)) _recentlyPlayedOrder.AddLast(t.Id);
+        while (_recentlyPlayedOrder.Count > RecentlyPlayedCapacity)
+        {
+            var oldest = _recentlyPlayedOrder.First!.Value;
+            _recentlyPlayedOrder.RemoveFirst();
+            _recentlyPlayed.Remove(oldest);
+        }
+    }
 
     // ── Observable properties bound to the playback bar ──
 
@@ -44,6 +63,17 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _isQueuePopupOpen;
     [ObservableProperty] private bool _autoMixEnabled;
     [ObservableProperty] private AutoMixTransitionMode _autoMixTransitionMode = AutoMixTransitionMode.Off;
+    /// <summary>Gapless playback (Settings > Audio): natural track changes hand off to a
+    /// pre-decoded standby player instead of the audible stop/parse/start path.</summary>
+    [ObservableProperty] private bool _gaplessEnabled = true;
+
+    // ── Signal path / quality badge (Roon-style) ──
+    /// <summary>Overall chain quality: "Bit-perfect", "Hi-Res Lossless", "Lossless", "Enhanced", "Lossy".</summary>
+    [ObservableProperty] private string _signalPathQuality = "";
+    /// <summary>Badge dot colour for the current quality tier (hex string).</summary>
+    [ObservableProperty] private string _signalPathColor = "#9CA3AF";
+    /// <summary>The audio chain, stage by stage, for the expanded badge flyout.</summary>
+    [ObservableProperty] private IReadOnlyList<SignalPathStage> _signalPathStages = Array.Empty<SignalPathStage>();
     [ObservableProperty] private AutoMixStrength _autoMixStrength = AutoMixStrength.Balanced;
     [ObservableProperty] private bool _autoMixRemoveSilence = true;
     [ObservableProperty] private bool _autoMixAvoidAlbums = true;
@@ -60,6 +90,7 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _isLyricsSyncedActive;
     [ObservableProperty] private bool _isLyricsPlainActive;
     [ObservableProperty] private bool _isLyricsSyncedAvailable;
+    [ObservableProperty] private bool _canShareLyrics;
 
     /// <summary>
     /// Path to the current track's artwork file (or null if none).
@@ -77,6 +108,7 @@ public partial class PlayerViewModel : ViewModelBase
     private Action? _selectLyricsPlain;
     private Action? _openLyricsBackgroundColor;
     private Action? _removeLyrics;
+    private Action? _shareLyrics;
 
     public string PlayPauseTooltip => State == PlaybackState.Playing ? "Pause" : "Play";
 
@@ -127,6 +159,15 @@ public partial class PlayerViewModel : ViewModelBase
     private long _queueVersion;
     private AutoMixPreparedTransitionSnapshot? _autoMixPreparedSnapshot;
     private SettingsViewModel? _settings;
+    private IPlayHistoryService? _playHistory; // injected for play/skip event logging
+
+    // ── Track Radio ──
+    private readonly IRadioService _radioService = new RadioService();
+    [ObservableProperty] private bool _isRadioActive;
+    private Track? _radioSeed;
+    private bool _radioRefillInFlight;
+    private const int RadioRefillThreshold = 5;
+    private const int RadioBatchSize = 25;
 
     public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers)
     {
@@ -140,6 +181,10 @@ public partial class PlayerViewModel : ViewModelBase
         _audioPlayer.TrackEnded += OnTrackEnded;
         _audioPlayer.PlaybackError += OnPlaybackError;
         _audioPlayer.DurationResolved += OnDurationResolved;
+        // Output path can change after playback starts (exclusive engaged /
+        // fell back) — keep the signal-path badge in sync.
+        _audioPlayer.OutputModeChanged += (_, _) =>
+            Dispatcher.UIThread.Post(RefreshSignalPath);
 
         // Subscribe to library events
         _library.LibraryUpdated += OnLibraryUpdated;
@@ -180,9 +225,7 @@ public partial class PlayerViewModel : ViewModelBase
                 else if (_library.Tracks.Count > 0)
                 {
                     // No track loaded — shuffle entire library
-                    var allTracks = _library.Tracks
-                        .OrderBy(_ => Random.Shared.Next())
-                        .ToList();
+                    var allTracks = Helpers.ShuffleHelper.WeightedShuffle(_library.Tracks, recentlyPlayed: _recentlyPlayed);
                     IsShuffleEnabled = true;
                     ReplaceQueueAndPlay(allTracks, 0);
                 }
@@ -196,6 +239,11 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Playback, "Next", $"queueLen={UpNext.Count}");
         CancelAutoMixTransition("user skipped");
         if (UpNext.Count == 0) return;
+
+        // A user skip before the halfway point counts as a skip in the play log.
+        if (CurrentTrack != null && PositionFraction < 0.5)
+            _playHistory?.RecordSkip(CurrentTrack);
+
         AdvanceQueue(QueueAdvanceReason.UserSkip);
     }
 
@@ -251,6 +299,82 @@ public partial class PlayerViewModel : ViewModelBase
         _audioPlayer.IsMuted = IsMuted;
     }
 
+    // ── Sleep timer ──────────────────────────────────────────
+
+    private DispatcherTimer? _sleepTimer;
+    private DateTime _sleepTimerEndsAtUtc;
+
+    /// <summary>True while a timed sleep timer is counting down.</summary>
+    [ObservableProperty] private bool _isSleepTimerActive;
+
+    /// <summary>Remaining time label, e.g. "29:54". Empty when inactive.</summary>
+    [ObservableProperty] private string _sleepTimerRemainingText = string.Empty;
+
+    /// <summary>Active timed-sleep duration in minutes (15/30/45/60); 0 when no timed
+    /// sleep timer is running. Drives the checkmark on the selected menu option.</summary>
+    [ObservableProperty] private int _sleepTimerMinutes;
+
+    /// <summary>When true, playback stops after the current track finishes (also the
+    /// sleep timer's "end of track" mode). One-shot: clears itself once it fires.</summary>
+    [ObservableProperty] private bool _stopAfterCurrentTrack;
+
+    /// <summary>Starts a timed sleep timer; parameter is minutes ("15"/"30"/"45"/"60").</summary>
+    [RelayCommand]
+    private void StartSleepTimer(string? minutes)
+    {
+        if (!int.TryParse(minutes, out var mins) || mins <= 0) return;
+
+        _sleepTimerEndsAtUtc = DateTime.UtcNow.AddMinutes(mins);
+        _sleepTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _sleepTimer.Tick -= OnSleepTimerTick;
+        _sleepTimer.Tick += OnSleepTimerTick;
+        _sleepTimer.Start();
+        IsSleepTimerActive = true;
+        SleepTimerMinutes = mins;
+        UpdateSleepTimerRemaining();
+        DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Start", $"minutes={mins}");
+    }
+
+    [RelayCommand]
+    private void CancelSleepTimer()
+    {
+        _sleepTimer?.Stop();
+        IsSleepTimerActive = false;
+        SleepTimerMinutes = 0;
+        SleepTimerRemainingText = string.Empty;
+        DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Cancel", null);
+    }
+
+    /// <summary>Toggles "stop after current track" (the sleep timer's end-of-track mode).</summary>
+    [RelayCommand]
+    private void ToggleStopAfterCurrent()
+    {
+        StopAfterCurrentTrack = !StopAfterCurrentTrack;
+        DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.StopAfterCurrent", $"enabled={StopAfterCurrentTrack}");
+    }
+
+    private void OnSleepTimerTick(object? sender, EventArgs e)
+    {
+        if (DateTime.UtcNow >= _sleepTimerEndsAtUtc)
+        {
+            CancelSleepTimer();
+            if (State == PlaybackState.Playing)
+                PlayPause();
+            DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.Fired", "paused playback");
+            return;
+        }
+        UpdateSleepTimerRemaining();
+    }
+
+    private void UpdateSleepTimerRemaining()
+    {
+        var remaining = _sleepTimerEndsAtUtc - DateTime.UtcNow;
+        if (remaining < TimeSpan.Zero) remaining = TimeSpan.Zero;
+        SleepTimerRemainingText = remaining.TotalHours >= 1
+            ? $"{(int)remaining.TotalHours}:{remaining.Minutes:00}:{remaining.Seconds:00}"
+            : $"{remaining.Minutes}:{remaining.Seconds:00}";
+    }
+
     [RelayCommand]
     private void ToggleShuffle()
     {
@@ -268,11 +392,10 @@ public partial class PlayerViewModel : ViewModelBase
             {
                 // Save original queue order
                 _originalQueue = UpNext.ToList();
-                // Shuffle the queue, respecting SkipWhenShuffling
-                var shuffled = UpNext
-                    .Where(t => !t.SkipWhenShuffling)
-                    .OrderBy(_ => Random.Shared.Next())
-                    .ToList();
+                // Shuffle the queue, respecting SkipWhenShuffling and
+                // down-weighting "not liked" + recently-played tracks.
+                var shuffled = Helpers.ShuffleHelper.WeightedShuffle(
+                    UpNext.Where(t => !t.SkipWhenShuffling), recentlyPlayed: _recentlyPlayed);
                 UpNext.ReplaceAll(shuffled);
             }
             else if (_originalQueue.Count > 0)
@@ -305,6 +428,9 @@ public partial class PlayerViewModel : ViewModelBase
 
     /// <summary>Sets the SettingsViewModel for per-track EQ and audio overrides.</summary>
     public void SetSettingsViewModel(SettingsViewModel settings) => _settings = settings;
+
+    /// <summary>Sets the play history log used for play/skip event recording.</summary>
+    public void SetPlayHistory(IPlayHistoryService playHistory) => _playHistory = playHistory;
 
     /// <summary>Sets the navigation action for the lyrics view.</summary>
     public void SetNavigateAction(Action<string> navigateAction)
@@ -352,6 +478,14 @@ public partial class PlayerViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void ViewArtist(Track? track)
+    {
+        var artist = track?.Artist;
+        if (!string.IsNullOrWhiteSpace(artist))
+            _viewArtistAction?.Invoke(artist);
+    }
+
+    [RelayCommand]
     private void SetLyricsSynced() => _selectLyricsSynced?.Invoke();
 
     [RelayCommand]
@@ -363,6 +497,9 @@ public partial class PlayerViewModel : ViewModelBase
     [RelayCommand]
     private void RemoveCurrentTrackLyrics() => _removeLyrics?.Invoke();
 
+    [RelayCommand]
+    private void ShareCurrentTrackLyrics() => _shareLyrics?.Invoke();
+
     /// <summary>
     /// Called by MainWindowViewModel when the lyrics view becomes the current view.
     /// Wires the three pass-through commands and seeds the active-state flags.
@@ -372,17 +509,21 @@ public partial class PlayerViewModel : ViewModelBase
         Action selectPlain,
         Action openBackgroundColor,
         Action removeLyrics,
+        Action shareLyrics,
         bool isSyncedActive,
         bool isPlainActive,
-        bool isSyncedAvailable)
+        bool isSyncedAvailable,
+        bool canShare)
     {
         _selectLyricsSynced = selectSynced;
         _selectLyricsPlain = selectPlain;
         _openLyricsBackgroundColor = openBackgroundColor;
         _removeLyrics = removeLyrics;
+        _shareLyrics = shareLyrics;
         IsLyricsSyncedActive = isSyncedActive;
         IsLyricsPlainActive = isPlainActive;
         IsLyricsSyncedAvailable = isSyncedAvailable;
+        CanShareLyrics = canShare;
         IsLyricsPageActive = true;
     }
 
@@ -395,21 +536,24 @@ public partial class PlayerViewModel : ViewModelBase
         _selectLyricsPlain = null;
         _openLyricsBackgroundColor = null;
         _removeLyrics = null;
+        _shareLyrics = null;
         IsLyricsPageActive = false;
         IsLyricsSyncedActive = false;
         IsLyricsPlainActive = false;
         IsLyricsSyncedAvailable = false;
+        CanShareLyrics = false;
     }
 
     /// <summary>
     /// Called by MainWindowViewModel whenever the lyrics view's Synced/Plain selection
     /// or synced-availability changes, to keep the menu's checkmarks accurate.
     /// </summary>
-    public void UpdateLyricsPageState(bool isSyncedActive, bool isPlainActive, bool isSyncedAvailable)
+    public void UpdateLyricsPageState(bool isSyncedActive, bool isPlainActive, bool isSyncedAvailable, bool canShare)
     {
         IsLyricsSyncedActive = isSyncedActive;
         IsLyricsPlainActive = isPlainActive;
         IsLyricsSyncedAvailable = isSyncedAvailable;
+        CanShareLyrics = canShare;
     }
 
     /// <summary>Sets the sidebar ViewModel for playlist access.</summary>
@@ -441,8 +585,43 @@ public partial class PlayerViewModel : ViewModelBase
         if (CurrentTrack == null) return;
         var album = _library.GetAlbumById(CurrentTrack.AlbumId);
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        var shuffled = album.Tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        // No recency weighting here: the user explicitly chose to shuffle this one album,
+        // so every track on it should stay equally likely even if just played.
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(album.Tracks);
         ReplaceQueueAndPlay(shuffled, 0);
+    }
+
+    /// <summary>
+    /// Starts an endless "Track Radio" seeded from <paramref name="seed"/>: builds a
+    /// queue of similar tracks from the user's own library and keeps refilling it as
+    /// it drains (see the radio refill in <see cref="AdvanceQueueCore"/>).
+    /// </summary>
+    [RelayCommand]
+    private void StartRadio(Track? seed)
+    {
+        if (seed == null) return;
+        var exclude = new HashSet<Guid> { seed.Id };
+        var batch = _radioService.BuildSimilar(seed, _library.Tracks, RadioBatchSize, exclude);
+        var queue = new List<Track> { seed };
+        queue.AddRange(batch);
+        // ReplaceQueueAndPlay clears IsRadioActive/_radioSeed; re-arm radio afterward.
+        ReplaceQueueAndPlay(queue, 0);
+        _radioSeed = seed;
+        IsRadioActive = true;
+        IsShuffleEnabled = false;
+    }
+
+    /// <summary>
+    /// Hides a track from shuffle and radio for 30 days (Apple Music-style "suggest less"
+    /// but temporary). Reversible from Settings. App-only state — no file tag is written.
+    /// </summary>
+    private const int SnoozeDurationDays = 30;
+
+    [RelayCommand]
+    private async Task SnoozeForMonth(Track? track)
+    {
+        if (track == null) return;
+        await _library.SetTracksSnoozedAsync(new[] { track }, DateTime.UtcNow.AddDays(SnoozeDurationDays));
     }
 
     [RelayCommand]
@@ -527,6 +706,10 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "ReplaceQueueAndPlay", $"tracks={tracks.Count}, startIdx={startIndex}");
         if (tracks.Count == 0) return;
         if (startIndex < 0 || startIndex >= tracks.Count) startIndex = 0;
+        // Any non-radio queue replacement (album/playlist/shuffle/etc.) ends radio so
+        // it stops refilling. StartRadio re-enables IsRadioActive after calling this.
+        IsRadioActive = false;
+        _radioSeed = null;
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
 
@@ -657,6 +840,21 @@ public partial class PlayerViewModel : ViewModelBase
         ReplaceQueueAndPlay(remaining, 0);
     }
 
+    /// <summary>
+    /// Saves the current queue (now playing + up next) as a playlist via the
+    /// unified Add to Playlist dialog.
+    /// </summary>
+    [RelayCommand]
+    private async Task SaveQueueAsPlaylist()
+    {
+        if (_sidebar == null) return;
+        var tracks = new List<Track>();
+        if (CurrentTrack != null) tracks.Add(CurrentTrack);
+        tracks.AddRange(UpNext);
+        if (tracks.Count == 0) return;
+        await _sidebar.OpenAddToPlaylistAsync(tracks);
+    }
+
     // ── Queue state persistence ──────────────────────────────
 
     /// <summary>Saves the current queue state so it can be restored on next launch.</summary>
@@ -727,11 +925,14 @@ public partial class PlayerViewModel : ViewModelBase
 
     partial void OnVolumeChanged(int value)
     {
-        // Safe to write on every drag pixel: VlcAudioPlayer applies volume as
-        // PCM gain via the equalizer preamp, so no WASAPI session events fire
-        // and continuous drag stays click-free.
+        // Fired on every drag pixel. VlcAudioPlayer feeds the value to its volume
+        // ramp engine, which slews the applied gain in small paced steps —
+        // real-time yet click-free (raw per-pixel session writes crackle).
         _audioPlayer.Volume = value;
+        RefreshSignalPath();
     }
+
+    partial void OnIsMutedChanged(bool value) => RefreshSignalPath();
 
     /// <summary>
     /// Flush the final volume to VLC immediately — call on slider drag-end
@@ -747,6 +948,95 @@ public partial class PlayerViewModel : ViewModelBase
         // path changes can leave us here without a Play() call.
         if (_settings != null)
             _audioPlayer.ApplyReplayGain(_settings.ReplayGainMode, _settings.ReplayGainPreampDb);
+
+        RefreshSignalPath();
+        // The player applies ReplayGain / opens the output on a worker shortly
+        // after Play(); refresh once more so applied-gain and output format are
+        // accurate for the new track.
+        DispatcherTimer.RunOnce(RefreshSignalPath, TimeSpan.FromMilliseconds(800));
+    }
+
+    /// <summary>
+    /// Rebuild the quality badge + expanded chain (source → ReplayGain → EQ →
+    /// crossfade → output). Called on track changes, output-mode changes and by
+    /// Settings whenever an audio toggle is applied.
+    /// </summary>
+    public void RefreshSignalPath()
+    {
+        var track = CurrentTrack;
+        if (track == null)
+        {
+            SignalPathStages = Array.Empty<SignalPathStage>();
+            SignalPathQuality = "";
+            return;
+        }
+
+        var rgDb = _audioPlayer.ReplayGainAppliedDb;
+        var rgMode = _settings?.ReplayGainMode ?? "Off";
+        var rgOn = !string.Equals(rgMode, "Off", StringComparison.OrdinalIgnoreCase);
+        var eqOn = _settings?.EqualizerEnabled ?? false;
+        var soundCheckOn = _settings?.SoundCheckEnabled ?? false;
+        var crossfadeOn = _settings?.CrossfadeEnabled ?? false;
+        var exclusive = _audioPlayer.ExclusiveModeActive;
+        var volumeUnity = Volume >= 100 && (track.VolumeAdjust == 0) && !IsMuted;
+
+        var codec = !string.IsNullOrEmpty(track.CodecShortName)
+            ? track.CodecShortName
+            : Path.GetExtension(track.FilePath).TrimStart('.').ToUpperInvariant();
+        var sourceDetail = codec;
+        if (track.BitsPerSample > 0 && track.SampleRate > 0)
+            sourceDetail += $" {track.BitsPerSample}-bit / {track.SampleRate / 1000.0:0.#} kHz";
+        else if (track.SampleRate > 0)
+            sourceDetail += $" {track.SampleRate / 1000.0:0.#} kHz";
+        if (!track.IsLossless && track.Bitrate > 0)
+            sourceDetail += $" ({track.Bitrate} kbps)";
+
+        var rgDetail = !rgOn
+            ? "Off"
+            : Math.Abs(rgDb) > 0.01
+                ? $"{rgMode} — {rgDb:+0.0;-0.0} dB"
+                : $"{rgMode} — no tags (bypass)";
+
+        var eqDetail = eqOn
+            ? (_settings?.SelectedEqPresetIndex == 0 ? "Parametric (custom)" : _settings?.SelectedEqPresetName ?? "On")
+            : "Off";
+
+        var crossfadeDetail = crossfadeOn
+            ? $"{_settings?.CrossfadeDuration ?? 6:0.#} s"
+            : GaplessEnabled ? "Off (gapless)" : "Off";
+
+        SignalPathStages = new[]
+        {
+            new SignalPathStage("Source", sourceDetail, true),
+            new SignalPathStage("ReplayGain", rgDetail, rgOn),
+            new SignalPathStage("Equalizer", eqDetail, eqOn),
+            new SignalPathStage("Sound Check", soundCheckOn ? "On (loudness normalization)" : "Off", soundCheckOn),
+            new SignalPathStage("Crossfade", crossfadeDetail, crossfadeOn),
+            new SignalPathStage("Volume", volumeUnity ? "100% (unity)" : IsMuted ? "Muted" : $"{Volume}%", !volumeUnity),
+            new SignalPathStage("Output", _audioPlayer.OutputDescription, true),
+        };
+
+        var dspActive = (rgOn && Math.Abs(rgDb) > 0.01) || eqOn || soundCheckOn || crossfadeOn;
+        if (exclusive && !dspActive && volumeUnity)
+        {
+            SignalPathQuality = "Bit-perfect";
+            SignalPathColor = "#B197FC"; // violet — untouched samples reach the DAC
+        }
+        else if (track.IsLossless && !dspActive)
+        {
+            SignalPathQuality = track.IsHiResLossless ? "Hi-Res Lossless" : "Lossless";
+            SignalPathColor = "#4ADE80"; // green
+        }
+        else if (track.IsLossless)
+        {
+            SignalPathQuality = "Enhanced";
+            SignalPathColor = "#60A5FA"; // blue — lossless source with DSP applied
+        }
+        else
+        {
+            SignalPathQuality = dspActive ? "Lossy · Enhanced" : "Lossy";
+            SignalPathColor = "#9CA3AF"; // gray
+        }
     }
 
     partial void OnPositionFractionChanged(double value)
@@ -850,6 +1140,8 @@ public partial class PlayerViewModel : ViewModelBase
         // Update play count and last played time
         track.PlayCount++;
         track.LastPlayed = DateTime.UtcNow;
+        _playHistory?.RecordPlay(track);
+        MarkRecentlyPlayed(track);
 
         // Apply per-track volume adjustment
         _audioPlayer.VolumeAdjust = track.VolumeAdjust;
@@ -933,6 +1225,20 @@ public partial class PlayerViewModel : ViewModelBase
         if (reason is QueueAdvanceReason.UserSkip or QueueAdvanceReason.Previous or QueueAdvanceReason.Error)
             CancelAutoMixTransition(reason == QueueAdvanceReason.Error ? "playback error" : "user skipped");
 
+        // "Stop after current track": when the track ends naturally, halt here
+        // instead of advancing. Queue and current track stay intact so PlayPause
+        // resumes from a sensible state. User skips bypass and clear the flag.
+        if (StopAfterCurrentTrack && reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix)
+        {
+            StopAfterCurrentTrack = false;
+            State = PlaybackState.Stopped;
+            DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.StoppedAfterTrack",
+                $"track={CurrentTrack?.Title}");
+            return;
+        }
+        if (StopAfterCurrentTrack && reason is QueueAdvanceReason.UserSkip or QueueAdvanceReason.Previous)
+            StopAfterCurrentTrack = false;
+
         // Handle repeat one mode — replay via PlayTrack() so PlayCount is
         // incremented, TrackStarted fires, and all state updates properly.
         if (RepeatMode == RepeatMode.One && CurrentTrack != null)
@@ -960,6 +1266,7 @@ public partial class PlayerViewModel : ViewModelBase
             var next = UpNext[0];
             UpNext.RemoveAt(0);
             PlayTrack(next);
+            RefillRadioIfNeeded();
         }
         else if (RepeatMode == RepeatMode.All && History.Count > 0)
         {
@@ -981,6 +1288,51 @@ public partial class PlayerViewModel : ViewModelBase
                 $"queueCount={UpNext.Count}, historyCount={History.Count}, repeat={RepeatMode}");
             StopAndClear();
         }
+    }
+
+    /// <summary>
+    /// When Track Radio is active and the queue is running low, appends another batch
+    /// of similar tracks so playback never runs dry. Excludes everything already played
+    /// or queued so the radio doesn't repeat itself.
+    ///
+    /// The similarity scan (<see cref="IRadioService.BuildSimilar"/>) is O(library size)
+    /// and runs at every track transition once the queue drains, so it is offloaded to the
+    /// ThreadPool to avoid stuttering the UI thread on large libraries. The candidate pool
+    /// and exclude set are snapshotted on the UI thread first so the background enumeration
+    /// can't race library mutations; results are marshaled back to append to <see cref="UpNext"/>
+    /// (which is bound to the UI). A re-entrancy guard prevents overlapping transitions from
+    /// launching concurrent refills.
+    /// </summary>
+    private void RefillRadioIfNeeded()
+    {
+        if (!IsRadioActive || _radioSeed == null || UpNext.Count > RadioRefillThreshold)
+            return;
+        if (_radioRefillInFlight)
+            return;
+
+        // Snapshot on the UI thread so the background scan can't race library mutations
+        // or live queue collections.
+        var seed = _radioSeed;
+        var snapshot = _library.Tracks.ToList();
+        var exclude = new HashSet<Guid>(History.Select(t => t.Id));
+        foreach (var t in UpNext) exclude.Add(t.Id);
+        if (CurrentTrack != null) exclude.Add(CurrentTrack.Id);
+        exclude.Add(seed.Id);
+
+        _radioRefillInFlight = true;
+        _ = Task.Run(() =>
+        {
+            var more = _radioService.BuildSimilar(seed, snapshot, RadioBatchSize, exclude);
+            Dispatcher.UIThread.Post(() =>
+            {
+                _radioRefillInFlight = false;
+                // The user may have replaced the queue (or re-seeded radio) during the hop;
+                // discard a stale batch rather than polluting the new queue.
+                if (!IsRadioActive || !ReferenceEquals(_radioSeed, seed))
+                    return;
+                foreach (var t in more) UpNext.Add(t);
+            });
+        });
     }
 
     private void GoBackInQueue(QueueAdvanceReason reason = QueueAdvanceReason.Previous)
@@ -1026,11 +1378,14 @@ public partial class PlayerViewModel : ViewModelBase
         // Drive CachedImage-based surfaces (playback bar) via a path string. They
         // handle previous-frame retention during background decode, so there's no
         // flash. Set null when the file is missing so the placeholder renders.
-        CurrentArtPath = !string.IsNullOrEmpty(artPath) && File.Exists(artPath) ? artPath : null;
+        var hasArtFile = !string.IsNullOrEmpty(artPath) && File.Exists(artPath);
+        CurrentArtPath = hasArtFile ? artPath : null;
 
         // No artwork available for this track — clear immediately so we don't
-        // keep showing the previous track's cover.
-        if (string.IsNullOrEmpty(artPath))
+        // keep showing the previous track's cover. GetArtworkPath always returns
+        // a computed path, so the file-existence check is what actually detects
+        // a coverless track here.
+        if (!hasArtFile)
         {
             AlbumArt = null;
             CurrentAnimatedCoverPath = _animatedCovers.Resolve(track);
@@ -1185,6 +1540,9 @@ public partial class PlayerViewModel : ViewModelBase
             if (TryAdvanceForAutoMix(newPosition, effectiveDuration))
                 return;
 
+            if (TryAdvanceForGapless(newPosition, effectiveDuration))
+                return;
+
             ScheduleNaturalEndFallbackIfNeeded(newPosition, effectiveDuration);
 
             // Check per-track stop time
@@ -1322,8 +1680,19 @@ public partial class PlayerViewModel : ViewModelBase
         }
 
         var remaining = transitionEnd - position;
-        if (plan.Duration > TimeSpan.Zero && remaining > plan.Duration)
+        var overlapBlend = AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.AutoMix;
+        if (overlapBlend)
+        {
+            // AutoMix: start the overlap blend this far from the end so both tracks play
+            // together through the crossover (the old's ending + the new's start), with no
+            // early fade-out and no dead air.
+            if (remaining > TimeSpan.FromSeconds(AutoMixOverlapLeadSeconds))
+                return false;
+        }
+        else if (plan.Duration > TimeSpan.Zero && remaining > plan.Duration)
+        {
             return false;
+        }
 
         if (string.IsNullOrWhiteSpace(nextTrack.FilePath) || !File.Exists(nextTrack.FilePath))
         {
@@ -1350,10 +1719,18 @@ public partial class PlayerViewModel : ViewModelBase
         _autoMixAdvanceQueued = true;
         Interlocked.Exchange(ref _pendingAutoMixNextStartMs, (long)plan.NextTrackStartPosition.TotalMilliseconds);
         _autoMixTransitionArmedUntilUtc = DateTime.UtcNow.AddSeconds(3);
-        _audioPlayer.SetCrossfade(
-            plan.TransitionType is AutoMixTransitionType.SimpleCrossfade or AutoMixTransitionType.BeatMatchedCrossfade or AutoMixTransitionType.SafeFade,
-            Math.Max(1, (int)Math.Round(plan.Duration.TotalSeconds)),
-            plan.FadeCurve);
+        if (overlapBlend)
+        {
+            // Overlap blend: both tracks play together through the crossover.
+            _audioPlayer.SetCrossfade(true, AutoMixOverlapSeconds, plan.FadeCurve, overlap: true);
+        }
+        else
+        {
+            _audioPlayer.SetCrossfade(
+                plan.TransitionType is AutoMixTransitionType.SimpleCrossfade or AutoMixTransitionType.BeatMatchedCrossfade or AutoMixTransitionType.SafeFade,
+                Math.Max(1, (int)Math.Round(plan.Duration.TotalSeconds)),
+                plan.FadeCurve);
+        }
         AdvanceQueue(QueueAdvanceReason.AutoMix);
         return true;
     }
@@ -1367,7 +1744,94 @@ public partial class PlayerViewModel : ViewModelBase
             AutoMixBeatMatch,
             RepeatMode,
             IsShuffleEnabled,
-            false);
+            false,
+            _settings?.CrossfadeDuration ?? 6);
+
+    // Gapless timing: pre-decode the next track on the standby player well before
+    // the end, then advance just inside the final position tick so the handoff in
+    // VlcAudioPlayer starts the prepared player with no audible gap. The handoff
+    // lead must stay above one position-timer period (100ms) or the end can slip
+    // past us into the EndReached path.
+    private const double GaplessPrepareLeadSeconds = 8.0;
+    private const double GaplessHandoffLeadSeconds = 0.3;
+
+    // AutoMix overlap blend: both tracks play together through the crossover. The blend is
+    // triggered AutoMixOverlapSeconds (plus a small margin so the old stops just before its
+    // natural end) from the end; the engine holds both at the blend level for that long,
+    // then stops the old and rises the new back to full.
+    private const int AutoMixOverlapSeconds = 3;
+    private const double AutoMixOverlapLeadSeconds = AutoMixOverlapSeconds + 1.0;
+
+    private bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration)
+    {
+        if (!GaplessEnabled ||
+            AutoMixTransitionMode != Noctis.Models.AutoMixTransitionMode.Off ||
+            _autoMixAdvanceQueued ||
+            CurrentTrack == null ||
+            UpNext.Count == 0 ||
+            RepeatMode == RepeatMode.One ||
+            CurrentTrack.StopTimeMs > 0)
+            return false;
+
+        if (State != PlaybackState.Playing || _isSeeking || DateTime.UtcNow < _autoMixCommitGuardUntilUtc)
+            return false;
+
+        if (duration <= TimeSpan.Zero)
+            return false;
+
+        var nextTrack = UpNext[0];
+        var remaining = duration - position;
+
+        if (remaining > TimeSpan.FromSeconds(GaplessHandoffLeadSeconds))
+        {
+            if (remaining <= TimeSpan.FromSeconds(GaplessPrepareLeadSeconds) &&
+                _autoMixPreparedTrackId != nextTrack.Id &&
+                !string.IsNullOrWhiteSpace(nextTrack.FilePath))
+            {
+                _autoMixPreparedTrackId = nextTrack.Id;
+                _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
+                    nextTrack.Id,
+                    nextTrack.FilePath,
+                    _queueVersion,
+                    IsShuffleEnabled,
+                    RepeatMode,
+                    AutoMixTransitionMode,
+                    _audioPlayer.CurrentSessionId);
+                _audioPlayer.PrepareNext(
+                    nextTrack.FilePath,
+                    nextTrack.StartTimeMs > 0 ? nextTrack.StartTimeMs : -1);
+            }
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(nextTrack.FilePath) || !File.Exists(nextTrack.FilePath))
+            return false;
+
+        var validation = AutoMixPreparedTransitionValidator.Validate(
+            _autoMixPreparedSnapshot,
+            nextTrack,
+            _queueVersion,
+            IsShuffleEnabled,
+            RepeatMode,
+            AutoMixTransitionMode,
+            _audioPlayer.CurrentSessionId,
+            gapless: true);
+        if (!validation.IsValid)
+        {
+            // Nothing usable prepared — let the normal EndReached path advance.
+            DebugLogger.Info(DebugLogger.Category.Playback, "Gapless.NotPrepared", validation.Reason);
+            return false;
+        }
+
+        _autoMixAdvanceQueued = true;
+        _audioPlayer.SetCrossfade(false, 6);
+        DebugLogger.Info(
+            DebugLogger.Category.Playback,
+            "Gapless.Advance",
+            $"current={CurrentTrack.Title}, next={nextTrack.Title}, remainingMs={remaining.TotalMilliseconds:F0}");
+        AdvanceQueue(QueueAdvanceReason.Natural);
+        return true;
+    }
 
     partial void OnAutoMixTransitionModeChanged(AutoMixTransitionMode value)
     {

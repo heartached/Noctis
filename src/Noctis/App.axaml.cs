@@ -56,6 +56,21 @@ public partial class App : Application
             DebugLogger.Error(DebugLogger.Category.Error, "UnobservedTaskException",
                 $"msg={args.Exception?.InnerException?.Message ?? args.Exception?.Message}");
         };
+
+        // Clicking anywhere outside a focused text box unfocuses it. Registered as
+        // a class handler on TopLevel so it covers every window and dialog.
+        Avalonia.Input.InputElement.PointerPressedEvent.AddClassHandler<TopLevel>(
+            static (top, e) =>
+            {
+                if (top.FocusManager?.GetFocusedElement() is TextBox focused
+                    && e.Source is Avalonia.Visual source
+                    && source != focused
+                    && !Avalonia.VisualTree.VisualExtensions.IsVisualAncestorOf(focused, source))
+                {
+                    top.FocusManager.ClearFocus();
+                }
+            },
+            Avalonia.Interactivity.RoutingStrategies.Tunnel);
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -69,9 +84,20 @@ public partial class App : Application
                 DataContext = mainVm
             };
 
+            // Background BPM/key analysis: kick a backfill pass after each library
+            // update (initial scan, incremental rescans, imports), plus one now to
+            // cover tracks already present from persisted JSON. StartBackfill is a
+            // no-op when disabled, ffmpeg is unavailable, or a pass is already running,
+            // and all heavy work runs off the UI thread (out-of-process ffmpeg + DSP).
+            var analysisCoordinator = Services!.GetRequiredService<Noctis.Services.AudioAnalysis.AudioAnalysisCoordinator>();
+            var library = Services!.GetRequiredService<ILibraryService>();
+            library.LibraryUpdated += (_, _) => analysisCoordinator.StartBackfill();
+            analysisCoordinator.StartBackfill();
+
             // Graceful shutdown: save state before exit
             desktop.ShutdownRequested += async (_, _) =>
             {
+                analysisCoordinator.Stop();
                 await mainVm.ShutdownAsync();
             };
         }
@@ -179,26 +205,44 @@ public partial class App : Application
     /// </summary>
     public static readonly IReadOnlyList<AccentPreset> AccentPresets = new[]
     {
-        new AccentPreset("Crimson",   "#E74856"),
-        new AccentPreset("Red",       "#FF4F57"),
-        new AccentPreset("Rose",      "#E754B5"),
-        new AccentPreset("Lavender",  "#D89BE8"),
-        new AccentPreset("Orchid",    "#C45CE0"),
-        new AccentPreset("Violet",    "#874CF2"),
-        new AccentPreset("Purple",    "#5917E8"),
-        new AccentPreset("Teal",      "#0FA3B1"),
-        new AccentPreset("Cyan",      "#19C2C2"),
-        new AccentPreset("Aqua",      "#55D4D9"),
-        new AccentPreset("Sky",       "#39B5F0"),
-        new AccentPreset("Azure",     "#4C6EF5"),
-        new AccentPreset("Cobalt",    "#0D56B3"),
-        new AccentPreset("Navy",      "#1800A8"),
-        new AccentPreset("Emerald",   "#12C76F"),
-        new AccentPreset("Lime",      "#7ED957"),
-        new AccentPreset("Mint",      "#B8FF66"),
-        new AccentPreset("Gold",      "#F4D24B"),
-        new AccentPreset("Amber",     "#FDB84D"),
-        new AccentPreset("Tangerine", "#FF8547"),
+        // Row 1 — reds, pinks, purples
+        new AccentPreset("Crimson",    "#E74856"),
+        new AccentPreset("Red",        "#FF4F57"),
+        new AccentPreset("Coral",      "#FF6F61"),
+        new AccentPreset("Salmon",     "#FF8FA3"),
+        new AccentPreset("Pink",       "#FF7BAC"),
+        new AccentPreset("Rose",       "#E754B5"),
+        new AccentPreset("Magenta",    "#C724B1"),
+        new AccentPreset("Plum",       "#9B59B6"),
+        new AccentPreset("Orchid",     "#C45CE0"),
+        new AccentPreset("Lavender",   "#D89BE8"),
+        new AccentPreset("Violet",     "#874CF2"),
+        new AccentPreset("Purple",     "#5917E8"),
+        // Row 2 — blues, cyans, teals
+        new AccentPreset("Navy",       "#1800A8"),
+        new AccentPreset("Indigo",     "#4338CA"),
+        new AccentPreset("Cobalt",     "#0D56B3"),
+        new AccentPreset("Azure",      "#4C6EF5"),
+        new AccentPreset("Periwinkle", "#7C83FD"),
+        new AccentPreset("Ocean",      "#0E86D4"),
+        new AccentPreset("Sky",        "#39B5F0"),
+        new AccentPreset("Arctic",     "#8ED6F8"),
+        new AccentPreset("Cyan",       "#19C2C2"),
+        new AccentPreset("Turquoise",  "#2DD4BF"),
+        new AccentPreset("Aqua",       "#55D4D9"),
+        new AccentPreset("Teal",       "#0FA3B1"),
+        // Row 3 — greens, yellows, oranges (last cell is the custom picker)
+        new AccentPreset("Forest",     "#1F9D55"),
+        new AccentPreset("Emerald",    "#12C76F"),
+        new AccentPreset("Jade",       "#00C49A"),
+        new AccentPreset("Lime",       "#7ED957"),
+        new AccentPreset("Mint",       "#B8FF66"),
+        new AccentPreset("Lemon",      "#FFE45C"),
+        new AccentPreset("Gold",       "#F4D24B"),
+        new AccentPreset("Amber",      "#FDB84D"),
+        new AccentPreset("Peach",      "#FFA06B"),
+        new AccentPreset("Tangerine",  "#FF8547"),
+        new AccentPreset("Rust",       "#E2613B"),
     };
 
     private ResourceDictionary? _activeAccentOverlay;
@@ -248,6 +292,13 @@ public partial class App : Application
         var accentText = isLightTheme
             ? (IsLight(color) ? Mix(color, Colors.Black, 0.55) : color)
             : (IsLight(color) ? color : Mix(color, Colors.White, 0.55));
+        // Exact accent for text, adjusted only when the raw accent lacks contrast
+        // against the current page background. Thresholds approximate a 3:1
+        // contrast ratio vs the dark (#252525) and light page backgrounds.
+        var lum = Luminance(color);
+        var accentTextExact = isLightTheme
+            ? (lum >= 0.28 ? Mix(color, Colors.Black, 0.45) : color)
+            : (lum <= 0.15 ? Mix(color, Colors.White, 0.45) : color);
 
         var rd = new ResourceDictionary
         {
@@ -264,6 +315,7 @@ public partial class App : Application
             ["AccentForegroundBrush"]              = new SolidColorBrush(accentForeground),
             ["AccentBorderBrush"]                  = new SolidColorBrush(accentBorder),
             ["AccentTextBrush"]                    = new SolidColorBrush(accentText),
+            ["AccentTextExactBrush"]               = new SolidColorBrush(accentTextExact),
             ["AccentColorBrushLight1"]             = new SolidColorBrush(light1),
             ["AccentColorBrushDark1"]              = new SolidColorBrush(dark1),
             ["ToggleSwitchFillOn"]                 = new SolidColorBrush(color),
@@ -301,7 +353,7 @@ public partial class App : Application
         return Color.FromRgb(r, g, bl);
     }
 
-    private static Color GetReadableForeground(Color background)
+    private static double Luminance(Color c)
     {
         static double Linear(byte channel)
         {
@@ -311,14 +363,16 @@ public partial class App : Application
                 : Math.Pow((value + 0.055) / 1.055, 2.4);
         }
 
-        var luminance =
-            0.2126 * Linear(background.R) +
-            0.7152 * Linear(background.G) +
-            0.0722 * Linear(background.B);
+        return 0.2126 * Linear(c.R) +
+               0.7152 * Linear(c.G) +
+               0.0722 * Linear(c.B);
+    }
 
+    private static Color GetReadableForeground(Color background)
+    {
         // Bias toward white: only switch to black when the accent is light enough
         // that white-on-accent would be unreadable (e.g. white, pale yellow, mint).
-        return luminance >= 0.6 ? Colors.Black : Colors.White;
+        return Luminance(background) >= 0.6 ? Colors.Black : Colors.White;
     }
 
     private static bool IsLight(Color c) => GetReadableForeground(c) == Colors.Black;

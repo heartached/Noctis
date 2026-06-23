@@ -15,6 +15,7 @@
         <conv:BoolToOpacityConverter x:Key="BoolToOpacity" />
         <conv:VolumeToIconConverter x:Key="VolumeToIcon" />
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
+        <conv:IntEqualsConverter x:Key="IntEquals" />
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -306,19 +307,39 @@
                 </ControlTemplate>
             </Setter>
         </Style>
+
+        <!-- The seek time labels collapse to a hairline at rest and fade back in only while
+             the pointer is over the island. -->
+        <Style Selector="TextBlock.seek-time">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.island TextBlock.seek-time">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="Border.island:pointerover TextBlock.seek-time">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
     </UserControl.Styles>
 
         <!-- Dynamic Island: Single unified glass pill-shaped container -->
+        <!-- The outline is a 1.5px ring rather than 1px: at 1px the semi-transparent stroke
+             snaps cleanly along the straight top/bottom edges but anti-aliases to partial
+             coverage around the rounded ends, so the corners looked faded. 1.5px gives the
+             curve enough width to read at the same strength as the edges. -->
         <Border x:Name="IslandBorder"
                 Classes="island"
                 BorderBrush="#40FFFFFF"
-                BorderThickness="1"
+                BorderThickness="1.5"
                 CornerRadius="999"
                 Padding="12,0,12,0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Height="50"
-                Width="650">
+                Width="590">
             <!-- Glass fill: opaque colour with user-controlled opacity (Settings → Player Bar
                  Opacity). Driving the brush opacity (not the Border's) keeps text/controls crisp. -->
             <Border.Background>
@@ -344,30 +365,7 @@
                 <!-- LEFT: Playback Controls -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" Margin="0,0,14,0">
 
-                    <!-- Shuffle button -->
-                    <Button Classes="pill-btn"
-                            Command="{Binding ToggleShuffleCommand}"
-                            ToolTip.Tip="Shuffle"
-                            Width="34" Height="34">
-                        <Panel>
-                            <!-- Shuffle Off (white/default) -->
-                            <Viewbox Width="18" Height="18"
-                                     IsVisible="{Binding !IsShuffleEnabled}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource IslandIconFill}"
-                                          Data="{StaticResource ShuffleIcon}" />
-                                </Canvas>
-                            </Viewbox>
-                            <!-- Shuffle On (red accent) -->
-                            <Viewbox Width="18" Height="18"
-                                     IsVisible="{Binding IsShuffleEnabled}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource IslandIconAccent}"
-                                          Data="{StaticResource ShuffleIcon}" />
-                                </Canvas>
-                            </Viewbox>
-                        </Panel>
-                    </Button>
+                    <!-- Shuffle & Repeat live in the Queue panel's Up Next header, not the bar. -->
 
                     <!-- Previous button -->
                     <Button Classes="pill-btn"
@@ -422,38 +420,6 @@
                         </Viewbox>
                     </Button>
 
-                    <!-- Repeat button -->
-                    <Button Classes="pill-btn"
-                            Command="{Binding CycleRepeatCommand}"
-                            ToolTip.Tip="Repeat"
-                            Width="34" Height="34">
-                        <Panel>
-                            <!-- Repeat Off (white/default) -->
-                            <Viewbox Width="18" Height="18"
-                                     IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource IslandIconFill}"
-                                          Data="{StaticResource RepeatAllIcon}" />
-                                </Canvas>
-                            </Viewbox>
-                            <!-- Repeat All (red accent) -->
-                            <Viewbox Width="18" Height="18"
-                                     IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource IslandIconAccent}"
-                                          Data="{StaticResource RepeatAllIcon}" />
-                                </Canvas>
-                            </Viewbox>
-                            <!-- Repeat One (red accent) -->
-                            <Viewbox Width="18" Height="18"
-                                     IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource IslandIconAccent}"
-                                          Data="{StaticResource RepeatOneIcon}" />
-                                </Canvas>
-                            </Viewbox>
-                        </Panel>
-                    </Button>
                 </StackPanel>
 
                 <!-- CENTER: Album Art + Track Info + Seek Bar (right-click opens options) -->
@@ -465,12 +431,15 @@
                       ColumnDefinitions="Auto,*"
                       IsVisible="{Binding !IsLyricsPageActive}">
 
-                    <!-- Album art thumbnail -->
+                    <!-- Album art thumbnail (click toggles the mini player) -->
                     <Border Grid.Column="0"
                             Width="36" Height="36"
                             CornerRadius="7"
                             ClipToBounds="True"
                             Margin="0,0,12,0"
+                            Cursor="Hand"
+                            ToolTip.Tip="Mini Player"
+                            PointerPressed="OnAlbumArtPressed"
                             Background="{DynamicResource IslandAlbumArtPlaceholder}">
                         <Panel>
                             <!-- Placeholder when no art -->
@@ -512,8 +481,8 @@
                                 </Grid.RowDefinitions>
 
                             <!-- Track title + explicit badge -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6">
                             <Border x:Name="TrackTitleViewport"
-                                    Grid.Row="0"
                                     Width="200"
                                     ClipToBounds="True"
                                     HorizontalAlignment="Left"
@@ -549,6 +518,7 @@
                                     </Border>
                                 </StackPanel>
                             </Border>
+                            </StackPanel>
 
                             <!-- Artist name. The 200px viewport clips the marquee; the Button
                                  sits inside and wraps only the text, so hover/click are limited
@@ -586,6 +556,7 @@
                             <Grid Grid.Row="2" Height="20" Margin="-22,-2,0,0" ClipToBounds="False"
                                   ColumnDefinitions="Auto,*,Auto">
                                 <TextBlock Grid.Column="0"
+                                           Classes="seek-time"
                                            Text="{Binding PositionText}"
                                            FontSize="10"
                                            VerticalAlignment="Center"
@@ -626,6 +597,7 @@
                                 </Grid>
 
                                 <TextBlock Grid.Column="2"
+                                           Classes="seek-time"
                                            Text="{Binding RemainingTimeText}"
                                            FontSize="10"
                                            VerticalAlignment="Center"
@@ -689,7 +661,7 @@
                                 <MenuItem Header="Add to Queue"
                                           Command="{Binding AddCurrentTrackToQueueCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
@@ -697,7 +669,7 @@
                                           Header="Add to Playlist"
                                           Command="{Binding AddCurrentTrackToNewPlaylistCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlists%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Playlist%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
@@ -705,7 +677,7 @@
                                           Command="{Binding ToggleCurrentTrackFavoriteCommand}"
                                           IsVisible="{Binding CurrentTrack.IsFavorite, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Your%20Favorites%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Favorites%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="Remove from Favorites"
@@ -718,13 +690,23 @@
                                 <MenuItem Header="Metadata"
                                           Command="{Binding OpenCurrentTrackMetadataCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Metadata%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="Search Lyrics"
                                           Command="{Binding SearchCurrentTrackLyricsCommand}">
                                     <MenuItem.Icon>
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <!-- Lyrics side-panel toggle. Its toolbar icon was removed to
+                                     slim the bar, so it lives in this menu now (everywhere but
+                                     the lyrics full view). -->
+                                <MenuItem Header="Lyrics Panel"
+                                          Click="OnLyricsPanelButtonClick"
+                                          IsVisible="{Binding !IsLyricsPageActive}">
+                                    <MenuItem.Icon>
+                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20Panel%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="Remove Lyrics" Classes="danger"
@@ -737,14 +719,87 @@
                                 <MenuItem Header="Show Folder"
                                           Command="{Binding ShowCurrentTrackInExplorerCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Folder%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Folder%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem Header="View Album"
                                           Command="{Binding ViewCurrentTrackAlbumCommand}">
                                     <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Albums%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Albums%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator />
+                                <MenuItem Header="Sleep Timer"
+                                          x:Name="SleepTimerMenuItem"
+                                          PointerEntered="OnExpandSubMenuPointerEntered">
+                                    <MenuItem IsEnabled="False" IsVisible="{Binding IsSleepTimerActive}">
+                                        <MenuItem.Header>
+                                            <TextBlock FontSize="12" Opacity="0.7">
+                                                <Run Text="Pausing in"/>
+                                                <Run Text="{Binding SleepTimerRemainingText}"/>
+                                            </TextBlock>
+                                        </MenuItem.Header>
+                                    </MenuItem>
+                                    <Separator IsVisible="{Binding IsSleepTimerActive}"/>
+                                    <MenuItem Header="15 minutes"
+                                              Command="{Binding StartSleepTimerCommand}"
+                                              CommandParameter="15">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                      IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=15}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="30 minutes"
+                                              Command="{Binding StartSleepTimerCommand}"
+                                              CommandParameter="30">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                      IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=30}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="45 minutes"
+                                              Command="{Binding StartSleepTimerCommand}"
+                                              CommandParameter="45">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                      IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=45}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="1 hour"
+                                              Command="{Binding StartSleepTimerCommand}"
+                                              CommandParameter="60">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                      IsVisible="{Binding SleepTimerMinutes, Converter={StaticResource IntEquals}, ConverterParameter=60}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="End of track"
+                                              Command="{Binding ToggleStopAfterCurrentCommand}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                      IsVisible="{Binding StopAfterCurrentTrack}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator IsVisible="{Binding IsSleepTimerActive}"/>
+                                    <MenuItem Header="Cancel timer"
+                                              IsVisible="{Binding IsSleepTimerActive}"
+                                              Command="{Binding CancelSleepTimerCommand}"/>
+                                </MenuItem>
+                                <!-- Redundant with Sleep Timer → "End of track"; hidden on the
+                                     lyrics page to slim that menu, kept on the main bar. -->
+                                <MenuItem Header="Stop After Current Track"
+                                          Command="{Binding ToggleStopAfterCurrentCommand}"
+                                          IsVisible="{Binding !IsLyricsPageActive}">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                  IsVisible="{Binding StopAfterCurrentTrack}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
@@ -759,7 +814,7 @@
                                 <MenuItem x:Name="LyricsDisplayMenuItem"
                                           Header="Lyrics Display"
                                           IsVisible="{Binding IsLyricsPageActive}"
-                                          PointerEntered="OnLyricsDisplayMenuItemPointerEntered">
+                                          PointerEntered="OnExpandSubMenuPointerEntered">
                                     <MenuItem Header="Synced"
                                               Command="{Binding SetLyricsSyncedCommand}"
                                               IsEnabled="{Binding IsLyricsSyncedAvailable}">
@@ -789,6 +844,15 @@
                                                   Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <MenuItem Header="Share lyrics"
+                                          Command="{Binding ShareCurrentTrackLyricsCommand}"
+                                          IsVisible="{Binding CanShareLyrics}">
+                                    <MenuItem.Icon>
+                                        <PathIcon Data="{StaticResource CameraIcon}"
+                                                  Width="14" Height="14"
+                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
@@ -803,25 +867,11 @@
                                 Background="{DynamicResource IslandIconFill}"
                                 RenderOptions.BitmapInterpolationMode="HighQuality">
                             <Border.OpacityMask>
-                                <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" />
+                                <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20icon.png" Stretch="Uniform" />
                             </Border.OpacityMask>
                         </Border>
                     </Button>
 
-                    <!-- Lyrics side panel toggle -->
-                    <Button Classes="secondary-btn"
-                            Click="OnLyricsPanelButtonClick"
-                            ToolTip.Tip="Lyrics Panel"
-                            Width="34" Height="34"
-                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsLyricsViewActive, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
-                        <Border Width="16" Height="16"
-                                Background="{DynamicResource IslandIconFill}"
-                                RenderOptions.BitmapInterpolationMode="HighQuality">
-                            <Border.OpacityMask>
-                                <ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20Panel%20ICON.png" Stretch="Uniform" />
-                            </Border.OpacityMask>
-                        </Border>
-                    </Button>
 
                     <!-- Lyrics button -->
                     <Button Classes="secondary-btn"

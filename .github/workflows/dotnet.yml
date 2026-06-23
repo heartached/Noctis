@@ -178,7 +178,7 @@ jobs:
           PLIST
 
           # Build .dmg (uses macOS built-in hdiutil — no extra deps)
-          DMG_NAME="Noctis-${VERSION}-${{ matrix.rid }}.dmg"
+          DMG_NAME="Noctis-${{ matrix.rid }}.dmg"
           mkdir -p dist/dmg-staging
           cp -R "$APP" dist/dmg-staging/
           ln -s /Applications dist/dmg-staging/Applications
@@ -206,7 +206,7 @@ jobs:
           # Also ship a portable .zip of the .app bundle. Use ditto so the
           # executable bit, symlinks, and xattrs survive — `zip`/`tar` would
           # strip the executable bit on Contents/MacOS/Noctis.
-          ZIP_NAME="Noctis-${VERSION}-${{ matrix.rid }}.zip"
+          ZIP_NAME="Noctis-${{ matrix.rid }}.zip"
           ditto -c -k --keepParent "$APP" "packaged/${ZIP_NAME}"
 
       # ── Linux: build an AppImage ────────────────────────────────────
@@ -220,7 +220,7 @@ jobs:
           if [ "${{ matrix.rid }}" = "linux-arm64" ]; then
             VERSION=$(grep -oE '<Version>[0-9.]+</Version>' src/Noctis/Noctis.csproj | grep -oE '[0-9.]+')
             mkdir -p packaged
-            tar -czf "packaged/Noctis-${VERSION}-linux-arm64.tar.gz" -C publish/${{ matrix.rid }} .
+            tar -czf "packaged/Noctis-linux-arm64.tar.gz" -C publish/${{ matrix.rid }} .
             exit 0
           fi
 
@@ -264,12 +264,12 @@ jobs:
           chmod +x appimagetool
 
           mkdir -p packaged
-          ARCH=x86_64 ./appimagetool --appimage-extract-and-run "$APPDIR" "packaged/Noctis-${VERSION}-x86_64.AppImage"
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run "$APPDIR" "packaged/Noctis-x86_64.AppImage"
 
           # Also ship a plain tarball alongside the AppImage so users on
           # distros without FUSE (or who prefer not to use AppImage) have a
           # portable archive option.
-          tar -czf "packaged/Noctis-${VERSION}-linux-x64.tar.gz" -C publish/${{ matrix.rid }} .
+          tar -czf "packaged/Noctis-linux-x64.tar.gz" -C publish/${{ matrix.rid }} .
 
       - name: Upload artifact (raw publish folder)
         uses: actions/upload-artifact@v4

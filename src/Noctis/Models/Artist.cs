@@ -14,17 +14,12 @@ public class Artist
     public override string ToString() => Name;
 }
 
-/// <summary>Base type for the flat virtualized artist list.</summary>
-public abstract class ArtistListItem { }
-
-/// <summary>Letter header row in the flat artist list.</summary>
-public class ArtistHeaderItem : ArtistListItem
+/// <summary>
+/// A row of up to <see cref="ViewModels.LibraryArtistsViewModel.ArtistsPerRow"/> artists
+/// for the virtualized artist grid. The outer ListBox virtualizes rows; each row uses
+/// a non-virtualizing UniformGrid to lay out its circular portraits horizontally.
+/// </summary>
+public class ArtistRow
 {
-    public char Letter { get; init; }
-}
-
-/// <summary>Artist data row in the flat artist list.</summary>
-public class ArtistDataItem : ArtistListItem
-{
-    public Artist Artist { get; init; } = null!;
+    public List<Artist> Artists { get; init; } = new();
 }

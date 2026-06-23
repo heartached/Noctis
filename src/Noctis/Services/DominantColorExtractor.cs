@@ -523,16 +523,6 @@ public static class DominantColorExtractor
     }
 
     /// <summary>
-    /// Extracts the cover's ambient color — the bright/canvas hue rather than the dark subject.
-    /// Uses 2-cluster palette extraction, picks the lighter cluster, then normalizes it to a
-    /// vivid mid-lightness tone so the resulting page background reads as "the album's color"
-    /// without being too dark (loses the cover's identity) or too light (white text becomes
-    /// unreadable). Inspired by Apple Music's album page tinting.
-    /// </summary>
-    [Obsolete("Use ExtractEdgeBackgroundColor — Apple Music-style edge-ring sampling without lightness clamping.")]
-    public static Color ExtractAmbientColor(Bitmap? bitmap) => ExtractEdgeBackgroundColor(bitmap);
-
-    /// <summary>
     /// Apple-Music-style background extraction: samples the outer 1-pixel ring of a
     /// downscaled cover, picks the most common color via a coarse 6-bits-per-channel
     /// histogram, and returns the weighted average of the winning bucket. Preserves

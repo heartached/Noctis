@@ -52,6 +52,15 @@ public interface ILibraryService
     /// <summary>Removes multiple tracks from the library in a single batch (one rebuild + save).</summary>
     Task RemoveTracksAsync(IEnumerable<Guid> ids);
 
+    /// <summary>
+    /// Updates the on-disk location of tracks that have been moved/renamed, preserving
+    /// each track's user state (favorites, play count, rating). Because track IDs are
+    /// derived from the file path, IDs are recomputed; the returned map (old ID → new ID)
+    /// lets callers fix up references such as playlist track lists.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, Guid>> RelocateTracksAsync(
+        IReadOnlyList<(string oldPath, string newPath)> moves, CancellationToken ct = default);
+
     /// <summary>Loads the library from persisted JSON data.</summary>
     Task LoadAsync();
 
@@ -66,6 +75,15 @@ public interface ILibraryService
 
     /// <summary>Raises the FavoritesChanged event to notify subscribers.</summary>
     void NotifyFavoritesChanged();
+
+    /// <summary>Sets a 0-5 star rating on the given tracks, saves the library, and writes the file tags.</summary>
+    Task SetTracksRatingAsync(IReadOnlyList<Track> tracks, int rating);
+
+    /// <summary>Sets the "not liked" flag on the given tracks, saves the library, and writes the file tags.</summary>
+    Task SetTracksDislikedAsync(IReadOnlyList<Track> tracks, bool isDisliked);
+
+    /// <summary>Sets/clears the snooze expiry on the given tracks and saves the library.</summary>
+    Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until);
 
     /// <summary>Rebuilds indexes and raises LibraryUpdated after a track's metadata has been edited.</summary>
     void NotifyMetadataChanged();

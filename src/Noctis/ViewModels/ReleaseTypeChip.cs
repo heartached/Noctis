@@ -13,3 +13,15 @@ public sealed partial class ReleaseTypeChip : ObservableObject
     public string Label { get; init; } = string.Empty;
     [ObservableProperty] private bool _isActive;
 }
+
+/// <summary>
+/// Toggleable audio-quality chip for the Albums view ("Lossless" / "Hi-Res").
+/// Clicking an active chip clears the filter.
+/// </summary>
+public sealed partial class QualityChip : ObservableObject
+{
+    /// <summary>Filter key: "lossless" or "hires".</summary>
+    public string Key { get; init; } = string.Empty;
+    public string Label { get; init; } = string.Empty;
+    [ObservableProperty] private bool _isActive;
+}

@@ -1,0 +1,369 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:m="using:Noctis.Models"
+        xmlns:controls="using:Noctis.Controls"
+        x:Class="Noctis.Views.MiniPlayerWindow"
+        x:DataType="vm:PlayerViewModel"
+        Title="Noctis Mini Player"
+        Width="340" Height="340"
+        CanResize="False"
+        Topmost="True"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        WindowStartupLocation="Manual">
+
+    <Window.Styles>
+        <!-- Transport buttons: borderless white glyphs over the artwork -->
+        <Style Selector="Button.mini-transport">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.mini-transport /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Button.mini-transport:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#28FFFFFF"/>
+        </Style>
+        <Style Selector="Button.mini-transport:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#40FFFFFF"/>
+        </Style>
+
+        <!-- Compact seek slider (accent fill/thumb to match the playback bar).
+             ClipToBounds stops the track parts (which use negative margins to
+             align under the thumb) from extending the clickable area past the
+             slider, and the tighter height keeps clicks near the bar from
+             registering as seeks. -->
+        <Style Selector="Slider.mini-seek">
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ Track">
+            <Setter Property="Height" Value="4"/>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ RepeatButton">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ RepeatButton#PART_DecreaseButton">
+            <Setter Property="Margin" Value="0,0,-6,0"/>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ RepeatButton#PART_IncreaseButton">
+            <Setter Property="Margin" Value="-6,0,0,0"/>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ RepeatButton /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Height" Value="4"/>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ RepeatButton#PART_IncreaseButton /template/ Border">
+            <Setter Property="Background" Value="#50FFFFFF"/>
+        </Style>
+        <Style Selector="Slider.mini-seek /template/ Thumb">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Width="{TemplateBinding Width}"
+                            Height="{TemplateBinding Height}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="999"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+    </Window.Styles>
+
+    <!-- Starts faded/scaled down; code-behind animates to full on open and back
+         down on close (the window itself is transparent, so animating the root
+         border reads as the whole window animating). -->
+    <Border x:Name="RootBorder"
+            CornerRadius="22"
+            ClipToBounds="True"
+            Background="#FF141414"
+            BorderBrush="#59FFFFFF"
+            BorderThickness="1.5"
+            UseLayoutRounding="True"
+            Opacity="0"
+            RenderTransform="scale(0.92)"
+            RenderTransformOrigin="50%,50%"
+            PointerPressed="OnRootPointerPressed">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.16"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                    <TransformOperationsTransition.Easing>
+                        <CubicEaseOut/>
+                    </TransformOperationsTransition.Easing>
+                </TransformOperationsTransition>
+            </Transitions>
+        </Border.Transitions>
+        <Panel>
+            <!-- ClipToBounds clips to the rectangular bounds only, so the square
+                 artwork bled past the rounded outline; this geometry clips the
+                 content to the same rounded rect the 1px border draws (window is
+                 fixed at 300×300, so the static rect is safe). -->
+            <Panel.Clip>
+                <RectangleGeometry Rect="0,0,337,337" RadiusX="20.5" RadiusY="20.5"/>
+            </Panel.Clip>
+            <!-- Artwork (or placeholder note) fills the window -->
+            <controls:CachedImage SourcePath="{Binding CurrentArtPath}"
+                                  Stretch="UniformToFill"
+                                  RenderOptions.BitmapInterpolationMode="HighQuality"
+                                  IsVisible="{Binding CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <!-- Animated cover (mp4/webm next to the track) plays over the static
+                 art; gated by Settings > Appearance animated covers (bound from
+                 MainWindow when the mini player is opened). -->
+            <controls:AnimatedCoverImage x:Name="AnimatedArt"
+                                         Source="{Binding CurrentAnimatedCoverPath}"/>
+            <TextBlock Text="♪"
+                       FontSize="84"
+                       Opacity="0.15"
+                       Foreground="White"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+
+            <!-- Apple Music-style blur behind the bottom controls: a bottom-aligned
+                 full-size copy of the artwork, blurred, clipped to the control area,
+                 and faded in at the top so the transition into the sharp art is soft. -->
+            <Border VerticalAlignment="Bottom" Height="180" ClipToBounds="True" IsHitTestVisible="False"
+                    IsVisible="{Binding CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <Border.OpacityMask>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#00FFFFFF"/>
+                        <GradientStop Offset="0.4" Color="#FFFFFFFF"/>
+                    </LinearGradientBrush>
+                </Border.OpacityMask>
+                <controls:CachedImage SourcePath="{Binding CurrentArtPath}"
+                                      Width="338" Height="338"
+                                      Stretch="UniformToFill"
+                                      VerticalAlignment="Bottom">
+                    <controls:CachedImage.Effect>
+                        <BlurEffect Radius="40"/>
+                    </controls:CachedImage.Effect>
+                </controls:CachedImage>
+            </Border>
+
+            <!-- Bottom scrim so the overlay text/controls stay legible on bright art -->
+            <Border VerticalAlignment="Bottom" Height="180" IsHitTestVisible="False">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="#00000000"/>
+                        <GradientStop Offset="0.55" Color="#73000000"/>
+                        <GradientStop Offset="1" Color="#A6000000"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <!-- Close (returns to the main window) -->
+            <Button Classes="mini-transport"
+                    Width="32" Height="32"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Margin="10"
+                    ToolTip.Tip="Close Mini Player"
+                    Click="OnCloseClick">
+                <Border Width="16" Height="16"
+                        Background="White"
+                        RenderOptions.BitmapInterpolationMode="HighQuality">
+                    <Border.OpacityMask>
+                        <ImageBrush Source="avares://Noctis/Assets/Icons/Left%20arrow%20icon.png" Stretch="Uniform"/>
+                    </Border.OpacityMask>
+                </Border>
+            </Button>
+
+            <!-- Track info + seek + transport -->
+            <StackPanel VerticalAlignment="Bottom" Margin="16,0,16,10" Spacing="2">
+                <!-- Track title (top) and album (bottom); both scroll side-to-side when
+                     too long, gated by the Mini Player text-animation settings. -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <controls:MarqueeTextBlock Text="{Binding CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
+                                                       FontSize="18" FontWeight="Bold"
+                                                       Foreground="White"
+                                                       MaxDisplayWidth="230"
+                                                       HorizontalAlignment="Left"
+                                                       IsMiniPlayer="True"/>
+                            <Border Background="#59FFFFFF"
+                                    CornerRadius="2"
+                                    Padding="4,0"
+                                    Height="14"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding CurrentTrack.IsExplicit, FallbackValue=False}"
+                                    ToolTip.Tip="Explicit">
+                                <TextBlock Text="E"
+                                           FontSize="9"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center"
+                                           Foreground="Black"/>
+                            </Border>
+                        </StackPanel>
+                        <controls:MarqueeTextBlock Text="{Binding CurrentTrack.Album, FallbackValue=''}"
+                                                   FontSize="14"
+                                                   Foreground="#C0FFFFFF"
+                                                   MaxDisplayWidth="262"
+                                                   HorizontalAlignment="Left"
+                                                   IsMiniPlayer="True"
+                                                   IsForAlbum="True"/>
+                    </StackPanel>
+
+                    <!-- Favorite heart (Apple Music's star spot) -->
+                    <Button Grid.Column="1" Classes="mini-transport" Width="34" Height="34"
+                            VerticalAlignment="Center"
+                            Command="{Binding ToggleCurrentTrackFavoriteCommand}"
+                            ToolTip.Tip="Favorites">
+                        <Panel>
+                            <PathIcon Data="{StaticResource HeartFillIcon}"
+                                      Width="17" Height="17"
+                                      Foreground="#B8FFFFFF"
+                                      IsVisible="{Binding !CurrentTrack.IsFavorite, FallbackValue=False}"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}"
+                                      Width="17" Height="17"
+                                      Foreground="#E74856"
+                                      IsVisible="{Binding CurrentTrack.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Button>
+                </Grid>
+
+                <!-- Seek bar with elapsed / remaining -->
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding PositionText}"
+                               FontSize="10" Foreground="#A0FFFFFF"
+                               VerticalAlignment="Center" MinWidth="32"/>
+                    <Slider Grid.Column="1"
+                            x:Name="SeekSlider"
+                            Classes="mini-seek"
+                            Minimum="0" Maximum="1"
+                            Focusable="False"
+                            Value="{Binding PositionFraction, Mode=TwoWay}"
+                            Margin="6,0"
+                            VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding RemainingTimeText}"
+                               FontSize="10" Foreground="#A0FFFFFF"
+                               VerticalAlignment="Center" MinWidth="32"
+                               TextAlignment="Right"/>
+                </Grid>
+
+                <!-- Codec quality tag (Lossless / Hi-Res Lossless), centered between
+                     the seek bar and the transport row like Apple Music. -->
+                <StackPanel Orientation="Horizontal" Spacing="4"
+                            HorizontalAlignment="Center"
+                            Margin="0,3,0,3"
+                            IsVisible="{Binding CurrentTrack.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                    <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,0,0,2.1" Opacity="0.7">
+                        <Path Data="M8.184,0.35C9.944,0.35 10.703,3.296 11.338,5.238C11.673,3.842 11.497,3.542 11.857,3.542C11.99,3.542 12.126,3.633 12.126,3.798C12.126,3.809 12.123,3.839 12.117,3.883L12.091,4.058C12.02,4.522 11.845,5.494 11.654,6.144C13.198,10.191 14.345,4.861 14.474,3.772C14.493,3.615 14.612,3.542 14.731,3.542C14.891,3.542 15.022,3.662 14.997,3.843C14.72,5.605 14.295,8.35 12.547,8.35C11.582,8.35 11.04,7.595 10.611,6.73C9.54,4.626 9.047,1.093 7.997,1.093C7.66,1.093 7.411,1.444 7.394,1.444C7.362,1.444 7.337,1.301 7.023,0.909C7.322,0.567 7.734,0.35 8.184,0.35ZM2.458,0.354C5.211,0.354 5.456,7.618 7.014,7.618C7.197,7.618 7.394,7.507 7.61,7.256C7.729,7.458 7.851,7.638 7.978,7.796C7.667,8.151 7.28,8.35 6.795,8.35C5.054,8.349 4.306,5.434 3.663,3.466C3.511,4.097 3.432,4.669 3.402,4.925C3.382,5.088 3.263,5.163 3.143,5.163C3.009,5.163 2.874,5.071 2.874,4.908L2.874,4.908L2.877,4.87C2.966,4.223 3.146,3.243 3.347,2.56C3.079,1.858 2.745,1.091 2.252,1.091C1.257,1.091 0.687,3.591 0.527,4.925C0.508,5.088 0.388,5.163 0.268,5.163C0.135,5.163 0,5.071 0,4.908C0,4.896 0.001,4.883 0.002,4.87C0.283,2.836 0.808,0.354 2.458,0.354ZM5.315,0.35C5.809,0.35 6.339,0.608 6.797,1.211C6.822,1.241 7.078,1.639 7.159,1.777C8.277,3.802 8.818,7.627 9.881,7.627C10.065,7.627 10.264,7.513 10.484,7.256C10.604,7.458 10.726,7.638 10.852,7.796C10.542,8.15 10.155,8.35 9.67,8.35C6.933,8.349 6.636,1.09 5.128,1.09C4.788,1.09 4.536,1.444 4.519,1.444C4.487,1.444 4.462,1.301 4.148,0.909C4.455,0.558 4.87,0.35 5.315,0.35Z"
+                              Fill="White"/>
+                    </Viewbox>
+                    <TextBlock Text="{Binding CurrentTrack.AudioQualityBadge, FallbackValue=''}"
+                               FontSize="10" FontWeight="SemiBold"
+                               Foreground="#B3FFFFFF"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Transport row: shuffle pinned to the left corner, repeat to the right,
+                     and previous / play-pause / next centered between them. -->
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2,0,0">
+                    <Button Grid.Column="0" Classes="mini-transport" Width="36" Height="36"
+                            HorizontalAlignment="Left"
+                            Command="{Binding ToggleShuffleCommand}"
+                            ToolTip.Tip="Shuffle">
+                        <Panel>
+                            <Viewbox Width="20" Height="20" IsVisible="{Binding !IsShuffleEnabled}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="#B8FFFFFF" Data="{StaticResource ShuffleIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                            <Viewbox Width="20" Height="20" IsVisible="{Binding IsShuffleEnabled}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource ShuffleIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Panel>
+                    </Button>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10"
+                                HorizontalAlignment="Center">
+                        <Button Classes="mini-transport" Width="36" Height="36"
+                                Command="{Binding PreviousCommand}"
+                                ToolTip.Tip="Previous">
+                            <Viewbox Width="20" Height="20">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="White" Data="{StaticResource PreviousIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+                        <Button Classes="mini-transport" Width="42" Height="42"
+                                Command="{Binding PlayPauseCommand}"
+                                ToolTip.Tip="{Binding PlayPauseTooltip}">
+                            <Panel>
+                                <Viewbox Width="24" Height="24"
+                                         IsVisible="{Binding State, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="White" Data="{StaticResource PlayIcon}"/>
+                                    </Canvas>
+                                </Viewbox>
+                                <Viewbox Width="24" Height="24"
+                                         IsVisible="{Binding State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="White" Data="{StaticResource PauseIcon}"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </Panel>
+                        </Button>
+                        <Button Classes="mini-transport" Width="36" Height="36"
+                                Command="{Binding NextCommand}"
+                                ToolTip.Tip="Forward">
+                            <Viewbox Width="20" Height="20">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="White" Data="{StaticResource NextIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+                    </StackPanel>
+
+                    <Button Grid.Column="2" Classes="mini-transport" Width="36" Height="36"
+                            HorizontalAlignment="Right"
+                            Command="{Binding CycleRepeatCommand}"
+                            ToolTip.Tip="Repeat">
+                        <Panel>
+                            <Viewbox Width="20" Height="20"
+                                     IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="#B8FFFFFF" Data="{StaticResource RepeatAllIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                            <Viewbox Width="20" Height="20"
+                                     IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatAllIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                            <Viewbox Width="20" Height="20"
+                                     IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatOneIcon}"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Panel>
+                    </Button>
+                </Grid>
+            </StackPanel>
+        </Panel>
+    </Border>
+
+</Window>

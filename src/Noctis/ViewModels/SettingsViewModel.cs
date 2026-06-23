@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Loon;
@@ -12,12 +13,13 @@ using Noctis.Services.Loon;
 namespace Noctis.ViewModels;
 
 /// <summary>
-/// ViewModel for the unified Settings page (single scrollable view).
+/// ViewModel for the unified Settings page (tabbed modal with search).
 /// </summary>
 public partial class SettingsViewModel : ViewModelBase
 {
     private readonly IPersistenceService _persistence;
     private readonly ILibraryService _library;
+    private readonly IPlayHistoryService _playHistory;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private IAudioPlayer? _audioPlayer;
     private PlayerViewModel? _player;
@@ -25,7 +27,6 @@ public partial class SettingsViewModel : ViewModelBase
     private LoonClient? _loon;
     private ILastFmService? _lastFm;
     private IListenBrainzService? _listenBrainz;
-    private ArtistImageService? _artistImageService;
     private UpdateService? _updateService;
     private CancellationTokenSource? _updateCts;
     private string? _downloadedInstallerPath;
@@ -36,6 +37,64 @@ public partial class SettingsViewModel : ViewModelBase
     private CancellationTokenSource? _scanStatusClearCts;
 
     [ObservableProperty] private int _mediaFoldersScrollRequest;
+
+    // ── Tabs ──
+    // The Settings modal is split into named tabs; exactly one tab panel is visible at a time.
+    public const string TabGeneral = "General";
+    public const string TabAppearance = "Appearance";
+    public const string TabAudio = "Audio";
+    public const string TabLibrary = "Library";
+    public const string TabStatistics = "Statistics";
+    public const string TabIntegrations = "Integrations";
+    public const string TabAbout = "About";
+
+    [ObservableProperty] private string _selectedSettingsTab = TabGeneral;
+
+    public bool IsGeneralTabSelected => SelectedSettingsTab == TabGeneral;
+    public bool IsAppearanceTabSelected => SelectedSettingsTab == TabAppearance;
+    public bool IsAudioTabSelected => SelectedSettingsTab == TabAudio;
+    public bool IsLibraryTabSelected => SelectedSettingsTab == TabLibrary;
+    public bool IsStatisticsTabSelected => SelectedSettingsTab == TabStatistics;
+    public bool IsIntegrationsTabSelected => SelectedSettingsTab == TabIntegrations;
+    public bool IsAboutTabSelected => SelectedSettingsTab == TabAbout;
+
+    public bool IsGeneralTabVisible => IsGeneralTabSelected;
+    public bool IsAppearanceTabVisible => IsAppearanceTabSelected;
+    public bool IsAudioTabVisible => IsAudioTabSelected;
+    public bool IsLibraryTabVisible => IsLibraryTabSelected;
+    public bool IsStatisticsTabVisible => IsStatisticsTabSelected;
+    public bool IsIntegrationsTabVisible => IsIntegrationsTabSelected;
+    public bool IsAboutTabVisible => IsAboutTabSelected;
+
+    partial void OnSelectedSettingsTabChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsGeneralTabSelected));
+        OnPropertyChanged(nameof(IsAppearanceTabSelected));
+        OnPropertyChanged(nameof(IsAudioTabSelected));
+        OnPropertyChanged(nameof(IsLibraryTabSelected));
+        OnPropertyChanged(nameof(IsStatisticsTabSelected));
+        OnPropertyChanged(nameof(IsIntegrationsTabSelected));
+        OnPropertyChanged(nameof(IsAboutTabSelected));
+        OnPropertyChanged(nameof(IsGeneralTabVisible));
+        OnPropertyChanged(nameof(IsAppearanceTabVisible));
+        OnPropertyChanged(nameof(IsAudioTabVisible));
+        OnPropertyChanged(nameof(IsLibraryTabVisible));
+        OnPropertyChanged(nameof(IsStatisticsTabVisible));
+        OnPropertyChanged(nameof(IsIntegrationsTabVisible));
+        OnPropertyChanged(nameof(IsAboutTabVisible));
+
+        // Transient validation hints (e.g. ListenBrainz "Token required") are tied to
+        // a Connect click, not to persisted state — drop them when navigating tabs so
+        // they don't reappear when returning to Integrations.
+        ListenBrainzError = "";
+
+        // Play counts change during the session without a LibraryUpdated event,
+        // so recompute stats whenever the Statistics tab is opened.
+        if (value == TabStatistics) RefreshLibraryStats();
+    }
+
+    [RelayCommand]
+    private void SelectSettingsTab(string tab) => SelectedSettingsTab = tab;
 
     // ── Profile ──
     [ObservableProperty] private string _profileName = string.Empty;
@@ -50,6 +109,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     public void RequestMediaFoldersSection()
     {
+        // The media-folders card lives on the Library tab; switch there so the
+        // scroll anchor is actually in the visual tree before the view scrolls.
+        SelectSettingsTab(TabLibrary);
         MediaFoldersScrollRequest++;
     }
 
@@ -70,7 +132,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Accent colour ──
 
-    /// <summary>Ten curated swatches; the active one is highlighted in the UI.</summary>
+    /// <summary>Curated swatches from App.AccentPresets; the active one is highlighted in the UI.</summary>
     public ObservableCollection<AccentSwatch> AccentSwatches { get; } = new();
 
     [ObservableProperty] private string _activeAccentHex = "#E74856";
@@ -122,8 +184,18 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Audio Playback ──
 
+    // Back-compat mirror only: no UI binds this; SongTransitions* are the source of truth.
     [ObservableProperty] private bool _crossfadeEnabled;
     [ObservableProperty] private double _crossfadeDuration = 6;
+
+    // ── Song Transitions (Apple-style; drives the player's AutoMix engine) ──
+    [ObservableProperty] private bool _songTransitionsEnabled;
+    [ObservableProperty] private string _transitionStyle = "Crossfade";
+    [ObservableProperty] private string _songTransitionStrength = "Balanced";
+    [ObservableProperty] private bool _songTransitionBeatMatch = true;
+    public bool IsCrossfadeStyle { get => string.Equals(TransitionStyle, "Crossfade", StringComparison.OrdinalIgnoreCase); set { if (value) TransitionStyle = "Crossfade"; } }
+    public bool IsAutoMixStyle { get => string.Equals(TransitionStyle, "AutoMix", StringComparison.OrdinalIgnoreCase); set { if (value) TransitionStyle = "AutoMix"; } }
+
     [ObservableProperty] private bool _soundCheckEnabled;
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _artistMarqueeEnabled = true;
@@ -132,7 +204,73 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _coverFlowAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _lyricsArtistMarqueeEnabled = true;
+    [ObservableProperty] private bool _miniPlayerTitleMarqueeEnabled = true;
+    [ObservableProperty] private bool _miniPlayerAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
+
+    /// <summary>Minimize hides the main window to the system tray.</summary>
+    [ObservableProperty] private bool _minimizeToTray;
+
+    /// <summary>Close hides the main window to the system tray instead of exiting.</summary>
+    [ObservableProperty] private bool _closeToTray;
+
+    partial void OnMinimizeToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnCloseToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+
+    // ── Songs page optional columns ──
+
+    [ObservableProperty] private bool _showGenreColumn = true;
+    [ObservableProperty] private bool _showRatingColumn = true;
+    [ObservableProperty] private bool _showBpmColumn;
+    [ObservableProperty] private bool _showBitrateColumn;
+    [ObservableProperty] private bool _showSampleRateColumn;
+
+    partial void OnShowGenreColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowRatingColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowBpmColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowBitrateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowSampleRateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+
+    // ── Web remote ──
+
+    private WebRemoteServer? _webRemote;
+
+    /// <summary>Local-network web remote (phone control page). Off by default.</summary>
+    [ObservableProperty] private bool _webRemoteEnabled;
+
+    /// <summary>Display URL for the running remote, or empty when off.</summary>
+    [ObservableProperty] private string _webRemoteUrl = string.Empty;
+
+    partial void OnWebRemoteEnabledChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+        UpdateWebRemoteState();
+    }
+
+    private void UpdateWebRemoteState()
+    {
+        if (WebRemoteEnabled && _player != null)
+        {
+            try
+            {
+                _webRemote ??= new WebRemoteServer(_player);
+                if (!_webRemote.IsRunning)
+                    _webRemote.Start(_settings.WebRemotePort);
+                var ip = WebRemoteServer.GetLocalAddress() ?? "<this-pc-ip>";
+                WebRemoteUrl = $"http://{ip}:{_settings.WebRemotePort}/?k={_webRemote.Token}";
+            }
+            catch (Exception ex)
+            {
+                WebRemoteUrl = $"Failed to start: {ex.Message}";
+                DebugLogger.Error(DebugLogger.Category.Error, "WebRemote.StartFailed", ex.Message);
+            }
+        }
+        else
+        {
+            _webRemote?.Stop();
+            WebRemoteUrl = string.Empty;
+        }
+    }
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
     [ObservableProperty] private bool _collapseAlbumEditions;
@@ -142,12 +280,46 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _lrcLibEnabled = true;
     [ObservableProperty] private bool _netEaseEnabled = true;
 
+    // ── Metadata Providers ──
+    [ObservableProperty] private bool _deezerEnabled = true;
+    [ObservableProperty] private bool _musicBrainzEnabled = true;
+
     [ObservableProperty] private string _ffmpegPath = string.Empty;
     [ObservableProperty] private string _ffmpegStatus = string.Empty;
 
     public string[] ReplayGainModeOptions { get; } = { "Off", "Track", "Album", "Auto" };
     [ObservableProperty] private string _replayGainMode = "Off";
     [ObservableProperty] private double _replayGainPreampDb;
+    /// <summary>On/off mirror of <see cref="ReplayGainMode"/> for the Settings toggle.</summary>
+    [ObservableProperty] private bool _replayGainEnabled;
+    private string _lastActiveReplayGainMode = "Auto";
+    private bool _suppressRgNotify;
+
+    [ObservableProperty] private bool _gaplessPlaybackEnabled = true;
+
+    // ── Audio analysis (background BPM/key detection) ──
+
+    [ObservableProperty] private bool _bpmKeyAnalysisEnabled = true;
+    [ObservableProperty] private bool _writeAnalysisToTags;
+
+    // ── Exclusive mode (Windows WASAPI) ──
+
+    public bool IsExclusiveAudioSupported => OperatingSystem.IsWindows();
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanUseSongTransitions))]
+    [NotifyPropertyChangedFor(nameof(SongTransitionsOpacity))]
+    private bool _exclusiveAudioEnabled;
+
+    /// <summary>Song transitions need two overlapping audio streams; Exclusive Mode is
+    /// single-stream, so every transition style (AutoMix and Crossfade) is unavailable
+    /// while it's active. Drives the Song Transitions card's enabled state.</summary>
+    public bool CanUseSongTransitions => !ExclusiveAudioEnabled;
+
+    /// <summary>Grays the Song Transitions card while it's unavailable (exclusive on).</summary>
+    public double SongTransitionsOpacity => ExclusiveAudioEnabled ? 0.5 : 1.0;
+    /// <summary>Live output-path status from the player ("Exclusive output active — 44.1 kHz / 24-bit",
+    /// "Exclusive mode unavailable (device in use) — using shared output", ...).</summary>
+    [ObservableProperty] private string _exclusiveAudioStatus = "";
 
     // ── Equalizer ──
 
@@ -164,23 +336,14 @@ public partial class SettingsViewModel : ViewModelBase
             list.Add(EqPresetNames[i]);
         return list;
     }
-    [ObservableProperty] private float _eqBand0;
-    [ObservableProperty] private float _eqBand1;
-    [ObservableProperty] private float _eqBand2;
-    [ObservableProperty] private float _eqBand3;
-    [ObservableProperty] private float _eqBand4;
-    [ObservableProperty] private float _eqBand5;
-    [ObservableProperty] private float _eqBand6;
-    [ObservableProperty] private float _eqBand7;
-    [ObservableProperty] private float _eqBand8;
-    [ObservableProperty] private float _eqBand9;
+    /// <summary>Editable parametric EQ bands (frequency / gain / Q).</summary>
+    public ObservableCollection<EqBandViewModel> EqBands { get; } = new();
+
+    public bool CanAddEqBand => EqBands.Count < ParametricEqMath.MaxBands;
+    public bool CanRemoveEqBand => EqBands.Count > ParametricEqMath.MinBands;
 
     private bool _suppressEqNotify;
     private const int EqSaveDebounceMs = 280;
-
-    /// <summary>VLC band center frequencies for display labels.</summary>
-    public static readonly string[] EqBandLabels =
-        { "60Hz", "170Hz", "310Hz", "600Hz", "1K", "3K", "6K", "12K", "14K", "16K" };
 
     /// <summary>EQ preset names. Index 0 = Custom, 1-18 = VLC built-in presets.</summary>
     public static readonly string[] EqPresetNames =
@@ -212,6 +375,11 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private bool _scanOnStartup = true;
 
+    [ObservableProperty] private bool _watchFoldersEnabled = true;
+
+    [ObservableProperty] private string _organizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
+    [ObservableProperty] private string _organizeTargetRoot = string.Empty;
+
     // ── Library overview stats ──
 
     [ObservableProperty] private int _totalSongs;
@@ -221,6 +389,16 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private string _totalFileSize = "0 MB";
     [ObservableProperty] private string _totalListeningTime = "0 min";
+
+    // ── Listening statistics ──
+
+    [ObservableProperty] private string _totalPlays = "0";
+    [ObservableProperty] private string _timeListened = "0 min";
+    [ObservableProperty] private string _avgTrackLength = "0:00";
+    [ObservableProperty] private int _likedTracks;
+
+    public BulkObservableCollection<StatItem> TopArtists { get; } = new();
+    public BulkObservableCollection<StatItem> TopAlbums { get; } = new();
 
     // ── Audio quality ──
 
@@ -282,10 +460,24 @@ public partial class SettingsViewModel : ViewModelBase
 
     public string AppVersion => UpdateService.CurrentVersionDisplay;
 
+    /// <summary>True when the installed build is a pre-release — drives the
+    /// "Pre-release" badge next to the version in the About section.</summary>
+    public bool IsPrereleaseBuild => UpdateService.IsPrereleaseBuild;
+
     [ObservableProperty] private string _updateStatusText = "";
-    [ObservableProperty] private bool _isCheckingForUpdate;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CheckForUpdatesButtonText))]
+    private bool _isCheckingForUpdate;
+
+    /// <summary>True briefly after a manual check finds no newer release; drives the
+    /// inline "You're up to date" label on the Check-for-Updates button.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CheckForUpdatesButtonText))]
+    private bool _isUpToDate;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
+    [NotifyPropertyChangedFor(nameof(ShowInAppUpdateButton))]
+    [NotifyPropertyChangedFor(nameof(ShowManualUpdateButton))]
     private bool _isUpdateAvailable;
     [ObservableProperty] private bool _isDownloadingUpdate;
     [ObservableProperty] private double _downloadProgress;
@@ -298,6 +490,30 @@ public partial class SettingsViewModel : ViewModelBase
 
     public bool ShowCheckForUpdatesButton => !IsUpdateAvailable && !IsReadyToInstall;
 
+    /// <summary>Label for the Check-for-Updates pill, reflecting progress/result inline:
+    /// "Checking..." while polling, "You're up to date" briefly when no update is found,
+    /// otherwise the default call to action.</summary>
+    public string CheckForUpdatesButtonText =>
+        IsCheckingForUpdate ? "Checking..."
+        : IsUpToDate ? "You're up to date"
+        : "Check for Updates";
+
+    /// <summary>True when this copy can update itself via the bundled installer
+    /// (Inno install on Windows, or any non-Windows build). False for Scoop /
+    /// portable copies, which update through their own channel.</summary>
+    public bool CanInstallInApp => UpdateService.SupportsInAppUpdate;
+
+    /// <summary>Shows the in-app "Update available" (download &amp; install) button.</summary>
+    public bool ShowInAppUpdateButton => IsUpdateAvailable && CanInstallInApp;
+
+    /// <summary>Shows the "Update available" button that opens GitHub for Scoop /
+    /// portable copies, which can't safely use the in-app installer.</summary>
+    public bool ShowManualUpdateButton => IsUpdateAvailable && !CanInstallInApp;
+
+    /// <summary>Manager-specific update guidance for Scoop / portable copies
+    /// (e.g. "Update with: scoop update noctis"); null for in-app-updatable builds.</summary>
+    public string? ExternalUpdateHint => UpdateService.ExternalUpdateHint;
+
     // ── Events ──
 
     /// <summary>Fires when the theme changes so the App can update. Payload is the theme key.</summary>
@@ -309,10 +525,15 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Fires when a media folder is added or removed so the Folders view can rebuild its tree.</summary>
     public event EventHandler? MusicFoldersChanged;
 
-    public SettingsViewModel(IPersistenceService persistence, ILibraryService library)
+    /// <summary>Raised when the user asks to open the full standalone Statistics page
+    /// from the Settings → Statistics tab. The shell closes the modal and navigates.</summary>
+    public event EventHandler? OpenStatisticsRequested;
+
+    public SettingsViewModel(IPersistenceService persistence, ILibraryService library, IPlayHistoryService playHistory)
     {
         _persistence = persistence;
         _library = library;
+        _playHistory = playHistory;
         _settings = new AppSettings();
 
         _library.ScanProgress += (_, count) =>
@@ -369,6 +590,15 @@ public partial class SettingsViewModel : ViewModelBase
     public void SetAudioPlayer(IAudioPlayer audioPlayer)
     {
         _audioPlayer = audioPlayer;
+        // Only surface the output-mode status while Exclusive Mode is enabled (it
+        // describes the exclusive/fell-back-to-shared state). When exclusive is off
+        // the line stays hidden. This also prevents a flicker: toggling exclusive
+        // OFF clears the status synchronously (card shrinks), and without this gate
+        // the async "Shared output…" notice would immediately re-populate it (card
+        // grows again) — a visible shrink-then-grow that jolted the toggle/text.
+        audioPlayer.OutputModeChanged += (_, status) =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                ExclusiveAudioStatus = ExclusiveAudioEnabled ? status : "");
         ApplyAudioSettings();
     }
 
@@ -388,8 +618,6 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Sets the Last.fm service reference.</summary>
     public void SetLastFm(ILastFmService lastFm) => _lastFm = lastFm;
     public void SetListenBrainz(IListenBrainzService listenBrainz) => _listenBrainz = listenBrainz;
-
-    public void SetArtistImageService(ArtistImageService svc) => _artistImageService = svc;
 
     public void SetUpdateService(UpdateService updateService) => _updateService = updateService;
 
@@ -467,11 +695,21 @@ public partial class SettingsViewModel : ViewModelBase
             RebuildAccentSwatches();
 
             ScanOnStartup = _settings.ScanOnStartup;
+            WatchFoldersEnabled = _settings.WatchFoldersEnabled;
+            OrganizePattern = _settings.OrganizePattern;
+            OrganizeTargetRoot = _settings.OrganizeTargetRoot;
             IncludePrereleaseUpdates = _settings.IncludePrereleaseUpdates;
 
             // Playback
+            MigrateTransitionSettings(_settings);
             CrossfadeEnabled = _settings.CrossfadeEnabled;
             CrossfadeDuration = Math.Clamp(_settings.CrossfadeDuration, 1, 12);
+            SongTransitionsEnabled = _settings.SongTransitionsEnabled;
+            TransitionStyle = string.IsNullOrWhiteSpace(_settings.TransitionStyle) ? "Crossfade" : _settings.TransitionStyle;
+            SongTransitionStrength = string.IsNullOrWhiteSpace(_settings.SongTransitionStrength) ? "Balanced" : _settings.SongTransitionStrength;
+            SongTransitionBeatMatch = _settings.SongTransitionBeatMatch;
+            OnPropertyChanged(nameof(IsCrossfadeStyle));
+            OnPropertyChanged(nameof(IsAutoMixStyle));
             SoundCheckEnabled = _settings.SoundCheckEnabled;
             TrackTitleMarqueeEnabled = _settings.TrackTitleMarqueeEnabled;
             ArtistMarqueeEnabled = _settings.ArtistMarqueeEnabled;
@@ -480,39 +718,50 @@ public partial class SettingsViewModel : ViewModelBase
             CoverFlowAlbumMarqueeEnabled = _settings.CoverFlowAlbumMarqueeEnabled;
             LyricsTitleMarqueeEnabled = _settings.LyricsTitleMarqueeEnabled;
             LyricsArtistMarqueeEnabled = _settings.LyricsArtistMarqueeEnabled;
+            MiniPlayerTitleMarqueeEnabled = _settings.MiniPlayerTitleMarqueeEnabled;
+            MiniPlayerAlbumMarqueeEnabled = _settings.MiniPlayerAlbumMarqueeEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
+            MinimizeToTray = _settings.MinimizeToTray;
+            CloseToTray = _settings.CloseToTray;
+            WebRemoteEnabled = _settings.WebRemoteEnabled;
+            ShowGenreColumn = _settings.ShowGenreColumn;
+            ShowRatingColumn = _settings.ShowRatingColumn;
+            ShowBpmColumn = _settings.ShowBpmColumn;
+            ShowBitrateColumn = _settings.ShowBitrateColumn;
+            ShowSampleRateColumn = _settings.ShowSampleRateColumn;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
+
+            // Metadata providers
+            DeezerEnabled = _settings.DeezerEnabled;
+            MusicBrainzEnabled = _settings.MusicBrainzEnabled;
             FfmpegPath = _settings.FfmpegPath;
             RefreshFfmpegStatus();
             ReplayGainMode = string.IsNullOrEmpty(_settings.ReplayGainMode) ? "Off" : _settings.ReplayGainMode;
             ReplayGainPreampDb = _settings.ReplayGainPreampDb;
+            ReplayGainEnabled = !string.Equals(ReplayGainMode, "Off", StringComparison.OrdinalIgnoreCase);
+            GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
+            BpmKeyAnalysisEnabled = _settings.BpmKeyAnalysisEnabled;
+            WriteAnalysisToTags = _settings.WriteAnalysisToTags;
+            ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
             NetEaseEnabled = _settings.NetEaseEnabled;
 
             // Equalizer
             _suppressEqNotify = true;
             EqualizerEnabled = _settings.EqualizerEnabled;
             int loadedIdx = Math.Clamp(_settings.EqualizerPresetIndex + 1, 0, EqPresetNames.Length - 1);
-            SyncCustomInVisiblePresets(loadedIdx == 0);
             SelectedEqPresetIndex = loadedIdx;
             SelectedEqPresetName = EqPresetNames[loadedIdx];
-            if (_settings.EqualizerBands is { Length: 10 })
-            {
-                EqBand0 = _settings.EqualizerBands[0];
-                EqBand1 = _settings.EqualizerBands[1];
-                EqBand2 = _settings.EqualizerBands[2];
-                EqBand3 = _settings.EqualizerBands[3];
-                EqBand4 = _settings.EqualizerBands[4];
-                EqBand5 = _settings.EqualizerBands[5];
-                EqBand6 = _settings.EqualizerBands[6];
-                EqBand7 = _settings.EqualizerBands[7];
-                EqBand8 = _settings.EqualizerBands[8];
-                EqBand9 = _settings.EqualizerBands[9];
-            }
+            // Parametric bands are the source of truth; settings files written
+            // before the parametric EQ migrate from the legacy 10-band gains.
+            var loadedBands = _settings.ParametricEqBands is { Count: > 0 } pb
+                ? pb
+                : ParametricEqMath.FromGraphicBands(_settings.EqualizerBands);
+            SetEqBands(loadedBands);
             _suppressEqNotify = false;
 
             // Music folders
@@ -629,6 +878,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AccentPresetName = ActiveAccentName;
 
         _settings.ScanOnStartup = ScanOnStartup;
+        _settings.WatchFoldersEnabled = WatchFoldersEnabled;
+        _settings.OrganizePattern = OrganizePattern;
+        _settings.OrganizeTargetRoot = OrganizeTargetRoot;
         _settings.MusicFolders = MusicFolders.ToList();
         _settings.FolderRules = FolderRules
             .Where(r => !string.IsNullOrWhiteSpace(r.Path))
@@ -639,7 +891,12 @@ public partial class SettingsViewModel : ViewModelBase
                 Enabled = r.Enabled
             })
             .ToList();
-        _settings.CrossfadeEnabled = CrossfadeEnabled;
+        _settings.SongTransitionsEnabled = SongTransitionsEnabled;
+        _settings.TransitionStyle = TransitionStyle ?? "Crossfade";
+        _settings.SongTransitionStrength = SongTransitionStrength ?? "Balanced";
+        _settings.SongTransitionBeatMatch = SongTransitionBeatMatch;
+        // Back-compat mirror so older builds still crossfade when appropriate.
+        _settings.CrossfadeEnabled = SongTransitionsEnabled && IsCrossfadeStyle;
         _settings.CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         _settings.SoundCheckEnabled = SoundCheckEnabled;
         _settings.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
@@ -649,18 +906,38 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.CoverFlowAlbumMarqueeEnabled = CoverFlowAlbumMarqueeEnabled;
         _settings.LyricsTitleMarqueeEnabled = LyricsTitleMarqueeEnabled;
         _settings.LyricsArtistMarqueeEnabled = LyricsArtistMarqueeEnabled;
+        _settings.MiniPlayerTitleMarqueeEnabled = MiniPlayerTitleMarqueeEnabled;
+        _settings.MiniPlayerAlbumMarqueeEnabled = MiniPlayerAlbumMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
+        _settings.MinimizeToTray = MinimizeToTray;
+        _settings.CloseToTray = CloseToTray;
+        _settings.WebRemoteEnabled = WebRemoteEnabled;
+        _settings.ShowGenreColumn = ShowGenreColumn;
+        _settings.ShowRatingColumn = ShowRatingColumn;
+        _settings.ShowBpmColumn = ShowBpmColumn;
+        _settings.ShowBitrateColumn = ShowBitrateColumn;
+        _settings.ShowSampleRateColumn = ShowSampleRateColumn;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
         _settings.LrcLibEnabled = LrcLibEnabled;
+        _settings.DeezerEnabled = DeezerEnabled;
+        _settings.MusicBrainzEnabled = MusicBrainzEnabled;
         _settings.FfmpegPath = FfmpegPath ?? string.Empty;
         _settings.ReplayGainMode = ReplayGainMode ?? "Off";
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
+        _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
+        _settings.BpmKeyAnalysisEnabled = BpmKeyAnalysisEnabled;
+        _settings.WriteAnalysisToTags = WriteAnalysisToTags;
+        _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
         _settings.NetEaseEnabled = NetEaseEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
         _settings.EqualizerPresetIndex = SelectedEqPresetIndex - 1;
-        _settings.EqualizerBands = GetEqBands();
+        _settings.ParametricEqBands = EqBands
+            .Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q })
+            .ToList();
+        // Downgrade-safe mirror of the applied 10-band curve.
+        _settings.EqualizerBands = GetGraphicEqBands().bands;
         _settings.DiscordRichPresenceEnabled = DiscordRichPresenceEnabled;
         _settings.LastFmScrobblingEnabled = LastFmScrobblingEnabled;
         _settings.LastFmUsername = LastFmUsername;
@@ -681,14 +958,37 @@ public partial class SettingsViewModel : ViewModelBase
     private void ApplyAudioSettings()
     {
         _audioPlayer?.SetNormalization(SoundCheckEnabled);
-        _audioPlayer?.SetCrossfade(false, (int)Math.Round(CrossfadeDuration));
-        int vlcPresetIndex = SelectedEqPresetIndex - 1;
-        _audioPlayer?.SetAdvancedEqualizer(EqualizerEnabled, vlcPresetIndex, GetEqBands());
+        _audioPlayer?.SetCrossfade(SongTransitionsEnabled && IsCrossfadeStyle, (int)Math.Round(CrossfadeDuration));
+        ApplyAutoMixToPlayer();
+        _audioPlayer?.SetGapless(GaplessPlaybackEnabled);
+        _audioPlayer?.SetExclusiveMode(ExclusiveAudioEnabled);
+        _audioPlayer?.ApplyReplayGain(ReplayGainMode ?? "Off", ReplayGainPreampDb);
+        ApplyEqualizer();
+        _player?.RefreshSignalPath();
+    }
+
+    /// <summary>Pushes the AutoMix transition mode/strength/beat-match settings onto the player.</summary>
+    private void ApplyAutoMixToPlayer()
+    {
+        if (_player == null) return;
+        _player.AutoMixTransitionMode = MapTransitionMode(SongTransitionsEnabled, TransitionStyle);
+        _player.AutoMixStrength = SongTransitionStrength switch
+        {
+            "Subtle" => Models.AutoMixStrength.Subtle,
+            "Extended" => Models.AutoMixStrength.Extended,
+            _ => Models.AutoMixStrength.Balanced,
+        };
+        _player.AutoMixBeatMatch = SongTransitionBeatMatch;
+        _player.AutoMixAvoidAlbums = true; // albums in order stay gapless
     }
 
     private void ApplyPlayerSettings()
     {
         if (_player == null) return;
+        // The Song Transitions toggle + style drive the player's transition machinery;
+        // gapless covers natural track changes when transitions are off.
+        ApplyAutoMixToPlayer();
+        _player.GaplessEnabled = GaplessPlaybackEnabled;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
@@ -697,12 +997,67 @@ public partial class SettingsViewModel : ViewModelBase
         Controls.MarqueeTextBlock.GlobalCoverFlowAlbumScrollEnabled = CoverFlowAlbumMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalLyricsTitleScrollEnabled = LyricsTitleMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalLyricsArtistScrollEnabled = LyricsArtistMarqueeEnabled;
+        Controls.MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled = MiniPlayerTitleMarqueeEnabled;
+        Controls.MarqueeTextBlock.GlobalMiniPlayerAlbumScrollEnabled = MiniPlayerAlbumMarqueeEnabled;
     }
 
     private void ApplyEqualizer()
     {
-        int vlcPresetIndex = SelectedEqPresetIndex - 1;
-        _audioPlayer?.SetAdvancedEqualizer(EqualizerEnabled, vlcPresetIndex, GetEqBands());
+        var (bands, preamp) = GetGraphicEqBands();
+        _audioPlayer?.SetAdvancedEqualizer(EqualizerEnabled, bands, preamp);
+        _player?.RefreshSignalPath();
+    }
+
+    /// <summary>
+    /// The 10-band graphic curve + preamp currently in effect. Named presets keep
+    /// LibVLC's exact preset bands and preamp; Custom maps the parametric bands
+    /// onto the graphic frequencies via <see cref="ParametricEqMath"/>.
+    /// </summary>
+    private (float[] bands, float preamp) GetGraphicEqBands()
+    {
+        if (SelectedEqPresetIndex > 0 &&
+            TryGetVlcPresetCurve(SelectedEqPresetIndex - 1, out var presetBands, out var presetPreamp))
+            return (presetBands, presetPreamp);
+
+        return (ParametricEqMath.MapToGraphicBands(
+            EqBands.Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q })), 0f);
+    }
+
+    /// <summary>Maps the Song Transitions master toggle + style to the player's transition mode.</summary>
+    public static Models.AutoMixTransitionMode MapTransitionMode(bool enabled, string style)
+    {
+        if (!enabled) return Models.AutoMixTransitionMode.Off;
+        return string.Equals(style, "AutoMix", StringComparison.OrdinalIgnoreCase)
+            ? Models.AutoMixTransitionMode.AutoMix
+            : Models.AutoMixTransitionMode.Crossfade;
+    }
+
+    /// <summary>One-time migration: legacy CrossfadeEnabled becomes SongTransitions + Crossfade style.</summary>
+    public static void MigrateTransitionSettings(Models.AppSettings s)
+    {
+        if (s.CrossfadeEnabled && !s.SongTransitionsEnabled)
+        {
+            s.SongTransitionsEnabled = true;
+            s.TransitionStyle = "Crossfade";
+        }
+    }
+
+    private static bool TryGetVlcPresetCurve(int vlcPresetIndex, out float[] bands, out float preamp)
+    {
+        bands = new float[10];
+        preamp = 0f;
+        try
+        {
+            using var tempEq = new LibVLCSharp.Shared.Equalizer((uint)vlcPresetIndex);
+            for (uint i = 0; i < 10; i++)
+                bands[i] = Math.Clamp(tempEq.Amp(i), -12f, 12f);
+            preamp = Math.Clamp(tempEq.Preamp, -20f, 20f);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -718,12 +1073,14 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         var index = Array.IndexOf(EqPresetNames, presetName);
-        if (index < 0) { ApplyEqualizer(); return; }
+        // index 0 = "Custom", 1 = "Flat" = VLC preset 0
+        if (index <= 0 || !TryGetVlcPresetCurve(index - 1, out var bands, out var preamp))
+        {
+            ApplyEqualizer();
+            return;
+        }
 
-        // VLC preset index: our index - 1 (index 0 = "Custom", 1 = "Flat" = VLC preset 0)
-        // Pass the preset index directly — VLC loads the preset's own bands.
-        int vlcPresetIndex = index - 1;
-        _audioPlayer?.SetAdvancedEqualizer(true, vlcPresetIndex, new float[10]);
+        _audioPlayer?.SetAdvancedEqualizer(true, bands, preamp);
     }
 
     private void QueueEqualizerSave()
@@ -749,16 +1106,22 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    private float[] GetEqBands() =>
-        new[] { EqBand0, EqBand1, EqBand2, EqBand3, EqBand4, EqBand5, EqBand6, EqBand7, EqBand8, EqBand9 };
-
-    private void SetEqBands(float[] bands)
+    /// <summary>Replace the editable band list (count clamped to 5–10), without firing per-band edits.</summary>
+    private void SetEqBands(IEnumerable<ParametricEqBand> bands)
     {
-        if (bands is not { Length: 10 }) return;
+        var wasSuppressed = _suppressEqNotify;
         _suppressEqNotify = true;
-        EqBand0 = bands[0]; EqBand1 = bands[1]; EqBand2 = bands[2]; EqBand3 = bands[3]; EqBand4 = bands[4];
-        EqBand5 = bands[5]; EqBand6 = bands[6]; EqBand7 = bands[7]; EqBand8 = bands[8]; EqBand9 = bands[9];
-        _suppressEqNotify = false;
+        EqBands.Clear();
+        foreach (var b in bands.Take(ParametricEqMath.MaxBands))
+            EqBands.Add(new EqBandViewModel(b.FrequencyHz, b.GainDb, b.Q, OnEqBandEdited));
+        while (EqBands.Count < ParametricEqMath.MinBands)
+        {
+            EqBands.Add(new EqBandViewModel(
+                ParametricEqMath.GraphicBandFrequencies[EqBands.Count], 0, ParametricEqMath.DefaultQ, OnEqBandEdited));
+        }
+        _suppressEqNotify = wasSuppressed;
+        OnPropertyChanged(nameof(CanAddEqBand));
+        OnPropertyChanged(nameof(CanRemoveEqBand));
     }
 
     // ── Theme commands ──
@@ -1013,6 +1376,14 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnWatchFoldersEnabledChanged(bool value)
+    {
+        _settings.WatchFoldersEnabled = value;
+        _ = SaveAsync();
+        // Start/stop the filesystem watchers to match the new preference.
+        App.Services?.GetService<ILibraryWatcherService>()?.Refresh();
+    }
+
     partial void OnIncludePrereleaseUpdatesChanged(bool value)
     {
         _settings.IncludePrereleaseUpdates = value;
@@ -1022,6 +1393,37 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnCrossfadeEnabledChanged(bool value)
     {
         ApplyAudioSettings();
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnSongTransitionsEnabledChanged(bool value)
+    {
+        ApplyAudioSettings();
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnTransitionStyleChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsCrossfadeStyle));
+        OnPropertyChanged(nameof(IsAutoMixStyle));
+        ApplyAudioSettings();
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnSongTransitionStrengthChanged(string value)
+    {
+        ApplyAudioSettings();
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnSongTransitionBeatMatchChanged(bool value)
+    {
+        ApplyAudioSettings();
+        ApplyPlayerSettings();
         _ = SaveAsync();
     }
 
@@ -1041,6 +1443,13 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSoundCheckEnabledChanged(bool value)
     {
         ApplyAudioSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnExclusiveAudioEnabledChanged(bool value)
+    {
+        _audioPlayer?.SetExclusiveMode(value);
+        if (!value) ExclusiveAudioStatus = "";
         _ = SaveAsync();
     }
 
@@ -1110,6 +1519,23 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnMiniPlayerTitleMarqueeEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnMiniPlayerAlbumMarqueeEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        _ = SaveAsync();
+    }
+
+    partial void OnEnableAnimatedCoversChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnLrcLibEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
@@ -1117,6 +1543,18 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnNetEaseEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnMusicBrainzEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnDeezerEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
@@ -1137,8 +1575,42 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnReplayGainModeChanged(string value)
     {
+        // Keep the on/off toggle mirrored to the mode and remember the last
+        // active mode so re-enabling restores it.
+        var isOff = string.Equals(value, "Off", StringComparison.OrdinalIgnoreCase);
+        if (!isOff && !string.IsNullOrEmpty(value))
+            _lastActiveReplayGainMode = value;
+        _suppressRgNotify = true;
+        ReplayGainEnabled = !isOff;
+        _suppressRgNotify = false;
+
         if (_suspendSettingPersistence) return;
         _audioPlayer?.ApplyReplayGain(value, ReplayGainPreampDb);
+        _ = SaveAsync();
+    }
+
+    partial void OnReplayGainEnabledChanged(bool value)
+    {
+        if (_suppressRgNotify) return;
+        ReplayGainMode = value ? _lastActiveReplayGainMode : "Off";
+    }
+
+    partial void OnGaplessPlaybackEnabledChanged(bool value)
+    {
+        _audioPlayer?.SetGapless(value);
+        if (_player != null) _player.GaplessEnabled = value;
+        _ = SaveAsync();
+    }
+
+    partial void OnBpmKeyAnalysisEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnWriteAnalysisToTagsChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
 
@@ -1487,23 +1959,15 @@ public partial class SettingsViewModel : ViewModelBase
         // Mutating this collection on selection makes the popup re-layout and visibly shift.
     }
 
+    /// <summary>Populate the band editor from a VLC preset curve (one parametric band per graphic frequency).</summary>
     private void LoadPresetBands(int vlcPresetIndex)
     {
-        try
-        {
-            using var tempEq = new LibVLCSharp.Shared.Equalizer((uint)vlcPresetIndex);
-            var bands = new float[10];
-            for (uint i = 0; i < 10; i++)
-                bands[i] = Math.Clamp(tempEq.Amp(i), -12f, 12f);
-            SetEqBands(bands);
-        }
-        catch
-        {
-            SetEqBands(new float[10]);
-        }
+        TryGetVlcPresetCurve(vlcPresetIndex, out var bands, out _);
+        SetEqBands(ParametricEqMath.FromGraphicBands(bands));
     }
 
-    private void OnEqBandChanged()
+    /// <summary>A band's frequency / gain / Q was edited: switch to Custom, apply, save.</summary>
+    private void OnEqBandEdited()
     {
         if (_suppressEqNotify) return;
 
@@ -1520,16 +1984,25 @@ public partial class SettingsViewModel : ViewModelBase
         QueueEqualizerSave();
     }
 
-    partial void OnEqBand0Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand1Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand2Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand3Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand4Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand5Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand6Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand7Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand8Changed(float value) => OnEqBandChanged();
-    partial void OnEqBand9Changed(float value) => OnEqBandChanged();
+    [RelayCommand]
+    private void AddEqBand()
+    {
+        if (!CanAddEqBand) return;
+        // New band starts neutral at 1 kHz so adding never changes the sound.
+        EqBands.Add(new EqBandViewModel(1000, 0, ParametricEqMath.DefaultQ, OnEqBandEdited));
+        OnPropertyChanged(nameof(CanAddEqBand));
+        OnPropertyChanged(nameof(CanRemoveEqBand));
+        OnEqBandEdited();
+    }
+
+    [RelayCommand]
+    private void RemoveEqBand(EqBandViewModel? band)
+    {
+        if (band == null || !CanRemoveEqBand || !EqBands.Remove(band)) return;
+        OnPropertyChanged(nameof(CanAddEqBand));
+        OnPropertyChanged(nameof(CanRemoveEqBand));
+        OnEqBandEdited();
+    }
 
     [RelayCommand]
     private void ResetEqualizer()
@@ -1538,11 +2011,35 @@ public partial class SettingsViewModel : ViewModelBase
         SelectedEqPresetIndex = 1; // "Flat"
         SelectedEqPresetName = "Flat";
         SyncCustomInVisiblePresets(false);
+        SetEqBands(ParametricEqMath.FromGraphicBands(null));
         _suppressEqNotify = false;
 
         ApplyEqualizer();
-        SetEqBands(new float[10]);
         QueueEqualizerSave();
+    }
+
+    // ── Snoozed tracks (hidden from shuffle + radio for a period) ──
+
+    /// <summary>Tracks currently snoozed, shown in a reversible Settings list.</summary>
+    public ObservableCollection<Track> SnoozedTracks { get; } = new();
+
+    /// <summary>True when at least one track is snoozed (drives the empty-state placeholder).</summary>
+    [ObservableProperty] private bool _hasSnoozedTracks;
+
+    public void RefreshSnoozedTracks()
+    {
+        SnoozedTracks.Clear();
+        foreach (var t in _library.Tracks.Where(t => t.IsSnoozed).OrderBy(t => t.SnoozedUntil))
+            SnoozedTracks.Add(t);
+        HasSnoozedTracks = SnoozedTracks.Count > 0;
+    }
+
+    [RelayCommand]
+    private async Task Unsnooze(Track? track)
+    {
+        if (track == null) return;
+        await _library.SetTracksSnoozedAsync(new[] { track }, null);
+        RefreshSnoozedTracks();
     }
 
     // ── Library overview + Storage ──
@@ -1559,21 +2056,41 @@ public partial class SettingsViewModel : ViewModelBase
         // over the same collection plus a redundant tracks.Count subtraction.
         long totalBytes = 0;
         long totalDurationTicks = 0;
+        long totalPlays = 0;
         int losslessCount = 0;
         int hiResCount = 0;
+        int likedCount = 0;
+        var tracksById = new Dictionary<Guid, Track>(tracks.Count);
         foreach (var t in tracks)
         {
             totalBytes += t.FileSize;
             totalDurationTicks += t.Duration.Ticks;
+            totalPlays += t.PlayCount;
             if (t.IsLossless) losslessCount++;
             if (t.IsHiResLossless) hiResCount++;
+            if (t.IsFavorite) likedCount++;
+            tracksById[t.Id] = t;
         }
+
+        // Listening time / average reflect what was actually played (skips excluded),
+        // computed from the play log — see ListeningStatsCalculator.
+        var listening = ListeningStatsCalculator.Compute(_playHistory.Events, tracksById);
 
         TotalFileSize = FormatLibrarySize(totalBytes);
         TotalListeningTime = FormatDuration(TimeSpan.FromTicks(totalDurationTicks));
+        TotalPlays = FormatCount(totalPlays);
+        TimeListened = FormatDuration(TimeSpan.FromTicks(listening.TimeListenedTicks));
+        AvgTrackLength = listening.AvgListenedTrackLengthTicks > 0
+            ? TimeSpan.FromTicks(listening.AvgListenedTrackLengthTicks).ToString(@"m\:ss")
+            : tracks.Count > 0
+                ? TimeSpan.FromTicks(totalDurationTicks / tracks.Count).ToString(@"m\:ss")
+                : "0:00";
+        LikedTracks = likedCount;
+        RefreshTopPlayed(tracks);
         LosslessCount = losslessCount;
         LossyCount = tracks.Count - losslessCount;
         HiResCount = hiResCount;
+        RefreshSnoozedTracks();
         if (tracks.Count > 0)
         {
             var pct = (double)losslessCount / tracks.Count;
@@ -1589,6 +2106,62 @@ public partial class SettingsViewModel : ViewModelBase
             LossyPercentageText = "0%";
             HiResPercentageText = "0%";
         }
+    }
+
+    private void RefreshTopPlayed(IReadOnlyList<Track> tracks)
+    {
+        var artists = tracks
+            .Where(t => !string.IsNullOrWhiteSpace(t.Artist))
+            .GroupBy(t => t.Artist.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(g => new StatItem
+            {
+                Label = g.Key,
+                SubLabel = g.Count() == 1 ? "1 track" : $"{g.Count()} tracks",
+                Value = g.Sum(t => t.PlayCount),
+                ValueLabel = $"{g.Sum(t => t.PlayCount)} plays"
+            })
+            .Where(i => i.Value > 0)
+            .OrderByDescending(i => i.Value)
+            .Take(5)
+            .ToList();
+        ApplyRanks(artists);
+        TopArtists.ReplaceAll(artists);
+
+        var albumsById = _library.Albums.ToDictionary(a => a.Id);
+        var albums = tracks
+            .Where(t => !string.IsNullOrWhiteSpace(t.Album))
+            .GroupBy(t => t.AlbumId)
+            .Select(g =>
+            {
+                albumsById.TryGetValue(g.Key, out var album);
+                var plays = g.Sum(t => t.PlayCount);
+                return new StatItem
+                {
+                    Label = album?.Name ?? g.First().Album,
+                    SubLabel = album?.Artist ?? g.First().Artist,
+                    Value = plays,
+                    ValueLabel = $"{plays} plays"
+                };
+            })
+            .Where(i => i.Value > 0)
+            .OrderByDescending(i => i.Value)
+            .Take(5)
+            .ToList();
+        ApplyRanks(albums);
+        TopAlbums.ReplaceAll(albums);
+    }
+
+    private static void ApplyRanks(List<StatItem> items)
+    {
+        for (var i = 0; i < items.Count; i++)
+            items[i].Rank = i + 1;
+    }
+
+    private static string FormatCount(long count)
+    {
+        if (count >= 1_000_000) return $"{count / 1_000_000.0:0.#}M";
+        if (count >= 1_000) return $"{count / 1_000.0:0.#}K";
+        return count.ToString();
     }
 
     private static string FormatLibrarySize(long bytes)
@@ -1736,6 +2309,11 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(MediaFolderDisplay));
         await SaveAsync();
         MusicFoldersChanged?.Invoke(this, EventArgs.Empty);
+
+        // Auto-scan so the user doesn't have to press "Scan". Routed through the
+        // shared flow so the spinner shows and the Scan button disables while it
+        // runs. The unchanged-file fast path means only the new folder is read.
+        _ = RunLibraryScanAsync();
     }
 
     [RelayCommand]
@@ -1746,6 +2324,9 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(MediaFolderDisplay));
         await SaveAsync();
         MusicFoldersChanged?.Invoke(this, EventArgs.Empty);
+
+        // Re-scan so tracks from the removed folder drop out of the library.
+        _ = RunLibraryScanAsync();
     }
 
     private void SetScanStatus(string text, bool autoClear = false)
@@ -1774,11 +2355,35 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task Rescan()
+    private async Task OpenOrganizeFiles()
+        => await MetadataHelper.OpenOrganizeFilesDialog(this);
+
+    [RelayCommand]
+    private async Task OpenDuplicateFinder()
+        => await MetadataHelper.OpenDuplicateFinderDialog();
+
+    [RelayCommand]
+    private async Task OpenMetadataFinder()
+        => await MetadataHelper.OpenMetadataFinderDialog();
+
+    [RelayCommand]
+    private async Task OpenPlaylistImport()
+        => await MetadataHelper.OpenPlaylistImportDialog();
+
+    [RelayCommand]
+    private Task Rescan() => RunLibraryScanAsync();
+
+    /// <summary>
+    /// Shared library-scan flow used by the Scan button and by automatic scans
+    /// after a media folder is added or removed. Drives <see cref="IsScanning"/>
+    /// and <see cref="ScanStatusText"/> so the UI (spinner + disabled button)
+    /// reflects every scan, however it was triggered.
+    /// </summary>
+    private async Task RunLibraryScanAsync()
     {
         if (IsScanning) return;
         IsScanning = true;
-        ScanStatusText = "Starting scan...";
+        ScanStatusText = "Scanning Library";
         ScanProgress = 0;
 
         try
@@ -1805,7 +2410,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (IsScanning) return;
         IsScanning = true;
-        ScanStatusText = "Rebuilding library index...";
+        ScanStatusText = "Rebuilding library index";
         ScanProgress = 0;
 
         try
@@ -2004,12 +2609,24 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Preferences
             ScanOnStartup = true;
+            WatchFoldersEnabled = true;
+            OrganizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
+            OrganizeTargetRoot = string.Empty;
             IncludePrereleaseUpdates = false;
 
             // Playback
             CrossfadeEnabled = false;
             CrossfadeDuration = 6;
+            SongTransitionsEnabled = false;
+            TransitionStyle = "Crossfade";
+            SongTransitionStrength = "Balanced";
+            SongTransitionBeatMatch = true;
             SoundCheckEnabled = false;
+            ExclusiveAudioEnabled = false;
+            GaplessPlaybackEnabled = true;
+            BpmKeyAnalysisEnabled = true;
+            WriteAnalysisToTags = false;
+            ReplayGainMode = "Auto";
             TrackTitleMarqueeEnabled = true;
             ArtistMarqueeEnabled = true;
             CoverFlowMarqueeEnabled = true;
@@ -2017,11 +2634,17 @@ public partial class SettingsViewModel : ViewModelBase
             CoverFlowAlbumMarqueeEnabled = true;
             LyricsTitleMarqueeEnabled = true;
             LyricsArtistMarqueeEnabled = true;
+            MiniPlayerTitleMarqueeEnabled = true;
+            MiniPlayerAlbumMarqueeEnabled = true;
             SidebarHoverExpand = true;
 
             // Lyrics providers
             LrcLibEnabled = true;
             NetEaseEnabled = true;
+
+            // Metadata providers
+            DeezerEnabled = true;
+            MusicBrainzEnabled = true;
 
             // Equalizer
             _suppressEqNotify = true;
@@ -2029,8 +2652,7 @@ public partial class SettingsViewModel : ViewModelBase
             SelectedEqPresetIndex = 1; // Flat
             SelectedEqPresetName = "Flat";
             SyncCustomInVisiblePresets(false);
-            EqBand0 = 0; EqBand1 = 0; EqBand2 = 0; EqBand3 = 0; EqBand4 = 0;
-            EqBand5 = 0; EqBand6 = 0; EqBand7 = 0; EqBand8 = 0; EqBand9 = 0;
+            SetEqBands(ParametricEqMath.FromGraphicBands(null));
             _suppressEqNotify = false;
 
             // Music folders
@@ -2078,40 +2700,6 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshStorageInfo();
 
         SettingsReset?.Invoke(this, EventArgs.Empty);
-    }
-
-    [RelayCommand]
-    private async Task FetchArtistImages()
-    {
-        if (_artistImageService is null) return;
-
-        var artists = _library.Artists;
-        if (artists.Count == 0)
-        {
-            SetScanStatus("No artists in library.", autoClear: true);
-            return;
-        }
-
-        ScanStatusText = $"Fetching artist images for {artists.Count} artists...";
-
-        try
-        {
-            var fetched = 0;
-            await _artistImageService.FetchAndCacheAsync(artists, (artist, _) =>
-            {
-                fetched++;
-                Dispatcher.UIThread.Post(() =>
-                    ScanStatusText = $"Fetched {fetched} artist image(s)...");
-            });
-
-            SetScanStatus(fetched > 0
-                ? $"Fetched {fetched} new artist image(s)."
-                : "All artist images are already cached.", autoClear: true);
-        }
-        catch (Exception ex)
-        {
-            SetScanStatus($"Failed to fetch artist images: {ex.Message}", autoClear: true);
-        }
     }
 
     [RelayCommand]
@@ -2169,9 +2757,15 @@ public partial class SettingsViewModel : ViewModelBase
             if (update is null) return;
             if (update.InstallerApiUrl is null) return;
 
-            LatestVersionTag = update.TagName;
-            IsLatestPrerelease = update.IsPrerelease;
-            IsUpdateAvailable = true;
+            // This runs inside Task.Run at startup, so continuations are on a
+            // thread-pool thread. PropertyChanged must be raised on the UI thread
+            // or the About page update UI won't refresh.
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                LatestVersionTag = update.TagName;
+                IsLatestPrerelease = update.IsPrerelease;
+                IsUpdateAvailable = true;
+            });
         }
         catch
         {
@@ -2188,8 +2782,11 @@ public partial class SettingsViewModel : ViewModelBase
         IsUpdateAvailable = false;
         IsDownloadingUpdate = false;
         IsReadyToInstall = false;
+        IsUpToDate = false;
         DownloadProgress = 0;
-        UpdateStatusText = "Checking for updates...";
+        // The button itself now shows "Checking..." while polling, so keep the
+        // separate status line empty for this state to avoid duplicate text.
+        UpdateStatusText = "";
         IsCheckingForUpdate = true;
         _downloadedInstallerPath = null;
 
@@ -2203,7 +2800,9 @@ public partial class SettingsViewModel : ViewModelBase
 
             if (update is null)
             {
-                UpdateStatusText = "You're on the latest version.";
+                // Show the result inline on the button ("You're up to date")
+                // rather than as a separate status line.
+                IsUpToDate = true;
                 _ = ClearUpdateStatusAfterDelay();
             }
             else if (update.InstallerApiUrl is null)
@@ -2216,7 +2815,9 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 LatestVersionTag = update.TagName;
                 IsLatestPrerelease = update.IsPrerelease;
-                UpdateStatusText = $"{update.TagName} is available.";
+                UpdateStatusText = CanInstallInApp
+                    ? $"{update.TagName} is available."
+                    : $"{update.TagName} is available. {ExternalUpdateHint}";
                 IsUpdateAvailable = true;
             }
         }
@@ -2327,7 +2928,10 @@ public partial class SettingsViewModel : ViewModelBase
     {
         await Task.Delay(5000);
         if (!IsUpdateAvailable && !IsDownloadingUpdate && !IsReadyToInstall)
+        {
             UpdateStatusText = "";
+            IsUpToDate = false;   // reverts the button label to "Check for Updates"
+        }
     }
 
     [RelayCommand]
@@ -2336,10 +2940,33 @@ public partial class SettingsViewModel : ViewModelBase
         Helpers.PlatformHelper.OpenUrl("https://github.com/heartached/Noctis");
     }
 
+    /// <summary>Opens the GitHub release page for the available update — used by
+    /// Scoop / portable copies that can't safely run the in-app installer.</summary>
+    [RelayCommand]
+    private void OpenLatestRelease()
+    {
+        var url = string.IsNullOrEmpty(LatestVersionTag)
+            ? "https://github.com/heartached/Noctis/releases/latest"
+            : $"https://github.com/heartached/Noctis/releases/tag/{LatestVersionTag}";
+        Helpers.PlatformHelper.OpenUrl(url);
+    }
+
     [RelayCommand]
     private void OpenDiscord()
     {
         Helpers.PlatformHelper.OpenUrl("https://discord.gg/BNCDZQUVx7");
+    }
+
+    [RelayCommand]
+    private void OpenWebsite()
+    {
+        Helpers.PlatformHelper.OpenUrl("https://noctisapp.cc/");
+    }
+
+    [RelayCommand]
+    private void OpenStatisticsPage()
+    {
+        OpenStatisticsRequested?.Invoke(this, EventArgs.Empty);
     }
 }
 

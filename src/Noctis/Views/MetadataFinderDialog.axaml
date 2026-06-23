@@ -1,0 +1,96 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.MetadataFinderDialog"
+        x:DataType="vm:MetadataFinderViewModel"
+        Title="Find Metadata"
+        CanResize="False"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Border Background="#50000000">
+        <Border CornerRadius="20"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="760"
+                MaxHeight="820"
+                Margin="0,50"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Stretch"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
+                    <TextBlock Text="Find Metadata" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                    <TextBlock Text="Identify poorly-tagged tracks and review the proposed tags before applying them."
+                               FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SourceHint}" FontSize="11" Opacity="0.5" HorizontalAlignment="Center" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
+                                   FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <Button Grid.Column="1" Content="Identify all" Command="{Binding IdentifyAllCommand}"
+                                IsEnabled="{Binding !IsBusy}"
+                                Width="110" Padding="0,8" FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center" CornerRadius="999"
+                                Margin="0,0,8,0" Cursor="Hand" />
+                        <Button Grid.Column="2" Content="Close" Command="{Binding CancelCommand}"
+                                Width="90" Padding="0,8" FontWeight="Bold"
+                                Classes="danger-pill"
+                                HorizontalContentAlignment="Center" CornerRadius="999"
+                                Margin="0,0,8,0" Cursor="Hand" />
+                        <Button Grid.Column="3" Content="Apply" Command="{Binding ApplySelectedCommand}"
+                                IsEnabled="{Binding HasSelection}"
+                                Width="100" Padding="0,8"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center" CornerRadius="999" Cursor="Hand" />
+                    </Grid>
+                </Border>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                              Padding="24,4,24,8">
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:MetadataFinderViewModel+MetaRow">
+                                <Border Background="#10FFFFFF" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding Apply}" IsEnabled="{Binding HasProposal}"
+                                                  VerticalAlignment="Top" Margin="0,0,10,0" />
+                                        <StackPanel Grid.Column="1" Spacing="6">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0" Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" Opacity="0.7" />
+                                                <TextBlock Grid.Column="1" Text="{Binding ConfidenceText}" FontSize="11" Opacity="0.6" />
+                                            </Grid>
+                                            <Grid ColumnDefinitions="*,16,*">
+                                                <StackPanel Grid.Column="0" Spacing="1">
+                                                    <TextBlock Text="Current" FontSize="10" Opacity="0.5" />
+                                                    <TextBlock Text="{Binding CurrentTitle}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding CurrentArtist}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding CurrentAlbum}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="→" VerticalAlignment="Center" Opacity="0.5" />
+                                                <StackPanel Grid.Column="2" Spacing="1">
+                                                    <TextBlock Text="Proposed" FontSize="10" Opacity="0.5" />
+                                                    <TextBlock Text="{Binding ProposedTitle}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding ProposedArtist}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding ProposedAlbum}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>

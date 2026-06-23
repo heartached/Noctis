@@ -26,12 +26,14 @@ public static class AutoMixPreparedTransitionValidator
         bool shuffleEnabled,
         RepeatMode repeatMode,
         AutoMixTransitionMode transitionMode,
-        long playbackSessionId)
+        long playbackSessionId,
+        bool gapless = false)
     {
         if (prepared == null)
             return AutoMixPreparedTransitionValidation.Invalid("no prepared track");
 
-        if (transitionMode == AutoMixTransitionMode.Off)
+        // Gapless handoffs run with the transition mode Off by definition.
+        if (!gapless && transitionMode == AutoMixTransitionMode.Off)
             return AutoMixPreparedTransitionValidation.Invalid("AutoMix disabled");
 
         if (repeatMode == RepeatMode.One)

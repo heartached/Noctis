@@ -31,6 +31,12 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     [ObservableProperty] private double _tileArtworkSize = 180;
     [ObservableProperty] private string _searchText = string.Empty;
 
+    /// <summary>True when the library has no favorites at all (shows the onboarding hint).</summary>
+    [ObservableProperty] private bool _showNoFavorites;
+
+    /// <summary>True when favorites exist but the active search matched none of them.</summary>
+    [ObservableProperty] private bool _showNoResults;
+
     /// <summary>FavoriteItems currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<FavoriteItem> CtrlSelectedItems { get; set; } = new();
 
@@ -39,9 +45,6 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
 
     /// <summary>Favorite items grouped into rows for the virtualized grid.</summary>
     public BulkObservableCollection<FavoriteItemRow> FavoriteItemRows { get; } = new();
-
-    /// <summary>Exposes the sidebar's playlists for the Add to Playlist submenu.</summary>
-    public ObservableCollection<Playlist> Playlists => _sidebar.Playlists;
 
     /// <summary>Fires when the user wants to view an album from a track.</summary>
     public event EventHandler<Track>? ViewAlbumRequested;
@@ -106,9 +109,13 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
             }
         }
 
-        // Newest favorites first.
-        items.Sort((a, b) => b.sortKey.CompareTo(a.sortKey));
-        _allFavoriteItems = items.Select(x => x.item).ToList();
+        // Newest favorites first. OrderByDescending is a stable sort: items with
+        // equal timestamps (legacy favorites, album batch-favorites) keep their
+        // library order instead of reshuffling on every refresh like List.Sort did.
+        _allFavoriteItems = items
+            .OrderByDescending(x => x.sortKey)
+            .Select(x => x.item)
+            .ToList();
         ApplyFilter(_currentFilter);
     }
 
@@ -123,14 +130,20 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
         if (!string.IsNullOrWhiteSpace(query))
         {
             var q = query.Trim();
+            // Album cards also match on their track titles — a fully-favorited
+            // album collapses into one card, but its tracks are still favorites.
             filteredItems = filteredItems.Where(item =>
                 MatchesSearch(item.Title, q) ||
-                MatchesSearch(item.Subtitle, q));
+                MatchesSearch(item.Subtitle, q) ||
+                (item.IsAlbum && item.Album!.Tracks.Any(t => MatchesSearch(t.Title, q))));
         }
 
         var visibleItems = filteredItems.ToList();
         FavoriteItems.ReplaceAll(visibleItems);
         FavoriteItemRows.ReplaceAll(BuildRows(visibleItems));
+
+        ShowNoFavorites = _allFavoriteItems.Count == 0;
+        ShowNoResults = _allFavoriteItems.Count > 0 && visibleItems.Count == 0;
     }
 
     private static List<FavoriteItemRow> BuildRows(IReadOnlyList<FavoriteItem> items)
@@ -148,10 +161,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     }
 
     private static bool MatchesSearch(string? source, string query)
-    {
-        return !string.IsNullOrWhiteSpace(source) &&
-               source.Contains(query, StringComparison.OrdinalIgnoreCase);
-    }
+        => !string.IsNullOrWhiteSpace(source) && Noctis.Helpers.SearchText.Matches(source, query);
 
     // ── Page-level commands ────────────────────────────────────
 
@@ -168,7 +178,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     {
         var allTracks = GetAllFavoriteTracks();
         if (allTracks.Count == 0) return;
-        var shuffled = allTracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(allTracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
@@ -188,7 +198,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     private void ShuffleTrack(Track track)
     {
         var allTracks = GetAllFavoriteTracks();
-        var shuffled = allTracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(allTracks);
         // Put selected track first
         var idx = shuffled.FindIndex(t => t.Id == track.Id);
         if (idx > 0) { var t = shuffled[idx]; shuffled.RemoveAt(idx); shuffled.Insert(0, t); }
@@ -200,15 +210,6 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
 
     [RelayCommand]
     private void AddTrackToQueue(Track track) => _player.AddToQueue(track);
-
-    [RelayCommand]
-    private async Task ToggleFavorite(Track track)
-    {
-        track.IsFavorite = !track.IsFavorite;
-        await _library.SaveAsync();
-        _library.NotifyFavoritesChanged();
-        Refresh();
-    }
 
     [RelayCommand]
     private void ShowTrackInExplorer(Track track)
@@ -228,14 +229,6 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     {
         if (track == null) return;
         await _sidebar.CreatePlaylistWithTracksAsync(new List<Track> { track });
-    }
-
-    [RelayCommand]
-    private async Task AddTrackToExistingPlaylist(object[] parameters)
-    {
-        if (parameters == null || parameters.Length != 2) return;
-        if (parameters[0] is not Track track || parameters[1] is not Playlist playlist) return;
-        await _sidebar.AddTracksToPlaylist(playlist.Id, new List<Track> { track });
     }
 
     [RelayCommand]
@@ -267,7 +260,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     private void ShuffleAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        var shuffled = album.Tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(album.Tracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
@@ -288,31 +281,10 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     }
 
     [RelayCommand]
-    private async Task ToggleAlbumFavorites(Album album)
-    {
-        if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        var newState = !album.IsAllTracksFavorite;
-        foreach (var track in album.Tracks)
-            track.IsFavorite = newState;
-        await _library.SaveAsync();
-        _library.NotifyFavoritesChanged();
-        Refresh();
-    }
-
-    [RelayCommand]
     private async Task AddAlbumToNewPlaylist(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
         await _sidebar.CreatePlaylistWithTracksAsync(album.Tracks.ToList());
-    }
-
-    [RelayCommand]
-    private async Task AddAlbumToExistingPlaylist(object[] parameters)
-    {
-        if (parameters == null || parameters.Length != 2) return;
-        if (parameters[0] is not Album album || parameters[1] is not Playlist playlist) return;
-        if (album.Tracks == null || album.Tracks.Count == 0) return;
-        await _sidebar.AddTracksToPlaylist(playlist.Id, album.Tracks.ToList());
     }
 
     [RelayCommand]
@@ -395,25 +367,6 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     }
 
     [RelayCommand]
-    private async Task AddItemToExistingPlaylist(object[] parameters)
-    {
-        if (parameters == null || parameters.Length != 2) return;
-        if (parameters[0] is not FavoriteItem item || parameters[1] is not Playlist playlist) return;
-        var items = CtrlSelectedItems.Count > 0 ? CtrlSelectedItems : new List<FavoriteItem> { item };
-        var tracks = new List<Track>();
-        foreach (var fi in items)
-        {
-            if (fi.IsAlbum && fi.Album?.Tracks != null)
-                tracks.AddRange(fi.Album.Tracks);
-            else if (fi.Track != null)
-                tracks.Add(fi.Track);
-        }
-        if (tracks.Count > 0)
-            await _sidebar.AddTracksToPlaylist(playlist.Id, tracks);
-        CtrlSelectedItems.Clear();
-    }
-
-    [RelayCommand]
     private async Task RemoveItemFavorite(FavoriteItem item)
     {
         var items = CtrlSelectedItems.Count > 0 ? CtrlSelectedItems : new List<FavoriteItem> { item };
@@ -483,13 +436,6 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     }
 
     [RelayCommand]
-    private void SearchItemLyrics(FavoriteItem item)
-    {
-        var track = item.IsAlbum ? item.Album!.Tracks.FirstOrDefault() : item.Track;
-        if (track != null) _searchLyricsAction?.Invoke(track);
-    }
-
-    [RelayCommand]
     private void ViewItemAlbum(FavoriteItem item)
     {
         if (item.IsAlbum) OpenAlbum(item.Album!);
@@ -523,12 +469,6 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     }
 
     // ── Shared helpers ──────────────────────────────────────────
-
-    private Action<Track>? _searchLyricsAction;
-    public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
-
-    [RelayCommand]
-    private void SearchLyrics(Track track) => _searchLyricsAction?.Invoke(track);
 
     private Action<string>? _viewArtistAction;
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;

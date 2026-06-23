@@ -1,0 +1,204 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:conv="using:Noctis.Converters"
+        x:Class="Noctis.Views.LrcEditorDialog"
+        x:DataType="vm:LrcEditorViewModel"
+        Title="Sync lyrics"
+        CanResize="False"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        ShowInTaskbar="False">
+
+    <Window.Resources>
+        <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
+    </Window.Resources>
+
+    <Window.Styles>
+        <Style Selector="Button.lrc-pill">
+            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.lrc-pill:pointerover">
+            <Setter Property="Background" Value="#33FFFFFF"/>
+        </Style>
+        <Style Selector="Button.lrc-nudge">
+            <Setter Property="Background" Value="#1AFFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.lrc-nudge:pointerover">
+            <Setter Property="Background" Value="#33FFFFFF"/>
+        </Style>
+        <Style Selector="ListBox.lrc-lines ListBoxItem">
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Margin" Value="2,1"/>
+        </Style>
+    </Window.Styles>
+
+    <!-- Full-window dimmed overlay -->
+    <Border Background="#98000000" PointerPressed="OnOverlayPointerPressed">
+
+        <!-- Centered dialog card -->
+        <Border PointerPressed="OnCardPointerPressed"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Padding="22,18"
+                Width="780"
+                MaxHeight="700"
+                CornerRadius="12"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="1"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+            <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+                <!-- Header -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Sync lyrics" FontSize="22" FontWeight="Bold"/>
+                        <TextBlock FontSize="13" Opacity="0.7">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0} — {1}">
+                                    <Binding Path="TrackTitle"/>
+                                    <Binding Path="TrackArtist"/>
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Background="Transparent" BorderThickness="0"
+                            Width="32" Height="32" Padding="0"
+                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Cursor="Hand" Click="OnCloseClick">
+                        <PathIcon Data="{StaticResource DismissIcon}" Width="16" Height="16" Opacity="0.75"/>
+                    </Button>
+                </Grid>
+
+                <!-- Transport + stamp toolbar -->
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,14,0,10">
+                    <Button Grid.Column="0"
+                            Classes="lrc-pill"
+                            Command="{Binding Player.PlayPauseCommand}"
+                            Content="Play / Pause"/>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding Player.PositionText}"
+                               FontSize="13" FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Margin="14,0,0,0"
+                               Opacity="0.8"/>
+                    <Button Grid.Column="3"
+                            Classes="lrc-pill"
+                            Background="{DynamicResource AccentColorBrush}"
+                            Foreground="{DynamicResource AccentForegroundBrush}"
+                            Command="{Binding StampCurrentCommand}"
+                            ToolTip.Tip="Stamp the playing position onto the highlighted line and move to the next (Space)">
+                        <TextBlock Text="⏱  Stamp line  (Space)" FontWeight="SemiBold"/>
+                    </Button>
+                </Grid>
+
+                <!-- Lines -->
+                <ListBox Grid.Row="2"
+                         x:Name="LinesList"
+                         Classes="lrc-lines"
+                         ItemsSource="{Binding Lines}"
+                         SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}"
+                         Background="#18000000"
+                         CornerRadius="8"
+                         Padding="6"
+                         KeyboardNavigation.TabNavigation="None">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:LrcEditorLine">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
+                                <!-- Timestamp pill: click plays from just before the line -->
+                                <Button Grid.Column="0"
+                                        Background="#1AFFFFFF"
+                                        BorderThickness="0"
+                                        CornerRadius="6"
+                                        Padding="8,2"
+                                        MinWidth="76"
+                                        Cursor="Hand"
+                                        ToolTip.Tip="Play from 1s before this line"
+                                        Command="{Binding $parent[Window].((vm:LrcEditorViewModel)DataContext).PlayFromLineCommand}"
+                                        CommandParameter="{Binding}">
+                                    <TextBlock Text="{Binding TimestampLabel}"
+                                               FontFamily="Consolas,monospace"
+                                               FontSize="12"
+                                               HorizontalAlignment="Center"
+                                               Opacity="{Binding HasTimestamp, Converter={StaticResource BoolToOpacity}}"/>
+                                </Button>
+
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Text}"
+                                           FontSize="13"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="12,0,8,0"/>
+
+                                <!-- Nudge -0.1s / +0.1s -->
+                                <Button Grid.Column="2" Classes="lrc-nudge" Content="−"
+                                        ToolTip.Tip="Nudge 0.1s earlier"
+                                        IsEnabled="{Binding HasTimestamp}"
+                                        Command="{Binding $parent[Window].((vm:LrcEditorViewModel)DataContext).NudgeBackCommand}"
+                                        CommandParameter="{Binding}"/>
+                                <Button Grid.Column="3" Classes="lrc-nudge" Content="+"
+                                        Margin="4,0,0,0"
+                                        ToolTip.Tip="Nudge 0.1s later"
+                                        IsEnabled="{Binding HasTimestamp}"
+                                        Command="{Binding $parent[Window].((vm:LrcEditorViewModel)DataContext).NudgeForwardCommand}"
+                                        CommandParameter="{Binding}"/>
+
+                                <!-- Stamp this line now -->
+                                <Button Grid.Column="4" Classes="lrc-nudge" Content="⏱"
+                                        Margin="8,0,0,0"
+                                        ToolTip.Tip="Stamp with current position"
+                                        Command="{Binding $parent[Window].((vm:LrcEditorViewModel)DataContext).StampLineCommand}"
+                                        CommandParameter="{Binding}"/>
+
+                                <!-- Clear -->
+                                <Button Grid.Column="5" Classes="lrc-nudge" Content="✕"
+                                        Margin="4,0,0,0"
+                                        ToolTip.Tip="Clear timestamp"
+                                        IsEnabled="{Binding HasTimestamp}"
+                                        Command="{Binding $parent[Window].((vm:LrcEditorViewModel)DataContext).ClearTimestampCommand}"
+                                        CommandParameter="{Binding}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Footer -->
+                <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" Margin="0,14,0,0">
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding StatusText}"
+                               FontSize="12" Opacity="0.7"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1"
+                            Classes="lrc-pill"
+                            Content="Cancel"
+                            Margin="0,0,8,0"
+                            Click="OnCloseClick"/>
+                    <Button Grid.Column="2"
+                            Classes="lrc-pill"
+                            Background="{DynamicResource AccentColorBrush}"
+                            Foreground="{DynamicResource AccentForegroundBrush}"
+                            Content="Save"
+                            Command="{Binding SaveCommand}"/>
+                </Grid>
+            </Grid>
+        </Border>
+    </Border>
+</Window>

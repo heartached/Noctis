@@ -14,21 +14,27 @@
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:HexColorToBrushConverter x:Key="HexColorConverter" />
         <conv:GuidEqualsConverter x:Key="GuidEquals" />
-        <conv:TrackPlaylistCommandParameterConverter x:Key="TrackPlaylistParamConverter" />
     </UserControl.Resources>
 
     <UserControl.Styles>
+        <!-- Section header link: no hover zoom (overrides the global Button scale) -->
+        <Style Selector="Button.featured-header:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.featured-header:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
         <Style Selector="Button.featured-artist-tile:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
         <Style Selector="Button.featured-artist-tile:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Background" Value="#18FFFFFF" />
         </Style>
         <Style Selector="Button.featured-artist-tile:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
         <Style Selector="Button.featured-artist-tile:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Background" Value="#24FFFFFF" />
         </Style>
         <Style Selector="Button.neutral-desc-btn:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
@@ -42,152 +48,199 @@
         <Style Selector="Button.neutral-desc-btn:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="#33FFFFFF" />
         </Style>
+        <!-- Glass pill buttons (Shuffle / options) — visible against the theme bg -->
+        <Style Selector="Button.glass-pill">
+            <Setter Property="Background" Value="{DynamicResource GlassPillBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource GlassPillBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="Button.glass-pill:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource GlassPillHoverBackground}" />
+        </Style>
+        <Style Selector="Button.glass-pill:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource GlassPillPressedBackground}" />
+        </Style>
+        <Style Selector="Button.glass-pill:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+
+        <!-- Favorite heart: no square hover highlight and no scale/pop; only a subtle opacity cue on hover -->
+        <Style Selector="Button.heart-btn">
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.heart-btn /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.heart-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.heart-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <!-- Override the global Button hover/press scale so hearts never zoom or pop -->
+        <Style Selector="Button.heart-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.heart-btn:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="PathIcon.faint-heart">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.14" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.heart-btn:pointerover PathIcon.faint-heart">
+            <Setter Property="Opacity" Value="0.7" />
+        </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="*">
-        <ScrollViewer Grid.Row="0"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="0,0,0,115">
+    <Panel>
 
-            <!-- ═══════════════ Playlist Header ═══════════════ -->
-            <Grid DockPanel.Dock="Top"
-                  ColumnDefinitions="Auto,*,Auto"
-                  Margin="24,16,24,20">
+        <!-- Background follows the app theme (AppMainBackground on the UserControl).
+             No cover-art wash — keeps the page consistent across themes. -->
 
-                <!-- Cover art: color tile + icon, or custom cover art -->
-                <Border Grid.Column="0"
-                        Width="340" Height="340"
-                        CornerRadius="6"
-                        ClipToBounds="True"
-                        Margin="0,0,28,0"
-                        BoxShadow="0 4 16 0 #40000000">
-                    <Panel>
-                        <!-- Colored background -->
-                        <Border Background="{Binding PlaylistColor, Converter={StaticResource HexColorConverter}}" />
-                        <!-- Fallback playlist icon -->
-                        <PathIcon Data="{StaticResource PlaylistsIcon}"
-                                  Width="56" Height="56"
-                                  Foreground="#4DFFFFFF"
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center"
-                                  IsVisible="{Binding ShowFallbackIcon}" />
-                        <!-- Single album art -->
-                        <controls:CachedImage SourcePath="{Binding Art1}"
-                                              Stretch="UniformToFill"
-                                              IsVisible="{Binding HasSingleArt}" />
-                        <!-- 2x2 collage -->
-                        <Grid RowDefinitions="*,*"
-                              ColumnDefinitions="*,*"
-                              IsVisible="{Binding HasCollageArt}">
-                            <controls:CachedImage Grid.Row="0" Grid.Column="0"
-                                                  SourcePath="{Binding Art1}"
-                                                  Stretch="UniformToFill" />
-                            <controls:CachedImage Grid.Row="0" Grid.Column="1"
-                                                  SourcePath="{Binding Art2}"
-                                                  Stretch="UniformToFill" />
-                            <controls:CachedImage Grid.Row="1" Grid.Column="0"
-                                                  SourcePath="{Binding Art3}"
-                                                  Stretch="UniformToFill" />
-                            <controls:CachedImage Grid.Row="1" Grid.Column="1"
-                                                  SourcePath="{Binding Art4}"
-                                                  Stretch="UniformToFill" />
-                        </Grid>
-                        <!-- Custom cover art (highest priority) -->
-                        <controls:CachedImage SourcePath="{Binding PlaylistCoverArtPath}"
-                                              Stretch="UniformToFill"
-                                              IsVisible="{Binding HasCustomArt}" />
-                    </Panel>
-                </Border>
+        <!-- ═══════════════ Two-column layout ═══════════════ -->
+        <Grid ColumnDefinitions="320,*">
 
-                <!-- Info column -->
-                <StackPanel Grid.Column="1"
-                            VerticalAlignment="Center"
-                            Spacing="4">
+            <!-- ───────── Left rail (pinned) ───────── -->
+            <ScrollViewer Grid.Column="0"
+                          VerticalScrollBarVisibility="Hidden"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="24,20,16,115">
 
-                    <!-- Playlist name -->
-                    <StackPanel Orientation="Horizontal" Spacing="10">
+                    <!-- Cover art: custom > collage > single > color tile -->
+                    <Border CornerRadius="10"
+                            ClipToBounds="True"
+                            BoxShadow="0 12 36 0 #59000000">
+                        <Border.Styles>
+                            <Style Selector="Border">
+                                <Setter Property="Height" Value="{Binding $self.Bounds.Width}" />
+                            </Style>
+                        </Border.Styles>
+                        <Panel>
+                            <Border Background="{Binding PlaylistColor, Converter={StaticResource HexColorConverter}}" />
+                            <PathIcon Data="{StaticResource PlaylistsIcon}"
+                                      Width="56" Height="56"
+                                      Foreground="#4DFFFFFF"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      IsVisible="{Binding ShowFallbackIcon}" />
+                            <controls:CachedImage SourcePath="{Binding Art1}"
+                                                  Stretch="UniformToFill"
+                                                  IsVisible="{Binding HasSingleArt}" />
+                            <Grid RowDefinitions="*,*"
+                                  ColumnDefinitions="*,*"
+                                  IsVisible="{Binding HasCollageArt}">
+                                <controls:CachedImage Grid.Row="0" Grid.Column="0"
+                                                      SourcePath="{Binding Art1}"
+                                                      Stretch="UniformToFill" />
+                                <controls:CachedImage Grid.Row="0" Grid.Column="1"
+                                                      SourcePath="{Binding Art2}"
+                                                      Stretch="UniformToFill" />
+                                <controls:CachedImage Grid.Row="1" Grid.Column="0"
+                                                      SourcePath="{Binding Art3}"
+                                                      Stretch="UniformToFill" />
+                                <controls:CachedImage Grid.Row="1" Grid.Column="1"
+                                                      SourcePath="{Binding Art4}"
+                                                      Stretch="UniformToFill" />
+                            </Grid>
+                            <controls:CachedImage SourcePath="{Binding PlaylistCoverArtPath}"
+                                                  Stretch="UniformToFill"
+                                                  IsVisible="{Binding HasCustomArt}" />
+                        </Panel>
+                    </Border>
+
+                    <!-- Name + Smart badge -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="2,16,0,0">
                         <TextBlock Text="{Binding Name}"
-                                   FontSize="32"
+                                   FontSize="24"
                                    FontWeight="Bold"
                                    TextTrimming="CharacterEllipsis"
                                    MaxLines="2"
-                                   TextWrapping="Wrap"
-                                   MaxWidth="800" />
-                        <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="999" Padding="10,4"
+                                   TextWrapping="Wrap" />
+                        <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="999" Padding="9,3"
                                 VerticalAlignment="Center"
                                 IsVisible="{Binding IsSmartPlaylist}">
-                            <TextBlock Text="Smart" FontSize="11" Foreground="{DynamicResource AccentForegroundBrush}"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center"
-                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="Smart" FontSize="10" Foreground="{DynamicResource AccentForegroundBrush}"
+                                       FontWeight="SemiBold" />
                         </Border>
                     </StackPanel>
 
-                    <!-- Stats line -->
-                    <TextBlock FontSize="13" Opacity="0.5" Margin="0,2,0,0">
+                    <!-- Stats -->
+                    <TextBlock FontSize="12" Opacity="0.55" Margin="2,6,0,0">
                         <TextBlock.Text>
-                            <MultiBinding StringFormat="{}{0} · {1} tracks · {2}">
-                                <Binding Path="CreatedDateDisplay" />
+                            <MultiBinding StringFormat="{}{0} tracks · {1} · {2}">
                                 <Binding Path="TrackCount" />
                                 <Binding Path="TotalDuration" />
+                                <Binding Path="TotalSize" />
                             </MultiBinding>
                         </TextBlock.Text>
                     </TextBlock>
+                    <TextBlock Text="{Binding CreatedDateDisplay}"
+                               FontSize="12" Opacity="0.55" Margin="2,1,0,0" />
 
-                    <!-- Description (clickable) -->
+                    <!-- Description (clickable, opens dialog) -->
                     <Button Classes="neutral-desc-btn"
                             Background="Transparent"
                             BorderThickness="0"
-                            Padding="0"
+                            Padding="2,2"
                             MinHeight="0"
                             HorizontalAlignment="Left"
                             HorizontalContentAlignment="Left"
                             Cursor="Hand"
-                            MaxWidth="500"
-                            Margin="0,6,24,0"
+                            Margin="0,8,0,0"
                             Command="{Binding OpenDescriptionCommand}"
                             ToolTip.Tip="View playlist description"
                             IsVisible="{Binding HasDescription}">
                         <TextBlock Text="{Binding PlaylistDescription}"
-                                   FontSize="14"
+                                   FontSize="12.5"
                                    Opacity="0.72"
                                    TextWrapping="Wrap"
-                                   MaxLines="4"
+                                   MaxLines="3"
                                    TextTrimming="CharacterEllipsis" />
                     </Button>
 
-                    <!-- Play + Shuffle + Options -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,14,0,0">
+                    <!-- Play / Shuffle / options — compact pills matching the Albums/Singles header -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,16,0,0">
                         <Button Command="{Binding PlayAllCommand}"
-                                Padding="20,10"
-                                CornerRadius="999"
                                 Classes="accent-btn"
-                            Background="{DynamicResource AccentColorBrush}"
+                                Background="{DynamicResource AccentColorBrush}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
                                 BorderThickness="0"
-                                FontWeight="SemiBold"
+                                CornerRadius="999"
+                                Padding="24,8"
+                                FontWeight="Bold"
                                 Cursor="Hand"
                                 ToolTip.Tip="Play">
-                            <StackPanel Orientation="Horizontal" Spacing="3">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
                                 <PathIcon Data="{StaticResource PlaySolidIcon}"
-                                         Width="13" Height="13"
-                                         Foreground="{DynamicResource AccentForegroundBrush}"
-                                         VerticalAlignment="Center" />
-                                <TextBlock Text="Play"
-                                           VerticalAlignment="Center" />
+                                          Width="13" Height="13"
+                                          Foreground="{DynamicResource AccentForegroundBrush}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Play" VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
                             </StackPanel>
                         </Button>
+                        <!-- Shuffle: solid accent pill matching the Albums/Singles header (layered icon) -->
                         <Button Command="{Binding ShuffleAllCommand}"
-                                Padding="20,10"
-                                CornerRadius="999"
                                 Classes="accent-btn"
-                            Background="{DynamicResource AccentColorBrush}"
+                                Background="{DynamicResource AccentColorBrush}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
                                 BorderThickness="0"
-                                FontWeight="SemiBold"
-                                Cursor="Hand">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                CornerRadius="999"
+                                Padding="20,8"
+                                FontWeight="Bold"
+                                Cursor="Hand"
+                                ToolTip.Tip="Shuffle">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Grid Width="16" Height="16" VerticalAlignment="Center">
                                     <PathIcon Data="{StaticResource ShuffleIcon}"
                                               Width="16" Height="16"
@@ -198,116 +251,205 @@
                                               Opacity="0.85"
                                               Margin="0.6,0,0,0" />
                                 </Grid>
-                                <TextBlock Text="Shuffle"
+                                <TextBlock Text="Shuffle" VerticalAlignment="Center" FontSize="14" FontWeight="Bold" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="glass-pill"
+                                Width="42"
+                                Padding="0,8"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                Cursor="Hand"
+                                ToolTip.Tip="Options">
+                            <PathIcon Data="{StaticResource MoreDotsIcon}"
+                                      Width="13" Height="13" />
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedLeft"
+                                            PlacementConstraintAdjustment="None"
+                                            helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                    <MenuItem Header="Play Next"
+                                              Command="{Binding PlayNextAllCommand}">
+                                        <MenuItem.Icon>
+                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Add to Queue"
+                                              Command="{Binding AddAllToQueueCommand}">
+                                        <MenuItem.Icon>
+                                            <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20icon.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Header="Add Songs…"
+                                              Command="{Binding AddSongsCommand}"
+                                              IsVisible="{Binding IsManualPlaylist}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="M11 5H13V11H19V13H13V19H11V13H5V11H11V5Z" Width="13" Height="13" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Edit Playlist"
+                                              Command="{Binding EditPlaylistCommand}">
+                                        <MenuItem.Icon>
+                                            <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Edit%20Playlist%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Header="Delete Playlist" Classes="danger"
+                                              Command="{Binding DeletePlaylistCommand}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Sort (view-only display order; does not change the saved playlist order) -->
+                    <Button Margin="0,10,0,0"
+                            Classes="glass-pill"
+                            Padding="12,6"
+                            HorizontalAlignment="Left"
+                            Cursor="Hand"
+                            ToolTip.Tip="Change the displayed order. Manual is your saved playlist order.">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding SortLabel, StringFormat='Sort: {0}'}"
+                                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="&#xE70D;"
+                                       FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="9" Opacity="0.6" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <MenuItem Header="Manual (playlist order)" Command="{Binding SetSortCommand}" CommandParameter="Manual" />
+                                <MenuItem Header="Title" Command="{Binding SetSortCommand}" CommandParameter="Title" />
+                                <MenuItem Header="Artist" Command="{Binding SetSortCommand}" CommandParameter="Artist" />
+                                <MenuItem Header="Album" Command="{Binding SetSortCommand}" CommandParameter="Album" />
+                                <MenuItem Header="Duration" Command="{Binding SetSortCommand}" CommandParameter="Duration" />
+                                <MenuItem Header="Recently Added" Command="{Binding SetSortCommand}" CommandParameter="RecentlyAdded" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <!-- Featured Artists -->
+                    <StackPanel Margin="0,26,0,0"
+                                IsVisible="{Binding HasFeaturedArtists}">
+                        <Button Classes="featured-header"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="2,0"
+                                MinHeight="0"
+                                HorizontalAlignment="Left"
+                                Cursor="Hand"
+                                Command="{Binding OpenFeaturedArtistsCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <TextBlock Text="FEATURED ARTISTS"
+                                           FontSize="11"
+                                           FontWeight="Bold"
+                                           Opacity="0.6"
+                                           LetterSpacing="1" />
+                                <TextBlock Text="&#xE76C;"
+                                           FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                           FontSize="10"
+                                           Opacity="0.55"
                                            VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
+                        <!-- Stacked vertically so artists never clip off the right edge -->
+                        <ItemsControl ItemsSource="{Binding TopFeaturedArtists}"
+                                      Margin="0,8,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Vertical" Spacing="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PlaylistFeaturedArtist">
+                                    <Button Classes="featured-artist-tile"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            CornerRadius="8"
+                                            Padding="4,5"
+                                            MinHeight="0"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Left"
+                                            Cursor="Hand"
+                                            Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewArtistCommand}"
+                                            CommandParameter="{Binding Name}">
+                                        <Grid ColumnDefinitions="44,*">
+                                            <Border Grid.Column="0"
+                                                    Width="44" Height="44"
+                                                    CornerRadius="22"
+                                                    ClipToBounds="True"
+                                                    Background="#2E2E2E">
+                                                <Panel>
+                                                    <controls:CachedImage SourcePath="{Binding ImagePath}"
+                                                                          Stretch="UniformToFill"
+                                                                          Width="44" Height="44"
+                                                                          IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                    <PathIcon Data="{StaticResource ArtistsIcon}"
+                                                              Width="18" Height="18"
+                                                              Foreground="#66FFFFFF"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                                </Panel>
+                                            </Border>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Name}"
+                                                       FontSize="12.5"
+                                                       FontWeight="SemiBold"
+                                                       Opacity="0.85"
+                                                       VerticalAlignment="Center"
+                                                       Margin="11,0,0,0"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="1" />
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
+
                 </StackPanel>
+            </ScrollViewer>
 
-                <!-- ═══════════════ 3-dot Options Button ═══════════════ -->
-                <Button Grid.Column="2"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Padding="0"
-                        Width="32" Height="32"
-                        VerticalAlignment="Bottom"
-                        HorizontalAlignment="Center"
-                        Cursor="Hand"
-                        ToolTip.Tip="Options">
-                    <PathIcon Data="{StaticResource MoreDotsIcon}"
-                             Width="14" Height="14"
-                             Foreground="{DynamicResource AccentColorBrush}"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Center" />
-                    <Button.Flyout>
-                        <MenuFlyout Placement="BottomEdgeAlignedRight"
-                                    PlacementConstraintAdjustment="None"
-                                    helpers:MenuOpenAnimation.EnableFlyoutClose="True">
-                            <MenuItem Command="{Binding PlayAllCommand}"
-                                      MaxWidth="400">
-                                <MenuItem.Header>
-                                    <TextBlock Text="Play"
-                                               TextTrimming="CharacterEllipsis"
-                                               FontWeight="Normal"
-                                               FontSize="14"
-                                               FontFamily="{Binding $parent[MenuItem].FontFamily}" />
-                                </MenuItem.Header>
-                                <MenuItem.Icon>
-                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                </MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="Shuffle"
-                                      Command="{Binding ShuffleAllCommand}">
-                                <MenuItem.Icon>
-                                    <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                                </MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="Play Next"
-                                      Command="{Binding PlayNextAllCommand}">
-                                <MenuItem.Icon>
-                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Forward%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                </MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="Add to Queue"
-                                      Command="{Binding AddAllToQueueCommand}">
-                                <MenuItem.Icon>
-                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                </MenuItem.Icon>
-                            </MenuItem>
-                            <Separator />
-                            <MenuItem Header="Edit Playlist"
-                                      Command="{Binding EditPlaylistCommand}">
-                                <MenuItem.Icon>
-                                    <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Edit%20Playlist%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                </MenuItem.Icon>
-                            </MenuItem>
-                            <Separator />
-                            <MenuItem Header="Delete Playlist" Classes="danger"
-                                      Command="{Binding DeletePlaylistCommand}">
-                                <MenuItem.Icon>
-                                    <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
-                                </MenuItem.Icon>
-                            </MenuItem>
-                        </MenuFlyout>
-                    </Button.Flyout>
-                </Button>
-            </Grid>
+            <!-- ───────── Right column: track list ───────── -->
+            <!-- Right margin trimmed to 2 so the vertical scrollbar sits at the window
+                 edge (matching the Albums/Songs lists) instead of being inset ~12px. -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" Margin="8,16,2,0">
 
-            <!-- ═══════════════ Column Headers ═══════════════ -->
-            <Grid DockPanel.Dock="Top"
-                  ColumnDefinitions="48,2*,1.2*,1.2*,0.8*,70,40"
-                  Margin="32,0,32,6">
-                <TextBlock Grid.Column="1" Text="Title"
-                           FontSize="12" FontWeight="SemiBold" Opacity="0.5"
-                           Margin="12,0,0,0" />
-                <TextBlock Grid.Column="2" Text="Artist"
-                           FontSize="12" FontWeight="SemiBold" Opacity="0.5" />
-                <TextBlock Grid.Column="3" Text="Album"
-                           FontSize="12" FontWeight="SemiBold" Opacity="0.5" />
-                <TextBlock Grid.Column="4" Text="Genre"
-                           FontSize="12" FontWeight="SemiBold" Opacity="0.5" />
-                <TextBlock Grid.Column="5" Text="Time"
-                           FontSize="12" FontWeight="SemiBold" Opacity="0.5"
-                           HorizontalAlignment="Right" />
-                <TextBlock Grid.Column="6" />
-            </Grid>
+                <!-- Column headers. Insets (1px left, 9px right) mirror the track-list
+                     row content box (1px ListBoxItem border + 8px right padding) so each
+                     header sits exactly over its column's data. -->
+                <Grid Grid.Row="0"
+                      ColumnDefinitions="48,2*,1.4*,64,64,40"
+                      Margin="1,0,9,6">
+                    <TextBlock Grid.Column="1" Text="Title"
+                               FontSize="12" FontWeight="SemiBold" Opacity="0.5"
+                               Margin="12,0,0,0" />
+                    <TextBlock Grid.Column="2" Text="Album"
+                               FontSize="12" FontWeight="SemiBold" Opacity="0.5" />
+                    <TextBlock Grid.Column="3" Text="Favorite"
+                               FontSize="12" FontWeight="SemiBold" Opacity="0.5"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Grid.Column="4" Text="Time"
+                               FontSize="12" FontWeight="SemiBold" Opacity="0.5"
+                               HorizontalAlignment="Left" />
+                    <TextBlock Grid.Column="5" />
+                </Grid>
 
-            <Separator DockPanel.Dock="Top" Margin="24,0,24,2" />
+                <Separator Grid.Row="1" Margin="0,0,0,2" />
 
-            <Grid RowDefinitions="Auto,Auto">
-                <!-- ═══════════════ Track List ═══════════════ -->
-                <Grid Grid.Row="0" x:Name="TrackListWrapper" Margin="24,0,24,0">
+                <!-- Track list: the only scrolling region (virtualized) -->
+                <Grid Grid.Row="2" x:Name="TrackListWrapper">
                     <ListBox Classes="track-list"
                              ItemsSource="{Binding Tracks}"
                              x:Name="TrackList"
-                             ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                        <ListBox.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel />
-                            </ItemsPanelTemplate>
-                        </ListBox.ItemsPanel>
+                             Padding="0,0,0,115"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListBox.Styles>
                             <Style Selector="ListBoxItem">
                                 <Setter Property="Focusable" Value="False" />
@@ -315,126 +457,136 @@
                         </ListBox.Styles>
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="m:Track">
-                                <Grid ColumnDefinitions="48,2*,1.2*,1.2*,0.8*,70,40"
+                                <Grid ColumnDefinitions="48,2*,1.4*,64,64,40"
                                       Margin="0,1" Background="Transparent">
 
-                                <!-- Cover art thumbnail -->
-                                <Border Grid.Column="0"
-                                        Width="40" Height="40"
-                                        CornerRadius="4"
-                                        ClipToBounds="True"
-                                        VerticalAlignment="Center"
-                                        Background="#18FFFFFF">
-                                    <Panel>
-                                        <!-- Fallback icon -->
-                                        <PathIcon Data="{StaticResource SongsIcon}"
-                                                  Width="16" Height="16"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  IsVisible="{Binding !HasAlbumArt}" />
-                                        <!-- Album art -->
-                                        <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
-                                                              DecodeWidth="256"
-                                                              Stretch="UniformToFill"
-                                                              RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                              IsVisible="{Binding HasAlbumArt}" />
-                                    </Panel>
-                                </Border>
-
-                                <!-- Song title -->
-                                <StackPanel Grid.Column="1"
-                                            Orientation="Horizontal" Spacing="6"
-                                            Margin="12,3,12,3"
-                                            VerticalAlignment="Center">
-                                    <controls:HighlightTextBlock Classes="one-line-explicit-title"
-                                                                 DisplayText="{Binding TitleDisplay}"
-                                                                 HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
-                                                                 FontSize="13"
-                                                                 FontWeight="SemiBold" />
-                                    <Border Classes="explicit-badge compact"
-                                            IsVisible="{Binding IsExplicit}"
-                                            ToolTip.Tip="Explicit">
-                                        <TextBlock Text="E"
-                                                   Classes="explicit-badge-text compact"
-                                                   FontSize="9"
-                                                   Opacity="0.9" />
+                                    <!-- Cover art thumbnail -->
+                                    <Border Grid.Column="0"
+                                            Width="36" Height="36"
+                                            CornerRadius="5"
+                                            ClipToBounds="True"
+                                            VerticalAlignment="Center"
+                                            Background="#18FFFFFF">
+                                        <Panel>
+                                            <PathIcon Data="{StaticResource SongsIcon}"
+                                                      Width="14" Height="14"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      IsVisible="{Binding !HasAlbumArt}" />
+                                            <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                                  DecodeWidth="256"
+                                                                  Stretch="UniformToFill"
+                                                                  RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                  IsVisible="{Binding HasAlbumArt}" />
+                                        </Panel>
                                     </Border>
-                                </StackPanel>
 
-                                <!-- Artist (clickable, red) -->
-                                <Button Grid.Column="2"
-                                        Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
-                                        Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                        Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewArtistCommand}"
-                                        CommandParameter="{Binding Artist}">
-                                    <controls:HighlightTextBlock DisplayText="{Binding ArtistDisplay}"
-                                                                 HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
-                                                                 FontSize="12"
-                                                                 FontWeight="SemiBold"
-                                                                 Foreground="{DynamicResource AccentColorBrush}"
-                                                                 TextTrimming="CharacterEllipsis"
-                                                                 VerticalAlignment="Center" />
-                                </Button>
+                                    <!-- Title over artist -->
+                                    <StackPanel Grid.Column="1"
+                                                Margin="12,4,12,4"
+                                                VerticalAlignment="Center"
+                                                Spacing="1">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <controls:HighlightTextBlock Classes="one-line-explicit-title"
+                                                                         DisplayText="{Binding TitleDisplay}"
+                                                                         HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
+                                                                         FontSize="13"
+                                                                         FontWeight="SemiBold" />
+                                            <Border Classes="explicit-badge compact"
+                                                    IsVisible="{Binding IsExplicit}"
+                                                    ToolTip.Tip="Explicit">
+                                                <TextBlock Text="E"
+                                                           Classes="explicit-badge-text compact"
+                                                           FontSize="9"
+                                                           Opacity="0.9" />
+                                            </Border>
+                                        </StackPanel>
+                                        <Button Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
+                                                Cursor="Hand" HorizontalAlignment="Left"
+                                                Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewArtistCommand}"
+                                                CommandParameter="{Binding Artist}">
+                                            <controls:HighlightTextBlock DisplayText="{Binding ArtistDisplay}"
+                                                                         HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
+                                                                         FontSize="11"
+                                                                         FontWeight="SemiBold"
+                                                                         Foreground="{DynamicResource AccentTextExactBrush}"
+                                                                         TextTrimming="CharacterEllipsis" />
+                                        </Button>
+                                    </StackPanel>
 
-                                <!-- Album (clickable, red) -->
-                                <Button Grid.Column="3"
-                                        Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
-                                        Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                        Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewAlbumCommand}"
-                                        CommandParameter="{Binding}">
-                                    <controls:HighlightTextBlock DisplayText="{Binding Album}"
-                                                                 HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
-                                                                 FontSize="12"
-                                                                 FontWeight="SemiBold"
-                                                                 Foreground="{DynamicResource AccentColorBrush}"
-                                                                 TextTrimming="CharacterEllipsis"
-                                                                 VerticalAlignment="Center" />
-                                </Button>
+                                    <!-- Album (clickable, red) -->
+                                    <Button Grid.Column="2"
+                                            Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
+                                            Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                            Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewAlbumCommand}"
+                                            CommandParameter="{Binding}">
+                                        <controls:HighlightTextBlock DisplayText="{Binding Album}"
+                                                                     HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
+                                                                     FontSize="12"
+                                                                     FontWeight="SemiBold"
+                                                                     Foreground="{DynamicResource AccentTextExactBrush}"
+                                                                     TextTrimming="CharacterEllipsis"
+                                                                     VerticalAlignment="Center" />
+                                    </Button>
 
-                                <!-- Genre -->
-                                <controls:HighlightTextBlock Grid.Column="4"
-                                                             DisplayText="{Binding Genre}"
-                                                             HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
-                                                             FontSize="12"
-                                                             FontWeight="SemiBold"
-                                                             Opacity="0.7"
-                                                             TextTrimming="CharacterEllipsis"
-                                                             VerticalAlignment="Center" />
+                                    <!-- Favorite heart toggle: red when favorited, faint otherwise (click toggles this track only) -->
+                                    <Button Grid.Column="3"
+                                            Classes="heart-btn"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="0"
+                                            Width="28" Height="28"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Cursor="Hand"
+                                            ToolTip.Tip="Favorite"
+                                            Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ToggleFavoriteSingleCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Panel>
+                                            <PathIcon Data="{StaticResource HeartFillIcon}"
+                                                      Width="13" Height="13"
+                                                      Foreground="#E74856"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      IsVisible="{Binding IsFavorite}" />
+                                            <PathIcon Classes="faint-heart"
+                                                      Data="{StaticResource HeartFillIcon}"
+                                                      Width="13" Height="13"
+                                                      Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                      Opacity="0.28"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      IsVisible="{Binding !IsFavorite}" />
+                                        </Panel>
+                                    </Button>
 
-                                <!-- Duration + favorite heart -->
-                                <StackPanel Grid.Column="5"
-                                            Orientation="Horizontal" Spacing="6"
-                                            HorizontalAlignment="Right"
-                                            VerticalAlignment="Center">
-                                    <PathIcon Data="{StaticResource HeartFillIcon}"
-                                             Width="11" Height="11"
-                                             Foreground="#E74856"
-                                             VerticalAlignment="Center"
-                                             IsVisible="{Binding IsFavorite}" />
-                                    <TextBlock Text="{Binding DurationFormatted}"
+                                    <!-- Time / duration -->
+                                    <TextBlock Grid.Column="4"
+                                               Text="{Binding DurationFormatted}"
                                                FontSize="12"
-                                               Opacity="0.5" />
-                                </StackPanel>
+                                               Opacity="0.5"
+                                               HorizontalAlignment="Left"
+                                               VerticalAlignment="Center" />
 
-                                <!-- 3-dots menu -->
-                                <Button Grid.Column="6"
-                                        Background="Transparent"
-                                        BorderThickness="0"
-                                        Padding="0"
-                                        Width="32" Height="32"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        Cursor="Hand"
-                                        ToolTip.Tip="Options"
-                                        Tag="{Binding}"
-                                        Click="OnOptionsButtonClick">
-                                    <PathIcon Data="{StaticResource MoreDotsIcon}"
-                                             Width="14" Height="14"
-                                             Foreground="{DynamicResource AccentColorBrush}"
-                                             HorizontalAlignment="Center"
-                                             VerticalAlignment="Center" />
-                                </Button>
+                                    <!-- 3-dots menu -->
+                                    <Button Grid.Column="5"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="0"
+                                            Width="32" Height="32"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Cursor="Hand"
+                                            ToolTip.Tip="Options"
+                                            Tag="{Binding}"
+                                            Click="OnOptionsButtonClick">
+                                        <PathIcon Data="{StaticResource MoreDotsIcon}"
+                                                  Width="14" Height="14"
+                                                  Foreground="{DynamicResource AccentTextExactBrush}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                                    </Button>
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -491,7 +643,7 @@
                                 <TextBlock Text="{Binding ArtistDisplay}"
                                            FontSize="11"
                                            FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AccentColorBrush}"
+                                           Foreground="{DynamicResource AccentTextExactBrush}"
                                            TextTrimming="CharacterEllipsis"
                                            MaxLines="1"
                                            Margin="0,2,0,0" />
@@ -508,13 +660,8 @@
                     <!-- Empty state: manual playlists -->
                     <StackPanel HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
-                                Spacing="8">
-                        <StackPanel.IsVisible>
-                            <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                <Binding Path="!Tracks.Count" />
-                                <Binding Path="IsManualPlaylist" />
-                            </MultiBinding>
-                        </StackPanel.IsVisible>
+                                Spacing="8"
+                                IsVisible="{Binding ShowEmptyManual}">
                         <TextBlock Text="This playlist is empty"
                                    FontSize="16"
                                    Opacity="0.5"
@@ -525,18 +672,25 @@
                                    Opacity="0.3"
                                    HorizontalAlignment="Center"
                                    TextAlignment="Center" />
+                        <Button Content="Add Songs"
+                                Command="{Binding AddSongsCommand}"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                BorderThickness="0"
+                                CornerRadius="999"
+                                Padding="22,8"
+                                FontWeight="Bold"
+                                HorizontalAlignment="Center"
+                                Margin="0,8,0,0"
+                                Cursor="Hand" />
                     </StackPanel>
 
                     <!-- Empty state: smart playlists -->
                     <StackPanel HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
-                                Spacing="8">
-                        <StackPanel.IsVisible>
-                            <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                <Binding Path="!Tracks.Count" />
-                                <Binding Path="IsSmartPlaylist" />
-                            </MultiBinding>
-                        </StackPanel.IsVisible>
+                                Spacing="8"
+                                IsVisible="{Binding ShowEmptySmart}">
                         <TextBlock Text="No tracks match the current rules"
                                    FontSize="16"
                                    Opacity="0.5"
@@ -548,98 +702,26 @@
                                    HorizontalAlignment="Center"
                                    TextAlignment="Center" />
                     </StackPanel>
-                </Grid>
 
-                <!-- ═══════════════ Featured Artists ═══════════════ -->
-                <Border Grid.Row="1"
-                        Margin="0,28,0,28"
-                        Padding="0,20,0,26"
-                        Background="#14FFFFFF"
-                        IsVisible="{Binding HasFeaturedArtists}">
-                    <StackPanel Spacing="18"
-                                HorizontalAlignment="Left"
-                                Margin="48,0,0,0">
-                        <Button Background="Transparent"
-                                BorderThickness="0"
-                                Padding="0"
-                                MinHeight="0"
-                                HorizontalAlignment="Left"
-                                HorizontalContentAlignment="Left"
-                                Cursor="Hand"
-                                Command="{Binding OpenFeaturedArtistsCommand}">
-                            <StackPanel Orientation="Horizontal" Spacing="5">
-                                <TextBlock Text="Featured Artists"
-                                           FontSize="18"
-                                           FontWeight="Bold" />
-                                <TextBlock Text="&#xE76C;"
-                                           FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
-                                           FontSize="13"
-                                           Opacity="0.55"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-
-                        <ScrollViewer HorizontalScrollBarVisibility="Hidden"
-                                      VerticalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding FeaturedArtists}"
-                                          HorizontalAlignment="Center">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="26" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:PlaylistFeaturedArtist">
-                                        <Button Classes="featured-artist-tile"
-                                                Background="Transparent"
-                                                BorderThickness="0"
-                                                Padding="0"
-                                                Width="118"
-                                                Cursor="Hand"
-                                                Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewArtistCommand}"
-                                                CommandParameter="{Binding Name}">
-                                            <StackPanel Spacing="8" HorizontalAlignment="Center">
-                                                <Border Width="108"
-                                                        Height="108"
-                                                        CornerRadius="54"
-                                                        ClipToBounds="True"
-                                                        Background="#2E2E2E">
-                                                    <Panel>
-                                                        <controls:CachedImage SourcePath="{Binding ImagePath}"
-                                                                              Stretch="UniformToFill"
-                                                                              Width="108"
-                                                                              Height="108"
-                                                                              IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                                        <PathIcon Data="{StaticResource ArtistsIcon}"
-                                                                  Width="34"
-                                                                  Height="34"
-                                                                  Foreground="#66FFFFFF"
-                                                                  HorizontalAlignment="Center"
-                                                                  VerticalAlignment="Center"
-                                                                  IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                    </Panel>
-                                                </Border>
-                                                <TextBlock Text="{Binding Name}"
-                                                           FontSize="13"
-                                                           FontWeight="SemiBold"
-                                                           TextAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           MaxWidth="118" />
-                                            </StackPanel>
-                                        </Button>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
+                    <!-- Empty state: search matched nothing -->
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="8"
+                                IsVisible="{Binding ShowNoResults}">
+                        <TextBlock Text="No results"
+                                   FontSize="16"
+                                   Opacity="0.5"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center" />
+                        <TextBlock Text="No tracks in this playlist match your search"
+                                   FontSize="13"
+                                   Opacity="0.3"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center" />
                     </StackPanel>
-                </Border>
+                </Grid>
             </Grid>
-
-        </StackPanel>
-        </ScrollViewer>
-
-    <!-- ═══════════════ Description Overlay ═══════════════ -->
-    <!-- Playlist description popup is now shown via PlaylistDescriptionDialog window -->
-    </Grid>
+        </Grid>
+    </Panel>
 
 </UserControl>

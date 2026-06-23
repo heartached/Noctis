@@ -1,0 +1,103 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.DuplicateFinderDialog"
+        x:DataType="vm:DuplicateFinderViewModel"
+        Title="Find Duplicates"
+        CanResize="False"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Border Background="#50000000">
+        <Border CornerRadius="20"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="720"
+                MaxHeight="820"
+                Margin="0,50"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Stretch"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
+                    <TextBlock Text="Find Duplicates" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+                    <TextBlock Text="Grouped by artist + title with matching duration. The best copy is kept by default; review before deleting."
+                               FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="{Binding StatusMessage}"
+                                   FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <Button Grid.Column="1" Content="Rescan" Command="{Binding RescanCommand}"
+                                IsEnabled="{Binding !IsBusy}"
+                                Width="90" Padding="0,8" FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center" CornerRadius="999"
+                                Margin="0,0,8,0" Cursor="Hand" />
+                        <Button Grid.Column="2" Content="Close" Command="{Binding CloseCommand}"
+                                Width="90" Padding="0,8" FontWeight="Bold"
+                                Classes="danger-pill"
+                                HorizontalContentAlignment="Center" CornerRadius="999"
+                                Margin="0,0,8,0" Cursor="Hand" />
+                        <Button Grid.Column="3" Command="{Binding DeleteSelectedCommand}"
+                                IsEnabled="{Binding HasSelection}"
+                                Width="140" Padding="0,8"
+                                Classes="danger-ghost-pill"
+                                FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center" CornerRadius="999" Cursor="Hand">
+                            <TextBlock>
+                                <Run Text="Delete" /><Run Text=" " /><Run Text="{Binding SelectedCount}" />
+                            </TextBlock>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                              Padding="24,4,24,8">
+                    <ItemsControl ItemsSource="{Binding Groups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:DuplicateFinderViewModel+DupGroup">
+                                <Border Background="#10FFFFFF" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                    <StackPanel Spacing="8">
+                                        <StackPanel Spacing="1">
+                                            <TextBlock Text="{Binding Header}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Subheader}" FontSize="11" Opacity="0.55" />
+                                        </StackPanel>
+                                        <ItemsControl ItemsSource="{Binding Rows}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:DuplicateFinderViewModel+DupRow">
+                                                    <!-- DockPanel (badge docked right, text fills the rest) so long
+                                                         file paths can never push the Keep badge off the card. -->
+                                                    <DockPanel Margin="0,3">
+                                                        <CheckBox DockPanel.Dock="Left" Classes="metadata-pill-checkbox"
+                                                                  IsChecked="{Binding Delete}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                        <Border DockPanel.Dock="Right" VerticalAlignment="Center"
+                                                                IsVisible="{Binding IsSuggestedKeep}"
+                                                                Background="{DynamicResource AccentColorBrush}"
+                                                                CornerRadius="999" Padding="8,3" Margin="8,0,0,0">
+                                                            <TextBlock Text="Keep" FontSize="10" FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource AccentForegroundBrush}" />
+                                                        </Border>
+                                                        <StackPanel Spacing="1" Margin="0,0,8,0">
+                                                            <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Text="{Binding FolderPath}" FontSize="10" Opacity="0.5" TextTrimming="CharacterEllipsis"
+                                                                       ToolTip.Tip="{Binding FolderPathFull}" />
+                                                            <TextBlock Text="{Binding Quality}" FontSize="11" Opacity="0.7" />
+                                                        </StackPanel>
+                                                    </DockPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>

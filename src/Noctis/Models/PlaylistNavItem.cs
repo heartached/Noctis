@@ -37,4 +37,21 @@ public partial class PlaylistNavItem : NavItem
     public bool HasCollageArt => !HasCustomArt && Art1 != null && Art2 != null;
     public bool HasSingleArt => !HasCustomArt && Art1 != null && Art2 == null;
     public bool ShowFallbackIcon => !HasCustomArt && Art1 == null;
+
+    // ── Sidebar folders & pinning ──
+
+    /// <summary>Pinned playlists sort to the top of the sidebar with a pin glyph.</summary>
+    [ObservableProperty] private bool _isPinned;
+
+    /// <summary>Folder this playlist belongs to (empty = root).</summary>
+    [ObservableProperty] private string _folder = string.Empty;
+
+    /// <summary>True when this row represents a collapsible folder header, not a playlist.</summary>
+    public bool IsFolder { get; init; }
+
+    /// <summary>Folder rows: whether the folder's playlists are currently shown.</summary>
+    [ObservableProperty] private bool _isExpanded = true;
+
+    /// <summary>Playlist rows inside an expanded folder render indented.</summary>
+    [ObservableProperty] private bool _isInFolder;
 }

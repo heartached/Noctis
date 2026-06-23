@@ -26,6 +26,7 @@
                     <SolidColorBrush x:Key="AccentForegroundBrush" Color="White" />
                     <SolidColorBrush x:Key="AccentBorderBrush" Color="{StaticResource SystemAccentColorDark1}" />
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="AccentTextExactBrush" Color="{StaticResource SystemAccentColor}" />
 
                     <!-- Custom App Background Colors -->
                     <SolidColorBrush x:Key="AppSidebarBackground" Color="#141414" />
@@ -87,6 +88,12 @@
                     <SolidColorBrush x:Key="ChipBackground" Color="#1AFFFFFF" />
                     <SolidColorBrush x:Key="ChipHoverBackground" Color="#28FFFFFF" />
 
+                    <!-- Glass pill buttons (Sort / options) — neutral gray, theme-aware -->
+                    <SolidColorBrush x:Key="GlassPillBackground" Color="#26FFFFFF" />
+                    <SolidColorBrush x:Key="GlassPillHoverBackground" Color="#3AFFFFFF" />
+                    <SolidColorBrush x:Key="GlassPillPressedBackground" Color="#4AFFFFFF" />
+                    <SolidColorBrush x:Key="GlassPillBorder" Color="#33FFFFFF" />
+
                     <!-- Playback Island -->
                     <SolidColorBrush x:Key="IslandBackground" Color="#F0181818" />
                     <SolidColorBrush x:Key="IslandForeground" Color="#F0F0F0" />
@@ -120,6 +127,7 @@
                     <SolidColorBrush x:Key="AccentForegroundBrush" Color="White" />
                     <SolidColorBrush x:Key="AccentBorderBrush" Color="{StaticResource SystemAccentColorDark1}" />
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="AccentTextExactBrush" Color="{StaticResource SystemAccentColor}" />
 
                     <!-- ToggleSwitch checked fill (#E74856) -->
                     <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#E74856" />
@@ -186,6 +194,12 @@
                     <!-- Filter chips (release type, etc.) -->
                     <SolidColorBrush x:Key="ChipBackground" Color="#14000000" />
                     <SolidColorBrush x:Key="ChipHoverBackground" Color="#22000000" />
+
+                    <!-- Glass pill buttons (Sort / options) — neutral gray, theme-aware -->
+                    <SolidColorBrush x:Key="GlassPillBackground" Color="#18000000" />
+                    <SolidColorBrush x:Key="GlassPillHoverBackground" Color="#28000000" />
+                    <SolidColorBrush x:Key="GlassPillPressedBackground" Color="#38000000" />
+                    <SolidColorBrush x:Key="GlassPillBorder" Color="#26000000" />
 
                     <!-- Playback Island (dark pill on light backgrounds) -->
                     <SolidColorBrush x:Key="IslandBackground" Color="#F0181818" />
@@ -492,6 +506,8 @@
         <Setter Property="CornerRadius" Value="16" />
         <Setter Property="Padding" Value="6" />
         <Setter Property="PlacementConstraintAdjustment" Value="None" />
+        <!-- Match the active theme (Midnight/Gray/custom), not the generic dark/light variant. -->
+        <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
         <!-- Rise-up + fade open/close (applies to every right-click menu app-wide). -->
         <Setter Property="(helpers:MenuOpenAnimation.Enable)" Value="True" />
     </Style>
@@ -511,14 +527,19 @@
     </Style>
     <Style Selector="MenuItem /template/ Border#PART_Popup">
         <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
     </Style>
     <Style Selector="MenuItem /template/ Popup Border">
         <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
     </Style>
 
     <!-- Tooltip popup chrome (matches the pill-rounded card look used by menus) -->
     <Style Selector="ToolTip">
         <Setter Property="CornerRadius" Value="14" />
+        <!-- Match the active theme background like menus do. -->
+        <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
     </Style>
     <Style Selector="ToolTip /template/ ContentPresenter">
         <Setter Property="CornerRadius" Value="14" />
@@ -566,6 +587,48 @@
         <Setter Property="Margin" Value="2,5,2,1" />
     </Style>
     <Style Selector="MenuItem.danger PathIcon">
+        <Setter Property="Foreground" Value="#E74856" />
+    </Style>
+
+    <!-- Solid red pill (dialog Close buttons): keeps the same red on hover/press
+         instead of falling back to the theme's pointerover background. -->
+    <Style Selector="Button.danger-pill">
+        <Setter Property="Background" Value="#E74856" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.danger-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#E74856" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.danger-pill:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#E74856" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <!-- Solid accent pill: keeps the themed accent (red) on hover/press instead of
+         falling back to the theme's pointerover background. -->
+    <Style Selector="Button.accent-pill">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+    </Style>
+    <Style Selector="Button.accent-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+    </Style>
+    <Style Selector="Button.accent-pill:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+    </Style>
+
+    <!-- Destructive ghost pill (e.g. Find Duplicates "Delete N"): red text on the
+         default pill background, mirroring the "Remove from Library" menu item. -->
+    <Style Selector="Button.danger-ghost-pill">
+        <Setter Property="Foreground" Value="#E74856" />
+    </Style>
+    <Style Selector="Button.danger-ghost-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Foreground" Value="#E74856" />
+    </Style>
+    <Style Selector="Button.danger-ghost-pill:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Foreground" Value="#E74856" />
     </Style>
 
@@ -1034,6 +1097,32 @@
         <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
     </Style>
     <Style Selector="TextBox.crisp-input:focus-within /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+    </Style>
+
+    <!-- Perfect pill outline for compact text inputs (e.g. timestamp boxes). Rounds the
+         control AND its inner PART_BorderElement to a full pill, and uses a 1.5px stroke so
+         the curved ends read as strongly as the straight edges — the same trick the player
+         bar's island outline uses. Matches the metadata fields' look but works app-wide. -->
+    <Style Selector="TextBox.pill-input">
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+    <Style Selector="TextBox.pill-input /template/ Border#PART_BorderElement">
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+    </Style>
+    <Style Selector="TextBox.pill-input:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+    </Style>
+    <Style Selector="TextBox.pill-input:focus-within /template/ Border#PART_BorderElement">
         <Setter Property="BorderThickness" Value="1.5" />
         <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
     </Style>

@@ -301,6 +301,116 @@ internal static class ExtendedTagIO
         _ => 0,
     };
 
+    // ── Rating (ID3v2 POPM / Vorbis+APE RATING / MP4 ----:com.apple.iTunes:RATING) ──
+    // POPM stores 0-255 (Windows convention: 1/64/128/196/255 for 1-5 stars); the text
+    // containers store 0-100 (MediaMonkey/MusicBee convention, stars × 20). Reads accept
+    // either a 0-5 or a 0-100 scale so ratings written by other players map cleanly.
+
+    private const string RatingKey = "RATING";
+    private const string DislikedKey = "NOCTIS_DISLIKED";
+    private const string PopmOwner = "Noctis";
+    private const string AppleItunesMean = "com.apple.iTunes";
+
+    public static int ReadRating(TagFile file)
+    {
+        if (file.GetTag(TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3)
+        {
+            foreach (var frame in id3.GetFrames<PopularimeterFrame>())
+            {
+                if (frame.Rating > 0)
+                    return PopmToStars(frame.Rating);
+            }
+        }
+
+        if (file.GetTag(TagTypes.Apple, false) is AppleTag apple)
+        {
+            var text = apple.GetDashBox(AppleItunesMean, RatingKey);
+            if (double.TryParse(text, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var appleValue))
+                return NumericToStars(appleValue);
+        }
+
+        var raw = ReadCustomString(file, RatingKey);
+        if (double.TryParse(raw, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var value))
+            return NumericToStars(value);
+
+        return 0;
+    }
+
+    public static void WriteRating(TagFile file, int stars)
+    {
+        stars = System.Math.Clamp(stars, 0, 5);
+
+        if (file.GetTag(TagTypes.Id3v2, stars > 0) is TagLib.Id3v2.Tag id3)
+        {
+            if (stars == 0)
+            {
+                foreach (var frame in id3.GetFrames<PopularimeterFrame>().ToArray())
+                    id3.RemoveFrame(frame);
+            }
+            else
+            {
+                // Update every existing POPM frame so other players' views stay in sync.
+                var frames = id3.GetFrames<PopularimeterFrame>().ToArray();
+                if (frames.Length == 0)
+                    frames = new[] { PopularimeterFrame.Get(id3, PopmOwner, true) };
+                foreach (var frame in frames)
+                    frame.Rating = StarsToPopm(stars);
+            }
+        }
+
+        var text = stars > 0
+            ? (stars * 20).ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : null;
+
+        if (file.GetTag(TagTypes.Apple, stars > 0) is AppleTag apple)
+            apple.SetDashBox(AppleItunesMean, RatingKey, text ?? string.Empty);
+
+        if (file.GetTag(TagTypes.Xiph, stars > 0) is XiphComment xiph)
+        {
+            if (text == null) xiph.RemoveField(RatingKey);
+            else xiph.SetField(RatingKey, new[] { text });
+        }
+
+        if (file.GetTag(TagTypes.Ape, stars > 0) is TagLib.Ape.Tag ape)
+        {
+            if (text == null) ape.RemoveItem(RatingKey);
+            else ape.SetValue(RatingKey, text);
+        }
+    }
+
+    public static bool ReadIsDisliked(TagFile file) => ReadCustomBool(file, DislikedKey);
+
+    public static void WriteIsDisliked(TagFile file, bool value) => WriteCustomBool(file, DislikedKey, value);
+
+    private static int PopmToStars(byte popm) => popm switch
+    {
+        0 => 0,
+        < 32 => 1,
+        < 96 => 2,
+        < 160 => 3,
+        < 224 => 4,
+        _ => 5
+    };
+
+    private static byte StarsToPopm(int stars) => stars switch
+    {
+        <= 0 => 0,
+        1 => 1,
+        2 => 64,
+        3 => 128,
+        4 => 196,
+        _ => 255
+    };
+
+    private static int NumericToStars(double value)
+    {
+        if (value <= 0) return 0;
+        if (value <= 5) return System.Math.Clamp((int)System.Math.Round(value), 1, 5);
+        return System.Math.Clamp((int)System.Math.Round(value / 20.0), 1, 5);
+    }
+
     // ── Shared custom-field helpers (ID3v2 TXXX / Xiph SetField / APE item) ──
 
     private static string ReadCustomString(TagFile file, string key)

@@ -44,6 +44,32 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [ObservableProperty] private string _descriptionEditorText = string.Empty;
     [ObservableProperty] private string _searchText = string.Empty;
 
+    /// <summary>View-only sort applied to the displayed track list (does not change saved order).</summary>
+    [ObservableProperty] private PlaylistSortMode _sortMode = PlaylistSortMode.Manual;
+
+    public bool IsManualSort => SortMode == PlaylistSortMode.Manual;
+    public string SortLabel => SortMode switch
+    {
+        PlaylistSortMode.Title => "Title",
+        PlaylistSortMode.Artist => "Artist",
+        PlaylistSortMode.Album => "Album",
+        PlaylistSortMode.Duration => "Duration",
+        PlaylistSortMode.RecentlyAdded => "Recently Added",
+        _ => "Manual"
+    };
+
+    partial void OnSortModeChanged(PlaylistSortMode value)
+    {
+        OnPropertyChanged(nameof(IsManualSort));
+        OnPropertyChanged(nameof(SortLabel));
+        LoadTracks();
+    }
+
+    /// <summary>Empty-state flags: which overlay to show when the track list is empty.</summary>
+    [ObservableProperty] private bool _showEmptyManual;
+    [ObservableProperty] private bool _showEmptySmart;
+    [ObservableProperty] private bool _showNoResults;
+
     public bool HasDescription => !string.IsNullOrWhiteSpace(PlaylistDescription);
     public bool HasDescriptionChanges =>
         !string.Equals(
@@ -73,6 +99,9 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     public bool HasSingleArt => !HasCustomArt && Art1 != null && Art2 == null;
     public bool ShowFallbackIcon => !HasCustomArt && Art1 == null;
 
+    /// <summary>Image used for the ambient blurred backdrop (custom cover, else first collage art).</summary>
+    public string? BackdropArtPath => HasCustomArt ? PlaylistCoverArtPath : Art1;
+
     /// <summary>Resolved tracks in this playlist (order matches playlist).</summary>
     public ObservableCollection<Track> Tracks { get; } = new();
 
@@ -81,14 +110,14 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     public bool HasFeaturedArtists => FeaturedArtists.Count > 0;
     public string? FirstFeaturedArtistName => FeaturedArtists.FirstOrDefault()?.Name;
 
+    /// <summary>Subset shown stacked in the left rail; the header chevron opens the full list.</summary>
+    public IEnumerable<PlaylistFeaturedArtist> TopFeaturedArtists => FeaturedArtists.Take(5);
+
     /// <summary>Fires when the user wants to go back to the previous view.</summary>
     public event EventHandler? BackRequested;
 
     /// <summary>Fires when the user wants to view an album from a track.</summary>
     public event EventHandler<Track>? ViewAlbumRequested;
-
-    /// <summary>Exposes sidebar playlists for the Add to Playlist submenu.</summary>
-    public ObservableCollection<Playlist> Playlists => _sidebar.Playlists;
 
     public PlaylistViewModel(Playlist playlist, PlayerViewModel player,
         ILibraryService library, IPersistenceService persistence, SidebarViewModel sidebar,
@@ -136,6 +165,42 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             Dispatcher.UIThread.Post(() => LoadTracks());
     }
 
+    /// <summary>
+    /// True when the track matches the "Find in Playlist" query. Matches Title, Artist,
+    /// or Album (all visible columns) case-insensitively. A blank query matches everything.
+    /// </summary>
+    public static bool MatchesSearch(Track track, string query)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return true;
+        return Noctis.Helpers.SearchText.Matches(track.Title, query)
+            || Noctis.Helpers.SearchText.Matches(track.Artist, query)
+            || Noctis.Helpers.SearchText.Matches(track.Album, query);
+    }
+
+    [RelayCommand]
+    private void SetSort(string mode)
+    {
+        if (Enum.TryParse<PlaylistSortMode>(mode, ignoreCase: true, out var parsed))
+            SortMode = parsed;
+    }
+
+    /// <summary>Pure view-only sort for the displayed list. Manual preserves the playlist order.</summary>
+    public static IReadOnlyList<Track> SortTracks(IReadOnlyList<Track> tracks, PlaylistSortMode mode)
+    {
+        if (tracks == null) return Array.Empty<Track>();
+        return mode switch
+        {
+            PlaylistSortMode.Title => tracks.OrderBy(t => t.Title, StringComparer.OrdinalIgnoreCase).ToList(),
+            PlaylistSortMode.Artist => tracks.OrderBy(t => t.PrimaryArtist, StringComparer.OrdinalIgnoreCase)
+                                             .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase).ToList(),
+            PlaylistSortMode.Album => tracks.OrderBy(t => t.Album, StringComparer.OrdinalIgnoreCase)
+                                            .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList(),
+            PlaylistSortMode.Duration => tracks.OrderBy(t => t.Duration).ToList(),
+            PlaylistSortMode.RecentlyAdded => tracks.OrderByDescending(t => t.DateAdded).ToList(),
+            _ => tracks
+        };
+    }
+
     public void ApplyFilter(string query)
     {
         if (SearchText != query)
@@ -166,16 +231,14 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
         if (!string.IsNullOrWhiteSpace(_currentFilter))
         {
-            resolved = allResolvedTracks.Where(t =>
-                t.Title.Contains(_currentFilter, StringComparison.OrdinalIgnoreCase) ||
-                t.Artist.Contains(_currentFilter, StringComparison.OrdinalIgnoreCase));
+            resolved = allResolvedTracks.Where(t => MatchesSearch(t, _currentFilter));
         }
         else
         {
             resolved = allResolvedTracks;
         }
 
-        foreach (var track in resolved)
+        foreach (var track in SortTracks(resolved.ToList(), SortMode))
             Tracks.Add(track);
 
         TrackCount = Tracks.Count;
@@ -201,7 +264,18 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         // Use first track's album artwork as playlist cover
         PlaylistArtworkPath = Tracks.FirstOrDefault()?.AlbumArtworkPath;
 
+        UpdateEmptyStateFlags(allResolvedTracks.Count);
+
         RebuildFeaturedArtists(allResolvedTracks);
+    }
+
+    /// <param name="unfilteredCount">Track count before the search filter was applied.</param>
+    private void UpdateEmptyStateFlags(int unfilteredCount)
+    {
+        var filterActive = !string.IsNullOrWhiteSpace(_currentFilter);
+        ShowNoResults = Tracks.Count == 0 && filterActive && unfilteredCount > 0;
+        ShowEmptyManual = Tracks.Count == 0 && !ShowNoResults && !IsSmartPlaylist;
+        ShowEmptySmart = Tracks.Count == 0 && !ShowNoResults && IsSmartPlaylist;
     }
 
     private void RebuildFeaturedArtists(IReadOnlyList<Track> tracks)
@@ -222,6 +296,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         {
             OnPropertyChanged(nameof(HasFeaturedArtists));
             OnPropertyChanged(nameof(FirstFeaturedArtistName));
+            OnPropertyChanged(nameof(TopFeaturedArtists));
             return;
         }
 
@@ -250,6 +325,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
         OnPropertyChanged(nameof(HasFeaturedArtists));
         OnPropertyChanged(nameof(FirstFeaturedArtistName));
+        OnPropertyChanged(nameof(TopFeaturedArtists));
 
         if (_artistImageService != null && artistsToFetch.Count > 0)
         {
@@ -300,6 +376,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         TotalDuration = total.TotalHours >= 1
             ? $"{(int)total.TotalHours}h {total.Minutes}m"
             : $"{(int)total.TotalMinutes} min";
+        UpdateEmptyStateFlags(_playlist.TrackIds.Count);
         RebuildFeaturedArtists(Tracks.ToList());
 
         await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
@@ -309,6 +386,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     public async Task MoveTrack(int fromIndex, int toIndex)
     {
         if (IsSmartPlaylist) return;
+        // Tracks is the filtered view while a search is active; rebuilding
+        // TrackIds from it would silently delete every non-matching track.
+        if (!string.IsNullOrWhiteSpace(_currentFilter)) return;
+        // Reordering only makes sense in Manual sort — otherwise the displayed
+        // order isn't the saved order and persisting it would scramble the playlist.
+        if (SortMode != PlaylistSortMode.Manual) return;
         if (fromIndex < 0 || fromIndex >= Tracks.Count) return;
         if (toIndex < 0 || toIndex >= Tracks.Count) return;
         if (fromIndex == toIndex) return;
@@ -331,11 +414,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     private void AddToQueue(Track track) => _player.AddToQueue(track);
 
     [RelayCommand]
+    private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
+
+    [RelayCommand]
+    private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
+
+    [RelayCommand]
     private void ShuffleAll()
     {
         var tracks = Tracks.ToList();
         if (tracks.Count == 0) return;
-        var shuffled = tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
@@ -344,16 +433,6 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
-        CtrlSelectedTracks.Clear();
-    }
-
-    [RelayCommand]
-    private async Task AddToExistingPlaylist(object[] parameters)
-    {
-        if (parameters == null || parameters.Length != 2) return;
-        if (parameters[0] is not Track track || parameters[1] is not Playlist playlist) return;
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
-        await _sidebar.AddTracksToPlaylist(playlist.Id, tracks);
         CtrlSelectedTracks.Clear();
     }
 
@@ -397,6 +476,25 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         await _library.SaveAsync();
         _library.NotifyFavoritesChanged();
         CtrlSelectedTracks.Clear();
+    }
+
+    /// <summary>Toggles favorite for a single track only (used by the inline row heart),
+    /// independent of any multi-selection so a heart click never affects other rows.
+    /// Kept synchronous: an async command would disable every heart button (they share this
+    /// one command instance) while the save awaits, flickering all hearts. The bool flip
+    /// updates the bound heart instantly; persistence runs in the background.</summary>
+    [RelayCommand]
+    private void ToggleFavoriteSingle(Track track)
+    {
+        if (track == null) return;
+        track.IsFavorite = !track.IsFavorite;
+        _ = PersistFavoriteChangeAsync();
+    }
+
+    private async Task PersistFavoriteChangeAsync()
+    {
+        await _library.SaveAsync();
+        _library.NotifyFavoritesChanged();
     }
 
     [RelayCommand]
@@ -510,6 +608,14 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         _player.AddRangeToQueue(Tracks.ToList());
     }
 
+    /// <summary>Opens the search-driven library picker to add songs to this (manual) playlist.</summary>
+    [RelayCommand]
+    private async Task AddSongs()
+    {
+        if (IsSmartPlaylist) return;
+        await _sidebar.OpenAddSongsAsync(_playlist);
+    }
+
     [RelayCommand]
     private async Task EditPlaylist()
     {
@@ -519,6 +625,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         PlaylistDescription = _playlist.Description ?? string.Empty;
         OnPropertyChanged(nameof(PlaylistColor));
         OnPropertyChanged(nameof(PlaylistCoverArtPath));
+        OnPropertyChanged(nameof(BackdropArtPath));
     }
 
     [RelayCommand]
@@ -543,6 +650,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         if (_playlist.IsSmartPlaylist)
             _library.LibraryUpdated -= OnLibraryUpdated;
     }
+}
+
+/// <summary>View-only display order for a playlist's track list.</summary>
+public enum PlaylistSortMode
+{
+    Manual,
+    Title,
+    Artist,
+    Album,
+    Duration,
+    RecentlyAdded
 }
 
 public partial class PlaylistFeaturedArtist : ObservableObject

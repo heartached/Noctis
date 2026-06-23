@@ -38,6 +38,12 @@ public interface IMetadataService
     bool WriteAlbumArt(string filePath, byte[]? imageData);
 
     /// <summary>
+    /// Writes only the rating and "not liked" tags to an audio file
+    /// (ID3 POPM / Vorbis RATING) without touching other metadata.
+    /// </summary>
+    bool WriteRating(string filePath, int rating, bool isDisliked);
+
+    /// <summary>
     /// Reads detailed technical file information from an audio file.
     /// </summary>
     AudioFileInfo? ReadFileInfo(string filePath);

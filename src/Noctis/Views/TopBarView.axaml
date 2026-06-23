@@ -6,6 +6,30 @@
              Focusable="True"
              MinHeight="58">
 
+    <UserControl.Styles>
+        <Style Selector="Button.release-chip">
+            <Setter Property="Background" Value="{DynamicResource ChipBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.release-chip:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
+        </Style>
+        <Style Selector="Button.release-chip.active">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+        <Style Selector="Button.release-chip.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
     <Border Padding="12,8"
             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
             BorderThickness="0">
@@ -70,12 +94,35 @@
                             Foreground="{DynamicResource AccentForegroundBrush}"
                             VerticalAlignment="Center" />
             </Button>
-            <TextBlock Text="{Binding BackContextTitle}"
-                       IsVisible="{Binding IsBackContextTitleVisible}"
-                       FontSize="20"
-                       FontWeight="Bold"
-                       TextTrimming="CharacterEllipsis"
-                       VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                <TextBlock Text="{Binding BackContextTitle}"
+                           IsVisible="{Binding IsBackContextTitleVisible}"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           MaxWidth="480"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
+
+                <!-- Release-type filter chips on the artist discography page -->
+                <ItemsControl ItemsSource="{Binding ReleaseTypeChips}"
+                              IsVisible="{Binding HasReleaseTypeChips}"
+                              VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="8" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ReleaseTypeChip">
+                            <Button Classes="release-chip"
+                                    Classes.active="{Binding IsActive}"
+                                    Content="{Binding Label}"
+                                    Command="{Binding $parent[UserControl].((vm:TopBarViewModel)DataContext).ReleaseTypeChipCommand}"
+                                    CommandParameter="{Binding}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
         </DockPanel>
 
         <!-- Page title + release-type filter chips left-aligned (shown when back button is hidden).
@@ -85,7 +132,17 @@
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     IsVisible="{Binding IsPageTitleVisible}">
-            <TextBlock Text="{Binding CurrentTabName}"
+            <!-- "Back to Settings" pill, in front of the Statistics page title -->
+            <Button Classes="pill"
+                    IsVisible="{Binding IsStatsBackVisible}"
+                    Command="{Binding StatsBackCommand}"
+                    Background="#E74856"
+                    Padding="16,7"
+                    VerticalAlignment="Center">
+                <TextBlock Text="Back" FontSize="13" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+            </Button>
+
+            <TextBlock Text="{Binding PageTitleDisplay}"
                        VerticalAlignment="Center"
                        FontSize="22"
                        FontWeight="Bold" />
@@ -93,29 +150,6 @@
             <ItemsControl ItemsSource="{Binding ReleaseTypeChips}"
                           IsVisible="{Binding HasReleaseTypeChips}"
                           VerticalAlignment="Center">
-                <ItemsControl.Styles>
-                    <Style Selector="Button.release-chip">
-                        <Setter Property="Background" Value="{DynamicResource ChipBackground}"/>
-                        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                        <Setter Property="CornerRadius" Value="999"/>
-                        <Setter Property="Padding" Value="14,6"/>
-                        <Setter Property="FontSize" Value="12"/>
-                        <Setter Property="FontWeight" Value="SemiBold"/>
-                        <Setter Property="BorderThickness" Value="0"/>
-                        <Setter Property="Cursor" Value="Hand"/>
-                    </Style>
-                    <Style Selector="Button.release-chip:pointerover /template/ ContentPresenter">
-                        <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
-                    </Style>
-                    <Style Selector="Button.release-chip.active">
-                        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-                        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-                    </Style>
-                    <Style Selector="Button.release-chip.active /template/ ContentPresenter">
-                        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-                        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-                    </Style>
-                </ItemsControl.Styles>
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Orientation="Horizontal" Spacing="8" />
@@ -131,6 +165,59 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+
+            <!-- Quality filter chips (Lossless / Hi-Res), albums grid only -->
+            <Border Width="1" Height="16" Background="#30808080" VerticalAlignment="Center"
+                    IsVisible="{Binding HasReleaseTypeChips}"/>
+            <ItemsControl ItemsSource="{Binding QualityChips}"
+                          IsVisible="{Binding HasReleaseTypeChips}"
+                          VerticalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="8" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:QualityChip">
+                        <Button Classes="release-chip"
+                                Classes.active="{Binding IsActive}"
+                                Content="{Binding Label}"
+                                Command="{Binding $parent[UserControl].((vm:TopBarViewModel)DataContext).QualityChipCommand}"
+                                CommandParameter="{Binding}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Sort dropdown, albums grid only. Uses release-chip class so it gets the
+                 same hover highlight as the filter chips (and opts out of the hover zoom). -->
+            <Button Classes="release-chip"
+                    IsVisible="{Binding HasReleaseTypeChips}"
+                    Background="{DynamicResource ChipBackground}"
+                    Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                    CornerRadius="999" Padding="14,6" FontSize="12" FontWeight="SemiBold"
+                    BorderThickness="0" Cursor="Hand"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="Sort albums">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Sort:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding AlbumSortLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
+                              RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                </StackPanel>
+                <Button.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                        <MenuItem Header="Default"
+                                  Command="{Binding AlbumSortCommand}"
+                                  CommandParameter="default"/>
+                        <MenuItem Header="Date added"
+                                  Command="{Binding AlbumSortCommand}"
+                                  CommandParameter="dateadded"/>
+                        <MenuItem Header="Most played"
+                                  Command="{Binding AlbumSortCommand}"
+                                  CommandParameter="mostplayed"/>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
         </StackPanel>
 
       </Grid>

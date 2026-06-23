@@ -37,7 +37,7 @@ public class LrcLibService : ILrcLibService
                       $"&duration={Math.Round(durationSeconds)}";
 
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("User-Agent", "Noctis/1.0");
+            request.Headers.Add("User-Agent", "Noctis (https://github.com/heartached/Noctis)");
 
             using var response = await _http.SendAsync(request);
             if (response.StatusCode == HttpStatusCode.NotFound)
@@ -71,7 +71,7 @@ public class LrcLibService : ILrcLibService
                       $"&track_name={Uri.EscapeDataString(trackName)}";
 
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("User-Agent", "Noctis/1.0");
+            request.Headers.Add("User-Agent", "Noctis (https://github.com/heartached/Noctis)");
 
             using var response = await _http.SendAsync(request);
             if (response.StatusCode == HttpStatusCode.NotFound)

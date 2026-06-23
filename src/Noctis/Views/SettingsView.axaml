@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Noctis.ViewModels"
+             xmlns:models="using:Noctis.Models"
              xmlns:sys="using:System"
              xmlns:conv="using:Noctis.Converters"
              xmlns:controls="using:Noctis.Controls"
@@ -22,6 +23,23 @@
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
 
+        <!-- Circular loading spinner: a rotating arc shown during background work -->
+        <Style Selector="Ellipse.loading-spinner">
+            <Setter Property="Width" Value="14"/>
+            <Setter Property="Height" Value="14"/>
+            <Setter Property="Stroke" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+            <Setter Property="StrokeDashArray" Value="11,5"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+            <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+            <Style.Animations>
+                <Animation Duration="0:0:0.85" IterationCount="INFINITE" Easing="LinearEasing">
+                    <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0"/></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="RotateTransform.Angle" Value="360"/></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
         <!-- Setting card -->
         <Style Selector="Border.setting-card">
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
@@ -40,6 +58,33 @@
         <Style Selector="Border.setting-card.advanced-last">
             <Setter Property="CornerRadius" Value="0,0,24,24"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <!-- Selectable card used by the Song Transitions style picker -->
+        <Style Selector="RadioButton.transition-card">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="card"
+                            Background="{DynamicResource SystemControlBackgroundListLowBrush}"
+                            BorderBrush="Transparent"
+                            BorderThickness="2"
+                            CornerRadius="18"
+                            Padding="18,14">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="RadioButton.transition-card:checked /template/ Border#card">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
+        <Style Selector="RadioButton.transition-card:disabled">
+            <Setter Property="Opacity" Value="0.5"/>
         </Style>
 
 
@@ -415,6 +460,61 @@
             <Setter Property="Height" Value="19.44"/>
         </Style>
 
+        <!-- Child settings dim when their parent toggle is off (matches the
+             grayed ReplayGain Mode row) so the dependency is visible at a glance. -->
+        <Style Selector="Grid.sub-setting, StackPanel.sub-setting">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Grid.sub-setting:disabled, StackPanel.sub-setting:disabled">
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+
+        <!-- Pill numeric fields in the parametric EQ rows: the spin buttons are
+             hidden so the value is always fully readable; adjust by typing,
+             scrolling, or arrow keys. -->
+        <Style Selector="NumericUpDown.eq-pill-number">
+            <Setter Property="ShowButtonSpinner" Value="False"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="NumericUpDown.eq-pill-number /template/ ButtonSpinner">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="NumericUpDown.eq-pill-number /template/ TextBox#PART_TextBox">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <!-- The theme draws TextBox chrome on its inner border element (including
+             hover/focus recolors), so the pill background has to be set there for
+             every state or the theme's square highlight bleeds through. -->
+        <Style Selector="NumericUpDown.eq-pill-number /template/ TextBox#PART_TextBox /template/ Border#PART_BorderElement">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Background" Value="{DynamicResource ButtonBackground}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="NumericUpDown.eq-pill-number /template/ TextBox#PART_TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundPointerOver}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="NumericUpDown.eq-pill-number /template/ TextBox#PART_TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundPointerOver}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
         <!-- Accent sliders (vertical EQ) -->
         <Style Selector="Slider.accent-vertical">
             <Setter Property="Background" Value="Transparent"/>
@@ -492,19 +592,74 @@
             <Setter Property="Height" Value="20"/>
             <Setter Property="Opacity" Value="0"/>
         </Style>
+
+        <!-- Settings tab strip -->
+        <Style Selector="Button.settings-tab">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.settings-tab /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Button.settings-tab.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="*">
+    <Grid RowDefinitions="Auto,*">
+
+    <!-- Tab strip -->
+    <StackPanel Grid.Row="0" Margin="28,4,40,10" Spacing="10">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+            <Button Classes="settings-tab" Classes.active="{Binding IsGeneralTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="General">
+                <TextBlock Text="General" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+            <Button Classes="settings-tab" Classes.active="{Binding IsAppearanceTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Appearance">
+                <TextBlock Text="Appearance" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+            <Button Classes="settings-tab" Classes.active="{Binding IsAudioTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Audio">
+                <TextBlock Text="Audio" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+            <Button Classes="settings-tab" Classes.active="{Binding IsLibraryTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Library">
+                <TextBlock Text="Library" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+            <Button Classes="settings-tab" Classes.active="{Binding IsStatisticsTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Statistics">
+                <TextBlock Text="Statistics" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+            <Button Classes="settings-tab" Classes.active="{Binding IsIntegrationsTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Integrations">
+                <TextBlock Text="Integrations" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+            <Button Classes="settings-tab" Classes.active="{Binding IsAboutTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="About">
+                <TextBlock Text="About" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
+        </StackPanel>
+    </StackPanel>
+
     <ScrollViewer x:Name="SettingsScrollViewer"
-                  Grid.Row="0"
+                  Grid.Row="1"
                   Focusable="True"
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="28,8,40,28" HorizontalAlignment="Stretch" Spacing="4">
 
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- PROFILE                                            -->
+            <!-- GENERAL                                             -->
             <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel x:Name="GeneralTabPanel" IsVisible="{Binding IsGeneralTabVisible}" Spacing="4">
+
+            <!-- Profile -->
             <Border Classes="setting-card" Padding="18,16" Margin="0,0,0,16">
                 <Grid ColumnDefinitions="Auto,*">
                     <!-- Round avatar (click to change) -->
@@ -551,18 +706,153 @@
                 </Grid>
             </Border>
 
+            <!-- System tray -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="System Tray" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Keep Noctis running in the tray with playback controls."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Minimize to tray" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding MinimizeToTray}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Close to tray" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding CloseToTray}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Text Animation group -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Text Animation" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Control how long text scrolls in the player bar, Up Next, and menus."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <!-- Sub-header: Player Bar -->
+                    <TextBlock Text="PLAYER BAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,4,0,2"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding TrackTitleMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long artist names" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding ArtistMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Sub-header: Cover Flow -->
+                    <TextBlock Text="COVER FLOW" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding CoverFlowMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long artist names" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding CoverFlowArtistMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long album titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding CoverFlowAlbumMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Sub-header: Lyrics Page -->
+                    <TextBlock Text="LYRICS PAGE" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding LyricsTitleMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long artist/album names" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding LyricsArtistMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Sub-header: Mini Player -->
+                    <TextBlock Text="MINI PLAYER" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding MiniPlayerTitleMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Animate long album titles" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding MiniPlayerAlbumMarqueeEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Sub-header: Sidebar -->
+                    <TextBlock Text="SIDEBAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="Hover to expand sidebar" FontSize="13"/>
+                            <TextBlock Text="Slide the sidebar open on hover."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding SidebarHoverExpand}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                </StackPanel>
+            </Border>
+
+            <!-- Collapse album editions -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Collapse Album Editions" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Show one tile per release; other editions appear under &quot;Other Versions&quot; on the album page."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding CollapseAlbumEditions}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            </StackPanel>
+
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- ABOUT (compact, surfaced at top for quick access)  -->
+            <!-- ABOUT                                               -->
             <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel x:Name="AboutTabPanel" IsVisible="{Binding IsAboutTabVisible}" Spacing="4">
+
             <Border Classes="setting-card" Padding="18,16" Margin="0,0,0,16">
                 <StackPanel Spacing="10">
                     <!-- Row 1: logo + version on left, update button on right -->
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
-                            <Border Width="40" Height="40" CornerRadius="20"
-                                    ClipToBounds="True">
-                                <Image Source="avares://Noctis/Assets/Icons/Noctis%20Logo.png"
-                                       Stretch="UniformToFill"
+                            <!-- White note, transparent corners, plus a small transparent margin
+                                 baked into the asset so the circle's cardinal points have room to
+                                 antialiase (the source circle is full-bleed and would otherwise
+                                 render with flat spots at 12/3/6/9 o'clock). No clip needed. -->
+                            <Border Width="40" Height="40">
+                                <Image Source="avares://Noctis/Assets/Icons/Noctis%20Logo%20Padded.png"
+                                       Stretch="Uniform"
                                        RenderOptions.BitmapInterpolationMode="HighQuality"/>
                             </Border>
                             <StackPanel VerticalAlignment="Center" Spacing="2">
@@ -571,12 +861,12 @@
                                     <TextBlock Text="{Binding AppVersion}"
                                                FontSize="12" Opacity="0.5"
                                                VerticalAlignment="Center"/>
-                                    <Border IsVisible="{Binding IsLatestPrerelease}"
+                                    <Border IsVisible="{Binding IsPrereleaseBuild}"
                                             Background="#E74856"
                                             CornerRadius="9"
-                                            Padding="8,2"
+                                            Padding="8,3,8,1"
                                             VerticalAlignment="Center">
-                                        <TextBlock Text="Pre-release"
+                                        <TextBlock Text="Pre-Release"
                                                    FontSize="10"
                                                    FontWeight="SemiBold"
                                                    Foreground="White"
@@ -594,16 +884,30 @@
                                     Padding="16,6"
                                     Background="#E74856"
                                     IsVisible="{Binding ShowCheckForUpdatesButton}">
-                                <TextBlock Text="Check for Updates" FontSize="12" Foreground="White"/>
+                                <TextBlock Text="{Binding CheckForUpdatesButtonText}" FontSize="12" Foreground="White"/>
                             </Button>
 
-                            <!-- Update Available button (replaces Check when a new release is detected) -->
+                            <!-- Update Available button (replaces Check when a new release is detected).
+                                 In-app installer path: Inno install (incl. winget/Chocolatey). -->
                             <Button Command="{Binding DownloadUpdateCommand}"
                                     Classes="pill"
                                     VerticalAlignment="Center"
                                     Padding="16,6"
                                     Background="#E74856"
-                                    IsVisible="{Binding IsUpdateAvailable}">
+                                    IsVisible="{Binding ShowInAppUpdateButton}">
+                                <TextBlock Text="Update available"
+                                           FontSize="12" Foreground="White" VerticalAlignment="Center"/>
+                            </Button>
+
+                            <!-- Scoop / portable copies can't safely run the in-app installer;
+                                 open the GitHub release instead and surface the update command. -->
+                            <Button Command="{Binding OpenLatestReleaseCommand}"
+                                    Classes="pill"
+                                    VerticalAlignment="Center"
+                                    Padding="16,6"
+                                    Background="#E74856"
+                                    ToolTip.Tip="{Binding ExternalUpdateHint}"
+                                    IsVisible="{Binding ShowManualUpdateButton}">
                                 <TextBlock Text="Update available"
                                            FontSize="12" Foreground="White" VerticalAlignment="Center"/>
                             </Button>
@@ -670,6 +974,20 @@
                                            VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
+                        <Button Classes="social-link"
+                                Command="{Binding OpenWebsiteCommand}"
+                                Margin="-6,0,0,0"
+                                HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Image Source="avares://Noctis/Assets/Icons/Noctis%20Logo%20Padded.png"
+                                       Width="18" Height="18"
+                                       Stretch="Uniform"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality" />
+                                <TextBlock Text="Official Website"
+                                           FontSize="12" Opacity="0.85"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
 
                     <!-- Divider -->
@@ -695,10 +1013,12 @@
                 </StackPanel>
             </Border>
 
+            </StackPanel>
+
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- APPEARANCE                                         -->
+            <!-- APPEARANCE                                          -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="APPEARANCE"/>
+            <StackPanel x:Name="AppearanceTabPanel" IsVisible="{Binding IsAppearanceTabVisible}" Spacing="4">
 
             <Border Classes="setting-card" Padding="22,12">
                 <StackPanel Spacing="12">
@@ -923,7 +1243,7 @@
                             <ItemsControl ItemsSource="{Binding AccentSwatches}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
-                                        <UniformGrid Columns="7"/>
+                                        <UniformGrid Columns="12"/>
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
@@ -940,8 +1260,13 @@
                                                         BorderBrush="#22000000"
                                                         BorderThickness="1"
                                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                <Border Width="44" Height="44" CornerRadius="22"
+                                                <!-- Selection ring sits on the colour's own edge (same
+                                                     40px box) so the white overlaps the disc's rim — no
+                                                     dark border or anti-alias seam shows between the
+                                                     colour and the white outline. -->
+                                                <Border Width="40" Height="40" CornerRadius="20"
                                                         BorderBrush="White" BorderThickness="2"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                                         IsVisible="{Binding IsActive}"/>
                                             </Panel>
                                         </Button>
@@ -982,7 +1307,7 @@
                                                            FontSize="20" FontWeight="Light"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Border>
-                                            <Border Width="44" Height="44" CornerRadius="22"
+                                            <Border Width="40" Height="40" CornerRadius="20"
                                                     BorderBrush="White" BorderThickness="2"
                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                                     IsVisible="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).IsCustomAccentSelected}"/>
@@ -1014,7 +1339,7 @@
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
                         <TextBlock Text="Player Bar Opacity" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Adjust the playback bar's background transparency. Higher is more solid and legible when it overlaps content."
+                        <TextBlock Text="How solid the playback bar's background looks."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
@@ -1032,25 +1357,83 @@
                 </StackPanel>
             </Border>
 
-            <!-- Collapse album editions -->
-            <Border Classes="setting-card">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Collapse Album Editions" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Show one tile per release in album grids instead of every edition. Other editions stay available under &quot;Other Versions&quot; on the album page."
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- AUDIO                                               -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel x:Name="AudioTabPanel" IsVisible="{Binding IsAudioTabVisible}" Spacing="4">
+
+            <TextBlock Classes="section-title" Text="PLAYBACK" Margin="0,4,0,10"/>
+
+            <!-- Song Transitions (Apple-style; drives the AutoMix engine).
+                 Disabled + grayed while Exclusive Mode is on: every transition style
+                 needs two overlapping streams, which single-stream exclusive output
+                 can't provide. -->
+            <Border Classes="setting-card"
+                    IsEnabled="{Binding CanUseSongTransitions}"
+                    Opacity="{Binding SongTransitionsOpacity}">
+                <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Song Transitions" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Songs blend smoothly into each other. Albums still play without transitions."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                            <TextBlock Text="Unavailable while Exclusive Mode is on."
+                                       IsVisible="{Binding ExclusiveAudioEnabled}"
+                                       FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AccentColorBrush}"
+                                       TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding SongTransitionsEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Transition Style picker -->
+                    <StackPanel Spacing="6" IsEnabled="{Binding SongTransitionsEnabled}">
+                        <TextBlock Text="TRANSITION STYLE" FontSize="10" Opacity="0.45" Margin="2,4,0,2"/>
+
+                        <RadioButton Classes="transition-card"
+                                     GroupName="TransitionStyle"
+                                     IsChecked="{Binding IsAutoMixStyle, Mode=TwoWay}">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="AutoMix" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock Text="Transitions timed using each song's key and tempo."
+                                           FontSize="12" Opacity="0.55" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton Classes="transition-card"
+                                     GroupName="TransitionStyle"
+                                     IsChecked="{Binding IsCrossfadeStyle, Mode=TwoWay}">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Crossfade" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock Text="Simple fade between songs for a set duration."
+                                           FontSize="12" Opacity="0.55" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <!-- Crossfade Duration (only for the Crossfade style) -->
+                        <StackPanel Classes="sub-setting" Spacing="6" Margin="2,4,0,0" IsVisible="{Binding IsCrossfadeStyle}">
+                            <TextBlock Text="Crossfade Duration" FontSize="13" FontWeight="SemiBold"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Slider Grid.Column="0"
+                                        Classes="accent-slider"
+                                        Minimum="1" Maximum="12"
+                                        Value="{Binding CrossfadeDuration, Mode=TwoWay}"
+                                        DoubleTapped="OnCrossfadeSliderDoubleTapped"
+                                        VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding CrossfadeDuration, StringFormat='{}{0:0} seconds'}"
+                                           FontSize="12" Opacity="0.7"
+                                           VerticalAlignment="Center"
+                                           MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
+                            </Grid>
+                        </StackPanel>
                     </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          IsChecked="{Binding CollapseAlbumEditions}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
+                </StackPanel>
             </Border>
-
-
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- AUDIO PLAYBACK                                     -->
-            <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="PLAYBACK" Margin="0,20,0,10"/>
 
             <!-- Sound Check -->
             <Border Classes="setting-card">
@@ -1066,79 +1449,60 @@
                 </Grid>
             </Border>
 
-            <!-- Text Animation group -->
+            <!-- Gapless playback -->
             <Border Classes="setting-card">
-                <StackPanel Spacing="12">
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="Text Animation" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Control how long text scrolls in the player bar, Up Next, and menus."
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Gapless Playback" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Tracks flow into each other without a pause."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding GaplessPlaybackEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
 
-                    <!-- Sub-header: Player Bar -->
-                    <TextBlock Text="PLAYER BAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,4,0,2"/>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding TrackTitleMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long artist names" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding ArtistMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
+            <!-- Exclusive mode (Windows WASAPI) -->
+            <Border Classes="setting-card" IsVisible="{Binding IsExclusiveAudioSupported}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Exclusive Mode" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Bit-perfect output at the track's sample rate. Song transitions (AutoMix &amp; Crossfade) are unavailable while active."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding ExclusiveAudioStatus}"
+                                   IsVisible="{Binding ExclusiveAudioStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding ExclusiveAudioEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
 
-                    <!-- Sub-header: Cover Flow -->
-                    <TextBlock Text="COVER FLOW" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
+            <!-- Audio analysis: tempo & key detection + tag writing -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="14">
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding CoverFlowMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long artist names" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding CoverFlowArtistMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long album titles" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding CoverFlowAlbumMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-
-                    <!-- Sub-header: Lyrics Page -->
-                    <TextBlock Text="LYRICS PAGE" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long track titles" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding LyricsTitleMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="Animate long artist/album names" FontSize="13" VerticalAlignment="Center"/>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding LyricsArtistMarqueeEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-
-                    <!-- Sub-header: Sidebar -->
-                    <TextBlock Text="SIDEBAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="Hover to expand sidebar" FontSize="13"/>
-                            <TextBlock Text="Slide the sidebar open on hover. Turn off to keep the icon-only rail with no animation."
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Analyze Tempo &amp; Key" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Detect BPM and key in the background. Powers AutoMix and Track Radio."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding SidebarHoverExpand}"
+                                              IsChecked="{Binding BpmKeyAnalysisEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-
+                    <Grid Classes="sub-setting" ColumnDefinitions="*,Auto" IsEnabled="{Binding BpmKeyAnalysisEnabled}">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Save analysis to file tags" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Write detected BPM/key into file tags (TBPM/TKEY)."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding WriteAnalysisToTags}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                 </StackPanel>
             </Border>
 
@@ -1150,7 +1514,7 @@
                         <StackPanel Grid.Column="0">
                             <StackPanel Spacing="2">
                                 <TextBlock Text="Equalizer" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Fine-tune audio frequencies for your listening preference."
+                                <TextBlock Text="Parametric EQ — tune each band's frequency, gain, and width (Q)."
                                            FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </StackPanel>
@@ -1176,163 +1540,70 @@
                         </Button>
                     </Grid>
 
-                    <!-- dB scale + 10 band sliders -->
-                    <Grid ColumnDefinitions="40,*" Margin="0,8,26,0" ClipToBounds="False">
-                        <!-- dB labels on the left -->
-                        <StackPanel Grid.Column="0"
-                                    VerticalAlignment="Stretch"
-                                    Margin="0,0,4,20">
-                            <TextBlock Text="+12dB" FontSize="10" Opacity="0.5"
-                                       VerticalAlignment="Top" />
-                            <TextBlock Text="0dB" FontSize="10" Opacity="0.5"
-                                       VerticalAlignment="Center"
-                                       Margin="0,55,0,55" />
-                            <TextBlock Text="-12dB" FontSize="10" Opacity="0.5"
-                                       VerticalAlignment="Bottom" />
-                        </StackPanel>
-
-                        <!-- 10 vertical sliders in a uniform row -->
-                        <UniformGrid Grid.Column="1" Columns="10" Margin="0,0,24,0">
-                            <StackPanel HorizontalAlignment="Stretch" Spacing="4">
-                                <Slider Orientation="Vertical" Height="160"
-                                        Minimum="-12" Maximum="12"
-                                        Value="{Binding EqBand0}"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        HorizontalAlignment="Center"
-                                        Classes="accent-vertical" />
-                                <TextBlock Text="60Hz" FontSize="10" Opacity="0.6"
-                                           HorizontalAlignment="Center" Margin="6,0,0,0" />
-                            </StackPanel>
-                            <StackPanel HorizontalAlignment="Stretch" Spacing="4">
-                                <Slider Orientation="Vertical" Height="160"
-                                        Minimum="-12" Maximum="12"
-                                        Value="{Binding EqBand1}"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        HorizontalAlignment="Center"
-                                        Classes="accent-vertical" />
-                                <TextBlock Text="170Hz" FontSize="10" Opacity="0.6"
-                                           HorizontalAlignment="Center" Margin="6,0,0,0" />
-                            </StackPanel>
-                            <StackPanel HorizontalAlignment="Stretch" Spacing="4">
-                                <Slider Orientation="Vertical" Height="160"
-                                        Minimum="-12" Maximum="12"
-                                        Value="{Binding EqBand2}"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        HorizontalAlignment="Center"
-                                        Classes="accent-vertical" />
-                                <TextBlock Text="310Hz" FontSize="10" Opacity="0.6"
-                                           HorizontalAlignment="Center" Margin="6,0,0,0" />
-                            </StackPanel>
-                            <StackPanel HorizontalAlignment="Stretch" Spacing="4">
-                                <Slider Orientation="Vertical" Height="160"
-                                        Minimum="-12" Maximum="12"
-                                        Value="{Binding EqBand3}"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        HorizontalAlignment="Center"
-                                        Classes="accent-vertical" />
-                                <TextBlock Text="600Hz" FontSize="10" Opacity="0.6"
-                                           HorizontalAlignment="Center" Margin="6,0,0,0" />
-                            </StackPanel>
-                            <StackPanel HorizontalAlignment="Stretch" Spacing="4">
-                                <Slider Orientation="Vertical" Height="160"
-                                        Minimum="-12" Maximum="12"
-                                        Value="{Binding EqBand4}"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        HorizontalAlignment="Center"
-                                        Classes="accent-vertical" />
-                                <TextBlock Text="1K" FontSize="10" Opacity="0.6"
-                                           HorizontalAlignment="Center" Margin="6,0,0,0" />
-                            </StackPanel>
-                            <StackPanel HorizontalAlignment="Stretch" Spacing="4">
-                                <Slider Orientation="Vertical" Height="160"
-                                        Minimum="-12" Maximum="12"
-                                        Value="{Binding EqBand5}"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        HorizontalAlignment="Center"
-                                        Classes="accent-vertical" />
-                                <TextBlock Text="3K" FontSize="10" Opacity="0.6"
-                                           HorizontalAlignment="Center" Margin="6,0,0,0" />
-                            </StackPanel>
-                            <StackPanel HorizontalAlignment="Stretch" Spacing="4">
-                                <Slider Orientation="Vertical" Height="160"
-                                        Minimum="-12" Maximum="12"
-                                        Value="{Binding EqBand6}"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        HorizontalAlignment="Center"
-                                        Classes="accent-vertical" />
-                                <TextBlock Text="6K" FontSize="10" Opacity="0.6"
-                                           HorizontalAlignment="Center" Margin="6,0,0,0" />
-                            </StackPanel>
-                            <StackPanel HorizontalAlignment="Stretch" Spacing="4">
-                                <Slider Orientation="Vertical" Height="160"
-                                        Minimum="-12" Maximum="12"
-                                        Value="{Binding EqBand7}"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        HorizontalAlignment="Center"
-                                        Classes="accent-vertical" />
-                                <TextBlock Text="12K" FontSize="10" Opacity="0.6"
-                                           HorizontalAlignment="Center" Margin="6,0,0,0" />
-                            </StackPanel>
-                            <StackPanel HorizontalAlignment="Stretch" Spacing="4">
-                                <Slider Orientation="Vertical" Height="160"
-                                        Minimum="-12" Maximum="12"
-                                        Value="{Binding EqBand8}"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        HorizontalAlignment="Center"
-                                        Classes="accent-vertical" />
-                                <TextBlock Text="14K" FontSize="10" Opacity="0.6"
-                                           HorizontalAlignment="Center" Margin="6,0,0,0" />
-                            </StackPanel>
-                            <StackPanel HorizontalAlignment="Stretch" Spacing="4">
-                                <Slider Orientation="Vertical" Height="160"
-                                        Minimum="-12" Maximum="12"
-                                        Value="{Binding EqBand9}"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        HorizontalAlignment="Center"
-                                        Classes="accent-vertical" />
-                                <TextBlock Text="16K" FontSize="10" Opacity="0.6"
-                                           HorizontalAlignment="Center" Margin="6,0,0,0" />
-                            </StackPanel>
-                        </UniformGrid>
-                    </Grid>
+                    <!-- Parametric band rows: frequency / gain / Q per band -->
+                    <StackPanel Spacing="0" Margin="0,4,0,0">
+                        <Grid ColumnDefinitions="120,*,64,92,34" Margin="0,0,0,4">
+                            <TextBlock Grid.Column="0" Text="FREQUENCY" FontSize="10" Opacity="0.45"/>
+                            <TextBlock Grid.Column="1" Text="GAIN" FontSize="10" Opacity="0.45" Margin="14,0,0,0"/>
+                            <TextBlock Grid.Column="3" Text="Q" FontSize="10" Opacity="0.45" Margin="10,0,0,0" HorizontalAlignment="Center"/>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding EqBands}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:EqBandViewModel">
+                                    <Grid ColumnDefinitions="120,*,64,92,34" Margin="0,3">
+                                        <NumericUpDown Grid.Column="0"
+                                                       Classes="eq-pill-number"
+                                                       Value="{Binding FrequencyHz}"
+                                                       Minimum="20" Maximum="20000" Increment="10"
+                                                       FormatString="0"
+                                                       FontSize="12"
+                                                       ToolTip.Tip="Center frequency (Hz) — type, scroll, or use arrow keys"
+                                                       VerticalAlignment="Center"/>
+                                        <Slider Grid.Column="1"
+                                                Classes="accent-slider"
+                                                Minimum="-12" Maximum="12"
+                                                Value="{Binding GainDb}"
+                                                DoubleTapped="OnEqGainSliderDoubleTapped"
+                                                Margin="14,0,0,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding GainLabel}"
+                                                   FontSize="11" Opacity="0.7"
+                                                   VerticalAlignment="Center" TextAlignment="Right"/>
+                                        <NumericUpDown Grid.Column="3"
+                                                       Classes="eq-pill-number"
+                                                       Value="{Binding Q}"
+                                                       Minimum="0.1" Maximum="10" Increment="0.1"
+                                                       FormatString="0.0#"
+                                                       FontSize="12"
+                                                       ToolTip.Tip="Q (band width) — higher values affect a narrower range around the frequency"
+                                                       Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="4"
+                                                Content="✕" FontSize="11" Padding="7,4"
+                                                Background="Transparent" Cursor="Hand"
+                                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                IsEnabled="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).CanRemoveEqBand}"
+                                                Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemoveEqBandCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="Remove band"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Classes="pill-action"
+                                Command="{Binding AddEqBandCommand}"
+                                IsEnabled="{Binding CanAddEqBand}"
+                                CornerRadius="16"
+                                Padding="14,8"
+                                Margin="0,8,0,0"
+                                Cursor="Hand"
+                                HorizontalAlignment="Left">
+                            <TextBlock Text="+ Add Band" FontSize="13" FontWeight="SemiBold"/>
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
 
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- LYRICS PROVIDERS                                   -->
-            <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="LYRICS" Margin="0,20,0,10"/>
-
-            <Border Classes="setting-card">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="Use online lyrics when local lyrics are missing."
-                               FontSize="12" Opacity="0.5" Margin="0,0,0,4"/>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="LRCLIB" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Community lyrics database" FontSize="11" Opacity="0.5"/>
-                        </StackPanel>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding LrcLibEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="NetEase Cloud Music" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Large synced lyrics catalog" FontSize="11" Opacity="0.5"/>
-                        </StackPanel>
-                        <controls:LottieToggle Grid.Column="1"
-                                              IsChecked="{Binding NetEaseEnabled}"
-                                              VerticalAlignment="Center"/>
-                    </Grid>
-                </StackPanel>
-            </Border>
-
-
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- AUDIO TOOLS                                         -->
-            <!-- ═══════════════════════════════════════════════════ -->
             <TextBlock Classes="section-title" Text="AUDIO TOOLS" Margin="0,20,0,10"/>
 
             <Border Classes="setting-card">
@@ -1341,7 +1612,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <TextBlock Text="ffmpeg" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
-                        <TextBlock Text="Used by the audio converter. Leave blank to auto-detect (next to Noctis, then PATH)."
+                        <TextBlock Text="Used by the audio converter. Leave blank to auto-detect."
                                    FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
@@ -1367,12 +1638,17 @@
 
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.4" Margin="0,8,0,8"/>
 
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="ReplayGain" FontSize="13" FontWeight="SemiBold"/>
-                        <TextBlock Text="Scale per-track or per-album volume using REPLAYGAIN_* tags. Scan tracks first via right-click → Scan ReplayGain."
-                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <Grid ColumnDefinitions="120,*">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="ReplayGain" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Adjust volume using ReplayGain tags. Scan tracks via right-click → Scan ReplayGain."
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding ReplayGainEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid Classes="sub-setting" ColumnDefinitions="120,*" IsEnabled="{Binding ReplayGainEnabled}">
                         <TextBlock Grid.Column="0" Text="Mode" VerticalAlignment="Center"/>
                         <ComboBox Grid.Column="1"
                                   Classes="pill-list"
@@ -1424,10 +1700,40 @@
                 </StackPanel>
             </Border>
 
+            </StackPanel>
+
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- ACCOUNTS                                           -->
+            <!-- INTEGRATIONS                                        -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="ACCOUNTS" Margin="0,20,0,10"/>
+            <StackPanel x:Name="IntegrationsTabPanel" IsVisible="{Binding IsIntegrationsTabVisible}" Spacing="4">
+
+            <TextBlock Classes="section-title" Text="REMOTE CONTROL" Margin="0,4,0,10"/>
+
+            <!-- Web remote -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Web Remote" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Control playback from your phone with a private link on your local network."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding WebRemoteEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Border Background="#18000000" CornerRadius="8" Padding="12,8"
+                            IsVisible="{Binding WebRemoteUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Open on your phone:" FontSize="12" Opacity="0.6" VerticalAlignment="Center"/>
+                            <SelectableTextBlock Text="{Binding WebRemoteUrl}" FontSize="13" FontWeight="SemiBold"
+                                                 VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Classes="section-title" Text="ACCOUNTS" Margin="0,12,0,10"/>
 
             <!-- Discord Rich Presence -->
             <Border Classes="setting-card">
@@ -1646,14 +1952,67 @@
                 </StackPanel>
             </Border>
 
+            <TextBlock Classes="section-title" Text="LYRICS" Margin="0,20,0,10"/>
+
+            <Border Classes="setting-card">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Use online lyrics when local lyrics are missing."
+                               FontSize="12" Opacity="0.5" Margin="0,0,0,4"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="LRCLIB" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Community lyrics database" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding LrcLibEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="NetEase Cloud Music" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Large synced lyrics catalog" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding NetEaseEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Classes="section-title" Text="METADATA" Margin="0,20,0,10"/>
+
+            <Border Classes="setting-card">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Tag sources for Search metadata, in order."
+                               FontSize="12" Opacity="0.5" Margin="0,0,0,4"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="Deezer" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Music streaming catalog" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding DeezerEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="MusicBrainz" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="Open music encyclopedia" FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding MusicBrainzEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+
+            </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════ -->
-            <!-- LIBRARY (folders, scan, startup preferences)       -->
+            <!-- LIBRARY (folders, scan, startup preferences)        -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock x:Name="MediaFoldersSectionAnchor"
-                       Classes="section-title"
-                       Text="LIBRARY"
-                       Margin="0,20,0,10"/>
+            <StackPanel x:Name="LibraryTabPanel" IsVisible="{Binding IsLibraryTabVisible}" Spacing="4">
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
@@ -1661,10 +2020,8 @@
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <StackPanel Spacing="2" VerticalAlignment="Center">
                                 <TextBlock Text="Media Folder Locations" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Choose the folders where your music files are stored."
+                                <TextBlock Text="Folders where your music is stored."
                                            FontSize="12" Opacity="0.5"/>
-                                <TextBlock Text="Browse them by hierarchy in the Folders tab."
-                                           FontSize="12" Opacity="0.4" FontStyle="Italic"/>
                             </StackPanel>
                         </StackPanel>
                         <Button Grid.Column="1"
@@ -1725,6 +2082,9 @@
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Ellipse Classes="loading-spinner"
+                                 IsVisible="{Binding IsScanning}"
+                                 VerticalAlignment="Center"/>
                         <TextBlock Text="{Binding ScanStatusText}"
                                    FontSize="12"
                                    Opacity="0.6"
@@ -1743,6 +2103,86 @@
             </Border>
 
 
+            <!-- Library Tools (Library group) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Organize Files" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Rename and move files into a tag-based folder structure, with a preview first."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Classes="pill-action"
+                            Command="{Binding OpenOrganizeFilesCommand}"
+                            Padding="14,8" CornerRadius="16" Cursor="Hand"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="Organize" FontSize="13" VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Find Duplicates (Library group) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Find Duplicates" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Find duplicate tracks and remove the copies you don't want."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Classes="pill-action"
+                            Command="{Binding OpenDuplicateFinderCommand}"
+                            Padding="14,8" CornerRadius="16" Cursor="Hand"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="Find" FontSize="13" VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Find Metadata (Library group) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Find Metadata" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Identify poorly-tagged tracks and review proposed tags before applying."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Classes="pill-action"
+                            Command="{Binding OpenMetadataFinderCommand}"
+                            Padding="14,8" CornerRadius="16" Cursor="Hand"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="Find" FontSize="13" VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Import Playlist (Library group) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Import Playlist" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Import an Exportify CSV or TuneMyMusic JSON export and match tracks to your library."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Classes="pill-action"
+                            Command="{Binding OpenPlaylistImportCommand}"
+                            Padding="14,8" CornerRadius="16" Cursor="Hand"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="Import" FontSize="13" VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+            </Border>
+
             <!-- Scan on startup (Library group) -->
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
@@ -1759,116 +2199,91 @@
                 </Grid>
             </Border>
 
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- LIBRARY OVERVIEW                                   -->
-            <!-- ═══════════════════════════════════════════════════ -->
-            <TextBlock Classes="section-title" Text="LIBRARY OVERVIEW" Margin="0,20,0,10"/>
-
+            <!-- Watch folders for changes (Library group) -->
             <Border Classes="setting-card">
-                <StackPanel Spacing="18">
-                    <TextBlock Text="Your Music Library" FontSize="15" FontWeight="SemiBold"/>
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Watch Folders" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Update the library automatically as files change."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding WatchFoldersEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
 
-                    <!-- Primary stats: Songs · Artists · Albums · Listening Time -->
-                    <UniformGrid Columns="4" Margin="0,2,0,0">
-                        <Border CornerRadius="10" Padding="14,16" Margin="0,0,8,0"
-                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                            <StackPanel HorizontalAlignment="Center" Spacing="4">
-                                <TextBlock Text="{Binding TotalSongs}"
-                                           FontSize="24" FontWeight="Bold"
-                                           HorizontalAlignment="Center"/>
-                                <TextBlock Text="Songs" FontSize="11" Opacity="0.55"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                        <Border CornerRadius="10" Padding="14,16" Margin="4,0"
-                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                            <StackPanel HorizontalAlignment="Center" Spacing="4">
-                                <TextBlock Text="{Binding TotalArtists}"
-                                           FontSize="24" FontWeight="Bold"
-                                           HorizontalAlignment="Center"/>
-                                <TextBlock Text="Artists" FontSize="11" Opacity="0.55"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                        <Border CornerRadius="10" Padding="14,16" Margin="4,0"
-                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                            <StackPanel HorizontalAlignment="Center" Spacing="4">
-                                <TextBlock Text="{Binding TotalAlbums}"
-                                           FontSize="24" FontWeight="Bold"
-                                           HorizontalAlignment="Center"/>
-                                <TextBlock Text="Albums" FontSize="11" Opacity="0.55"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                        <Border CornerRadius="10" Padding="14,16" Margin="8,0,0,0"
-                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                            <StackPanel HorizontalAlignment="Center" Spacing="4">
-                                <TextBlock Text="{Binding TotalListeningTime}"
-                                           FontSize="20" FontWeight="Bold"
-                                           HorizontalAlignment="Center"
-                                           TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="Listening Time" FontSize="11" Opacity="0.55"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                    </UniformGrid>
-
-                    <!-- Audio Quality: smaller chips, Hi-Res accented -->
-                    <StackPanel Spacing="8" Margin="0,4,0,0">
-                        <TextBlock Text="Audio Quality" FontSize="12" Opacity="0.55"
-                                   FontWeight="SemiBold" Classes="section-title"/>
-                        <Grid ColumnDefinitions="*,*,*">
-                            <Border Grid.Column="0" CornerRadius="8" Padding="12,10" Margin="0,0,6,0"
-                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                <StackPanel Spacing="2" HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding LosslessCount}"
-                                               FontSize="17" FontWeight="SemiBold"
-                                               HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Lossless" FontSize="11" Opacity="0.55"
-                                               HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Grid.Column="1" CornerRadius="8" Padding="12,10" Margin="3,0"
-                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                <StackPanel Spacing="2" HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding HiResCount}"
-                                               FontSize="17" FontWeight="SemiBold"
-                                               HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Hi-Res Lossless" FontSize="11" Opacity="0.55"
-                                               HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Grid.Column="2" CornerRadius="8" Padding="12,10" Margin="6,0,0,0"
-                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                                <StackPanel Spacing="2" HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding LossyCount}"
-                                               FontSize="17" FontWeight="SemiBold"
-                                               HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Lossy" FontSize="11" Opacity="0.55"
-                                               HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
+            <!-- Snoozed tracks (hidden from shuffle + radio) -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Snoozed Tracks" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Hidden from shuffle and radio until their snooze expires."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
 
-                    <!-- Playlists footer (text-only so 0 doesn't dominate) -->
-                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
-                        <TextBlock Text="{Binding TotalPlaylists}" FontSize="12"
-                                   FontWeight="SemiBold" Opacity="0.7"/>
-                        <TextBlock Text="playlists" FontSize="12" Opacity="0.55"/>
-                    </StackPanel>
+                    <TextBlock Text="No snoozed tracks."
+                               FontSize="13" Opacity="0.45"
+                               IsVisible="{Binding !HasSnoozedTracks}"/>
+
+                    <ItemsControl ItemsSource="{Binding SnoozedTracks}">
+                        <ItemsControl.Styles>
+                            <Style Selector="ItemsControl:empty">
+                                <Setter Property="IsVisible" Value="False"/>
+                            </Style>
+                        </ItemsControl.Styles>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:Track">
+                                <Border Padding="12,8" Margin="0,2" CornerRadius="6"
+                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                    <Grid ColumnDefinitions="*,Auto,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontSize="13" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Artist}"
+                                                       FontSize="12" Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding SnoozedUntil, StringFormat='Until {0:MMM d, yyyy}'}"
+                                                   FontSize="12" Opacity="0.5"
+                                                   VerticalAlignment="Center"
+                                                   Margin="12,0"/>
+                                        <Button Grid.Column="2"
+                                                Classes="pill-action"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).UnsnoozeCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="12,6"
+                                                CornerRadius="14"
+                                                Cursor="Hand"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="Un-snooze" FontSize="12"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </Border>
 
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- STORAGE                                            -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <TextBlock Classes="section-title" Text="STORAGE" Margin="0,20,0,10"/>
 
-            <!-- Disk usage (Library Overview group) -->
+            <!-- Disk usage -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="14">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <StackPanel Grid.Column="0">
                             <StackPanel Spacing="2">
                                 <TextBlock Text="Disk Usage" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Space used by Noctis data on your system."
+                                <TextBlock Text="Space used by Noctis data."
                                            FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </StackPanel>
@@ -1996,29 +2411,6 @@
 
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.2"/>
 
-                    <!-- Fetch Artist Images -->
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0">
-                            <StackPanel Spacing="2">
-                                <TextBlock Text="Fetch Artist Images" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Download missing artist profile images from Deezer."
-                                           FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </StackPanel>
-                        <Button Grid.Column="1"
-                                Command="{Binding FetchArtistImagesCommand}"
-                                Classes="pill-action"
-                                Padding="14,8"
-                                CornerRadius="16"
-                                Cursor="Hand"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="Fetch Images" FontSize="13"
-                                       VerticalAlignment="Center"/>
-                        </Button>
-                    </Grid>
-
-                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.2"/>
-
                     <!-- Clear Artwork Cache -->
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0">
@@ -2045,6 +2437,244 @@
                 </StackPanel>
             </Border>
 
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- STATISTICS (listening statistics)                   -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <StackPanel x:Name="StatisticsTabPanel" IsVisible="{Binding IsStatisticsTabVisible}" Spacing="4">
+
+            <!-- Library overview (moved from Library tab) -->
+            <TextBlock Classes="section-title" Text="LIBRARY OVERVIEW" Margin="0,4,0,10"/>
+
+            <Border Classes="setting-card">
+                <StackPanel Spacing="18">
+                    <TextBlock Text="Your Music Library" FontSize="15" FontWeight="SemiBold"/>
+
+                    <!-- Primary stats: Songs · Artists · Albums · Total Duration -->
+                    <UniformGrid Columns="4" Margin="0,2,0,0">
+                        <Border CornerRadius="10" Padding="14,16" Margin="0,0,8,0"
+                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                            <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                <TextBlock Text="{Binding TotalSongs}"
+                                           FontSize="24" FontWeight="Bold"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Songs" FontSize="11" Opacity="0.55"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border CornerRadius="10" Padding="14,16" Margin="4,0"
+                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                            <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                <TextBlock Text="{Binding TotalArtists}"
+                                           FontSize="24" FontWeight="Bold"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Artists" FontSize="11" Opacity="0.55"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border CornerRadius="10" Padding="14,16" Margin="4,0"
+                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                            <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                <TextBlock Text="{Binding TotalAlbums}"
+                                           FontSize="24" FontWeight="Bold"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Albums" FontSize="11" Opacity="0.55"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border CornerRadius="10" Padding="14,16" Margin="8,0,0,0"
+                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                            <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                <TextBlock Text="{Binding TotalListeningTime}"
+                                           FontSize="20" FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="Total Duration" FontSize="11" Opacity="0.55"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <!-- Audio Quality: smaller chips, Hi-Res accented -->
+                    <StackPanel Spacing="8" Margin="0,4,0,0">
+                        <TextBlock Text="Audio Quality" FontSize="12" Opacity="0.55"
+                                   FontWeight="SemiBold" Classes="section-title"/>
+                        <Grid ColumnDefinitions="*,*,*">
+                            <Border Grid.Column="0" CornerRadius="8" Padding="12,10" Margin="0,0,6,0"
+                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                <StackPanel Spacing="2" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding LosslessCount}"
+                                               FontSize="17" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Lossless" FontSize="11" Opacity="0.55"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" CornerRadius="8" Padding="12,10" Margin="3,0"
+                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                <StackPanel Spacing="2" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding HiResCount}"
+                                               FontSize="17" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Hi-Res Lossless" FontSize="11" Opacity="0.55"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" CornerRadius="8" Padding="12,10" Margin="6,0,0,0"
+                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                <StackPanel Spacing="2" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding LossyCount}"
+                                               FontSize="17" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Lossy" FontSize="11" Opacity="0.55"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Playlists footer (text-only so 0 doesn't dominate) -->
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                        <TextBlock Text="{Binding TotalPlaylists}" FontSize="12"
+                                   FontWeight="SemiBold" Opacity="0.7"/>
+                        <TextBlock Text="playlists" FontSize="12" Opacity="0.55"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- LISTENING                                          -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <TextBlock Classes="section-title" Text="LISTENING" Margin="0,20,0,10"/>
+
+            <Border Classes="setting-card">
+                <StackPanel Spacing="18">
+                    <TextBlock Text="Your Listening" FontSize="15" FontWeight="SemiBold"/>
+
+                    <!-- Play stats: Total Plays · Time Listened · Avg Track Length · Liked Songs -->
+                    <UniformGrid Columns="4" Margin="0,2,0,0">
+                        <Border CornerRadius="10" Padding="14,16" Margin="0,0,8,0"
+                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                            <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                <TextBlock Text="{Binding TotalPlays}"
+                                           FontSize="24" FontWeight="Bold"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Total Plays" FontSize="11" Opacity="0.55"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border CornerRadius="10" Padding="14,16" Margin="4,0"
+                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                            <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                <TextBlock Text="{Binding TimeListened}"
+                                           FontSize="20" FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="Time Listened" FontSize="11" Opacity="0.55"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border CornerRadius="10" Padding="14,16" Margin="4,0"
+                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                            <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                <TextBlock Text="{Binding AvgTrackLength}"
+                                           FontSize="24" FontWeight="Bold"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Avg Track Length" FontSize="11" Opacity="0.55"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border CornerRadius="10" Padding="14,16" Margin="8,0,0,0"
+                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                            <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                <TextBlock Text="{Binding LikedTracks}"
+                                           FontSize="24" FontWeight="Bold"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="Liked Songs" FontSize="11" Opacity="0.55"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- TOP PLAYED                                         -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <TextBlock Classes="section-title" Text="TOP PLAYED" Margin="0,20,0,10"/>
+
+            <Grid ColumnDefinitions="*,12,*">
+                <Border Grid.Column="0" Classes="setting-card" VerticalAlignment="Top">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Top Artists" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Play some tracks to see your top artists"
+                                   FontSize="13" Opacity="0.4"
+                                   IsVisible="{Binding !TopArtists.Count}"/>
+                        <ItemsControl ItemsSource="{Binding TopArtists}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:StatItem">
+                                    <Grid ColumnDefinitions="28,*,Auto" Margin="0,5">
+                                        <TextBlock Grid.Column="0" Text="{Binding Rank}"
+                                                   FontSize="13" FontWeight="SemiBold" Opacity="0.35"
+                                                   VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                            <TextBlock Text="{Binding SubLabel}" FontSize="11" Opacity="0.5"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding ValueLabel}"
+                                                   FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource AccentTextBrush}"
+                                                   VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Classes="setting-card" VerticalAlignment="Top">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Top Albums" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Play some tracks to see your top albums"
+                                   FontSize="13" Opacity="0.4"
+                                   IsVisible="{Binding !TopAlbums.Count}"/>
+                        <ItemsControl ItemsSource="{Binding TopAlbums}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:StatItem">
+                                    <Grid ColumnDefinitions="28,*,Auto" Margin="0,5">
+                                        <TextBlock Grid.Column="0" Text="{Binding Rank}"
+                                                   FontSize="13" FontWeight="SemiBold" Opacity="0.35"
+                                                   VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                            <TextBlock Text="{Binding SubLabel}" FontSize="11" Opacity="0.5"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding ValueLabel}"
+                                                   FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource AccentTextBrush}"
+                                                   VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Button Classes="pill"
+                    Command="{Binding OpenStatisticsPageCommand}"
+                    HorizontalAlignment="Center"
+                    Margin="0,16,0,0"
+                    Padding="16,8">
+                <TextBlock Text="View All Stats  →" FontSize="13"/>
+            </Button>
+
+            </StackPanel>
 
         </StackPanel>
     </ScrollViewer>

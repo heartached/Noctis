@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 
 namespace Noctis.Services;
@@ -10,10 +11,8 @@ public sealed class UpdateService
 {
     // Fetch the recent releases list (instead of /releases/latest) so pre-releases are included.
     // GitHub excludes pre-releases from /releases/latest, which would hide prerelease builds from
-    // the in-app updater. We pick the highest-version release that has the Windows installer asset.
+    // the in-app updater. We pick the highest-version release that has this platform's installer asset.
     private const string ReleaseUrl = "https://api.github.com/repos/heartached/Noctis/releases?per_page=10";
-    private const string AssetPrefix = "Noctis-v";
-    private const string AssetSuffix = "-Setup.exe";
 
     private readonly HttpClient _http;
 
@@ -34,6 +33,113 @@ public sealed class UpdateService
             var v = CurrentVersion;
             return $"Version {v.Major}.{v.Minor}.{v.Build}";
         }
+    }
+
+    /// <summary>
+    /// True when THIS installed build is a pre-release. Detected from the
+    /// assembly's informational version, which carries a SemVer pre-release
+    /// suffix (e.g. "1.1.15-prerelease") set in the csproj for pre-release
+    /// builds; stable builds have no suffix. Build metadata ("+sha") is ignored.
+    /// This reflects the running build, not whatever the latest GitHub release is.
+    /// </summary>
+    public static bool IsPrereleaseBuild
+    {
+        get
+        {
+            var info = Assembly.GetExecutingAssembly()
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (string.IsNullOrEmpty(info)) return false;
+            var plus = info.IndexOf('+');          // strip "+<build metadata>"
+            if (plus >= 0) info = info[..plus];
+            return info.Contains('-');             // SemVer pre-release segment present
+        }
+    }
+
+    // ── Install-source detection ──
+    // The in-app updater on Windows always runs the Inno Setup .exe, which
+    // installs to the Inno location. That's correct only when THIS copy is the
+    // Inno install (also how winget/Chocolatey install — they wrap the same
+    // setup and upgrade in place). A Scoop or manually-extracted (portable)
+    // copy would instead get a second, parallel install, so for those we steer
+    // the user to their own update path. Inno writes its uninstall entry under
+    // AppId + "_is1"; per-user installs (PrivilegesRequired=lowest) land in
+    // HKCU, elevated ones in HKLM.
+    private const string InnoUninstallSubKey =
+        @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{E8A3B5F1-7C2D-4A9E-B6F0-1D3E5A7C9B2F}_is1";
+
+    private static InstallSource? _cachedSource;
+
+    /// <summary>How this running copy was installed (computed once per process).</summary>
+    public static InstallSource Source => _cachedSource ??= DetectSource();
+
+    /// <summary>
+    /// True when the in-app installer is the right update mechanism: any
+    /// non-Windows platform (macOS .dmg / Linux have no Inno install to clash
+    /// with) or a Windows copy installed by the Inno setup. False for Scoop /
+    /// portable copies, where running the setup would create a second install.
+    /// </summary>
+    public static bool SupportsInAppUpdate => Source == InstallSource.Installed;
+
+    /// <summary>
+    /// Short guidance for updating a package-manager / portable copy, or null
+    /// when the in-app updater should be used instead.
+    /// </summary>
+    public static string? ExternalUpdateHint => Source switch
+    {
+        InstallSource.Scoop => "Update with: scoop update noctis",
+        InstallSource.Portable => "Download the new version from GitHub.",
+        _ => null
+    };
+
+    private static InstallSource DetectSource()
+    {
+        if (!OperatingSystem.IsWindows())
+            return InstallSource.Installed;
+
+        return ClassifyInstall(AppContext.BaseDirectory, TryGetInnoInstallLocation());
+    }
+
+    /// <summary>
+    /// Pure classification from the running directory and the install path the
+    /// Inno uninstaller recorded (null when no entry matches this AppId).
+    /// Extracted so it can be unit-tested without touching the registry.
+    /// </summary>
+    public static InstallSource ClassifyInstall(string appDirectory, string? innoInstallLocation)
+    {
+        static string Norm(string p) => p.Replace('/', '\\').TrimEnd('\\').ToLowerInvariant();
+
+        var appDir = Norm(appDirectory);
+
+        if (!string.IsNullOrEmpty(innoInstallLocation) && Norm(innoInstallLocation) == appDir)
+            return InstallSource.Installed;
+
+        // Scoop lays apps out under ...\scoop\apps\<name>\<version>\.
+        if (appDir.Contains(@"\scoop\apps\"))
+            return InstallSource.Scoop;
+
+        return InstallSource.Portable;
+    }
+
+    private static string? TryGetInnoInstallLocation()
+    {
+        try
+        {
+            foreach (var root in new[]
+                     {
+                         Microsoft.Win32.Registry.CurrentUser,
+                         Microsoft.Win32.Registry.LocalMachine
+                     })
+            {
+                using var key = root.OpenSubKey(InnoUninstallSubKey);
+                if (key?.GetValue("InstallLocation") is string loc && !string.IsNullOrWhiteSpace(loc))
+                    return loc;
+            }
+        }
+        catch
+        {
+            // Registry unreadable — treat as "no Inno entry" (portable).
+        }
+        return null;
     }
 
     /// <summary>
@@ -64,15 +170,17 @@ public sealed class UpdateService
         if (candidates.Count == 0)
             return null;
 
-        // Prefer the highest-version release that actually ships the Windows installer
-        // asset, so a newer release missing the asset never masks an installable one.
-        // Fall back to the highest version overall so non-Windows builds (and the
-        // "visit GitHub" path) still surface that an update exists.
+        // Prefer the highest-version release that actually ships this platform's
+        // installer asset, so a newer release missing the asset never masks an
+        // installable one. Fall back to the highest version overall so platforms
+        // without an in-app installer (Linux) still surface that an update exists
+        // via the "visit GitHub" path.
         var best = candidates.FirstOrDefault(x => FindInstallerAsset(x.Release) is not null);
         if (best.Release is null)
             best = candidates[0];
 
         var installerAsset = FindInstallerAsset(best.Release);
+        var checksumsAsset = FindChecksumsAsset(best.Release);
 
         return new UpdateInfo
         {
@@ -82,20 +190,58 @@ public sealed class UpdateService
             InstallerApiUrl = installerAsset?.Url,
             InstallerUrl = installerAsset?.BrowserDownloadUrl,
             InstallerSize = installerAsset?.Size ?? 0,
+            InstallerAssetName = installerAsset?.Name,
+            ChecksumsApiUrl = checksumsAsset?.Url,
             ReleaseUrl = best.Release.HtmlUrl ?? $"https://github.com/heartached/Noctis/releases/tag/{best.Release.TagName}"
         };
     }
 
-    private static GitHubAsset? FindInstallerAsset(GitHubRelease release) =>
-        release.Assets?.FirstOrDefault(a =>
-            a.Name != null &&
-            a.Name.StartsWith(AssetPrefix, StringComparison.OrdinalIgnoreCase) &&
-            a.Name.EndsWith(AssetSuffix, StringComparison.OrdinalIgnoreCase));
+    /// <summary>
+    /// Picks the release asset the in-app updater can install on this platform:
+    /// Windows gets the Inno Setup exe ("Noctis-Setup.exe"), macOS gets the
+    /// per-architecture disk image ("Noctis-osx-arm64.dmg"). Linux has no
+    /// in-app installer (AppImage/tar.gz are updated manually), so no asset matches
+    /// and the UI falls back to pointing at the GitHub release page.
+    /// </summary>
+    private static GitHubAsset? FindInstallerAsset(GitHubRelease release)
+    {
+        if (release.Assets is null) return null;
+
+        if (OperatingSystem.IsWindows())
+        {
+            return release.Assets.FirstOrDefault(a =>
+                a.Name != null &&
+                a.Name.StartsWith("Noctis-", StringComparison.OrdinalIgnoreCase) &&
+                a.Name.EndsWith("-Setup.exe", StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            var arch = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64";
+            return release.Assets.FirstOrDefault(a =>
+                a.Name != null &&
+                a.Name.StartsWith("Noctis-", StringComparison.OrdinalIgnoreCase) &&
+                a.Name.EndsWith($"-osx-{arch}.dmg", StringComparison.OrdinalIgnoreCase));
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Downloads the installer to %TEMP%. Reports progress 0-100.
     /// Returns the path to the downloaded file.
     /// </summary>
+    /// <summary>
+    /// Locates a SHA-256 checksums manifest asset on the release, if one is published
+    /// (e.g. "SHA256SUMS" or "checksums.txt"). When present, the downloaded installer is
+    /// verified against it before launch; when absent, the updater falls back to size-only.
+    /// </summary>
+    private static GitHubAsset? FindChecksumsAsset(GitHubRelease release)
+        => release.Assets?.FirstOrDefault(a =>
+            a.Name != null &&
+            (a.Name.Contains("SHA256", StringComparison.OrdinalIgnoreCase) ||
+             a.Name.Equals("checksums.txt", StringComparison.OrdinalIgnoreCase)));
+
     public Task<string> DownloadInstallerAsync(
         UpdateInfo update,
         IProgress<double>? progress = null,
@@ -104,15 +250,24 @@ public sealed class UpdateService
         if (update.InstallerApiUrl is null)
             throw new InvalidOperationException("In-app updates require the GitHub release asset API URL.");
 
-        return DownloadInstallerAsync(update.InstallerApiUrl, update.InstallerSize, progress, ct);
+        return DownloadInstallerAsync(
+            update.InstallerApiUrl, update.InstallerSize,
+            update.ChecksumsApiUrl, update.InstallerAssetName, progress, ct);
     }
 
     private async Task<string> DownloadInstallerAsync(
         string url, long expectedSize,
+        string? checksumsUrl, string? assetName,
         IProgress<double>? progress,
         CancellationToken ct)
     {
-        var tempPath = Path.Combine(Path.GetTempPath(), "Noctis-Update-Setup.exe");
+        // The installer is launched with elevation, so only ever pull it from GitHub over
+        // HTTPS — never from a host smuggled into a tampered API response.
+        if (!IsTrustedGitHubUrl(url))
+            throw new InvalidOperationException("Refusing to download an update from an untrusted (non-GitHub) URL.");
+
+        var tempPath = Path.Combine(Path.GetTempPath(),
+            OperatingSystem.IsMacOS() ? "Noctis-Update.dmg" : "Noctis-Update-Setup.exe");
 
         try
         {
@@ -141,6 +296,7 @@ public sealed class UpdateService
             }
 
             await fileStream.FlushAsync(ct);
+            await fileStream.DisposeAsync(); // release the handle before validating / hashing
 
             // Validate file size if GitHub reported one
             if (expectedSize > 0)
@@ -151,6 +307,27 @@ public sealed class UpdateService
                     File.Delete(tempPath);
                     throw new InvalidOperationException(
                         $"Download corrupted: expected {expectedSize} bytes, got {actualSize}.");
+                }
+            }
+
+            // Hash verification: when the release ships a checksums manifest, verify the
+            // installer's SHA-256 before it is ever launched with elevation. Fail closed if
+            // the manifest is present but lacks (or contradicts) this file's entry. Releases
+            // without a manifest fall back to the size check above.
+            if (!string.IsNullOrEmpty(checksumsUrl))
+            {
+                if (!IsTrustedGitHubUrl(checksumsUrl))
+                    throw new InvalidOperationException("Refusing to fetch update checksums from an untrusted URL.");
+
+                var manifest = await DownloadTextAsync(checksumsUrl, ct);
+                var expectedHash = ParseSha256FromChecksums(manifest, assetName ?? Path.GetFileName(tempPath));
+                var actualHash = await ComputeSha256Async(tempPath, ct);
+
+                if (expectedHash == null || !string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Delete(tempPath);
+                    throw new InvalidOperationException(
+                        "Update failed SHA-256 verification — the download may be incomplete or tampered.");
                 }
             }
 
@@ -165,41 +342,63 @@ public sealed class UpdateService
     }
 
     /// <summary>
-    /// Launches the downloaded Inno Setup installer with /SILENT and returns true.
-    /// The caller should exit the app after this returns.
+    /// Launches the downloaded installer and returns true. Windows runs the Inno
+    /// Setup exe with /SILENT; macOS opens the downloaded .dmg so the user drags
+    /// the new Noctis.app over the old one. The caller should exit the app after
+    /// this returns so the bundle/files can be replaced.
     /// </summary>
     public bool LaunchInstaller(string installerPath)
     {
-        // The bundled installer is an Inno Setup .exe; only launch on Windows.
-        // On other platforms users update via package manager or by re-downloading.
-        if (!OperatingSystem.IsWindows())
-            return false;
-
         if (!File.Exists(installerPath))
             return false;
 
-        try
+        if (OperatingSystem.IsWindows())
         {
-            var proc = Process.Start(new ProcessStartInfo
+            try
             {
-                FileName = installerPath,
-                Arguments = "/SILENT",
-                UseShellExecute = true  // triggers UAC elevation prompt
-            });
+                var proc = Process.Start(new ProcessStartInfo
+                {
+                    FileName = installerPath,
+                    Arguments = "/SILENT",
+                    UseShellExecute = true  // triggers UAC elevation prompt
+                });
 
-            if (proc is null)
+                if (proc is null)
+                {
+                    Debug.WriteLine("[UpdateService] Process.Start returned null for installer.");
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception ex)
             {
-                Debug.WriteLine("[UpdateService] Process.Start returned null for installer.");
+                // Most common cause: user declined the UAC prompt.
+                Debug.WriteLine($"[UpdateService] LaunchInstaller failed: {ex.Message}");
                 return false;
             }
-            return true;
         }
-        catch (Exception ex)
+
+        if (OperatingSystem.IsMacOS())
         {
-            // Most common cause: user declined the UAC prompt.
-            Debug.WriteLine($"[UpdateService] LaunchInstaller failed: {ex.Message}");
-            return false;
+            try
+            {
+                var proc = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "open",
+                    ArgumentList = { installerPath },
+                    UseShellExecute = false
+                });
+                return proc is not null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[UpdateService] LaunchInstaller (open .dmg) failed: {ex.Message}");
+                return false;
+            }
         }
+
+        // Linux: no in-app installer; users update via AppImage/tar.gz.
+        return false;
     }
 
     private static Version? ParseTag(string tag)
@@ -210,6 +409,69 @@ public sealed class UpdateService
         int cut = raw.IndexOfAny(new[] { '-', '+' });
         if (cut >= 0) raw = raw.Substring(0, cut);
         return Version.TryParse(raw, out var v) ? v : null;
+    }
+
+    // ── Security helpers ──
+
+    /// <summary>
+    /// True only for HTTPS URLs whose host is GitHub (or a GitHub asset CDN). The in-app
+    /// updater downloads and then launches an elevated installer, so every URL it fetches
+    /// must be pinned to GitHub — never a host smuggled in via a tampered API response.
+    /// </summary>
+    internal static bool IsTrustedGitHubUrl(string? url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+        if (uri.Scheme != Uri.UriSchemeHttps) return false;
+        var host = uri.Host;
+        return host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("api.github.com", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".github.com", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Extracts the expected lowercase SHA-256 for <paramref name="fileName"/> from a
+    /// standard sha256sum-format manifest ("&lt;hex&gt;  &lt;name&gt;" or "&lt;hex&gt; *&lt;name&gt;").
+    /// Returns null when no line matches that file name.
+    /// </summary>
+    internal static string? ParseSha256FromChecksums(string? content, string? fileName)
+    {
+        if (string.IsNullOrEmpty(content) || string.IsNullOrEmpty(fileName)) return null;
+
+        foreach (var rawLine in content.Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (line.Length == 0 || line[0] == '#') continue;
+
+            var sep = line.IndexOfAny(new[] { ' ', '\t' });
+            if (sep <= 0) continue;
+
+            var hash = line[..sep].Trim();
+            var name = line[(sep + 1)..].TrimStart('*', ' ', '\t').Trim();
+
+            if (hash.Length == 64 && hash.All(Uri.IsHexDigit) &&
+                name.Equals(fileName, StringComparison.OrdinalIgnoreCase))
+                return hash.ToLowerInvariant();
+        }
+        return null;
+    }
+
+    private async Task<string> DownloadTextAsync(string url, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Accept.Add(
+            new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/octet-stream"));
+        using var response = await _http.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync(ct);
+    }
+
+    private static async Task<string> ComputeSha256Async(string path, CancellationToken ct)
+    {
+        await using var fs = File.OpenRead(path);
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var hash = await sha.ComputeHashAsync(fs, ct);
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     // ── GitHub API DTOs ──
@@ -259,5 +521,21 @@ public sealed class UpdateInfo
     /// <summary>Browser download URL reserved for manual downloads and website links.</summary>
     public string? InstallerUrl { get; init; }
     public long InstallerSize { get; init; }
+    /// <summary>Installer asset file name, used to match its line in the checksums manifest.</summary>
+    public string? InstallerAssetName { get; init; }
+    /// <summary>GitHub API asset URL of the SHA-256 checksums manifest, when the release publishes one.</summary>
+    public string? ChecksumsApiUrl { get; init; }
     public required string ReleaseUrl { get; init; }
+}
+
+/// <summary>How the running copy of Noctis was installed.</summary>
+public enum InstallSource
+{
+    /// <summary>Installed by the Inno Setup installer — also how winget and
+    /// Chocolatey install (they wrap the same setup). The in-app updater applies.</summary>
+    Installed,
+    /// <summary>Running from a Scoop-managed directory; update via <c>scoop update</c>.</summary>
+    Scoop,
+    /// <summary>Portable / manually-extracted copy with no installer.</summary>
+    Portable
 }

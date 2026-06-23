@@ -1,0 +1,194 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
+        x:Class="Noctis.Views.AddSongsDialog"
+        x:DataType="vm:AddSongsDialogViewModel"
+        Title="Add Songs"
+        CanResize="False"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="Button.add-song-row">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.add-song-row:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#18FFFFFF" />
+        </Style>
+        <!-- Opt out of the global hover scale: rows should highlight, not zoom. -->
+        <Style Selector="Button.add-song-row:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.add-song-row:disabled">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+    </Window.Styles>
+
+    <!-- Full-window dimmed overlay -->
+    <Border Background="#50000000"
+            PointerPressed="OnOverlayPointerPressed"
+            PointerWheelChanged="OnOverlayWheel">
+
+        <Border CornerRadius="24"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="520" Height="620"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <DockPanel>
+
+                <!-- Header: title + search -->
+                <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="12">
+                    <TextBlock Text="Add Songs"
+                               FontSize="20" FontWeight="Bold"
+                               HorizontalAlignment="Center" />
+                    <TextBox Text="{Binding SearchText}"
+                             Classes="crisp-input"
+                             Watermark="Search your library…"
+                             CornerRadius="999"
+                             x:Name="SearchBox" />
+                </StackPanel>
+
+                <!-- Footer: Cancel / Add -->
+                <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <Button Grid.Column="1"
+                                Content="Cancel"
+                                Command="{Binding CancelCommand}"
+                                Width="100" Padding="0,8"
+                                FontWeight="Bold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Margin="0,0,8,0"
+                                Cursor="Hand" />
+                        <Button Grid.Column="2"
+                                Content="{Binding AddButtonText}"
+                                Command="{Binding AddCommand}"
+                                IsEnabled="{Binding HasSelection}"
+                                MinWidth="100" Padding="16,8"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                FontWeight="Bold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand" />
+                    </Grid>
+                </Border>
+
+                <!-- Body: results / prompt / no-results -->
+                <Panel Margin="12,4,12,4">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding Results}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:AddSongItem">
+                                    <Button Classes="add-song-row"
+                                            IsEnabled="{Binding !IsInPlaylist}"
+                                            Command="{Binding $parent[ItemsControl].((vm:AddSongsDialogViewModel)DataContext).ToggleSelectCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Grid ColumnDefinitions="40,*,Auto">
+                                            <Border Grid.Column="0"
+                                                    Width="36" Height="36"
+                                                    CornerRadius="5"
+                                                    ClipToBounds="True"
+                                                    VerticalAlignment="Center"
+                                                    Background="#18FFFFFF">
+                                                <controls:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}"
+                                                                      DecodeWidth="128"
+                                                                      Stretch="UniformToFill" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="1">
+                                                <Grid ColumnDefinitions="Auto,Auto">
+                                                    <TextBlock Grid.Column="0"
+                                                               Classes="one-line-explicit-title"
+                                                               Text="{Binding Track.Title}"
+                                                               FontSize="13" FontWeight="SemiBold" />
+                                                    <Border Grid.Column="1"
+                                                            Classes="explicit-badge compact"
+                                                            Margin="6,0,0,0"
+                                                            IsVisible="{Binding Track.IsExplicit}"
+                                                            ToolTip.Tip="Explicit">
+                                                        <TextBlock Text="E"
+                                                                   Classes="explicit-badge-text compact"
+                                                                   FontSize="9"
+                                                                   Opacity="0.9" />
+                                                    </Border>
+                                                </Grid>
+                                                <TextBlock Text="{Binding Track.ArtistDisplay}"
+                                                           FontSize="11" Opacity="0.6"
+                                                           TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                            </StackPanel>
+
+                                            <!-- Added (already in playlist) -->
+                                            <TextBlock Grid.Column="2"
+                                                       Text="Added"
+                                                       FontSize="11" FontWeight="SemiBold"
+                                                       Opacity="0.55"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding IsInPlaylist}" />
+
+                                            <!-- Selection indicator -->
+                                            <Border Grid.Column="2"
+                                                    Width="22" Height="22"
+                                                    CornerRadius="11"
+                                                    BorderThickness="1.5"
+                                                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                    Background="Transparent"
+                                                    VerticalAlignment="Center"
+                                                    IsVisible="{Binding !IsInPlaylist}">
+                                                <Border IsVisible="{Binding IsSelected}"
+                                                        CornerRadius="11"
+                                                        Background="{DynamicResource AccentColorBrush}">
+                                                    <PathIcon Data="{StaticResource CheckmarkIcon}"
+                                                              Width="11" Height="11"
+                                                              Foreground="{DynamicResource AccentForegroundBrush}"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center" />
+                                                </Border>
+                                            </Border>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Prompt (no search yet) -->
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Spacing="6" IsVisible="{Binding ShowPrompt}">
+                        <TextBlock Text="Search your library to add songs"
+                                   FontSize="15" Opacity="0.5"
+                                   HorizontalAlignment="Center" TextAlignment="Center" />
+                        <TextBlock Text="Type a title, artist, or album above"
+                                   FontSize="12" Opacity="0.3"
+                                   HorizontalAlignment="Center" TextAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- No results -->
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Spacing="6" IsVisible="{Binding ShowNoResults}">
+                        <TextBlock Text="No matches"
+                                   FontSize="15" Opacity="0.5"
+                                   HorizontalAlignment="Center" TextAlignment="Center" />
+                        <TextBlock Text="Nothing in your library matches that search"
+                                   FontSize="12" Opacity="0.3"
+                                   HorizontalAlignment="Center" TextAlignment="Center" />
+                    </StackPanel>
+                </Panel>
+
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>

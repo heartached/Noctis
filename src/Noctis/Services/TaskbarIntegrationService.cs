@@ -88,6 +88,9 @@ public sealed class TaskbarIntegrationService : IDisposable
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, uint attr, ref int value, int size);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern uint RegisterWindowMessage(string msg);
+
     private delegate IntPtr SubclassProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam,
         UIntPtr id, IntPtr refData);
 
@@ -137,8 +140,10 @@ public sealed class TaskbarIntegrationService : IDisposable
         "m12.82 5.58l-.82.822l-.824-.824a5.375 5.375 0 1 0-7.601 7.602l7.895 7.895a.75.75 0 0 0 1.06 0l7.902-7.897a5.376 5.376 0 0 0-.001-7.599a5.38 5.38 0 0 0-7.611 0" +
         "m6.548 6.54L12 19.485L4.635 12.12a3.875 3.875 0 1 1 5.48-5.48l1.358 1.357a.75.75 0 0 0 1.073-.012L13.88 6.64a3.88 3.88 0 0 1 5.487 5.48";
 
+    // Solid fill of the same rounded heart silhouette as PathHeartOutline (and the
+    // app's Favorites icon), so the favorited taskbar glyph matches the outline state.
     private const string PathHeartFilled =
-        "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z";
+        "M12.82 5.58l-.82.822l-.824-.824a5.375 5.375 0 1 0-7.601 7.602l7.895 7.895a.75.75 0 0 0 1.06 0l7.902-7.897a5.376 5.376 0 0 0-.001-7.599a5.38 5.38 0 0 0-7.611 0Z";
 
     // ── Fields ───────────────────────────────────────────────────
 
@@ -148,6 +153,10 @@ public sealed class TaskbarIntegrationService : IDisposable
     private IntPtr _icoPrev, _icoPlay, _icoPause, _icoNext;
     private IntPtr _icoHeart, _icoHeartFilled;
     private bool _ready;
+    private uint _taskbarButtonCreatedMsg;
+    // Last known UI state, so re-added buttons show the right glyphs after the
+    // taskbar button is recreated (tray hide/show, Explorer restart, DPI change).
+    private bool _isPlaying, _isFavorite;
 
     public event Action? PreviousClicked;
     public event Action? PlayPauseClicked;
@@ -184,14 +193,12 @@ public sealed class TaskbarIntegrationService : IDisposable
             _icoHeart = MakeIcon(PathHeartOutline, boldenOutline: true);
             _icoHeartFilled = MakeIcon(PathHeartFilled);
 
-            var buttons = new[]
-            {
-                Btn(ID_PREV, _icoPrev, "Previous"),
-                Btn(ID_PLAY, _icoPlay, "Play"),
-                Btn(ID_NEXT, _icoNext, "Forward"),
-                Btn(ID_FAVORITE, _icoHeart, "Favorite"),
-            };
-            _taskbar.ThumbBarAddButtons(_hwnd, (uint)buttons.Length, buttons);
+            AddButtons();
+
+            // Windows destroys the thumbnail toolbar whenever the taskbar button is
+            // recreated (window hidden to tray and re-shown, Explorer restart, DPI
+            // change) and broadcasts TaskbarButtonCreated; re-add the buttons then.
+            _taskbarButtonCreatedMsg = RegisterWindowMessage("TaskbarButtonCreated");
 
             _wndProc = WndProc;
             SetWindowSubclass(_hwnd, _wndProc, (UIntPtr)1, IntPtr.Zero);
@@ -206,6 +213,7 @@ public sealed class TaskbarIntegrationService : IDisposable
 
     public void UpdatePlayPauseState(bool isPlaying)
     {
+        _isPlaying = isPlaying;
         if (!_ready || _taskbar == null) return;
 
         _taskbar.ThumbBarUpdateButtons(_hwnd, 1, new[]
@@ -216,6 +224,7 @@ public sealed class TaskbarIntegrationService : IDisposable
 
     public void UpdateFavoriteState(bool isFavorite)
     {
+        _isFavorite = isFavorite;
         if (!_ready || _taskbar == null) return;
 
         _taskbar.ThumbBarUpdateButtons(_hwnd, 1, new[]
@@ -224,12 +233,32 @@ public sealed class TaskbarIntegrationService : IDisposable
         });
     }
 
+    /// <summary>Adds all four buttons reflecting the last known playback/favorite state.</summary>
+    private void AddButtons()
+    {
+        if (_taskbar == null) return;
+
+        var buttons = new[]
+        {
+            Btn(ID_PREV, _icoPrev, "Previous"),
+            Btn(ID_PLAY, _isPlaying ? _icoPause : _icoPlay, _isPlaying ? "Pause" : "Play"),
+            Btn(ID_NEXT, _icoNext, "Forward"),
+            Btn(ID_FAVORITE, _isFavorite ? _icoHeartFilled : _icoHeart, _isFavorite ? "Unfavorite" : "Favorite"),
+        };
+        _taskbar.ThumbBarAddButtons(_hwnd, (uint)buttons.Length, buttons);
+    }
+
     // ── WndProc hook ─────────────────────────────────────────────
 
     private IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam,
         UIntPtr id, IntPtr refData)
     {
-        if (msg == WM_COMMAND)
+        if (_taskbarButtonCreatedMsg != 0 && msg == _taskbarButtonCreatedMsg)
+        {
+            // Taskbar button was recreated — the old thumbnail toolbar is gone.
+            AddButtons();
+        }
+        else if (msg == WM_COMMAND)
         {
             uint hi = ((uint)(int)wParam >> 16) & 0xFFFF;
             uint lo = (uint)(int)wParam & 0xFFFF;

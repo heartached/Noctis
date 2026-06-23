@@ -3,7 +3,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Models;
@@ -24,10 +23,14 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
 
     private string _currentFilter = string.Empty;
     private bool _isDirty = true;
-    private DispatcherTimer? _searchDebounce;
 
-    [ObservableProperty] private bool _isSearchVisible = false;
     [ObservableProperty] private string _searchText = string.Empty;
+
+    /// <summary>True when no playlists exist at all (shows the onboarding hint).</summary>
+    [ObservableProperty] private bool _showNoPlaylists;
+
+    /// <summary>True when playlists exist but the active search matched none of them.</summary>
+    [ObservableProperty] private bool _showNoResults;
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
@@ -84,36 +87,21 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
 
         foreach (var item in filtered)
             FilteredPlaylists.Add(item);
-    }
 
-    partial void OnSearchTextChanged(string value)
-    {
-        if (_searchDebounce == null)
-        {
-            _searchDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
-            _searchDebounce.Tick += (_, _) =>
-            {
-                _searchDebounce.Stop();
-                ApplyFilter(SearchText);
-            };
-        }
-
-        _searchDebounce.Stop();
-        _searchDebounce.Start();
-    }
-
-    [RelayCommand]
-    private void ToggleSearch()
-    {
-        IsSearchVisible = !IsSearchVisible;
-        if (!IsSearchVisible)
-        {
-            SearchText = string.Empty;
-        }
+        ShowNoPlaylists = PlaylistItems.Count == 0;
+        ShowNoResults = PlaylistItems.Count > 0 && FilteredPlaylists.Count == 0;
     }
 
     private Playlist? ResolvePlaylist(PlaylistNavItem item)
         => Playlists.FirstOrDefault(p => p.Id == item.PlaylistId);
+
+    /// <summary>Pins/unpins the playlist at the top of the sidebar.</summary>
+    [RelayCommand]
+    private async Task TogglePin(PlaylistNavItem item)
+    {
+        if (item.PlaylistId is not Guid id) return;
+        await _sidebar.TogglePinAsync(id);
+    }
 
     [RelayCommand]
     private void OpenPlaylist(PlaylistNavItem item)
@@ -151,7 +139,7 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
         if (playlist == null) return;
         var tracks = ResolvePlaylistTracks(playlist);
         if (tracks.Count == 0) return;
-        var shuffled = tracks.OrderBy(_ => Random.Shared.Next()).ToList();
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
@@ -188,6 +176,12 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
     private async Task CreateSmartPlaylist()
     {
         await _sidebar.CreateSmartPlaylistAsync();
+    }
+
+    [RelayCommand]
+    private async Task ImportPlaylist()
+    {
+        await MetadataHelper.OpenPlaylistImportDialog();
     }
 
     [RelayCommand]

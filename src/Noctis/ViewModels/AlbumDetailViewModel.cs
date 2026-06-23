@@ -325,6 +325,13 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        // A metadata save can change the album's identity (album/artist rename →
+        // new AlbumId), but it's still the same page. Re-key the stable
+        // "More By Artist" pick instead of letting the key miss and reshuffle
+        // the carousel under the user.
+        if (_moreByArtistKey != null && _moreByArtistOrder != null)
+            _moreByArtistKey = $"{updatedAlbum.Artist}\0{updatedAlbum.Id}";
+
         Album = updatedAlbum;
 
         Tracks.ReplaceAll(updatedAlbum.Tracks);
@@ -531,6 +538,18 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    private async Task EditAlbumDescription()
+    {
+        AlbumDescriptionEditorText = !string.IsNullOrWhiteSpace(AlbumDescriptionFull)
+            ? AlbumDescriptionFull
+            : AlbumDescription;
+        IsAlbumDescriptionEditing = true;
+        await Views.AlbumDescriptionDialog.ShowAsync(this);
+        // Dialog closed — clean up state
+        IsAlbumDescriptionEditing = false;
+    }
+
+    [RelayCommand]
     private void CloseAlbumDescription()
     {
         IsAlbumDescriptionEditing = false;
@@ -581,6 +600,13 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     [RelayCommand]
     private void AddToQueue(Track track) => _player.AddToQueue(track);
+
+    [RelayCommand]
+    private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
+
+    [RelayCommand]
+    private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
+
     [RelayCommand]
     private void AddAlbumToQueue()
     {

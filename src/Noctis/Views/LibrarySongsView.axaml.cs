@@ -103,7 +103,9 @@ public partial class LibrarySongsView : UserControl
             showInExplorerCommand: vm.ShowInExplorerCommand,
             removeCommand: vm.RemoveFromLibraryCommand,
             convertCommand: vm.ConvertTracksCommand,
-            scanReplayGainCommand: vm.ScanReplayGainCommand);
+            scanReplayGainCommand: vm.ScanReplayGainCommand,
+            startRadioCommand: vm.StartRadioCommand,
+            snoozeCommand: vm.SnoozeForMonthCommand);
     }
 
     private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)

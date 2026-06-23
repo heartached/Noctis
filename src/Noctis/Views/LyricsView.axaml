@@ -266,12 +266,15 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid x:Name="MainLayoutGrid" ColumnDefinitions="*,*"
+    <!-- Row/column definitions are fixed; wide vs narrow mode is expressed purely
+         through Grid.Row/Column/Span attached properties from code-behind. -->
+    <Grid x:Name="MainLayoutGrid" ColumnDefinitions="*,*" RowDefinitions="Auto,*"
           Background="{Binding FullBackgroundBrush}">
         <!-- AMLL/Apple-Music–style background: heavily-blurred album cover filling the page.
              A subtle scrim on top keeps lyric text legible against bright art. -->
         <Grid x:Name="LyricsBlurBackdrop"
               Grid.ColumnSpan="2"
+              Grid.RowSpan="2"
               ZIndex="-1"
               ClipToBounds="True"
               IsHitTestVisible="False"
@@ -315,19 +318,17 @@
         <!-- ══════════════════════════════════════════════════════ -->
         <Border x:Name="LeftPanel"
                 Grid.Column="0"
+                Grid.RowSpan="2"
                 Background="Transparent"
                 Padding="40,30">
             <StackPanel x:Name="LeftContentStack" VerticalAlignment="Center"
                         HorizontalAlignment="Center"
                         ClipToBounds="False"
                         Width="760">
-                <StackPanel.Transitions>
-                    <Transitions>
-                        <DoubleTransition Property="Width" Duration="0:0:0.25">
-                            <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
-                        </DoubleTransition>
-                    </Transitions>
-                </StackPanel.Transitions>
+                <!-- No size transitions here: code-behind sizes the cover/stack/lyrics
+                     from the window on attach and resize, and any transition turned
+                     those instant layout snaps into a visible grow/zoom every time the
+                     page opened or the window was minimized/maximized. -->
 
                 <!-- Album Art -->
                 <Border x:Name="AlbumArtBorder"
@@ -336,16 +337,6 @@
                         ClipToBounds="True"
                         HorizontalAlignment="Center"
                         BoxShadow="0 16 50 0 #60000000">
-                    <Border.Transitions>
-                        <Transitions>
-                            <DoubleTransition Property="Width" Duration="0:0:0.25">
-                                <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
-                            </DoubleTransition>
-                            <DoubleTransition Property="Height" Duration="0:0:0.25">
-                                <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
-                            </DoubleTransition>
-                        </Transitions>
-                    </Border.Transitions>
                     <Panel>
                         <Border Background="#333344">
                             <TextBlock Text="&#x266B;"
@@ -375,7 +366,8 @@
                 <!-- Track Info -->
                 <StackPanel Spacing="4" HorizontalAlignment="Center" Margin="0,24,0,0">
                     <!-- Title + Explicit badge -->
-                    <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.Title, FallbackValue='No track playing'}"
+                    <controls:MarqueeTextBlock x:Name="TitleMarquee"
+                                               Text="{Binding Player.CurrentTrack.Title, FallbackValue='No track playing'}"
                                                FontSize="22"
                                                FontWeight="Bold"
                                                Foreground="{Binding LyricsPrimaryFg}"
@@ -401,7 +393,8 @@
                     <Button Classes="link-btn"
                             Command="{Binding ViewArtistCommand}"
                             HorizontalAlignment="Center">
-                        <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.Artist, FallbackValue=''}"
+                        <controls:MarqueeTextBlock x:Name="ArtistMarquee"
+                                                   Text="{Binding Player.CurrentTrack.Artist, FallbackValue=''}"
                                                    FontSize="17"
                                                    Foreground="{Binding LyricsAccentFg}"
                                                    MaxDisplayWidth="520"
@@ -414,7 +407,8 @@
                             Command="{Binding ViewAlbumCommand}"
                             HorizontalAlignment="Center"
                             IsVisible="{Binding Player.CurrentTrack.Album, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.Album, FallbackValue=''}"
+                        <controls:MarqueeTextBlock x:Name="AlbumMarquee"
+                                                   Text="{Binding Player.CurrentTrack.Album, FallbackValue=''}"
                                                    FontSize="14"
                                                    Foreground="{Binding LyricsAccentFg}"
                                                    MaxDisplayWidth="520"
@@ -494,7 +488,6 @@
                 </StackPanel>
 
                 <Grid x:Name="LyricsTimeline"
-                      Width="760"
                       Margin="0,14,0,0"
                       RowDefinitions="Auto,24"
                       IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -682,7 +675,7 @@
                     </Button.Flyout>
                 </Button>
 
-                <!-- Bottom action row: Alternate source + save status (Save/Remove moved into player bar) -->
+                <!-- Bottom action row: Edit Sync + Alternate source + save status (Share moved into player-bar ⋯ menu) -->
                 <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Center"
                             Spacing="8"
@@ -714,15 +707,11 @@
         <!-- ══════════════════════════════════════════════════════ -->
         <!-- RIGHT PANEL: Lyrics Column                           -->
         <!-- ══════════════════════════════════════════════════════ -->
-        <Grid x:Name="RightPanel" Grid.Column="1"
+        <Grid x:Name="RightPanel" Grid.Column="1" Grid.RowSpan="2"
               RenderTransformOrigin="0.5,0.5">
-            <Grid.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25">
-                        <TransformOperationsTransition.Easing><CubicEaseOut/></TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Grid.Transitions>
+            <!-- No RenderTransform transition: the wide-mode 1.1x scale is applied
+                 by code-behind on attach/resize; a transition made it zoom in every
+                 time the page opened or the window was minimized/maximized. -->
 
             <!-- (Color picker moved to left panel bottom) -->
 
@@ -803,17 +792,16 @@
                               VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled"
                               Padding="24,0,0,0">
+                    <!-- FontSize set here (and adjusted from code-behind per window size)
+                         is inherited by the lyric-line and karaoke TextBlocks below. -->
                     <ItemsControl ItemsSource="{Binding ActiveLyricLines}"
                                   x:Name="LyricsItemsControl"
                                   MaxWidth="640"
+                                  FontSize="46"
                                   HorizontalAlignment="Left">
-                        <ItemsControl.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="MaxWidth" Duration="0:0:0.25">
-                                    <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
-                                </DoubleTransition>
-                            </Transitions>
-                        </ItemsControl.Transitions>
+                        <!-- No MaxWidth transition: width is set from the window on
+                             attach/resize and a transition animated the lyric column
+                             width on every open and minimize/maximize. -->
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="m:LyricLine">
                                 <Button Background="Transparent"
@@ -838,7 +826,6 @@
                                         <TextBlock Text="{Binding Text}"
                                                    Classes="lyric-line"
                                                    Classes.active="{Binding IsActive}"
-                                                   FontSize="46"
                                                    FontWeight="Bold"
                                                    Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
                                                    HorizontalAlignment="Left"
@@ -864,13 +851,11 @@
                                                            Classes.current="{Binding IsCurrent}">
                                                         <!-- Dim base layer (always visible) — gives unsung words a soft ghost. -->
                                                         <TextBlock Text="{Binding Text}"
-                                                                   FontSize="46"
                                                                    FontWeight="Bold"
                                                                    Opacity="0.45"
                                                                    Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
                                                         <!-- Bright overlay revealed left-to-right by Progress sweep. -->
                                                         <TextBlock Text="{Binding Text}"
-                                                                   FontSize="46"
                                                                    FontWeight="Bold"
                                                                    Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
                                                                    OpacityMask="{Binding Progress, Converter={StaticResource ProgressToSweepMask}}"/>

@@ -175,8 +175,19 @@ public partial class Track : ObservableObject
     /// <summary>Date and time when this track was last played.</summary>
     public DateTime? LastPlayed { get; set; }
 
-    /// <summary>User rating from 0 to 5 stars.</summary>
-    public int Rating { get; set; }
+    /// <summary>User rating from 0 to 5 stars. Observable so star displays update live.</summary>
+    [ObservableProperty]
+    private int _rating;
+
+    /// <summary>Apple Music-style "not liked" flag (suggest less of this).</summary>
+    [ObservableProperty]
+    private bool _isDisliked;
+
+    /// <summary>When set and in the future, the track is hidden from shuffle and radio until this time.</summary>
+    public DateTime? SnoozedUntil { get; set; }
+    /// <summary>True when the track is currently snoozed (SnoozedUntil in the future).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsSnoozed => SnoozedUntil is { } until && until > DateTime.UtcNow;
 
     /// <summary>Offline cache state for this track.</summary>
     public OfflineState OfflineState { get; set; } = OfflineState.None;
@@ -190,8 +201,30 @@ public partial class Track : ObservableObject
 
     partial void OnIsFavoriteChanged(bool value)
     {
-        if (value) FavoritedAt = DateTime.UtcNow;
+        if (value)
+        {
+            // Only stamp when no timestamp exists: JSON deserialization replays
+            // IsFavorite=true on every library load, and unconditionally stamping
+            // here overwrote every favorite's history with load time (the
+            // favorites grid then scattered after each restart). The persisted
+            // FavoritedAt may be applied before or after this setter; ??= is
+            // correct in both orders.
+            FavoritedAt ??= DateTime.UtcNow;
+        }
+        else
+        {
+            // Clearing on unfavorite makes a later re-favorite stamp fresh.
+            FavoritedAt = null;
+        }
     }
+
+    /// <summary>
+    /// Raises a change notification for every property. Most metadata fields are
+    /// plain non-notifying properties (they only change via the metadata editor),
+    /// so views bound directly to a Track instance call-site-refresh through this
+    /// after a save instead of requiring a full list rebuild.
+    /// </summary>
+    public void NotifyMetadataUpdated() => OnPropertyChanged(string.Empty);
 
     /// <summary>Cached album artwork path, populated from album data during index build. Not persisted.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
@@ -220,6 +253,28 @@ public partial class Track : ObservableObject
 
     /// <summary>Audio codec description from TagLib# (e.g., "FLAC", "Apple Lossless", "MPEG Audio Layer 3").</summary>
     public string Codec { get; set; } = string.Empty;
+
+    /// <summary>Canonical album-artist for Various-Artists compilations.</summary>
+    public const string VariousArtists = "Various Artists";
+
+    /// <summary>
+    /// Resolves the effective album-artist used for both grouping and display.
+    /// An explicit album-artist tag always wins (it already groups correctly).
+    /// Otherwise a compilation-flagged track is filed under <see cref="VariousArtists"/>
+    /// so a Various-Artists release stays as one album instead of fragmenting into
+    /// one album per performer; non-compilation tracks fall back to the performer.
+    /// Mirrors iTunes/Apple Music behavior.
+    /// </summary>
+    public static string ResolveAlbumArtist(string? explicitAlbumArtist, string? performer, bool isCompilation)
+    {
+        if (!string.IsNullOrWhiteSpace(explicitAlbumArtist))
+            return explicitAlbumArtist;
+        if (isCompilation)
+            return VariousArtists;
+        if (!string.IsNullOrWhiteSpace(performer))
+            return performer;
+        return "Unknown Artist";
+    }
 
     /// <summary>
     /// Generates a deterministic album ID from AlbumArtist and Album name.

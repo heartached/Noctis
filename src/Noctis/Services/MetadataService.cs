@@ -108,7 +108,14 @@ public class MetadataService : IMetadataService
 
             // Preserve all credited performers so featured artists show in track rows.
             var artist = FirstNonEmpty(JoinTagValues(tag.Performers), tag.FirstPerformer, tag.FirstAlbumArtist, "Unknown Artist");
-            var albumArtist = FirstNonEmpty(JoinTagValues(tag.AlbumArtists), tag.FirstAlbumArtist, tag.FirstPerformer, "Unknown Artist");
+            // Resolve the album-artist used for grouping/display. A compilation with no
+            // explicit album-artist tag is filed under "Various Artists" so the release
+            // stays as one album instead of fragmenting into one album per performer.
+            var isCompilation = ExtendedTagIO.ReadIsCompilation(file);
+            var explicitAlbumArtist = JoinTagValues(tag.AlbumArtists);
+            if (string.IsNullOrWhiteSpace(explicitAlbumArtist))
+                explicitAlbumArtist = tag.FirstAlbumArtist ?? string.Empty;
+            var albumArtist = Track.ResolveAlbumArtist(explicitAlbumArtist, tag.FirstPerformer, isCompilation);
             var album = string.IsNullOrWhiteSpace(tag.Album) ? "Unknown Album" : tag.Album;
             var title = string.IsNullOrWhiteSpace(tag.Title)
                 ? Path.GetFileNameWithoutExtension(filePath)
@@ -143,7 +150,7 @@ public class MetadataService : IMetadataService
                 Comment = tag.Comment ?? string.Empty,
                 Copyright = ReadCopyright(file),
                 ReleaseDate = ReadReleaseDate(file, tag),
-                IsCompilation = ExtendedTagIO.ReadIsCompilation(file),
+                IsCompilation = isCompilation,
                 Grouping = tag.Grouping ?? string.Empty,
                 ShowComposerInAllViews = ExtendedTagIO.ReadShowComposer(file),
                 UseWorkAndMovement = ExtendedTagIO.ReadUseWorkAndMovement(file),
@@ -151,6 +158,8 @@ public class MetadataService : IMetadataService
                 MovementName = ExtendedTagIO.ReadMovementName(file),
                 MovementNumber = ExtendedTagIO.ReadMovementNumber(file),
                 MovementCount = ExtendedTagIO.ReadMovementCount(file),
+                Rating = ExtendedTagIO.ReadRating(file),
+                IsDisliked = ExtendedTagIO.ReadIsDisliked(file),
                 // Audio quality properties
                 Bitrate = bitrate,
                 SampleRate = sampleRate,
@@ -287,7 +296,25 @@ public class MetadataService : IMetadataService
             ExtendedTagIO.WriteMovementName(file, track.MovementName);
             ExtendedTagIO.WriteMovementNumber(file, track.MovementNumber);
             ExtendedTagIO.WriteMovementCount(file, track.MovementCount);
+            ExtendedTagIO.WriteRating(file, track.Rating);
+            ExtendedTagIO.WriteIsDisliked(file, track.IsDisliked);
 
+            file.Save();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public bool WriteRating(string filePath, int rating, bool isDisliked)
+    {
+        try
+        {
+            using var file = TagLib.File.Create(filePath);
+            ExtendedTagIO.WriteRating(file, rating);
+            ExtendedTagIO.WriteIsDisliked(file, isDisliked);
             file.Save();
             return true;
         }

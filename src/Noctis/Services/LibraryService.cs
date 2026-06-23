@@ -11,7 +11,8 @@ namespace Noctis.Services;
 public class LibraryService : ILibraryService
 {
     private const int CurrentMetadataSchemaVersion = 6;
-    private const int CurrentIndexCacheVersion = 2;
+    // v3: album track order normalized (disc 0 → 1, missing track numbers last)
+    private const int CurrentIndexCacheVersion = 3;
 
     private readonly IMetadataService _metadata;
     private readonly IPersistenceService _persistence;
@@ -97,9 +98,6 @@ public class LibraryService : ILibraryService
 
         await Task.Run(() =>
         {
-            // Track which album IDs have had art extraction attempted to avoid redundant work
-            var artExtracted = new ConcurrentDictionary<Guid, byte>();
-
             foreach (var folder in includeRoots)
             {
                 if (!Directory.Exists(folder)) continue;
@@ -152,17 +150,6 @@ public class LibraryService : ILibraryService
                                 track.SourceType = SourceType.Local;
                             newTracks.Add(track);
                             Interlocked.Increment(ref changedCount);
-
-                            // Extract and cache album artwork if we don't have it yet
-                            var artPath = _persistence.GetArtworkPath(track.AlbumId);
-                            if (!File.Exists(artPath) && artExtracted.TryAdd(track.AlbumId, 0))
-                            {
-                                var artBytes = _metadata.ExtractAlbumArt(filePath);
-                                if (artBytes != null)
-                                {
-                                    _persistence.SaveArtwork(track.AlbumId, artBytes);
-                                }
-                            }
                         }
                         else
                         {
@@ -184,6 +171,34 @@ public class LibraryService : ILibraryService
         }, ct);
 
         // If scan was cancelled, don't replace the library with partial data
+        if (ct.IsCancellationRequested) return;
+
+        // Deterministic album-art extraction. Previously art was pulled inside the parallel
+        // scan loop, so whichever thread won the race set the album cover — non-deterministic
+        // for albums whose tracks carry differing embedded art (e.g. compilations). Here we
+        // pick each album's representative track (lowest disc/track) so the cached cover is
+        // stable across scans. Same number of extractions as before (one per uncached album).
+        await Task.Run(() =>
+        {
+            var artGroups = newTracks
+                .Where(t => t.SourceType == SourceType.Local)
+                .GroupBy(t => t.AlbumId)
+                .Where(g => !File.Exists(_persistence.GetArtworkPath(g.Key)))
+                .ToList();
+
+            Parallel.ForEach(artGroups,
+                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = ct },
+                g =>
+                {
+                    if (ct.IsCancellationRequested) return;
+                    var rep = Album.SelectArtworkRepresentative(g.ToList());
+                    if (rep == null) return;
+                    var artBytes = _metadata.ExtractAlbumArt(rep.FilePath);
+                    if (artBytes != null)
+                        _persistence.SaveArtwork(g.Key, artBytes);
+                });
+        }, ct);
+
         if (ct.IsCancellationRequested) return;
 
         // Fast path: every existing track was found and unchanged, and no new or
@@ -401,6 +416,48 @@ public class LibraryService : ILibraryService
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, Guid>> RelocateTracksAsync(
+        IReadOnlyList<(string oldPath, string newPath)> moves, CancellationToken ct = default)
+    {
+        var remap = new Dictionary<Guid, Guid>();
+        if (moves == null || moves.Count == 0) return remap;
+
+        var changed = false;
+        foreach (var (oldPath, newPath) in moves)
+        {
+            if (string.IsNullOrWhiteSpace(oldPath) || string.IsNullOrWhiteSpace(newPath)) continue;
+
+            var oldId = ComputeFileId(oldPath);
+            if (!_trackIndex.TryGetValue(oldId, out var track)) continue;
+
+            track.FilePath = newPath;
+            try
+            {
+                var fi = new FileInfo(newPath);
+                if (fi.Exists)
+                {
+                    track.LastModified = fi.LastWriteTimeUtc;
+                    track.FileSize = fi.Length;
+                }
+            }
+            catch { /* keep prior size/timestamp if the new file isn't readable yet */ }
+
+            var newId = ComputeFileId(newPath);
+            track.Id = newId;
+            if (oldId != newId) remap[oldId] = newId;
+            changed = true;
+        }
+
+        if (!changed) return remap;
+
+        await RebuildIndexesAsync();
+        await SaveAsync();
+        await _sqliteIndex.ClearAsync(ct);
+        await _sqliteIndex.UpsertTracksAsync(_tracks, ct);
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        return remap;
+    }
+
     /// <summary>
     /// Adds removed file paths to the exclusion list and removes any MusicFolders
     /// entries that no longer contribute any tracks to the library.
@@ -494,6 +551,59 @@ public class LibraryService : ILibraryService
         FavoritesChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    public async Task SetTracksRatingAsync(IReadOnlyList<Track> tracks, int rating)
+    {
+        rating = Math.Clamp(rating, 0, 5);
+        var changed = tracks.Where(t => t.Rating != rating).ToList();
+        if (changed.Count == 0) return;
+
+        foreach (var track in changed)
+            track.Rating = rating;
+        await SaveAsync();
+        QueueRatingTagWrites(changed);
+    }
+
+    public async Task SetTracksDislikedAsync(IReadOnlyList<Track> tracks, bool isDisliked)
+    {
+        var changed = tracks.Where(t => t.IsDisliked != isDisliked).ToList();
+        if (changed.Count == 0) return;
+
+        foreach (var track in changed)
+            track.IsDisliked = isDisliked;
+        await SaveAsync();
+        QueueRatingTagWrites(changed);
+    }
+
+    public async Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until)
+    {
+        var changed = tracks.Where(t => t.SnoozedUntil != until).ToList();
+        if (changed.Count == 0) return;
+
+        foreach (var track in changed)
+            track.SnoozedUntil = until;
+        // Snooze is app-only state — no file tag write (unlike rating/dislike).
+        await SaveAsync();
+    }
+
+    /// <summary>
+    /// Persists rating tags to the audio files on a worker thread (best effort —
+    /// the library JSON saved above is the source of truth if a file is locked/read-only).
+    /// </summary>
+    private void QueueRatingTagWrites(IReadOnlyList<Track> tracks)
+    {
+        var targets = tracks
+            .Where(t => t.SourceType == SourceType.Local)
+            .Select(t => (t.FilePath, t.Rating, t.IsDisliked))
+            .ToList();
+        if (targets.Count == 0) return;
+
+        _ = Task.Run(() =>
+        {
+            foreach (var (path, rating, disliked) in targets)
+                _metadata.WriteRating(path, rating, disliked);
+        });
+    }
+
     public void NotifyMetadataChanged()
     {
         _ = Task.Run(async () =>
@@ -581,7 +691,14 @@ public class LibraryService : ILibraryService
                 .GroupBy(t => t.AlbumId)
                 .Select(g =>
                 {
-                    var albumTracks = g.OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
+                    // Same normalization as the play-order sort (AlbumDetailViewModel.InAlbumOrder):
+                    // disc 0 counts as disc 1 and missing track numbers sink to the end,
+                    // so the displayed album order always matches the playback order.
+                    var albumTracks = g
+                        .OrderBy(t => t.DiscNumber <= 0 ? 1 : t.DiscNumber)
+                        .ThenBy(t => t.TrackNumber <= 0 ? int.MaxValue : t.TrackNumber)
+                        .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
                     var first = albumTracks[0];
                     var hasArt = artworkExists.Contains(first.AlbumId);
 
@@ -669,6 +786,7 @@ public class LibraryService : ILibraryService
         target.PlayCount = source.PlayCount;
         target.LastPlayed = source.LastPlayed;
         target.Rating = source.Rating;
+        target.IsDisliked = source.IsDisliked;
         target.OfflineState = source.OfflineState;
         target.SourceType = source.SourceType;
         target.SourceTrackId = source.SourceTrackId;

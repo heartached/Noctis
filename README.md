@@ -9,12 +9,13 @@ A music player that respects what's yours. Zero tracking, total control.
 [![License: MIT](https://img.shields.io/badge/License-MIT-red.svg?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg?style=for-the-badge)]()
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg?style=for-the-badge)]()
-[![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=yellowgreen&style=for-the-badge&cacheSeconds=600)](https://github.com/heartached/Noctis/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/heartached/Noctis/dotnet.yml?label=build&style=for-the-badge)](https://github.com/heartached/Noctis/actions)
 
-[![Discord](https://img.shields.io/badge/DISCORD-JOIN%20SERVER-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=4F4F4F)](https://discord.gg/BNCDZQUVx7)
+[![Discord](https://img.shields.io/badge/DISCORD-JOIN%20SERVER-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=4F4F4F)](https://discord.gg/BNCDZQUVx7) &nbsp; [![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=yellowgreen&style=for-the-badge&cacheSeconds=600)](https://github.com/heartached/Noctis/releases)
 
-[Download](https://github.com/heartached/Noctis/releases) • [Discord](https://discord.gg/BNCDZQUVx7) • [Features](#features) • [Build](#build) • [Feedback](#feedback)
+[![Download for Windows](https://img.shields.io/badge/Download_for-Windows-0078D6?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0wIDMuNDQ5TDkuNzUgMi4xdjkuNDUxSDBtMTAuOTQ5LTkuNjAyTDI0IDB2MTEuNEgxMC45NDlNMCAxMi42aDkuNzV2OS40NTFMMCAyMC42OTlNMTAuOTQ5IDEyLjZIMjRWMjRsLTEyLjktMS44MDEiLz48L3N2Zz4%3D&logoColor=white)](https://github.com/heartached/Noctis/releases/latest/download/Noctis-Setup.exe)
+[![Download for macOS](https://img.shields.io/badge/Download_for-macOS-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/heartached/Noctis/releases/latest/download/Noctis-osx-arm64.dmg)
+[![Download for Linux](https://img.shields.io/badge/Download_for-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/heartached/Noctis/releases/latest/download/Noctis-x86_64.AppImage)
 
 </div>
 
@@ -22,13 +23,17 @@ A music player that respects what's yours. Zero tracking, total control.
 
 ## Screenshots
 
-![](docs/images/home.png)
+![Home](docs/images/home.png)
 
-![](docs/images/lyrics.png)
+![Cover Flow](docs/images/coverflow.png)
 
-![](docs/images/coverflow.png)
+![Cover collage](docs/images/covercollage.png)
 
-![](docs/images/settingsxalbums.png)
+![Artists](docs/images/artists.png)
+
+![Lyrics](docs/images/lyrics.png)
+
+![Themes](docs/images/themes.png)
 
 ---
 
@@ -58,31 +63,37 @@ Or download the installer / portable zip from the
 
 ## Features
 
-It packs a horizon of features including,
+Everything below ships in the box — no accounts, no upsells, no telemetry.
 
-- [x] Lossless audio support — FLAC, ALAC, WAV, AIFF, APE, WavPack (plus MP3, AAC, OGG, Opus, WMA, M4A)
+- [x] Lossless formats — FLAC, ALAC, WAV, AIFF, APE, WavPack (plus MP3, AAC, OGG, Opus, WMA, M4A)
 - [x] Gapless playback & crossfade
-- [x] 10-band equalizer with presets
-- [x] Replay Gain & loudness normalization
+- [x] Parametric equalizer with presets
+- [x] Bit-perfect WASAPI exclusive output with a live signal-path badge (Windows)
+- [x] ReplayGain & loudness normalization
 - [x] Audio converter — batch transcode to FLAC, MP3, AAC, and more (ffmpeg-backed)
-- [x] Cover Flow view for browsing albums
-- [x] Dynamic ambient backgrounds on lyrics and album pages
-- [x] Animated cover art for the now-playing track
-- [x] Custom themes & accent colors
-- [x] Side lyrics panel alongside any view
-- [x] Synced lyrics via LRCLIB and NetEase with offline cache
-- [x] Plain + synced lyrics editor with `.lrc` sidecar export
-- [x] Drag-and-drop import
-- [x] Multi-select with bulk actions across every view
-- [x] Full metadata editor with artwork, lyrics, and per-track options
+- [x] Floating mini player
+- [x] Songs, Albums, Artists, Folders & Playlists views
 - [x] Release-type aware sections (Albums / Singles / EPs / Compilations) with filter chips
-- [x] Smart playlists, favorites, and drag-reorder playlist management
-- [x] Library statistics with play counts, genre distribution, and listening trends
-- [x] Navidrome, SMB, and WebDAV remote sources with offline cache
+- [x] Smart playlists, favorites & drag-to-reorder playlists
+- [x] Full metadata editor with artwork, lyrics & per-track options
+- [x] Drag-and-drop import and multi-select bulk actions in every view
+- [x] Duplicate finder & file organizer (rename/move by metadata)
+- [x] Command palette for fast navigation
+- [x] Library statistics plus a "Wrap" year / month listening recap
+- [x] Synced lyrics via LRCLIB & NetEase with offline cache
+- [x] Plain + synced lyrics editor with `.lrc` sidecar export
+- [x] Side lyrics panel alongside any view
+- [x] Share lyrics as image cards or short video clips
+- [x] Cover Flow album browsing
+- [x] Animated cover art for the now-playing track
+- [x] Dynamic ambient backgrounds on lyrics & album pages
+- [x] Custom themes & accent colors with a built-in theme editor
+- [x] Navidrome, SMB & WebDAV remote sources with offline cache
+- [x] Web remote — control playback from your phone's browser over your LAN
 - [x] Artist images & bios via MusicBrainz and Deezer; artwork lookup via iTunes
 - [x] Last.fm scrobbling + album descriptions
 - [x] ListenBrainz scrobbling
-- [x] Discord Rich Presence integration
+- [x] Discord Rich Presence
 - [x] In-app self-update from GitHub releases
 
 ---
@@ -90,7 +101,8 @@ It packs a horizon of features including,
 ## Build
 
 ```bash
-git clone https://github.com/heartached/noctis
+git clone https://github.com/heartached/Noctis
+cd Noctis
 dotnet run --project src/Noctis/Noctis.csproj
 ```
 

@@ -1,0 +1,322 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.LyricShareDialog"
+        x:DataType="vm:LyricShareViewModel"
+        Title="Share lyrics"
+        CanResize="False"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        ShowInTaskbar="False">
+
+    <Window.Styles>
+        <Style Selector="Button.share-pill">
+            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.share-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#33FFFFFF"/>
+        </Style>
+        <!-- Active (selected) and accent pills keep the red on hover instead of greying out. -->
+        <Style Selector="Button.share-pill.active">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+        <Style Selector="Button.share-pill.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+        <Style Selector="Button.share-pill.active:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+        <Style Selector="Button.share-pill.accent">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+        <Style Selector="Button.share-pill.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+        <Style Selector="Button.share-pill.accent:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+
+        <!-- Solid color swatch: kill the default Fluent hover/press square behind the round chip. -->
+        <Style Selector="Button.color-swatch:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.color-swatch:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+
+        <!-- Borderless editable lyric line. -->
+        <Style Selector="TextBox.share-edit">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="2,2"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="TextBox.share-edit:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="#14FFFFFF"/>
+        </Style>
+        <Style Selector="TextBox.share-edit:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="#1FFFFFFF"/>
+        </Style>
+
+        <!-- A stray white glyph (the Fluent scrollbar's line-up arrow) shows at the top of
+             the line list at rest, and the app-wide kill for it doesn't take here. Rather
+             than chase the exact sub-part, hide the whole vertical bar when idle and reveal
+             it (macOS-style) only while the list is hovered — so nothing shows at rest. -->
+        <Style Selector="ScrollBar:vertical">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ScrollViewer:pointerover /template/ ScrollBar:vertical">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="ScrollBar:vertical:pointerover">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+    </Window.Styles>
+
+    <!-- Full-window dimmed overlay -->
+    <Border Background="#98000000" PointerPressed="OnOverlayPointerPressed">
+
+        <!-- Centered dialog card -->
+        <Border PointerPressed="OnCardPointerPressed"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Padding="22,18"
+                Width="880"
+                MaxHeight="700"
+                CornerRadius="12"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="1"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+            <Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="*,Auto">
+
+                <!-- Header -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Spacing="2">
+                    <TextBlock Text="Share lyrics" FontSize="22" FontWeight="Bold"/>
+                    <TextBlock FontSize="13" Opacity="0.7">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0} — {1}">
+                                <Binding Path="TrackTitle"/>
+                                <Binding Path="TrackArtist"/>
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                </StackPanel>
+
+                <Button Grid.Row="0" Grid.Column="1"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Width="32" Height="32"
+                        Padding="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Cursor="Hand"
+                        Click="OnCloseClick">
+                    <PathIcon Data="{StaticResource DismissIcon}" Width="16" Height="16" Opacity="0.75"/>
+                </Button>
+
+                <!-- Body: line picker (left) + preview (right) -->
+                <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="*,16,Auto" Margin="0,16,0,0">
+                    <Border Grid.Column="0"
+                            Background="#18000000"
+                            CornerRadius="8"
+                            Padding="6">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="LineItems" ItemsSource="{Binding Lines}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SelectableLyricLine">
+                                        <Border Classes.current="{Binding IsCurrent}"
+                                                Background="Transparent"
+                                                CornerRadius="6"
+                                                Padding="4,2"
+                                                Margin="0,1">
+                                            <Border.Styles>
+                                                <Style Selector="Border.current">
+                                                    <Setter Property="Background" Value="#33E74856"/>
+                                                </Style>
+                                            </Border.Styles>
+                                            <Grid ColumnDefinitions="Auto,*">
+                                                <CheckBox Grid.Column="0"
+                                                          Classes="metadata-pill-checkbox"
+                                                          VerticalAlignment="Center"
+                                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
+                                                <TextBox Grid.Column="1"
+                                                         Classes="share-edit"
+                                                         Text="{Binding Text, Mode=TwoWay}"
+                                                         AcceptsReturn="False"
+                                                         TextWrapping="Wrap"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- Preview -->
+                    <Border Grid.Column="2"
+                            Width="320" Height="480"
+                            Background="#18000000"
+                            CornerRadius="8">
+                        <Panel>
+                            <TextBlock Text="Select lines to preview"
+                                       FontSize="13" Opacity="0.5"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding Preview, Converter={x:Static ObjectConverters.IsNull}}"/>
+                            <Image Source="{Binding Preview}"
+                                   Stretch="Uniform"
+                                   Margin="10"
+                                   RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                        </Panel>
+                    </Border>
+                </Grid>
+
+                <!-- Background: Artwork / Solid + solid swatch strip -->
+                <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal"
+                            Spacing="8" VerticalAlignment="Center" Margin="0,14,0,0">
+                    <TextBlock Text="Background" FontSize="12" Opacity="0.7" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                    <Button Classes="share-pill"
+                            Classes.active="{Binding IsArtworkBg}"
+                            Content="Artwork"
+                            Command="{Binding UseArtworkBgCommand}"/>
+                    <Button Classes="share-pill"
+                            Classes.active="{Binding IsSolidBg}"
+                            Content="Solid"
+                            Command="{Binding UseSolidBgCommand}"/>
+
+                    <!-- Solid color swatches (only when Solid is selected) -->
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Disabled"
+                                  IsVisible="{Binding IsSolidBg}"
+                                  Margin="6,0,0,0">
+                        <ItemsControl ItemsSource="{Binding SolidSwatches}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="6"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ShareSolidSwatch">
+                                    <Button Classes="color-swatch"
+                                            Padding="0" Background="Transparent" BorderThickness="0"
+                                            Cursor="Hand"
+                                            Command="{Binding $parent[ItemsControl].((vm:LyricShareViewModel)DataContext).SetSolidColorCommand}"
+                                            CommandParameter="{Binding Hex}"
+                                            ToolTip.Tip="{Binding Name}">
+                                        <Border Width="22" Height="22" CornerRadius="11"
+                                                Background="{Binding Preview}"
+                                                BorderBrush="#55FFFFFF" BorderThickness="1"/>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- Footer: format / text-color / sync toggles + actions -->
+                <Grid Grid.Row="3" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,16,0,0">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <!-- Aspect -->
+                        <Button Classes="share-pill"
+                                Classes.active="{Binding IsSquare}"
+                                Content="1:1"
+                                Command="{Binding SelectSquareCommand}"/>
+                        <Button Classes="share-pill"
+                                Classes.active="{Binding IsStory}"
+                                Content="9:16"
+                                Command="{Binding SelectStoryCommand}"/>
+
+                        <Border Width="1" Height="20" Background="#2EFFFFFF" Margin="2,0"/>
+
+                        <!-- Text color -->
+                        <Button Classes="share-pill"
+                                Classes.active="{Binding IsAutoText}"
+                                Content="Auto"
+                                Command="{Binding UseAutoTextCommand}"/>
+                        <Button Classes="share-pill"
+                                Classes.active="{Binding IsWhiteText}"
+                                Content="White"
+                                Command="{Binding UseWhiteTextCommand}"/>
+                        <Button Classes="share-pill"
+                                Classes.active="{Binding IsBlackText}"
+                                Content="Black"
+                                Command="{Binding UseBlackTextCommand}"/>
+
+                        <!-- Follow playback (only when synced lyrics available) -->
+                        <Border Width="1" Height="20" Background="#2EFFFFFF" Margin="2,0"
+                                IsVisible="{Binding SyncAvailable}"/>
+                        <Button Classes="share-pill"
+                                Classes.active="{Binding SyncEnabled}"
+                                IsVisible="{Binding SyncAvailable}"
+                                Command="{Binding ToggleSyncCommand}"
+                                Content="Sync"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding StatusText}"
+                               FontSize="12" Opacity="0.7"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"/>
+
+                    <Button Grid.Column="2"
+                            Classes="share-pill"
+                            Margin="0,0,8,0"
+                            Click="OnCopyClick"
+                            IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource CopyIcon}" Width="13" Height="13"/>
+                            <TextBlock Text="Copy" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="3"
+                            Classes="share-pill"
+                            Margin="0,0,8,0"
+                            Click="OnSaveVideoClick"
+                            IsEnabled="{Binding CanExportVideo}"
+                            ToolTip.Tip="Save an MP4 clip — this lyric card with the song audio">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource SaveDiskIcon}" Width="13" Height="13"/>
+                            <TextBlock Text="Save Video" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="4"
+                            Classes="share-pill accent"
+                            Click="OnSaveClick"
+                            IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{StaticResource SaveDiskIcon}" Width="13" Height="13"
+                                      Foreground="{DynamicResource AccentForegroundBrush}"/>
+                            <TextBlock Text="Save PNG" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Grid>
+        </Border>
+    </Border>
+</Window>

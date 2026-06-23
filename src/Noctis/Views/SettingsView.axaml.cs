@@ -17,6 +17,7 @@ public partial class SettingsView : UserControl
 {
     private const double PreampThumbSize = 14;
     private const double PreampDefault = 0.0;
+    private const double CrossfadeDurationDefault = 6.0; // matches the Settings reset value
 
     private SettingsViewModel? _trackedViewModel;
     private readonly TranslateTransform _preampThumbTransform = new();
@@ -130,22 +131,22 @@ public partial class SettingsView : UserControl
 
     private void OnSettingsViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SettingsViewModel.MediaFoldersScrollRequest))
-            ScrollToMediaFoldersSection();
+        switch (e.PropertyName)
+        {
+            // The media-folders card is the first card on the Library tab (the view model
+            // already switched tabs), so landing there is just a scroll to the top.
+            case nameof(SettingsViewModel.MediaFoldersScrollRequest):
+            case nameof(SettingsViewModel.SelectedSettingsTab):
+                ScrollToTop();
+                break;
+        }
     }
 
-    private void ScrollToMediaFoldersSection()
+    private void ScrollToTop()
     {
-        Dispatcher.UIThread.Post(() =>
-        {
-            var point = MediaFoldersSectionAnchor.TranslatePoint(new Point(0, 0), SettingsScrollViewer);
-            if (point is not { } relativePoint)
-                return;
-
-            var maxY = Math.Max(0, SettingsScrollViewer.Extent.Height - SettingsScrollViewer.Viewport.Height);
-            var targetY = Math.Clamp(SettingsScrollViewer.Offset.Y + relativePoint.Y - 12, 0, maxY);
-            SettingsScrollViewer.Offset = new Vector(SettingsScrollViewer.Offset.X, targetY);
-        }, DispatcherPriority.Loaded);
+        Dispatcher.UIThread.Post(
+            () => SettingsScrollViewer.Offset = new Vector(SettingsScrollViewer.Offset.X, 0),
+            DispatcherPriority.Loaded);
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -222,6 +223,28 @@ public partial class SettingsView : UserControl
     {
         if (DataContext is SettingsViewModel vm)
             vm.ReplayGainPreampDb = PreampDefault;
+    }
+
+    // Double-tapping the crossfade duration slider restores the default duration
+    // (same affordance as the ReplayGain pre-amp slider).
+    private void OnCrossfadeSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+        {
+            vm.CrossfadeDuration = CrossfadeDurationDefault;
+            e.Handled = true;
+        }
+    }
+
+    // Double-tapping an EQ gain slider resets that band to 0 dB (same affordance
+    // as the ReplayGain pre-amp slider).
+    private void OnEqGainSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Slider { DataContext: EqBandViewModel band })
+        {
+            band.GainDb = 0;
+            e.Handled = true;
+        }
     }
 
     private void OnPreampSliderPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)

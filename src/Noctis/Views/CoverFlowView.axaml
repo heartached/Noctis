@@ -17,6 +17,15 @@
         <Style Selector="Button.link-btn:pointerover /template/ ContentPresenter">
             <Setter Property="Opacity" Value="0.7"/>
         </Style>
+        <!-- Kill the default Fluent hover/press square behind the arrow glyph -->
+        <Style Selector="Button.link-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.link-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
         <!-- Override global Button:pointerover zoom — link buttons in cover flow stay still on hover -->
         <Style Selector="Button.link-btn:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
@@ -28,8 +37,20 @@
 
     <Grid RowDefinitions="*">
 
-        <!-- Blurred background: large artwork behind everything -->
-        <Panel Grid.Row="0" IsHitTestVisible="False">
+        <!-- Collage background: quiet charcoal with a subtle radial lift (collage mode only) -->
+        <Panel Grid.Row="0" IsHitTestVisible="False" IsVisible="{Binding IsCollageMode}">
+            <Border>
+                <Border.Background>
+                    <RadialGradientBrush GradientOrigin="50%,40%" Center="50%,40%" RadiusX="70%" RadiusY="70%">
+                        <GradientStop Color="#202225" Offset="0"/>
+                        <GradientStop Color="#18191B" Offset="1"/>
+                    </RadialGradientBrush>
+                </Border.Background>
+            </Border>
+        </Panel>
+
+        <!-- Blurred background: large artwork behind everything (carousel mode only) -->
+        <Panel Grid.Row="0" IsHitTestVisible="False" IsVisible="{Binding !IsCollageMode}">
             <ctrl:CachedImage x:Name="BackgroundArt"
                               SourcePath="{Binding CenterArtworkPath}"
                               Stretch="UniformToFill"
@@ -42,22 +63,373 @@
                 </ctrl:CachedImage.Effect>
             </ctrl:CachedImage>
             <!-- Gradient overlay for readability -->
-            <Border x:Name="BackgroundOverlay" Background="{DynamicResource AppMainBackground}" Opacity="0.45" />
+            <Border x:Name="BackgroundOverlay" Background="{DynamicResource AppMainBackground}" Opacity="0.55" />
         </Panel>
 
         <!-- Main content: carousel + text stacked vertically -->
         <Grid Grid.Row="0" Margin="0,24,0,12">
 
-            <!-- Vertical stack: covers centered, text just below -->
-            <StackPanel HorizontalAlignment="Center"
+            <!-- ══ Static album-art collage (decorative; library artwork, fully non-interactive) ══
+                 Fixed 1410×540 design canvas, scaled down to fit on smaller windows and centred.
+                 A tidy column masonry of up to 32 covers: covers in a column share a width and
+                 left edge (so they line up), columns get larger toward the centre and smaller
+                 toward the edges. Slots fill from the now-playing track outward through UpNext.
+                 IsHitTestVisible=False → no cover is clickable, hoverable or selectable. -->
+            <Viewbox Stretch="Uniform"
+                     MaxWidth="1900" MaxHeight="760"
+                     IsHitTestVisible="False" Margin="24,24,24,140"
+                     IsVisible="{Binding IsCollageMode}">
+                <Canvas Width="1410" Height="540">
+
+                    <!-- ═══ Centre column (200): now-playing + next ═══ -->
+                    <Border Canvas.Left="604" Canvas.Top="62" Width="200" Height="200" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 8 22 0 #5E000000"
+                            IsVisible="{Binding CenterTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding CenterTrack.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <!-- Animated cover for the now-playing tile (same control/setting as the carousel) -->
+                            <ctrl:AnimatedCoverImage
+                                Source="{Binding Player.CurrentAnimatedCoverPath}"
+                                IsActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}" />
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="18" Height="18" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,9,9"
+                                      IsVisible="{Binding CenterTrack.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="604" Canvas.Top="278" Width="200" Height="200" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 8 22 0 #5E000000"
+                            IsVisible="{Binding NextTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding NextTrack.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="18" Height="18" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,9,9"
+                                      IsVisible="{Binding NextTrack.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+
+                    <!-- ═══ Inner columns (170) ═══ -->
+                    <Border Canvas.Left="418" Canvas.Top="1" Width="170" Height="170" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 8 22 0 #5E000000"
+                            IsVisible="{Binding FarNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding FarNextTrack.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="16" Height="16" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
+                                      IsVisible="{Binding FarNextTrack.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="418" Canvas.Top="185" Width="170" Height="170" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 8 22 0 #5E000000"
+                            IsVisible="{Binding EdgeNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding EdgeNextTrack.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="16" Height="16" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
+                                      IsVisible="{Binding EdgeNextTrack.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="418" Canvas.Top="369" Width="170" Height="170" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 8 22 0 #5E000000"
+                            IsVisible="{Binding OffNextTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding OffNextTrack.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="16" Height="16" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
+                                      IsVisible="{Binding OffNextTrack.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="820" Canvas.Top="1" Width="170" Height="170" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 8 22 0 #5E000000"
+                            IsVisible="{Binding Next5Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next5Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="16" Height="16" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
+                                      IsVisible="{Binding Next5Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="820" Canvas.Top="185" Width="170" Height="170" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 8 22 0 #5E000000"
+                            IsVisible="{Binding Next6Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next6Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="16" Height="16" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
+                                      IsVisible="{Binding Next6Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="820" Canvas.Top="369" Width="170" Height="170" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 8 22 0 #5E000000"
+                            IsVisible="{Binding Next7Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next7Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="16" Height="16" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8"
+                                      IsVisible="{Binding Next7Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+
+                    <!-- ═══ Mid columns (140) ═══ -->
+                    <Border Canvas.Left="262" Canvas.Top="44" Width="140" Height="140" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next8Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next8Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7"
+                                      IsVisible="{Binding Next8Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="262" Canvas.Top="200" Width="140" Height="140" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next9Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next9Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7"
+                                      IsVisible="{Binding Next9Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="262" Canvas.Top="356" Width="140" Height="140" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next10Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next10Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7"
+                                      IsVisible="{Binding Next10Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="1006" Canvas.Top="44" Width="140" Height="140" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next11Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next11Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7"
+                                      IsVisible="{Binding Next11Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="1006" Canvas.Top="200" Width="140" Height="140" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next12Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next12Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7"
+                                      IsVisible="{Binding Next12Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="1006" Canvas.Top="356" Width="140" Height="140" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next13Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next13Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,7,7"
+                                      IsVisible="{Binding Next13Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+
+                    <!-- ═══ Outer columns (110) ═══ -->
+                    <Border Canvas.Left="136" Canvas.Top="26" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next14Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next14Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="12" Height="12" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
+                                      IsVisible="{Binding Next14Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="136" Canvas.Top="152" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next15Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next15Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="12" Height="12" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
+                                      IsVisible="{Binding Next15Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="136" Canvas.Top="278" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next16Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next16Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="12" Height="12" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
+                                      IsVisible="{Binding Next16Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="136" Canvas.Top="404" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next17Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next17Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="12" Height="12" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
+                                      IsVisible="{Binding Next17Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="1162" Canvas.Top="26" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next18Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next18Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="12" Height="12" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
+                                      IsVisible="{Binding Next18Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="1162" Canvas.Top="152" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next19Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next19Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="12" Height="12" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
+                                      IsVisible="{Binding Next19Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="1162" Canvas.Top="278" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next20Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next20Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="12" Height="12" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
+                                      IsVisible="{Binding Next20Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="1162" Canvas.Top="404" Width="110" Height="110" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 7 20 0 #5A000000"
+                            IsVisible="{Binding Next21Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next21Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="12" Height="12" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,6,6"
+                                      IsVisible="{Binding Next21Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+
+                    <!-- ═══ Edge columns (90) ═══ -->
+                    <Border Canvas.Left="30" Canvas.Top="13" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 6 18 0 #5A000000"
+                            IsVisible="{Binding Next22Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next22Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="11" Height="11" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
+                                      IsVisible="{Binding Next22Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="30" Canvas.Top="119" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 6 18 0 #5A000000"
+                            IsVisible="{Binding Next23Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next23Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="11" Height="11" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
+                                      IsVisible="{Binding Next23Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="30" Canvas.Top="225" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 6 18 0 #5A000000"
+                            IsVisible="{Binding Next24Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next24Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="11" Height="11" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
+                                      IsVisible="{Binding Next24Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="30" Canvas.Top="331" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 6 18 0 #5A000000"
+                            IsVisible="{Binding Next25Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next25Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="11" Height="11" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
+                                      IsVisible="{Binding Next25Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="30" Canvas.Top="437" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 6 18 0 #5A000000"
+                            IsVisible="{Binding Next26Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next26Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="11" Height="11" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
+                                      IsVisible="{Binding Next26Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="1288" Canvas.Top="13" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 6 18 0 #5A000000"
+                            IsVisible="{Binding Next27Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next27Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="11" Height="11" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
+                                      IsVisible="{Binding Next27Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="1288" Canvas.Top="119" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 6 18 0 #5A000000"
+                            IsVisible="{Binding Next28Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next28Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="11" Height="11" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
+                                      IsVisible="{Binding Next28Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="1288" Canvas.Top="225" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 6 18 0 #5A000000"
+                            IsVisible="{Binding Next29Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next29Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="11" Height="11" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
+                                      IsVisible="{Binding Next29Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="1288" Canvas.Top="331" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 6 18 0 #5A000000"
+                            IsVisible="{Binding Next30Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next30Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="11" Height="11" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
+                                      IsVisible="{Binding Next30Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                    <Border Canvas.Left="1288" Canvas.Top="437" Width="90" Height="90" CornerRadius="6" ClipToBounds="True"
+                            BoxShadow="0 6 18 0 #5A000000"
+                            IsVisible="{Binding Next31Track, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Panel>
+                            <ctrl:CachedImage SourcePath="{Binding Next31Track.AlbumArtworkPath}" Stretch="UniformToFill"/>
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="11" Height="11" Foreground="#E74856"
+                                      HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5"
+                                      IsVisible="{Binding Next31Track.IsFavorite, FallbackValue=False}"/>
+                        </Panel>
+                    </Border>
+                </Canvas>
+            </Viewbox>
+
+            <!-- Carousel + now-playing text (queue-driven; hidden in collage mode).
+                 Stretches full-width so the nav arrows can pin to the screen edges;
+                 the covers and text inside are individually centered. -->
+            <StackPanel HorizontalAlignment="Stretch"
                         VerticalAlignment="Center"
                         Spacing="0"
-                        IsVisible="{Binding HasQueue}">
+                        IsVisible="{Binding ShowCarousel}">
 
                 <!-- Carousel area -->
                 <Grid HorizontalAlignment="Stretch"
                       Height="460"
-                      Margin="0,0">
+                      Margin="0,0"
+                      IsVisible="{Binding !IsCollageMode}">
 
                     <!-- 15-item carousel: center + 7 each side -->
                     <!-- Solid artwork + subtle dark overlay for depth (no transparency/see-through) -->
@@ -398,13 +770,51 @@
 
                     </Grid>
 
+                    <!-- Navigation arrows — pinned to the carousel's left/right edges and
+                         vertically centered on the covers (siblings of the cover grid). -->
+                    <Button Classes="link-btn"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Margin="16,0,0,0"
+                            ZIndex="100"
+                            Command="{Binding GoPreviousCommand}"
+                            IsVisible="{Binding PreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            Opacity="0.85">
+                        <Border Width="32" Height="32"
+                                Background="White"
+                                RenderOptions.BitmapInterpolationMode="HighQuality"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Border.OpacityMask>
+                                <ImageBrush Source="avares://Noctis/Assets/Icons/Left%20arrow%20icon.png" Stretch="Uniform" />
+                            </Border.OpacityMask>
+                        </Border>
+                    </Button>
+
+                    <Button Classes="link-btn"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Margin="0,0,16,0"
+                            ZIndex="100"
+                            Command="{Binding GoNextCommand}"
+                            IsVisible="{Binding NextTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            Opacity="0.85">
+                        <Border Width="32" Height="32"
+                                Background="White"
+                                RenderOptions.BitmapInterpolationMode="HighQuality"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Border.OpacityMask>
+                                <ImageBrush Source="avares://Noctis/Assets/Icons/Right%20arrow%20icon.png" Stretch="Uniform" />
+                            </Border.OpacityMask>
+                        </Border>
+                    </Button>
+
                 </Grid>
 
-                <!-- Track info just below the center cover -->
+                <!-- Track info just below the center cover (carousel only — the collage is covers-only) -->
                 <StackPanel HorizontalAlignment="Center"
                             Spacing="4"
                             Margin="0,16,0,0"
-                            IsVisible="{Binding HasQueue}">
+                            IsVisible="{Binding !IsCollageMode}">
                     <!-- Title row with explicit badge -->
                     <ctrl:MarqueeTextBlock Text="{Binding CenterTitle}"
                                            FontSize="22"
@@ -451,54 +861,11 @@
 
             </StackPanel>
 
-            <!-- Navigation arrows - pinned to far left/right edges, shifted up to align with covers -->
-            <Button HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    Margin="16,0,0,130"
-                    Background="#B0000000"
-                    BorderBrush="#40FFFFFF"
-                    BorderThickness="1"
-                    CornerRadius="999"
-                    Width="28" Height="28"
-                    Padding="0"
-                    Cursor="Hand"
-                    Command="{Binding GoPreviousCommand}"
-                    IsVisible="{Binding PreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    Opacity="0.85">
-                <PathIcon Data="{StaticResource ChevronLeftIcon}"
-                         Width="11" Height="11"
-                         Margin="-1,0,0,0"
-                         Foreground="White"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center" />
-            </Button>
-
-            <Button HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Margin="0,0,16,130"
-                    Background="#B0000000"
-                    BorderBrush="#40FFFFFF"
-                    BorderThickness="1"
-                    CornerRadius="999"
-                    Width="28" Height="28"
-                    Padding="0"
-                    Cursor="Hand"
-                    Command="{Binding GoNextCommand}"
-                    IsVisible="{Binding NextTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    Opacity="0.85">
-                <PathIcon Data="{StaticResource ChevronRightIcon}"
-                         Width="11" Height="11"
-                         Margin="1,0,0,0"
-                         Foreground="White"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center" />
-            </Button>
-
             <!-- Empty state when nothing is playing -->
             <StackPanel HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="8"
-                        IsVisible="{Binding !HasQueue}">
+                        IsVisible="{Binding ShowEmptyState}">
                 <TextBlock Text="Nothing playing"
                            FontSize="20"
                            Opacity="0.4"

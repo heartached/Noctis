@@ -45,14 +45,14 @@ public static class SmartPlaylistEvaluator
                 => [RuleOperator.Contains, RuleOperator.Equals, RuleOperator.StartsWith,
                     RuleOperator.EndsWith, RuleOperator.DoesNotContain],
 
-            RuleField.Year or RuleField.PlayCount or RuleField.Duration
+            RuleField.Year or RuleField.PlayCount or RuleField.Duration or RuleField.Rating
                 => [RuleOperator.Equals, RuleOperator.GreaterThan,
                     RuleOperator.LessThan, RuleOperator.Between],
 
             RuleField.DateAdded or RuleField.LastPlayed
                 => [RuleOperator.Before, RuleOperator.After, RuleOperator.InLastNDays],
 
-            RuleField.IsFavorite or RuleField.IsLossless or RuleField.IsExplicit
+            RuleField.IsFavorite or RuleField.IsLossless or RuleField.IsExplicit or RuleField.IsDisliked
                 => [RuleOperator.IsTrue, RuleOperator.IsFalse],
 
             _ => [RuleOperator.Equals]
@@ -78,6 +78,8 @@ public static class SmartPlaylistEvaluator
         RuleField.IsFavorite => "Is Favorite",
         RuleField.IsLossless => "Is Lossless",
         RuleField.IsExplicit => "Is Explicit",
+        RuleField.Rating => "Rating (stars)",
+        RuleField.IsDisliked => "Is Not Liked",
         _ => field.ToString()
     };
 
@@ -137,6 +139,8 @@ public static class SmartPlaylistEvaluator
             RuleField.IsFavorite => EvaluateBoolean(track.IsFavorite, rule),
             RuleField.IsLossless => EvaluateBoolean(track.IsLossless, rule),
             RuleField.IsExplicit => EvaluateBoolean(track.IsExplicit, rule),
+            RuleField.Rating => EvaluateNumeric(track.Rating, rule),
+            RuleField.IsDisliked => EvaluateBoolean(track.IsDisliked, rule),
             _ => false
         };
     }

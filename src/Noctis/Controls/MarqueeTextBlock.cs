@@ -22,6 +22,8 @@ public class MarqueeTextBlock : UserControl
     public static bool GlobalCoverFlowAlbumScrollEnabled { get; set; } = true;
     public static bool GlobalLyricsTitleScrollEnabled { get; set; } = true;
     public static bool GlobalLyricsArtistScrollEnabled { get; set; } = true;
+    public static bool GlobalMiniPlayerTitleScrollEnabled { get; set; } = true;
+    public static bool GlobalMiniPlayerAlbumScrollEnabled { get; set; } = true;
 
     private const double OverflowThreshold = 1.0;
     private const double ScrollSpeed = 26.0;
@@ -55,6 +57,9 @@ public class MarqueeTextBlock : UserControl
 
     public static readonly StyledProperty<bool> IsLyricsPageProperty =
         AvaloniaProperty.Register<MarqueeTextBlock, bool>(nameof(IsLyricsPage));
+
+    public static readonly StyledProperty<bool> IsMiniPlayerProperty =
+        AvaloniaProperty.Register<MarqueeTextBlock, bool>(nameof(IsMiniPlayer));
 
     public static readonly StyledProperty<Control?> InlineContentProperty =
         AvaloniaProperty.Register<MarqueeTextBlock, Control?>(nameof(InlineContent));
@@ -123,6 +128,16 @@ public class MarqueeTextBlock : UserControl
     {
         get => GetValue(IsLyricsPageProperty);
         set => SetValue(IsLyricsPageProperty, value);
+    }
+
+    /// <summary>
+    /// When true, uses the mini player scroll settings instead of menu settings.
+    /// Combine with <see cref="IsForAlbum"/> to pick the album vs. title setting.
+    /// </summary>
+    public bool IsMiniPlayer
+    {
+        get => GetValue(IsMiniPlayerProperty);
+        set => SetValue(IsMiniPlayerProperty, value);
     }
 
     /// <summary>
@@ -238,6 +253,8 @@ public class MarqueeTextBlock : UserControl
 
     private bool IsScrollEnabled => IsLyricsPage
         ? (IsForArtist ? GlobalLyricsArtistScrollEnabled : GlobalLyricsTitleScrollEnabled)
+        : IsMiniPlayer
+        ? (IsForAlbum ? GlobalMiniPlayerAlbumScrollEnabled : GlobalMiniPlayerTitleScrollEnabled)
         : IsCoverFlow
             ? (IsForAlbum ? GlobalCoverFlowAlbumScrollEnabled
                 : IsForArtist ? GlobalCoverFlowArtistScrollEnabled

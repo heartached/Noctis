@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
@@ -6,145 +7,145 @@ using Noctis.Services;
 namespace Noctis.ViewModels;
 
 /// <summary>
-/// ViewModel for the Statistics view. Computes library analytics from ILibraryService data.
+/// ViewModel for the Listening Statistics view. Computes library analytics from
+/// ILibraryService data and playback analytics from the persistent play log,
+/// split across Overview / Quality Report / Play History tabs.
 /// </summary>
 public partial class StatisticsViewModel : ViewModelBase
 {
     private readonly ILibraryService _library;
-    private bool _isDirty = true;
+    private readonly IPlayHistoryService _playHistory;
+
+    // ── Tabs ──
+
+    public const string TabOverview = "Overview";
+    public const string TabQuality = "Quality";
+    public const string TabHistory = "History";
+
+    [ObservableProperty] private string _selectedTab = TabOverview;
+
+    /// <summary>Raised by the top-bar Back button (shown when opened from
+    /// Settings → "View All Stats") so the shell can return to the section the
+    /// user was in before opening Settings.</summary>
+    public event EventHandler? BackRequested;
+
+    [RelayCommand]
+    private void GoBack() => BackRequested?.Invoke(this, EventArgs.Empty);
+
+    public bool IsOverviewTabSelected => SelectedTab == TabOverview;
+    public bool IsQualityTabSelected => SelectedTab == TabQuality;
+    public bool IsHistoryTabSelected => SelectedTab == TabHistory;
+
+    partial void OnSelectedTabChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsOverviewTabSelected));
+        OnPropertyChanged(nameof(IsQualityTabSelected));
+        OnPropertyChanged(nameof(IsHistoryTabSelected));
+    }
+
+    [RelayCommand]
+    private void SelectTab(string tab) => SelectedTab = tab;
+
+    /// <summary>Opens the Noctis Wrap recap dialog over the current play log.</summary>
+    [RelayCommand]
+    private async Task OpenWrap()
+    {
+        var vm = new WrapViewModel(_playHistory, _library);
+        await Views.WrapDialog.ShowAsync(vm);
+    }
 
     // ── Overview cards ──
 
     [ObservableProperty] private int _totalTracks;
     [ObservableProperty] private int _totalAlbums;
     [ObservableProperty] private int _totalArtists;
-    [ObservableProperty] private int _totalGenres;
-    [ObservableProperty] private string _totalListeningTime = "";
-    [ObservableProperty] private string _totalFileSize = "";
+    [ObservableProperty] private string _totalDuration = "";
+    [ObservableProperty] private string _totalPlays = "";
+    [ObservableProperty] private string _listeningTime = "";
+    [ObservableProperty] private string _avgTrackLength = "";
+    [ObservableProperty] private int _likedTracks;
 
-    // ── Audio quality ──
+    // ── Streak + this-week cards ──
 
-    [ObservableProperty] private int _losslessCount;
-    [ObservableProperty] private int _lossyCount;
-    [ObservableProperty] private int _hiResCount;
-    [ObservableProperty] private double _losslessPercentage;
-    [ObservableProperty] private string _losslessPercentageText = "";
-    [ObservableProperty] private string _lossyPercentageText = "";
+    [ObservableProperty] private string _currentStreakText = "";
+    [ObservableProperty] private string _longestStreakSubText = "";
+    [ObservableProperty] private string _playsThisWeekText = "";
+    [ObservableProperty] private string _weekDeltaText = "";
 
-    // ── Chart collections ──
+    // ── Quality report ──
 
-    public BulkObservableCollection<StatItem> TopTracks { get; } = new();
+    [ObservableProperty] private string _losslessPercentText = "";
+    [ObservableProperty] private string _losslessSubText = "";
+    [ObservableProperty] private string _hiResPercentText = "";
+    [ObservableProperty] private string _hiResSubText = "";
+    [ObservableProperty] private string _avgSampleRateText = "";
+    [ObservableProperty] private string _avgBitDepthText = "";
+
+    // ── Play history ──
+
+    [ObservableProperty] private bool _hasPlayHistory;
+
     public BulkObservableCollection<StatItem> TopArtists { get; } = new();
     public BulkObservableCollection<StatItem> TopAlbums { get; } = new();
-    public BulkObservableCollection<StatItem> GenreDistribution { get; } = new();
-    public BulkObservableCollection<StatItem> DecadeDistribution { get; } = new();
-    public BulkObservableCollection<StatItem> MonthlyGrowth { get; } = new();
+    public BulkObservableCollection<StatItem> FormatBreakdown { get; } = new();
+    public BulkObservableCollection<PlayLogItem> PlayLog { get; } = new();
+    public BulkObservableCollection<HourHeatCell> HourlyHeatmap { get; } = new();
+    public BulkObservableCollection<StatItem> SkipRates { get; } = new();
+    public BulkObservableCollection<StatItem> ForgottenFavorites { get; } = new();
 
-    public StatisticsViewModel(ILibraryService library)
+    public StatisticsViewModel(ILibraryService library, IPlayHistoryService playHistory)
     {
         _library = library;
-        _library.LibraryUpdated += (_, _) => _isDirty = true;
+        _playHistory = playHistory;
     }
 
     /// <summary>
-    /// Recomputes all statistics from the current library data.
-    /// Called when the user navigates to the Statistics view.
+    /// Recomputes all statistics. Called on every navigation to the view —
+    /// play counts and the play log change without a LibraryUpdated event,
+    /// so caching here would show stale numbers.
     /// </summary>
     public void Refresh()
     {
-        if (!_isDirty && TopTracks.Count > 0)
-            return;
-        _isDirty = false;
-
         var tracks = _library.Tracks;
-        if (tracks.Count == 0)
-        {
-            ClearAll();
-            return;
-        }
+        var events = _playHistory.Events;
 
-        ComputeOverview(tracks);
-        ComputeAudioQuality(tracks);
-        ComputeTopTracks(tracks);
-        ComputeTopArtists(tracks);
-        ComputeTopAlbums(tracks);
-        ComputeGenreDistribution(tracks);
-        ComputeDecadeDistribution(tracks);
-        ComputeMonthlyGrowth(tracks);
+        ComputeOverview(tracks, events);
+        ComputeQuality(tracks);
+        ComputeHistory(tracks, events);
     }
 
-    private void ClearAll()
-    {
-        TotalTracks = 0;
-        TotalAlbums = 0;
-        TotalArtists = 0;
-        TotalGenres = 0;
-        TotalListeningTime = "0 min";
-        TotalFileSize = "0 MB";
-        LosslessCount = 0;
-        LossyCount = 0;
-        HiResCount = 0;
-        LosslessPercentage = 0;
-        LosslessPercentageText = "0%";
-        LossyPercentageText = "0%";
-        TopTracks.ReplaceAll(Array.Empty<StatItem>());
-        TopArtists.ReplaceAll(Array.Empty<StatItem>());
-        TopAlbums.ReplaceAll(Array.Empty<StatItem>());
-        GenreDistribution.ReplaceAll(Array.Empty<StatItem>());
-        DecadeDistribution.ReplaceAll(Array.Empty<StatItem>());
-        MonthlyGrowth.ReplaceAll(Array.Empty<StatItem>());
-    }
+    // ── Overview ──
 
-    private void ComputeOverview(IReadOnlyList<Track> tracks)
+    private void ComputeOverview(IReadOnlyList<Track> tracks, IReadOnlyList<PlayHistoryEvent> events)
     {
         TotalTracks = tracks.Count;
         TotalAlbums = _library.Albums.Count;
         TotalArtists = _library.Artists.Count;
-        TotalGenres = tracks
-            .Where(t => !string.IsNullOrWhiteSpace(t.Genre))
-            .Select(t => t.Genre.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Count();
+        TotalDuration = FormatDuration(TimeSpan.FromTicks(tracks.Sum(t => t.Duration.Ticks)));
 
-        var totalDuration = TimeSpan.FromTicks(tracks.Sum(t => t.Duration.Ticks));
-        TotalListeningTime = FormatDuration(totalDuration);
+        var plays = tracks.Sum(t => (long)t.PlayCount);
+        TotalPlays = FormatCount(plays);
 
-        var totalBytes = tracks.Sum(t => t.FileSize);
-        TotalFileSize = FormatFileSize(totalBytes);
-    }
+        // Listening time / average reflect what was actually played (skips excluded).
+        var byId = new Dictionary<Guid, Track>(tracks.Count);
+        foreach (var t in tracks) byId[t.Id] = t;
+        var listening = ListeningStatsCalculator.Compute(events, byId);
 
-    private void ComputeAudioQuality(IReadOnlyList<Track> tracks)
-    {
-        LosslessCount = tracks.Count(t => t.IsLossless);
-        LossyCount = tracks.Count - LosslessCount;
-        HiResCount = tracks.Count(t => t.IsHiResLossless);
+        ListeningTime = FormatDuration(TimeSpan.FromTicks(listening.TimeListenedTicks));
+        AvgTrackLength = listening.AvgListenedTrackLengthTicks > 0
+            ? TimeSpan.FromTicks(listening.AvgListenedTrackLengthTicks).ToString(@"m\:ss")
+            : tracks.Count > 0
+                ? TimeSpan.FromTicks((long)tracks.Average(t => t.Duration.Ticks)).ToString(@"m\:ss")
+                : "0:00";
+        LikedTracks = tracks.Count(t => t.IsFavorite);
 
-        if (tracks.Count > 0)
-        {
-            var pct = (double)LosslessCount / tracks.Count;
-            LosslessPercentage = pct;
-            LosslessPercentageText = $"{pct * 100:F0}%";
-            LossyPercentageText = $"{(1 - pct) * 100:F0}%";
-        }
-    }
+        CurrentStreakText = FormatDays(listening.CurrentStreakDays);
+        LongestStreakSubText = $"Longest: {FormatDays(listening.LongestStreakDays)}";
+        PlaysThisWeekText = listening.PlaysThisWeek.ToString();
+        WeekDeltaText = FormatWeekDelta(listening.PlaysThisWeek, listening.PlaysLastWeek);
 
-    private void ComputeTopTracks(IReadOnlyList<Track> tracks)
-    {
-        var items = tracks
-            .Where(t => t.PlayCount > 0)
-            .OrderByDescending(t => t.PlayCount)
-            .Take(10)
-            .Select(t => new StatItem
-            {
-                Label = t.Title ?? "Unknown",
-                SubLabel = t.Artist ?? "Unknown Artist",
-                Value = t.PlayCount,
-                ValueLabel = $"{t.PlayCount} plays"
-            })
-            .ToList();
-
-        ApplyPercentages(items);
-        TopTracks.ReplaceAll(items);
+        ComputeTopArtists(tracks);
+        ComputeTopAlbums(tracks);
     }
 
     private void ComputeTopArtists(IReadOnlyList<Track> tracks)
@@ -155,7 +156,7 @@ public partial class StatisticsViewModel : ViewModelBase
             .Select(g => new StatItem
             {
                 Label = g.Key,
-                SubLabel = $"{g.Count()} tracks",
+                SubLabel = g.Count() == 1 ? "1 track" : $"{g.Count()} tracks",
                 Value = g.Sum(t => t.PlayCount),
                 ValueLabel = $"{g.Sum(t => t.PlayCount)} plays"
             })
@@ -164,103 +165,202 @@ public partial class StatisticsViewModel : ViewModelBase
             .Take(10)
             .ToList();
 
+        ApplyRanks(items);
         ApplyPercentages(items);
         TopArtists.ReplaceAll(items);
     }
 
     private void ComputeTopAlbums(IReadOnlyList<Track> tracks)
     {
+        var albumsById = _library.Albums.ToDictionary(a => a.Id);
         var items = tracks
             .Where(t => !string.IsNullOrWhiteSpace(t.Album))
             .GroupBy(t => t.AlbumId)
             .Select(g =>
             {
-                var album = _library.Albums.FirstOrDefault(a => a.Id == g.Key);
+                albumsById.TryGetValue(g.Key, out var album);
                 var totalPlays = g.Sum(t => t.PlayCount);
                 return new StatItem
                 {
-                    Label = album?.Name ?? g.First().Album ?? "Unknown",
-                    SubLabel = album?.Artist ?? g.First().Artist ?? "Unknown Artist",
+                    Label = album?.Name ?? g.First().Album,
+                    SubLabel = album?.Artist ?? g.First().Artist,
                     Value = totalPlays,
                     ValueLabel = $"{totalPlays} plays"
                 };
             })
             .Where(i => i.Value > 0)
             .OrderByDescending(i => i.Value)
-            .Take(5)
+            .Take(10)
             .ToList();
 
+        ApplyRanks(items);
         ApplyPercentages(items);
         TopAlbums.ReplaceAll(items);
     }
 
-    private void ComputeGenreDistribution(IReadOnlyList<Track> tracks)
+    // ── Quality report ──
+
+    private void ComputeQuality(IReadOnlyList<Track> tracks)
     {
+        var total = tracks.Count;
+        var lossless = tracks.Count(t => t.IsLossless);
+        var hiRes = tracks.Count(t => t.IsHiResLossless);
+
+        LosslessPercentText = total > 0 ? $"{lossless * 100.0 / total:0.#}%" : "0%";
+        LosslessSubText = lossless == 1 ? "1 lossless track" : $"{lossless} lossless tracks";
+        HiResPercentText = total > 0 ? $"{hiRes * 100.0 / total:0.#}%" : "0%";
+        HiResSubText = hiRes == 1 ? "1 hi-res track" : $"{hiRes} hi-res tracks";
+
+        var withRate = tracks.Where(t => t.SampleRate > 0).ToList();
+        AvgSampleRateText = withRate.Count > 0
+            ? $"{withRate.Average(t => t.SampleRate) / 1000.0:0.#} kHz"
+            : "N/A";
+
+        var withDepth = tracks.Where(t => t.BitsPerSample > 0).ToList();
+        AvgBitDepthText = withDepth.Count > 0
+            ? $"{withDepth.Average(t => t.BitsPerSample):0} bit"
+            : "N/A";
+
         var items = tracks
-            .Where(t => !string.IsNullOrWhiteSpace(t.Genre))
-            .GroupBy(t => t.Genre.Trim(), StringComparer.OrdinalIgnoreCase)
+            .GroupBy(FormatLabel)
             .Select(g => new StatItem
             {
                 Label = g.Key,
                 Value = g.Count(),
-                ValueLabel = $"{g.Count()} tracks"
+                ValueLabel = total > 0
+                    ? $"{g.Count()} tracks · {g.Count() * 100.0 / total:0.#}%"
+                    : $"{g.Count()} tracks"
             })
             .OrderByDescending(i => i.Value)
+            .ToList();
+
+        ApplyPercentages(items);
+        FormatBreakdown.ReplaceAll(items);
+    }
+
+    /// <summary>Display label for the format breakdown: codec short name when known,
+    /// otherwise a label derived from the codec string or file extension.</summary>
+    private static string FormatLabel(Track track)
+    {
+        var shortName = track.CodecShortName;
+        if (!string.IsNullOrEmpty(shortName)) return shortName;
+
+        var codec = (track.Codec ?? string.Empty).ToLowerInvariant();
+        if (codec.Contains("mpeg") || codec.Contains("mp3")) return "MP3";
+        if (codec.Contains("aac")) return "AAC";
+        if (codec.Contains("vorbis")) return "OGG";
+        if (codec.Contains("opus")) return "OPUS";
+        if (codec.Contains("wma") || codec.Contains("windows media")) return "WMA";
+
+        var ext = Path.GetExtension(track.FilePath).TrimStart('.').ToUpperInvariant();
+        return string.IsNullOrEmpty(ext) ? "Unknown" : ext;
+    }
+
+    // ── Play history ──
+
+    private void ComputeHistory(IReadOnlyList<Track> tracks, IReadOnlyList<PlayHistoryEvent> events)
+    {
+        HasPlayHistory = events.Count > 0;
+
+        ComputePlayLog(events);
+        ComputeHourlyHeatmap(events);
+        ComputeSkipRates(events);
+        ComputeForgottenFavorites(tracks);
+    }
+
+    private void ComputePlayLog(IReadOnlyList<PlayHistoryEvent> events)
+    {
+        var items = events
+            .Reverse()
+            .Take(100)
+            .Select(e => new PlayLogItem
+            {
+                Title = e.Title,
+                Artist = e.Artist,
+                TimeLabel = FormatEventTime(e.PlayedAtUtc.ToLocalTime()),
+                Skipped = e.Skipped
+            })
+            .ToList();
+
+        PlayLog.ReplaceAll(items);
+    }
+
+    private void ComputeHourlyHeatmap(IReadOnlyList<PlayHistoryEvent> events)
+    {
+        var counts = new int[24];
+        foreach (var e in events)
+            counts[e.PlayedAtUtc.ToLocalTime().Hour]++;
+
+        var max = counts.Max();
+        var cells = new List<HourHeatCell>(24);
+        for (var hour = 0; hour < 24; hour++)
+        {
+            cells.Add(new HourHeatCell
+            {
+                Hour = hour,
+                Count = counts[hour],
+                Intensity = max > 0 ? 0.06 + 0.94 * counts[hour] / max : 0.06,
+                HourLabel = hour % 6 == 0 ? $"{hour:00}" : string.Empty
+            });
+        }
+
+        HourlyHeatmap.ReplaceAll(cells);
+    }
+
+    private void ComputeSkipRates(IReadOnlyList<PlayHistoryEvent> events)
+    {
+        var items = events
+            .GroupBy(e => e.TrackId)
+            .Where(g => g.Count() >= 3 && g.Any(e => e.Skipped))
+            .Select(g =>
+            {
+                var latest = g.OrderByDescending(e => e.PlayedAtUtc).First();
+                var skips = g.Count(e => e.Skipped);
+                var rate = (double)skips / g.Count();
+                return new StatItem
+                {
+                    Label = latest.Title,
+                    SubLabel = latest.Artist,
+                    Value = skips,
+                    Percentage = rate,
+                    ValueLabel = $"{rate * 100:0}% · {skips}/{g.Count()} skipped"
+                };
+            })
+            .OrderByDescending(i => i.Percentage)
+            .ThenByDescending(i => i.Value)
             .Take(10)
             .ToList();
 
-        ApplyPercentages(items);
-        GenreDistribution.ReplaceAll(items);
+        SkipRates.ReplaceAll(items);
     }
 
-    private void ComputeDecadeDistribution(IReadOnlyList<Track> tracks)
+    private void ComputeForgottenFavorites(IReadOnlyList<Track> tracks)
     {
+        var cutoff = DateTime.UtcNow.AddMonths(-6);
         var items = tracks
-            .Where(t => t.Year > 0)
-            .GroupBy(t => (t.Year / 10) * 10)
-            .Select(g => new StatItem
+            .Where(t => (t.IsFavorite || t.Rating >= 4) && !t.IsDisliked)
+            .Where(t => t.LastPlayed == null || t.LastPlayed < cutoff)
+            .OrderBy(t => t.LastPlayed ?? DateTime.MinValue)
+            .Take(20)
+            .Select(t => new StatItem
             {
-                Label = $"{g.Key}s",
-                Value = g.Count(),
-                ValueLabel = $"{g.Count()} tracks"
+                Label = t.Title,
+                SubLabel = t.Artist,
+                ValueLabel = t.LastPlayed == null
+                    ? "Never played"
+                    : $"Last played {FormatAge(DateTime.UtcNow - t.LastPlayed.Value)}"
             })
-            .OrderBy(i => i.Label)
             .ToList();
 
-        ApplyPercentages(items);
-        DecadeDistribution.ReplaceAll(items);
+        ForgottenFavorites.ReplaceAll(items);
     }
 
-    private void ComputeMonthlyGrowth(IReadOnlyList<Track> tracks)
+    // ── Formatting helpers ──
+
+    private static void ApplyRanks(List<StatItem> items)
     {
-        var cutoff = DateTime.UtcNow.AddMonths(-12);
-        var items = tracks
-            .Where(t => t.DateAdded >= cutoff)
-            .GroupBy(t => new { t.DateAdded.Year, t.DateAdded.Month })
-            .Select(g => new StatItem
-            {
-                Label = new DateTime(g.Key.Year, g.Key.Month, 1).ToString("MMM yyyy"),
-                Value = g.Count(),
-                ValueLabel = $"{g.Count()} tracks"
-            })
-            .OrderBy(i => i.Label) // Alphabetical is wrong — need chronological
-            .ToList();
-
-        // Sort chronologically
-        var sorted = tracks
-            .Where(t => t.DateAdded >= cutoff)
-            .GroupBy(t => new { t.DateAdded.Year, t.DateAdded.Month })
-            .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
-            .Select(g => new StatItem
-            {
-                Label = new DateTime(g.Key.Year, g.Key.Month, 1).ToString("MMM yyyy"),
-                Value = g.Count(),
-                ValueLabel = $"{g.Count()} tracks"
-            })
-            .ToList();
-
-        ApplyPercentages(sorted);
-        MonthlyGrowth.ReplaceAll(sorted);
+        for (var i = 0; i < items.Count; i++)
+            items[i].Rank = i + 1;
     }
 
     private static void ApplyPercentages(List<StatItem> items)
@@ -281,11 +381,40 @@ public partial class StatisticsViewModel : ViewModelBase
         return $"{(int)duration.TotalMinutes} min";
     }
 
-    private static string FormatFileSize(long bytes)
+    private static string FormatDays(int days) => days == 1 ? "1 day" : $"{days} days";
+
+    private static string FormatWeekDelta(int thisWeek, int lastWeek)
     {
-        if (bytes >= 1L << 40) return $"{bytes / (double)(1L << 40):F1} TB";
-        if (bytes >= 1L << 30) return $"{bytes / (double)(1L << 30):F1} GB";
-        if (bytes >= 1L << 20) return $"{bytes / (double)(1L << 20):F0} MB";
-        return $"{bytes / (double)(1L << 10):F0} KB";
+        var diff = thisWeek - lastWeek;
+        if (diff == 0) return lastWeek == 0 ? "No plays last week" : "Same as last week";
+        return diff > 0 ? $"▲ {diff} vs last week" : $"▼ {-diff} vs last week";
+    }
+
+    private static string FormatCount(long count)
+    {
+        if (count >= 1_000_000) return $"{count / 1_000_000.0:0.#}M";
+        if (count >= 1_000) return $"{count / 1_000.0:0.#}K";
+        return count.ToString();
+    }
+
+    private static string FormatEventTime(DateTime local)
+    {
+        var today = DateTime.Now.Date;
+        if (local.Date == today) return $"Today {local:HH:mm}";
+        if (local.Date == today.AddDays(-1)) return $"Yesterday {local:HH:mm}";
+        return local.Year == today.Year
+            ? local.ToString("MMM d, HH:mm")
+            : local.ToString("MMM d yyyy, HH:mm");
+    }
+
+    private static string FormatAge(TimeSpan age)
+    {
+        if (age.TotalDays >= 365)
+        {
+            var years = (int)(age.TotalDays / 365);
+            return years == 1 ? "1 year ago" : $"{years} years ago";
+        }
+        var months = Math.Max(1, (int)(age.TotalDays / 30));
+        return months == 1 ? "1 month ago" : $"{months} months ago";
     }
 }

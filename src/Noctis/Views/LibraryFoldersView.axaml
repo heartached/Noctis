@@ -6,6 +6,17 @@
              x:DataType="vm:LibraryFoldersViewModel"
              Background="{DynamicResource AppMainBackground}">
 
+    <UserControl.Styles>
+        <!-- Pill-shaped selection/hover highlight on folder tree rows, matching the
+             rounded highlights used in the Songs options menus. -->
+        <Style Selector="TreeViewItem">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="TreeViewItem /template/ Border#PART_LayoutRoot">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+    </UserControl.Styles>
+
     <!-- Right margin trimmed to 2 so the content list's vertical scrollbar sits at the window edge. -->
     <Grid ColumnDefinitions="280,*" Margin="16,8,2,16">
 
@@ -67,7 +78,8 @@
                         Cursor="Hand" />
             </Grid>
 
-            <ListBox Classes="track-list"
+            <ListBox x:Name="TrackList"
+                     Classes="track-list"
                      ItemsSource="{Binding SelectedFolderTracks}"
                      SelectionMode="Multiple"
                      Padding="0,0,0,115">
