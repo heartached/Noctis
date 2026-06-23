@@ -43,9 +43,15 @@ noctis_pid.txt
 
 ## Release build outputs
 release-artifacts/
+release-assets/
 release-staging/
 release-staging-*/
 installer-output/
+packaged/
+
+## Local dev data & tooling caches (never committed)
+devdata/
+.serena/
 
 ## Internal docs (not for public repo)
 DesignNotes.md
