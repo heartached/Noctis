@@ -53,7 +53,16 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     /// <summary>Non-blocking refresh — loads settings, rebuilds forest, updates collections on UI thread.</summary>
     public async void Refresh()
     {
-        await RefreshAsync();
+        // async void: never let an exception escape to the synchronization context
+        // (an unhandled one here can terminate the app), so log and swallow instead.
+        try
+        {
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[FoldersVM] Refresh failed: {ex.Message}");
+        }
     }
 
     private async Task RefreshAsync()
