@@ -7,7 +7,7 @@ manifests live in [`packaging/`](../packaging/).
 
 When a GitHub Release is **published**, `.github/workflows/package-managers.yml`:
 
-1. Downloads the release's `Noctis-windows-x64.zip` and `Noctis-v{ver}-Setup.exe`
+1. Downloads the release's `Noctis-windows-x64.zip` and `Noctis-Setup.exe`
    and computes their SHA256s.
 2. **Scoop** — renders `packaging/scoop/noctis.json` with the new version + zip
    hash and pushes it to `heartached/scoop-bucket` as `bucket/noctis.json`.
@@ -34,7 +34,7 @@ The Chocolatey package (`packaging/chocolatey/`) is published by hand for now
 
 1. Compute the installer checksum:
 
-       Get-FileHash .\Noctis-v{ver}-Setup.exe -Algorithm SHA256
+       Get-FileHash .\Noctis-Setup.exe -Algorithm SHA256
 
 2. Update `packaging/chocolatey/noctis.nuspec` `<version>` **and**
    `<releaseNotes>` (which is version-pinned to

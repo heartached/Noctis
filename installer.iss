@@ -3,7 +3,7 @@
 ; Compile with: ISCC.exe installer.iss
 
 #define MyAppName "Noctis"
-#define MyAppVersion "1.1.16"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "heartached"
 #define MyAppExeName "Noctis.exe"
 #define MyAppURL "https://github.com/heartached/Noctis"
@@ -20,7 +20,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=installer-output
-OutputBaseFilename=Noctis-v{#MyAppVersion}-Setup
+OutputBaseFilename=Noctis-Setup
 SetupIconFile=src\Noctis\Assets\Icons\Noctis.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64

@@ -198,8 +198,8 @@ public sealed class UpdateService
 
     /// <summary>
     /// Picks the release asset the in-app updater can install on this platform:
-    /// Windows gets the Inno Setup exe ("Noctis-v1.2.3-Setup.exe"), macOS gets the
-    /// per-architecture disk image ("Noctis-1.2.3-osx-arm64.dmg"). Linux has no
+    /// Windows gets the Inno Setup exe ("Noctis-Setup.exe"), macOS gets the
+    /// per-architecture disk image ("Noctis-osx-arm64.dmg"). Linux has no
     /// in-app installer (AppImage/tar.gz are updated manually), so no asset matches
     /// and the UI falls back to pointing at the GitHub release page.
     /// </summary>
@@ -211,7 +211,7 @@ public sealed class UpdateService
         {
             return release.Assets.FirstOrDefault(a =>
                 a.Name != null &&
-                a.Name.StartsWith("Noctis-v", StringComparison.OrdinalIgnoreCase) &&
+                a.Name.StartsWith("Noctis-", StringComparison.OrdinalIgnoreCase) &&
                 a.Name.EndsWith("-Setup.exe", StringComparison.OrdinalIgnoreCase));
         }
 

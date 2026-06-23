@@ -11,12 +11,12 @@
     <RootNamespace>Noctis</RootNamespace>
     <Product>Noctis</Product>
     <Company>Noctis</Company>
-    <Version>1.1.16</Version>
+    <Version>1.2.0</Version>
     <!-- Pre-release marker: numeric Version stays 1.1.16 (update checks + the
          displayed number are unchanged); the "-prerelease" SemVer suffix on the
          informational version is what lights the "Pre-release" badge in Settings.
          Remove this line (or drop the suffix) when cutting a stable release. -->
-    <InformationalVersion>1.1.16-prerelease</InformationalVersion>
+    <InformationalVersion>1.2.0</InformationalVersion>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
 
     <!-- Avalonia requires this for XAML compilation -->
