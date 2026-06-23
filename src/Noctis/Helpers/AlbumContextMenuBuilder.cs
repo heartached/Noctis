@@ -54,7 +54,7 @@ public sealed class AlbumContextMenuBuilder
         items.Add(PlayNext);
 
         AddToQueue = new MenuItem { Header = "Add to Queue" };
-        AddToQueue.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis/Assets/Icons/Queue%20icon.png", 17);
+        AddToQueue.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis/Assets/Icons/Queue%20ICON.png", 17);
         items.Add(AddToQueue);
 
         items.Add(new Separator());
@@ -79,19 +79,19 @@ public sealed class AlbumContextMenuBuilder
         items.Add(Unfavorite);
 
         Metadata = new MenuItem { Header = "Metadata" };
-        Metadata.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20icon.png");
+        Metadata.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
         items.Add(Metadata);
 
         EditDescription = new MenuItem { Header = "Edit Description", IsVisible = false };
-        EditDescription.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20icon.png");
+        EditDescription.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
         items.Add(EditDescription);
 
         Convert = new MenuItem { Header = "Convert Album", IsVisible = false };
-        Convert.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20icon.png");
+        Convert.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
         items.Add(Convert);
 
         ScanReplayGain = new MenuItem { Header = "Scan ReplayGain", IsVisible = false };
-        ScanReplayGain.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20icon.png");
+        ScanReplayGain.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
         items.Add(ScanReplayGain);
 
         SearchLyrics = new MenuItem { Header = "Search Lyrics", IsVisible = false };
@@ -99,7 +99,7 @@ public sealed class AlbumContextMenuBuilder
         items.Add(SearchLyrics);
 
         ShowFolder = new MenuItem { Header = "Show Folder" };
-        ShowFolder.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis/Assets/Icons/Folder%20icon.png");
+        ShowFolder.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis/Assets/Icons/Folder%20ICON.png");
         items.Add(ShowFolder);
 
         items.Add(new Separator());

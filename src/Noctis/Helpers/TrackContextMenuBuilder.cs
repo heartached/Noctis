@@ -71,7 +71,7 @@ public sealed class TrackContextMenuBuilder
         items.Add(PlayNext);
 
         AddToQueue = new MenuItem { Header = "Add to Queue" };
-        AddToQueue.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Queue%20icon.png", 17);
+        AddToQueue.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Queue%20ICON.png", 17);
         items.Add(AddToQueue);
 
         // Hidden unless the view supplies a startRadioCommand in Bind().
@@ -107,15 +107,15 @@ public sealed class TrackContextMenuBuilder
         items.Add(Unfavorite);
 
         Metadata = new MenuItem { Header = "Studio" };
-        Metadata.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20icon.png");
+        Metadata.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
         items.Add(Metadata);
 
         Convert = new MenuItem { Header = "Convert File", IsVisible = false };
-        Convert.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20icon.png");
+        Convert.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
         items.Add(Convert);
 
         ScanReplayGain = new MenuItem { Header = "Scan ReplayGain", IsVisible = false };
-        ScanReplayGain.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20icon.png");
+        ScanReplayGain.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
         items.Add(ScanReplayGain);
 
         SearchLyrics = new MenuItem { Header = "Search Lyrics" };
@@ -123,7 +123,7 @@ public sealed class TrackContextMenuBuilder
         items.Add(SearchLyrics);
 
         ShowFolder = new MenuItem { Header = "Show Folder" };
-        ShowFolder.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Folder%20icon.png");
+        ShowFolder.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Folder%20ICON.png");
         items.Add(ShowFolder);
 
         items.Add(new Separator());
