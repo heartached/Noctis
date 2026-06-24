@@ -193,6 +193,16 @@ public partial class MainWindow : Window
 
                 // System tray icon (minimize/close-to-tray + playback controls)
                 InitializeTrayIcon(vm);
+
+                // Launched at login with "start minimized to tray" on (encoded in the
+                // autostart args, so it needs no async settings load) → hide to the tray
+                // instead of showing the window. Guarded on _trayIcon != null so a
+                // platform where the tray failed to initialize never leaves the app
+                // running with no window AND no tray icon (i.e. invisible).
+                if (App.StartMinimizedAtLogin && _trayIcon != null)
+                {
+                    Hide();
+                }
             }
         };
 

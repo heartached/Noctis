@@ -126,6 +126,9 @@ public partial class MetadataViewModel : ViewModelBase
     // ── iTunes animated-cover search ──
     [ObservableProperty] private bool _isSearchingAnimatedCover;
     [ObservableProperty] private bool _isDownloadingAnimatedCover;
+
+    /// <summary>True while a Save is in flight — drives the "Saving…" spinner on the button.</summary>
+    [ObservableProperty] private bool _isSaving;
     [ObservableProperty] private bool _hasAnimatedArtworkSearchResults;
     [ObservableProperty] private bool _isAnimatedArtworkSearchOpen;
     [ObservableProperty] private string _animatedSearchStatus = string.Empty;
@@ -1582,6 +1585,22 @@ public partial class MetadataViewModel : ViewModelBase
 
     [RelayCommand]
     private async Task Save()
+    {
+        // Surface a "Saving…" state on the button while the (potentially slow) file
+        // writes run; the work itself lives in SaveInternalAsync. try/finally so the
+        // spinner always clears even if a write throws.
+        IsSaving = true;
+        try
+        {
+            await SaveInternalAsync();
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private async Task SaveInternalAsync()
     {
         var oldAlbumId = _track.AlbumId;
 

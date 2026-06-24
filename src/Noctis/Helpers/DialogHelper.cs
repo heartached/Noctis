@@ -13,6 +13,25 @@ public static class DialogHelper
         var screen = owner.Screens.ScreenFromWindow(owner);
         var scaling = screen?.Scaling ?? 1.0;
 
+        // The title-bar-inset math in the Windows branch below subtracts
+        // owner.Position from PointToScreen(0,0); that only yields the title-bar
+        // height when both report in the same unit/origin space, which is a
+        // Windows-only guarantee. On macOS the two report in different spaces, so
+        // the overlay window lands at the wrong offset and size — the reported
+        // dim layer "misaligned to the screen". Cover the client area directly:
+        // PointToScreen(0,0) is a reliable physical-pixel origin on every backend,
+        // and ClientSize is the matching DIP size, so the overlay maps 1:1 onto the
+        // owner's content with no cross-platform coordinate assumptions.
+        if (!OperatingSystem.IsWindows())
+        {
+            var clientTopLeft = owner.PointToScreen(new Point(0, 0));
+            dialog.WindowStartupLocation = WindowStartupLocation.Manual;
+            dialog.Position = clientTopLeft;
+            dialog.Width = owner.ClientSize.Width;
+            dialog.Height = owner.ClientSize.Height;
+            return;
+        }
+
         // For maximized windows, use the screen working area directly
         // because Position/FrameSize include invisible resize borders on Windows.
         if (owner.WindowState == WindowState.Maximized && screen != null)

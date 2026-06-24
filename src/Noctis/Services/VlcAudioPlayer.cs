@@ -24,6 +24,18 @@ public class VlcAudioPlayer : IAudioPlayer
     // recovers. Seeks landing at/under this threshold are served by a clean
     // track restart instead of an in-place seek. See Seek() for details.
     private const long StartSeekRestartThresholdMs = 1000;
+    // Writing _player.Time = Length makes VLC hit EOF and fire EndReached, which
+    // advances/stops the track — so dragging the seek slider to the far right and
+    // back would leave nothing playing. Hold every manual seek this far short of
+    // the end so the track keeps playing and a drag-back resumes audio. Scaled
+    // down for very short clips (see Seek()).
+    private const long EndSeekGuardMs = 1000;
+    // Brief volume fade-in after an in-place seek so the buffer-flush discontinuity
+    // (audible as a click on every platform) is masked. This long, on the seek worker.
+    private const int SeekFadeMs = 20;
+    // Track-start fade-in on the native output (macOS/Linux) to mask the cold-device
+    // clip — the first buffers are dropped while the audio device spins up.
+    private const int TrackStartFadeMs = 40;
     // ── Volume application (default, non-OS-session path) ──
     // Raw per-pixel slider writes go to player.Volume, which --aout=mmdevice
     // applies via the Windows audio session (ISimpleAudioVolume). Each session
@@ -925,6 +937,30 @@ public class VlcAudioPlayer : IAudioPlayer
     }
 
     /// <summary>
+    /// Fades the player volume from silence up to <paramref name="toVolume"/> over
+    /// <paramref name="durationMs"/>, masking an audio-output discontinuity (the
+    /// click after an in-place seek, or the cold-device drop at track start). Bails
+    /// the instant a Play() swaps the track (<paramref name="expectedMedia"/> no
+    /// longer current) so it can never fight PlayInternal's own volume set for the
+    /// incoming track. Uses fine ~4ms steps — distinct from
+    /// <see cref="FadePlayerVolumeBlocking"/>, whose 35ms crossfade steps are far too
+    /// coarse for a sub-frame fade. Native / per-player volume path only.
+    /// </summary>
+    private void FadePlayerVolumeFadeIn(int toVolume, int durationMs, Media? expectedMedia)
+    {
+        const int stepMs = 4;
+        var steps = Math.Max(1, durationMs / stepMs);
+        for (var i = 1; i <= steps; i++)
+        {
+            if (_disposed || !ReferenceEquals(_currentMedia, expectedMedia))
+                return;
+            SetPlayerVolumeGuarded(_player, toVolume * i / steps);
+            if (i < steps)
+                Thread.Sleep(stepMs);
+        }
+    }
+
+    /// <summary>
     /// Click-free volume fade rode on the OS audio session (ISimpleAudioVolume),
     /// stepped in the amplitude-milli domain (0–1000). The OS ramps each step
     /// sample-accurately, so this never produces the float_mixer "block gain"
@@ -1728,6 +1764,29 @@ public class VlcAudioPlayer : IAudioPlayer
                 SetPlayerVolumeGuarded(_player, 0);
                 FadePlayerVolumeBlocking(0, targetVolume, fadeInMs, cancel);
             }
+            else if (_sessionVolume != null)
+            {
+                // Windows mmdevice: _player.Volume IS the OS session, so setting it to
+                // 100 (targetVolume) opens the new track's session at full volume — the
+                // "volume blips to full for ~1s on track change" bug, because the float
+                // reassert below only catches up once the new session appears. Open it
+                // at the user's current level instead (the same trick the crossfade uses
+                // to start a player without an open-blip); the reassert then refines to
+                // the exact float.
+                var milli = Volatile.Read(ref _rampCurrentMilli);
+                if (milli < 0)
+                    milli = CurvedVolumeToLevelMilli(
+                        ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100))));
+                SetPlayerVolumeGuarded(_player, MilliToPlayerVolume(milli));
+            }
+            else if (ActiveCallbackSink == null)
+            {
+                // Native output (macOS/Linux): the audio device opens cold and drops the
+                // first buffers — the clipped track start. Fade in from silence across
+                // the warmup so the onset isn't an abrupt cut. Bails if the track changes.
+                SetPlayerVolumeGuarded(_player, 0);
+                FadePlayerVolumeFadeIn(targetVolume, TrackStartFadeMs, _currentMedia);
+            }
             else
             {
                 SetPlayerVolumeGuarded(_player, targetVolume);
@@ -2291,7 +2350,10 @@ public class VlcAudioPlayer : IAudioPlayer
                 }
                 try { inactivePlayer.Stop(); }
                 catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupStep", $"Stop: {ex.GetType().Name}: {ex.Message}"); }
-                try { inactivePlayer.SetEqualizer(null); }
+                // SetEqualizer(null) dereferences the null argument inside LibVLCSharp
+                // and throws NRE on a just-stopped player; apply a fresh flat equalizer
+                // instead to clear any curve before this player is reused.
+                try { using var flatEq = new Equalizer(); inactivePlayer.SetEqualizer(flatEq); }
                 catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupStep", $"SetEqualizer: {ex.GetType().Name}"); }
                 try { inactiveMedia?.Dispose(); }
                 catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupStep", $"Dispose: {ex.GetType().Name}"); }
@@ -2552,10 +2614,41 @@ public class VlcAudioPlayer : IAudioPlayer
         CancelPreparedNext();
         ResetEndReachedPending();
 
+        // After a track ends (or is stopped) the audio output is torn down and
+        // _player.Length reports 0, so the in-place seek below early-returns and the
+        // write is ignored — dragging the slider back from the end then plays nothing.
+        // Restart the media and apply the dropped position as a pending seek so audio
+        // resumes from there (same mechanism as the start-region restart). Length is
+        // 0 once ended, so fall back to the last known length for the end guard.
+        var state = _player.State;
+        if ((state == VLCState.Ended || state == VLCState.Stopped) &&
+            !string.IsNullOrEmpty(_currentMediaPath))
+        {
+            var endedLen = _player.Length;
+            if (endedLen <= 0) endedLen = Interlocked.Read(ref _lastKnownLengthMs);
+            long restartMs = -1;
+            if (endedLen > 0)
+            {
+                var maxMs = endedLen - Math.Min(EndSeekGuardMs, endedLen / 20);
+                var clamped = (long)Math.Clamp(position.TotalMilliseconds, 0, maxMs);
+                if (clamped > 0) restartMs = clamped;
+            }
+            lock (_seekGate) { _latestSeekMs = -1; }
+            _positionTimer.Stop();
+            Interlocked.Exchange(ref _pendingSeekMs, restartMs);
+            Play(_currentMediaPath);
+            return;
+        }
+
         var len = _player.Length;
         if (len <= 0) return;
 
-        var clampedMs = (long)Math.Clamp(position.TotalMilliseconds, 0, len);
+        // Keep manual seeks a guard's-width short of the end (scaled down on very
+        // short clips) so seeking to the far right never trips EndReached and
+        // advances the track. Natural end-of-track playback is unaffected — this
+        // only bounds explicit seeks.
+        var maxSeekMs = len - Math.Min(EndSeekGuardMs, len / 20);
+        var clampedMs = (long)Math.Clamp(position.TotalMilliseconds, 0, maxSeekMs);
         DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Request", $"targetMs={clampedMs}, playerState={_player.State}");
 
         // Restart-instead-of-seek for the start region. An in-place backward seek
@@ -2765,7 +2858,51 @@ public class VlcAudioPlayer : IAudioPlayer
 
                     var nowTicks = DateTime.UtcNow.Ticks;
                     DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Apply", $"targetMs={targetMs}, state={_player.State}, isPlaying={_player.IsPlaying}");
-                    _player.Time = targetMs;
+
+                    // An in-place Time write flushes the audio buffer and playback
+                    // resumes mid-waveform — VLC drops a "buffer too late" on every
+                    // seek, audible as a click. Silence the output across the seek to
+                    // mask it. HOW we dip depends on the volume path, because writing
+                    // the wrong control strands the volume:
+                    //   • OS-session (Windows mmdevice): _player.Volume IS the shared
+                    //     session, so restoring it to 100 would leave the session at
+                    //     full volume. Dip the session LEVEL and restore it to the
+                    //     user's current level instead (mmdevice ramps it click-free).
+                    //   • Native integer volume (macOS/Linux): dip/restore _player.Volume.
+                    //   • WASAPI callback sink (exclusive mode): the sink owns gain — seek.
+                    // Paused/muted is already silent, so just seek.
+                    if (_isPaused || _player.Mute)
+                    {
+                        _player.Time = targetMs;
+                    }
+                    else if (_sessionVolume is { } sv)
+                    {
+                        var savedMilli = Volatile.Read(ref _rampCurrentMilli);
+                        if (savedMilli < 0)
+                            savedMilli = CurvedVolumeToLevelMilli(
+                                ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100))));
+                        sv.SetLevel(0);
+                        _player.Time = targetMs;
+                        Thread.Sleep(SeekFadeMs);
+                        sv.SetLevel(savedMilli / 1000.0);
+                        Volatile.Write(ref _rampCurrentMilli, savedMilli);
+                    }
+                    else if (ActiveCallbackSink == null)
+                    {
+                        // The seek still applies immediately (nothing slow runs BEFORE
+                        // it), so the worker's seek-vs-track-change timing is unchanged;
+                        // the fade-in bails if a Play() swaps the track so it never
+                        // fights PlayInternal's volume set for the new one.
+                        var mediaAtSeek = _currentMedia;
+                        var restoreVol = _player.Volume;
+                        SetPlayerVolumeGuarded(_player, 0);
+                        _player.Time = targetMs;
+                        FadePlayerVolumeFadeIn(restoreVol, SeekFadeMs, mediaAtSeek);
+                    }
+                    else
+                    {
+                        _player.Time = targetMs;
+                    }
                     Interlocked.Exchange(ref _lastAppliedSeekTicksUtc, nowTicks);
 
                     // Restart the position timer now that the seek is applied.

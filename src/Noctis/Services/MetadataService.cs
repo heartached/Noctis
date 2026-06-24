@@ -266,9 +266,8 @@ public class MetadataService : IMetadataService
 
     public bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null)
     {
-        try
+        return SaveTagsAtomically(targetFilePath, file =>
         {
-            using var file = TagLib.File.Create(targetFilePath);
             var tag = file.Tag;
 
             tag.Title = string.IsNullOrEmpty(titleOverride) ? track.Title : titleOverride;
@@ -298,12 +297,58 @@ public class MetadataService : IMetadataService
             ExtendedTagIO.WriteMovementCount(file, track.MovementCount);
             ExtendedTagIO.WriteRating(file, track.Rating);
             ExtendedTagIO.WriteIsDisliked(file, track.IsDisliked);
+        });
+    }
 
-            file.Save();
+    /// <summary>
+    /// Applies tag edits and saves them without ever rewriting the target file in
+    /// place on macOS/Linux. TagLib's <c>file.Save()</c> mutates the file on disk;
+    /// on Unix there is no mandatory file lock, so doing that to the track the audio
+    /// player is currently streaming corrupts its open read and drops the sound while
+    /// the position clock keeps ticking (the macOS "audio silently stops on save" bug).
+    /// Writing to a same-directory copy and atomically renaming it over the original
+    /// leaves the player's open file descriptor pointing at the untouched original
+    /// inode, so playback is undisturbed and the new tags take effect on next load.
+    /// Windows already serializes this through its file share lock, so the in-place
+    /// path is kept there to avoid a needless full-file copy.
+    /// </summary>
+    private static bool SaveTagsAtomically(string targetFilePath, Action<TagLib.File> applyTags)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                using var file = TagLib.File.Create(targetFilePath);
+                applyTags(file);
+                file.Save();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // Same directory keeps the rename on one filesystem (so it is atomic); the
+        // leading dot hides the transient file; the original extension is preserved
+        // so TagLib still detects the format from the work copy.
+        var dir = Path.GetDirectoryName(targetFilePath);
+        if (string.IsNullOrEmpty(dir)) dir = ".";
+        var tempPath = Path.Combine(dir, $".noctis-{Guid.NewGuid():N}{Path.GetExtension(targetFilePath)}");
+        try
+        {
+            File.Copy(targetFilePath, tempPath, overwrite: true);
+            using (var file = TagLib.File.Create(tempPath))
+            {
+                applyTags(file);
+                file.Save();
+            }
+            File.Move(tempPath, targetFilePath, overwrite: true);
             return true;
         }
         catch
         {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
             return false;
         }
     }

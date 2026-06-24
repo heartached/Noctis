@@ -66,8 +66,12 @@ public class AnimatedCoverService : IAnimatedCoverService
         }
 
         var dst = _persistence.GetAnimatedCoverPath(track.AlbumId, trackId, ext);
-        await using var src = File.OpenRead(sourcePath);
-        await using var dstStream = File.Create(dst);
+        // Open both handles for true async I/O (FileOptions.Asynchronous). File.OpenRead /
+        // File.Create return synchronous handles, so CopyToAsync would block the calling
+        // (UI) thread for the whole copy — a multi-MB animated cover froze the window for
+        // 10s+. Overlapped I/O lets the copy run without holding the thread.
+        await using var src = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await using var dstStream = new FileStream(dst, FileMode.Create, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous);
         await src.CopyToAsync(dstStream);
         return dst;
     }

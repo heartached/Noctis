@@ -365,7 +365,7 @@
                 <!-- LEFT: Playback Controls -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" Margin="0,0,14,0">
 
-                    <!-- Shuffle & Repeat live in the Queue panel's Up Next header, not the bar. -->
+                    <!-- Shuffle lives in the Queue panel's Up Next header; Repeat is also surfaced here on the bar. -->
 
                     <!-- Previous button -->
                     <Button Classes="pill-btn"
@@ -418,6 +418,41 @@
                                       Data="{StaticResource NextIcon}" />
                             </Canvas>
                         </Viewbox>
+                    </Button>
+
+                    <!-- Repeat: cycles Off → All → One. A single PNG glyph is tinted by
+                         state (dimmed when off, accent when on); the centered "1" marks
+                         repeat-one, since there is no separate one-shot icon. -->
+                    <Button Classes="pill-btn"
+                            Command="{Binding CycleRepeatCommand}"
+                            ToolTip.Tip="Repeat"
+                            Width="34" Height="34">
+                        <Panel Width="18" Height="18">
+                            <!-- Off: white glyph, matching the transport icons -->
+                            <Border Background="{DynamicResource IslandIconFill}"
+                                    RenderOptions.BitmapInterpolationMode="HighQuality"
+                                    IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
+                                <Border.OpacityMask>
+                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Repeat%20icon.png" Stretch="Uniform" />
+                                </Border.OpacityMask>
+                            </Border>
+                            <!-- All / One: accent glyph -->
+                            <Border Background="{DynamicResource AccentColorBrush}"
+                                    RenderOptions.BitmapInterpolationMode="HighQuality"
+                                    IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:RepeatMode.Off}}">
+                                <Border.OpacityMask>
+                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Repeat%20icon.png" Stretch="Uniform" />
+                                </Border.OpacityMask>
+                            </Border>
+                            <!-- "1" badge: repeat-one only -->
+                            <TextBlock Text="1"
+                                       FontSize="8"
+                                       FontWeight="Bold"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource AccentColorBrush}"
+                                       IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}" />
+                        </Panel>
                     </Button>
 
                 </StackPanel>

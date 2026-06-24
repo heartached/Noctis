@@ -73,10 +73,10 @@ public sealed class UpdateService
     public static InstallSource Source => _cachedSource ??= DetectSource();
 
     /// <summary>
-    /// True when the in-app installer is the right update mechanism: any
-    /// non-Windows platform (macOS .dmg / Linux have no Inno install to clash
-    /// with) or a Windows copy installed by the Inno setup. False for Scoop /
-    /// portable copies, where running the setup would create a second install.
+    /// True when the in-app installer is the right update mechanism: a Windows copy
+    /// installed by the Inno setup, a macOS .dmg build, or a Linux AppImage (which can
+    /// swap itself in place). False for Scoop / portable / tar.gz copies, where the
+    /// in-app installer would create a second, parallel install.
     /// </summary>
     public static bool SupportsInAppUpdate => Source == InstallSource.Installed;
 
@@ -93,10 +93,23 @@ public sealed class UpdateService
 
     private static InstallSource DetectSource()
     {
-        if (!OperatingSystem.IsWindows())
-            return InstallSource.Installed;
+        if (OperatingSystem.IsWindows())
+            return ClassifyInstall(AppContext.BaseDirectory, TryGetInnoInstallLocation());
 
-        return ClassifyInstall(AppContext.BaseDirectory, TryGetInnoInstallLocation());
+        // Linux: only an AppImage launch can self-update (the updater swaps the single
+        // AppImage file, whose path the runtime exposes in $APPIMAGE). A tar.gz /
+        // manually-extracted copy has no single artifact to replace, so treat it as
+        // portable and steer the user to GitHub.
+        if (OperatingSystem.IsLinux())
+        {
+            var appImage = Environment.GetEnvironmentVariable("APPIMAGE");
+            return !string.IsNullOrEmpty(appImage) && File.Exists(appImage)
+                ? InstallSource.Installed
+                : InstallSource.Portable;
+        }
+
+        // macOS .dmg drag-install always applies.
+        return InstallSource.Installed;
     }
 
     /// <summary>
@@ -199,9 +212,10 @@ public sealed class UpdateService
     /// <summary>
     /// Picks the release asset the in-app updater can install on this platform:
     /// Windows gets the Inno Setup exe ("Noctis-Setup.exe"), macOS gets the
-    /// per-architecture disk image ("Noctis-osx-arm64.dmg"). Linux has no
-    /// in-app installer (AppImage/tar.gz are updated manually), so no asset matches
-    /// and the UI falls back to pointing at the GitHub release page.
+    /// per-architecture disk image ("Noctis-osx-arm64.dmg"), and Linux x64 gets the
+    /// AppImage ("Noctis-x86_64.AppImage"), which the updater swaps in place. Linux
+    /// arm64 ships only a tar.gz (no AppImage), so no asset matches and the UI falls
+    /// back to pointing at the GitHub release page.
     /// </summary>
     private static GitHubAsset? FindInstallerAsset(GitHubRelease release)
     {
@@ -222,6 +236,19 @@ public sealed class UpdateService
                 a.Name != null &&
                 a.Name.StartsWith("Noctis-", StringComparison.OrdinalIgnoreCase) &&
                 a.Name.EndsWith($"-osx-{arch}.dmg", StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            // Only x64 ships a self-contained AppImage the updater can swap in place;
+            // arm64 ships a tar.gz only, so it falls back to the "visit GitHub" path.
+            if (RuntimeInformation.OSArchitecture != Architecture.X64)
+                return null;
+
+            // Pinned to the exact CI asset name so a future release shipping multiple
+            // AppImages can't ambiguously match the wrong one.
+            return release.Assets.FirstOrDefault(a =>
+                string.Equals(a.Name, "Noctis-x86_64.AppImage", StringComparison.OrdinalIgnoreCase));
         }
 
         return null;
@@ -267,7 +294,9 @@ public sealed class UpdateService
             throw new InvalidOperationException("Refusing to download an update from an untrusted (non-GitHub) URL.");
 
         var tempPath = Path.Combine(Path.GetTempPath(),
-            OperatingSystem.IsMacOS() ? "Noctis-Update.dmg" : "Noctis-Update-Setup.exe");
+            OperatingSystem.IsMacOS() ? "Noctis-Update.dmg"
+            : OperatingSystem.IsLinux() ? "Noctis-Update.AppImage"
+            : "Noctis-Update-Setup.exe");
 
         try
         {
@@ -380,24 +409,84 @@ public sealed class UpdateService
 
         if (OperatingSystem.IsMacOS())
         {
+            // A bundle launched from Finder/LaunchServices usually inherits little or no
+            // PATH, so a bare "open" can't be resolved and Process.Start throws — use the
+            // absolute path. Fall back to shell-execute (also routed through LaunchServices'
+            // `open`) if the direct spawn fails for any reason.
             try
             {
                 var proc = Process.Start(new ProcessStartInfo
                 {
-                    FileName = "open",
+                    FileName = "/usr/bin/open",
                     ArgumentList = { installerPath },
+                    UseShellExecute = false
+                });
+                if (proc is not null)
+                    return true;
+                Debug.WriteLine("[UpdateService] /usr/bin/open returned null.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[UpdateService] LaunchInstaller (/usr/bin/open .dmg) failed: {ex.Message}");
+            }
+
+            try
+            {
+                var proc = Process.Start(new ProcessStartInfo
+                {
+                    FileName = installerPath,
+                    UseShellExecute = true   // macOS routes this through LaunchServices (`open`)
+                });
+                return proc is not null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[UpdateService] LaunchInstaller (shell-execute .dmg) failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            // AppImage self-update: the running file's absolute path is exposed in
+            // $APPIMAGE. Replace it with the freshly downloaded (already size/SHA-256
+            // verified) build and relaunch. A detached shell waits for THIS process to
+            // exit first so the file isn't swapped mid-run — mirroring how the Windows
+            // installer waits for the app to close before replacing it.
+            var target = Environment.GetEnvironmentVariable("APPIMAGE");
+            if (string.IsNullOrEmpty(target) || !File.Exists(target))
+            {
+                Debug.WriteLine("[UpdateService] Not running as an AppImage ($APPIMAGE unset); cannot self-update.");
+                return false;
+            }
+
+            try
+            {
+                // Single-quote paths for the shell, escaping any embedded single quotes.
+                static string Sh(string s) => "'" + s.Replace("'", "'\\''") + "'";
+
+                var pid = Environment.ProcessId;
+                var script =
+                    $"while kill -0 {pid} 2>/dev/null; do sleep 0.2; done; " +
+                    $"mv -f {Sh(installerPath)} {Sh(target)} && chmod +x {Sh(target)} && " +
+                    $"nohup {Sh(target)} >/dev/null 2>&1 &";
+
+                var proc = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "/bin/sh",
+                    ArgumentList = { "-c", script },
                     UseShellExecute = false
                 });
                 return proc is not null;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[UpdateService] LaunchInstaller (open .dmg) failed: {ex.Message}");
+                Debug.WriteLine($"[UpdateService] LaunchInstaller (AppImage swap) failed: {ex.Message}");
                 return false;
             }
         }
 
-        // Linux: no in-app installer; users update via AppImage/tar.gz.
+        // Unknown platform — no in-app installer.
         return false;
     }
 
