@@ -105,9 +105,10 @@ public class VlcAudioPlayer : IAudioPlayer
     // a cold device — the cold open desyncs the output clock into the permanent
     // "playback too late → flushing buffers" stutter on the FIRST play after
     // launch (confirmed by reporter: keeping any other audio app open fully
-    // suppresses it). Null on non-Windows / NOCTIS_KEEPALIVE=0 / init failure.
-    // See WasapiSilenceKeepAlive for the idle-park and session-exclusion design.
-    private readonly WasapiSilenceKeepAlive? _keepAlive;
+    // suppresses it). macOS/Linux use VlcSilenceKeepAlive instead; null only on
+    // NOCTIS_KEEPALIVE=0 / init failure.
+    // See WasapiSilenceKeepAlive / VlcSilenceKeepAlive for the idle-park design.
+    private readonly IAudioKeepAlive? _keepAlive;
     private MediaPlayer.LibVLCAudioPlayCb? _audioPlayCb;
     private MediaPlayer.LibVLCAudioPauseCb? _audioPauseCb;
     private MediaPlayer.LibVLCAudioResumeCb? _audioResumeCb;
@@ -482,7 +483,12 @@ public class VlcAudioPlayer : IAudioPlayer
 
         // Start the keep-alive immediately: construction happens at app launch,
         // which is exactly the window before the reported first-play stutter.
-        _keepAlive = WasapiSilenceKeepAlive.TryStart();
+        // Windows uses a silent WASAPI stream; macOS/Linux use a silent looping
+        // LibVLC player (see VlcSilenceKeepAlive) — both keep the device warm so
+        // the first Play() / every transition opens against a running endpoint.
+        _keepAlive = OperatingSystem.IsWindows()
+            ? WasapiSilenceKeepAlive.TryStart()
+            : VlcSilenceKeepAlive.TryStart(_libVlc);
 
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnError;
