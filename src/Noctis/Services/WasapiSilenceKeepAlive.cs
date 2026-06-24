@@ -39,7 +39,7 @@ namespace Noctis.Services;
 ///   NOCTIS_KEEPALIVE_IDLE_MS  — idle park timeout in ms (0 = never park)
 /// </summary>
 [SupportedOSPlatform("windows")]
-internal sealed class WasapiSilenceKeepAlive : IDisposable
+internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
 {
     private const int BufferMs = 200;
     private const int FillIntervalMs = 50;
