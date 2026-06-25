@@ -433,7 +433,7 @@
                                     RenderOptions.BitmapInterpolationMode="HighQuality"
                                     IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
                                 <Border.OpacityMask>
-                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Repeat%20icon.png" Stretch="Uniform" />
+                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Repeat%20ICON.png" Stretch="Uniform" />
                                 </Border.OpacityMask>
                             </Border>
                             <!-- All / One: accent glyph -->
@@ -441,7 +441,7 @@
                                     RenderOptions.BitmapInterpolationMode="HighQuality"
                                     IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:RepeatMode.Off}}">
                                 <Border.OpacityMask>
-                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Repeat%20icon.png" Stretch="Uniform" />
+                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Repeat%20ICON.png" Stretch="Uniform" />
                                 </Border.OpacityMask>
                             </Border>
                             <!-- "1" badge: repeat-one only -->
