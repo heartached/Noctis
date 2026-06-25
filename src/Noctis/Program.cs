@@ -35,6 +35,12 @@ internal class Program
             // Make services available to the Avalonia App
             App.Services = provider;
 
+            // Mark login-launched runs (the autostart entry passes "--startup", plus
+            // "--minimized" when the user wants it to start hidden in the tray) so the
+            // main window can start minimized instead of popping up on boot.
+            App.LaunchedAtStartup = Array.IndexOf(args, "--startup") >= 0;
+            App.StartMinimizedAtLogin = App.LaunchedAtStartup && Array.IndexOf(args, "--minimized") >= 0;
+
             // Log unhandled exceptions to a crash file for post-mortem debugging
             AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             {

@@ -20,6 +20,15 @@ public partial class App : Application
     /// <summary>Cached view locator for pre-warming heavy views.</summary>
     public static CachedViewLocator? CachedLocator { get; private set; }
 
+    /// <summary>True when this process was launched by the OS autostart entry (its
+    /// registered command carries a "--startup" arg), as opposed to a manual launch.</summary>
+    public static bool LaunchedAtStartup { get; set; }
+
+    /// <summary>True when the autostart entry additionally requested a minimized (tray)
+    /// start ("--startup --minimized"). Read from args at process start so the decision
+    /// needs no async settings load — the main window hides immediately if the tray is up.</summary>
+    public static bool StartMinimizedAtLogin { get; set; }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);

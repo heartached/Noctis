@@ -23,6 +23,13 @@
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
 
+        <!-- A setting row gated by another toggle: dim it while disabled so it
+             visibly reads as not-yet-available (e.g. "Start minimized to tray"
+             before "Open Noctis when computer starts" is on). -->
+        <Style Selector="Grid.dependent-setting:disabled">
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+
         <!-- Circular loading spinner: a rotating arc shown during background work -->
         <Style Selector="Ellipse.loading-spinner">
             <Setter Property="Width" Value="14"/>
@@ -706,14 +713,27 @@
                 </Grid>
             </Border>
 
-            <!-- System tray -->
+            <!-- Startup & window behaviour -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="System Tray" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Keep Noctis running in the tray with playback controls."
+                        <TextBlock Text="Startup &amp; Window Behaviour" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Control how Noctis starts and what the minimize and close buttons do."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Open Noctis when computer starts" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding LaunchAtStartup}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <!-- Dependent on launch-at-startup: only meaningful for login launches. -->
+                    <Grid ColumnDefinitions="*,Auto" Classes="dependent-setting" IsEnabled="{Binding LaunchAtStartup}">
+                        <TextBlock Grid.Column="0" Text="Start minimized to tray" FontSize="13" VerticalAlignment="Center"/>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding StartMinimizedToTray}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Grid.Column="0" Text="Minimize to tray" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"

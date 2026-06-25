@@ -1078,10 +1078,14 @@ public partial class PlayerViewModel : ViewModelBase
         if (CurrentTrack == null || Duration <= TimeSpan.Zero)
             return;
 
-        var fraction = Math.Clamp(PositionFraction, 0.0, 1.0);
-        var target = _hasPendingSeekTarget
-            ? _pendingSeekTarget
-            : TimeSpan.FromTicks((long)(Duration.Ticks * fraction));
+        // A seek gesture that never moved the slider value is not a real seek — the
+        // user pressed and released on the slider's empty hit-area (the band above or
+        // below the thin track) without landing on it. Committing here would seek to
+        // the current position and audibly restart playback from there, so ignore it.
+        if (!_hasPendingSeekTarget)
+            return;
+
+        var target = _pendingSeekTarget;
         _hasPendingSeekTarget = false;
 
         // Update UI immediately so the slider stays where the user clicked

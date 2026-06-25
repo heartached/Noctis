@@ -134,6 +134,11 @@ public class AppSettings
     /// <summary>Closing the main window hides it to the system tray instead of exiting.</summary>
     public bool CloseToTray { get; set; }
 
+    /// <summary>When launched at login, start hidden in the system tray instead of
+    /// showing the window. Only honored when launch-at-startup is on and the tray
+    /// initializes successfully (so the app can never start completely invisible).</summary>
+    public bool StartMinimizedToTray { get; set; }
+
     /// <summary>Whether the local-network web remote is enabled (off by default).</summary>
     public bool WebRemoteEnabled { get; set; }
 

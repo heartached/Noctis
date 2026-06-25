@@ -214,8 +214,30 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Close hides the main window to the system tray instead of exiting.</summary>
     [ObservableProperty] private bool _closeToTray;
 
+    /// <summary>Launch Noctis automatically when the user logs into the computer.
+    /// The OS entry (registry / LaunchAgent / autostart .desktop) is the source of
+    /// truth — there's no AppSettings copy to drift out of sync.</summary>
+    [ObservableProperty] private bool _launchAtStartup;
+
+    /// <summary>When launched at login, start hidden in the tray (only meaningful when
+    /// LaunchAtStartup is on; honored at startup only if the tray is available).</summary>
+    [ObservableProperty] private bool _startMinimizedToTray;
+
     partial void OnMinimizeToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnCloseToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnLaunchAtStartupChanged(bool value)
+    {
+        if (_settingsLoaded) Helpers.StartupHelper.SetEnabled(value, StartMinimizedToTray);
+    }
+
+    partial void OnStartMinimizedToTrayChanged(bool value)
+    {
+        if (!_settingsLoaded) return;
+        _ = SaveAsync();
+        // Re-register so the autostart command's --minimized flag matches the new value
+        // (only when autostart is actually on; the toggle is disabled in the UI otherwise).
+        if (LaunchAtStartup) Helpers.StartupHelper.SetEnabled(true, value);
+    }
 
     // ── Songs page optional columns ──
 
@@ -723,6 +745,10 @@ public partial class SettingsViewModel : ViewModelBase
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
             MinimizeToTray = _settings.MinimizeToTray;
             CloseToTray = _settings.CloseToTray;
+            // Reflect the real OS autostart state (not an AppSettings copy) so the
+            // toggle matches reality even if changed via Task Manager / Login Items.
+            LaunchAtStartup = Helpers.StartupHelper.IsEnabled();
+            StartMinimizedToTray = _settings.StartMinimizedToTray;
             WebRemoteEnabled = _settings.WebRemoteEnabled;
             ShowGenreColumn = _settings.ShowGenreColumn;
             ShowRatingColumn = _settings.ShowRatingColumn;
@@ -911,6 +937,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
         _settings.MinimizeToTray = MinimizeToTray;
         _settings.CloseToTray = CloseToTray;
+        _settings.StartMinimizedToTray = StartMinimizedToTray;
         _settings.WebRemoteEnabled = WebRemoteEnabled;
         _settings.ShowGenreColumn = ShowGenreColumn;
         _settings.ShowRatingColumn = ShowRatingColumn;
@@ -1052,6 +1079,11 @@ public partial class SettingsViewModel : ViewModelBase
             for (uint i = 0; i < 10; i++)
                 bands[i] = Math.Clamp(tempEq.Amp(i), -12f, 12f);
             preamp = Math.Clamp(tempEq.Preamp, -20f, 20f);
+            // VLC bakes a ~+12 dB preamp into its "Flat" preset (index 0), so a "flat"
+            // EQ would play ~12 dB louder than EQ-off and louder than a manually
+            // flattened Custom curve (which uses preamp 0). Force Flat to unity so
+            // Reset / Flat matches dragging every band to 0 and matches EQ-off.
+            if (vlcPresetIndex == 0) preamp = 0f;
             return true;
         }
         catch

@@ -432,17 +432,32 @@
                         Margin="0,0,8,0"
                         Cursor="Hand" />
                 <Button Grid.Column="2"
-                        Content="Save"
                         Command="{Binding SaveCommand}"
                         Width="100"
                         Padding="0,10"
                         Classes="accent-btn accent-pill"
-                            Background="{DynamicResource AccentColorBrush}"
+                        Background="{DynamicResource AccentColorBrush}"
                         Foreground="{DynamicResource AccentForegroundBrush}"
                         FontWeight="Bold"
                         HorizontalContentAlignment="Center"
                         CornerRadius="999"
-                        Cursor="Hand" />
+                        Cursor="Hand">
+                    <Panel>
+                        <TextBlock Text="Save"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   IsVisible="{Binding !IsSaving}" />
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="8"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding IsSaving}">
+                            <TextBlock Text="Saving" VerticalAlignment="Center" />
+                            <Ellipse Classes="loading-spinner"
+                                     Stroke="{DynamicResource AccentForegroundBrush}" />
+                        </StackPanel>
+                    </Panel>
+                </Button>
             </Grid>
         </Border>
 
