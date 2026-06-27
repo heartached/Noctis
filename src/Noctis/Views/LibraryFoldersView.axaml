@@ -98,7 +98,7 @@
                                 </MultiBinding>
                             </Border.Background>
                             <TextElement.Foreground>
-                                <MultiBinding Converter="{StaticResource NowPlayingBrush}" ConverterParameter="AccentTextBrush|SystemControlForegroundBaseHighBrush">
+                                <MultiBinding Converter="{StaticResource NowPlayingBrush}" ConverterParameter="AccentTextBrush|TrackListForeground">
                                     <Binding Path="Id" />
                                     <Binding Path="$parent[UserControl].((vm:LibraryFoldersViewModel)DataContext).CurrentPlayingTrackId" />
                                 </MultiBinding>
