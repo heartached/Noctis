@@ -177,6 +177,25 @@ jobs:
           </plist>
           PLIST
 
+          # ── Ad-hoc code-sign the bundle ───────────────────────────────
+          # Apple Silicon refuses to launch Mach-O code that isn't validly
+          # signed: the kernel SIGKILLs it at exec, which presents as "the app
+          # bounces in the dock once and immediately quits" with no crash log
+          # (the kill happens before any managed code runs). Stripping the
+          # quarantine xattr does NOT bypass this — that only silences the
+          # Gatekeeper prompt. We have no Apple Developer ID, so we ad-hoc sign
+          # (`-`). Every nested Mach-O (the .NET host, helper executables, and
+          # all dylibs incl. libvlc/Skia/Avalonia) must be signed before the
+          # bundle is sealed, so sign depth-first, then the main binary, then
+          # the bundle.
+          echo "Ad-hoc code-signing $APP…"
+          find "$APP/Contents/MacOS" -type f \
+            \( -name "*.dylib" -o -name "ffmpeg" -o -name "createdump" \) \
+            -exec codesign --force --timestamp=none --sign - {} +
+          codesign --force --timestamp=none --sign - "$APP/Contents/MacOS/Noctis"
+          codesign --force --timestamp=none --sign - "$APP"
+          codesign --verify --verbose=2 "$APP" || echo "::warning::codesign verify reported issues on $APP"
+
           # Build .dmg (uses macOS built-in hdiutil — no extra deps)
           DMG_NAME="Noctis-${{ matrix.rid }}.dmg"
           mkdir -p dist/dmg-staging
