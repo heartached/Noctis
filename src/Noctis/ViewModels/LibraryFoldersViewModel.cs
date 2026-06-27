@@ -30,6 +30,10 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
 
     [ObservableProperty] private FolderNode? _selectedNode;
 
+    /// <summary>Id of the track currently loaded in the player (drives the now-playing row highlight).</summary>
+    [ObservableProperty] private Guid? _currentPlayingTrackId;
+    private readonly System.ComponentModel.PropertyChangedEventHandler _playerPropertyChangedHandler;
+
     /// <summary>Fires when the user clicks "Manage media folders…" — handled by MainWindowViewModel to switch views.</summary>
     public event EventHandler? NavigateToSettingsRequested;
 
@@ -38,6 +42,14 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         _library = library;
         _player = player;
         _persistence = persistence;
+
+        CurrentPlayingTrackId = _player.CurrentTrack?.Id;
+        _playerPropertyChangedHandler = (_, e) =>
+        {
+            if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
+                CurrentPlayingTrackId = _player.CurrentTrack?.Id;
+        };
+        _player.PropertyChanged += _playerPropertyChangedHandler;
 
         _libraryUpdatedHandler = (_, _) =>
         {
@@ -178,6 +190,8 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
 
     public void Dispose()
     {
+        _player.PropertyChanged -= _playerPropertyChangedHandler;
+
         if (_libraryUpdatedHandler != null)
         {
             _library.LibraryUpdated -= _libraryUpdatedHandler;
