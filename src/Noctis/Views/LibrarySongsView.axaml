@@ -13,6 +13,7 @@
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry" />
+        <conv:NowPlayingBrushConverter x:Key="NowPlayingBrush" />
     </UserControl.Resources>
 
     <Grid RowDefinitions="*">
@@ -108,6 +109,19 @@
             </ListBox.Styles>
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="m:Track">
+                    <Border CornerRadius="4">
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource NowPlayingBrush}" ConverterParameter="NowPlayingRowBackground">
+                                <Binding Path="Id" />
+                                <Binding Path="$parent[UserControl].((vm:LibrarySongsViewModel)DataContext).CurrentPlayingTrackId" />
+                            </MultiBinding>
+                        </Border.Background>
+                        <TextElement.Foreground>
+                            <MultiBinding Converter="{StaticResource NowPlayingBrush}" ConverterParameter="AccentTextBrush">
+                                <Binding Path="Id" />
+                                <Binding Path="$parent[UserControl].((vm:LibrarySongsViewModel)DataContext).CurrentPlayingTrackId" />
+                            </MultiBinding>
+                        </TextElement.Foreground>
                     <Grid ColumnDefinitions="*,80,*,*,Auto,80,Auto,55,Auto,Auto,Auto,42"
                           Margin="0,2"
                           Background="Transparent"
@@ -251,6 +265,7 @@
                                      VerticalAlignment="Center" />
                         </Button>
                     </Grid>
+                    </Border>
                 </DataTemplate>
             </ListBox.ItemTemplate>
             </ListBox>
