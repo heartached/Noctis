@@ -34,6 +34,8 @@
                     <Color x:Key="AppMainBackgroundColor">#252525</Color>
                     <SolidColorBrush x:Key="TrackListStripeBrush" Color="#14000000" />
                     <SolidColorBrush x:Key="TrackListHoverBrush" Color="#0AFFFFFF" />
+                    <!-- Faint accent tint marking the currently-playing track row (Folders/Songs). -->
+                    <SolidColorBrush x:Key="NowPlayingRowBackground" Color="#26E74856" />
 
                     <!-- Background Colors -->
                     <Color x:Key="SystemChromeMediumColor">#252525</Color>
@@ -141,6 +143,8 @@
                     <Color x:Key="AppMainBackgroundColor">#FFFFFF</Color>
                     <SolidColorBrush x:Key="TrackListStripeBrush" Color="#08000000" />
                     <SolidColorBrush x:Key="TrackListHoverBrush" Color="#08000000" />
+                    <!-- Faint accent tint marking the currently-playing track row (Folders/Songs). -->
+                    <SolidColorBrush x:Key="NowPlayingRowBackground" Color="#22E74856" />
 
                     <!-- Background Colors -->
                     <Color x:Key="SystemChromeMediumColor">#FFFFFF</Color>
