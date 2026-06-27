@@ -2,9 +2,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
+             xmlns:conv="using:Noctis.Converters"
              x:Class="Noctis.Views.LibraryFoldersView"
              x:DataType="vm:LibraryFoldersViewModel"
              Background="{DynamicResource AppMainBackground}">
+
+    <UserControl.Resources>
+        <conv:NowPlayingBrushConverter x:Key="NowPlayingBrush" />
+    </UserControl.Resources>
 
     <UserControl.Styles>
         <!-- Pill-shaped selection/hover highlight on folder tree rows, matching the
@@ -85,11 +90,25 @@
                      Padding="0,0,0,115">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:Track">
-                        <Grid ColumnDefinitions="*,120,*" Margin="0,2">
-                            <TextBlock Grid.Column="0" Text="{Binding TitleDisplay}" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="1" Text="{Binding DurationFormatted}" VerticalAlignment="Center" Opacity="0.7" />
-                            <TextBlock Grid.Column="2" Text="{Binding ArtistDisplay}" VerticalAlignment="Center" Opacity="0.7" />
-                        </Grid>
+                        <Border CornerRadius="4" Margin="0,2" Padding="6,2">
+                            <Border.Background>
+                                <MultiBinding Converter="{StaticResource NowPlayingBrush}" ConverterParameter="NowPlayingRowBackground">
+                                    <Binding Path="Id" />
+                                    <Binding Path="$parent[UserControl].((vm:LibraryFoldersViewModel)DataContext).CurrentPlayingTrackId" />
+                                </MultiBinding>
+                            </Border.Background>
+                            <TextElement.Foreground>
+                                <MultiBinding Converter="{StaticResource NowPlayingBrush}" ConverterParameter="AccentTextBrush">
+                                    <Binding Path="Id" />
+                                    <Binding Path="$parent[UserControl].((vm:LibraryFoldersViewModel)DataContext).CurrentPlayingTrackId" />
+                                </MultiBinding>
+                            </TextElement.Foreground>
+                            <Grid ColumnDefinitions="*,120,*">
+                                <TextBlock Grid.Column="0" Text="{Binding TitleDisplay}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding DurationFormatted}" VerticalAlignment="Center" Opacity="0.7" />
+                                <TextBlock Grid.Column="2" Text="{Binding ArtistDisplay}" VerticalAlignment="Center" Opacity="0.7" />
+                            </Grid>
+                        </Border>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
