@@ -85,7 +85,7 @@
                      Padding="0,0,0,115">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:Track">
-                        <Border Classes.now-playing="{Binding IsNowPlaying}" CornerRadius="4" Margin="0,2" Padding="6,2">
+                        <Border Classes.now-playing="{Binding IsNowPlaying}" Margin="0,2">
                             <Grid ColumnDefinitions="*,120,*">
                                 <TextBlock Grid.Column="0" Text="{Binding TitleDisplay}" VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="1" Text="{Binding DurationFormatted}" VerticalAlignment="Center" Opacity="0.7" />
