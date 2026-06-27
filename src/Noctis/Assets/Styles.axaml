@@ -36,8 +36,6 @@
                     <SolidColorBrush x:Key="TrackListHoverBrush" Color="#0AFFFFFF" />
                     <!-- Faint accent tint marking the currently-playing track row (Folders/Songs). -->
                     <SolidColorBrush x:Key="NowPlayingRowBackground" Color="#26E74856" />
-                    <!-- Normal (non-playing) track-row text colour; matches the white base set in MainWindow. -->
-                    <SolidColorBrush x:Key="TrackListForeground" Color="White" />
 
                     <!-- Background Colors -->
                     <Color x:Key="SystemChromeMediumColor">#252525</Color>
@@ -147,8 +145,6 @@
                     <SolidColorBrush x:Key="TrackListHoverBrush" Color="#08000000" />
                     <!-- Faint accent tint marking the currently-playing track row (Folders/Songs). -->
                     <SolidColorBrush x:Key="NowPlayingRowBackground" Color="#22E74856" />
-                    <!-- Normal (non-playing) track-row text colour; matches the white base set in MainWindow. -->
-                    <SolidColorBrush x:Key="TrackListForeground" Color="White" />
 
                     <!-- Background Colors -->
                     <Color x:Key="SystemChromeMediumColor">#FFFFFF</Color>
@@ -742,6 +738,16 @@
     </Style>
     <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n):pointerover">
         <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
+    </Style>
+
+    <!-- Now-playing row: accent tint + accent text on the current track (Folders/Songs).
+         Lives on the row's inner Border (class toggled by Track.IsNowPlaying), so when the
+         class is removed the setters revert cleanly and text returns to the inherited white. -->
+    <Style Selector="Border.now-playing">
+        <Setter Property="Background" Value="{DynamicResource NowPlayingRowBackground}" />
+    </Style>
+    <Style Selector="Border.now-playing :is(TextBlock)">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
     </Style>
 
     <!-- Note: ContentPresenter background overrides for track-list items are handled by

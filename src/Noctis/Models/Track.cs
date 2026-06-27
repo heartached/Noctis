@@ -78,6 +78,12 @@ public partial class Track : ObservableObject
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsRecentImport { get; set; }
 
+    /// <summary>Transient flag: true when this track is the one currently loaded in the player.
+    /// Drives the now-playing row highlight in flat track lists. Not persisted.</summary>
+    [ObservableProperty]
+    [property: System.Text.Json.Serialization.JsonIgnore]
+    private bool _isNowPlaying;
+
     // ── Extended metadata ──
 
     /// <summary>Composer(s) of the track.</summary>

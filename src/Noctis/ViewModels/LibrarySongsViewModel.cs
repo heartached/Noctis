@@ -53,24 +53,12 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     /// <summary>Fires when the user wants to view an album from a track.</summary>
     public event EventHandler<Track>? ViewAlbumRequested;
 
-    /// <summary>Id of the track currently loaded in the player (drives the now-playing row highlight).</summary>
-    [ObservableProperty] private Guid? _currentPlayingTrackId;
-    private readonly System.ComponentModel.PropertyChangedEventHandler _playerPropertyChangedHandler;
-
     public LibrarySongsViewModel(ILibraryService library, PlayerViewModel player, SidebarViewModel sidebar, IPersistenceService persistence)
     {
         _library = library;
         _player = player;
         _sidebar = sidebar;
         _persistence = persistence;
-
-        CurrentPlayingTrackId = _player.CurrentTrack?.Id;
-        _playerPropertyChangedHandler = (_, e) =>
-        {
-            if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
-                CurrentPlayingTrackId = _player.CurrentTrack?.Id;
-        };
-        _player.PropertyChanged += _playerPropertyChangedHandler;
 
         // Mark dirty when library changes — actual reload deferred to next Refresh() call
         _libraryUpdatedHandler = (_, _) =>
@@ -415,8 +403,6 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
     public void Dispose()
     {
-        _player.PropertyChanged -= _playerPropertyChangedHandler;
-
         // Stop and dispose search debounce timer
         if (_searchDebounce != null)
         {

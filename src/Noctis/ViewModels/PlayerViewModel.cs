@@ -676,9 +676,11 @@ public partial class PlayerViewModel : ViewModelBase
     private async Task RemoveCurrentTrackFromLibrary()
     {
         if (CurrentTrack == null) return;
-        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
-            return;
         var trackToRemove = CurrentTrack;
+
+        var choice = await Views.RemoveFromLibraryDialog.ShowAsync(1);
+        if (choice == Views.RemoveFromLibraryChoice.Cancel)
+            return;
 
         // Advance to next track or stop playback
         if (UpNext.Count > 0)
@@ -692,6 +694,8 @@ public partial class PlayerViewModel : ViewModelBase
             AlbumArt = null;
         }
 
+        if (choice == Views.RemoveFromLibraryChoice.Trash)
+            await Helpers.LibraryRemovalHelper.TrashLocalFilesAsync(new[] { trackToRemove });
         await _library.RemoveTrackAsync(trackToRemove.Id);
     }
 
@@ -954,6 +958,14 @@ public partial class PlayerViewModel : ViewModelBase
         // after Play(); refresh once more so applied-gain and output format are
         // accurate for the new track.
         DispatcherTimer.RunOnce(RefreshSignalPath, TimeSpan.FromMilliseconds(800));
+    }
+
+    // Keep the shared Track instances' now-playing flag in sync so flat track
+    // lists (Folders/Songs) can highlight the current row via a style class.
+    partial void OnCurrentTrackChanged(Track? oldValue, Track? newValue)
+    {
+        if (oldValue != null) oldValue.IsNowPlaying = false;
+        if (newValue != null) newValue.IsNowPlaying = true;
     }
 
     /// <summary>
