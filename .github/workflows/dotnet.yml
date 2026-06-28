@@ -188,7 +188,7 @@ jobs:
           # all dylibs incl. libvlc/Skia/Avalonia) must be signed before the
           # bundle is sealed, so sign depth-first, then the main binary, then
           # the bundle.
-          echo "Ad-hoc code-signing $APP…"
+          echo "Ad-hoc code-signing ${APP}"
           find "$APP/Contents/MacOS" -type f \
             \( -name "*.dylib" -o -name "ffmpeg" -o -name "createdump" \) \
             -exec codesign --force --timestamp=none --sign - {} +
