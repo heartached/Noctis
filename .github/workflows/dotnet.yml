@@ -186,15 +186,18 @@ jobs:
           # Gatekeeper prompt. We have no Apple Developer ID, so we ad-hoc sign
           # (`-`). Every nested Mach-O (the .NET host, helper executables, and
           # all dylibs incl. libvlc/Skia/Avalonia) must be signed before the
-          # bundle is sealed, so sign depth-first, then the main binary, then
-          # the bundle.
+          # bundle is sealed. Sign nested Mach-O depth-first, then seal the
+          # whole bundle with --deep (which signs the main binary and seals the
+          # managed .dll assemblies as resources). Signing the main executable
+          # by its direct path instead trips "code object is not signed at all /
+          # In subcomponent: *.dll", because codesign then treats the flat
+          # managed assemblies in Contents/MacOS as unsigned nested code.
           echo "Ad-hoc code-signing ${APP}"
           find "$APP/Contents/MacOS" -type f \
             \( -name "*.dylib" -o -name "ffmpeg" -o -name "createdump" \) \
             -exec codesign --force --timestamp=none --sign - {} +
-          codesign --force --timestamp=none --sign - "$APP/Contents/MacOS/Noctis"
-          codesign --force --timestamp=none --sign - "$APP"
-          codesign --verify --verbose=2 "$APP" || echo "::warning::codesign verify reported issues on $APP"
+          codesign --force --deep --timestamp=none --sign - "$APP"
+          codesign --verify --deep --verbose=2 "$APP" || echo "::warning::codesign verify reported issues on $APP"
 
           # Build .dmg (uses macOS built-in hdiutil — no extra deps)
           DMG_NAME="Noctis-${{ matrix.rid }}.dmg"
