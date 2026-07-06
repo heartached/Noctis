@@ -35,65 +35,11 @@
             BorderThickness="0">
       <Grid>
 
-        <!-- Back button + optional context title left-aligned (shown in detail views).
+        <!-- Context title + chips, left-aligned (shown in detail views). The Back action
+             itself lives in the sidebar rail; this row only carries the page context.
              DockPanel so the title fills remaining width and ellipsizes instead of overflowing. -->
         <DockPanel LastChildFill="True"
                    IsVisible="{Binding IsBackButtonVisible}">
-            <Button DockPanel.Dock="Left"
-                    Command="{Binding BackCommand}"
-                    IsVisible="{Binding IsAlbumDetailBackButtonVisible}"
-                     Classes="accent-btn"
-                     Background="{DynamicResource AccentColorBrush}"
-                     Foreground="{DynamicResource AccentForegroundBrush}"
-                    BorderBrush="{DynamicResource AccentBorderBrush}"
-                    BorderThickness="1"
-                    Padding="16,7"
-                    Margin="0,0,14,0"
-                    CornerRadius="999"
-                    VerticalAlignment="Center"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Cursor="Hand">
-                 <Button.Styles>
-                     <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
-                         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-                     </Style>
-                 </Button.Styles>
-                <TextBlock Text="{Binding AlbumDetailBackButtonDisplayText}"
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            Foreground="{DynamicResource AccentForegroundBrush}"
-                            VerticalAlignment="Center" />
-            </Button>
-
-            <Button DockPanel.Dock="Left"
-                    Command="{Binding BackCommand}"
-                    IsVisible="{Binding IsGenericBackButtonVisible}"
-                     Classes="accent-btn"
-                     Background="{DynamicResource AccentColorBrush}"
-                     Foreground="{DynamicResource AccentForegroundBrush}"
-                    BorderBrush="{DynamicResource AccentBorderBrush}"
-                    BorderThickness="1"
-                    Padding="16,7"
-                    Margin="0,0,14,0"
-                    CornerRadius="999"
-                    VerticalAlignment="Center"
-                    HorizontalContentAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    Cursor="Hand"
-                    FontSize="13"
-                    FontWeight="SemiBold">
-                 <Button.Styles>
-                     <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
-                         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-                     </Style>
-                 </Button.Styles>
-                <TextBlock Text="{Binding BackButtonDisplayText}"
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            Foreground="{DynamicResource AccentForegroundBrush}"
-                            VerticalAlignment="Center" />
-            </Button>
             <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
                 <TextBlock Text="{Binding BackContextTitle}"
                            IsVisible="{Binding IsBackContextTitleVisible}"
