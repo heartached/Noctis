@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Noctis.Models;
 
@@ -6,7 +7,7 @@ namespace Noctis.Models;
 /// A node in the folder browse tree. Computed on demand from library tracks;
 /// not persisted. A node represents one directory under a configured music root.
 /// </summary>
-public sealed class FolderNode
+public sealed partial class FolderNode : ObservableObject
 {
     /// <summary>Absolute path of this folder on disk.</summary>
     public required string FullPath { get; init; }
@@ -25,4 +26,11 @@ public sealed class FolderNode
 
     /// <summary>Total track count including all descendants (computed at build time).</summary>
     public int TotalTrackCount { get; set; }
+
+    /// <summary>
+    /// Whether this node is expanded in the Folders tree. Lives on the model
+    /// (not the TreeViewItem container) so expansion survives view re-creation
+    /// when navigating away and back.
+    /// </summary>
+    [ObservableProperty] private bool _isExpanded;
 }

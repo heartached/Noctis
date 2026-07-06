@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:m="using:Noctis.Models"
+             xmlns:controls="using:Noctis.Controls"
              x:Class="Noctis.Views.LibraryFoldersView"
              x:DataType="vm:LibraryFoldersViewModel"
              Background="{DynamicResource AppMainBackground}">
@@ -15,6 +16,17 @@
         <Style Selector="TreeViewItem /template/ Border#PART_LayoutRoot">
             <Setter Property="CornerRadius" Value="999" />
         </Style>
+        <!-- Expansion lives on the FolderNode model so it survives navigating
+             away and back (TreeViewItem containers are recreated each visit). -->
+        <Style Selector="TreeViewItem" x:DataType="m:FolderNode">
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+        </Style>
+        <!-- Rounded-pill row highlight for the track list (scoped to this view so the
+             shared track-list style is untouched elsewhere). The item's CornerRadius
+             flows to PART_ContentPresenter, which paints the hover/stripe background. -->
+        <Style Selector="ListBox.track-list ListBoxItem">
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
     </UserControl.Styles>
 
     <!-- Right margin trimmed to 2 so the content list's vertical scrollbar sits at the window edge. -->
@@ -25,8 +37,12 @@
                 Padding="8"
                 Background="{DynamicResource AppSidebarBackground}"
                 CornerRadius="8">
+            <!-- AutoScrollToSelectedItem off: rows are wider than the pane (long folder
+                 names), so the default scroll-into-view on click yanked the horizontal
+                 scrollbar to the right. The clicked row is already visible anyway. -->
             <TreeView ItemsSource="{Binding RootNodes}"
-                      SelectedItem="{Binding SelectedNode, Mode=TwoWay}">
+                      SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
+                      AutoScrollToSelectedItem="False">
                 <TreeView.ItemTemplate>
                     <TreeDataTemplate x:DataType="m:FolderNode" ItemsSource="{Binding Children}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
@@ -86,10 +102,67 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:Track">
                         <Border Classes.now-playing="{Binding IsNowPlaying}" Margin="0,2">
-                            <Grid ColumnDefinitions="*,120,*">
-                                <TextBlock Grid.Column="0" Text="{Binding TitleDisplay}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding DurationFormatted}" VerticalAlignment="Center" Opacity="0.7" />
-                                <TextBlock Grid.Column="2" Text="{Binding ArtistDisplay}" VerticalAlignment="Center" Opacity="0.7" />
+                            <Grid ColumnDefinitions="34,1.6*,Auto,*">
+
+                                <!-- Row number, swapped for the animated EQ on the playing track.
+                                     EQ is centered over the digit column; numbers use tabular
+                                     figures so every digit has equal width and stays in line. -->
+                                <Panel Grid.Column="0"
+                                       VerticalAlignment="Center">
+                                    <controls:EqVisualizer Width="34" Height="22"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                           IsVisible="{Binding IsNowPlaying}"
+                                                           IsPlaying="{Binding $parent[UserControl].((vm:LibraryFoldersViewModel)DataContext).Player.IsPlaying, Mode=OneWay}" />
+                                    <TextBlock Text="{Binding RowNumber}"
+                                               Opacity="0.5"
+                                               FontSize="14"
+                                               FontFeatures="+tnum"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,10,0"
+                                               IsVisible="{Binding !IsNowPlaying}" />
+                                </Panel>
+
+                                <!-- Title + explicit badge (title truncates; full text on hover) -->
+                                <Grid Grid.Column="1"
+                                      ColumnDefinitions="Auto,Auto"
+                                      ClipToBounds="True"
+                                      HorizontalAlignment="Left"
+                                      VerticalAlignment="Center">
+                                    <TextBlock Grid.Column="0"
+                                               Classes="one-line-explicit-title"
+                                               Text="{Binding TitleDisplay}"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxWidth="520"
+                                               VerticalAlignment="Center"
+                                               ToolTip.Tip="{Binding TitleDisplay}" />
+                                    <Border Grid.Column="1"
+                                            Classes="explicit-badge compact"
+                                            Margin="6,0,0,0"
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding IsExplicit}"
+                                            ToolTip.Tip="Explicit">
+                                        <TextBlock Text="E"
+                                                   Classes="explicit-badge-text compact"
+                                                   FontSize="9"
+                                                   Opacity="0.9" />
+                                    </Border>
+                                </Grid>
+
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding DurationFormatted}"
+                                           VerticalAlignment="Center"
+                                           Opacity="0.7"
+                                           Margin="16,0" />
+                                <TextBlock Grid.Column="3"
+                                           Text="{Binding ArtistDisplay}"
+                                           VerticalAlignment="Center"
+                                           Opacity="0.7"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxLines="1"
+                                           ToolTip.Tip="{Binding ArtistDisplay}" />
                             </Grid>
                         </Border>
                     </DataTemplate>
