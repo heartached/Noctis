@@ -303,8 +303,10 @@ internal static class ExtendedTagIO
 
     // ── Rating (ID3v2 POPM / Vorbis+APE RATING / MP4 ----:com.apple.iTunes:RATING) ──
     // POPM stores 0-255 (Windows convention: 1/64/128/196/255 for 1-5 stars); the text
-    // containers store 0-100 (MediaMonkey/MusicBee convention, stars × 20). Reads accept
-    // either a 0-5 or a 0-100 scale so ratings written by other players map cleanly.
+    // containers store 0-100 (MediaMonkey/MusicBee convention, stars × 20). Reads only
+    // accept the 0-100 scale: Apple Music downloads carry the iTunes advisory flag
+    // (1=explicit, 2=clean, 4=legacy explicit) in a "rating" text tag, so small values
+    // would otherwise show up as phantom 1/2/4-star ratings on freshly imported files.
 
     private const string RatingKey = "RATING";
     private const string DislikedKey = "NOCTIS_DISLIKED";
@@ -406,8 +408,9 @@ internal static class ExtendedTagIO
 
     private static int NumericToStars(double value)
     {
-        if (value <= 0) return 0;
-        if (value <= 5) return System.Math.Clamp((int)System.Math.Round(value), 1, 5);
+        // Below the 0-100 scale's half-star floor (10 = ½★) the value is ambiguous with
+        // the iTunes advisory codes (1/2/4), so treat it as unrated rather than stars.
+        if (value < 10) return 0;
         return System.Math.Clamp((int)System.Math.Round(value / 20.0), 1, 5);
     }
 
