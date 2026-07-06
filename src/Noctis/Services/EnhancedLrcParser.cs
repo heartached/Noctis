@@ -67,8 +67,48 @@ public static partial class EnhancedLrcParser
         }
 
         var plain = WordTagRegex().Replace(body, "").Trim();
-        return (plain, words.Count > 0 ? words : null);
+        return (plain, words.Count > 0 ? MergeSyllables(words) : null);
     }
+
+    /// <summary>
+    /// Joins syllable-level timings (adjacent segments with no whitespace between
+    /// them, e.g. "tal" + "king ") into whole words, so the karaoke WrapPanel can
+    /// never insert a line break mid-word. The merged segment spans first.Start →
+    /// last.End, which the sweep still crosses continuously. CJK scripts carry no
+    /// spaces at all, so those boundaries are left unmerged — per-character cells
+    /// wrap fine typographically, and merging would build one unwrappable mega-cell.
+    /// </summary>
+    public static List<WordTiming> MergeSyllables(List<WordTiming> words)
+    {
+        if (words.Count < 2) return words;
+
+        var merged = new List<WordTiming>(words.Count) { words[0] };
+        for (int i = 1; i < words.Count; i++)
+        {
+            var prev = merged[^1];
+            var cur = words[i];
+            if (prev.Text.Length > 0 && cur.Text.Length > 0
+                && IsJoinable(prev.Text[^1]) && IsJoinable(cur.Text[0]))
+            {
+                merged[^1] = new WordTiming
+                {
+                    Text = prev.Text + cur.Text,
+                    Start = prev.Start,
+                    End = cur.End,
+                };
+            }
+            else
+            {
+                merged.Add(cur);
+            }
+        }
+        return merged;
+    }
+
+    // Letters/digits/apostrophes/hyphens below the CJK blocks join into one word;
+    // whitespace, punctuation and CJK characters keep segments separate.
+    private static bool IsJoinable(char c) =>
+        (char.IsLetterOrDigit(c) || c is '\'' or '’' or '-') && c < '⺀';
 
     /// <summary>Strips inline word tags from an enhanced-LRC body (display fallback).</summary>
     public static string StripWordTags(string? body) =>

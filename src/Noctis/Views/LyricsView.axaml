@@ -16,6 +16,7 @@
         <conv:ArtworkPathConverter x:Key="ArtworkConverter"/>
         <conv:VolumeToIconConverter x:Key="VolumeToIcon"/>
         <conv:ProgressToSweepMaskConverter x:Key="ProgressToSweepMask"/>
+        <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect"/>
         <!-- Adaptive button/slider brushes (updated from code-behind) -->
         <SolidColorBrush x:Key="LyricsBtnBgRes" Color="#33FFFFFF"/>
         <SolidColorBrush x:Key="LyricsBtnBgHoverRes" Color="#55FFFFFF"/>
@@ -141,11 +142,14 @@
             <Setter Property="Background" Value="{DynamicResource LyricsSecBtnBgHoverRes}"/>
         </Style>
 
-        <!-- AMLL-style active-line presentation: scale up + small lift, damped-spring ease.
-             Origin pinned to the left edge so text grows in place instead of drifting. -->
+        <!-- AMLL-style active-line presentation: inactive lines sit at 0.96× and the
+             active line springs to natural size (same visual zoom as scaling up, but
+             nothing ever renders outside its layout bounds, so the viewport can't
+             clip the grown line at the right edge). Origin pinned to the left edge
+             so text grows in place instead of drifting. -->
         <Style Selector="Button.lyric-line-btn">
             <Setter Property="RenderTransformOrigin" Value="0,0.5"/>
-            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="RenderTransform" Value="translate(0px,0px) scale(0.96)"/>
             <Setter Property="Transitions">
                 <Transitions>
                     <!-- Near-critically-damped spring: <2% overshoot. Reads as a soft settle, not a bounce. -->
@@ -159,18 +163,14 @@
             </Setter>
         </Style>
         <Style Selector="Button.lyric-line-btn.active">
-            <!-- Scale removed: the 1.07× zoom-from-left caused the rightmost
-                 character of a long active lyric to be clipped by the ScrollViewer's
-                 internal ScrollContentPresenter (e.g. the "p" in "wake up").
-                 The active line is still visually distinct via bold weight + opacity. -->
-            <Setter Property="RenderTransform" Value="translate(0px,-4px)"/>
+            <Setter Property="RenderTransform" Value="translate(0px,-2px) scale(1)"/>
         </Style>
-        <!-- Suppress global hover-scale on lyric lines. -->
+        <!-- Suppress global hover-scale on lyric lines (match the resting transforms). -->
         <Style Selector="ItemsControl#LyricsItemsControl Button:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="RenderTransform" Value="translate(0px,0px) scale(0.96)"/>
         </Style>
         <Style Selector="ItemsControl#LyricsItemsControl Button.lyric-line-btn.active:pointerover">
-            <Setter Property="RenderTransform" Value="translate(0px,-4px)"/>
+            <Setter Property="RenderTransform" Value="translate(0px,-2px) scale(1)"/>
         </Style>
 
         <!-- Per-word lift: words fire rapidly, so spring oscillation reads as chatter.
@@ -185,7 +185,50 @@
             </Setter>
         </Style>
         <Style Selector="Panel.word-cell.current">
-            <Setter Property="RenderTransform" Value="translate(0px,-3px) scale(1.02)"/>
+            <Setter Property="RenderTransform" Value="translate(0px,-1px) scale(1.01)"/>
+        </Style>
+
+        <!-- Held-note emphasis (Apple Music style): long words swell slowly while sung
+             and ease back just as gently, with a soft glow that fades in underneath.
+             The longer transition here replaces the quick 0.22s one from word-cell. -->
+        <Style Selector="Panel.word-cell.emphasis">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.8" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Panel.word-cell.emphasis.current">
+            <!-- 1.04 / blur(6): the swell and glow spill past the line's layout bounds;
+                 in narrow mode lines wrap flush against the ScrollViewer's content edge,
+                 so the spill must stay under the viewer's right padding or it clips. -->
+            <Setter Property="RenderTransform" Value="translate(0px,-2px) scale(1.04)"/>
+        </Style>
+        <Style Selector="TextBlock.word-glow">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Effect" Value="blur(6)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.45" Easing="CubicEaseInOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Panel.word-cell.emphasis.current TextBlock.word-glow">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+
+        <!-- Word base layer: full brightness on inactive lines (matches plain line text),
+             fades to a soft ghost while the line is active so the sweep reads on top. -->
+        <Style Selector="ItemsControl.word-layer TextBlock.word-base">
+            <Setter Property="Opacity" Value="1.0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.35" Easing="CubicEaseInOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ItemsControl.word-layer.active TextBlock.word-base">
+            <Setter Property="Opacity" Value="0.45"/>
         </Style>
 
         <!-- Lyric line: keep active emphasis in opacity/color only, without size/position zoom. -->
@@ -453,7 +496,7 @@
                                            FontSize="12"
                                            Opacity="0.9"
                                            Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
-                                <TextBlock Text="Lossless audio preserves more detail from the original recording."
+                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDescription, FallbackValue=''}"
                                            FontSize="11"
                                            TextWrapping="Wrap"
                                            Opacity="0.85"
@@ -791,7 +834,7 @@
                 <ScrollViewer x:Name="LyricsScrollViewer"
                               VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled"
-                              Padding="24,0,0,0">
+                              Padding="24,0,48,0">
                     <!-- FontSize set here (and adjusted from code-behind per window size)
                          is inherited by the lyric-line and karaoke TextBlocks below. -->
                     <ItemsControl ItemsSource="{Binding ActiveLyricLines}"
@@ -816,13 +859,11 @@
                                         Cursor="Hand"
                                         IsHitTestVisible="{Binding IsClickable}"
                                         Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
-                                        CommandParameter="{Binding}">
-                                    <Button.Effect>
-                                        <BlurEffect Radius="{Binding BlurRadius}"/>
-                                    </Button.Effect>
+                                        CommandParameter="{Binding}"
+                                        Effect="{Binding BlurRadius, Converter={StaticResource BlurToEffect}}">
                                     <Panel HorizontalAlignment="Left"
                                            MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
-                                        <!-- Main text layer (hidden for intro placeholder OR when word-level karaoke is active) -->
+                                        <!-- Main text layer (only for lines without word timings; intro uses dots) -->
                                         <TextBlock Text="{Binding Text}"
                                                    Classes="lyric-line"
                                                    Classes.active="{Binding IsActive}"
@@ -834,12 +875,22 @@
                                                    IsVisible="{Binding ShowLineText}"
                                                    TextWrapping="Wrap"/>
 
-                                        <!-- Word-level karaoke layer (Lyricsfile word timings, only on active line) -->
+                                        <!-- Word-level karaoke layer. Rendered for word-timed lines whether active
+                                             or not, so the wrap geometry never changes on activation (the old
+                                             TextBlock swap re-wrapped the line mid-song). Inactive lines show the
+                                             base layer at full opacity — indistinguishable from plain line text. -->
                                         <ItemsControl ItemsSource="{Binding Words}"
+                                                      Classes="word-layer"
+                                                      Classes.active="{Binding IsActive}"
                                                       IsVisible="{Binding ShowWords}"
                                                       Opacity="{Binding LineOpacity}"
                                                       HorizontalAlignment="Left"
                                                       MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
+                                            <ItemsControl.Transitions>
+                                                <Transitions>
+                                                    <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                                </Transitions>
+                                            </ItemsControl.Transitions>
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
                                                     <WrapPanel Orientation="Horizontal"/>
@@ -848,11 +899,19 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="m:WordTiming">
                                                     <Panel Classes="word-cell"
-                                                           Classes.current="{Binding IsCurrent}">
-                                                        <!-- Dim base layer (always visible) — gives unsung words a soft ghost. -->
+                                                           Classes.current="{Binding IsCurrent}"
+                                                           Classes.emphasis="{Binding IsEmphasis}">
+                                                        <!-- Soft glow under held-note words; fades in via word-glow styles. -->
                                                         <TextBlock Text="{Binding Text}"
+                                                                   Classes="word-glow"
+                                                                   IsVisible="{Binding IsEmphasis}"
                                                                    FontWeight="Bold"
-                                                                   Opacity="0.45"
+                                                                   Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                                                        <!-- Base layer: full opacity while the line is inactive, dims to a
+                                                             soft ghost under the sweep while active (word-base styles). -->
+                                                        <TextBlock Text="{Binding Text}"
+                                                                   Classes="word-base"
+                                                                   FontWeight="Bold"
                                                                    Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
                                                         <!-- Bright overlay revealed left-to-right by Progress sweep. -->
                                                         <TextBlock Text="{Binding Text}"

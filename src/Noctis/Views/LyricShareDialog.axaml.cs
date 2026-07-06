@@ -54,37 +54,45 @@ public partial class LyricShareDialog : Window
 
     private async void OnSaveClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        var vm = Vm;
-        if (vm?.CurrentPng is not { } png)
-            return;
-        var status = await PngExportHelper.SavePngAsync(this, png, vm.SuggestedFileName);
-        if (status != null)
-            vm.ReportStatus(status);
+        // async void: an escaped exception would crash the app.
+        try
+        {
+            var vm = Vm;
+            if (vm?.CurrentPng is not { } png)
+                return;
+            var status = await PngExportHelper.SavePngAsync(this, png, vm.SuggestedFileName);
+            if (status != null)
+                vm.ReportStatus(status);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LyricShareDialog] Save failed: {ex.Message}");
+            Vm?.ReportStatus("Save failed.");
+        }
     }
 
     private async void OnSaveVideoClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        var vm = Vm;
-        if (vm is null || !vm.CanExportVideo)
-            return;
+        // async void: an escaped exception would crash the app.
+        try
+        {
+            var vm = Vm;
+            if (vm is null || !vm.CanExportVideo)
+                return;
 
-        var path = await MediaExportHelper.PickMp4PathAsync(this, vm.SuggestedVideoFileName);
-        if (path is null)
-            return; // cancelled
+            var path = await MediaExportHelper.PickMp4PathAsync(this, vm.SuggestedVideoFileName);
+            if (path is null)
+                return; // cancelled
 
-        vm.ReportStatus("Rendering clip…");
-        var status = await vm.ExportClipAsync(path);
-        vm.ReportStatus(status);
-    }
-
-    private async void OnCopyClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        var vm = Vm;
-        if (vm?.CurrentPng is not { } png)
-            return;
-        var status = await PngExportHelper.CopyPngAsync(this, png, vm.SuggestedFileName);
-        if (status != null)
+            vm.ReportStatus("Rendering clip…");
+            var status = await vm.ExportClipAsync(path);
             vm.ReportStatus(status);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LyricShareDialog] Video export failed: {ex.Message}");
+            Vm?.ReportStatus("Video export failed.");
+        }
     }
 
     public static async Task ShowAsync(LyricShareViewModel vm)

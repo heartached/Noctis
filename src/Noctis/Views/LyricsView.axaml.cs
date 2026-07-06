@@ -19,6 +19,9 @@ public partial class LyricsView : UserControl
     private int _lastScrolledIndex = -1;
     private DispatcherTimer? _activeScrollTimer;
     private bool _isProgrammaticScroll;
+    // Lines currently carrying a transient cascade translate (Apple Music-style
+    // staggered glide); cleared whenever the scroll animation ends or is cancelled.
+    private List<(Control Control, double DelayMs)>? _cascadeLines;
     private DispatcherTimer? _autoFollowResumeTimer;
     private LyricsViewModel? _subscribedVm;
     private bool _swatchScrollersWired;
@@ -511,6 +514,18 @@ public partial class LyricsView : UserControl
         _isProgrammaticScroll = false;
         _activeScrollTimer?.Stop();
         _activeScrollTimer = null;
+        ClearCascadeTransforms();
+    }
+
+    private void ClearCascadeTransforms()
+    {
+        if (_cascadeLines == null) return;
+        foreach (var (control, _) in _cascadeLines)
+        {
+            if (control.RenderTransform is TranslateTransform tt)
+                tt.Y = 0;
+        }
+        _cascadeLines = null;
     }
 
     private void CancelAutoFollowResumeTimer()
@@ -631,7 +646,7 @@ public partial class LyricsView : UserControl
 
                 var distance = Math.Abs(diff);
                 var durationMs = (int)Math.Min(1050, Math.Max(650, distance * 0.85));
-                AnimateScroll(LyricsScrollViewer, currentOffset, targetOffset, durationMs);
+                AnimateScroll(LyricsScrollViewer, currentOffset, targetOffset, durationMs, panel, index);
             }
             catch { }
         }, TimeSpan.FromMilliseconds(10));
@@ -677,17 +692,40 @@ public partial class LyricsView : UserControl
         }, DispatcherPriority.Loaded);
     }
 
+    // Cascade tuning: each line below the active one starts its glide this much later,
+    // up to this many lines deep — the Apple Music "settle top-down" feel.
+    private const double CascadeDelayPerLineMs = 35;
+    private const int CascadeMaxLines = 8;
+
     /// <summary>
     /// Time-based scroll animation using Stopwatch for smooth, frame-accurate motion.
     /// Uses smootherstep easing so lyric movement glides in and out instead of jumping.
+    /// When the lines panel and active index are supplied, lines below the active line
+    /// lag the base glide with a per-line stagger (transient translate that relaxes to
+    /// zero), so the stack settles top-down instead of moving as one rigid slab.
     /// </summary>
-    private void AnimateScroll(ScrollViewer scrollViewer, double from, double to, int durationMs)
+    private void AnimateScroll(ScrollViewer scrollViewer, double from, double to, int durationMs,
+        Panel? linesPanel = null, int activeIndex = -1)
     {
         CancelScrollAnimation();
         _isProgrammaticScroll = true;
 
+        var delta = to - from;
+        var cascade = new List<(Control Control, double DelayMs)>();
+        if (linesPanel != null && activeIndex >= 0 && Math.Abs(delta) > 8)
+        {
+            for (int i = activeIndex + 1;
+                 i < linesPanel.Children.Count && i - activeIndex <= CascadeMaxLines;
+                 i++)
+            {
+                cascade.Add((linesPanel.Children[i], (i - activeIndex) * CascadeDelayPerLineMs));
+            }
+        }
+        _cascadeLines = cascade.Count > 0 ? cascade : null;
+
         var sw = Stopwatch.StartNew();
         var totalMs = (double)durationMs;
+        var maxDelayMs = cascade.Count > 0 ? cascade[^1].DelayMs : 0;
 
         // ~60fps tick rate for smooth rendering
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
@@ -701,13 +739,26 @@ public partial class LyricsView : UserControl
             // Scroll easing: smootherstep glides without overshoot. Spring overshoot here
             // reads as "the lyrics jumped past, then snapped back" — opposite of smooth.
             var eased = Easing.SmootherStep(t);
-            var value = from + (to - from) * eased;
+            var value = from + delta * eased;
 
             scrollViewer.Offset = new Vector(0, value);
 
-            if (t >= 1.0)
+            // Stagger: each cascade line is displaced by the gap between the base ease
+            // and its own delayed ease — positive while catching up, zero when settled.
+            foreach (var (control, delayMs) in cascade)
+            {
+                var tLine = Math.Clamp((elapsed - delayMs) / totalMs, 0.0, 1.0);
+                var lag = delta * (eased - Easing.SmootherStep(tLine));
+                if (control.RenderTransform is TranslateTransform tt)
+                    tt.Y = lag;
+                else
+                    control.RenderTransform = new TranslateTransform(0, lag);
+            }
+
+            if (t >= 1.0 && elapsed >= totalMs + maxDelayMs)
             {
                 scrollViewer.Offset = new Vector(0, to);
+                ClearCascadeTransforms();
                 timer.Stop();
                 sw.Stop();
                 _isProgrammaticScroll = false;

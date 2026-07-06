@@ -31,6 +31,13 @@ public enum ShareBackground
     Solid
 }
 
+/// <summary>Weight used for the lyric lines on the card.</summary>
+public enum LyricCardWeight
+{
+    SemiBold,
+    Bold
+}
+
 /// <summary>Everything needed to render a lyric snapshot card.</summary>
 public sealed record LyricCardSpec
 {
@@ -46,6 +53,8 @@ public sealed record LyricCardSpec
     public ShareBackground Background { get; init; } = ShareBackground.Artwork;
     /// <summary>Solid background color (e.g. "#1A1A2E"); used when <see cref="Background"/> is Solid.</summary>
     public string? SolidColorHex { get; init; }
+    /// <summary>Weight used for the lyric lines (new full-bleed renderer).</summary>
+    public LyricCardWeight LyricWeight { get; init; } = LyricCardWeight.SemiBold;
 }
 
 /// <summary>Everything needed to render a Noctis Wrap recap card.</summary>
@@ -71,147 +80,143 @@ public sealed record WrapCardSpec
 public static class ShareCardRenderer
 {
     private const int CanvasWidth = 1080;
-    private const float Pad = 96f;
+    private const float Pad = 96f;               // Wrap-card content padding
+    private const float CardRadius = 56f;        // frosted artwork-card corner radius
+    private const float FooterHeight = 44f;      // wordmark logo height
+    private const float HeaderArtSize = 112f;    // album thumbnail size in the header
+    private const float LyricGapTop = 60f;       // gap between header and lyric block
+    private const float LyricGapBottom = 60f;    // gap between lyric block and wordmark
+    private const float BoxRadius = 44f;         // solid-card box corner radius
 
-    // Spotify-style floating card geometry.
-    private const float CardMargin = 90f;       // gap between canvas edge and the inner card
-    private const float CardRadius = 56f;        // inner card corner radius
-    private const float CardPad = 84f;           // padding inside the inner card
-    private const float ArtSize = 96f;           // small album thumbnail on the card
-    private const float ArtTextGap = 28f;        // gap between thumbnail and title/artist
-    private const float HeaderToLyricsGap = 64f; // gap between header row and lyrics block
-    private const float LyricsToFooterGap = 64f; // gap between lyrics block and wordmark
-    private const float FooterHeight = 44f;
-
-    public static byte[] RenderLyricCard(LyricCardSpec spec)
+    /// <summary>
+    /// Spotify-style renderer: a full-bleed solid color (or an improved blurred-artwork
+    /// card) with the content filling the frame — small header at the top, large lyrics
+    /// centered in the middle, wordmark pinned to the bottom. Lyric weight is selectable.
+    /// Pure SkiaSharp; safe to call off the UI thread.
+    /// </summary>
+    public static byte[] RenderLyricCardStyled(LyricCardSpec spec)
     {
         int w = CanvasWidth;
         int h = spec.Format == ShareCardFormat.Story ? 1920 : 1080;
 
         using var art = LoadArtwork(spec.ArtworkPath);
-        // Artwork mode fills the whole card with the heavily-blurred cover (matching the
-        // lyrics page); falls back to a solid surround only when there's no artwork to blur.
-        bool photoBg = spec.Background == ShareBackground.Artwork && art != null;
+        bool artworkBlur = spec.Background == ShareBackground.Artwork && art != null;
 
-        var surround = spec.Background == ShareBackground.Solid
-                       && SKColor.TryParse(spec.SolidColorHex, out var solid)
-            ? solid
-            : DeriveBackground(art);
-        // The card floats slightly lighter than the surround, Spotify-style.
-        var cardColor = Lighten(surround, 0.12f);
-
-        bool darkText = spec.TextColor switch
-        {
-            ShareTextColor.Black => true,
-            ShareTextColor.White => false,
-            // Auto: the blurred-photo background carries a dark scrim, so white stays
-            // legible; on a flat card, pick from the card's own lightness.
-            _ => !photoBg && UseDarkText(cardColor.Red, cardColor.Green, cardColor.Blue),
-        };
-        var fg = darkText ? new SKColor(0x12, 0x12, 0x12) : SKColors.White;
-        var fgSubtle = fg.WithAlpha((byte)(darkText ? 160 : 195));
+        // Solid color: an explicit swatch hex if given, else a vibrant color derived from
+        // the artwork (saturation-weighted — far richer than a flat average).
+        var solidColor = spec.Background == ShareBackground.Solid
+                         && SKColor.TryParse(spec.SolidColorHex, out var parsed)
+            ? parsed
+            : DeriveVibrantColor(art);
 
         using var surface = SKSurface.Create(new SKImageInfo(w, h));
         var canvas = surface.Canvas;
-        if (photoBg)
+
+        using var boldFace = ResolveTypeface(SKFontStyleWeight.Bold);
+        using var regularFace = ResolveTypeface(SKFontStyleWeight.Normal);
+        using var lyricFace = ResolveTypeface(
+            spec.LyricWeight == LyricCardWeight.Bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.SemiBold);
+
+        SKColor fg, fgSubtle, badgeLetter;
+        SKRect contentRect;
+
+        if (artworkBlur)
         {
             canvas.Clear(SKColors.Black);
             DrawBlurredCover(canvas, art!, w, h);
-            // Dark scrim keeps lyrics readable over bright covers (same as the lyrics page).
-            using var scrim = new SKPaint { Color = new SKColor(0, 0, 0, 0x99) };
-            canvas.DrawRect(0, 0, w, h, scrim);
-        }
-        else
-        {
-            canvas.Clear(surround);
-        }
+            // Lighter scrim than the legacy card so the cover stays vivid behind legible text.
+            using (var scrim = new SKPaint { Color = new SKColor(0, 0, 0, 0x6E) })
+                canvas.DrawRect(0, 0, w, h, scrim);
 
-        using var boldFace = ResolveTypeface(bold: true);
-        using var regularFace = ResolveTypeface(bold: false);
-
-        // ── Inner card horizontal bounds ────────────────────────────────
-        float cardLeft = CardMargin;
-        float cardRight = w - CardMargin;
-        float cardW = cardRight - cardLeft;
-        float contentW = cardW - CardPad * 2;
-        float contentX = cardLeft + CardPad;
-
-        using var titlePaint = TextPaint(boldFace, 38, fg);
-        using var artistPaint = TextPaint(regularFace, 31, fgSubtle);
-
-        // ── Measure pass: lyric font auto-shrinks until the block fits ──
-        float headerH = ArtSize;
-        float footerBlock = LyricsToFooterGap + FooterHeight;
-        // Available height for lyrics depends on the card height, which differs by format.
-        float cardMaxH = h - CardMargin * 2;
-        float maxLyricsH = cardMaxH - CardPad * 2 - headerH - HeaderToLyricsGap - footerBlock;
-        // Normalize exotic whitespace before measuring/wrapping: Skia's single-typeface
-        // DrawText does no font fallback, so a non-breaking/narrow/zero-width space the lyric
-        // source slipped in would paint as a .notdef "tofu" box (and dodge the space-based wrap).
-        var renderLines = spec.Lines.Select(SanitizeForRender).ToList();
-        float lyricSize = 60;
-        List<string> wrapped;
-        float lineHeight;
-        using var lyricPaint = TextPaint(boldFace, lyricSize, fg);
-        while (true)
-        {
-            lyricPaint.TextSize = lyricSize;
-            wrapped = WrapAll(renderLines, contentW, s => lyricPaint.MeasureText(s));
-            lineHeight = lyricSize * 1.32f;
-            if (wrapped.Count * lineHeight <= maxLyricsH || lyricSize <= 32)
-                break;
-            lyricSize -= 4;
-        }
-
-        float lyricsH = wrapped.Count * lineHeight;
-        float contentH = headerH + HeaderToLyricsGap + lyricsH + footerBlock;
-
-        // ── Inner card vertical bounds ──────────────────────────────────
-        // Story: the card hugs its content and floats in the vertical center.
-        // Square: the card fills the area between the margins.
-        float cardTop, cardH;
-        if (spec.Format == ShareCardFormat.Story)
-        {
-            cardH = Math.Min(contentH + CardPad * 2, cardMaxH);
-            cardTop = (h - cardH) / 2f;
-        }
-        else
-        {
-            cardTop = CardMargin;
-            cardH = cardMaxH;
-        }
-
-        var cardRect = new SKRect(cardLeft, cardTop, cardRight, cardTop + cardH);
-        if (photoBg)
-        {
-            // Frosted panel: a translucent lighter card lifts off the blurred backdrop so the
-            // Spotify-style square still reads, while the artwork stays visible around it.
-            using var fill = new SKPaint { IsAntialias = true, Color = new SKColor(255, 255, 255, 0x30) };
-            canvas.DrawRoundRect(cardRect, CardRadius, CardRadius, fill);
-            using var border = new SKPaint
+            // A near-full-frame frosted card so the content fills the frame in both formats.
+            const float margin = 52f;
+            var cardRect = new SKRect(margin, margin, w - margin, h - margin);
+            using (var fill = new SKPaint { IsAntialias = true, Color = new SKColor(255, 255, 255, 0x24) })
+                canvas.DrawRoundRect(cardRect, CardRadius, CardRadius, fill);
+            using (var border = new SKPaint
             {
                 IsAntialias = true,
                 Style = SKPaintStyle.Stroke,
                 StrokeWidth = 1.5f,
-                Color = new SKColor(255, 255, 255, 0x42),
-            };
-            canvas.DrawRoundRect(cardRect, CardRadius, CardRadius, border);
+                Color = new SKColor(255, 255, 255, 0x3A),
+            })
+                canvas.DrawRoundRect(cardRect, CardRadius, CardRadius, border);
+
+            const float cardPad = 60f;
+            contentRect = new SKRect(cardRect.Left + cardPad, cardRect.Top + cardPad,
+                                     cardRect.Right - cardPad, cardRect.Bottom - cardPad);
+            fg = SKColors.White;
+            fgSubtle = fg.WithAlpha(205);
+            badgeLetter = new SKColor(0x1B, 0x1B, 0x1B);
         }
         else
         {
-            using var cardPaint = new SKPaint { IsAntialias = true, Color = cardColor };
-            canvas.DrawRoundRect(cardRect, CardRadius, CardRadius, cardPaint);
+            canvas.Clear(solidColor);
+            bool darkText = spec.TextColor switch
+            {
+                ShareTextColor.Black => true,
+                ShareTextColor.White => false,
+                _ => UseDarkText(solidColor.Red, solidColor.Green, solidColor.Blue),
+            };
+            fg = darkText ? new SKColor(0x14, 0x14, 0x14) : SKColors.White;
+            fgSubtle = fg.WithAlpha((byte)(darkText ? 150 : 200));
+            badgeLetter = solidColor;
+
+            // Spotify-style: a content-hugging rounded box (subtly lighter, thin outline)
+            // floats on the solid color, so the artwork color stays visible as a border around it.
+            const float margin = 64f, pad = 56f;
+            float boxContentW = w - 2 * margin - 2 * pad;
+            float fixedH = HeaderArtSize + LyricGapTop + LyricGapBottom + FooterHeight;
+            float maxBoxH = h - 2 * margin;
+            var fit = FitLyrics(spec, boxContentW, maxBoxH - 2 * pad - fixedH, lyricFace);
+            float contentH = fixedH + fit.wrapped.Count * fit.lineHeight;
+            float boxH = Math.Min(contentH + 2 * pad, maxBoxH);
+            float boxTop = (h - boxH) / 2f;
+            var boxRect = new SKRect(margin, boxTop, w - margin, boxTop + boxH);
+
+            using (var fill = new SKPaint { IsAntialias = true, Color = Lighten(solidColor, 0.07f) })
+                canvas.DrawRoundRect(boxRect, BoxRadius, BoxRadius, fill);
+            using (var border = new SKPaint
+            {
+                IsAntialias = true,
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 1.5f,
+                Color = fg.WithAlpha(0x33),
+            })
+                canvas.DrawRoundRect(boxRect, BoxRadius, BoxRadius, border);
+
+            contentRect = new SKRect(margin + pad, boxTop + pad, w - margin - pad, boxTop + boxH - pad);
         }
 
-        // Center the whole content block vertically within the card.
-        float contentTop = cardTop + (cardH - contentH) / 2f;
+        DrawCardContent(canvas, spec, contentRect, fg, fgSubtle, badgeLetter, art,
+                        boldFace, regularFace, lyricFace);
 
-        // ── Header: album art + title/artist ────────────────────────────
-        var artRect = new SKRect(contentX, contentTop, contentX + ArtSize, contentTop + ArtSize);
+        using var image = surface.Snapshot();
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        return data.ToArray();
+    }
+
+    /// <summary>
+    /// Lays out a card's content inside <paramref name="rect"/>: header (thumbnail +
+    /// title/artist) anchored to the top, wordmark to the bottom, and the auto-fit lyric
+    /// block vertically centered in the space between them.
+    /// </summary>
+    private static void DrawCardContent(
+        SKCanvas canvas, LyricCardSpec spec, SKRect rect,
+        SKColor fg, SKColor fgSubtle, SKColor badgeLetter, SKBitmap? art,
+        SKTypeface boldFace, SKTypeface regularFace, SKTypeface lyricFace)
+    {
+        float x = rect.Left;
+        float contentW = rect.Width;
+
+        // ── Header: album thumbnail + title/artist ──────────────────────
+        const float artGap = 30f;
+        float artSize = HeaderArtSize;
+        var artRect = new SKRect(x, rect.Top, x + artSize, rect.Top + artSize);
         if (art != null)
         {
             using var artPaint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
-            using var rounded = new SKRoundRect(artRect, 12);
+            using var rounded = new SKRoundRect(artRect, 16);
             canvas.Save();
             canvas.ClipRoundRect(rounded, antialias: true);
             canvas.DrawBitmap(art, artRect, artPaint);
@@ -220,40 +225,148 @@ public static class ShareCardRenderer
         else
         {
             using var placeholder = new SKPaint { IsAntialias = true, Color = fg.WithAlpha(28) };
-            canvas.DrawRoundRect(artRect, 12, 12, placeholder);
+            canvas.DrawRoundRect(artRect, 16, 16, placeholder);
         }
+        // Subtle outline so the thumbnail reads as a distinct element even when the cover
+        // color is close to the card color.
+        using (var artBorder = new SKPaint
+        {
+            IsAntialias = true,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 1.5f,
+            Color = fg.WithAlpha(0x30),
+        })
+            canvas.DrawRoundRect(artRect, 16, 16, artBorder);
 
-        float textX = contentX + ArtSize + ArtTextGap;
-        float textMaxW = contentW - ArtSize - ArtTextGap;
-        float titleBaseline = contentTop + ArtSize / 2f - 6;
-        // Reserve room for the explicit badge so it never collides with the title.
+        using var titlePaint = TextPaint(boldFace, 41, fg);
+        using var artistPaint = TextPaint(regularFace, 31, fgSubtle);
+        float textX = x + artSize + artGap;
+        float textMaxW = contentW - artSize - artGap;
+        float titleBaseline = rect.Top + 49;
         float badgeReserve = spec.IsExplicit ? titlePaint.TextSize * 0.72f + 14 : 0;
         var titleText = Ellipsize(SanitizeForRender(spec.Title), textMaxW - badgeReserve, s => titlePaint.MeasureText(s));
         canvas.DrawText(titleText, textX, titleBaseline, titlePaint);
         if (spec.IsExplicit)
         {
             float badgeX = textX + titlePaint.MeasureText(titleText) + 14;
-            DrawExplicitBadge(canvas, regularFace, fg, cardColor,
+            DrawExplicitBadge(canvas, regularFace, fg, badgeLetter,
                 badgeX, titleBaseline - titlePaint.TextSize * 0.34f, titlePaint.TextSize);
         }
         canvas.DrawText(Ellipsize(SanitizeForRender(spec.Artist), textMaxW, s => artistPaint.MeasureText(s)),
-            textX, contentTop + ArtSize / 2f + 32, artistPaint);
+            textX, rect.Top + 49 + 38, artistPaint);
 
-        // ── Lyric lines ─────────────────────────────────────────────────
-        float baseline = contentTop + headerH + HeaderToLyricsGap + lyricSize;
+        float headerBottom = rect.Top + artSize;
+
+        // ── Footer wordmark, pinned to the bottom of the content rect ───
+        float footerTop = rect.Bottom - FooterHeight;
+        DrawWordmark(canvas, boldFace, fg, x, footerTop);
+
+        // ── Lyrics: auto-fit, then vertically center between header & footer ──
+        float lyTop = headerBottom + LyricGapTop;
+        float lyBottom = footerTop - LyricGapBottom;
+        float avail = Math.Max(0f, lyBottom - lyTop);
+
+        var (wrapped, lyricSize, lineHeight) = FitLyrics(spec, contentW, avail, lyricFace);
+        using var lyricPaint = TextPaint(lyricFace, lyricSize, fg);
+
+        float blockH = wrapped.Count * lineHeight;
+        float baseline = lyTop + Math.Max(0f, (avail - blockH) / 2f) + lyricSize * 0.80f;
         foreach (var line in wrapped)
         {
-            canvas.DrawText(line, contentX, baseline, lyricPaint);
+            canvas.DrawText(line, x, baseline, lyricPaint);
             baseline += lineHeight;
         }
+    }
 
-        // ── Footer wordmark ─────────────────────────────────────────────
-        float footerY = contentTop + headerH + HeaderToLyricsGap + lyricsH + LyricsToFooterGap;
-        DrawWordmark(canvas, boldFace, fg, contentX, footerY);
+    /// <summary>
+    /// Greedily shrinks the lyric font (from a format-dependent base) until the wrapped
+    /// block fits <paramref name="maxLyricsH"/>; returns the wrapped lines, chosen size and
+    /// line height. Shared by the box-sizing and draw passes so the two always agree.
+    /// </summary>
+    private static (List<string> wrapped, float lyricSize, float lineHeight) FitLyrics(
+        LyricCardSpec spec, float contentW, float maxLyricsH, SKTypeface lyricFace)
+    {
+        var renderLines = spec.Lines.Select(SanitizeForRender).ToList();
+        float lyricSize = spec.Format == ShareCardFormat.Story ? 78f : 66f;
+        using var lyricPaint = TextPaint(lyricFace, lyricSize, SKColors.White);
+        List<string> wrapped;
+        float lineHeight;
+        while (true)
+        {
+            lyricPaint.TextSize = lyricSize;
+            wrapped = WrapAll(renderLines, contentW, s => lyricPaint.MeasureText(s));
+            lineHeight = lyricSize * 1.30f;
+            if (wrapped.Count * lineHeight <= maxLyricsH || lyricSize <= 34f)
+                break;
+            lyricSize -= 3f;
+        }
+        return (wrapped, lyricSize, lineHeight);
+    }
 
-        using var image = surface.Snapshot();
-        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-        return data.ToArray();
+    /// <summary>Blends a color toward white by <paramref name="amount"/> (0 to 1).</summary>
+    private static SKColor Lighten(SKColor c, float amount)
+    {
+        amount = Math.Clamp(amount, 0f, 1f);
+        byte Mix(byte v) => (byte)(v + (255 - v) * amount);
+        return new SKColor(Mix(c.Red), Mix(c.Green), Mix(c.Blue));
+    }
+
+    /// <summary>
+    /// The vibrant background color this renderer derives for <paramref name="artworkPath"/>,
+    /// as a "#RRGGBB" hex string — so the dialog's "Auto" swatch can match the rendered card.
+    /// </summary>
+    public static string GetVibrantColorHex(string? artworkPath)
+    {
+        using var art = LoadArtwork(artworkPath);
+        var c = DeriveVibrantColor(art);
+        return $"#{c.Red:X2}{c.Green:X2}{c.Blue:X2}";
+    }
+
+    /// <summary>
+    /// A vibrant background color from the artwork: a saturation-weighted average over
+    /// mid-tone pixels (so a colorful accent wins over washed-out or near-black/white
+    /// areas), with a saturation floor and lightness clamped to a legible background range.
+    /// Much richer than a flat pixel average, which tends toward grey/brown mud.
+    /// </summary>
+    private static SKColor DeriveVibrantColor(SKBitmap? art)
+    {
+        var fallback = new SKColor(0x1A, 0x1A, 0x2E);
+        if (art == null)
+            return fallback;
+
+        double wr = 0, wg = 0, wb = 0, ww = 0;   // saturation-weighted accumulation
+        double ar = 0, ag = 0, ab = 0; long an = 0; // plain average (fallback)
+        for (int y = 0; y < art.Height; y += 6)
+        {
+            for (int x = 0; x < art.Width; x += 6)
+            {
+                var px = art.GetPixel(x, y);
+                if (px.Alpha < 32) continue;
+                ar += px.Red; ag += px.Green; ab += px.Blue; an++;
+
+                double r = px.Red / 255.0, g = px.Green / 255.0, b = px.Blue / 255.0;
+                double max = Math.Max(r, Math.Max(g, b));
+                double min = Math.Min(r, Math.Min(g, b));
+                double luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                if (luma < 0.10 || luma > 0.92) continue; // skip near-black / near-white
+                double sat = max <= 0 ? 0 : (max - min) / max;
+                double weight = sat * sat + 0.04;          // emphasize saturated pixels
+                wr += px.Red * weight; wg += px.Green * weight; wb += px.Blue * weight; ww += weight;
+            }
+        }
+
+        SKColor baseColor;
+        if (ww > 0.0001)
+            baseColor = new SKColor((byte)(wr / ww), (byte)(wg / ww), (byte)(wb / ww));
+        else if (an > 0)
+            baseColor = new SKColor((byte)(ar / an), (byte)(ag / an), (byte)(ab / an));
+        else
+            return fallback;
+
+        baseColor.ToHsl(out var hue, out var s, out var l);
+        s = Math.Clamp(Math.Max(s, 35f) * 1.08f, 0f, 100f);
+        l = Math.Clamp(l, 20f, 52f);
+        return SKColor.FromHsl(hue, s, l);
     }
 
     /// <summary>
@@ -274,14 +387,6 @@ public static class ShareCardRenderer
             ImageFilter = SKImageFilter.CreateBlur(48f, 48f),
         };
         canvas.DrawBitmap(art, dest, paint);
-    }
-
-    /// <summary>Blends a color toward white by <paramref name="amount"/> (0–1).</summary>
-    private static SKColor Lighten(SKColor c, float amount)
-    {
-        amount = Math.Clamp(amount, 0f, 1f);
-        byte Mix(byte v) => (byte)(v + (255 - v) * amount);
-        return new SKColor(Mix(c.Red), Mix(c.Green), Mix(c.Blue));
     }
 
     /// <summary>
@@ -619,9 +724,12 @@ public static class ShareCardRenderer
         return result;
     }
 
-    private static SKTypeface ResolveTypeface(bool bold)
+    private static SKTypeface ResolveTypeface(bool bold) =>
+        ResolveTypeface(bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal);
+
+    private static SKTypeface ResolveTypeface(SKFontStyleWeight weight)
     {
-        var style = bold ? SKFontStyle.Bold : SKFontStyle.Normal;
+        var style = new SKFontStyle(weight, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright);
         foreach (var family in new[] { "Inter", "Segoe UI", "Helvetica Neue", "Noto Sans" })
         {
             var face = SKFontManager.Default.MatchFamily(family, style);

@@ -49,6 +49,7 @@ public partial class LyricShareViewModel : ViewModelBase
 
     private readonly Track _track;
     private readonly PlayerViewModel? _player;
+    private readonly string _autoColorHex;
     private int _renderGeneration;
     private int _currentSyncIndex = -1;
     private bool _syncUpdatingSelection;
@@ -72,12 +73,19 @@ public partial class LyricShareViewModel : ViewModelBase
     [ObservableProperty] private ShareTextColor _textColor = ShareTextColor.Auto;
 
     // ── Background color ────────────────────────────────────────────────
-    [ObservableProperty] private bool _isArtworkBg = true;
-    [ObservableProperty] private bool _isSolidBg;
+    // Default to the Spotify-style full-bleed solid (the artwork-derived "Auto" color).
+    [ObservableProperty] private bool _isArtworkBg;
+    [ObservableProperty] private bool _isSolidBg = true;
     [ObservableProperty] private string _solidColorHex = "#1A1A2E";
 
     /// <summary>Curated solid-color choices shown when "Solid" is selected.</summary>
     public IReadOnlyList<ShareSolidSwatch> SolidSwatches { get; } = BuildSolidSwatches();
+
+    /// <summary>Preview brush for the "Auto" solid swatch — the artwork-derived color it applies.</summary>
+    public IBrush AutoSwatchBrush { get; }
+
+    /// <summary>True when the Solid background is the artwork-derived "Auto" color (drives the swatch ring).</summary>
+    [ObservableProperty] private bool _isAutoSolid = true;
 
     private static IReadOnlyList<ShareSolidSwatch> BuildSolidSwatches()
     {
@@ -104,6 +112,25 @@ public partial class LyricShareViewModel : ViewModelBase
     public bool IsAutoText => TextColor == ShareTextColor.Auto;
     public bool IsWhiteText => TextColor == ShareTextColor.White;
     public bool IsBlackText => TextColor == ShareTextColor.Black;
+
+    /// <summary>Compact summary of the current options, shown on the "Card options" dropdown button.</summary>
+    public string CardOptionsSummary
+    {
+        get
+        {
+            var aspect = IsStory ? "9:16" : "1:1";
+            var text = TextColor switch
+            {
+                ShareTextColor.White => "White",
+                ShareTextColor.Black => "Black",
+                _ => "Auto",
+            };
+            var summary = $"{aspect} · {text}";
+            if (SyncAvailable && SyncEnabled)
+                summary += " · Sync";
+            return summary;
+        }
+    }
 
     /// <summary>Last rendered PNG — what Save/Copy exports.</summary>
     public byte[]? CurrentPng { get; private set; }
@@ -154,6 +181,11 @@ public partial class LyricShareViewModel : ViewModelBase
     {
         _track = track;
         _player = player;
+
+        // The same vibrant color the card renderer derives, so the "Auto" swatch matches the card.
+        _autoColorHex = ShareCardRenderer.GetVibrantColorHex(_track.AlbumArtworkPath);
+        _solidColorHex = _autoColorHex;   // default Solid background uses the Auto color from the start
+        AutoSwatchBrush = new SolidColorBrush(Color.Parse(_autoColorHex));
 
         for (int i = 0; i < lines.Count; i++)
         {
@@ -274,6 +306,7 @@ public partial class LyricShareViewModel : ViewModelBase
 
     partial void OnSyncEnabledChanged(bool value)
     {
+        OnPropertyChanged(nameof(CardOptionsSummary));
         if (value && _player != null)
         {
             _currentSyncIndex = -1;
@@ -292,6 +325,7 @@ public partial class LyricShareViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsAutoText));
         OnPropertyChanged(nameof(IsWhiteText));
         OnPropertyChanged(nameof(IsBlackText));
+        OnPropertyChanged(nameof(CardOptionsSummary));
         RefreshPreview();
     }
 
@@ -312,11 +346,13 @@ public partial class LyricShareViewModel : ViewModelBase
 
     partial void OnIsSquareChanged(bool value)
     {
+        OnPropertyChanged(nameof(CardOptionsSummary));
         if (value) { IsStory = false; RefreshPreview(); }
     }
 
     partial void OnIsStoryChanged(bool value)
     {
+        OnPropertyChanged(nameof(CardOptionsSummary));
         if (value) { IsSquare = false; RefreshPreview(); }
     }
 
@@ -348,9 +384,19 @@ public partial class LyricShareViewModel : ViewModelBase
     private void SetSolidColor(string? hex)
     {
         if (string.IsNullOrWhiteSpace(hex)) return;
+        IsAutoSolid = false;       // a fixed swatch overrides Auto
         IsSolidBg = true;          // picking a swatch implies Solid mode
         SolidColorHex = hex;
         RefreshPreview();          // re-render even if the hex value is unchanged
+    }
+
+    [RelayCommand]
+    private void SetAutoSolid()
+    {
+        IsAutoSolid = true;        // derive the solid color from the artwork
+        IsSolidBg = true;          // Auto implies Solid mode
+        SolidColorHex = _autoColorHex;
+        RefreshPreview();          // re-render even if the value is unchanged
     }
 
     private void RefreshPreview()
@@ -384,7 +430,7 @@ public partial class LyricShareViewModel : ViewModelBase
         {
             try
             {
-                var png = ShareCardRenderer.RenderLyricCard(spec);
+                var png = ShareCardRenderer.RenderLyricCardStyled(spec);
                 using var ms = new MemoryStream(png);
                 var bitmap = new Bitmap(ms);
                 Dispatcher.UIThread.Post(() =>

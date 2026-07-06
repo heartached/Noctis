@@ -111,7 +111,7 @@ public static class LyricsfileParser
                         };
                     }
 
-                    line.Words = words;
+                    line.Words = EnhancedLrcParser.MergeSyllables(words);
                 }
 
                 lines.Add(line);

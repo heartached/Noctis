@@ -13,7 +13,24 @@ using Noctis.Services;
 
 namespace Noctis.ViewModels;
 
-public record ColorSwatch(string Key, string Name, IBrush Preview, bool IsAuto = false);
+/// <summary>A background-color choice in the lyrics-page picker. <see cref="Preview"/> is
+/// settable so the "Auto" swatch can show the current track's artwork-derived color.</summary>
+public partial class ColorSwatch : ObservableObject
+{
+    public ColorSwatch(string key, string name, IBrush preview, bool isAuto = false)
+    {
+        Key = key;
+        Name = name;
+        _preview = preview;
+        IsAuto = isAuto;
+    }
+
+    public string Key { get; }
+    public string Name { get; }
+    public bool IsAuto { get; }
+
+    [ObservableProperty] private IBrush _preview;
+}
 
 /// <summary>
 /// ViewModel for the Lyrics view that displays synchronized lyrics
@@ -37,29 +54,20 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _isColorModeGradient;
     [ObservableProperty] private string _activeSwatchKey = "";
 
-    private static readonly List<ColorSwatch> _solidSwatches = BuildSolidSwatches();
+    private static readonly List<ColorSwatch> _solidColorSwatches = BuildSolidSwatches();
     private static readonly List<ColorSwatch> _gradientSwatches = BuildGradientSwatches();
 
-    public List<ColorSwatch> SolidSwatches => _solidSwatches;
+    /// <summary>"Auto" swatch — its preview tracks the current track's artwork-derived color.</summary>
+    private readonly ColorSwatch _autoSwatch =
+        new("", "Auto", new SolidColorBrush(DefaultAdaptiveColor), isAuto: true);
+
+    public IReadOnlyList<ColorSwatch> SolidSwatches { get; }
     public List<ColorSwatch> GradientSwatches => _gradientSwatches;
 
     private static List<ColorSwatch> BuildSolidSwatches()
     {
-        var auto = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-            GradientStops = new GradientStops
-            {
-                new GradientStop(Color.Parse("#8B5CF6"), 0),
-                new GradientStop(Color.Parse("#3B82F6"), 0.5),
-                new GradientStop(Color.Parse("#10B981"), 1),
-            }
-        };
-
         return new List<ColorSwatch>
         {
-            new("", "Auto", auto, IsAuto: true),
             // Dark tones
             new("#1A1A2E", "Deep Navy", new SolidColorBrush(Color.Parse("#1A1A2E"))),
             new("#2D1B36", "Dark Plum", new SolidColorBrush(Color.Parse("#2D1B36"))),
@@ -167,13 +175,27 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private static readonly Color DefaultAdaptiveColor = Color.FromRgb(0x0D, 0x1B, 0x2A);
 
     // Dedicated lyrics sync timer — bypasses the fragile PropertyChanged chain.
-    // Interval adapts at runtime: line-only lyrics use LineSyncIntervalMs; word-level
-    // lyrics bump to WordSyncIntervalMs only while the active line has word timings,
-    // so idle cost stays the same.
+    // Runs at a fixed 100ms cadence for line-level sync. Word-level sweep smoothness
+    // does NOT come from this timer: while the active line has word timings we
+    // subscribe to Avalonia's global animation clock (one tick per rendered frame)
+    // so the karaoke sweep is frame-synced instead of stepping every 33ms.
     private readonly DispatcherTimer _lyricsSyncTimer;
 
     private const int LineSyncIntervalMs = 100;
-    private const int WordSyncIntervalMs = 33;
+
+    // ── Extrapolated playback clock ──
+    // LibVLC only refreshes MediaPlayer.Time every ~150-300ms, so raw Position reads
+    // move in coarse steps — far too chunky for the word-level colour sweep. Anchor
+    // each fresh raw value against Stopwatch time and extrapolate between updates,
+    // with a monotonic guard so re-anchor jitter never drags the sweep backwards.
+    private long _clockRawMs = -1;
+    private long _clockAnchorMs;
+    private long _clockAnchorTimestamp;
+    private double _clockLastMs;
+
+    // True while the RequestAnimationFrame loop driving the word sweep is running.
+    // Managed by UpdateWordClockSubscription() / OnWordClockFrame().
+    private bool _wordClockRunning;
 
     // Monotonic line cursor — avoids re-scanning every tick.
     private int _lineCursor;
@@ -486,14 +508,21 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         _persistence = persistence;
         _library = library;
 
-        // Dedicated sync timer — polls player position and drives both line and word highlighting.
-        // Default cadence is 100ms (line-level). The Tick handler adapts Interval down to ~33ms
-        // when the active line has word timings, and back to 100ms when it doesn't.
+        // "Auto" first, then the fixed color swatches.
+        var solid = new List<ColorSwatch>(_solidColorSwatches.Count + 1) { _autoSwatch };
+        solid.AddRange(_solidColorSwatches);
+        SolidSwatches = solid;
+
+        // Dedicated sync timer — polls player position and drives line highlighting.
+        // Fixed 100ms cadence; word-level sweep is frame-driven via the render-clock
+        // subscription (see UpdateWordClockSubscription), for which this tick doubles
+        // as the self-healing re-subscribe check after pause/resume or timer restarts.
         _lyricsSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(LineSyncIntervalMs) };
         _lyricsSyncTimer.Tick += (_, _) =>
         {
             if (_hasSyncedLyrics && _player.State == Models.PlaybackState.Playing)
-                UpdateActiveLine(_player.Position);
+                UpdateActiveLine(GetPlaybackPosition());
+            UpdateWordClockSubscription();
         };
 
         // Subscribe to track changes to update lyrics
@@ -557,6 +586,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     private void UpdateAdaptiveBackground(Bitmap? albumArt)
     {
+        // Each Extract* call renders the art into a RenderTargetBitmap and round-trips
+        // it through a PNG encode/decode on the UI thread — heavy enough to visibly
+        // stall render-priority animations at track start. Route through the path-keyed
+        // caches so a given artwork is only ever analyzed once per session.
+        var artPath = albumArt != null ? _player.CurrentArtPath : null;
+
+        // Keep the "Auto" swatch showing the current track's artwork-derived color.
+        _autoSwatch.Preview = new SolidColorBrush(artPath != null
+            ? DominantColorExtractor.GetOrExtractDominantColor(artPath, albumArt!)
+            : DominantColorExtractor.ExtractDominantColor(albumArt));
+
         // Don't override when a custom background color is selected
         if (_selectedColorHex != null) return;
 
@@ -573,14 +613,18 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         try
         {
-            var (dominant, secondary) = DominantColorExtractor.ExtractColorPalette(albumArt);
+            var (dominant, secondary) = artPath != null
+                ? DominantColorExtractor.GetOrExtractPalette(artPath, albumArt)
+                : DominantColorExtractor.ExtractColorPalette(albumArt);
             var (left, right) = DominantColorExtractor.GenerateAdaptiveBrushes(dominant, secondary);
             LeftPanelBrush = left;
             LyricsBackgroundBrush = right;
             FullBackgroundBrush = DominantColorExtractor.GenerateUnifiedBrush(dominant, secondary);
             PanelBackgroundBrush = DominantColorExtractor.GeneratePanelBrush(dominant, secondary);
             UpdateMeshColors(dominant, secondary);
-            _averageArtworkColor = DominantColorExtractor.ExtractAverageColor(albumArt);
+            _averageArtworkColor = artPath != null
+                ? DominantColorExtractor.GetOrExtractAverageColor(artPath, albumArt)
+                : DominantColorExtractor.ExtractAverageColor(albumArt);
             RefreshLyricsForegrounds();
         }
         catch
@@ -1436,7 +1480,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             _lineCursor = 0;
             _lastSyncPosition = TimeSpan.MinValue;
-            UpdateActiveLine(_player.Position);
+            UpdateActiveLine(GetPlaybackPosition());
             UpdateLineOpacities(ActiveLineIndex);
             OnPropertyChanged(nameof(ActiveLineIndex));
         }
@@ -1478,7 +1522,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         else if (e.PropertyName == nameof(PlayerViewModel.Position) && _hasSyncedLyrics
                  && !_lyricsSyncTimer.IsEnabled)
         {
-            UpdateActiveLine(_player.Position);
+            UpdateActiveLine(GetPlaybackPosition());
         }
         // Update adaptive background when album art loads/changes
         else if (e.PropertyName == nameof(PlayerViewModel.AlbumArt))
@@ -2166,12 +2210,15 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         if (bestMatch != _currentActiveLine)
         {
-            // Deactivate previous line — clear its word cursor so re-entry rebuilds from scratch.
+            // Deactivate previous line — leave it fully swept (index past the end) so the
+            // bright overlay keeps covering the words while the base layer fades back to
+            // full opacity. Snapping to -1 here blanked the overlay instantly, which read
+            // as the finished line dimming for a beat. Re-entry recomputes the real index.
             if (_currentActiveLine != null)
             {
                 _currentActiveLine.IsActive = false;
                 if (_currentActiveLine.HasWords)
-                    _currentActiveLine.CurrentWordIndex = -1;
+                    _currentActiveLine.CurrentWordIndex = _currentActiveLine.Words!.Count;
             }
 
             // Activate new line
@@ -2181,7 +2228,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             _currentActiveLine = bestMatch;
             ActiveLineIndex = bestIndex;
             UpdateLineOpacities(bestIndex);
-            AdjustSyncCadence();
+            UpdateWordClockSubscription();
         }
         else if (bestMatch != null && !bestMatch.IsActive)
         {
@@ -2239,26 +2286,105 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 progress = 1.0;
             else
             {
-                var elapsed = (position - w.Start).TotalMilliseconds;
+                // Use the same lookahead-adjusted time as the index above, so the sweep
+                // and the current-word cursor agree instead of the sweep trailing by 80ms.
+                var elapsed = (adjusted - w.Start).TotalMilliseconds;
                 progress = elapsed / span;
                 if (progress < 0) progress = 0;
                 else if (progress > 1) progress = 1;
             }
-            if (Math.Abs(w.Progress - progress) > 0.005)
+            if (w.Progress != progress)
                 w.Progress = progress;
         }
     }
 
     /// <summary>
-    /// Bumps the sync timer cadence up when we're inside a word-synced line, back down otherwise.
-    /// Keeps cost proportional to what's actually on screen.
+    /// Continuous playback clock. LibVLC refreshes its cached Time only every
+    /// ~150-300ms, so raw reads move in coarse steps that make the karaoke sweep
+    /// visibly jump. Extrapolates with a Stopwatch between raw updates while playing;
+    /// small backward re-anchors are held (monotonic), real seeks pass through.
     /// </summary>
-    private void AdjustSyncCadence()
+    private TimeSpan GetPlaybackPosition()
     {
-        var wantsFast = _currentActiveLine?.HasWords == true;
-        var targetMs = wantsFast ? WordSyncIntervalMs : LineSyncIntervalMs;
-        if ((int)_lyricsSyncTimer.Interval.TotalMilliseconds != targetMs)
-            _lyricsSyncTimer.Interval = TimeSpan.FromMilliseconds(targetMs);
+        var raw = _player.Position;
+        if (_player.State != Models.PlaybackState.Playing)
+        {
+            // Not advancing — drop the anchor so resume re-anchors fresh (an anchor
+            // held across a pause would otherwise add the pause length on resume).
+            _clockRawMs = -1;
+            _clockLastMs = raw.TotalMilliseconds;
+            return raw;
+        }
+
+        var rawMs = (long)raw.TotalMilliseconds;
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (rawMs != _clockRawMs)
+        {
+            _clockRawMs = rawMs;
+            _clockAnchorMs = rawMs;
+            _clockAnchorTimestamp = now;
+        }
+
+        var elapsedMs = (now - _clockAnchorTimestamp) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        // Stall guard: if VLC stops publishing time (buffering hiccup), stop
+        // extrapolating past 1s rather than running away from the real position.
+        if (elapsedMs > 1000) elapsedMs = 1000;
+        var estimate = _clockAnchorMs + elapsedMs;
+
+        // Monotonic guard: a fresh raw value slightly behind our extrapolation would
+        // step the sweep backwards — hold instead. Larger drops are real seeks.
+        if (estimate < _clockLastMs && _clockLastMs - estimate < 300)
+            estimate = _clockLastMs;
+        _clockLastMs = estimate;
+        return TimeSpan.FromMilliseconds(estimate);
+    }
+
+    /// <summary>
+    /// Starts a RequestAnimationFrame loop on the main window while a word-synced
+    /// line is actively playing (one callback per rendered frame → frame-smooth
+    /// sweep). The loop stops itself the moment word-level rendering goes idle, so
+    /// there is no per-frame cost for line-only lyrics or paused playback; the 100ms
+    /// sync timer restarts it when a word-synced line becomes active again.
+    /// </summary>
+    private void UpdateWordClockSubscription()
+    {
+        if (!WantsWordClock || _wordClockRunning) return;
+        if (Application.Current?.ApplicationLifetime is not
+            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            || desktop.MainWindow is not { } topLevel) return;
+
+        _wordClockRunning = true;
+        topLevel.RequestAnimationFrame(OnWordClockFrame);
+    }
+
+    private bool WantsWordClock =>
+        _hasSyncedLyrics
+        && _player.State == Models.PlaybackState.Playing
+        && _lyricsSyncTimer.IsEnabled
+        && _currentActiveLine?.HasWords == true;
+
+    private void OnWordClockFrame(TimeSpan _)
+    {
+        if (!WantsWordClock)
+        {
+            _wordClockRunning = false;
+            return;
+        }
+
+        // Note: UpdateActiveLine re-enters UpdateWordClockSubscription on line change;
+        // the _wordClockRunning flag prevents a second concurrent loop.
+        UpdateActiveLine(GetPlaybackPosition());
+
+        if (Application.Current?.ApplicationLifetime is
+            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow is { } topLevel)
+        {
+            topLevel.RequestAnimationFrame(OnWordClockFrame);
+        }
+        else
+        {
+            _wordClockRunning = false;
+        }
     }
 
     /// <summary>
@@ -2331,7 +2457,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
-        // Stop and dispose timer to prevent memory leak
+        // Stop and dispose timer to prevent memory leak. This also ends the word-sweep
+        // RequestAnimationFrame loop: WantsWordClock goes false, so the next frame
+        // callback exits without re-registering.
         _lyricsSyncTimer.Stop();
 
         // Unsubscribe from current track's property changes

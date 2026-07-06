@@ -95,6 +95,15 @@
         <Style Selector="ScrollBar:vertical:pointerover">
             <Setter Property="Opacity" Value="1"/>
         </Style>
+
+        <!-- Dark, rounded flyout for the "Card options" dropdown so it matches the dialog card. -->
+        <Style Selector="FlyoutPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="14"/>
+        </Style>
     </Window.Styles>
 
     <!-- Full-window dimmed overlay -->
@@ -197,85 +206,125 @@
                 </Grid>
 
                 <!-- Background: Artwork / Solid + solid swatch strip -->
-                <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal"
-                            Spacing="8" VerticalAlignment="Center" Margin="0,14,0,0">
-                    <TextBlock Text="Background" FontSize="12" Opacity="0.7" VerticalAlignment="Center" Margin="0,0,2,0"/>
-                    <Button Classes="share-pill"
-                            Classes.active="{Binding IsArtworkBg}"
-                            Content="Artwork"
-                            Command="{Binding UseArtworkBgCommand}"/>
-                    <Button Classes="share-pill"
-                            Classes.active="{Binding IsSolidBg}"
-                            Content="Solid"
-                            Command="{Binding UseSolidBgCommand}"/>
+                <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,14,0,0"
+                      VerticalAlignment="Center" ColumnDefinitions="Auto,*">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal"
+                                Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="Background" FontSize="12" Opacity="0.7" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                        <Button Classes="share-pill"
+                                Classes.active="{Binding IsArtworkBg}"
+                                Content="Artwork"
+                                Command="{Binding UseArtworkBgCommand}"/>
+                        <Button Classes="share-pill"
+                                Classes.active="{Binding IsSolidBg}"
+                                Content="Solid"
+                                Command="{Binding UseSolidBgCommand}"/>
+                    </StackPanel>
 
-                    <!-- Solid color swatches (only when Solid is selected) -->
-                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                  VerticalScrollBarVisibility="Disabled"
-                                  IsVisible="{Binding IsSolidBg}"
-                                  Margin="6,0,0,0">
-                        <ItemsControl ItemsSource="{Binding SolidSwatches}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="6"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:ShareSolidSwatch">
-                                    <Button Classes="color-swatch"
-                                            Padding="0" Background="Transparent" BorderThickness="0"
-                                            Cursor="Hand"
-                                            Command="{Binding $parent[ItemsControl].((vm:LyricShareViewModel)DataContext).SetSolidColorCommand}"
-                                            CommandParameter="{Binding Hex}"
-                                            ToolTip.Tip="{Binding Name}">
-                                        <Border Width="22" Height="22" CornerRadius="11"
-                                                Background="{Binding Preview}"
-                                                BorderBrush="#55FFFFFF" BorderThickness="1"/>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </StackPanel>
+                    <!-- Solid swatches (only when Solid is selected): Auto (artwork-derived) + curated colors.
+                         A bounded * column lets the strip scroll instead of overflowing (clipping) the dialog. -->
+                    <Grid Grid.Column="1" IsVisible="{Binding IsSolidBg}" Margin="6,0,0,0"
+                          VerticalAlignment="Center" MinHeight="36" ColumnDefinitions="Auto,Auto,*">
+                        <!-- Auto: derives the solid color from the album artwork -->
+                        <Button Grid.Column="0" Classes="color-swatch"
+                                Padding="0" Background="Transparent" BorderThickness="0"
+                                Cursor="Hand"
+                                Command="{Binding SetAutoSolidCommand}"
+                                ToolTip.Tip="Auto — from artwork">
+                            <Panel Width="22" Height="22">
+                                <Border CornerRadius="11"
+                                        Background="{Binding AutoSwatchBrush}"
+                                        BorderBrush="#55FFFFFF" BorderThickness="1"/>
+                                <TextBlock Text="A" FontSize="11" FontWeight="Bold" Foreground="White"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Panel>
+                        </Button>
+
+                        <Border Grid.Column="1" Width="1" Height="20" Background="#2EFFFFFF" Margin="6,0"/>
+
+                        <!-- Chips are centered in the row (aligned with the A button); the grid's
+                             MinHeight leaves room below them for the auto-hide horizontal scrollbar
+                             so it floats under the swatches instead of overlaying (clipping) them. -->
+                        <ScrollViewer Grid.Column="2"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Disabled"
+                                      Padding="2,0">
+                            <ItemsControl ItemsSource="{Binding SolidSwatches}"
+                                          VerticalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="6"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ShareSolidSwatch">
+                                        <Button Classes="color-swatch"
+                                                Padding="0" Background="Transparent" BorderThickness="0"
+                                                Cursor="Hand"
+                                                Command="{Binding $parent[ItemsControl].((vm:LyricShareViewModel)DataContext).SetSolidColorCommand}"
+                                                CommandParameter="{Binding Hex}"
+                                                ToolTip.Tip="{Binding Name}">
+                                            <Border Width="22" Height="22" CornerRadius="11"
+                                                    Background="{Binding Preview}"
+                                                    BorderBrush="#55FFFFFF" BorderThickness="1"/>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
 
                 <!-- Footer: format / text-color / sync toggles + actions -->
-                <Grid Grid.Row="3" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,16,0,0">
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <!-- Aspect -->
-                        <Button Classes="share-pill"
-                                Classes.active="{Binding IsSquare}"
-                                Content="1:1"
-                                Command="{Binding SelectSquareCommand}"/>
-                        <Button Classes="share-pill"
-                                Classes.active="{Binding IsStory}"
-                                Content="9:16"
-                                Command="{Binding SelectStoryCommand}"/>
-
-                        <Border Width="1" Height="20" Background="#2EFFFFFF" Margin="2,0"/>
-
-                        <!-- Text color -->
-                        <Button Classes="share-pill"
-                                Classes.active="{Binding IsAutoText}"
-                                Content="Auto"
-                                Command="{Binding UseAutoTextCommand}"/>
-                        <Button Classes="share-pill"
-                                Classes.active="{Binding IsWhiteText}"
-                                Content="White"
-                                Command="{Binding UseWhiteTextCommand}"/>
-                        <Button Classes="share-pill"
-                                Classes.active="{Binding IsBlackText}"
-                                Content="Black"
-                                Command="{Binding UseBlackTextCommand}"/>
-
-                        <!-- Follow playback (only when synced lyrics available) -->
-                        <Border Width="1" Height="20" Background="#2EFFFFFF" Margin="2,0"
-                                IsVisible="{Binding SyncAvailable}"/>
-                        <Button Classes="share-pill"
-                                Classes.active="{Binding SyncEnabled}"
-                                IsVisible="{Binding SyncAvailable}"
-                                Command="{Binding ToggleSyncCommand}"
-                                Content="Sync"/>
-                    </StackPanel>
+                <Grid Grid.Row="3" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,16,0,0">
+                    <!-- Card options: format, text colour & sync collapsed into one dropdown -->
+                    <Button Grid.Column="0" Classes="share-pill" VerticalAlignment="Center"
+                            MinWidth="176" HorizontalContentAlignment="Stretch"
+                            ToolTip.Tip="Card format, text colour &amp; sync">
+                        <!-- Fixed-width content (text left, chevron pinned right) so toggling
+                             Format/Text/Sync can't resize the pill and shift the anchored flyout. -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="{Binding CardOptionsSummary}" VerticalAlignment="Center"/>
+                            <PathIcon Grid.Column="1" Margin="8,0,0,0"
+                                      Data="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                                      Width="11" Height="11" Opacity="0.75" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Button.Flyout>
+                            <Flyout Placement="TopEdgeAlignedLeft">
+                                <StackPanel x:DataType="vm:LyricShareViewModel" Width="250" Spacing="14">
+                                    <!-- Format -->
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Text="Format" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                                            <Button Classes="share-pill" Classes.active="{Binding IsSquare}"
+                                                    Content="1:1" Command="{Binding SelectSquareCommand}"/>
+                                            <Button Classes="share-pill" Classes.active="{Binding IsStory}"
+                                                    Content="9:16" Command="{Binding SelectStoryCommand}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <!-- Text colour -->
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Text="Text" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                                            <Button Classes="share-pill" Classes.active="{Binding IsAutoText}"
+                                                    Content="Auto" Command="{Binding UseAutoTextCommand}"/>
+                                            <Button Classes="share-pill" Classes.active="{Binding IsWhiteText}"
+                                                    Content="White" Command="{Binding UseWhiteTextCommand}"/>
+                                            <Button Classes="share-pill" Classes.active="{Binding IsBlackText}"
+                                                    Content="Black" Command="{Binding UseBlackTextCommand}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <!-- Sync (only when synced lyrics are available) -->
+                                    <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding SyncAvailable}">
+                                        <TextBlock Text="Sync to playback" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1" Classes="share-pill" Classes.active="{Binding SyncEnabled}"
+                                                HorizontalAlignment="Right"
+                                                Content="Sync" Command="{Binding ToggleSyncCommand}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
 
                     <TextBlock Grid.Column="1"
                                Text="{Binding StatusText}"
@@ -287,34 +336,15 @@
                     <Button Grid.Column="2"
                             Classes="share-pill"
                             Margin="0,0,8,0"
-                            Click="OnCopyClick"
-                            IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Data="{StaticResource CopyIcon}" Width="13" Height="13"/>
-                            <TextBlock Text="Copy" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Grid.Column="3"
-                            Classes="share-pill"
-                            Margin="0,0,8,0"
                             Click="OnSaveVideoClick"
                             IsEnabled="{Binding CanExportVideo}"
-                            ToolTip.Tip="Save an MP4 clip — this lyric card with the song audio">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Data="{StaticResource SaveDiskIcon}" Width="13" Height="13"/>
-                            <TextBlock Text="Save Video" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Grid.Column="4"
+                            Content="Save Video"
+                            ToolTip.Tip="Save an MP4 clip — this lyric card with the song audio"/>
+                    <Button Grid.Column="3"
                             Classes="share-pill accent"
                             Click="OnSaveClick"
-                            IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Data="{StaticResource SaveDiskIcon}" Width="13" Height="13"
-                                      Foreground="{DynamicResource AccentForegroundBrush}"/>
-                            <TextBlock Text="Save PNG" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
+                            Content="Save Card"
+                            IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </Grid>
             </Grid>
         </Border>
