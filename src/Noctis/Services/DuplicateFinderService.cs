@@ -1,3 +1,4 @@
+using Noctis.Helpers;
 using Noctis.Models;
 
 namespace Noctis.Services;
@@ -26,51 +27,35 @@ public sealed class DuplicateFinderService : IDuplicateFinderService
         if (trackIds is null || trackIds.Count == 0) return 0;
 
         var idSet = new HashSet<Guid>(trackIds);
-        var paths = _library.Tracks
-            .Where(t => idSet.Contains(t.Id))
-            .Select(t => t.FilePath)
-            .Where(p => !string.IsNullOrWhiteSpace(p))
+        var targets = _library.Tracks
+            .Where(t => idSet.Contains(t.Id) && !string.IsNullOrWhiteSpace(t.FilePath))
+            .Select(t => (t.Id, t.FilePath))
             .ToList();
 
-        var deleted = await Task.Run(() =>
+        // Only drop tracks from the library when their file was actually trashed
+        // (or is already gone from disk). Removing on a failed trash left the file
+        // in place but permanently excluded from future scans — a silent vanish.
+        var trashed = 0;
+        var removeIds = new List<Guid>(targets.Count);
+        await Task.Run(() =>
         {
-            var n = 0;
-            foreach (var path in paths)
+            foreach (var (id, path) in targets)
             {
                 ct.ThrowIfCancellationRequested();
-                if (TryDelete(path)) n++;
+                if (RecycleBin.TryMoveToTrash(path))
+                {
+                    trashed++;
+                    removeIds.Add(id);
+                }
+                else if (!File.Exists(path))
+                {
+                    removeIds.Add(id); // stale entry — nothing on disk to keep
+                }
             }
-            return n;
         }, ct);
 
-        await _library.RemoveTracksAsync(trackIds);
-        return deleted;
-    }
-
-    private static bool TryDelete(string path)
-    {
-        try
-        {
-            if (!File.Exists(path)) return false;
-
-            if (OperatingSystem.IsWindows())
-            {
-                // Recycle bin keeps an undo path for the user; non-Windows has no
-                // standard recycle API, so those platforms delete permanently.
-                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(
-                    path,
-                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
-            }
-            else
-            {
-                File.Delete(path);
-            }
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
+        if (removeIds.Count > 0)
+            await _library.RemoveTracksAsync(removeIds);
+        return trashed;
     }
 }

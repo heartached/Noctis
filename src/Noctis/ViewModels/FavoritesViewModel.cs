@@ -242,9 +242,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     private async Task RemoveTrackFromLibrary(Track track)
     {
         if (track == null) return;
-        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
-            return;
-        await _library.RemoveTrackAsync(track.Id);
+        await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, new List<Track> { track });
     }
 
     // ── Album commands ──────────────────────────────────────────
@@ -313,10 +311,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     private async Task RemoveAlbumFromLibrary(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
-            return;
-        var trackIds = album.Tracks.Select(t => t.Id).ToList();
-        await _library.RemoveTracksAsync(trackIds);
+        await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, album.Tracks.ToList());
     }
 
     // ── Unified FavoriteItem commands (used by context menu) ────
@@ -452,19 +447,17 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
     [RelayCommand]
     private async Task RemoveItemFromLibrary(FavoriteItem item)
     {
-        var items = CtrlSelectedItems.Count > 0 ? CtrlSelectedItems : new List<FavoriteItem> { item };
-        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
-            return;
-        var trackIds = new List<Guid>();
+        var items = CtrlSelectedItems.Count > 0 ? CtrlSelectedItems.ToList() : new List<FavoriteItem> { item };
+        var tracks = new List<Track>();
         foreach (var fi in items)
         {
             if (fi.IsAlbum && fi.Album?.Tracks != null)
-                trackIds.AddRange(fi.Album.Tracks.Select(t => t.Id));
+                tracks.AddRange(fi.Album.Tracks);
             else if (fi.Track != null)
-                trackIds.Add(fi.Track.Id);
+                tracks.Add(fi.Track);
         }
-        if (trackIds.Count > 0)
-            await _library.RemoveTracksAsync(trackIds);
+        if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
+            return;
         CtrlSelectedItems.Clear();
     }
 
