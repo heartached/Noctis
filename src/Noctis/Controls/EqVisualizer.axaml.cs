@@ -1,13 +1,9 @@
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Avalonia;
-using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
-using Avalonia.Styling;
 using Avalonia.Threading;
 
 namespace Noctis.Controls;
@@ -29,9 +25,17 @@ public class EqVisualizer : TemplatedControl
 
     private Rectangle? _bar1, _bar2, _bar3, _bar4, _bar5;
     private DispatcherTimer? _animTimer;
-    private CancellationTokenSource? _flattenCts;
     private DateTime _animStart;
     private bool _initialized;
+
+    // Pause-flatten runs on the same render timer with plain local Height sets.
+    // Animation.RunAsync with FillMode.Forward would pin Height at animation
+    // priority once finished, masking every later local set (frozen bars on
+    // the next play).
+    private bool _flattening;
+    private DateTime _flattenStart;
+    private readonly double[] _flattenFrom = new double[5];
+    private static readonly Easing FlattenEasing = new CubicEaseOut();
 
     private const double FlatHeight = 1.75;
     private const double BarMin = 2.25;
@@ -66,31 +70,38 @@ public class EqVisualizer : TemplatedControl
     protected override void OnDetachedFromLogicalTree(global::Avalonia.LogicalTree.LogicalTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromLogicalTree(e);
+        _flattening = false;
         StopAnimating();
-        _flattenCts?.Cancel();
     }
 
     private void OnIsPlayingChanged(AvaloniaPropertyChangedEventArgs e)
     {
         if (!_initialized) return;
 
-        _flattenCts?.Cancel();
-
         if (IsPlaying)
         {
+            _flattening = false;
             StartAnimating();
         }
         else
         {
-            StopAnimating();
-            _flattenCts = new CancellationTokenSource();
-            _ = AnimateFlattenAsync(_flattenCts.Token);
+            BeginFlatten();
         }
     }
 
     private void StartAnimating()
     {
         _animStart = DateTime.UtcNow;
+        EnsureTimer().Start();
+    }
+
+    private void StopAnimating()
+    {
+        _animTimer?.Stop();
+    }
+
+    private DispatcherTimer EnsureTimer()
+    {
         if (_animTimer == null)
         {
             _animTimer = new DispatcherTimer(DispatcherPriority.Render)
@@ -99,22 +110,55 @@ public class EqVisualizer : TemplatedControl
             };
             _animTimer.Tick += OnAnimTick;
         }
-        _animTimer.Start();
+        return _animTimer;
     }
 
-    private void StopAnimating()
+    private void BeginFlatten()
     {
-        _animTimer?.Stop();
+        _flattenFrom[0] = _bar1?.Height ?? FlatHeight;
+        _flattenFrom[1] = _bar2?.Height ?? FlatHeight;
+        _flattenFrom[2] = _bar3?.Height ?? FlatHeight;
+        _flattenFrom[3] = _bar4?.Height ?? FlatHeight;
+        _flattenFrom[4] = _bar5?.Height ?? FlatHeight;
+        _flattenStart = DateTime.UtcNow;
+        _flattening = true;
+        EnsureTimer().Start();
     }
 
     private void OnAnimTick(object? sender, EventArgs e)
     {
+        if (_flattening)
+        {
+            var progress = (DateTime.UtcNow - _flattenStart).TotalMilliseconds / FlattenDuration.TotalMilliseconds;
+            if (progress >= 1)
+            {
+                SetAllBars(FlatHeight);
+                _flattening = false;
+                StopAnimating();
+                return;
+            }
+
+            var eased = FlattenEasing.Ease(progress);
+            SetBarLerp(_bar1, _flattenFrom[0], eased);
+            SetBarLerp(_bar2, _flattenFrom[1], eased);
+            SetBarLerp(_bar3, _flattenFrom[2], eased);
+            SetBarLerp(_bar4, _flattenFrom[3], eased);
+            SetBarLerp(_bar5, _flattenFrom[4], eased);
+            return;
+        }
+
         var t = (DateTime.UtcNow - _animStart).TotalSeconds;
         SetBar(_bar1, t, 0);
         SetBar(_bar2, t, 1);
         SetBar(_bar3, t, 2);
         SetBar(_bar4, t, 3);
         SetBar(_bar5, t, 4);
+    }
+
+    private static void SetBarLerp(Rectangle? bar, double from, double eased)
+    {
+        if (bar == null) return;
+        bar.Height = from + (FlatHeight - from) * eased;
     }
 
     private static void SetBar(Rectangle? bar, double t, int idx)
@@ -133,36 +177,5 @@ public class EqVisualizer : TemplatedControl
         if (_bar3 != null) _bar3.Height = h;
         if (_bar4 != null) _bar4.Height = h;
         if (_bar5 != null) _bar5.Height = h;
-    }
-
-    private async Task AnimateFlattenAsync(CancellationToken ct)
-    {
-        var bars = new[] { _bar1, _bar2, _bar3, _bar4, _bar5 };
-        var easing = new CubicEaseOut();
-        var tasks = new Task[bars.Length];
-        for (int i = 0; i < bars.Length; i++)
-        {
-            var bar = bars[i];
-            if (bar == null) { tasks[i] = Task.CompletedTask; continue; }
-            tasks[i] = RunHeightAnimation(bar, bar.Height, FlatHeight, easing, ct);
-        }
-        try { await Task.WhenAll(tasks); }
-        catch (TaskCanceledException) { }
-    }
-
-    private static Task RunHeightAnimation(Rectangle bar, double from, double to, Easing easing, CancellationToken ct)
-    {
-        var animation = new Animation
-        {
-            Duration = FlattenDuration,
-            Easing = easing,
-            FillMode = FillMode.Forward,
-            Children =
-            {
-                new KeyFrame { Cue = new Cue(0d), Setters = { new Setter(HeightProperty, from) } },
-                new KeyFrame { Cue = new Cue(1d), Setters = { new Setter(HeightProperty, to) } }
-            }
-        };
-        return animation.RunAsync(bar, ct);
     }
 }

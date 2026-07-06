@@ -45,26 +45,49 @@ public partial class LyricLine : ObservableObject
     public TimeSpan? EndTimestamp { get; set; }
 
     /// <summary>Optional per-word timing for karaoke-style highlighting. Null when only line-level sync is available.</summary>
-    public IReadOnlyList<WordTiming>? Words { get; set; }
+    public IReadOnlyList<WordTiming>? Words
+    {
+        get => _words;
+        set
+        {
+            _words = value;
+            ComputeWordEmphasis();
+        }
+    }
+    private IReadOnlyList<WordTiming>? _words;
+
+    /// <summary>Words sung at least this long count as held notes and get the swell/glow emphasis.</summary>
+    private const double EmphasisMs = 1000;
+
+    private void ComputeWordEmphasis()
+    {
+        if (_words == null) return;
+        for (int i = 0; i < _words.Count; i++)
+        {
+            var w = _words[i];
+            var end = w.End ?? (i + 1 < _words.Count ? _words[i + 1].Start : EndTimestamp);
+            w.IsEmphasis = end.HasValue
+                && (end.Value - w.Start).TotalMilliseconds >= EmphasisMs
+                && !string.IsNullOrWhiteSpace(w.Text);
+        }
+    }
 
     /// <summary>True when the line has word-level timing data.</summary>
     public bool HasWords => Words != null && Words.Count > 0;
 
-    /// <summary>True when the view should render per-word karaoke (active line + word timings available).</summary>
-    public bool ShowWords => IsActive && HasWords;
+    /// <summary>
+    /// True when the view should render the per-word karaoke layer. Word-timed lines
+    /// render this layer whether active or not, so the wrap geometry never changes
+    /// when a line activates (the old TextBlock↔WrapPanel swap caused visible reflow).
+    /// </summary>
+    public bool ShowWords => HasWords && !IsIntroPlaceholder;
 
-    /// <summary>True when the view should render the normal line-level text (not intro, not word mode).</summary>
-    public bool ShowLineText => !IsIntroPlaceholder && !ShowWords;
+    /// <summary>True when the view should render the normal line-level text (not intro, no word timings).</summary>
+    public bool ShowLineText => !IsIntroPlaceholder && !HasWords;
 
     /// <summary>Index of the currently-singing word in <see cref="Words"/>. -1 = before line, Words.Count = after line.</summary>
     [ObservableProperty]
     private int _currentWordIndex = -1;
-
-    partial void OnIsActiveChanged(bool value)
-    {
-        OnPropertyChanged(nameof(ShowWords));
-        OnPropertyChanged(nameof(ShowLineText));
-    }
 
     partial void OnCurrentWordIndexChanged(int value)
     {

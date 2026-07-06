@@ -199,7 +199,7 @@
                                VerticalAlignment="Center"
                                IsVisible="{Binding Album.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
-                    <!-- Lossless / Hi-Res Lossless badge (hover for info, non-clickable) -->
+                    <!-- Audio quality badge: Lossless / Hi-Res Lossless / codec (hover for info, non-clickable) -->
                     <Border Classes="quality-pill"
                             Background="Transparent"
                             CornerRadius="999"
@@ -226,7 +226,7 @@
                                            FontSize="12"
                                            Opacity="0.9"
                                            Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
-                                <TextBlock Text="Lossless audio preserves more detail from the original recording."
+                                <TextBlock Text="{Binding Album.AudioQualityDescription}"
                                            FontSize="11"
                                            TextWrapping="Wrap"
                                            Opacity="0.85"

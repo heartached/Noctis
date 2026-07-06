@@ -505,7 +505,8 @@
     <Style Selector="ContextMenu">
         <Setter Property="CornerRadius" Value="16" />
         <Setter Property="Padding" Value="6" />
-        <Setter Property="PlacementConstraintAdjustment" Value="None" />
+        <!-- Constraint adjustment must stay enabled (default FlipY/SlideY etc.): with "None",
+             menus opened near the bottom of the screen extend past the edge and get clipped. -->
         <!-- Match the active theme (Midnight/Gray/custom), not the generic dark/light variant. -->
         <Setter Property="Background" Value="{DynamicResource AppSidebarBackground}" />
         <!-- Rise-up + fade open/close (applies to every right-click menu app-wide). -->
@@ -734,6 +735,13 @@
     </Style>
     <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n):pointerover">
         <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
+    </Style>
+
+    <!-- Now-playing row: accent-coloured text on the current track (Folders/Songs).
+         Lives on the row's inner Border (class toggled by Track.IsNowPlaying), so when the
+         class is removed the setter reverts cleanly and text returns to the inherited white. -->
+    <Style Selector="Border.now-playing :is(TextBlock)">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
     </Style>
 
     <!-- Note: ContentPresenter background overrides for track-list items are handled by

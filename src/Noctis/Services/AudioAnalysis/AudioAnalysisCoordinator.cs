@@ -24,6 +24,7 @@ public sealed class AudioAnalysisCoordinator
 
     private CancellationTokenSource? _cts;
     private Task? _run;
+    private readonly object _startLock = new();
 
     public AudioAnalysisCoordinator(
         IAudioAnalysisService analysis,
@@ -44,9 +45,18 @@ public sealed class AudioAnalysisCoordinator
     public void StartBackfill()
     {
         if (!_settings().BpmKeyAnalysisEnabled || !_analysis.IsAvailable) return;
-        if (_run is { IsCompleted: false }) return;
-        _cts = new CancellationTokenSource();
-        _run = Task.Run(() => RunAsync(_cts.Token));
+        // LibraryUpdated fires in bursts during a scan's progressive publishes
+        // (and from worker threads). An unsynchronized check-then-start here let
+        // one burst spawn dozens of concurrent backfill loops, each re-analyzing
+        // the same tracks and decoding ~10 MB of PCM at a time — the heap grew
+        // by GBs within minutes. The check and start must be atomic.
+        lock (_startLock)
+        {
+            if (_run is { IsCompleted: false }) return;
+            _cts = new CancellationTokenSource();
+            var token = _cts.Token;
+            _run = Task.Run(() => RunAsync(token));
+        }
     }
 
     public void Stop()

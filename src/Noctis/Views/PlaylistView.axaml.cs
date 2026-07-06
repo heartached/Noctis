@@ -273,14 +273,23 @@ public partial class PlaylistView : UserControl
 
     private async void OnTrackRowPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (_dragActive)
+        // async void: an escaped exception would crash the app.
+        try
         {
-            await CommitPlaylistDropAsync(e);
-            ResetPlaylistDragState();
-            e.Pointer.Capture(null);
+            if (_dragActive)
+            {
+                await CommitPlaylistDropAsync(e);
+                ResetPlaylistDragState();
+                e.Pointer.Capture(null);
+            }
+            else
+            {
+                ResetPlaylistDragState();
+            }
         }
-        else
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[PlaylistView] Drop commit failed: {ex.Message}");
             ResetPlaylistDragState();
         }
     }

@@ -26,15 +26,20 @@ public class ProgressToSweepMaskConverter : IValueConverter
             float f => f,
             _ => 0.0,
         };
-        if (raw < 0) raw = 0;
-        else if (raw > 1) raw = 1;
+        // Fully hidden / fully shown short-circuits (no sliver at 0, no dim edge at 1).
+        if (raw <= 0) return Brushes.Transparent;
+        if (raw >= 1) return Brushes.White;
 
-        // Mild ease-out shape — slight lead at the start, smooth tail. Stronger curves
-        // make the sweep visibly accelerate then decelerate, which reads as stuttering.
-        var progress = 1.0 - Math.Pow(1.0 - raw, 1.25);
-
-        var lo = Math.Max(0.0, progress - Feather);
-        var hi = Math.Min(1.0, progress + Feather);
+        // The reveal edge sits exactly at `raw` and travels 0→1 linearly, so with
+        // contiguous word timings the sweep flows across word boundaries at constant
+        // velocity. (An earlier version drove the edge across an extended -F..1+F
+        // range to hide the feather at the ends — that parked the edge off-glyph for
+        // ~10% of every word's duration and read as a stall at each word boundary.)
+        // Instead, the feather WIDTH shrinks to zero at the boundaries: soft mid-word,
+        // no bright sliver before the word starts, no pop when it completes.
+        var feather = Math.Min(Feather, Math.Min(raw, 1.0 - raw));
+        var lo = raw - feather;
+        var hi = raw + feather;
 
         return new LinearGradientBrush
         {

@@ -10,9 +10,16 @@ namespace Noctis.Services;
 /// </summary>
 public class LibraryService : ILibraryService
 {
-    private const int CurrentMetadataSchemaVersion = 6;
+    private const int CurrentMetadataSchemaVersion = 7;
     // v3: album track order normalized (disc 0 → 1, missing track numbers last)
     private const int CurrentIndexCacheVersion = 3;
+    // Throttle scan progress so a large library (tens of thousands of files)
+    // doesn't post one UI update per file. Emit on the first file then every
+    // Nth, which is frequent enough to read as "live" without flooding.
+    private const int ProgressReportInterval = 32;
+    // How often (ms) to surface scan-in-progress tracks to the library views so
+    // they populate live instead of staying empty until the whole scan finishes.
+    private const int ProgressivePublishMs = 1500;
 
     private readonly IMetadataService _metadata;
     private readonly IPersistenceService _persistence;
@@ -32,6 +39,13 @@ public class LibraryService : ILibraryService
     // Invalidated to null whenever _albums is reassigned; the next reader rebuilds.
     private volatile Dictionary<string, List<Album>>? _albumsByArtistIndex;
     private readonly object _albumsByArtistLock = new();
+
+    // Active-scan handle for graceful-shutdown checkpointing. When _checkpointRequested
+    // is set, a cancelled scan persists its partial progress (merged with the existing
+    // library) instead of rolling back, so the next launch resumes where it left off.
+    private CancellationTokenSource? _activeScanCts;
+    private TaskCompletionSource? _scanFinished;
+    private volatile bool _checkpointRequested;
 
     public IReadOnlyList<Track> Tracks => _tracks;
     public IReadOnlyList<Album> Albums => _albums;
@@ -55,6 +69,31 @@ public class LibraryService : ILibraryService
 
     public async Task ScanAsync(IEnumerable<string> folders, CancellationToken ct = default)
     {
+        // Register this scan so a graceful shutdown can cancel it and flush a
+        // checkpoint (see PauseActiveScanForShutdownAsync). The linked source lets
+        // shutdown cancel independently of the caller's own token.
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _checkpointRequested = false;
+        _activeScanCts = linkedCts;
+        _scanFinished = finished;
+        try
+        {
+            await ScanCoreAsync(folders, linkedCts.Token);
+        }
+        finally
+        {
+            finished.TrySetResult();
+            if (ReferenceEquals(_scanFinished, finished))
+            {
+                _scanFinished = null;
+                _activeScanCts = null;
+            }
+        }
+    }
+
+    private async Task ScanCoreAsync(IEnumerable<string> folders, CancellationToken ct)
+    {
         var settings = await _persistence.LoadSettingsAsync();
         var includeRoots = BuildIncludeRoots(folders, settings).ToList();
         var excludedRoots = settings.FolderRules
@@ -75,6 +114,9 @@ public class LibraryService : ILibraryService
             StringComparer.OrdinalIgnoreCase);
 
         var newTracks = new ConcurrentBag<Track>();
+        // Tracks which albums have already had a cover cached during this scan, so we
+        // save each album's art exactly once (first track wins).
+        var albumArtClaimed = new ConcurrentDictionary<Guid, bool>();
         var fileCount = 0;
         var unchangedCount = 0;
         var changedCount = 0;
@@ -96,24 +138,92 @@ public class LibraryService : ILibraryService
             }
         }, ct);
 
+        // Capture the pre-scan library so a cancelled scan can roll back the
+        // progressive partial publishes below and honour "cancel = no change".
+        var originalTracks = _tracks;
+        var originalAlbums = _albums;
+        var originalArtists = _artists;
+        var originalTrackIndex = _trackIndex;
+        var originalAlbumIndex = _albumIndex;
+        var originalTrackCount = originalTracks.Count;
+        var didPublishPartial = false;
+
+        void RestoreOriginalLibrary()
+        {
+            if (!didPublishPartial) return;
+            _tracks = originalTracks;
+            _albums = originalAlbums;
+            _artists = originalArtists;
+            _trackIndex = originalTrackIndex;
+            _albumIndex = originalAlbumIndex;
+            lock (_albumsByArtistLock) { _albumsByArtistIndex = null; }
+            LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        }
+
+        // Progressive publish: while the scan runs, periodically surface the
+        // tracks found so far so the library views fill in live (Apple Music
+        // style) instead of staying empty until the entire scan completes.
+        // In-memory only — persistence happens once, in the final rebuild below.
+        async Task RunProgressivePublishAsync(CancellationToken pubCt)
+        {
+            var lastCount = 0;
+            try
+            {
+                while (!pubCt.IsCancellationRequested)
+                {
+                    await Task.Delay(ProgressivePublishMs, pubCt).ConfigureAwait(false);
+
+                    var snapshot = newTracks.ToArray();
+                    if (snapshot.Length == 0 || snapshot.Length == lastCount) continue;
+                    lastCount = snapshot.Length;
+
+                    _tracks = snapshot
+                        .GroupBy(t => t.Id).Select(g => g.First())
+                        .OrderBy(t => t.Artist).ThenBy(t => t.Album)
+                        .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
+                    await RebuildIndexesAsync(persistCache: false).ConfigureAwait(false);
+                    didPublishPartial = true;
+                    LibraryUpdated?.Invoke(this, EventArgs.Empty);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch { /* best-effort; the final rebuild is authoritative */ }
+        }
+
+        using var publishCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var publishTask = RunProgressivePublishAsync(publishCts.Token);
+
+        try
+        {
         await Task.Run(() =>
         {
+            var options = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = GetScanParallelism(),
+                CancellationToken = ct
+            };
+
+            void ReportProgress(int processed)
+            {
+                if (processed == 1 || processed % ProgressReportInterval == 0)
+                    ScanProgress?.Invoke(this, processed);
+            }
+
             foreach (var folder in includeRoots)
             {
                 if (!Directory.Exists(folder)) continue;
 
                 // Enumerate recursively with folder rules, excluding removed files.
+                // Stream files into processing as they're discovered (no up-front
+                // ToList): on slow disks and network shares this overlaps directory
+                // enumeration with metadata reads and starts reporting progress
+                // immediately instead of after a long silent listing phase.
+                // NoBuffering dispatches one file at a time so the count moves right away.
                 var files = EnumerateAudioFiles(folder, excludedRoots, ignoredNames)
-                    .Where(f => !excludedFiles.Contains(f))
-                    .ToList();
+                    .Where(f => !excludedFiles.Contains(f));
+                var partitioner = Partitioner.Create(files, EnumerablePartitionerOptions.NoBuffering);
 
-                var options = new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = Environment.ProcessorCount,
-                    CancellationToken = ct
-                };
-
-                Parallel.ForEach(files, options, filePath =>
+                Parallel.ForEach(partitioner, options, filePath =>
                 {
                     if (ct.IsCancellationRequested) return;
 
@@ -129,14 +239,13 @@ public class LibraryService : ILibraryService
                             {
                                 newTracks.Add(existing);
                                 Interlocked.Increment(ref unchangedCount);
-                                Interlocked.Increment(ref fileCount);
-                                ScanProgress?.Invoke(this, fileCount);
+                                ReportProgress(Interlocked.Increment(ref fileCount));
                                 return;
                             }
                         }
 
-                        // Read metadata for new or changed files
-                        var track = _metadata.ReadTrackMetadata(filePath);
+                        // Read metadata (and the embedded cover, already in memory) for new/changed files
+                        var track = _metadata.ReadTrackMetadata(filePath, out var embeddedArt);
                         if (track != null)
                         {
                             // Use file path hash as stable ID so rescans don't create duplicates
@@ -150,62 +259,70 @@ public class LibraryService : ILibraryService
                                 track.SourceType = SourceType.Local;
                             newTracks.Add(track);
                             Interlocked.Increment(ref changedCount);
+
+                            // Cache this album's cover live the first time we see it (zero extra
+                            // I/O — the picture was already read above), so covers fill in with
+                            // tracks during the scan. Folder-art fallback runs after the scan.
+                            if (embeddedArt != null
+                                && albumArtClaimed.TryAdd(track.AlbumId, true)
+                                && !File.Exists(_persistence.GetArtworkPath(track.AlbumId)))
+                            {
+                                _persistence.SaveArtwork(track.AlbumId, embeddedArt);
+                            }
                         }
                         else
                         {
                             Interlocked.Increment(ref skippedCount);
                         }
 
-                        Interlocked.Increment(ref fileCount);
-                        ScanProgress?.Invoke(this, fileCount);
+                        ReportProgress(Interlocked.Increment(ref fileCount));
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
                         // Skip files that can't be read (locked, permissions, I/O error)
                         Interlocked.Increment(ref skippedCount);
-                        Interlocked.Increment(ref fileCount);
-                        ScanProgress?.Invoke(this, fileCount);
+                        ReportProgress(Interlocked.Increment(ref fileCount));
                     }
                 });
             }
         }, ct);
-
-        // If scan was cancelled, don't replace the library with partial data
-        if (ct.IsCancellationRequested) return;
-
-        // Deterministic album-art extraction. Previously art was pulled inside the parallel
-        // scan loop, so whichever thread won the race set the album cover — non-deterministic
-        // for albums whose tracks carry differing embedded art (e.g. compilations). Here we
-        // pick each album's representative track (lowest disc/track) so the cached cover is
-        // stable across scans. Same number of extractions as before (one per uncached album).
-        await Task.Run(() =>
+        }
+        catch (OperationCanceledException)
         {
-            var artGroups = newTracks
-                .Where(t => t.SourceType == SourceType.Local)
-                .GroupBy(t => t.AlbumId)
-                .Where(g => !File.Exists(_persistence.GetArtworkPath(g.Key)))
-                .ToList();
+            // Cancellation is handled gracefully by the rollback below.
+        }
+        finally
+        {
+            publishCts.Cancel();
+            try { await publishTask.ConfigureAwait(false); } catch { /* publisher already stopping */ }
+        }
 
-            Parallel.ForEach(artGroups,
-                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = ct },
-                g =>
-                {
-                    if (ct.IsCancellationRequested) return;
-                    var rep = Album.SelectArtworkRepresentative(g.ToList());
-                    if (rep == null) return;
-                    var artBytes = _metadata.ExtractAlbumArt(rep.FilePath);
-                    if (artBytes != null)
-                        _persistence.SaveArtwork(g.Key, artBytes);
-                });
-        }, ct);
-
-        if (ct.IsCancellationRequested) return;
+        // If scan was cancelled, either checkpoint the partial work (graceful
+        // shutdown) or roll back to the pre-scan library ("cancel = no change").
+        if (ct.IsCancellationRequested)
+        {
+            if (_checkpointRequested)
+            {
+                // Interrupted mid-enumeration: keep every already-known track and
+                // overlay the freshly scanned ones so nothing is dropped. The next
+                // scan resumes the remainder via the unchanged-file fast path.
+                var merged = new Dictionary<Guid, Track>();
+                foreach (var t in originalTracks) merged[t.Id] = t;
+                foreach (var t in newTracks) merged[t.Id] = t;
+                await PersistScanCheckpointAsync(merged.Values.ToList());
+            }
+            else
+            {
+                RestoreOriginalLibrary();
+            }
+            return;
+        }
 
         // Fast path: every existing track was found and unchanged, and no new or
         // modified files were detected. Skip the destructive rebuild/persist path —
         // previously we always wiped the SQLite index and rewrote library.json on
         // every launch, which the user saw as re-indexing even when nothing changed.
-        if (changedCount == 0 && unchangedCount == _tracks.Count)
+        if (changedCount == 0 && unchangedCount == originalTrackCount)
         {
             await _auditTrail.AppendAsync(new AuditEvent
             {
@@ -218,19 +335,42 @@ public class LibraryService : ILibraryService
                     ["totalFilesProcessed"] = fileCount.ToString(),
                     ["unchanged"] = unchangedCount.ToString(),
                     ["skipped"] = skippedCount.ToString(),
-                    ["finalTrackCount"] = _tracks.Count.ToString()
+                    ["finalTrackCount"] = originalTrackCount.ToString()
                 }
             }, ct);
             return;
         }
 
-        // Rebuild the library from scanned tracks.
+        // Authoritative track set. Publish it now (cache write deferred to the final
+        // rebuild) so every scanned track is on screen while album art is extracted
+        // progressively below.
         // DistinctBy(Id) prevents duplicates from overlapping music folders
         // (e.g., user adds /Music and /Music/Rock — files in the overlap get scanned twice).
         _tracks = newTracks
             .GroupBy(t => t.Id).Select(g => g.First()) // deduplicate by track ID
             .OrderBy(t => t.Artist).ThenBy(t => t.Album)
             .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
+        await RebuildIndexesAsync(persistCache: false);
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+
+        // Deterministic album-art extraction, published progressively so covers fill
+        // into the views live instead of all at once at the end. Groups are complete
+        // here (post-scan), and each cover comes from the album's lowest disc/track
+        // representative — stable across scans.
+        await ExtractArtworkProgressivelyAsync(newTracks, ct);
+        if (ct.IsCancellationRequested)
+        {
+            if (_checkpointRequested)
+                // Enumeration already completed (only artwork was interrupted), so
+                // _tracks is the authoritative scanned set — persist it as the checkpoint.
+                await PersistScanCheckpointAsync(_tracks.ToList());
+            else
+                RestoreOriginalLibrary();
+            return;
+        }
+
+        // Final authoritative rebuild (persists the index cache and attaches all
+        // extracted covers), then write through to disk.
         await RebuildIndexesAsync();
 
         // Persist to disk
@@ -257,7 +397,112 @@ public class LibraryService : ILibraryService
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
 
-    public async Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default)
+    /// <summary>
+    /// Cancels the in-flight scan and waits for it to flush a checkpoint of its
+    /// partial progress, so quitting mid-scan doesn't waste the work (or, for a
+    /// first scan of a new folder, lose all of it) — the next scan resumes.
+    /// </summary>
+    public async Task PauseActiveScanForShutdownAsync(TimeSpan timeout)
+    {
+        var cts = _activeScanCts;
+        var finished = _scanFinished;
+        if (cts == null || finished == null) return;
+
+        _checkpointRequested = true;
+        try { cts.Cancel(); }
+        catch (ObjectDisposedException) { return; /* scan already finished */ }
+
+        try { await finished.Task.WaitAsync(timeout); }
+        catch (TimeoutException) { /* shutdown can't block forever; remainder re-scans next launch */ }
+        catch { /* scan already completing */ }
+    }
+
+    /// <summary>
+    /// Persists the given track set + indexes to disk and the SQLite mirror,
+    /// ignoring cancellation. Used to checkpoint scan progress on shutdown so a
+    /// re-scan resumes incrementally instead of starting over.
+    /// </summary>
+    private async Task PersistScanCheckpointAsync(List<Track> tracks)
+    {
+        _tracks = tracks
+            .OrderBy(t => t.Artist).ThenBy(t => t.Album)
+            .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
+        await RebuildIndexesAsync();
+        await SaveAsync();
+        try
+        {
+            await _sqliteIndex.ClearAsync();
+            await _sqliteIndex.UpsertTracksAsync(_tracks);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LibraryService] Checkpoint SQLite sync failed: {ex.Message}");
+        }
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Extracts album art for albums that don't yet have a cached cover, publishing
+    /// in the background while it runs so covers fill into the views live during a
+    /// scan rather than appearing all at once at the end. Deterministic: album
+    /// groups are complete here (post-scan) and the cover is taken from each album's
+    /// lowest disc/track representative. Static art and user-attached animated
+    /// covers both surface through the LibraryUpdated notifications below.
+    /// </summary>
+    private async Task ExtractArtworkProgressivelyAsync(ConcurrentBag<Track> scanned, CancellationToken ct)
+    {
+        var artGroups = scanned
+            .Where(t => t.SourceType == SourceType.Local)
+            .GroupBy(t => t.AlbumId)
+            .Where(g => !File.Exists(_persistence.GetArtworkPath(g.Key)))
+            .ToList();
+        if (artGroups.Count == 0) return;
+
+        // Publish loop: while art is extracted, periodically rebuild the indexes
+        // (so newly saved covers attach to their albums) and notify the views.
+        // Throttled by time so cover-heavy libraries don't flood the UI.
+        using var pubCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        async Task PublishLoopAsync()
+        {
+            try
+            {
+                while (!pubCts.Token.IsCancellationRequested)
+                {
+                    await Task.Delay(ProgressivePublishMs, pubCts.Token).ConfigureAwait(false);
+                    await RebuildIndexesAsync(persistCache: false).ConfigureAwait(false);
+                    LibraryUpdated?.Invoke(this, EventArgs.Empty);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch { /* best-effort; the final rebuild is authoritative */ }
+        }
+        var publish = PublishLoopAsync();
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                Parallel.ForEach(artGroups,
+                    new ParallelOptions { MaxDegreeOfParallelism = GetScanParallelism(), CancellationToken = ct },
+                    g =>
+                    {
+                        if (ct.IsCancellationRequested) return;
+                        var rep = Album.SelectArtworkRepresentative(g.ToList());
+                        if (rep == null) return;
+                        var artBytes = _metadata.ExtractAlbumArt(rep.FilePath);
+                        if (artBytes != null)
+                            _persistence.SaveArtwork(g.Key, artBytes);
+                    });
+            }, ct);
+        }
+        finally
+        {
+            pubCts.Cancel();
+            try { await publish.ConfigureAwait(false); } catch { /* publisher already stopping */ }
+        }
+    }
+
+    public async Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null)
     {
         var files = (filePaths ?? Array.Empty<string>())
             .Where(p => !string.IsNullOrWhiteSpace(p))
@@ -284,9 +529,15 @@ public class LibraryService : ILibraryService
         var trackById = _tracks.ToDictionary(t => t.Id);
         var changed = false;
 
+        // Metadata/artwork reads are heavy file I/O; keep them off the caller's
+        // (UI) thread so large drops don't freeze the window.
+        await Task.Run(() =>
+        {
+        var processed = 0;
         foreach (var filePath in files)
         {
             ct.ThrowIfCancellationRequested();
+            progress?.Report(++processed);
 
             var trackId = ComputeFileId(filePath);
             trackById.TryGetValue(trackId, out var existing);
@@ -329,6 +580,7 @@ public class LibraryService : ILibraryService
             trackById[track.Id] = track;
             changed = true;
         }
+        }, ct);
 
         if (!changed) return;
 
@@ -394,7 +646,12 @@ public class LibraryService : ILibraryService
         var track = GetTrackById(id);
         if (track == null) return;
 
-        _tracks.Remove(track);
+        // Copy-and-swap, never mutate in place: Tracks is enumerated concurrently on
+        // background threads (Home refresh, duplicate finder, watcher batches), so an
+        // in-place Remove can throw "Collection was modified" under their feet.
+        var updated = new List<Track>(_tracks);
+        updated.Remove(track);
+        _tracks = updated;
         await ExcludeFilePathsAndCleanFoldersAsync(new[] { track.FilePath });
         await RebuildIndexesAsync();
         await SaveAsync();
@@ -405,9 +662,11 @@ public class LibraryService : ILibraryService
     public async Task RemoveTracksAsync(IEnumerable<Guid> ids)
     {
         var idSet = new HashSet<Guid>(ids);
-        var removedTracks = _tracks.Where(t => idSet.Contains(t.Id)).ToList();
-        var removed = _tracks.RemoveAll(t => idSet.Contains(t.Id));
-        if (removed == 0) return;
+        // Copy-and-swap (see RemoveTrackAsync) — concurrent readers keep the old list.
+        var current = _tracks;
+        var removedTracks = current.Where(t => idSet.Contains(t.Id)).ToList();
+        if (removedTracks.Count == 0) return;
+        _tracks = current.Where(t => !idSet.Contains(t.Id)).ToList();
 
         await ExcludeFilePathsAndCleanFoldersAsync(removedTracks.Select(t => t.FilePath));
         await RebuildIndexesAsync();
@@ -482,7 +741,7 @@ public class LibraryService : ILibraryService
             if (string.IsNullOrWhiteSpace(folder)) return true;
             var normalized = TryNormalizePath(folder);
             if (string.IsNullOrWhiteSpace(normalized)) return true;
-            return !remainingPaths.Any(fp => IsUnderAnyRoot(fp, new[] { normalized! }));
+            return !remainingPaths.Any(fp => IsUnderRoot(NormalizePath(fp), normalized!));
         });
 
         await _persistence.SaveSettingsAsync(settings);
@@ -615,11 +874,13 @@ public class LibraryService : ILibraryService
 
     public async Task ClearAsync()
     {
-        _tracks.Clear();
-        _albums.Clear();
-        _artists.Clear();
-        _trackIndex.Clear();
-        _albumIndex.Clear();
+        // Copy-and-swap (see RemoveTrackAsync) — concurrent readers keep the old lists.
+        _tracks = new List<Track>();
+        _albums = new List<Album>();
+        _artists = new List<Artist>();
+        _trackIndex = new Dictionary<Guid, Track>();
+        _albumIndex = new Dictionary<Guid, Album>();
+        lock (_albumsByArtistLock) { _albumsByArtistIndex = null; }
         await _persistence.SaveLibraryAsync(_tracks);
         await _sqliteIndex.ClearAsync();
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
@@ -653,7 +914,7 @@ public class LibraryService : ILibraryService
     /// Rebuilds album, artist, and track-ID indexes from the current track list.
     /// Heavy work (grouping, sorting, File.Exists) runs on a background thread.
     /// </summary>
-    private async Task RebuildIndexesAsync()
+    private async Task RebuildIndexesAsync(bool persistCache = true)
     {
         var tracks = _tracks;
         var persistence = _persistence;
@@ -773,8 +1034,11 @@ public class LibraryService : ILibraryService
         // GetAlbumsByArtist and leave a stale index behind; next reader rebuilds.
         lock (_albumsByArtistLock) { _albumsByArtistIndex = null; }
 
-        // Persist the computed indexes so next startup can skip this rebuild
-        _ = SaveIndexCacheAsync();
+        // Persist the computed indexes so next startup can skip this rebuild.
+        // Skipped during progressive scan publishes to avoid rewriting the cache
+        // on every partial update; the final rebuild persists the authoritative set.
+        if (persistCache)
+            _ = SaveIndexCacheAsync();
     }
 
     /// <summary>
@@ -856,6 +1120,11 @@ public class LibraryService : ILibraryService
         // v6: populate ReleaseType from tags + album-name heuristic for existing libraries.
         if (settings.MetadataSchemaVersion < 6)
             didBackfillMetadata |= await BackfillReleaseTypeAsync(_tracks);
+
+        // v7: re-read ratings of 1/2/4 stars — earlier reads mistook the iTunes
+        // advisory flag in Apple Music downloads for a star rating.
+        if (settings.MetadataSchemaVersion < 7)
+            didBackfillMetadata |= await BackfillAdvisoryMisreadRatingsAsync(_tracks);
 
         settings.MetadataSchemaVersion = CurrentMetadataSchemaVersion;
 
@@ -1047,6 +1316,51 @@ public class LibraryService : ILibraryService
         return changedCount > 0;
     }
 
+    private async Task<bool> BackfillAdvisoryMisreadRatingsAsync(List<Track> tracks)
+    {
+        // Only 1/2/4 stars can be phantom advisory codes (1=explicit, 2=clean,
+        // 4=legacy explicit). Genuine ratings set in Noctis were written to the
+        // file tags on the 0-100 scale, so re-reading keeps them intact.
+        var candidates = tracks
+            .Where(t => t.Rating is 1 or 2 or 4
+                        && !string.IsNullOrWhiteSpace(t.FilePath) && File.Exists(t.FilePath))
+            .ToList();
+
+        if (candidates.Count == 0)
+            return false;
+
+        var changedCount = 0;
+
+        await Task.Run(() =>
+        {
+            Parallel.ForEach(
+                candidates,
+                new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+                },
+                track =>
+                {
+                    try
+                    {
+                        var refreshed = _metadata.ReadTrackMetadata(track.FilePath);
+                        if (refreshed == null) return;
+                        if (refreshed.Rating != track.Rating)
+                        {
+                            track.Rating = refreshed.Rating;
+                            Interlocked.Increment(ref changedCount);
+                        }
+                    }
+                    catch
+                    {
+                        // Non-fatal — backfill is best-effort.
+                    }
+                });
+        });
+
+        return changedCount > 0;
+    }
+
     private async Task<bool> BackfillReleaseDateAndCopyrightAsync(List<Track> tracks)
     {
         var candidates = tracks
@@ -1131,6 +1445,21 @@ public class LibraryService : ILibraryService
         return estimated > 0 ? estimated : 0;
     }
 
+    /// <summary>
+    /// Degree of parallelism for the scan's file reads. Metadata reading is
+    /// I/O-bound, so a single HDD or network share thrashes seeking once more than
+    /// a handful of readers hit it at once — basing this on ProcessorCount (16-24
+    /// on modern CPUs) hurts spinning/network volumes and barely helps SSDs.
+    /// Capped low by default; NOCTIS_SCAN_THREADS overrides it for A/B testing.
+    /// </summary>
+    private static int GetScanParallelism()
+    {
+        var raw = Environment.GetEnvironmentVariable("NOCTIS_SCAN_THREADS");
+        if (int.TryParse(raw, out var n) && n >= 1)
+            return Math.Min(n, 64);
+        return Math.Min(Environment.ProcessorCount, 8);
+    }
+
     private static IEnumerable<string> EnumerateAudioFiles(
         string root,
         IReadOnlyCollection<string> excludedRoots,
@@ -1178,14 +1507,19 @@ public class LibraryService : ILibraryService
         var normalized = NormalizePath(path);
         foreach (var root in roots)
         {
-            if (normalized.Equals(root, StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            if (normalized.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
-                normalized.StartsWith(root + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            if (IsUnderRoot(normalized, root))
                 return true;
         }
         return false;
+    }
+
+    private static bool IsUnderRoot(string normalizedPath, string root)
+    {
+        if (normalizedPath.Equals(root, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return normalizedPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+               normalizedPath.StartsWith(root + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string NormalizePath(string path)
@@ -1234,60 +1568,83 @@ public class LibraryService : ILibraryService
             if (cache == null || cache.Version != CurrentIndexCacheVersion || cache.TrackCount != _tracks.Count)
                 return false;
 
-            var currentHash = ComputeTrackIdHash(_tracks);
-            if (cache.TrackIdHash != currentHash)
-                return false;
+            // The ID-hash validation and full album reconstruction + sort are CPU-bound
+            // over the whole library. This fast path runs on every launch; resuming the
+            // LoadIndexCacheAsync await on the UI thread meant all of it ran there and
+            // stalled startup. Offload to a worker (RebuildIndexesAsync already does the
+            // same), capture the results into locals, and assign the indexes only after a
+            // successful, non-stale rebuild. Track.AlbumArtworkPath is a plain property
+            // (no change notification) and nothing reads these indexes until LoadAsync
+            // raises LibraryUpdated, so the off-thread writes are safe.
+            var tracks = _tracks;
+            List<Album>? newAlbums = null;
+            Dictionary<Guid, Track>? newTrackIndex = null;
+            Dictionary<Guid, Album>? newAlbumIndex = null;
 
-            // Cache is valid — restore indexes without expensive rebuild
-            var trackIndex = new Dictionary<Guid, Track>(_tracks.Count);
-            foreach (var t in _tracks)
-                trackIndex[t.Id] = t;
-
-            var albums = new List<Album>(cache.Albums.Count);
-            var albumIndex = new Dictionary<Guid, Album>(cache.Albums.Count);
-
-            foreach (var entry in cache.Albums)
+            var ok = await Task.Run(() =>
             {
-                var albumTracks = new List<Track>(entry.TrackIds.Count);
-                foreach (var tid in entry.TrackIds)
-                {
-                    if (trackIndex.TryGetValue(tid, out var track))
-                        albumTracks.Add(track);
-                }
-
-                // If tracks are missing, cache is stale
-                if (albumTracks.Count != entry.TrackCount)
+                if (cache.TrackIdHash != ComputeTrackIdHash(tracks))
                     return false;
 
-                var album = new Album
+                // Cache is valid — restore indexes without expensive rebuild
+                var trackIndex = new Dictionary<Guid, Track>(tracks.Count);
+                foreach (var t in tracks)
+                    trackIndex[t.Id] = t;
+
+                var albums = new List<Album>(cache.Albums.Count);
+                var albumIndex = new Dictionary<Guid, Album>(cache.Albums.Count);
+
+                foreach (var entry in cache.Albums)
                 {
-                    Id = entry.Id,
-                    Name = entry.Name,
-                    Artist = entry.Artist,
-                    Year = entry.Year,
-                    Genre = entry.Genre,
-                    TrackCount = entry.TrackCount,
-                    TotalDuration = TimeSpan.FromTicks(entry.TotalDurationTicks),
-                    ArtworkPath = entry.ArtworkPath,
-                    Tracks = albumTracks
-                };
+                    var albumTracks = new List<Track>(entry.TrackIds.Count);
+                    foreach (var tid in entry.TrackIds)
+                    {
+                        if (trackIndex.TryGetValue(tid, out var track))
+                            albumTracks.Add(track);
+                    }
 
-                albums.Add(album);
-                albumIndex[album.Id] = album;
+                    // If tracks are missing, cache is stale
+                    if (albumTracks.Count != entry.TrackCount)
+                        return false;
 
-                // Populate track artwork paths
-                foreach (var t in albumTracks)
-                    t.AlbumArtworkPath = album.ArtworkPath;
-            }
+                    var album = new Album
+                    {
+                        Id = entry.Id,
+                        Name = entry.Name,
+                        Artist = entry.Artist,
+                        Year = entry.Year,
+                        Genre = entry.Genre,
+                        TrackCount = entry.TrackCount,
+                        TotalDuration = TimeSpan.FromTicks(entry.TotalDurationTicks),
+                        ArtworkPath = entry.ArtworkPath,
+                        Tracks = albumTracks
+                    };
 
-            _albums = albums
-                .OrderBy(a => GetPrimaryArtist(a.Artist), StringComparer.OrdinalIgnoreCase)
-                .ThenBy(a => a.Year)
-                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+                    albums.Add(album);
+                    albumIndex[album.Id] = album;
+
+                    // Populate track artwork paths
+                    foreach (var t in albumTracks)
+                        t.AlbumArtworkPath = album.ArtworkPath;
+                }
+
+                newAlbums = albums
+                    .OrderBy(a => GetPrimaryArtist(a.Artist), StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(a => a.Year)
+                    .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                newTrackIndex = trackIndex;
+                newAlbumIndex = albumIndex;
+                return true;
+            });
+
+            if (!ok)
+                return false;
+
+            _albums = newAlbums!;
             _artists = cache.Artists;
-            _trackIndex = trackIndex;
-            _albumIndex = albumIndex;
+            _trackIndex = newTrackIndex!;
+            _albumIndex = newAlbumIndex!;
             // Invalidate under the lock so it can't race a concurrent rebuild in
             // GetAlbumsByArtist and leave a stale index behind; next reader rebuilds.
             lock (_albumsByArtistLock) { _albumsByArtistIndex = null; }

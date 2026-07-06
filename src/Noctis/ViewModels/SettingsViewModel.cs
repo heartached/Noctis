@@ -35,6 +35,10 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _suspendSettingPersistence;
     private CancellationTokenSource? _eqSaveDebounceCts;
     private CancellationTokenSource? _scanStatusClearCts;
+    // Drives library-scan supersession: a folder add/remove cancels any in-flight
+    // scan and re-runs against the latest folder set instead of being dropped.
+    private CancellationTokenSource? _scanCts;
+    private Task _scanInFlight = Task.CompletedTask;
 
     [ObservableProperty] private int _mediaFoldersScrollRequest;
 
@@ -223,8 +227,12 @@ public partial class SettingsViewModel : ViewModelBase
     /// LaunchAtStartup is on; honored at startup only if the tray is available).</summary>
     [ObservableProperty] private bool _startMinimizedToTray;
 
+    /// <summary>Restore the last-played track (paused) into the playbar on reopen.</summary>
+    [ObservableProperty] private bool _restoreLastTrackOnStartup = true;
+
     partial void OnMinimizeToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnCloseToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnRestoreLastTrackOnStartupChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnLaunchAtStartupChanged(bool value)
     {
         if (_settingsLoaded) Helpers.StartupHelper.SetEnabled(value, StartMinimizedToTray);
@@ -563,7 +571,7 @@ public partial class SettingsViewModel : ViewModelBase
             Dispatcher.UIThread.Post(() =>
             {
                 ScanProgress = count;
-                ScanStatusText = "Scanning Library";
+                ScanStatusText = $"Scanning Library {count:N0}";
             });
         };
 
@@ -749,6 +757,7 @@ public partial class SettingsViewModel : ViewModelBase
             // toggle matches reality even if changed via Task Manager / Login Items.
             LaunchAtStartup = Helpers.StartupHelper.IsEnabled();
             StartMinimizedToTray = _settings.StartMinimizedToTray;
+            RestoreLastTrackOnStartup = _settings.RestoreLastTrackOnStartup;
             WebRemoteEnabled = _settings.WebRemoteEnabled;
             ShowGenreColumn = _settings.ShowGenreColumn;
             ShowRatingColumn = _settings.ShowRatingColumn;
@@ -938,6 +947,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MinimizeToTray = MinimizeToTray;
         _settings.CloseToTray = CloseToTray;
         _settings.StartMinimizedToTray = StartMinimizedToTray;
+        _settings.RestoreLastTrackOnStartup = RestoreLastTrackOnStartup;
         _settings.WebRemoteEnabled = WebRemoteEnabled;
         _settings.ShowGenreColumn = ShowGenreColumn;
         _settings.ShowRatingColumn = ShowRatingColumn;
@@ -2411,21 +2421,48 @@ public partial class SettingsViewModel : ViewModelBase
     /// and <see cref="ScanStatusText"/> so the UI (spinner + disabled button)
     /// reflects every scan, however it was triggered.
     /// </summary>
-    private async Task RunLibraryScanAsync()
+    private Task RunLibraryScanAsync()
     {
-        if (IsScanning) return;
+        // Supersede any in-flight scan so an add/remove always re-scans against the
+        // current folder set. Without this the old "if (IsScanning) return" dropped
+        // the re-scan triggered by removing a folder mid-scan, so its tracks never
+        // left the library. Cancel the running scan (it rolls back to "no change")
+        // and chain a fresh scan after it unwinds — the two never mutate concurrently.
+        _scanCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _scanCts = cts;
+        var prior = _scanInFlight;
+        var task = RunScanCoreAsync(prior, cts);
+        _scanInFlight = task;
+        return task;
+    }
+
+    private async Task RunScanCoreAsync(Task prior, CancellationTokenSource cts)
+    {
+        // Wait for the superseded scan to finish unwinding before mutating the
+        // library, so ScanAsync never runs twice concurrently.
+        try { await prior.ConfigureAwait(true); } catch { /* prior was cancelled */ }
+
+        if (cts.IsCancellationRequested) return; // superseded again before we started
+
         IsScanning = true;
         ScanStatusText = "Scanning Library";
         ScanProgress = 0;
 
         try
         {
-            await _library.ScanAsync(MusicFolders);
+            await _library.ScanAsync(MusicFolders, cts.Token);
+            if (cts.IsCancellationRequested) return;
+
             SetScanStatus(_library.Tracks.Count == 0
                 ? "No tracks found."
                 : $"{_library.Tracks.Count} tracks found.", autoClear: true);
             RefreshLibraryStats();
             RefreshStorageInfo(forceRefresh: true);
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer scan — leave its status/state to that scan.
         }
         catch (Exception ex)
         {
@@ -2433,7 +2470,14 @@ public partial class SettingsViewModel : ViewModelBase
         }
         finally
         {
-            IsScanning = false;
+            // Only the most recent scan owns IsScanning; an older superseded scan
+            // must not flip it off while the new one is still running.
+            if (ReferenceEquals(_scanCts, cts))
+            {
+                IsScanning = false;
+                _scanCts = null;
+            }
+            cts.Dispose();
         }
     }
 

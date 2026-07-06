@@ -39,19 +39,36 @@
             </TranslateTransform>
         </DockPanel.RenderTransform>
 
-        <Grid RowDefinitions="58,*">
-            <!-- Zone A: Top bar left | centered playback island | right actions -->
+        <Grid RowDefinitions="Auto,*">
+            <!-- Zone A: Top bar left | centered playback island | right actions.
+                 Auto-height: collapses on pages where the bar renders nothing
+                 (e.g. Album Detail, whose Back/Search live in the sidebar rail). -->
             <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ZIndex="20"
                   IsHitTestVisible="{Binding IsLyricsViewActive, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
+                <!-- Keeps the former fixed 58px bar height while the lyrics page is
+                     active (its layout predates the collapsing bar). -->
+                <Border Width="0" MinHeight="58" IsVisible="{Binding IsLyricsViewActive}" />
                 <!-- Full-width bottom separator line -->
                 <Border Grid.ColumnSpan="2" VerticalAlignment="Bottom"
                         Height="1" Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                        Opacity="0.08"
-                        IsVisible="{Binding IsLyricsViewActive, Converter={x:Static BoolConverters.Not}}" />
+                        Opacity="0.08">
+                    <Border.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="!IsLyricsViewActive" />
+                            <Binding Path="TopBar.HasBarContent" />
+                        </MultiBinding>
+                    </Border.IsVisible>
+                </Border>
                 <!-- Left: page title / back button — confined to column 0 so a long title never renders under the right action buttons -->
                 <views:TopBarView Grid.Column="0"
-                                  DataContext="{Binding TopBar}"
-                                  IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsLyricsViewActive, Converter={x:Static BoolConverters.Not}, FallbackValue=True}" />
+                                  DataContext="{Binding TopBar}">
+                    <views:TopBarView.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="!$parent[Window].((vm:MainWindowViewModel)DataContext).IsLyricsViewActive" FallbackValue="True" />
+                            <Binding Path="HasBarContent" />
+                        </MultiBinding>
+                    </views:TopBarView.IsVisible>
+                </views:TopBarView>
 
                 <!-- Right: TopBar action buttons, view toggle, search -->
                 <StackPanel Grid.Column="1"
@@ -279,36 +296,6 @@
                                 </Border>
                             </Button>
                         </StackPanel>
-                    </Border>
-
-                    <!-- Search field -->
-                    <Border Background="{DynamicResource SystemControlBackgroundListLowBrush}"
-                            CornerRadius="999" Padding="10,4,4,4" Height="32" MaxWidth="220"
-                            IsVisible="{Binding IsSearchVisible}">
-                        <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-                            <Viewbox Grid.Column="0" Width="12" Height="12" Margin="0,0,6,0"
-                                     VerticalAlignment="Center">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.45"
-                                          Data="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                                </Canvas>
-                            </Viewbox>
-                            <TextBox Grid.Column="1"
-                                     x:Name="SearchBox"
-                                     Classes="search-box"
-                                     Text="{Binding SearchText, Mode=TwoWay}"
-                                     Watermark="{Binding SearchWatermark}"
-                                     Background="Transparent" BorderThickness="0"
-                                     FontSize="12" Padding="0,2"
-                                     VerticalAlignment="Center" MinWidth="120"/>
-                            <Button Grid.Column="2"
-                                    Command="{Binding ClearSearchCommand}"
-                                    IsVisible="{Binding SearchText.Length}"
-                                    Background="Transparent" BorderThickness="0"
-                                    Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
-                                <TextBlock Text="&#x2715;" FontSize="11" Opacity="0.5"/>
-                            </Button>
-                        </Grid>
                     </Border>
 
                 </StackPanel>
@@ -834,6 +821,45 @@
                        FontSize="14" FontWeight="SemiBold"
                        Foreground="#CCFFFFFF"
                        HorizontalAlignment="Center" />
+        </StackPanel>
+    </Border>
+
+    <!-- Drop-import progress pill (spinner + "Copying files 3 of 10") -->
+    <Border IsVisible="{Binding IsDropImporting}"
+            IsHitTestVisible="False"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            Margin="0,48,0,0"
+            Background="{DynamicResource IslandBackground}"
+            BorderBrush="#22FFFFFF"
+            BorderThickness="1"
+            CornerRadius="999"
+            Padding="16,9"
+            ZIndex="40">
+        <Border.Styles>
+            <!-- Same rotating-arc spinner as Settings' background work indicator -->
+            <Style Selector="Ellipse.loading-spinner">
+                <Setter Property="Width" Value="14"/>
+                <Setter Property="Height" Value="14"/>
+                <Setter Property="Stroke" Value="{DynamicResource AccentColorBrush}"/>
+                <Setter Property="StrokeThickness" Value="2"/>
+                <Setter Property="StrokeDashArray" Value="11,5"/>
+                <Setter Property="StrokeLineCap" Value="Round"/>
+                <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+                <Style.Animations>
+                    <Animation Duration="0:0:0.85" IterationCount="INFINITE" Easing="LinearEasing">
+                        <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0"/></KeyFrame>
+                        <KeyFrame Cue="100%"><Setter Property="RotateTransform.Angle" Value="360"/></KeyFrame>
+                    </Animation>
+                </Style.Animations>
+            </Style>
+        </Border.Styles>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+            <Ellipse Classes="loading-spinner" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding DropImportStatus}"
+                       FontSize="13" FontWeight="SemiBold"
+                       Foreground="{DynamicResource IslandForeground}"
+                       VerticalAlignment="Center"/>
         </StackPanel>
     </Border>
 

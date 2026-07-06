@@ -21,6 +21,13 @@ public partial class WordTiming : ObservableObject
     /// <summary>Word end time. Null when not provided; treated as the next word's Start (or line end).</summary>
     public TimeSpan? End { get; init; }
 
+    /// <summary>
+    /// True for long-held words (slow vocal passages). Drives the Apple Music-style
+    /// extra swell + glow while the word is being sung. Computed once by
+    /// <see cref="LyricLine"/> when its word list is assigned.
+    /// </summary>
+    public bool IsEmphasis { get; set; }
+
     /// <summary>True once the playhead has advanced past this word.</summary>
     [ObservableProperty]
     private bool _isPast;

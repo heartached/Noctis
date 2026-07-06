@@ -14,6 +14,14 @@ public interface IMetadataService
     Track? ReadTrackMetadata(string filePath);
 
     /// <summary>
+    /// Reads metadata and, in the same file open, returns the best embedded cover
+    /// picture (already in memory from tag parsing — no extra I/O). Lets a scan
+    /// populate album art live without re-reading every file. <paramref name="embeddedArt"/>
+    /// is null when the file has no embedded picture.
+    /// </summary>
+    Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt);
+
+    /// <summary>
     /// Extracts embedded album artwork from an audio file.
     /// Returns the raw image bytes, or null if no artwork is embedded.
     /// </summary>

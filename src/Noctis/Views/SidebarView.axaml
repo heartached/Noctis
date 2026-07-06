@@ -22,6 +22,120 @@
             <!-- Top spacing -->
             <Border DockPanel.Dock="Top" Height="8" />
 
+            <!-- Back + contextual search, pinned above the scrolling nav.
+                 State (can-go-back, search visibility/watermark/text) comes from TopBarViewModel. -->
+            <StackPanel DockPanel.Dock="Top"
+                        Orientation="Vertical"
+                        Spacing="10"
+                        HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}"
+                        Margin="{Binding IsExpanded, Converter={StaticResource BoolToThickness}, ConverterParameter='6,2,0,6;0,2,0,6'}">
+                <StackPanel.Styles>
+                    <Style Selector="Button.rail-action">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Width" Value="32"/>
+                        <Setter Property="Height" Value="32"/>
+                        <Setter Property="CornerRadius" Value="999"/>
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                    </Style>
+                    <Style Selector="Button.rail-action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                        <Setter Property="Background" Value="#22FFFFFF"/>
+                    </Style>
+                    <Style Selector="Button.rail-action:disabled">
+                        <Setter Property="Opacity" Value="0.3"/>
+                    </Style>
+                    <!-- Expanded sidebar: align with the nav rows (icon column at the same
+                         x-offset: 6 panel margin + 10 padding) and show the text label. -->
+                    <Style Selector="Button.rail-action.expanded">
+                        <Setter Property="Width" Value="NaN"/>
+                        <Setter Property="Padding" Value="10,0"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                    </Style>
+                    <!-- Pill presenter for the rail search flyout; content is animated
+                         from code-behind (rise-in / fade-out like the app's menus). -->
+                    <Style Selector="FlyoutPresenter.rail-search">
+                        <Setter Property="CornerRadius" Value="999"/>
+                        <Setter Property="Padding" Value="12,5"/>
+                        <Setter Property="MinWidth" Value="0"/>
+                        <Setter Property="MinHeight" Value="0"/>
+                    </Style>
+                </StackPanel.Styles>
+
+                <Button Classes="rail-action"
+                        Classes.expanded="{Binding IsExpanded}"
+                        Command="{Binding TopBar.BackCommand}"
+                        IsEnabled="{Binding TopBar.IsBackButtonVisible, FallbackValue=False}"
+                        ToolTip.Tip="Back">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <Grid Width="28" Height="28">
+                            <PathIcon Data="{StaticResource ChevronLeftIcon}" Width="17" Height="17"
+                                      Foreground="{DynamicResource IslandForeground}"/>
+                        </Grid>
+                        <TextBlock Text="Back"
+                                   FontSize="15"
+                                   VerticalAlignment="Center"
+                                   IsVisible="{Binding IsExpanded}"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Classes="rail-action"
+                        Classes.expanded="{Binding IsExpanded}"
+                        IsEnabled="{Binding TopBar.IsSearchVisible, FallbackValue=False}"
+                        ToolTip.Tip="Search">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <Grid Width="28" Height="28">
+                            <PathIcon Data="{StaticResource SearchIcon}" Width="16" Height="16"
+                                      Foreground="{DynamicResource IslandForeground}"/>
+                            <!-- Active-filter dot: search text survives the flyout closing,
+                                 so mark the icon while a query is filtering the page. -->
+                            <Ellipse Width="7" Height="7"
+                                     Fill="{DynamicResource AccentColorBrush}"
+                                     HorizontalAlignment="Right"
+                                     VerticalAlignment="Top"
+                                     Margin="0,2,2,0"
+                                     IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"/>
+                        </Grid>
+                        <TextBlock Text="Search"
+                                   FontSize="15"
+                                   VerticalAlignment="Center"
+                                   IsVisible="{Binding IsExpanded}"/>
+                    </StackPanel>
+                    <Button.Flyout>
+                        <Flyout Placement="Right"
+                                FlyoutPresenterClasses="rail-search"
+                                Opened="OnSearchFlyoutOpened"
+                                Closing="OnSearchFlyoutClosing">
+                            <Grid ColumnDefinitions="*,Auto" Width="180">
+                                <TextBox Grid.Column="0"
+                                         Classes="search-box"
+                                         Text="{Binding TopBar.SearchText, Mode=TwoWay}"
+                                         Watermark="{Binding TopBar.SearchWatermark}"
+                                         Background="Transparent" BorderThickness="0"
+                                         FontSize="12" Padding="4,2"
+                                         VerticalAlignment="Center"/>
+                                <Button Grid.Column="1"
+                                        Command="{Binding TopBar.ClearSearchCommand}"
+                                        IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
+                                    <TextBlock Text="&#x2715;" FontSize="11" Opacity="0.5"/>
+                                </Button>
+                            </Grid>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
+
+            <!-- Divider between rail actions and navigation -->
+            <Border DockPanel.Dock="Top"
+                    Height="1"
+                    Background="{DynamicResource IslandForeground}"
+                    Opacity="0.1"
+                    Margin="8,0,8,6" />
+
             <!-- Scrollable content fills remaining space -->
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">

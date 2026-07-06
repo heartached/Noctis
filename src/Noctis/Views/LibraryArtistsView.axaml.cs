@@ -24,49 +24,65 @@ public partial class LibraryArtistsView : UserControl
 
     private async void OnChangeArtistImageClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Control control || control.DataContext is not Artist artist) return;
-        if (DataContext is not LibraryArtistsViewModel vm) return;
-
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel == null) return;
-
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Select Artist Picture",
-            AllowMultiple = false,
-            FileTypeFilter = new[]
-            {
-                new FilePickerFileType("Images")
-                {
-                    Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp", "*.gif" }
-                }
-            }
-        });
-
-        if (files.Count == 0) return;
-
-        byte[] data;
+        // async void: an escaped exception would crash the app.
         try
         {
-            await using var stream = await files[0].OpenReadAsync();
-            using var ms = new MemoryStream();
-            await stream.CopyToAsync(ms);
-            data = ms.ToArray();
-        }
-        catch
-        {
-            return;
-        }
+            if (sender is not Control control || control.DataContext is not Artist artist) return;
+            if (DataContext is not LibraryArtistsViewModel vm) return;
 
-        if (data.Length == 0) return;
-        await vm.ChangeArtistImageAsync(artist, data);
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel == null) return;
+
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Select Artist Picture",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Images")
+                    {
+                        Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp", "*.gif" }
+                    }
+                }
+            });
+
+            if (files.Count == 0) return;
+
+            byte[] data;
+            try
+            {
+                await using var stream = await files[0].OpenReadAsync();
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                data = ms.ToArray();
+            }
+            catch
+            {
+                return;
+            }
+
+            if (data.Length == 0) return;
+            await vm.ChangeArtistImageAsync(artist, data);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ArtistsView] Change artist image failed: {ex.Message}");
+        }
     }
 
     private async void OnSearchArtistImageClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Control control || control.DataContext is not Artist artist) return;
-        if (DataContext is LibraryArtistsViewModel vm)
-            await vm.SearchArtistImageAsync(artist);
+        // async void: an escaped exception would crash the app.
+        try
+        {
+            if (sender is not Control control || control.DataContext is not Artist artist) return;
+            if (DataContext is LibraryArtistsViewModel vm)
+                await vm.SearchArtistImageAsync(artist);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ArtistsView] Artist image search failed: {ex.Message}");
+        }
     }
 
     private void OnRemoveArtistImageClick(object? sender, RoutedEventArgs e)

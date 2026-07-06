@@ -102,7 +102,7 @@ public class ShareCardRendererTests
     [Fact]
     public void RenderLyricCard_Square_ProducesPng()
     {
-        var png = ShareCardRenderer.RenderLyricCard(new LyricCardSpec
+        var png = ShareCardRenderer.RenderLyricCardStyled(new LyricCardSpec
         {
             Title = "Those Eyes",
             Artist = "New West",
@@ -122,7 +122,7 @@ public class ShareCardRendererTests
     [Fact]
     public void RenderLyricCard_Story_ProducesPng()
     {
-        var png = ShareCardRenderer.RenderLyricCard(new LyricCardSpec
+        var png = ShareCardRenderer.RenderLyricCardStyled(new LyricCardSpec
         {
             Title = "Those Eyes",
             Artist = "New West",

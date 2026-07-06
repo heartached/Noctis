@@ -522,20 +522,31 @@
                                     ClipToBounds="True"
                                     HorizontalAlignment="Left"
                                     VerticalAlignment="Center">
+                                <!-- Title is a link button: clicking it opens the current
+                                     track's album. Mirrors the artist link below. -->
+                                <Button Classes="artist-link-btn"
+                                        Background="Transparent" BorderThickness="0" Padding="0"
+                                        Cursor="Hand" HorizontalAlignment="Left"
+                                        Command="{Binding ViewCurrentTrackAlbumCommand}"
+                                        ToolTip.Tip="View Album">
                                 <StackPanel x:Name="TrackTitleContent"
                                             Orientation="Horizontal"
                                             Spacing="6">
                                     <StackPanel.RenderTransform>
                                         <TranslateTransform X="0" />
                                     </StackPanel.RenderTransform>
-                                    <TextBlock x:Name="TrackTitleTextBlock"
-                                               Text="{Binding CurrentTrack, Converter={StaticResource DisplayTitle}, FallbackValue='No track selected'}"
-                                               Classes="one-line-explicit-title"
-                                               FontSize="12"
-                                               FontWeight="SemiBold"
-                                               MaxLines="1"
-                                               VerticalAlignment="Center"
-                                               Foreground="{DynamicResource IslandForeground}" />
+                                    <Border Classes="artist-text-hover"
+                                            CornerRadius="2"
+                                            Padding="1,0,2,0">
+                                        <TextBlock x:Name="TrackTitleTextBlock"
+                                                   Text="{Binding CurrentTrack, Converter={StaticResource DisplayTitle}, FallbackValue='No track selected'}"
+                                                   Classes="one-line-explicit-title"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   MaxLines="1"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource IslandForeground}" />
+                                    </Border>
                                     <Border x:Name="ExplicitBadge"
                                             Background="{DynamicResource IslandExplicitBadge}"
                                             CornerRadius="2"
@@ -552,6 +563,7 @@
                                                    Foreground="{DynamicResource IslandIconFill}" />
                                     </Border>
                                 </StackPanel>
+                                </Button>
                             </Border>
                             </StackPanel>
 

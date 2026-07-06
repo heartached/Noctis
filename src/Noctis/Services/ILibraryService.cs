@@ -32,10 +32,20 @@ public interface ILibraryService
     Task ScanAsync(IEnumerable<string> folders, CancellationToken ct = default);
 
     /// <summary>
+    /// Cancels any in-flight scan and flushes whatever has been scanned so far to
+    /// disk — merged with the existing library, so no already-known track is dropped —
+    /// so the next launch resumes the scan incrementally instead of restarting it.
+    /// Returns once the checkpoint is persisted or <paramref name="timeout"/> elapses.
+    /// No-op when no scan is running.
+    /// </summary>
+    Task PauseActiveScanForShutdownAsync(TimeSpan timeout);
+
+    /// <summary>
     /// Imports specific audio files into the existing library without a full-folder rescan.
     /// Existing tracks are updated if the source file has changed.
+    /// <paramref name="progress"/> receives the 1-based count of files processed so far.
     /// </summary>
-    Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default);
+    Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null);
 
     /// <summary>Looks up a track by its ID. Returns null if not found.</summary>
     Track? GetTrackById(Guid id);

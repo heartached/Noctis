@@ -162,7 +162,7 @@ public class VlcAudioPlayer : IAudioPlayer
     // (e.g. spamming Next) doesn't overlap Stop+Play calls.
     private readonly SemaphoreSlim _playbackLock = new(1, 1);
 
-    // Timer for polling position (~4Hz for smooth seek bar updates).
+    // Timer for polling position (100ms → 10Hz for smooth seek bar updates).
     // More reliable than VLC's PositionChanged event, which fires
     // inconsistently on some codecs (M4A/ALAC in particular).
     private readonly System.Timers.Timer _positionTimer;
@@ -639,6 +639,7 @@ public class VlcAudioPlayer : IAudioPlayer
             lock (_volumeWriteLock)
             {
                 _volumeTrailingCts?.Cancel();
+                _volumeTrailingCts?.Dispose();
                 _volumeTrailingCts = null;
                 _pendingVolumeTarget = -1;
                 SetPlayerVolumeGuarded(_player, target);
@@ -741,6 +742,7 @@ public class VlcAudioPlayer : IAudioPlayer
 
             _pendingVolumeTarget = target;
             _volumeTrailingCts?.Cancel();
+            _volumeTrailingCts?.Dispose();
             var cts = new CancellationTokenSource();
             _volumeTrailingCts = cts;
 
@@ -1035,7 +1037,19 @@ public class VlcAudioPlayer : IAudioPlayer
             while (!_disposed)
             {
                 var version = Interlocked.Read(ref _advancedEqRequestVersion);
-                ApplyAdvancedEqualizerSnapshot(version);
+                try
+                {
+                    ApplyAdvancedEqualizerSnapshot(version);
+                }
+                catch (Exception ex)
+                {
+                    // Count a failed apply as consumed: retrying the same snapshot
+                    // throws the same way, and the finally-requeue below then
+                    // respawned this task in a tight loop (~10K faulted tasks/s
+                    // when SetEqualizer(null) NRE'd) until memory ran out. Log
+                    // and wait for a genuinely new request instead.
+                    DebugLogger.Error(DebugLogger.Category.Playback, "EQ.Apply", ex.Message);
+                }
                 Interlocked.Exchange(ref _advancedEqAppliedVersion, version);
 
                 if (Interlocked.Read(ref _advancedEqRequestVersion) == version)
@@ -1063,7 +1077,20 @@ public class VlcAudioPlayer : IAudioPlayer
             preamp = _advancedEqPreamp;
         }
 
-        if (enabled)
+        // A flat curve (every band 0 dB and 0 preamp — e.g. the default "Flat"
+        // preset, which has no UI "off" switch) is applied as a true bypass via
+        // the UnsetEqualizer branch below rather than routed through VLC's
+        // equalizer. An enabled-but-flat VLC EQ sits slightly below the native
+        // signal level (the source of the "quieter than other players" reports);
+        // bypassing keeps Flat at unity.
+        var isFlat = Math.Abs(preamp) < 0.05f;
+        if (isFlat)
+        {
+            for (var i = 0; i < bands.Length; i++)
+                if (Math.Abs(bands[i]) >= 0.05f) { isFlat = false; break; }
+        }
+
+        if (enabled && !isFlat)
         {
             lock (_equalizerLock)
             {
@@ -1096,10 +1123,14 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             lock (_equalizerLock)
             {
+                // UnsetEqualizer, not SetEqualizer(null): LibVLCSharp dereferences
+                // the argument unconditionally, so the null form throws NRE on
+                // every call — which the apply queue then retried forever (see
+                // ProcessAdvancedEqualizerQueue).
                 if (_player != null)
-                    _player.SetEqualizer(null);
+                    _player.UnsetEqualizer();
                 if (_standbyPrepared)
-                    _standbyPlayer.SetEqualizer(null);
+                    _standbyPlayer.UnsetEqualizer();
                 _equalizer?.Dispose();
                 _equalizer = null;
             }
@@ -1595,7 +1626,9 @@ public class VlcAudioPlayer : IAudioPlayer
         // All heavy work on ThreadPool, serialized by the lock.
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            _playbackLock.Wait();
+            try { _playbackLock.Wait(); }
+            catch (ObjectDisposedException) { return; } // Dispose() ran after the _disposed check above
+
             try
             {
                 PlayInternal(filePath);
@@ -1868,15 +1901,18 @@ public class VlcAudioPlayer : IAudioPlayer
             lock (_volumeWriteLock)
             {
                 _volumeTrailingCts?.Cancel();
+                _volumeTrailingCts?.Dispose();
                 _volumeTrailingCts = null;
                 _pendingVolumeTarget = -1;
             }
             // Park the volume ramp so it can't fight the crossfade's direct fades.
             Volatile.Write(ref _rampTargetMilli, Volatile.Read(ref _rampCurrentMilli));
 
-            // Gapless handoff starts the incoming track at full level right away;
-            // the crossfade starts it silent and fades it in.
-            SetPlayerVolumeGuarded(_standbyPlayer, instantHandoff ? targetVolume : 0);
+            // Gapless handoff starts the incoming track at the user's current level
+            // right away; the crossfade starts it silent and fades it in. Opening at
+            // the level (not full) is what stops the OS-session path from blipping to
+            // 100% on every track change — see GetSessionOpenVolume.
+            SetPlayerVolumeGuarded(_standbyPlayer, instantHandoff ? GetSessionOpenVolume() : 0);
             _standbyPlayer.Mute = _player.Mute;
 
             var preparedAgeMs = (DateTime.UtcNow.Ticks - Interlocked.Read(ref _standbyPreparedTicksUtc)) / TimeSpan.TicksPerMillisecond;
@@ -1923,7 +1959,9 @@ public class VlcAudioPlayer : IAudioPlayer
                     cancel);
             }
 
-            var finalVolume = GetTargetVlcVolume();
+            // Open level (not full) so the swapped-in player doesn't re-blip the
+            // OS session to 100% before the reassert lands — see GetSessionOpenVolume.
+            var finalVolume = GetSessionOpenVolume();
             if (cancel.IsCancellationRequested || _disposed)
             {
                 SetPlayerVolumeGuarded(_player, finalVolume);
@@ -1949,6 +1987,7 @@ public class VlcAudioPlayer : IAudioPlayer
             lock (_volumeWriteLock)
             {
                 _volumeTrailingCts?.Cancel();
+                _volumeTrailingCts?.Dispose();
                 _volumeTrailingCts = null;
                 _pendingVolumeTarget = -1;
                 _lastWrittenVolume = finalVolume;
@@ -2018,6 +2057,7 @@ public class VlcAudioPlayer : IAudioPlayer
             lock (_volumeWriteLock)
             {
                 _volumeTrailingCts?.Cancel();
+                _volumeTrailingCts?.Dispose();
                 _volumeTrailingCts = null;
                 _pendingVolumeTarget = -1;
             }
@@ -2103,7 +2143,11 @@ public class VlcAudioPlayer : IAudioPlayer
                 Thread.Sleep(10);
             }
 
-            // Carry the EQ onto the now-active player.
+            // Carry the EQ onto the now-active player. When the curve is flat/bypassed
+            // (eqToApply == null) this UnsetEqualizer clears the leftover flat
+            // equalizer the player picked up as the inactive player during AutoMix
+            // cleanup — that filter sits below native level, so skipping it here (the
+            // old `!= null` guard) left the track quiet after the swap.
             Equalizer? eqToApply = null;
             lock (_equalizerLock)
             {
@@ -2112,6 +2156,8 @@ public class VlcAudioPlayer : IAudioPlayer
             }
             if (eqToApply != null)
                 _player.SetEqualizer(eqToApply);
+            else
+                _player.UnsetEqualizer();
 
             _positionTimer.Start();
             DebugLogger.Info(DebugLogger.Category.Playback, "Crossfade.SeqSwap", $"session={sessionId}, warmupMs={warmupMs}");
@@ -2180,6 +2226,7 @@ public class VlcAudioPlayer : IAudioPlayer
             lock (_volumeWriteLock)
             {
                 _volumeTrailingCts?.Cancel();
+                _volumeTrailingCts?.Dispose();
                 _volumeTrailingCts = null;
                 _pendingVolumeTarget = -1;
             }
@@ -2252,8 +2299,12 @@ public class VlcAudioPlayer : IAudioPlayer
                 if (_advancedEqEnabled && _equalizer != null)
                     eqToApply = _equalizer;
             }
+            // Unset clears the leftover flat equalizer left on this player by an
+            // earlier AutoMix cleanup (below-native filter); see the SeqSwap note above.
             if (eqToApply != null)
                 _player.SetEqualizer(eqToApply);
+            else
+                _player.UnsetEqualizer();
 
             _positionTimer.Start();
             DebugLogger.Info(DebugLogger.Category.Playback, "Crossfade.OverlapSwap", $"session={sessionId}");
@@ -2435,6 +2486,27 @@ public class VlcAudioPlayer : IAudioPlayer
         _sessionVolume != null || _wasapiOut != null || _exclusiveModeEnabled
             ? 100
             : ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
+
+    // The LibVLC player volume to open a NEW output session at WITHOUT an audible
+    // blip. On the Windows OS-session path MediaPlayer.Volume IS the mmdevice
+    // session, so opening at GetTargetVlcVolume() (100) starts the incoming track's
+    // session at FULL volume; the async reassert then has to drag it down to the
+    // user level — heard as the next track blipping loud then dropping (and racy,
+    // because during a handoff two sessions are active and the reassert can resolve
+    // the wrong one first). Map the user's current level back through the mmdevice
+    // cubic instead, exactly as the single-player PlayInternal path does; the
+    // reassert then only refines to the precise float. Non-session paths keep the
+    // curved user volume (there GetTargetVlcVolume already returns it).
+    private int GetSessionOpenVolume()
+    {
+        if (_sessionVolume == null)
+            return GetTargetVlcVolume();
+        var milli = Volatile.Read(ref _rampCurrentMilli);
+        if (milli < 0)
+            milli = CurvedVolumeToLevelMilli(
+                ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100))));
+        return MilliToPlayerVolume(milli);
+    }
 
     // Current user volume as a 0..1 amplitude for the WASAPI sinks: the perceptual
     // curve (with the ReplayGain scalar folded in, matching the session path)
@@ -2703,8 +2775,19 @@ public class VlcAudioPlayer : IAudioPlayer
         var elapsedSinceStartMs = (DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastPlayStartTicksUtc)) / TimeSpan.TicksPerMillisecond;
         if (elapsedSinceStartMs is >= 0 and < 500)
         {
-            DebugLogger.Info(DebugLogger.Category.Playback, "VLC.EndReached.IgnoredStale", $"session={sessionId}");
-            return;
+            // A track genuinely shorter than the stale window ends this fast for
+            // real — swallowing its EndReached stalled the queue forever. Only treat
+            // the event as stale when the current media is known to be longer.
+            var knownLenMs = Interlocked.Read(ref _lastKnownLengthMs);
+            if (knownLenMs <= 0)
+            {
+                try { knownLenMs = _player.Length; } catch { /* transitional state */ }
+            }
+            if (knownLenMs <= 0 || knownLenMs >= 500)
+            {
+                DebugLogger.Info(DebugLogger.Category.Playback, "VLC.EndReached.IgnoredStale", $"session={sessionId}");
+                return;
+            }
         }
 
         DebugLogger.Info(DebugLogger.Category.Playback, "VLC.EndReached", $"session={sessionId}");
@@ -2822,8 +2905,20 @@ public class VlcAudioPlayer : IAudioPlayer
         if (Interlocked.CompareExchange(ref _seekWorkerActive, 1, 0) != 0)
             return;
 
-        ThreadPool.QueueUserWorkItem(_ =>
+        // Run on a dedicated, above-normal-priority thread rather than the shared
+        // ThreadPool. The worker dips output volume to 0, writes _player.Time, then
+        // restores — if it is descheduled mid-dip the audio stays silent. A library
+        // scan saturates the pool with parallel metadata reads, so a pooled worker
+        // gets starved between dip and restore (audible as the audio cutting out
+        // while scrubbing during a scan). A dedicated prioritised thread keeps that
+        // dip→restore window tight under load.
+        var worker = new Thread(() =>
         {
+            // Seek() stops the position timer before enqueuing; normally the worker
+            // restarts it after applying the seek. If every dequeued seek was skipped
+            // (transient Length==0 mid-transition), nothing restarted it and position/
+            // lyrics updates stayed frozen — track that and recover on exit.
+            var sawUnappliedSeek = false;
             try
             {
                 while (true)
@@ -2836,7 +2931,11 @@ public class VlcAudioPlayer : IAudioPlayer
                     }
 
                     if (targetMs < 0)
+                    {
+                        if (sawUnappliedSeek && !_disposed && !_isPaused && _currentMedia != null)
+                            _positionTimer.Start();
                         break;
+                    }
 
                     var lastAppliedTicks = Interlocked.Read(ref _lastAppliedSeekTicksUtc);
                     if (lastAppliedTicks > 0)
@@ -2852,9 +2951,13 @@ public class VlcAudioPlayer : IAudioPlayer
 
                     var len = _player.Length;
                     if (len <= 0)
+                    {
+                        sawUnappliedSeek = true;
                         continue;
+                    }
 
                     targetMs = Math.Clamp(targetMs, 0, len);
+                    sawUnappliedSeek = false;
 
                     var nowTicks = DateTime.UtcNow.Ticks;
                     DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Apply", $"targetMs={targetMs}, state={_player.State}, isPlaying={_player.IsPlaying}");
@@ -2928,7 +3031,13 @@ public class VlcAudioPlayer : IAudioPlayer
                         EnsureSeekWorker();
                 }
             }
-        });
+        })
+        {
+            IsBackground = true,
+            Name = "VlcSeekWorker",
+            Priority = ThreadPriority.AboveNormal
+        };
+        worker.Start();
     }
 
     private void ResetEndReachedPending()
@@ -2947,7 +3056,7 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         try { _standbyPlayer.Stop(); } catch { }
         SetPlayerVolumeGuarded(_standbyPlayer, 0);
-        try { _standbyPlayer.SetEqualizer(null); } catch { }
+        try { _standbyPlayer.UnsetEqualizer(); } catch { }
         _standbyMedia?.Dispose();
         _standbyMedia = null;
         _standbyPath = null;
@@ -2983,6 +3092,14 @@ public class VlcAudioPlayer : IAudioPlayer
             _volumeTrailingCts = null;
         }
 
+        // Wait (briefly) for any in-flight PlayInternal/crossfade worker to drain so
+        // the native players/libvlc below aren't disposed under its feet. _disposed
+        // is already set and _skipCts cancelled, so fades bail within a step; the
+        // timeout keeps shutdown bounded if a worker is wedged inside libvlc.
+        var lockHeld = false;
+        try { lockHeld = _playbackLock.Wait(TimeSpan.FromSeconds(3)); }
+        catch (ObjectDisposedException) { }
+
         try { _player.Stop(); } catch { }
         try { _standbyPlayer.Stop(); } catch { }
 
@@ -3016,6 +3133,10 @@ public class VlcAudioPlayer : IAudioPlayer
         _player.Dispose();
         _standbyPlayer.Dispose();
         _libVlc.Dispose();
+        if (lockHeld)
+        {
+            try { _playbackLock.Release(); } catch { }
+        }
         _playbackLock.Dispose();
     }
 

@@ -71,6 +71,22 @@ public class EnhancedLrcParserTests
     }
 
     [Fact]
+    public void ParseLine_SyllableTags_MergeIntoWholeWords()
+    {
+        // "tal" + "king " are syllable tags of one word; they must merge into a
+        // single cell or the karaoke WrapPanel can line-break mid-word.
+        var (text, words) = EnhancedLrcParser.ParseLine(
+            "<00:01.00>tal<00:01.40>king <00:02.00>false<00:02.80>");
+
+        Assert.Equal("talking false", text);
+        Assert.Equal(2, words!.Count);
+        Assert.Equal("talking ", words[0].Text);
+        Assert.Equal(TimeSpan.FromMilliseconds(1_000), words[0].Start);
+        Assert.Equal(TimeSpan.FromMilliseconds(2_000), words[0].End);
+        Assert.Equal("false", words[1].Text);
+    }
+
+    [Fact]
     public void ContainsWordTags_DetectsInlineTags()
     {
         Assert.True(EnhancedLrcParser.ContainsWordTags("<00:05.41>Hi"));

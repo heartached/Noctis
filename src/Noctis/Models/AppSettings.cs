@@ -139,6 +139,10 @@ public class AppSettings
     /// initializes successfully (so the app can never start completely invisible).</summary>
     public bool StartMinimizedToTray { get; set; }
 
+    /// <summary>Restore the last-played track (paused, where you left off) into the
+    /// playbar when Noctis reopens.</summary>
+    public bool RestoreLastTrackOnStartup { get; set; } = true;
+
     /// <summary>Whether the local-network web remote is enabled (off by default).</summary>
     public bool WebRemoteEnabled { get; set; }
 

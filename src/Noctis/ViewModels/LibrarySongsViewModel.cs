@@ -234,11 +234,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private async Task RemoveFromLibrary(Track track)
     {
-        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
+        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks.ToList() : new List<Track> { track };
+        if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
             return;
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
-        var ids = tracks.Select(t => t.Id).ToList();
-        await _library.RemoveTracksAsync(ids);
         CtrlSelectedTracks.Clear();
     }
 

@@ -22,7 +22,7 @@ public partial class TopBarViewModel : ViewModelBase
     /// <summary>Header title: reflects the Cover Flow / Collage view when active, otherwise the section name.
     /// Collage is a Cover Flow sub-mode, so its label only applies while Cover Flow is active.</summary>
     public string PageTitleDisplay => IsCoverFlowMode ? (IsCollageMode ? "Cover Collage" : "Cover Flow") : CurrentTabName;
-    [ObservableProperty] private string _searchWatermark = "Find in Library";
+    [ObservableProperty] private string _searchWatermark = "Search in Library";
     [ObservableProperty] private bool _isSearchVisible = true;
 
     // Back button (shown in detail views like Album Detail, Genre Detail, etc.)
@@ -36,7 +36,25 @@ public partial class TopBarViewModel : ViewModelBase
 
     // Optional title shown next to the Back button (e.g., "More By {Artist}")
     [ObservableProperty] private string _backContextTitle = "";
-    [ObservableProperty] private bool _isBackContextTitleVisible;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    private bool _isBackContextTitleVisible;
+
+    /// <summary>
+    /// True when the top bar actually renders something (title, context title, chips,
+    /// action buttons, or the view-mode toggle). Detail pages like Album Detail show
+    /// none of these — Back/Search live in the sidebar rail — so the bar row collapses
+    /// there instead of leaving a fixed empty strip above the content.
+    /// </summary>
+    public bool HasBarContent =>
+        IsPageTitleVisible
+        || IsBackContextTitleVisible
+        || HasReleaseTypeChips
+        || PageActionsVisible
+        || HasPlaylistActions
+        || HasViewModeToggle
+        || HasArtistActions
+        || HasFavoritesActions;
 
     // Compact "Back" pill shown after the page title on the Statistics page when it
     // was opened from Settings → "View All Stats". Distinct from the generic back
@@ -86,11 +104,14 @@ public partial class TopBarViewModel : ViewModelBase
     }
 
     // Page title (shown on left when back button is hidden and on a library page)
-    [ObservableProperty] private bool _isPageTitleVisible;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    private bool _isPageTitleVisible;
 
     // Page action buttons (set by navigation for pages that have them)
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageActionsVisible))]
+    [NotifyPropertyChangedFor(nameof(HasBarContent))]
     private bool _hasPageActions;
     [ObservableProperty] private ICommand? _pageShuffleCommand;
     [ObservableProperty] private ICommand? _pageQueueCommand;
@@ -99,16 +120,21 @@ public partial class TopBarViewModel : ViewModelBase
     public bool PageActionsVisible => HasPageActions && !IsCoverFlowMode;
 
     // Playlist-specific action buttons
-    [ObservableProperty] private bool _hasPlaylistActions;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    private bool _hasPlaylistActions;
     [ObservableProperty] private ICommand? _pageCreatePlaylistCommand;
     [ObservableProperty] private ICommand? _pageCreateSmartPlaylistCommand;
     [ObservableProperty] private ICommand? _pageImportPlaylistCommand;
 
     // Global view mode toggle (Library / Cover Flow) — shown on Home, Songs, Albums, Artists, Folders, Playlists, Favorites
-    [ObservableProperty] private bool _hasViewModeToggle;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    private bool _hasViewModeToggle;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageActionsVisible))]
     [NotifyPropertyChangedFor(nameof(PageTitleDisplay))]
+    [NotifyPropertyChangedFor(nameof(HasBarContent))]
     private bool _isCoverFlowMode;
     [ObservableProperty] private ICommand? _setLibraryModeCommand;
     [ObservableProperty] private ICommand? _setCoverFlowModeCommand;
@@ -120,12 +146,16 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _toggleCollageModeCommand;
 
     // Artist discography action buttons
-    [ObservableProperty] private bool _hasArtistActions;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    private bool _hasArtistActions;
     [ObservableProperty] private ICommand? _pageShuffleArtistCommand;
     [ObservableProperty] private ICommand? _pagePlayArtistCommand;
 
     // Favorites action buttons
-    [ObservableProperty] private bool _hasFavoritesActions;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    private bool _hasFavoritesActions;
     [ObservableProperty] private ICommand? _pageShuffleFavoritesCommand;
     [ObservableProperty] private ICommand? _pagePlayFavoritesCommand;
     [ObservableProperty] private bool _pageShowOnlyFavorites;
@@ -252,7 +282,9 @@ public partial class TopBarViewModel : ViewModelBase
     // Release-type filter chips (All / Albums / Singles / EPs / Other) — shown next
     // to the title on the Albums page. The collection and command are owned by
     // LibraryAlbumsViewModel; the top bar just mirrors them for placement.
-    [ObservableProperty] private bool _hasReleaseTypeChips;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    private bool _hasReleaseTypeChips;
     [ObservableProperty] private ObservableCollection<ReleaseTypeChip>? _releaseTypeChips;
     [ObservableProperty] private ICommand? _releaseTypeChipCommand;
 
@@ -294,7 +326,7 @@ public partial class TopBarViewModel : ViewModelBase
     partial void OnCurrentTabNameChanged(string value)
     {
         IsSearchVisible = value is not ("Home" or "Settings" or "Lyrics");
-        SearchWatermark = $"Find in {value}";
+        SearchWatermark = $"Search in {value}";
         UpdatePageTitleVisibility();
     }
 

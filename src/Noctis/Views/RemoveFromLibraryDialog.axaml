@@ -1,0 +1,79 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Noctis.Views.RemoveFromLibraryDialog"
+        Title="Remove from Library"
+        CanResize="False"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        ShowInTaskbar="False">
+
+    <!-- Full-window dimmed overlay that captures all input -->
+    <Border Background="#50000000"
+            PointerPressed="OnOverlayPointerPressed"
+            PointerWheelChanged="OnOverlayWheel">
+
+        <!-- Centered dialog card -->
+        <Border Background="{DynamicResource AppMainBackground}"
+                CornerRadius="24"
+                ClipToBounds="True"
+                Width="460"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+        <DockPanel Margin="0">
+
+            <!-- Bottom: action buttons -->
+            <Border DockPanel.Dock="Bottom"
+                    Padding="24,12,24,16">
+                <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                    <Button Grid.Column="1"
+                            x:Name="TrashButton"
+                            Content="Move to Recycle Bin"
+                            Click="OnTrashClick"
+                            Padding="14,8"
+                            FontWeight="Bold"
+                            HorizontalContentAlignment="Center"
+                            CornerRadius="999"
+                            Margin="0,0,8,0"
+                            Cursor="Hand" />
+                    <Button Grid.Column="2"
+                            Content="Keep Files"
+                            Click="OnKeepClick"
+                            Padding="14,8"
+                            FontWeight="Bold"
+                            HorizontalContentAlignment="Center"
+                            CornerRadius="999"
+                            Margin="0,0,8,0"
+                            Cursor="Hand" />
+                    <Button Grid.Column="3"
+                            Content="Cancel"
+                            Click="OnCancelClick"
+                            Padding="14,8"
+                            Classes="accent-btn"
+                            Background="{DynamicResource AccentColorBrush}"
+                            Foreground="{DynamicResource AccentForegroundBrush}"
+                            FontWeight="Bold"
+                            HorizontalContentAlignment="Center"
+                            CornerRadius="999"
+                            Cursor="Hand" />
+                </Grid>
+            </Border>
+
+            <!-- Message -->
+            <StackPanel Margin="24,16,24,8" VerticalAlignment="Center" Spacing="6">
+                <TextBlock x:Name="MessageText"
+                           Text="Remove from your library?"
+                           FontSize="15"
+                           FontWeight="SemiBold"
+                           TextWrapping="Wrap" />
+                <TextBlock x:Name="SubText"
+                           Text=""
+                           FontSize="12.5"
+                           Opacity="0.7"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </DockPanel>
+        </Border>
+    </Border>
+</Window>

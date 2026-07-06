@@ -209,6 +209,9 @@ public partial class PlayerViewModel : ViewModelBase
                 CancelAutoMixTransition("user paused");
                 _audioPlayer.Pause();
                 State = PlaybackState.Paused;
+                // Pause is a natural resting point — capture the position so a
+                // non-graceful exit restores "where you left off".
+                SaveQueueStateInBackground();
                 break;
 
             case PlaybackState.Paused:
@@ -676,9 +679,11 @@ public partial class PlayerViewModel : ViewModelBase
     private async Task RemoveCurrentTrackFromLibrary()
     {
         if (CurrentTrack == null) return;
-        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
-            return;
         var trackToRemove = CurrentTrack;
+
+        var choice = await Views.RemoveFromLibraryDialog.ShowAsync(1);
+        if (choice == Views.RemoveFromLibraryChoice.Cancel)
+            return;
 
         // Advance to next track or stop playback
         if (UpNext.Count > 0)
@@ -692,6 +697,8 @@ public partial class PlayerViewModel : ViewModelBase
             AlbumArt = null;
         }
 
+        if (choice == Views.RemoveFromLibraryChoice.Trash)
+            await Helpers.LibraryRemovalHelper.TrashLocalFilesAsync(new[] { trackToRemove });
         await _library.RemoveTrackAsync(trackToRemove.Id);
     }
 
@@ -857,6 +864,16 @@ public partial class PlayerViewModel : ViewModelBase
 
     // ── Queue state persistence ──────────────────────────────
 
+    // One-shot resume target restored from the previous session: pressing Play
+    // on the restored (stopped) track resumes where the user left off.
+    private long _resumePositionMs = -1;
+    private Guid _resumeTrackId;
+
+    // Serializes background queue snapshots so rapid track changes can't race
+    // the temp-file rename in PersistenceService (latest snapshot wins).
+    private readonly object _queueSaveLock = new();
+    private Task _queueSaveChain = Task.CompletedTask;
+
     /// <summary>Saves the current queue state so it can be restored on next launch.</summary>
     public async Task SaveQueueStateAsync()
     {
@@ -868,6 +885,54 @@ public partial class PlayerViewModel : ViewModelBase
             HistoryIds = History.Select(t => t.Id).ToList()
         };
         await _persistence.SaveQueueStateAsync(state);
+    }
+
+    /// <summary>
+    /// Fire-and-forget queue snapshot. The queue used to persist only during a
+    /// graceful shutdown, so tray + OS-shutdown / task-kill exits lost it and
+    /// the next launch had an empty playbar. Called on track change, pause and
+    /// close-to-tray so a snapshot always exists.
+    /// </summary>
+    /// <summary>Flushes the debounced per-play library save immediately (call on shutdown).</summary>
+    public Task FlushPendingLibrarySaveAsync()
+    {
+        _librarySaveDebounce?.Dispose();
+        _librarySaveDebounce = null;
+        return _library.SaveAsync();
+    }
+
+    public void SaveQueueStateInBackground()
+    {
+        QueueState state;
+        try
+        {
+            state = new QueueState
+            {
+                CurrentTrackId = CurrentTrack?.Id,
+                PositionSeconds = Position.TotalSeconds,
+                UpNextIds = UpNext.Select(t => t.Id).ToList(),
+                HistoryIds = History.Select(t => t.Id).ToList()
+            };
+        }
+        catch
+        {
+            // Queue mutated mid-snapshot (off-thread caller) — the next event
+            // will snapshot again.
+            return;
+        }
+
+        lock (_queueSaveLock)
+        {
+            _queueSaveChain = _queueSaveChain
+                .ContinueWith(_ => _persistence.SaveQueueStateAsync(state), TaskScheduler.Default)
+                .Unwrap()
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[Player] Queue snapshot failed: {t.Exception?.GetBaseException().Message}");
+                }, TaskScheduler.Default);
+        }
     }
 
     /// <summary>Restores queue state from persistence. Called during app startup.</summary>
@@ -909,7 +974,13 @@ public partial class PlayerViewModel : ViewModelBase
                     ? state.PositionSeconds / Duration.TotalSeconds
                     : 0;
                 PositionText = FormatTime(Position);
+                RemainingTimeText = FormatTime(Duration > Position ? Duration - Position : TimeSpan.Zero);
                 State = PlaybackState.Stopped; // user must press play
+
+                // Pressing Play on this restored track resumes where the user
+                // left off (consumed one-shot inside PlayTrack's seek chain).
+                _resumePositionMs = (long)(state.PositionSeconds * 1000);
+                _resumeTrackId = track.Id;
 
                 // Ensure UI updates on UI thread
                 Dispatcher.UIThread.Post(() =>
@@ -954,6 +1025,14 @@ public partial class PlayerViewModel : ViewModelBase
         // after Play(); refresh once more so applied-gain and output format are
         // accurate for the new track.
         DispatcherTimer.RunOnce(RefreshSignalPath, TimeSpan.FromMilliseconds(800));
+    }
+
+    // Keep the shared Track instances' now-playing flag in sync so flat track
+    // lists (Folders/Songs) can highlight the current row via a style class.
+    partial void OnCurrentTrackChanged(Track? oldValue, Track? newValue)
+    {
+        if (oldValue != null) oldValue.IsNowPlaying = false;
+        if (newValue != null) newValue.IsNowPlaying = true;
     }
 
     /// <summary>
@@ -1107,6 +1186,10 @@ public partial class PlayerViewModel : ViewModelBase
 
     // ── Private helpers ──────────────────────────────────────
 
+    /// <summary>Debounces the per-play library save (play count / LastPlayed persistence).</summary>
+    private System.Threading.Timer? _librarySaveDebounce;
+    private const int LibrarySaveDebounceMs = 5000;
+
     private void PlayTrack(Track track)
     {
         DebugLogger.Info(DebugLogger.Category.Playback, "PlayTrack", $"title={track.Title}, id={track.Id}, duration={track.Duration}");
@@ -1154,9 +1237,16 @@ public partial class PlayerViewModel : ViewModelBase
         // inside PlayInternal after the media is loaded (avoids race condition).
         long seekMs = -1;
         var autoMixStartMs = Interlocked.Exchange(ref _pendingAutoMixNextStartMs, -1);
+        // One-shot: any track change consumes the restored-session resume target.
+        var resumeMs = Interlocked.Exchange(ref _resumePositionMs, -1);
         if (autoMixStartMs > 0 && TimeSpan.FromMilliseconds(autoMixStartMs) < track.Duration)
         {
             seekMs = autoMixStartMs;
+        }
+        else if (resumeMs > 0 && track.Id == _resumeTrackId
+                 && TimeSpan.FromMilliseconds(resumeMs) < track.Duration)
+        {
+            seekMs = resumeMs;
         }
         else if (track.StartTimeMs > 0 && TimeSpan.FromMilliseconds(track.StartTimeMs) < track.Duration)
         {
@@ -1196,8 +1286,16 @@ public partial class PlayerViewModel : ViewModelBase
         // Fire event to notify that a new track started
         TrackStarted?.Invoke(this, track);
 
-        // Save library to persist play count
-        _ = _library.SaveAsync();
+        // Persist play count/LastPlayed with a debounce: rewriting the whole
+        // library JSON on every track change caused a per-play UI stall, and
+        // rapid skips coalesce into a single write this way.
+        _librarySaveDebounce?.Dispose();
+        _librarySaveDebounce = new System.Threading.Timer(
+            _ => _ = _library.SaveAsync(), null, LibrarySaveDebounceMs, System.Threading.Timeout.Infinite);
+
+        // Keep the on-disk queue snapshot current so a non-graceful exit
+        // (tray + OS shutdown, task kill) still restores this session.
+        SaveQueueStateInBackground();
     }
 
     private enum QueueAdvanceReason

@@ -380,12 +380,12 @@
                                TextAlignment="Right"/>
                 </Grid>
 
-                <!-- Codec quality tag (Lossless / Hi-Res Lossless), centered between
+                <!-- Codec quality tag (Lossless / Hi-Res Lossless / codec), centered between
                      the seek bar and the transport row like Apple Music. -->
                 <StackPanel Orientation="Horizontal" Spacing="4"
                             HorizontalAlignment="Center"
                             Background="Transparent"
-                            Margin="0,3,0,3"
+                            Margin="0,4,0,2"
                             IsVisible="{Binding CurrentTrack.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
                     <ToolTip.Tip>
                         <StackPanel Width="220" Spacing="4">
@@ -397,7 +397,7 @@
                                        FontSize="12"
                                        Opacity="0.9"
                                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
-                            <TextBlock Text="Lossless audio preserves more detail from the original recording."
+                            <TextBlock Text="{Binding CurrentTrack.AudioQualityDescription, FallbackValue=''}"
                                        FontSize="11"
                                        TextWrapping="Wrap"
                                        Opacity="0.85"

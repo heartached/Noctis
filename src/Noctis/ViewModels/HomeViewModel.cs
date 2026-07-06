@@ -400,9 +400,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task RemoveTrackFromLibrary(Track track)
     {
-        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
-            return;
-        await _library.RemoveTrackAsync(track.Id);
+        if (track == null) return;
+        await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, new List<Track> { track });
     }
 
     // ── Album commands ──
@@ -528,13 +527,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task RemoveFromLibrary(Album album)
     {
-        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
+        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums.ToList() : (album != null ? new List<Album> { album } : new List<Album>());
         if (albums.Count == 0) return;
-        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
+        var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
+        if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
             return;
-        var trackIds = albums.SelectMany(a => a.Tracks ?? new()).Select(t => t.Id).ToList();
-        if (trackIds.Count > 0)
-            await _library.RemoveTracksAsync(trackIds);
         CtrlSelectedAlbums.Clear();
     }
 

@@ -17,6 +17,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     private readonly ILibraryService _library;
     private readonly PlayerViewModel _player;
     private readonly IPersistenceService _persistence;
+    private readonly SidebarViewModel _sidebar;
 
     private EventHandler? _libraryUpdatedHandler;
     private bool _isDirty = true;
@@ -28,16 +29,20 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     /// <summary>Tracks to display in the right-hand pane (direct + descendant tracks of SelectedNode).</summary>
     public BulkObservableCollection<Track> SelectedFolderTracks { get; } = new();
 
+    /// <summary>Exposed so row templates can drive the playing-track EQ visualizer off player state.</summary>
+    public PlayerViewModel Player => _player;
+
     [ObservableProperty] private FolderNode? _selectedNode;
 
     /// <summary>Fires when the user clicks "Manage media folders…" — handled by MainWindowViewModel to switch views.</summary>
     public event EventHandler? NavigateToSettingsRequested;
 
-    public LibraryFoldersViewModel(ILibraryService library, PlayerViewModel player, IPersistenceService persistence)
+    public LibraryFoldersViewModel(ILibraryService library, PlayerViewModel player, IPersistenceService persistence, SidebarViewModel sidebar)
     {
         _library = library;
         _player = player;
         _persistence = persistence;
+        _sidebar = sidebar;
 
         _libraryUpdatedHandler = (_, _) =>
         {
@@ -75,7 +80,16 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         var roots = settings.MusicFolders;
         var tracks = _library.Tracks.ToList();
 
+        // Rebuilds create fresh FolderNode instances, so carry expansion over
+        // by folder path or the tree collapses on every library update.
+        var expansion = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        foreach (var root in RootNodes)
+            CaptureExpansion(root, expansion);
+
         var forest = await Task.Run(() => FolderTreeBuilder.Build(tracks, roots));
+
+        foreach (var root in forest)
+            RestoreExpansion(root, expansion);
 
         RootNodes.Clear();
         foreach (var root in forest)
@@ -124,6 +138,10 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
                 (t.Album?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
         }
 
+        // Assign 1-based list positions for the leading row-number column.
+        for (int i = 0; i < sink.Count; i++)
+            sink[i].RowNumber = i + 1;
+
         SelectedFolderTracks.ReplaceAll(sink);
     }
 
@@ -132,6 +150,21 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         sink.AddRange(node.DirectTracks);
         foreach (var child in node.Children)
             Collect(child, sink);
+    }
+
+    private static void CaptureExpansion(FolderNode node, Dictionary<string, bool> map)
+    {
+        map[node.FullPath] = node.IsExpanded;
+        foreach (var child in node.Children)
+            CaptureExpansion(child, map);
+    }
+
+    private static void RestoreExpansion(FolderNode node, Dictionary<string, bool> map)
+    {
+        if (map.TryGetValue(node.FullPath, out var isExpanded))
+            node.IsExpanded = isExpanded;
+        foreach (var child in node.Children)
+            RestoreExpansion(child, map);
     }
 
     private static bool ContainsNode(IReadOnlyList<FolderNode> forest, string fullPath)
@@ -175,6 +208,77 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         if (index < 0) index = 0;
         _player.ReplaceQueueAndPlay(list, index);
     }
+
+    // ── Track context-menu commands (same menu as the Songs view) ──
+
+    [RelayCommand]
+    private void PlayNext(Track track) => _player.AddNext(track);
+
+    [RelayCommand]
+    private void AddToQueue(Track track) => _player.AddToQueue(track);
+
+    [RelayCommand]
+    private void StartRadio(Track track) => _player.StartRadioCommand.Execute(track);
+
+    [RelayCommand]
+    private void SnoozeForMonth(Track track) => _player.SnoozeForMonthCommand.Execute(track);
+
+    [RelayCommand]
+    private async Task AddToNewPlaylist(Track track)
+    {
+        if (track == null) return;
+        await _sidebar.CreatePlaylistWithTracksAsync(new List<Track> { track });
+    }
+
+    [RelayCommand]
+    private async Task OpenMetadata(Track track)
+    {
+        if (track == null) return;
+        await MetadataHelper.OpenMetadataWindow(track);
+    }
+
+    [RelayCommand]
+    private async Task ConvertTracks(Track track)
+    {
+        if (track == null) return;
+        await MetadataHelper.OpenAudioConverterDialog(new List<Track> { track });
+    }
+
+    [RelayCommand]
+    private async Task ScanReplayGain(Track track)
+    {
+        if (track == null) return;
+        await MetadataHelper.OpenReplayGainScannerDialog(new List<Track> { track });
+    }
+
+    [RelayCommand]
+    private async Task ToggleFavorite(Track track)
+    {
+        if (track == null) return;
+        track.IsFavorite = !track.IsFavorite;
+        await _library.SaveAsync();
+        _library.NotifyFavoritesChanged();
+    }
+
+    [RelayCommand]
+    private void ShowInExplorer(Track track)
+    {
+        if (track == null || !File.Exists(track.FilePath)) return;
+        PlatformHelper.ShowInFileManager(track.FilePath);
+    }
+
+    [RelayCommand]
+    private async Task RemoveFromLibrary(Track track)
+    {
+        if (track == null) return;
+        await LibraryRemovalHelper.RemoveWithPromptAsync(_library, new List<Track> { track });
+    }
+
+    private Action<Track>? _searchLyricsAction;
+    public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
+
+    [RelayCommand]
+    private void SearchLyrics(Track track) => _searchLyricsAction?.Invoke(track);
 
     public void Dispose()
     {

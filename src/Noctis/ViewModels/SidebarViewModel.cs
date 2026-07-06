@@ -24,6 +24,10 @@ public partial class SidebarViewModel : ViewModelBase
     [ObservableProperty] private bool _isExpanded;
     [ObservableProperty] private int _favoritesCount;
 
+    /// <summary>Top-bar state mirrored by the rail's Back/Search actions.
+    /// Set by MainWindowViewModel right after both ViewModels are constructed.</summary>
+    [ObservableProperty] private TopBarViewModel? _topBar;
+
     /// <summary>Folders the user has collapsed this session (default expanded).</summary>
     private readonly HashSet<string> _collapsedFolders = new(StringComparer.OrdinalIgnoreCase);
 
@@ -77,10 +81,17 @@ public partial class SidebarViewModel : ViewModelBase
 
         // Folder headers toggle expansion instead of navigating; restore the
         // previously selected item so the highlight doesn't move.
+        // The toggle is deferred: this setter runs inside the ListBox's selection
+        // commit, and rebuilding SidebarRows there makes Avalonia's SelectionModel
+        // enumerate stale indices against the shrunken collection —
+        // ArgumentOutOfRangeException, app crash (reported on Linux/X11).
         if (newValue is PlaylistNavItem { IsFolder: true } folder)
         {
-            ToggleFolder(folder.Label);
-            Dispatcher.UIThread.Post(() => SetSelectedNavItemSilently(oldValue));
+            Dispatcher.UIThread.Post(() =>
+            {
+                ToggleFolderExpansion(folder.Label);
+                SetSelectedNavItemSilently(oldValue);
+            });
             return;
         }
 
@@ -88,7 +99,9 @@ public partial class SidebarViewModel : ViewModelBase
             NavigationRequested?.Invoke(this, newValue.Key);
     }
 
-    private void ToggleFolder(string folderName)
+    /// <summary>Collapses or expands a sidebar playlist folder and rebuilds the rows.
+    /// Must never be called from inside a ListBox selection change (see above).</summary>
+    public void ToggleFolderExpansion(string folderName)
     {
         if (!_collapsedFolders.Remove(folderName))
             _collapsedFolders.Add(folderName);

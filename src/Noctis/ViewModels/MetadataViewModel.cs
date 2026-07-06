@@ -242,6 +242,7 @@ public partial class MetadataViewModel : ViewModelBase
     public bool HeaderIsFavorite => _track.IsFavorite;
     public string HeaderAudioQualityBadge => _track.AudioQualityBadge;
     public string HeaderAudioQualityDetail => _track.AudioQualityDetailedInfo;
+    public string HeaderAudioQualityDescription => _track.AudioQualityDescription;
 
     public bool ShowLyricsTab => !_albumScoped;
     public bool ShowSyncedLyricsTab => !_albumScoped;

@@ -733,23 +733,21 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task RemoveFromLibrary(Track track)
     {
-        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
+        if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, new List<Track> { track }))
             return;
         var idx = Tracks.IndexOf(track);
         if (idx >= 0)
             Tracks.RemoveAt(idx);
-        await _library.RemoveTrackAsync(track.Id);
     }
 
     [RelayCommand]
     private async Task RemoveAlbumFromLibrary()
     {
         if (Tracks.Count == 0) return;
-        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
+        var tracks = Tracks.ToList();
+        if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
             return;
-        var trackIds = Tracks.Select(t => t.Id).ToList();
         Tracks.Clear();
-        await _library.RemoveTracksAsync(trackIds);
         BackRequested?.Invoke(this, EventArgs.Empty);
     }
 
@@ -877,10 +875,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private async Task RemoveRelatedAlbumFromLibrary(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        if (!await Views.ConfirmationDialog.ShowAsync("Do you want to remove the selected item from your Library?"))
-            return;
-        var trackIds = album.Tracks.Select(t => t.Id).ToList();
-        await _library.RemoveTracksAsync(trackIds);
+        await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, album.Tracks.ToList());
     }
 
     public void Dispose()

@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private static readonly IBrush InactiveToggleBg = Brushes.Transparent;
 
     private TaskbarIntegrationService? _taskbar;
+    private SmtcService? _smtc;
     private TrayIcon? _trayIcon;
     private bool _exitRequestedFromTray;
     private EventHandler<string>? _themeChangedHandler;
@@ -32,6 +33,7 @@ public partial class MainWindow : Window
     private DockPanel? _contentDockPanel;
     private DockPanel? _rootPanel;
     private MiniPlayerWindow? _miniPlayer;
+    private Action? _singleInstanceActivationHandler;
 
     /// <summary>
     /// Opens the compact always-on-top mini player (hiding the main window), or closes
@@ -194,6 +196,10 @@ public partial class MainWindow : Window
                 // System tray icon (minimize/close-to-tray + playback controls)
                 InitializeTrayIcon(vm);
 
+                // Windows media overlay (SMTC): now-playing card on the media-key
+                // flyout/lock screen + media-key control (no-op off Windows).
+                _smtc = new SmtcService(vm.Player, TryGetPlatformHandle()?.Handle ?? IntPtr.Zero);
+
                 // Launched at login with "start minimized to tray" on (encoded in the
                 // autostart args, so it needs no async settings load) → hide to the tray
                 // instead of showing the window. Guarded on _trayIcon != null so a
@@ -216,6 +222,11 @@ public partial class MainWindow : Window
 
         Closing += OnMainWindowClosing;
         Closed += OnWindowClosed;
+
+        // A second launch (taskbar/pinned icon while we sit in the tray) signals
+        // the single-instance pipe — surface this window instead.
+        _singleInstanceActivationHandler = () => Dispatcher.UIThread.Post(ShowFromTray);
+        Helpers.SingleInstanceGuard.ActivationRequested += _singleInstanceActivationHandler;
 
         // Minimize-to-tray: hide the window when it minimizes and the setting is on.
         PropertyChanged += (_, e) =>
@@ -283,6 +294,23 @@ public partial class MainWindow : Window
             open.Click += (_, _) => ShowFromTray();
             menu.Items.Add(open);
 
+            menu.Items.Add(new NativeMenuItemSeparator());
+
+            // Basic playback control without leaving the tray.
+            var playPause = new NativeMenuItem("Play / Pause");
+            playPause.Click += (_, _) => vm.Player.PlayPauseCommand.Execute(null);
+            menu.Items.Add(playPause);
+
+            var next = new NativeMenuItem("Next Track");
+            next.Click += (_, _) => vm.Player.NextCommand.Execute(null);
+            menu.Items.Add(next);
+
+            var previous = new NativeMenuItem("Previous Track");
+            previous.Click += (_, _) => vm.Player.PreviousCommand.Execute(null);
+            menu.Items.Add(previous);
+
+            menu.Items.Add(new NativeMenuItemSeparator());
+
             var quit = new NativeMenuItem("Quit");
             quit.Click += (_, _) =>
             {
@@ -328,6 +356,10 @@ public partial class MainWindow : Window
             && vm.Settings.CloseToTray)
         {
             e.Cancel = true;
+            // Session boundary: the process may be killed later without a
+            // graceful shutdown (OS shutdown while in tray), so snapshot the
+            // queue now for next launch's restore.
+            vm.Player.SaveQueueStateInBackground();
             Hide();
             return;
         }
@@ -363,7 +395,15 @@ public partial class MainWindow : Window
 
     private void OnWindowClosed(object? sender, EventArgs e)
     {
+        if (_singleInstanceActivationHandler != null)
+        {
+            Helpers.SingleInstanceGuard.ActivationRequested -= _singleInstanceActivationHandler;
+            _singleInstanceActivationHandler = null;
+        }
+
         _taskbar?.Dispose();
+        _smtc?.Dispose();
+        _smtc = null;
         if (_trayIcon != null)
         {
             _trayIcon.IsVisible = false;
@@ -707,25 +747,6 @@ public partial class MainWindow : Window
                 e.Handled = true;
             }
             return;
-        }
-
-        // Clear search box focus when clicking outside it
-        var searchBox = this.FindControl<TextBox>("SearchBox");
-        if (searchBox is { IsFocused: true })
-        {
-            var pillBorder = (searchBox.Parent as Visual)?.GetVisualParent();
-            bool insidePill = false;
-            if (e.Source is Visual clickSource && pillBorder != null)
-            {
-                Visual? v = clickSource;
-                while (v != null)
-                {
-                    if (ReferenceEquals(v, pillBorder)) { insidePill = true; break; }
-                    v = v.GetVisualParent();
-                }
-            }
-            if (!insidePill)
-                Dispatcher.UIThread.Post(() => RootPanel.Focus(NavigationMethod.Pointer), DispatcherPriority.Background);
         }
 
         // Queue popup is now sticky — it only closes via the Queue toggle button or Escape.
