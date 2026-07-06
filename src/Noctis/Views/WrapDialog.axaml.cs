@@ -36,22 +36,40 @@ public partial class WrapDialog : Window
 
     private async void OnSaveClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        var vm = Vm;
-        if (vm?.CurrentPng is not { } png)
-            return;
-        var status = await PngExportHelper.SavePngAsync(this, png, vm.SuggestedFileName);
-        if (status != null)
-            vm.ReportStatus(status);
+        // async void: an escaped exception would crash the app.
+        try
+        {
+            var vm = Vm;
+            if (vm?.CurrentPng is not { } png)
+                return;
+            var status = await PngExportHelper.SavePngAsync(this, png, vm.SuggestedFileName);
+            if (status != null)
+                vm.ReportStatus(status);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WrapDialog] Save failed: {ex.Message}");
+            Vm?.ReportStatus("Save failed.");
+        }
     }
 
     private async void OnCopyClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        var vm = Vm;
-        if (vm?.CurrentPng is not { } png)
-            return;
-        var status = await PngExportHelper.CopyPngAsync(this, png, vm.SuggestedFileName);
-        if (status != null)
-            vm.ReportStatus(status);
+        // async void: an escaped exception would crash the app.
+        try
+        {
+            var vm = Vm;
+            if (vm?.CurrentPng is not { } png)
+                return;
+            var status = await PngExportHelper.CopyPngAsync(this, png, vm.SuggestedFileName);
+            if (status != null)
+                vm.ReportStatus(status);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WrapDialog] Copy failed: {ex.Message}");
+            Vm?.ReportStatus("Copy failed.");
+        }
     }
 
     public static async Task ShowAsync(WrapViewModel vm)

@@ -132,7 +132,8 @@ public sealed class WebRemoteServer : IDisposable
                 client.SendTimeout = 5000;
                 var stream = client.GetStream();
 
-                var requestLine = await ReadLineAsync(stream, ct);
+                var reader = new LineReader(stream);
+                var requestLine = await reader.ReadLineAsync(ct);
                 if (requestLine == null) return;
                 var parts = requestLine.Split(' ');
                 if (parts.Length < 2) return;
@@ -140,7 +141,7 @@ public sealed class WebRemoteServer : IDisposable
                 var target = parts[1];
 
                 // Drain headers (ignored; no bodies are accepted).
-                while (await ReadLineAsync(stream, ct) is { Length: > 0 }) { }
+                while (await reader.ReadLineAsync(ct) is { Length: > 0 }) { }
 
                 var (status, contentType, body) = await RouteAsync(method, target);
                 var payload = Encoding.UTF8.GetBytes(body);
@@ -162,20 +163,38 @@ public sealed class WebRemoteServer : IDisposable
         }
     }
 
-    private static async Task<string?> ReadLineAsync(NetworkStream stream, CancellationToken ct)
+    /// <summary>
+    /// Buffered line reader over the request stream — the previous implementation
+    /// awaited one ReadAsync per byte (thousands of awaits per request). One reader
+    /// per connection; over-read bytes stay buffered for the next line.
+    /// </summary>
+    private sealed class LineReader
     {
-        var sb = new StringBuilder();
-        var buf = new byte[1];
-        while (sb.Length < 4096)
+        private readonly NetworkStream _stream;
+        private readonly byte[] _buf = new byte[4096];
+        private int _len;
+        private int _pos;
+
+        public LineReader(NetworkStream stream) => _stream = stream;
+
+        public async Task<string?> ReadLineAsync(CancellationToken ct)
         {
-            var read = await stream.ReadAsync(buf.AsMemory(0, 1), ct);
-            if (read == 0) return sb.Length > 0 ? sb.ToString() : null;
-            char c = (char)buf[0];
-            if (c == '\n')
-                return sb.ToString().TrimEnd('\r');
-            sb.Append(c);
+            var sb = new StringBuilder();
+            while (sb.Length < 4096)
+            {
+                if (_pos == _len)
+                {
+                    _len = await _stream.ReadAsync(_buf, ct);
+                    _pos = 0;
+                    if (_len == 0) return sb.Length > 0 ? sb.ToString() : null;
+                }
+                char c = (char)_buf[_pos++];
+                if (c == '\n')
+                    return sb.ToString().TrimEnd('\r');
+                sb.Append(c);
+            }
+            return sb.ToString();
         }
-        return sb.ToString();
     }
 
     private async Task<(string Status, string ContentType, string Body)> RouteAsync(string method, string target)

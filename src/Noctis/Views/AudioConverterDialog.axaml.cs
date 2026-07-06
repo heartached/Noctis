@@ -20,16 +20,24 @@ public partial class AudioConverterDialog : Window
 
     private async void OnBrowseOutputClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        var top = TopLevel.GetTopLevel(this);
-        if (top == null) return;
-
-        var folders = await top.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        // async void: an escaped exception would crash the app.
+        try
         {
-            Title = "Pick output folder",
-            AllowMultiple = false,
-        });
+            var top = TopLevel.GetTopLevel(this);
+            if (top == null) return;
 
-        if (folders.Count > 0 && DataContext is AudioConverterViewModel vm)
-            vm.OutputFolder = folders[0].Path.LocalPath;
+            var folders = await top.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Pick output folder",
+                AllowMultiple = false,
+            });
+
+            if (folders.Count > 0 && DataContext is AudioConverterViewModel vm)
+                vm.OutputFolder = folders[0].Path.LocalPath;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioConverterDialog] Folder pick failed: {ex.Message}");
+        }
     }
 }
