@@ -21,13 +21,17 @@ public static class KeyDetector
         { 6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17 };
 
     public static (string Key, double Confidence) Detect(float[] mono, int sampleRate)
+        => Detect(mono, sampleRate, mono.Length);
+
+    /// <summary>Variant for reusable buffers: only the first <paramref name="count"/> samples are valid.</summary>
+    public static (string Key, double Confidence) Detect(float[] mono, int sampleRate, int count)
     {
-        if (mono.Length < FrameSize) return ("", 0);
+        if (count < FrameSize) return ("", 0);
 
         var chroma = new double[12];
         var re = new double[FrameSize];
         var im = new double[FrameSize];
-        int frames = 1 + (mono.Length - FrameSize) / HopSize;
+        int frames = 1 + (count - FrameSize) / HopSize;
 
         for (int f = 0; f < frames; f++)
         {

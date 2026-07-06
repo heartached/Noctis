@@ -12,10 +12,14 @@ public static class BpmDetector
     private const int HopSize = 512;
 
     public static (int Bpm, double Confidence) Detect(float[] mono, int sampleRate)
-    {
-        if (mono.Length < sampleRate) return (0, 0);
+        => Detect(mono, sampleRate, mono.Length);
 
-        var envelope = OnsetEnvelope(mono, sampleRate, out double envRate);
+    /// <summary>Variant for reusable buffers: only the first <paramref name="count"/> samples are valid.</summary>
+    public static (int Bpm, double Confidence) Detect(float[] mono, int sampleRate, int count)
+    {
+        if (count < sampleRate) return (0, 0);
+
+        var envelope = OnsetEnvelope(mono, count, sampleRate, out double envRate);
         if (envelope.Length < 4) return (0, 0);
 
         // Energy guard: near-silent input yields no usable peak.
@@ -52,9 +56,9 @@ public static class BpmDetector
         return ((int)Math.Round(bpm), confidence);
     }
 
-    private static double[] OnsetEnvelope(float[] mono, int sampleRate, out double envRate)
+    private static double[] OnsetEnvelope(float[] mono, int count, int sampleRate, out double envRate)
     {
-        int frames = Math.Max(0, 1 + (mono.Length - FrameSize) / HopSize);
+        int frames = Math.Max(0, 1 + (count - FrameSize) / HopSize);
         envRate = (double)sampleRate / HopSize;
         var env = new double[frames];
         var prevMag = new double[FrameSize / 2];
