@@ -193,10 +193,9 @@ public partial class SettingsView : UserControl
             if (string.IsNullOrWhiteSpace(sourcePath) || !System.IO.File.Exists(sourcePath))
                 return;
 
-            // Copy the picked image into %APPDATA%\Noctis\profile so the avatar survives the
-            // source being moved or deleted later.
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var dir = System.IO.Path.Combine(appData, "Noctis", "profile");
+            // Copy the picked image into the data root's profile dir so the avatar
+            // survives the source being moved or deleted later.
+            var dir = System.IO.Path.Combine(Helpers.AppPaths.DataRoot, "profile");
             System.IO.Directory.CreateDirectory(dir);
             var ext = System.IO.Path.GetExtension(sourcePath);
             var target = System.IO.Path.Combine(dir, "avatar" + ext);

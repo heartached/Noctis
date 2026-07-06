@@ -45,6 +45,24 @@ public static class DominantColorExtractor
     private static readonly ConcurrentDictionary<string, Color> ColorCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<string, (Color, Color)> PaletteCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<string, Color> EdgeBackgroundCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, Color> AverageColorCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Returns a cached average color for the given artwork path, or extracts and caches it.
+    /// </summary>
+    public static Color GetOrExtractAverageColor(string artworkPath, Bitmap bitmap)
+    {
+        if (AverageColorCache.TryGetValue(artworkPath, out var cached))
+            return cached;
+
+        var color = ExtractAverageColor(bitmap);
+
+        if (AverageColorCache.Count >= MaxCacheSize)
+            AverageColorCache.Clear();
+
+        AverageColorCache.TryAdd(artworkPath, color);
+        return color;
+    }
 
     /// <summary>
     /// Returns a cached dominant color for the given artwork path, or extracts and caches it.

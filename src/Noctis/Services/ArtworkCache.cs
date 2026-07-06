@@ -49,6 +49,12 @@ public static class ArtworkCache
     private const int EvictBatchSize = 200;
     private const int DecodeWidth = 512;
 
+    /// <summary>Approximate resident bytes currently held by the cache (diagnostic).</summary>
+    internal static long ResidentBytes => Interlocked.Read(ref _totalBytes);
+
+    /// <summary>Number of cached bitmaps currently resident (diagnostic).</summary>
+    internal static int Count => Cache.Count;
+
     /// <summary>
     /// Returns a cached bitmap if available, or null on cache miss. No I/O performed.
     /// Lock-free on the hot path.
@@ -61,11 +67,20 @@ public static class ArtworkCache
         var key = BuildKey(path, decodeWidth);
         if (Cache.TryGetValue(key, out var entry))
         {
-            Interlocked.Increment(ref entry.LastAccess);
+            Touch(entry);
             return entry.Bitmap;
         }
         return null;
     }
+
+    /// <summary>
+    /// Stamps the entry with the current global access counter. Entries created later
+    /// start with a much larger counter value, so merely incrementing an entry's own
+    /// stamp by 1 per hit left old-but-hot entries (the on-screen art) sorting older
+    /// than fresh one-shot decodes — the LRU evicted exactly the wrong bitmaps.
+    /// </summary>
+    private static void Touch(CacheEntry entry)
+        => Interlocked.Exchange(ref entry.LastAccess, Interlocked.Increment(ref _accessCounter));
 
     /// <summary>
     /// Removes a cached bitmap for the given path so the next load reads fresh data from disk.
@@ -73,10 +88,15 @@ public static class ArtworkCache
     /// </summary>
     public static void Invalidate(string path)
     {
-        foreach (var key in Cache.Keys.Where(k => k.EndsWith(path, StringComparison.OrdinalIgnoreCase)))
+        // Exact path match after the "width|" prefix — a plain EndsWith over-matched
+        // any path that another path happened to be a suffix of.
+        foreach (var key in Cache.Keys)
         {
+            var sep = key.IndexOf('|');
+            if (sep < 0 || !key.AsSpan(sep + 1).Equals(path.AsSpan(), StringComparison.OrdinalIgnoreCase))
+                continue;
             if (Cache.TryRemove(key, out var removed))
-                Interlocked.Add(ref _totalBytes, -removed.Bytes);
+                OnEntryRemoved(removed);
         }
         Invalidated?.Invoke(path);
     }
@@ -106,7 +126,7 @@ public static class ArtworkCache
             // Double-check: another thread may have cached this while we waited for I/O to start
             if (Cache.TryGetValue(key, out var hit))
             {
-                Interlocked.Increment(ref hit.LastAccess);
+                Touch(hit);
                 return hit.Bitmap;
             }
 
@@ -123,12 +143,18 @@ public static class ArtworkCache
                 bitmap.Dispose();
                 if (Cache.TryGetValue(key, out var existing))
                 {
-                    Interlocked.Increment(ref existing.LastAccess);
+                    Touch(existing);
                     return existing.Bitmap;
                 }
                 return null;
             }
             Interlocked.Add(ref _totalBytes, newEntry.Bytes);
+            // The decoded pixels live in native (Skia) memory the GC can't see — the
+            // managed Bitmap wrapper is tiny, so without this hint evicted bitmaps sit
+            // in the finalizer queue for ages while native memory climbs into the GBs.
+            // Registering the real cost makes Gen2 collections (and thus finalization
+            // of evicted, no-longer-referenced bitmaps) keep pace with decode churn.
+            GC.AddMemoryPressure(newEntry.Bytes);
 
             // Evict if over capacity — non-blocking; skip if another thread is already evicting
             if ((Cache.Count > MaxCacheSize || Interlocked.Read(ref _totalBytes) > MaxCacheBytes) &&
@@ -162,11 +188,20 @@ public static class ArtworkCache
 
             if (Cache.TryRemove(entry.Key, out var removed))
             {
-                Interlocked.Add(ref _totalBytes, -removed.Bytes);
+                OnEntryRemoved(removed);
                 dropped++;
             }
         }
         // We intentionally do not dispose bitmaps here; UI controls may still hold references.
+    }
+
+    private static void OnEntryRemoved(CacheEntry removed)
+    {
+        Interlocked.Add(ref _totalBytes, -removed.Bytes);
+        // Mirror of the AddMemoryPressure on insert. The bitmap itself may outlive
+        // eviction (a control can still show it); its native memory is reclaimed by
+        // the finalizer once the last reference drops.
+        try { GC.RemoveMemoryPressure(removed.Bytes); } catch { /* mismatched pressure is non-fatal */ }
     }
 
     private static string BuildKey(string path, int decodeWidth)

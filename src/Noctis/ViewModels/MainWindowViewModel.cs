@@ -20,6 +20,7 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
+    private readonly IMetadataService _metadata;
     private readonly IDiscordPresenceService _discord;
     private readonly ILastFmService _lastFm;
     private readonly IListenBrainzService _listenBrainz;
@@ -58,6 +59,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private DateTime _trackStartedAt;
     private Track? _scrobbleTrack;
     private readonly SemaphoreSlim _dropImportLock = new(1, 1);
+
+    // ── Drop-import progress (spinner pill while dropped files are copied/added) ──
+    [ObservableProperty] private bool _isDropImporting;
+    [ObservableProperty] private string _dropImportStatus = string.Empty;
 
     // ── Discord seek throttle ──
     private DateTime _lastDiscordSeekUpdate = DateTime.MinValue;
@@ -180,6 +185,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _library = library;
         _playHistory = playHistory;
         _persistence = persistence;
+        _metadata = metadata;
         _discord = discord;
         _lastFm = lastFm;
         _listenBrainz = listenBrainz;
@@ -191,6 +197,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Player = new PlayerViewModel(audioPlayer, library, persistence, new AnimatedCoverService(persistence));
         Sidebar = new SidebarViewModel(persistence, library);
         TopBar = new TopBarViewModel();
+        Sidebar.TopBar = TopBar;
         Settings = new SettingsViewModel(persistence, library, playHistory);
         Settings.SetAudioPlayer(audioPlayer);
         Settings.SetPlayer(Player);
@@ -231,7 +238,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _artistsVm.SetArtistImageService(artistImageService);
         _playlistsVm = new LibraryPlaylistsViewModel(Sidebar, Player, library, persistence);
 
-        _foldersVm = new LibraryFoldersViewModel(library, Player, persistence);
+        _foldersVm = new LibraryFoldersViewModel(library, Player, persistence, Sidebar);
         _foldersVm.NavigateToSettingsRequested += (_, _) =>
         {
             OpenSettings();
@@ -326,6 +333,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Wire up Search Lyrics action on ViewModels with track context menus
         _homeVm.SetSearchLyricsAction(SearchLyricsForTrack);
         _songsVm.SetSearchLyricsAction(SearchLyricsForTrack);
+        _foldersVm.SetSearchLyricsAction(SearchLyricsForTrack);
         Player.SetSearchLyricsAction(SearchLyricsForTrack);
 
         // Wire up View Artist action on ViewModels that display artist names
@@ -394,9 +402,12 @@ public partial class MainWindowViewModel : ViewModelBase
         Player.Volume = Settings.GetSettings().Volume;
 
         // Restore the previous session's queue (current track loads paused;
-        // the user presses play to resume).
-        try { await Player.RestoreQueueStateAsync(); }
-        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Queue restore failed: {ex.Message}"); }
+        // the user presses play to resume). Gated by the Settings toggle.
+        if (Settings.GetSettings().RestoreLastTrackOnStartup)
+        {
+            try { await Player.RestoreQueueStateAsync(); }
+            catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Queue restore failed: {ex.Message}"); }
+        }
 
         // Auto-scan if enabled
         if (Settings.GetSettings().ScanOnStartup && Settings.GetSettings().MusicFolders.Count > 0)
@@ -501,17 +512,30 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public async Task ShutdownAsync()
     {
+        // Stop any in-flight library scan and flush its progress to disk so the next
+        // launch resumes where it left off instead of re-scanning from scratch.
+        try { await _library.PauseActiveScanForShutdownAsync(TimeSpan.FromSeconds(5)); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Scan checkpoint failed: {ex.Message}"); }
+
         // Scrobble the currently playing track before shutdown
         TryScrobblePreviousTrack();
 
-        // Update volume in settings and save everything
+        // Update volume in settings and save everything. Each step is guarded
+        // so one failing save can't skip the later ones (the queue snapshot
+        // below used to be silently lost this way).
         Settings.SetVolume(Player.Volume);
-        await Settings.SaveAsync();
-        await _playHistory.FlushAsync();
+        try { await Settings.SaveAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Settings save failed: {ex.Message}"); }
+        try { await _playHistory.FlushAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Play-history flush failed: {ex.Message}"); }
 
         // Snapshot the queue so the next launch restores it.
         try { await Player.SaveQueueStateAsync(); }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Queue save failed: {ex.Message}"); }
+
+        // Flush the debounced per-play library save so play counts aren't lost.
+        try { await Player.FlushPendingLibrarySaveAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Library flush failed: {ex.Message}"); }
 
         // Cleanup integrations
         await _discord.ClearAsync();
@@ -534,6 +558,9 @@ public partial class MainWindowViewModel : ViewModelBase
         await _dropImportLock.WaitAsync(ct);
         try
         {
+            IsDropImporting = true;
+            DropImportStatus = "Preparing import…";
+
             var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -582,6 +609,11 @@ public partial class MainWindowViewModel : ViewModelBase
             // A full ScanAsync replaces the entire library with whatever is on disk
             // across ALL configured music folders, which can resurrect deleted files
             // or pull in unrelated media from other roots.
+            // Enumeration is file I/O; run it off the UI thread (large folder trees).
+            if (folders.Count > 0)
+                DropImportStatus = "Scanning dropped folders…";
+            await Task.Run(() =>
+            {
             foreach (var folder in folders)
             {
                 try
@@ -609,6 +641,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     System.Diagnostics.Debug.WriteLine($"[DropImport] Failed to enumerate folder {folder}: {ex.Message}");
                 }
             }
+            }, ct);
 
             if (files.Count > 0)
             {
@@ -633,9 +666,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
                 var importTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 var beforeCount = _library.Tracks.Count;
+                var copyProcessed = 0;
                 foreach (var file in files)
                 {
                     ct.ThrowIfCancellationRequested();
+                    DropImportStatus = $"Copying files {++copyProcessed} of {files.Count}";
 
                     // Files already inside configured library roots can be imported as-is.
                     if (libraryRoots.Any(root => IsPathUnderRoot(file, root)))
@@ -646,10 +681,11 @@ public partial class MainWindowViewModel : ViewModelBase
                         continue;
                     }
 
-                    // Managed import: copy external drops into library storage first.
+                    // Managed import: copy external drops into library storage first
+                    // (File.Copy is blocking I/O — keep it off the UI thread).
                     var copiedPath = string.IsNullOrWhiteSpace(managedRoot)
                         ? file
-                        : CopyFileIntoManagedRoot(file, managedRoot);
+                        : await Task.Run(() => CopyFileIntoManagedRoot(file, managedRoot), ct);
 
                     System.Diagnostics.Debug.WriteLine($"[DropImport]   {file} → copied to: {copiedPath}");
                     if (!string.IsNullOrWhiteSpace(copiedPath))
@@ -662,18 +698,28 @@ public partial class MainWindowViewModel : ViewModelBase
                 System.Diagnostics.Debug.WriteLine($"[DropImport] importTargets={importTargets.Count} beforeCount={beforeCount}");
                 if (importTargets.Count > 0)
                 {
-                    await _library.ImportFilesAsync(importTargets, ct);
+                    // Progress<T> posts back to the UI thread it was created on.
+                    var importTotal = importTargets.Count;
+                    var importProgress = new Progress<int>(n =>
+                        DropImportStatus = $"Adding songs {Math.Min(n, importTotal)} of {importTotal}");
+                    await _library.ImportFilesAsync(importTargets, ct, importProgress);
                     System.Diagnostics.Debug.WriteLine($"[DropImport] afterCount={_library.Tracks.Count}");
 
                     // If nothing new appeared (TagLib quirks, etc.), fallback to a targeted rescan.
                     if (_library.Tracks.Count == beforeCount && libraryRoots.Count > 0)
                     {
                         System.Diagnostics.Debug.WriteLine($"[DropImport] No new tracks, falling back to rescan");
+                        DropImportStatus = "Refreshing library…";
                         await _library.ScanAsync(libraryRoots, ct);
                         System.Diagnostics.Debug.WriteLine($"[DropImport] Rescan done, count={_library.Tracks.Count}");
                     }
                 }
             }
+
+            // Copied drops lose sight of artwork images next to the ORIGINAL file
+            // (cover.jpg etc.): extraction runs against the copy in the flat managed
+            // root. For albums still missing art, retry from each file's source folder.
+            await BackfillDroppedFolderArtAsync(originalToFinal, ct);
 
             // Force refresh to guarantee newly imported content is visible immediately.
             // Mark all VMs dirty first — the LibraryUpdated event may have already
@@ -693,12 +739,62 @@ public partial class MainWindowViewModel : ViewModelBase
             Settings.RefreshLibraryStats();
             Settings.RefreshStorageInfo();
 
+            // Hide the progress pill before the playlist-offer dialog can appear.
+            IsDropImporting = false;
+
             await OfferFolderPlaylistsAsync(folderAudioFiles, folderHasTopLevelAudio, originalToFinal);
         }
         finally
         {
+            IsDropImporting = false;
+            DropImportStatus = string.Empty;
             _dropImportLock.Release();
         }
+    }
+
+    /// <summary>
+    /// Extracts album art from the source location of copied drops. Only albums whose
+    /// artwork is still missing after import are considered, so embedded art (already
+    /// extracted from the copy) always wins over a source-folder image.
+    /// </summary>
+    private async Task BackfillDroppedFolderArtAsync(
+        Dictionary<string, string> originalToFinal, CancellationToken ct)
+    {
+        var copied = originalToFinal
+            .Where(kv => !string.Equals(kv.Key, kv.Value, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (copied.Count == 0) return;
+
+        var tracksByPath = new Dictionary<string, Track>(StringComparer.OrdinalIgnoreCase);
+        foreach (var t in _library.Tracks)
+        {
+            if (!string.IsNullOrWhiteSpace(t.FilePath))
+                tracksByPath[t.FilePath] = t;
+        }
+
+        await Task.Run(() =>
+        {
+            var checkedAlbums = new HashSet<Guid>();
+            foreach (var (original, final) in copied)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!tracksByPath.TryGetValue(final, out var track)) continue;
+                if (!checkedAlbums.Add(track.AlbumId)) continue;
+
+                try
+                {
+                    if (File.Exists(_persistence.GetArtworkPath(track.AlbumId))) continue;
+                    var artBytes = _metadata.ExtractAlbumArt(original);
+                    if (artBytes != null)
+                        _persistence.SaveArtwork(track.AlbumId, artBytes);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[DropImport] Source-folder art backfill failed for {original}: {ex.Message}");
+                }
+            }
+        }, ct);
     }
 
     /// <summary>
@@ -813,9 +909,9 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         TopBar.SearchWatermark = CurrentView switch
         {
-            PlaylistFeaturedArtistsViewModel => "Find in Featured Artists",
-            MoreByArtistViewModel => "Find in Albums",
-            _ => $"Find in {TopBar.CurrentTabName}"
+            PlaylistFeaturedArtistsViewModel => "Search in Featured Artists",
+            MoreByArtistViewModel => "Search in Albums",
+            _ => $"Search in {TopBar.CurrentTabName}"
         };
 
         // Search visibility follows the tab name (hidden on Home/Settings/Lyrics and
@@ -1412,7 +1508,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Re-scope the top-bar search to the detail view (the history entry above
         // captured the grid's query, so Back restores it). Without this the grid's
-        // stale query lingers in the box and the watermark stays "Find in Playlists".
+        // stale query lingers in the box and the watermark stays "Search in Playlists".
         TopBar.SearchText = string.Empty;
         TopBar.CurrentTabName = "Playlist";
 

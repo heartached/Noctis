@@ -66,6 +66,10 @@ public partial class App : Application
                 $"msg={args.Exception?.InnerException?.Message ?? args.Exception?.Message}");
         };
 
+        // Temporary diagnostic (no-op unless NOCTIS_MEMTRACE=1): localize the
+        // reported runtime memory/CPU growth. Remove once diagnosed.
+        MemoryTracer.StartIfEnabled();
+
         // Clicking anywhere outside a focused text box unfocuses it. Registered as
         // a class handler on TopLevel so it covers every window and dialog.
         Avalonia.Input.InputElement.PointerPressedEvent.AddClassHandler<TopLevel>(
@@ -103,11 +107,24 @@ public partial class App : Application
             library.LibraryUpdated += (_, _) => analysisCoordinator.StartBackfill();
             analysisCoordinator.StartBackfill();
 
-            // Graceful shutdown: save state before exit
-            desktop.ShutdownRequested += async (_, _) =>
+            // Graceful shutdown: save state before exit. The handler must cancel the
+            // request first — Avalonia proceeds with shutdown as soon as an async
+            // handler hits its first await, which cut off the later saves (queue
+            // snapshot, play-history flush, final scrobble). Cancel, finish the save,
+            // then shut down for real; the flag makes the re-entrant call pass through.
+            var shutdownSaveDone = false;
+            desktop.ShutdownRequested += async (_, e) =>
             {
+                if (shutdownSaveDone) return;
+                shutdownSaveDone = true;
+                e.Cancel = true;
                 analysisCoordinator.Stop();
-                await mainVm.ShutdownAsync();
+                try { await mainVm.ShutdownAsync(); }
+                catch (Exception ex)
+                {
+                    DebugLogger.Error(DebugLogger.Category.Error, "ShutdownSave", ex.Message);
+                }
+                desktop.Shutdown();
             };
         }
 

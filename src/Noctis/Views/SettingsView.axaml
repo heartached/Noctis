@@ -746,6 +746,16 @@
                                               IsChecked="{Binding CloseToTray}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="Restore last played track" FontSize="13"/>
+                            <TextBlock Text="Reopen with your last track in the playbar, paused where you left off."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding RestoreLastTrackOnStartup}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                 </StackPanel>
             </Border>
 
@@ -2416,12 +2426,14 @@
                                 <Button Content="Cancel"
                                         Command="{Binding CancelResetCommand}"
                                         Classes="pill-action"
+                                        FontWeight="Bold"
                                         Padding="16,10"
                                         CornerRadius="18"
                                         Cursor="Hand"/>
                                 <Button Content="Reset Everything"
                                         Command="{Binding ConfirmResetLibraryCommand}"
                                         Classes="pill-action danger"
+                                        FontWeight="Bold"
                                         Padding="16,10"
                                         CornerRadius="18"
                                         Cursor="Hand"/>

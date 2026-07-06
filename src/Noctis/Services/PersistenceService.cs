@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Noctis.Models;
 
@@ -54,12 +55,26 @@ public class PersistenceService : IPersistenceService
 
     public async Task<AppSettings> LoadSettingsAsync()
     {
-        return await LoadJsonAsync<AppSettings>(SettingsPath) ?? new AppSettings();
+        var settings = await LoadJsonAsync<AppSettings>(SettingsPath) ?? new AppSettings();
+        // Decrypt at-rest-protected scrobbler credentials (see SaveSettingsAsync).
+        // Legacy plaintext values pass through unchanged.
+        settings.LastFmSessionKey = UnprotectSecret(settings.LastFmSessionKey);
+        settings.ListenBrainzToken = UnprotectSecret(settings.ListenBrainzToken);
+        return settings;
     }
 
     public async Task SaveSettingsAsync(AppSettings settings)
     {
-        await SaveJsonAsync(SettingsPath, settings);
+        // Protect scrobbler credentials at rest (Windows DPAPI, current user).
+        // Applied to the serialized tree, not the live object, so in-memory
+        // settings keep the plaintext values the services use.
+        var node = JsonSerializer.SerializeToNode(settings, JsonOptions);
+        if (node is JsonObject obj)
+        {
+            ProtectField(obj, "lastFmSessionKey");
+            ProtectField(obj, "listenBrainzToken");
+        }
+        await SaveJsonAsync(SettingsPath, node);
     }
 
     // ── Library ───────────────────────────────────────────────
@@ -147,6 +162,62 @@ public class PersistenceService : IPersistenceService
         Directory.CreateDirectory(AnimatedCoverDirectory);
     }
 
+    // ── Secret protection (Windows DPAPI) ─────────────────────
+    // Scrobbler credentials are encrypted per-user at rest so settings.json no
+    // longer holds them in plaintext. Windows-only: macOS/Linux keep plaintext
+    // (Keychain/libsecret integration is out of scope). Fails open on protect
+    // (plaintext beats losing the session) and fails closed on unprotect (a blob
+    // from another machine/user just forces a re-authentication).
+
+    private const string ProtectedPrefix = "enc:dpapi:";
+
+    private static void ProtectField(JsonObject obj, string propertyName)
+    {
+        if (obj[propertyName] is JsonValue value && value.TryGetValue<string>(out var raw))
+        {
+            var protectedValue = ProtectSecret(raw);
+            if (!ReferenceEquals(protectedValue, raw))
+                obj[propertyName] = protectedValue;
+        }
+    }
+
+    private static string ProtectSecret(string value)
+    {
+        if (string.IsNullOrEmpty(value) || !OperatingSystem.IsWindows() ||
+            value.StartsWith(ProtectedPrefix, StringComparison.Ordinal))
+            return value;
+        try
+        {
+            var bytes = System.Security.Cryptography.ProtectedData.Protect(
+                System.Text.Encoding.UTF8.GetBytes(value), null,
+                System.Security.Cryptography.DataProtectionScope.CurrentUser);
+            return ProtectedPrefix + Convert.ToBase64String(bytes);
+        }
+        catch
+        {
+            return value;
+        }
+    }
+
+    private static string UnprotectSecret(string value)
+    {
+        if (string.IsNullOrEmpty(value) || !value.StartsWith(ProtectedPrefix, StringComparison.Ordinal))
+            return value;
+        if (!OperatingSystem.IsWindows())
+            return string.Empty;
+        try
+        {
+            var bytes = Convert.FromBase64String(value[ProtectedPrefix.Length..]);
+            var raw = System.Security.Cryptography.ProtectedData.Unprotect(
+                bytes, null, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+            return System.Text.Encoding.UTF8.GetString(raw);
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────
 
     private static async Task<T?> LoadJsonAsync<T>(string path) where T : class
@@ -182,7 +253,14 @@ public class PersistenceService : IPersistenceService
         }
     }
 
-    private static async Task SaveJsonAsync<T>(string path, T data)
+    // Serializing large payloads (library.json) is CPU-heavy, and awaits inside
+    // SaveJsonCoreAsync would otherwise resume on the calling (UI) thread —
+    // fire-and-forget saves from the play path measurably stalled rendering.
+    // Task.Run keeps the whole save on the thread pool.
+    private static Task SaveJsonAsync<T>(string path, T data)
+        => Task.Run(() => SaveJsonCoreAsync(path, data));
+
+    private static async Task SaveJsonCoreAsync<T>(string path, T data)
     {
         // Write to temp file first, then rename — prevents data loss on crash
         var tempPath = path + ".tmp";

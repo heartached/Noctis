@@ -52,11 +52,19 @@ public class MetadataService : IMetadataService
     public static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".mp3", ".flac", ".ogg", ".m4a", ".wav", ".wma", ".aac",
-        ".opus", ".aiff", ".aif", ".aifc", ".ape", ".wv", ".alac", ".mp4"
+        ".opus", ".aiff", ".aif", ".aifc", ".ape", ".wv", ".alac", ".mp4",
+        // DSD: .dsf is read by TagLib; .dff is read by DsdiffReader (TagLib ships no
+        // DSDIFF parser). Both now surface in the library, but playback is not yet
+        // supported — the bundled VLC 3.x has no DSD demuxer/decoder.
+        ".dsf", ".dff"
     };
 
-    public Track? ReadTrackMetadata(string filePath)
+    public Track? ReadTrackMetadata(string filePath) => ReadTrackMetadata(filePath, out _);
+
+    public Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt)
     {
+        embeddedArt = null;
+
         if (string.IsNullOrWhiteSpace(filePath))
             return null;
 
@@ -75,6 +83,12 @@ public class MetadataService : IMetadataService
         {
             return null;
         }
+
+        // DSDIFF (.dff) has no TagLib reader, so it would throw below and be dropped.
+        // Parse its header directly so the file still lands in the library. (.dsf is
+        // a different DSD container that TagLib does handle, via the path below.)
+        if (Path.GetExtension(filePath).Equals(".dff", StringComparison.OrdinalIgnoreCase))
+            return ReadDsdiffTrack(filePath, out embeddedArt);
 
         try
         {
@@ -103,7 +117,7 @@ public class MetadataService : IMetadataService
             }
 
             var duration = props.Duration;
-            if (NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration))
+            if (NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration, IsLosslessFormat(codec ?? string.Empty, ext)))
                 TryPopulateAudioMetricsWithFfprobe(filePath, ref sampleRate, ref bitsPerSample, ref bitrate, ref duration);
 
             // Preserve all credited performers so featured artists show in track rows.
@@ -169,11 +183,61 @@ public class MetadataService : IMetadataService
 
             PopulateReleaseType(track, file);
 
+            // Pull the embedded cover from the already-parsed tag (no extra I/O) so a
+            // scan can cache album art inline instead of re-opening every file later.
+            embeddedArt = SelectBestEmbeddedPicture(file.Tag.Pictures);
+
             return track;
         }
         catch (Exception)
         {
             // File is corrupted, unsupported, or locked — skip it
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Builds a Track for a DSDIFF (.dff) file via <see cref="DsdiffReader"/>, since
+    /// TagLib# cannot open that container. Returns null when the file isn't a readable
+    /// DSDIFF, so the scan skips it exactly as it did before DSD support.
+    /// </summary>
+    private Track? ReadDsdiffTrack(string filePath, out byte[]? embeddedArt)
+    {
+        embeddedArt = null;
+        try
+        {
+            using var stream = File.OpenRead(filePath);
+            var info = DsdiffReader.TryRead(stream);
+            if (info == null)
+                return null;
+
+            var fileInfo = new FileInfo(filePath);
+            var artist = string.IsNullOrWhiteSpace(info.Artist) ? "Unknown Artist" : info.Artist!;
+            const string album = "Unknown Album";
+            var title = string.IsNullOrWhiteSpace(info.Title)
+                ? Path.GetFileNameWithoutExtension(filePath)
+                : info.Title!;
+
+            return new Track
+            {
+                FilePath = filePath,
+                Title = title,
+                Artist = artist,
+                AlbumArtist = artist,
+                Album = album,
+                Duration = info.Duration,
+                AlbumId = Track.ComputeAlbumId(artist, album),
+                FileSize = fileInfo.Length,
+                LastModified = fileInfo.LastWriteTimeUtc,
+                DateAdded = DateTime.UtcNow,
+                SampleRate = info.SampleRate,
+                BitsPerSample = 1,                 // DSD is a 1-bit format
+                Bitrate = NormalizeBitrate(0, fileInfo.Length, info.Duration),
+                Codec = "DSD"
+            };
+        }
+        catch
+        {
             return null;
         }
     }
@@ -353,56 +417,45 @@ public class MetadataService : IMetadataService
         }
     }
 
+    // Both writers go through SaveTagsAtomically: an in-place file.Save() on
+    // macOS/Linux corrupts the player's open read of the file being tagged
+    // (the "audio silently stops on save" bug), and ratings/artwork are often
+    // written for the currently-playing track.
     public bool WriteRating(string filePath, int rating, bool isDisliked)
     {
-        try
+        return SaveTagsAtomically(filePath, file =>
         {
-            using var file = TagLib.File.Create(filePath);
             ExtendedTagIO.WriteRating(file, rating);
             ExtendedTagIO.WriteIsDisliked(file, isDisliked);
-            file.Save();
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
+        });
     }
 
     public bool WriteAlbumArt(string filePath, byte[]? imageData)
     {
-        try
+        return SaveTagsAtomically(filePath, file =>
         {
-            using var file = TagLib.File.Create(filePath);
             if (imageData == null || imageData.Length == 0)
             {
                 file.Tag.Pictures = Array.Empty<TagLib.IPicture>();
+                return;
             }
-            else
-            {
-                // Detect MIME type from image header bytes
-                var mimeType = "image/jpeg";
-                if (imageData.Length >= 4 &&
-                    imageData[0] == 0x89 && imageData[1] == 0x50 &&
-                    imageData[2] == 0x4E && imageData[3] == 0x47)
-                {
-                    mimeType = "image/png";
-                }
 
-                var pic = new TagLib.Picture(new TagLib.ByteVector(imageData))
-                {
-                    Type = TagLib.PictureType.FrontCover,
-                    MimeType = mimeType
-                };
-                file.Tag.Pictures = new TagLib.IPicture[] { pic };
+            // Detect MIME type from image header bytes
+            var mimeType = "image/jpeg";
+            if (imageData.Length >= 4 &&
+                imageData[0] == 0x89 && imageData[1] == 0x50 &&
+                imageData[2] == 0x4E && imageData[3] == 0x47)
+            {
+                mimeType = "image/png";
             }
-            file.Save();
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
+
+            var pic = new TagLib.Picture(new TagLib.ByteVector(imageData))
+            {
+                Type = TagLib.PictureType.FrontCover,
+                MimeType = mimeType
+            };
+            file.Tag.Pictures = new TagLib.IPicture[] { pic };
+        });
     }
 
     public AudioFileInfo? ReadFileInfo(string filePath)
@@ -432,7 +485,7 @@ public class MetadataService : IMetadataService
             }
 
             var duration = props.Duration;
-            if (NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration))
+            if (NeedsFfprobeFallback(sampleRate, bitsPerSample, bitrate, duration, isLossless))
                 TryPopulateAudioMetricsWithFfprobe(filePath, ref sampleRate, ref bitsPerSample, ref bitrate, ref duration);
 
             return new AudioFileInfo
@@ -616,7 +669,7 @@ public class MetadataService : IMetadataService
             codecLower.Contains("wavpack") || codecLower.Contains("monkey"))
             return true;
 
-        return ext is ".flac" or ".alac" or ".wav" or ".aiff" or ".aif" or ".aifc" or ".ape" or ".wv";
+        return ext is ".flac" or ".alac" or ".wav" or ".aiff" or ".aif" or ".aifc" or ".ape" or ".wv" or ".dsf" or ".dff";
     }
 
     private static int NormalizeBitrate(int bitrate, long fileSize, TimeSpan duration)
@@ -631,9 +684,13 @@ public class MetadataService : IMetadataService
         return estimated > 0 ? estimated : 0;
     }
 
-    private static bool NeedsFfprobeFallback(int sampleRate, int bitsPerSample, int bitrate, TimeSpan duration)
+    private static bool NeedsFfprobeFallback(int sampleRate, int bitsPerSample, int bitrate, TimeSpan duration, bool isLossless)
     {
-        return sampleRate < 8000 || bitsPerSample <= 0 || bitrate <= 0 || duration <= TimeSpan.Zero;
+        // Bits-per-sample only exists for lossless/PCM formats. Lossy codecs
+        // (MP3, AAC, OGG, Opus, WMA) legitimately report 0, so demanding it for
+        // them would spawn an ffprobe subprocess per file — catastrophic on large
+        // or networked libraries — for a value ffprobe can't supply either.
+        return sampleRate < 8000 || (isLossless && bitsPerSample <= 0) || bitrate <= 0 || duration <= TimeSpan.Zero;
     }
 
     private static void TryPopulateAudioMetricsWithFfprobe(string filePath, ref int sampleRate, ref int bitsPerSample, ref int bitrate, ref TimeSpan duration)
@@ -643,27 +700,39 @@ public class MetadataService : IMetadataService
 
         try
         {
-            var escapedPath = filePath.Replace("\"", "\\\"");
+            // ArgumentList (not a hand-quoted Arguments string): filenames can
+            // legally contain quotes on Unix and trailing backslashes anywhere,
+            // which broke the quoting and let a crafted name smuggle extra args.
             var psi = new ProcessStartInfo
             {
                 FileName = "ffprobe",
-                Arguments = $"-v error -select_streams a:0 -show_entries stream=sample_rate,bits_per_sample,bits_per_raw_sample,bit_rate,duration:format=bit_rate,duration -of json \"{escapedPath}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            foreach (var arg in new[]
+                     {
+                         "-v", "error", "-select_streams", "a:0",
+                         "-show_entries", "stream=sample_rate,bits_per_sample,bits_per_raw_sample,bit_rate,duration:format=bit_rate,duration",
+                         "-of", "json", filePath
+                     })
+                psi.ArgumentList.Add(arg);
 
             using var proc = Process.Start(psi);
             if (proc == null)
                 return;
 
+            // Drain stderr concurrently — a chatty failure fills the 4KB pipe
+            // buffer and wedges ffprobe until the timeout kill if nobody reads it.
+            var stderrTask = proc.StandardError.ReadToEndAsync();
             var stdout = proc.StandardOutput.ReadToEnd();
             if (!proc.WaitForExit(2500))
             {
                 try { proc.Kill(true); } catch { }
                 return;
             }
+            _ = stderrTask; // content unused; reading it is the point
 
             using var doc = JsonDocument.Parse(stdout);
             var root = doc.RootElement;
@@ -780,6 +849,7 @@ public class MetadataService : IMetadataService
             ".wma" => "Windows Media Audio",
             ".ape" => "Monkey's Audio",
             ".wv" => "WavPack",
+            ".dsf" or ".dff" => "DSD",
             _ => "Unknown"
         };
     }
@@ -860,7 +930,7 @@ public class MetadataService : IMetadataService
             codecLower.Contains("wavpack") || codecLower.Contains("monkey"))
             return true;
 
-        return ext is ".flac" or ".alac" or ".wav" or ".aiff" or ".aif" or ".aifc" or ".ape" or ".wv";
+        return ext is ".flac" or ".alac" or ".wav" or ".aiff" or ".aif" or ".aifc" or ".ape" or ".wv" or ".dsf" or ".dff";
     }
 
     private static string GetFileFormat(string ext)
@@ -880,6 +950,8 @@ public class MetadataService : IMetadataService
             ".wma" => "Windows Media Audio",
             ".ape" => "Monkey's Audio",
             ".wv" => "WavPack",
+            ".dsf" => "DSD (DSF)",
+            ".dff" => "DSD (DFF)",
             _ => ext.TrimStart('.').ToUpperInvariant()
         };
     }
