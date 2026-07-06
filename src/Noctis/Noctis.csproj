@@ -2,7 +2,12 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- Windows builds target the Windows TFM so WinRT projections are available
+         (SMTC media overlay); macOS/Linux stay on plain net8.0. CI builds each
+         OS artifact on its own runner, so the host-OS condition is safe. -->
+    <TargetFramework Condition="!$([MSBuild]::IsOSPlatform('Windows'))">net8.0</TargetFramework>
+    <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::IsOSPlatform('Windows'))">10.0.17763.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RuntimeIdentifiers>win-x64;osx-x64;osx-arm64;linux-x64;linux-arm64</RuntimeIdentifiers>
@@ -33,12 +38,12 @@
 
   <!-- Avalonia UI -->
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.3.17" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.3.17" />
+    <PackageReference Include="Avalonia" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.18" />
     <PackageReference Include="Avalonia.Labs.Lottie" Version="11.3.1" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.17" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.17" />
-    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.17" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.18" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
   </ItemGroup>
 
@@ -54,13 +59,17 @@
 
   <!-- Audio playback via libVLC -->
   <ItemGroup>
-    <PackageReference Include="LibVLCSharp" Version="3.9.7.1" />
-    <PackageReference Include="LibVLCSharp.Avalonia" Version="3.9.7.1" />
+    <PackageReference Include="LibVLCSharp" Version="3.10.0" />
+    <PackageReference Include="LibVLCSharp.Avalonia" Version="3.10.0" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <PackageReference Include="VideoLAN.LibVLC.Mac" Version="3.0.21" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
     <!-- WASAPI output for click-free per-sample-gain volume (NOCTIS_WASAPI=1,
-         Windows-only at runtime; managed package restores on all build hosts). -->
-    <PackageReference Include="NAudio" Version="2.2.1" />
+         Windows-only at runtime; managed packages restore on all build hosts).
+         Core+Wasapi only: the NAudio meta-package drags in NAudio.WinForms,
+         whose WindowsDesktop framework reference breaks restore for the
+         non-Windows RIDs now that Windows builds use a windows TFM. -->
+    <PackageReference Include="NAudio.Core" Version="2.3.0" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.3.0" />
   </ItemGroup>
 
   <!-- Metadata reading -->
@@ -77,6 +86,8 @@
   <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <!-- Windows DPAPI: scrobbler tokens encrypted at rest in settings.json (runtime-guarded, no-op elsewhere) -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 
   <!-- YAML: Lyricsfile (word-level sync) parsing -->

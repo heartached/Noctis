@@ -27,6 +27,15 @@ internal class Program
                 Thread.CurrentThread.SetApartmentState(ApartmentState.STA);
             }
 
+            // One instance per user: launching again (e.g. pinned taskbar icon while
+            // the app sits in the tray) surfaces the running window instead of
+            // starting a second player.
+            if (!SingleInstanceGuard.TryAcquire())
+            {
+                SingleInstanceGuard.SignalFirstInstance();
+                return;
+            }
+
             // Configure DI container
             var services = new ServiceCollection();
             ConfigureServices(services);
