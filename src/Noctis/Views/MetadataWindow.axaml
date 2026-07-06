@@ -365,7 +365,7 @@
                                FontSize="13"
                                Opacity="0.5" />
 
-                    <!-- Lossless / Hi-Res Lossless badge -->
+                    <!-- Audio quality badge: Lossless / Hi-Res Lossless / codec -->
                     <StackPanel Orientation="Horizontal"
                                 Spacing="4"
                                 IsVisible="{Binding HeaderAudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
@@ -379,7 +379,7 @@
                                            FontSize="12"
                                            Opacity="0.9"
                                            Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
-                                <TextBlock Text="Lossless audio preserves more detail from the original recording."
+                                <TextBlock Text="{Binding HeaderAudioQualityDescription}"
                                            FontSize="11"
                                            TextWrapping="Wrap"
                                            Opacity="0.85"

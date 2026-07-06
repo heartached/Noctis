@@ -234,6 +234,11 @@ public class MetadataViewModelTests
         public List<string> WrittenArtPaths { get; } = new();
 
         public Track? ReadTrackMetadata(string filePath) => null;
+        public Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt)
+        {
+            embeddedArt = null;
+            return null;
+        }
         public byte[]? ExtractAlbumArt(string filePath) => null;
         public bool WriteTrackMetadata(Track track) => true;
         public bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null) => true;
@@ -267,7 +272,8 @@ public class MetadataViewModelTests
         public event EventHandler? FavoritesChanged { add { } remove { } }
 
         public Task ScanAsync(IEnumerable<string> folders, CancellationToken ct = default) => Task.CompletedTask;
-        public Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default) => Task.CompletedTask;
+        public Task PauseActiveScanForShutdownAsync(TimeSpan timeout) => Task.CompletedTask;
+        public Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null) => Task.CompletedTask;
         public Track? GetTrackById(Guid id) => null;
         public Album? GetAlbumById(Guid id) => null;
         public IReadOnlyList<Album> GetAlbumsByArtist(string artistName) => Array.Empty<Album>();

@@ -48,35 +48,27 @@ public class Album
             ? $"{(int)TotalDuration.TotalHours}h {TotalDuration.Minutes}m"
             : $"{(int)TotalDuration.TotalMinutes} min";
 
-    /// <summary>Audio quality badge for the album, determined from its tracks.
-    /// Uses the first representative track's detailed badge (e.g. "Lossless 16-bit/44.1kHz FLAC").</summary>
-    public string AudioQualityBadge
-    {
-        get
-        {
-            if (Tracks == null || Tracks.Count == 0) return string.Empty;
-            Track? hiResTrack = null;
-            Track? losslessTrack = null;
-            foreach (var track in Tracks)
-            {
-                if (track.IsHiResLossless) { hiResTrack ??= track; }
-                else if (track.IsLossless) { losslessTrack ??= track; }
-            }
-            if (hiResTrack != null) return hiResTrack.AudioQualityBadge;
-            if (losslessTrack != null) return losslessTrack.AudioQualityBadge;
-            return string.Empty;
-        }
-    }
+    /// <summary>Audio quality badge for the album, determined from its tracks:
+    /// "Lossless"/"Hi-Res Lossless", or the best lossy track's codec (e.g. "AAC").</summary>
+    public string AudioQualityBadge =>
+        GetRepresentativeQualityTrack()?.AudioQualityBadge ?? string.Empty;
 
-    /// <summary>Detailed audio quality info for tooltip (e.g. "16-bit/44.1 kHz FLAC").</summary>
+    /// <summary>Tooltip sentence explaining the badge kind; empty when no badge.</summary>
+    public string AudioQualityDescription =>
+        GetRepresentativeQualityTrack()?.AudioQualityDescription ?? string.Empty;
+
+    /// <summary>Detailed audio quality info for tooltip (e.g. "16-bit/44.1 kHz FLAC"
+    /// or "256 kbps 44.1 kHz AAC" for lossy albums).</summary>
     public string AudioQualityDetailedInfo
     {
         get
         {
-            var track = GetRepresentativeLosslessTrack();
+            var track = GetRepresentativeQualityTrack();
             if (track == null) return string.Empty;
 
             var parts = new List<string>();
+            if (!track.IsLossless && track.Bitrate > 0)
+                parts.Add($"{track.Bitrate} kbps");
             if (track.BitsPerSample > 0 && track.SampleRate > 0)
                 parts.Add($"{track.BitsPerSample}-bit/{track.SampleRate / 1000.0:0.###} kHz");
             else if (track.BitsPerSample > 0)
@@ -92,18 +84,25 @@ public class Album
         }
     }
 
-    /// <summary>Gets the representative lossless track for quality display (prefers Hi-Res).</summary>
-    private Track? GetRepresentativeLosslessTrack()
+    /// <summary>Gets the representative track for quality display:
+    /// Hi-Res Lossless > Lossless > best (highest-bitrate) badged lossy track.</summary>
+    private Track? GetRepresentativeQualityTrack()
     {
         if (Tracks == null || Tracks.Count == 0) return null;
         Track? hiResTrack = null;
         Track? losslessTrack = null;
+        Track? lossyTrack = null;
         foreach (var track in Tracks)
         {
             if (track.IsHiResLossless) { hiResTrack ??= track; }
             else if (track.IsLossless) { losslessTrack ??= track; }
+            else if (track.CodecShortName.Length > 0 &&
+                     (lossyTrack == null || track.Bitrate > lossyTrack.Bitrate))
+            {
+                lossyTrack = track;
+            }
         }
-        return hiResTrack ?? losslessTrack;
+        return hiResTrack ?? losslessTrack ?? lossyTrack;
     }
 
     /// <summary>

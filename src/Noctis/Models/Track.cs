@@ -84,6 +84,12 @@ public partial class Track : ObservableObject
     [property: System.Text.Json.Serialization.JsonIgnore]
     private bool _isNowPlaying;
 
+    /// <summary>Transient 1-based position within the list view currently displaying this track
+    /// (set by the Folders pane). Drives the leading row-number column. Not persisted.</summary>
+    [ObservableProperty]
+    [property: System.Text.Json.Serialization.JsonIgnore]
+    private int _rowNumber;
+
     // ── Extended metadata ──
 
     /// <summary>Composer(s) of the track.</summary>
@@ -353,18 +359,35 @@ public partial class Track : ObservableObject
         BitsPerSample >= 24 &&
         SampleRate > 48000;
 
-    /// <summary>Audio quality badge text: "Lossless" or "Hi-Res Lossless".</summary>
+    /// <summary>Audio quality badge text: "Lossless", "Hi-Res Lossless",
+    /// or the short codec name for lossy formats (e.g. "AAC", "MP3").</summary>
     public string AudioQualityBadge
     {
         get
         {
             if (IsHiResLossless) return "Hi-Res Lossless";
             if (IsLossless) return "Lossless";
+            return CodecShortName;
+        }
+    }
+
+    /// <summary>Tooltip sentence explaining the badge kind; empty when no badge.</summary>
+    public string AudioQualityDescription
+    {
+        get
+        {
+            if (IsLossless) return LosslessDescription;
+            if (CodecShortName.Length > 0) return LossyDescription;
             return string.Empty;
         }
     }
 
-    /// <summary>Short codec label for badge display (e.g. "FLAC", "ALAC", "WAV").</summary>
+    public const string LosslessDescription =
+        "Lossless audio preserves more detail from the original recording.";
+    public const string LossyDescription =
+        "Compressed audio that balances sound quality with smaller file size.";
+
+    /// <summary>Short codec label for badge display (e.g. "FLAC", "ALAC", "AAC", "MP3").</summary>
     public string CodecShortName
     {
         get
@@ -376,18 +399,30 @@ public partial class Track : ObservableObject
             if (c.Contains("wavpack")) return "WV";
             if (c.Contains("monkey")) return "APE";
             if (c.Contains("pcm") || c.Contains("wav")) return "WAV";
+            if (c.Contains("layer 3") || c.Contains("mp3")) return "MP3";
+            if (c.Contains("aac") || c.Contains("mp4a")) return "AAC";
+            if (c.Contains("opus")) return "OPUS";
+            if (c.Contains("vorbis")) return "OGG";
+            if (c.Contains("wma") || c.Contains("windows media")) return "WMA";
 
-            // Fallback to file extension (only called when IsLossless)
+            // Fallback to file extension when the codec string matched nothing
             var ext = Path.GetExtension(FilePath).ToLowerInvariant();
             return ext switch
             {
                 ".flac" => "FLAC",
-                ".m4a" or ".mp4" => "ALAC",
+                // M4A/MP4 containers default to lossy AAC; only a codec string
+                // identifying lossless content means ALAC (mirrors IsLossless).
+                ".m4a" or ".mp4" => c.Contains("lossless") ? "ALAC" : "AAC",
                 ".wav" => "WAV",
                 ".aiff" or ".aif" or ".aifc" => "AIFF",
                 ".ape" => "APE",
                 ".wv" => "WV",
                 ".alac" => "ALAC",
+                ".mp3" => "MP3",
+                ".aac" => "AAC",
+                ".opus" => "OPUS",
+                ".ogg" or ".oga" => "OGG",
+                ".wma" => "WMA",
                 _ => ""
             };
         }
@@ -399,6 +434,8 @@ public partial class Track : ObservableObject
     private string FormatQualityDetail()
     {
         var sb = new System.Text.StringBuilder();
+        if (!IsLossless && Bitrate > 0)
+            sb.Append($" {Bitrate} kbps");
         if (BitsPerSample > 0 && SampleRate > 0)
             sb.Append($" {BitsPerSample}-bit/{SampleRate / 1000.0:0.#}kHz");
         else if (BitsPerSample > 0)
