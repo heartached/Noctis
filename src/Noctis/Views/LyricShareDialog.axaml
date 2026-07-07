@@ -231,8 +231,12 @@
                                 Cursor="Hand"
                                 Command="{Binding SetAutoSolidCommand}"
                                 ToolTip.Tip="Auto — from artwork">
-                            <Panel Width="22" Height="22">
-                                <Border CornerRadius="11"
+                            <!-- 26px wrapper leaves slack around the 22px chip so the app-wide
+                                 Button hover zoom (scale 1.045) never pushes the circle past the
+                                 presenter bounds — that clip flattened the chip's sides. -->
+                            <Panel Width="26" Height="26">
+                                <Border Width="22" Height="22" CornerRadius="11"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                         Background="{Binding AutoSwatchBrush}"
                                         BorderBrush="#55FFFFFF" BorderThickness="1"/>
                                 <TextBlock Text="A" FontSize="11" FontWeight="Bold" Foreground="White"
@@ -253,7 +257,8 @@
                                           VerticalAlignment="Center">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="6"/>
+                                        <!-- 2 + the wrappers' 2px slack per side = the old 6px visual gap. -->
+                                        <StackPanel Orientation="Horizontal" Spacing="2"/>
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
@@ -264,9 +269,13 @@
                                                 Command="{Binding $parent[ItemsControl].((vm:LyricShareViewModel)DataContext).SetSolidColorCommand}"
                                                 CommandParameter="{Binding Hex}"
                                                 ToolTip.Tip="{Binding Name}">
-                                            <Border Width="22" Height="22" CornerRadius="11"
-                                                    Background="{Binding Preview}"
-                                                    BorderBrush="#55FFFFFF" BorderThickness="1"/>
+                                            <!-- Same 26px slack as the Auto chip (hover-zoom clip fix). -->
+                                            <Panel Width="26" Height="26">
+                                                <Border Width="22" Height="22" CornerRadius="11"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        Background="{Binding Preview}"
+                                                        BorderBrush="#55FFFFFF" BorderThickness="1"/>
+                                            </Panel>
                                         </Button>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

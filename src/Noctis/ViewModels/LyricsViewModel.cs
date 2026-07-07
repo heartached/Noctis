@@ -1492,6 +1492,21 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        // A new track was picked, but TrackStarted (which reloads lyrics) only fires
+        // once playback actually starts — until then the PREVIOUS track's no-lyrics
+        // state kept the "Search Lyrics" button visible for a beat while the rest of
+        // the page already showed the new track. Hide it the moment the track changes;
+        // the full lyric load still lands via OnTrackStarted.
+        if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack) &&
+            _player.CurrentTrack is { } incomingTrack &&
+            !ReferenceEquals(incomingTrack, _currentTrack) &&
+            (ShowSearchButton || IsSearching))
+        {
+            ShowSearchButton = false;
+            IsSearching = false;
+            SearchFailedMessage = string.Empty;
+        }
+
         // Manage the sync timer based on playback state changes.
         // Only run the timer when synced tab is active.
         if (e.PropertyName == nameof(PlayerViewModel.State))
