@@ -2101,6 +2101,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             shareable.Select(l => l.Text).ToList(),
             shareable.Select(l => l.Timestamp).ToList(),
             _player,
+            shareable.Select(l => l.Words).ToList(),
+            shareable.Select(l => l.EndTimestamp).ToList(),
             preselect);
         await Views.LyricShareDialog.ShowAsync(vm);
     }
