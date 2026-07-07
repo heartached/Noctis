@@ -100,6 +100,44 @@ public static class ShareCardRenderer
         int h = spec.Format == ShareCardFormat.Story ? 1920 : 1080;
 
         using var art = LoadArtwork(spec.ArtworkPath);
+        using var surface = SKSurface.Create(new SKImageInfo(w, h));
+        var canvas = surface.Canvas;
+
+        using var boldFace = ResolveTypeface(SKFontStyleWeight.Bold);
+        using var regularFace = ResolveTypeface(SKFontStyleWeight.Normal);
+        using var lyricFace = ResolveTypeface(
+            spec.LyricWeight == LyricCardWeight.Bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.SemiBold);
+
+        var chrome = DrawCardBase(canvas, spec, w, h, art, boldFace, regularFace, lyricFace);
+
+        using var lyricPaint = TextPaint(lyricFace, chrome.LyricSize, chrome.Fg);
+        float baseline = chrome.FirstBaseline;
+        foreach (var (line, _) in chrome.Wrapped)
+        {
+            canvas.DrawText(line, chrome.LyricX, baseline, lyricPaint);
+            baseline += chrome.LineHeight;
+        }
+
+        using var image = surface.Snapshot();
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        return data.ToArray();
+    }
+
+    /// <summary>Geometry the lyric block was laid out with, so per-frame redraws land
+    /// on exactly the same pixels as the still card.</summary>
+    private sealed record CardChrome(
+        SKColor Fg, float LyricX, float FirstBaseline,
+        List<(string Text, int Line)> Wrapped, float LyricSize, float LineHeight);
+
+    /// <summary>
+    /// Draws the full card EXCEPT the lyric rows (background, frosted/solid box, header,
+    /// wordmark) and returns the lyric-block geometry. Shared by the still card and the
+    /// karaoke frame loop so the two always agree pixel-for-pixel.
+    /// </summary>
+    private static CardChrome DrawCardBase(
+        SKCanvas canvas, LyricCardSpec spec, int w, int h, SKBitmap? art,
+        SKTypeface boldFace, SKTypeface regularFace, SKTypeface lyricFace)
+    {
         bool artworkBlur = spec.Background == ShareBackground.Artwork && art != null;
 
         // Solid color: an explicit swatch hex if given, else a vibrant color derived from
@@ -108,14 +146,6 @@ public static class ShareCardRenderer
                          && SKColor.TryParse(spec.SolidColorHex, out var parsed)
             ? parsed
             : DeriveVibrantColor(art);
-
-        using var surface = SKSurface.Create(new SKImageInfo(w, h));
-        var canvas = surface.Canvas;
-
-        using var boldFace = ResolveTypeface(SKFontStyleWeight.Bold);
-        using var regularFace = ResolveTypeface(SKFontStyleWeight.Normal);
-        using var lyricFace = ResolveTypeface(
-            spec.LyricWeight == LyricCardWeight.Bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.SemiBold);
 
         SKColor fg, fgSubtle, badgeLetter;
         SKRect contentRect;
@@ -188,31 +218,13 @@ public static class ShareCardRenderer
             contentRect = new SKRect(margin + pad, boxTop + pad, w - margin - pad, boxTop + boxH - pad);
         }
 
-        DrawCardContent(canvas, spec, contentRect, fg, fgSubtle, badgeLetter, art,
-                        boldFace, regularFace, lyricFace);
-
-        using var image = surface.Snapshot();
-        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-        return data.ToArray();
-    }
-
-    /// <summary>
-    /// Lays out a card's content inside <paramref name="rect"/>: header (thumbnail +
-    /// title/artist) anchored to the top, wordmark to the bottom, and the auto-fit lyric
-    /// block vertically centered in the space between them.
-    /// </summary>
-    private static void DrawCardContent(
-        SKCanvas canvas, LyricCardSpec spec, SKRect rect,
-        SKColor fg, SKColor fgSubtle, SKColor badgeLetter, SKBitmap? art,
-        SKTypeface boldFace, SKTypeface regularFace, SKTypeface lyricFace)
-    {
-        float x = rect.Left;
-        float contentW = rect.Width;
+        float x = contentRect.Left;
+        float contentW = contentRect.Width;
 
         // ── Header: album thumbnail + title/artist ──────────────────────
         const float artGap = 30f;
         float artSize = HeaderArtSize;
-        var artRect = new SKRect(x, rect.Top, x + artSize, rect.Top + artSize);
+        var artRect = new SKRect(x, contentRect.Top, x + artSize, contentRect.Top + artSize);
         if (art != null)
         {
             using var artPaint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
@@ -242,7 +254,7 @@ public static class ShareCardRenderer
         using var artistPaint = TextPaint(regularFace, 31, fgSubtle);
         float textX = x + artSize + artGap;
         float textMaxW = contentW - artSize - artGap;
-        float titleBaseline = rect.Top + 49;
+        float titleBaseline = contentRect.Top + 49;
         float badgeReserve = spec.IsExplicit ? titlePaint.TextSize * 0.72f + 14 : 0;
         var titleText = Ellipsize(SanitizeForRender(spec.Title), textMaxW - badgeReserve, s => titlePaint.MeasureText(s));
         canvas.DrawText(titleText, textX, titleBaseline, titlePaint);
@@ -253,28 +265,179 @@ public static class ShareCardRenderer
                 badgeX, titleBaseline - titlePaint.TextSize * 0.34f, titlePaint.TextSize);
         }
         canvas.DrawText(Ellipsize(SanitizeForRender(spec.Artist), textMaxW, s => artistPaint.MeasureText(s)),
-            textX, rect.Top + 49 + 38, artistPaint);
+            textX, contentRect.Top + 49 + 38, artistPaint);
 
-        float headerBottom = rect.Top + artSize;
+        float headerBottom = contentRect.Top + artSize;
 
         // ── Footer wordmark, pinned to the bottom of the content rect ───
-        float footerTop = rect.Bottom - FooterHeight;
+        float footerTop = contentRect.Bottom - FooterHeight;
         DrawWordmark(canvas, boldFace, fg, x, footerTop);
 
-        // ── Lyrics: auto-fit, then vertically center between header & footer ──
+        // ── Lyric geometry: auto-fit, then vertically center between header & footer ──
         float lyTop = headerBottom + LyricGapTop;
         float lyBottom = footerTop - LyricGapBottom;
         float avail = Math.Max(0f, lyBottom - lyTop);
 
         var (wrapped, lyricSize, lineHeight) = FitLyrics(spec, contentW, avail, lyricFace);
-        using var lyricPaint = TextPaint(lyricFace, lyricSize, fg);
-
         float blockH = wrapped.Count * lineHeight;
-        float baseline = lyTop + Math.Max(0f, (avail - blockH) / 2f) + lyricSize * 0.80f;
-        foreach (var line in wrapped)
+        float firstBaseline = lyTop + Math.Max(0f, (avail - blockH) / 2f) + lyricSize * 0.80f;
+        return new CardChrome(fg, x, firstBaseline, wrapped, lyricSize, lineHeight);
+    }
+
+    /// <summary>Alpha of unsung lyric text on karaoke frames (the dim base layer).</summary>
+    private const byte KaraokeDimAlpha = 0x5F;
+    /// <summary>Sweep feather, as a fraction of the current word's width — mirrors
+    /// <c>ProgressToSweepForegroundConverter.Feather</c> on the lyrics page.</summary>
+    private const float KaraokeFeather = 0.06f;
+
+    /// <summary>
+    /// Renders the karaoke frame sequence for a clip: the same card as
+    /// <see cref="RenderLyricCardStyled"/>, chrome drawn once, then per frame the lyric
+    /// block repainted with the word sweep at that frame's absolute track time
+    /// (timing.StartSeconds + frame/fps). Frames are written as frame-00000.png… into
+    /// <paramref name="frameDir"/>; <paramref name="karaoke"/> is parallel to
+    /// <see cref="LyricCardSpec.Lines"/>. Lines whose rendered rows can't be mapped back
+    /// to their word tokens degrade to a whole-line highlight. CPU-only — call off the
+    /// UI thread.
+    /// </summary>
+    public static void RenderKaraokeFrames(
+        LyricCardSpec spec, IReadOnlyList<KaraokeLine> karaoke, ShareClipTiming timing,
+        int fps, string frameDir, Action<int, int>? progress = null, CancellationToken ct = default)
+    {
+        int w = CanvasWidth;
+        int h = spec.Format == ShareCardFormat.Story ? 1920 : 1080;
+
+        using var art = LoadArtwork(spec.ArtworkPath);
+        using var surface = SKSurface.Create(new SKImageInfo(w, h));
+        var canvas = surface.Canvas;
+
+        using var boldFace = ResolveTypeface(SKFontStyleWeight.Bold);
+        using var regularFace = ResolveTypeface(SKFontStyleWeight.Normal);
+        using var lyricFace = ResolveTypeface(
+            spec.LyricWeight == LyricCardWeight.Bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.SemiBold);
+
+        var chrome = DrawCardBase(canvas, spec, w, h, art, boldFace, regularFace, lyricFace);
+        using var baseImage = surface.Snapshot();   // chrome only, no lyric rows
+
+        // Row → word-token ranges, resolved once (null = degrade that line to line highlight).
+        var rowRanges = MapKaraokeRows(chrome.Wrapped, karaoke);
+
+        using var dimPaint = TextPaint(lyricFace, chrome.LyricSize, chrome.Fg.WithAlpha(KaraokeDimAlpha));
+        using var brightPaint = TextPaint(lyricFace, chrome.LyricSize, chrome.Fg);
+
+        int total = Math.Max(1, (int)Math.Ceiling(fps * timing.DurationSeconds));
+        for (int frame = 0; frame < total; frame++)
         {
-            canvas.DrawText(line, x, baseline, lyricPaint);
-            baseline += lineHeight;
+            ct.ThrowIfCancellationRequested();
+            double t = timing.StartSeconds + (double)frame / fps;
+
+            canvas.DrawImage(baseImage, 0, 0);
+            DrawKaraokeRows(canvas, chrome, karaoke, rowRanges, brightPaint, dimPaint, t);
+
+            using var img = surface.Snapshot();
+            using var data = img.Encode(SKEncodedImageFormat.Png, 90);
+            using var fs = File.Create(Path.Combine(frameDir, $"frame-{frame:D5}.png"));
+            data.SaveTo(fs);
+
+            if (frame % 12 == 0 || frame == total - 1)
+                progress?.Invoke(frame + 1, total);
+        }
+    }
+
+    /// <summary>Resolves each wrapped row's token range in its source line's word list;
+    /// a line whose rows don't cleanly re-assemble its tokens maps to null.</summary>
+    private static (int Start, int Count)?[] MapKaraokeRows(
+        List<(string Text, int Line)> wrapped, IReadOnlyList<KaraokeLine> karaoke)
+    {
+        var result = new (int Start, int Count)?[wrapped.Count];
+        foreach (var group in Enumerable.Range(0, wrapped.Count).GroupBy(i => wrapped[i].Line))
+        {
+            int line = group.Key;
+            var words = line < karaoke.Count ? karaoke[line].Words : null;
+            if (words == null || words.Count == 0)
+                continue;
+            var rowIdx = group.ToList();
+            var rows = rowIdx.Select(i => wrapped[i].Text).ToList();
+            var ranges = KaraokeSweep.MapRowsToTokenRanges(words.Select(kw => kw.Token).ToList(), rows);
+            if (ranges == null)
+                continue;
+            for (int r = 0; r < rowIdx.Count; r++)
+                result[rowIdx[r]] = ranges[r];
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Paints the lyric block at time <paramref name="t"/>: every row dim, then the sung
+    /// part bright — per-word sweep with a feathered leading edge when the row has word
+    /// mapping, whole-row highlight (lit once the line has started) otherwise. Painted as
+    /// overlaid foreground text, never OpacityMask (see ProgressToSweepForegroundConverter:
+    /// mask layers clipped/boxed the glow on the lyrics page).
+    /// </summary>
+    private static void DrawKaraokeRows(
+        SKCanvas canvas, CardChrome chrome, IReadOnlyList<KaraokeLine> karaoke,
+        (int Start, int Count)?[] rowRanges, SKPaint brightPaint, SKPaint dimPaint, double t)
+    {
+        float baseline = chrome.FirstBaseline;
+        for (int r = 0; r < chrome.Wrapped.Count; r++, baseline += chrome.LineHeight)
+        {
+            var (text, lineIdx) = chrome.Wrapped[r];
+            var line = lineIdx < karaoke.Count ? karaoke[lineIdx] : null;
+
+            canvas.DrawText(text, chrome.LyricX, baseline, dimPaint);
+
+            if (rowRanges[r] is not { } range || line?.Words is not { } words)
+            {
+                // Line-level highlight: lit once the line has started (always lit if unsynced).
+                bool lit = line == null || line.StartSeconds is not { } start || t >= start;
+                if (lit)
+                    canvas.DrawText(text, chrome.LyricX, baseline, brightPaint);
+                continue;
+            }
+
+            // Word sweep: bright width = fully-sung tokens + fraction of the current one.
+            var tokens = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            float brightW = brightPaint.MeasureText(text);   // default: every word sung
+            float featherW = 0f;
+            for (int k = 0; k < tokens.Length; k++)
+            {
+                var word = words[range.Start + k];
+                double p = KaraokeSweep.WordProgress(word.StartSeconds, word.EndSeconds, t);
+                if (p >= 1)
+                    continue;
+                float wordW = brightPaint.MeasureText(tokens[k]);
+                float prefixW = k > 0
+                    ? brightPaint.MeasureText(string.Join(' ', tokens.Take(k)) + " ")
+                    : 0f;
+                brightW = prefixW + (float)p * wordW;
+                // Feather shrinks toward the word's edges, like the lyrics-page converter.
+                featherW = (float)Math.Min(KaraokeFeather * wordW, Math.Min(p, 1 - p) * wordW);
+                break;
+            }
+
+            if (brightW <= 0f)
+                continue;
+            if (featherW <= 0.5f)
+            {
+                // Hard edge (word boundary): clip-rect reveal.
+                canvas.Save();
+                canvas.ClipRect(new SKRect(chrome.LyricX, baseline - chrome.LyricSize * 1.1f,
+                                           chrome.LyricX + brightW, baseline + chrome.LyricSize * 0.45f));
+                canvas.DrawText(text, chrome.LyricX, baseline, brightPaint);
+                canvas.Restore();
+            }
+            else
+            {
+                // Feathered edge mid-word: foreground gradient bright→transparent, same RGB.
+                using var shader = SKShader.CreateLinearGradient(
+                    new SKPoint(chrome.LyricX + brightW - featherW, 0),
+                    new SKPoint(chrome.LyricX + brightW + featherW, 0),
+                    new[] { brightPaint.Color, brightPaint.Color.WithAlpha(0) },
+                    null, SKShaderTileMode.Clamp);
+                using var sweep = TextPaint(brightPaint.Typeface!, chrome.LyricSize, brightPaint.Color);
+                sweep.Shader = shader;
+                canvas.DrawText(text, chrome.LyricX, baseline, sweep);
+            }
         }
     }
 
@@ -283,13 +446,13 @@ public static class ShareCardRenderer
     /// block fits <paramref name="maxLyricsH"/>; returns the wrapped lines, chosen size and
     /// line height. Shared by the box-sizing and draw passes so the two always agree.
     /// </summary>
-    private static (List<string> wrapped, float lyricSize, float lineHeight) FitLyrics(
+    private static (List<(string Text, int Line)> wrapped, float lyricSize, float lineHeight) FitLyrics(
         LyricCardSpec spec, float contentW, float maxLyricsH, SKTypeface lyricFace)
     {
         var renderLines = spec.Lines.Select(SanitizeForRender).ToList();
         float lyricSize = spec.Format == ShareCardFormat.Story ? 78f : 66f;
         using var lyricPaint = TextPaint(lyricFace, lyricSize, SKColors.White);
-        List<string> wrapped;
+        List<(string Text, int Line)> wrapped;
         float lineHeight;
         while (true)
         {
@@ -716,11 +879,12 @@ public static class ShareCardRenderer
         return "…";
     }
 
-    private static List<string> WrapAll(IReadOnlyList<string> lines, float maxWidth, Func<string, float> measure)
+    private static List<(string Text, int Line)> WrapAll(IReadOnlyList<string> lines, float maxWidth, Func<string, float> measure)
     {
-        var result = new List<string>();
-        foreach (var line in lines)
-            result.AddRange(WrapText(line, maxWidth, measure));
+        var result = new List<(string Text, int Line)>();
+        for (int i = 0; i < lines.Count; i++)
+            foreach (var row in WrapText(lines[i], maxWidth, measure))
+                result.Add((row, i));
         return result;
     }
 
