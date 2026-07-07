@@ -746,16 +746,6 @@
                                         <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <!-- Lyrics side-panel toggle. Its toolbar icon was removed to
-                                     slim the bar, so it lives in this menu now (everywhere but
-                                     the lyrics full view). -->
-                                <MenuItem Header="Lyrics Panel"
-                                          Click="OnLyricsPanelButtonClick"
-                                          IsVisible="{Binding !IsLyricsPageActive}">
-                                    <MenuItem.Icon>
-                                        <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" RenderOptions.BitmapInterpolationMode="HighQuality"><Border.OpacityMask><ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20Panel%20ICON.png" Stretch="Uniform" /></Border.OpacityMask></Border>
-                                    </MenuItem.Icon>
-                                </MenuItem>
                                 <MenuItem Header="Remove Lyrics" Classes="danger"
                                           Command="{Binding RemoveCurrentTrackLyricsCommand}"
                                           IsVisible="{Binding IsLyricsPageActive}">

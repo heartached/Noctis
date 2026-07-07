@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -27,14 +28,16 @@ namespace Noctis.Helpers;
 /// </summary>
 public static class AutoScrollBehavior
 {
-    // Pointer can sit within this many px of the anchor without scrolling — gives a neutral zone.
-    private const double DeadZone = 12;
-    // Scroll speed accelerates non-linearly with distance from the anchor (like a browser's
-    // autoscroll): near the icon it crawls, far away it races. step = (dist^Exponent) * Factor,
-    // capped at MaxStepPerFrame.
-    private const double SpeedFactor = 0.02;
-    private const double SpeedExponent = 1.5;
-    private const double MaxStepPerFrame = 46;
+    // Pointer can sit within this many px of the anchor without scrolling — matches the
+    // indicator's radius so scrolling starts right at its edge.
+    private const double DeadZone = 13;
+    // Browser-style velocity curve in px/second, integrated against real elapsed time each
+    // tick so speed stays accurate even when UI-thread ticks run late. A linear term gives
+    // fine control near the anchor; a quadratic term takes over at range:
+    // speed = dist * LinearGain + dist² * QuadraticGain, capped at MaxSpeed.
+    private const double LinearGain = 6.0;
+    private const double QuadraticGain = 0.09;
+    private const double MaxSpeed = 6000;
     private const double IndicatorSize = 26;
 
     public static readonly AttachedProperty<bool> IsEnabledProperty =
@@ -52,6 +55,7 @@ public static class AutoScrollBehavior
     private static Point _anchor;
     private static double _pointerY;
     private static Cursor? _savedCursor;
+    private static long _lastTickTimestamp;
 
     static AutoScrollBehavior()
     {
@@ -138,6 +142,7 @@ public static class AutoScrollBehavior
         _savedCursor = scrollViewer.Cursor;
         scrollViewer.Cursor = new Cursor(StandardCursorType.SizeNorthSouth);
 
+        _lastTickTimestamp = Stopwatch.GetTimestamp();
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         _timer.Tick += OnTick;
         _timer.Start();
@@ -196,13 +201,19 @@ public static class AutoScrollBehavior
             return;
         }
 
+        // Real elapsed time since the previous tick (DispatcherTimer isn't metronome-exact),
+        // clamped so a stalled UI thread can't produce one giant jump.
+        var now = Stopwatch.GetTimestamp();
+        var dt = Math.Min((now - _lastTickTimestamp) / (double)Stopwatch.Frequency, 0.1);
+        _lastTickTimestamp = now;
+
         var delta = _pointerY - _anchor.Y;
         var magnitude = Math.Abs(delta) - DeadZone;
         if (magnitude <= 0)
             return;
 
-        // Accelerating curve: the farther the pointer sits from the anchor, the faster it scrolls.
-        var step = Math.Min(MaxStepPerFrame, Math.Pow(magnitude, SpeedExponent) * SpeedFactor) * Math.Sign(delta);
+        var speed = Math.Min(MaxSpeed, magnitude * (LinearGain + magnitude * QuadraticGain));
+        var step = speed * dt * Math.Sign(delta);
         var maxY = Math.Max(0, sv.Extent.Height - sv.Viewport.Height);
         var nextY = Math.Clamp(sv.Offset.Y + step, 0, maxY);
         if (Math.Abs(nextY - sv.Offset.Y) > 0.01)

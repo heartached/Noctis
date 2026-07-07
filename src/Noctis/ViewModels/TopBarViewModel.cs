@@ -56,12 +56,6 @@ public partial class TopBarViewModel : ViewModelBase
         || HasArtistActions
         || HasFavoritesActions;
 
-    // Compact "Back" pill shown after the page title on the Statistics page when it
-    // was opened from Settings → "View All Stats". Distinct from the generic back
-    // button so the page title ("Statistics") stays visible in front of it.
-    [ObservableProperty] private bool _isStatsBackVisible;
-    [ObservableProperty] private ICommand? _statsBackCommand;
-
     public void ShowBackButton(string text, ICommand command, string? contextTitle = null)
     {
         var displayText = string.IsNullOrWhiteSpace(text) ? "Back" : text;
