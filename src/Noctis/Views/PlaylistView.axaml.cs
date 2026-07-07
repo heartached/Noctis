@@ -92,6 +92,14 @@ public partial class PlaylistView : UserControl
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && _selectedTracks.Count > 0)
+        {
+            MultiSelectHelper.ClearTrackSelectionsByData(_selectedTracks, TrackList);
+            if (DataContext is PlaylistViewModel selVm) selVm.CtrlSelectedTracks = new List<Track>();
+            e.Handled = true;
+            return;
+        }
+
         if (DataContext is PlaylistViewModel vm && vm.IsDescriptionOpen)
             return;
         MultiSelectHelper.HandleTrackSelectAllByData(e, TrackList, _selectedTracks);

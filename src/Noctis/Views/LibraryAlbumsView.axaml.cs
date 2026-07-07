@@ -18,7 +18,10 @@ public partial class LibraryAlbumsView : UserControl
 {
     private LibraryAlbumsViewModel? _vm;
     private EventHandler? _pendingScrollRestore;
-    private readonly HashSet<Button> _selectedTiles = new();
+    // Track selection by the Album itself (not the tile Button) so that row
+    // virtualization recycling the tile Buttons on scroll doesn't drop the
+    // ctrl-selected highlight. See MultiSelectHelper's "Data-tracked album-tile variants".
+    private readonly HashSet<Album> _selectedAlbums = new();
 
     public LibraryAlbumsView()
     {
@@ -36,17 +39,40 @@ public partial class LibraryAlbumsView : UserControl
         while (source != null && !(source is Button b && b.Classes.Contains("album-tile")))
             source = source.Parent as Control;
         if (source is not Button tile) return;
+        if (tile.DataContext is not Album album) return;
 
-        MultiSelectHelper.HandleAlbumTileClick(tile, e, _selectedTiles);
+        if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, album, e, _selectedAlbums)
+            && !e.KeyModifiers.HasFlag(KeyModifiers.Control)
+            && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+        {
+            // Plain left-click clears any existing selection (mirrors prior behavior).
+            MultiSelectHelper.ClearAlbumSelectionsByData(_selectedAlbums, CollectAlbumTiles());
+        }
 
         // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
-        if (_selectedTiles.Count > 0)
+        if (_selectedAlbums.Count > 0)
             Focus();
+    }
+
+    /// <summary>Re-apply the ctrl-selected visual as tiles are (re)realized on scroll.</summary>
+    private void OnAlbumTileLoaded(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button tile)
+            MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums);
     }
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
-        MultiSelectHelper.HandleAlbumSelectAll(e, CollectAlbumTiles(), _selectedTiles);
+        if (e.Key == Key.Escape && _selectedAlbums.Count > 0)
+        {
+            MultiSelectHelper.ClearAlbumSelectionsByData(_selectedAlbums, CollectAlbumTiles());
+            if (DataContext is LibraryAlbumsViewModel vm) vm.CtrlSelectedAlbums = new List<Album>();
+            e.Handled = true;
+            return;
+        }
+
+        var allAlbums = _vm?.FilteredAlbumRows.SelectMany(r => r.Albums) ?? Enumerable.Empty<Album>();
+        MultiSelectHelper.HandleAlbumSelectAllByData(e, allAlbums, CollectAlbumTiles(), _selectedAlbums);
     }
 
     private List<Button> CollectAlbumTiles()
@@ -63,8 +89,7 @@ public partial class LibraryAlbumsView : UserControl
     /// <summary>Returns the list of ctrl-selected albums, or a single-item list with the given album if none are selected.</summary>
     private List<Album> GetSelectedAlbumsOr(Album? fallback)
     {
-        var selected = MultiSelectHelper.GetSelectedData<Album>(_selectedTiles);
-        if (selected.Count > 0) return selected;
+        if (_selectedAlbums.Count > 0) return _selectedAlbums.ToList();
         if (fallback != null) return new List<Album> { fallback };
         return new List<Album>();
     }
@@ -78,7 +103,7 @@ public partial class LibraryAlbumsView : UserControl
         if (DataContext is not LibraryAlbumsViewModel vm) return;
 
         // Push ctrl-selected albums to ViewModel so commands can operate on all of them
-        vm.CtrlSelectedAlbums = MultiSelectHelper.GetSelectedData<Album>(_selectedTiles);
+        vm.CtrlSelectedAlbums = _selectedAlbums.ToList();
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -153,7 +178,7 @@ public partial class LibraryAlbumsView : UserControl
             _vm.FilteredAlbumRows.CollectionChanged -= OnFilteredRowsChanged;
 
         // Reset multi-selection so it doesn't leak back when the view is revisited.
-        MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
+        MultiSelectHelper.ClearAlbumSelectionsByData(_selectedAlbums, CollectAlbumTiles());
         if (DataContext is LibraryAlbumsViewModel selVm) selVm.CtrlSelectedAlbums = new List<Album>();
 
         base.OnDetachedFromVisualTree(e);

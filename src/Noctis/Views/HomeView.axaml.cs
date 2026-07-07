@@ -42,6 +42,14 @@ public partial class HomeView : UserControl
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && _selectedTiles.Count > 0)
+        {
+            MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
+            if (DataContext is HomeViewModel vm) vm.CtrlSelectedAlbums = new List<Album>();
+            e.Handled = true;
+            return;
+        }
+
         var allTiles = new List<Button>();
         foreach (var desc in this.GetVisualDescendants())
         {

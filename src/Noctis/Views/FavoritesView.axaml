@@ -53,6 +53,7 @@
                                             VerticalAlignment="Top"
                                             helpers:DragFileBehavior.EnableFileDrag="True"
                                             Tag="{Binding}"
+                                            Loaded="OnAlbumTileLoaded"
                                             Click="OnFavoriteCardClick">
                                         <Button.ContextMenu>
                                             <ContextMenu DataContext="{Binding}"

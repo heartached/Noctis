@@ -273,4 +273,89 @@ public static class MultiSelectHelper
     {
         selectedData.Clear();
     }
+
+    /// <summary>Clear data-tracked track selections and strip the ctrl-selected
+    /// class from any realized rows in the given ListBox.</summary>
+    public static void ClearTrackSelectionsByData<T>(HashSet<T> selectedData, ListBox listBox) where T : class
+    {
+        selectedData.Clear();
+        foreach (var child in listBox.GetVisualDescendants())
+            if (child is ListBoxItem li) li.Classes.Remove(SelectedClass);
+    }
+
+    // ── Data-tracked album-tile variants ──
+    //
+    // Album grids virtualize rows (outer ListBox), so scrolling destroys/recycles
+    // the tile Buttons. A HashSet<Button> then holds stale references and the
+    // ctrl-selected visual is lost when a fresh Button scrolls back in. These
+    // variants track selection by the underlying data object (Album/FavoriteItem)
+    // and re-apply the visual class from Button.Loaded as tiles are realized, so
+    // scrolling no longer drops the selection.
+
+    /// <summary>Toggle Ctrl-selection on an album tile by its data object.
+    /// Returns true if Ctrl was held (event consumed). On a plain left-click the
+    /// caller should clear the set and strip realized tiles.</summary>
+    public static bool HandleAlbumTileClickByData<T>(Button tile, T data, PointerPressedEventArgs e, HashSet<T> selectedData) where T : class
+    {
+        if (!e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            return false;
+
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            return false;
+
+        e.Handled = true;
+        if (selectedData.Contains(data))
+        {
+            selectedData.Remove(data);
+            tile.Classes.Remove(SelectedClass);
+        }
+        else
+        {
+            selectedData.Add(data);
+            tile.Classes.Add(SelectedClass);
+        }
+        return true;
+    }
+
+    /// <summary>Ctrl+A toggle for data-tracked album selection over the full item set.</summary>
+    public static bool HandleAlbumSelectAllByData<T>(KeyEventArgs e, IEnumerable<T> allData, IEnumerable<Button> realizedTiles, HashSet<T> selectedData) where T : class
+    {
+        if (e.Key != Key.A || !e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            return false;
+
+        e.Handled = true;
+
+        var all = allData.ToList();
+        var tiles = realizedTiles.ToList();
+        if (all.Count > 0 && all.All(d => selectedData.Contains(d)))
+        {
+            selectedData.Clear();
+            foreach (var tile in tiles) tile.Classes.Remove(SelectedClass);
+        }
+        else
+        {
+            selectedData.Clear();
+            foreach (var d in all) selectedData.Add(d);
+            foreach (var tile in tiles) SyncAlbumTileVisual(tile, selectedData);
+        }
+        return true;
+    }
+
+    /// <summary>Re-apply/strip the ctrl-selected class on a tile based on the data
+    /// selection set. Call from Button.Loaded so recycled tiles reflect the right
+    /// state after a scroll.</summary>
+    public static void SyncAlbumTileVisual<T>(Button tile, HashSet<T> selectedData) where T : class
+    {
+        if (tile.DataContext is T data && selectedData.Contains(data))
+            tile.Classes.Add(SelectedClass);
+        else
+            tile.Classes.Remove(SelectedClass);
+    }
+
+    /// <summary>Clear all data-tracked album selections and strip the class from realized tiles.</summary>
+    public static void ClearAlbumSelectionsByData<T>(HashSet<T> selectedData, IEnumerable<Button> realizedTiles) where T : class
+    {
+        selectedData.Clear();
+        foreach (var tile in realizedTiles) tile.Classes.Remove(SelectedClass);
+    }
 }
