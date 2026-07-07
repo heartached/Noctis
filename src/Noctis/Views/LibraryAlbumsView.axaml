@@ -55,6 +55,7 @@
                                             HorizontalAlignment="Stretch"
                                             VerticalAlignment="Top"
                                             helpers:DragFileBehavior.EnableFileDrag="True"
+                                            Loaded="OnAlbumTileLoaded"
                                             Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).OpenAlbumCommand}"
                                             CommandParameter="{Binding}">
 

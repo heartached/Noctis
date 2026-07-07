@@ -16,7 +16,10 @@ namespace Noctis.Views;
 public partial class FavoritesView : UserControl
 {
     private EventHandler? _pendingScrollRestore;
-    private readonly HashSet<Button> _selectedTiles = new();
+    // Track selection by the FavoriteItem itself (not the tile Button) so row
+    // virtualization recycling the tiles on scroll doesn't drop the ctrl-selected
+    // highlight. See MultiSelectHelper's "Data-tracked album-tile variants".
+    private readonly HashSet<FavoriteItem> _selectedItems = new();
 
     public FavoritesView()
     {
@@ -32,15 +35,29 @@ public partial class FavoritesView : UserControl
         while (source != null && !(source is Button b && b.Classes.Contains("album-tile")))
             source = source.Parent as Control;
         if (source is not Button tile) return;
+        if (tile.DataContext is not FavoriteItem item) return;
 
-        MultiSelectHelper.HandleAlbumTileClick(tile, e, _selectedTiles);
+        if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, item, e, _selectedItems)
+            && !e.KeyModifiers.HasFlag(KeyModifiers.Control)
+            && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+        {
+            // Plain left-click clears any existing selection (mirrors prior behavior).
+            MultiSelectHelper.ClearAlbumSelectionsByData(_selectedItems, CollectTiles());
+        }
 
         // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
-        if (_selectedTiles.Count > 0)
+        if (_selectedItems.Count > 0)
             Focus();
     }
 
-    private void OnViewKeyDown(object? sender, KeyEventArgs e)
+    /// <summary>Re-apply the ctrl-selected visual as tiles are (re)realized on scroll.</summary>
+    private void OnAlbumTileLoaded(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button tile)
+            MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedItems);
+    }
+
+    private List<Button> CollectTiles()
     {
         var allTiles = new List<Button>();
         foreach (var desc in this.GetVisualDescendants())
@@ -48,7 +65,22 @@ public partial class FavoritesView : UserControl
             if (desc is Button b && b.Classes.Contains("album-tile"))
                 allTiles.Add(b);
         }
-        MultiSelectHelper.HandleAlbumSelectAll(e, allTiles, _selectedTiles);
+        return allTiles;
+    }
+
+    private void OnViewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && _selectedItems.Count > 0)
+        {
+            MultiSelectHelper.ClearAlbumSelectionsByData(_selectedItems, CollectTiles());
+            if (DataContext is FavoritesViewModel vm) vm.CtrlSelectedItems = new List<FavoriteItem>();
+            e.Handled = true;
+            return;
+        }
+
+        var allItems = (DataContext as FavoritesViewModel)?.FavoriteItemRows.SelectMany(r => r.Items)
+                       ?? Enumerable.Empty<FavoriteItem>();
+        MultiSelectHelper.HandleAlbumSelectAllByData(e, allItems, CollectTiles(), _selectedItems);
     }
 
     private void OnContextMenuOpening(object? sender, CancelEventArgs e)
@@ -60,7 +92,7 @@ public partial class FavoritesView : UserControl
         if (DataContext is not FavoritesViewModel vm) return;
 
         // Push ctrl-selected items to ViewModel so commands can operate on all of them
-        vm.CtrlSelectedItems = MultiSelectHelper.GetSelectedData<FavoriteItem>(_selectedTiles);
+        vm.CtrlSelectedItems = _selectedItems.ToList();
     }
 
     /// <summary>Left-click handler: play track or open album depending on item type.</summary>
@@ -70,7 +102,7 @@ public partial class FavoritesView : UserControl
         if (DataContext is not FavoritesViewModel vm) return;
 
         // If there are ctrl-selected tiles, a normal click already cleared them in the tunnel handler
-        if (_selectedTiles.Count > 0) return;
+        if (_selectedItems.Count > 0) return;
 
         if (item.IsAlbum)
             vm.OpenAlbumCommand.Execute(item.Album);
@@ -121,7 +153,7 @@ public partial class FavoritesView : UserControl
         }
 
         // Reset multi-selection so it doesn't leak back when the view is revisited.
-        MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
+        MultiSelectHelper.ClearAlbumSelectionsByData(_selectedItems, CollectTiles());
         if (DataContext is FavoritesViewModel selVm) selVm.CtrlSelectedItems = new List<FavoriteItem>();
 
         base.OnDetachedFromVisualTree(e);

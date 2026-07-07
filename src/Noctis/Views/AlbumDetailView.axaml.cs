@@ -59,6 +59,13 @@ public partial class AlbumDetailView : UserControl
     /// <summary>Ctrl+A selects all album tracks (toggles to deselect when all are selected).</summary>
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && _selectedTracks.Count > 0)
+        {
+            ClearTrackSelection();
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key != Key.A || !e.KeyModifiers.HasFlag(KeyModifiers.Control)) return;
         if (DataContext is not AlbumDetailViewModel vm) return;
         e.Handled = true;

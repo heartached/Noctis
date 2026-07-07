@@ -71,6 +71,14 @@ public partial class LibrarySongsView : UserControl
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && _selectedTracks.Count > 0)
+        {
+            MultiSelectHelper.ClearTrackSelectionsByData(_selectedTracks, TrackList);
+            if (DataContext is LibrarySongsViewModel vm) vm.CtrlSelectedTracks = new List<Track>();
+            e.Handled = true;
+            return;
+        }
+
         MultiSelectHelper.HandleTrackSelectAllByData(e, TrackList, _selectedTracks);
     }
 
