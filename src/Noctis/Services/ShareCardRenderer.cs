@@ -114,7 +114,7 @@ public static class ShareCardRenderer
         float baseline = chrome.FirstBaseline;
         foreach (var (line, _) in chrome.Wrapped)
         {
-            canvas.DrawText(line, chrome.LyricX, baseline, lyricPaint);
+            DrawTextFallback(canvas, line, chrome.LyricX, baseline, lyricPaint);
             baseline += chrome.LineHeight;
         }
 
@@ -256,15 +256,15 @@ public static class ShareCardRenderer
         float textMaxW = contentW - artSize - artGap;
         float titleBaseline = contentRect.Top + 49;
         float badgeReserve = spec.IsExplicit ? titlePaint.TextSize * 0.72f + 14 : 0;
-        var titleText = Ellipsize(SanitizeForRender(spec.Title), textMaxW - badgeReserve, s => titlePaint.MeasureText(s));
-        canvas.DrawText(titleText, textX, titleBaseline, titlePaint);
+        var titleText = Ellipsize(SanitizeForRender(spec.Title), textMaxW - badgeReserve, s => MeasureTextFallback(titlePaint, s));
+        DrawTextFallback(canvas, titleText, textX, titleBaseline, titlePaint);
         if (spec.IsExplicit)
         {
-            float badgeX = textX + titlePaint.MeasureText(titleText) + 14;
+            float badgeX = textX + MeasureTextFallback(titlePaint, titleText) + 14;
             DrawExplicitBadge(canvas, regularFace, fg, badgeLetter,
                 badgeX, titleBaseline - titlePaint.TextSize * 0.34f, titlePaint.TextSize);
         }
-        canvas.DrawText(Ellipsize(SanitizeForRender(spec.Artist), textMaxW, s => artistPaint.MeasureText(s)),
+        DrawTextFallback(canvas, Ellipsize(SanitizeForRender(spec.Artist), textMaxW, s => MeasureTextFallback(artistPaint, s)),
             textX, contentRect.Top + 49 + 38, artistPaint);
 
         float headerBottom = contentRect.Top + artSize;
@@ -384,20 +384,20 @@ public static class ShareCardRenderer
             var (text, lineIdx) = chrome.Wrapped[r];
             var line = lineIdx < karaoke.Count ? karaoke[lineIdx] : null;
 
-            canvas.DrawText(text, chrome.LyricX, baseline, dimPaint);
+            DrawTextFallback(canvas, text, chrome.LyricX, baseline, dimPaint);
 
             if (rowRanges[r] is not { } range || line?.Words is not { } words)
             {
                 // Line-level highlight: lit once the line has started (always lit if unsynced).
                 bool lit = line == null || line.StartSeconds is not { } start || t >= start;
                 if (lit)
-                    canvas.DrawText(text, chrome.LyricX, baseline, brightPaint);
+                    DrawTextFallback(canvas, text, chrome.LyricX, baseline, brightPaint);
                 continue;
             }
 
             // Word sweep: bright width = fully-sung tokens + fraction of the current one.
             var tokens = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            float brightW = brightPaint.MeasureText(text);   // default: every word sung
+            float brightW = MeasureTextFallback(brightPaint, text);   // default: every word sung
             float featherW = 0f;
             for (int k = 0; k < tokens.Length; k++)
             {
@@ -405,9 +405,9 @@ public static class ShareCardRenderer
                 double p = KaraokeSweep.WordProgress(word.StartSeconds, word.EndSeconds, t);
                 if (p >= 1)
                     continue;
-                float wordW = brightPaint.MeasureText(tokens[k]);
+                float wordW = MeasureTextFallback(brightPaint, tokens[k]);
                 float prefixW = k > 0
-                    ? brightPaint.MeasureText(string.Join(' ', tokens.Take(k)) + " ")
+                    ? MeasureTextFallback(brightPaint, string.Join(' ', tokens.Take(k)) + " ")
                     : 0f;
                 brightW = prefixW + (float)p * wordW;
                 // Feather shrinks toward the word's edges, like the lyrics-page converter.
@@ -423,7 +423,7 @@ public static class ShareCardRenderer
                 canvas.Save();
                 canvas.ClipRect(new SKRect(chrome.LyricX, baseline - chrome.LyricSize * 1.1f,
                                            chrome.LyricX + brightW, baseline + chrome.LyricSize * 0.45f));
-                canvas.DrawText(text, chrome.LyricX, baseline, brightPaint);
+                DrawTextFallback(canvas, text, chrome.LyricX, baseline, brightPaint);
                 canvas.Restore();
             }
             else
@@ -436,7 +436,7 @@ public static class ShareCardRenderer
                     null, SKShaderTileMode.Clamp);
                 using var sweep = TextPaint(brightPaint.Typeface!, chrome.LyricSize, brightPaint.Color);
                 sweep.Shader = shader;
-                canvas.DrawText(text, chrome.LyricX, baseline, sweep);
+                DrawTextFallback(canvas, text, chrome.LyricX, baseline, sweep);
             }
         }
     }
@@ -457,7 +457,7 @@ public static class ShareCardRenderer
         while (true)
         {
             lyricPaint.TextSize = lyricSize;
-            wrapped = WrapAll(renderLines, contentW, s => lyricPaint.MeasureText(s));
+            wrapped = WrapAll(renderLines, contentW, s => MeasureTextFallback(lyricPaint, s));
             lineHeight = lyricSize * 1.30f;
             if (wrapped.Count * lineHeight <= maxLyricsH || lyricSize <= 34f)
                 break;
@@ -755,6 +755,111 @@ public static class ShareCardRenderer
             _logoLoadAttempted = true;
         }
         return _logo;
+    }
+
+    // ── Font fallback for non-Latin text ─────────────────────────────────
+    // SkiaSharp's DrawText paints a .notdef "tofu" box for any glyph the single
+    // typeface lacks — there is no per-run fallback like Avalonia's. Korean /
+    // Japanese / Chinese lyrics therefore rendered as boxes. These helpers split
+    // text into runs per typeface, matching missing scripts through the OS font
+    // manager (DirectWrite / CoreText / fontconfig), and are used for BOTH drawing
+    // and measuring so wrapping, fitting and the karaoke sweep stay aligned.
+
+    private static readonly Dictionary<(int Block, int Weight), SKTypeface?> _fallbackFaces = new();
+    private static readonly object _fallbackLock = new();
+
+    /// <summary>
+    /// Splits <paramref name="text"/> into runs drawable with one typeface each: the
+    /// primary face wherever it has the glyphs, otherwise an OS-matched fallback per
+    /// 256-codepoint block. Whitespace sticks to the current run. Runs concatenate
+    /// back to the input; codepoints nothing can draw stay on the primary face.
+    /// </summary>
+    public static List<(string Run, SKTypeface Face)> SplitFallbackRuns(string text, SKTypeface primary)
+    {
+        var runs = new List<(string Run, SKTypeface Face)>();
+        if (string.IsNullOrEmpty(text))
+            return runs;
+
+        var sb = new StringBuilder();
+        SKTypeface currentFace = primary;
+        for (int i = 0; i < text.Length;)
+        {
+            int cp = char.ConvertToUtf32(text, i);
+            int len = char.IsSurrogatePair(text, i) ? 2 : 1;
+
+            SKTypeface face;
+            if (char.IsWhiteSpace(text[i]) || primary.ContainsGlyph(cp))
+                face = sb.Length > 0 && char.IsWhiteSpace(text[i]) ? currentFace : primary;
+            else
+                face = MatchFallbackFace(primary, cp) ?? primary;
+
+            if (sb.Length > 0 && !ReferenceEquals(face, currentFace))
+            {
+                runs.Add((sb.ToString(), currentFace));
+                sb.Clear();
+            }
+            currentFace = face;
+            sb.Append(text, i, len);
+            i += len;
+        }
+        if (sb.Length > 0)
+            runs.Add((sb.ToString(), currentFace));
+        return runs;
+    }
+
+    /// <summary>OS-matched typeface for a codepoint the primary face can't draw,
+    /// cached per 256-codepoint block + weight. Null when no installed font has it.</summary>
+    private static SKTypeface? MatchFallbackFace(SKTypeface primary, int codepoint)
+    {
+        var key = (codepoint >> 8, (int)primary.FontStyle.Weight);
+        lock (_fallbackLock)
+        {
+            if (_fallbackFaces.TryGetValue(key, out var cached))
+                return cached;
+            var matched = SKFontManager.Default.MatchCharacter(null, primary.FontStyle, null, codepoint);
+            _fallbackFaces[key] = matched;   // cached for the process lifetime, never disposed
+            return matched;
+        }
+    }
+
+    /// <summary>Width of <paramref name="text"/> under <paramref name="paint"/> with
+    /// font fallback — the sum of each run measured with its own typeface.</summary>
+    private static float MeasureTextFallback(SKPaint paint, string text)
+    {
+        var runs = SplitFallbackRuns(text, paint.Typeface!);
+        if (runs.Count == 1 && ReferenceEquals(runs[0].Face, paint.Typeface))
+            return paint.MeasureText(text);
+
+        float width = 0;
+        var saved = paint.Typeface;
+        foreach (var (run, face) in runs)
+        {
+            paint.Typeface = face;
+            width += paint.MeasureText(run);
+        }
+        paint.Typeface = saved;
+        return width;
+    }
+
+    /// <summary>Draws <paramref name="text"/> with font fallback, advancing x run by
+    /// run — the drawing twin of <see cref="MeasureTextFallback"/>.</summary>
+    private static void DrawTextFallback(SKCanvas canvas, string text, float x, float y, SKPaint paint)
+    {
+        var runs = SplitFallbackRuns(text, paint.Typeface!);
+        if (runs.Count == 1 && ReferenceEquals(runs[0].Face, paint.Typeface))
+        {
+            canvas.DrawText(text, x, y, paint);
+            return;
+        }
+
+        var saved = paint.Typeface;
+        foreach (var (run, face) in runs)
+        {
+            paint.Typeface = face;
+            canvas.DrawText(run, x, y, paint);
+            x += paint.MeasureText(run);
+        }
+        paint.Typeface = saved;
     }
 
     // ─────────────────────────────────────────────────────────────────────
