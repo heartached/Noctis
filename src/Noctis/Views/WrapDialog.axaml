@@ -313,20 +313,13 @@
                             Margin="0,0,8,0"
                             Click="OnCopyClick"
                             IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Data="{StaticResource CopyIcon}" Width="13" Height="13"/>
-                            <TextBlock Text="Copy" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        <TextBlock Text="Copy" VerticalAlignment="Center"/>
                     </Button>
                     <Button Grid.Column="4"
                             Classes="share-pill accent"
                             Click="OnSaveClick"
                             IsEnabled="{Binding Preview, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <PathIcon Data="{StaticResource SaveDiskIcon}" Width="13" Height="13"
-                                      Foreground="{DynamicResource AccentForegroundBrush}"/>
-                            <TextBlock Text="Save PNG" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        <TextBlock Text="Save" VerticalAlignment="Center"/>
                     </Button>
                 </Grid>
             </Grid>

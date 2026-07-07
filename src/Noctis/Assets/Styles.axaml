@@ -743,6 +743,16 @@
     <Style Selector="Border.now-playing :is(TextBlock)">
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
     </Style>
+    <!-- The accent style above also matches through the logical tree into popups,
+         so a context menu / flyout opened on a now-playing row tinted every menu
+         label accent. Restore the normal menu foreground (and keep destructive
+         items red) inside any menu content. -->
+    <Style Selector="Border.now-playing MenuItem :is(TextBlock)">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    </Style>
+    <Style Selector="Border.now-playing MenuItem.danger :is(TextBlock)">
+        <Setter Property="Foreground" Value="#E74856" />
+    </Style>
 
     <!-- Note: ContentPresenter background overrides for track-list items are handled by
          TrackListBoxItemTheme (ControlTheme with BasedOn) applied via ItemContainerTheme above.
