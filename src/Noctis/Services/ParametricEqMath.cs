@@ -23,6 +23,16 @@ public static class ParametricEqMath
     public const double MaxQ = 10.0;
     public const double DefaultQ = 1.41;
 
+    /// <summary>
+    /// Preamp (dB) that makes VLC's equalizer unity gain. VLC's filter scales
+    /// its input by EQZ_IN_FACTOR = 0.25 (−12 dB) and relies on the preamp to
+    /// make up the loss (modules/audio_filter/equalizer.c) — its own presets
+    /// bake ~+12 dB into their table for the same reason. 20·log10(4) cancels
+    /// the factor exactly; without it, engaging any custom band drops the whole
+    /// signal ~12 dB below the bypassed/native level.
+    /// </summary>
+    public const float VlcEqUnityPreampDb = 12.0412f;
+
     // Reference rate for evaluating the response curve. The shape is nearly
     // rate-independent for audio bands; 48k matches the common output rate.
     private const double SampleRate = 48000.0;

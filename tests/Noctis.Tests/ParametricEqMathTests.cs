@@ -100,6 +100,16 @@ public class ParametricEqMathTests
     }
 
     [Fact]
+    public void VlcEqUnityPreamp_CancelsVlcInputFactor()
+    {
+        // VLC's equalizer scales its input by EQZ_IN_FACTOR = 0.25 (equalizer.c);
+        // the unity preamp must cancel it exactly or every non-flat custom curve
+        // shifts the overall level (the "EQ makes everything quieter" bug).
+        var linear = Math.Pow(10.0, ParametricEqMath.VlcEqUnityPreampDb / 20.0) * 0.25;
+        Assert.Equal(1.0, linear, 3);
+    }
+
+    [Fact]
     public void FromGraphicBands_OutOfRangeGains_AreClamped()
     {
         var legacy = new float[] { 99, -99, 0, 0, 0, 0, 0, 0, 0, 0 };

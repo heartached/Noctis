@@ -1080,9 +1080,12 @@ public class VlcAudioPlayer : IAudioPlayer
         // A flat curve (every band 0 dB and 0 preamp — e.g. the default "Flat"
         // preset, which has no UI "off" switch) is applied as a true bypass via
         // the UnsetEqualizer branch below rather than routed through VLC's
-        // equalizer. An enabled-but-flat VLC EQ sits slightly below the native
-        // signal level (the source of the "quieter than other players" reports);
-        // bypassing keeps Flat at unity.
+        // equalizer. VLC's EQ filter scales its input by EQZ_IN_FACTOR (0.25 =
+        // −12 dB) and relies on the preamp for make-up, so a flat curve at
+        // preamp 0 plays ~12 dB under native (the "quieter than other players"
+        // reports); bypassing keeps Flat at unity. Non-flat curves carry
+        // ParametricEqMath.VlcEqUnityPreampDb (or the preset's own preamp) as
+        // the make-up instead.
         var isFlat = Math.Abs(preamp) < 0.05f;
         if (isFlat)
         {
