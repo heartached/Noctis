@@ -19,8 +19,18 @@ public partial class LyricShareDialog : Window
     {
         DataContext = vm;
         vm.ScrollToLineRequested += OnScrollToLine;
-        Closed += (_, _) => vm.Detach();
+        vm.AnimatedFrameRendered += OnAnimatedFrameRendered;
+        Closed += (_, _) =>
+        {
+            vm.AnimatedFrameRendered -= OnAnimatedFrameRendered;
+            vm.Detach();
+        };
     }
+
+    /// <summary>The live-preview WriteableBitmap is mutated in place each frame; the
+    /// Image doesn't know, so repaint it explicitly.</summary>
+    private void OnAnimatedFrameRendered()
+        => this.FindControl<Image>("AnimatedPreviewImage")?.InvalidateVisual();
 
     private LyricShareViewModel? Vm => DataContext as LyricShareViewModel;
 

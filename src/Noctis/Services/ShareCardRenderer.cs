@@ -344,6 +344,86 @@ public static class ShareCardRenderer
         }
     }
 
+    /// <summary>
+    /// Live karaoke card renderer for the share dialog's preview: the card chrome is
+    /// drawn once at construction (scaled), then <see cref="RenderFrame"/> repaints just
+    /// the lyric sweep for a playback time and copies the pixels into a caller-supplied
+    /// BGRA framebuffer (an Avalonia WriteableBitmap). Same drawing code as the exported
+    /// clip, so the preview is exactly what Save Video produces. Not thread-safe — build
+    /// off the UI thread if desired, then render from one thread at a time.
+    /// </summary>
+    public sealed class KaraokeCardAnimator : IDisposable
+    {
+        private readonly SKSurface _surface;
+        private readonly SKImage _baseImage;
+        private readonly CardChrome _chrome;
+        private readonly IReadOnlyList<KaraokeLine> _karaoke;
+        private readonly (int Start, int Count)?[] _rowRanges;
+        private readonly SKTypeface _lyricFace;
+        private readonly SKPaint _dimPaint;
+        private readonly SKPaint _brightPaint;
+        private readonly float _scale;
+
+        public int PixelWidth { get; }
+        public int PixelHeight { get; }
+
+        public KaraokeCardAnimator(LyricCardSpec spec, IReadOnlyList<KaraokeLine> karaoke, float scale)
+        {
+            _karaoke = karaoke;
+            _scale = scale;
+            int w = CanvasWidth;
+            int h = spec.Format == ShareCardFormat.Story ? 1920 : 1080;
+            PixelWidth = (int)Math.Round(w * scale);
+            PixelHeight = (int)Math.Round(h * scale);
+
+            // BGRA premul to match Avalonia's WriteableBitmap framebuffer — the per-frame
+            // readback is then a straight copy.
+            _surface = SKSurface.Create(new SKImageInfo(PixelWidth, PixelHeight, SKColorType.Bgra8888, SKAlphaType.Premul));
+            var canvas = _surface.Canvas;
+
+            using var art = LoadArtwork(spec.ArtworkPath);
+            using var boldFace = ResolveTypeface(SKFontStyleWeight.Bold);
+            using var regularFace = ResolveTypeface(SKFontStyleWeight.Normal);
+            _lyricFace = ResolveTypeface(
+                spec.LyricWeight == LyricCardWeight.Bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.SemiBold);
+
+            canvas.Save();
+            canvas.Scale(scale);
+            _chrome = DrawCardBase(canvas, spec, w, h, art, boldFace, regularFace, _lyricFace);
+            canvas.Restore();
+            _baseImage = _surface.Snapshot();
+
+            _rowRanges = MapKaraokeRows(_chrome.Wrapped, karaoke);
+            _dimPaint = TextPaint(_lyricFace, _chrome.LyricSize, _chrome.Fg.WithAlpha(KaraokeDimAlpha));
+            _brightPaint = TextPaint(_lyricFace, _chrome.LyricSize, _chrome.Fg);
+        }
+
+        /// <summary>Renders the card at absolute track time <paramref name="tSeconds"/>
+        /// into <paramref name="dest"/> (BGRA8888 premul, <see cref="PixelWidth"/> ×
+        /// <see cref="PixelHeight"/>).</summary>
+        public void RenderFrame(double tSeconds, IntPtr dest, int destRowBytes)
+        {
+            var canvas = _surface.Canvas;
+            canvas.DrawImage(_baseImage, 0, 0);
+            canvas.Save();
+            canvas.Scale(_scale);
+            DrawKaraokeRows(canvas, _chrome, _karaoke, _rowRanges, _brightPaint, _dimPaint, tSeconds);
+            canvas.Restore();
+            _surface.ReadPixels(
+                new SKImageInfo(PixelWidth, PixelHeight, SKColorType.Bgra8888, SKAlphaType.Premul),
+                dest, destRowBytes, 0, 0);
+        }
+
+        public void Dispose()
+        {
+            _dimPaint.Dispose();
+            _brightPaint.Dispose();
+            _baseImage.Dispose();
+            _surface.Dispose();
+            _lyricFace.Dispose();
+        }
+    }
+
     /// <summary>Resolves each wrapped row's token range in its source line's word list;
     /// a line whose rows don't cleanly re-assemble its tokens maps to null.</summary>
     private static (int Start, int Count)?[] MapKaraokeRows(

@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -125,7 +127,42 @@ public partial class LyricShareViewModel : ViewModelBase
     /// <summary>When on (and available), Save Video renders the word-sweep karaoke clip.</summary>
     [ObservableProperty] private bool _karaokeEnabled = true;
 
-    partial void OnKaraokeEnabledChanged(bool value) => OnPropertyChanged(nameof(CardOptionsSummary));
+    partial void OnKaraokeEnabledChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CardOptionsSummary));
+        RefreshPreview();   // starts/stops the live karaoke preview
+    }
+
+    // ── Live karaoke preview ─────────────────────────────────────────────
+    // A half-resolution animator repaints the card's word sweep ~30×/s into a
+    // WriteableBitmap shown over the static preview, following playback — so what
+    // you see is exactly what Save Video exports.
+
+    /// <summary>Preview renders at half card resolution — crisp at dialog size, cheap per frame.</summary>
+    private const float PreviewAnimatorScale = 0.5f;
+
+    /// <summary>Same small lead as the lyrics page so the sweep matches the vocal.</summary>
+    private const double PreviewWordLookaheadSeconds = 0.08;
+
+    /// <summary>Live word-sweep frame shown over the static preview; null when not animating.</summary>
+    [ObservableProperty] private Bitmap? _animatedPreview;
+
+    /// <summary>Raised after each animated frame so the view can invalidate the Image
+    /// (in-place WriteableBitmap updates don't notify the binding).</summary>
+    public event Action? AnimatedFrameRendered;
+
+    private ShareCardRenderer.KaraokeCardAnimator? _animator;
+    private WriteableBitmap? _animBitmap;
+    private DispatcherTimer? _animTimer;
+    private double _animLastT = double.NaN;
+
+    // Smoothed playback clock, mirroring the lyrics page: LibVLC refreshes Position
+    // only every ~150-300ms, so raw reads step; extrapolate with a Stopwatch between
+    // raw updates while playing (monotonic + stall guards).
+    private long _clockRawMs = -1;
+    private double _clockAnchorMs;
+    private long _clockAnchorTimestamp;
+    private double _clockLastMs;
 
     /// <summary>When on, the currently-playing line is highlighted and scrolled into view.</summary>
     [ObservableProperty] private bool _syncEnabled;
@@ -436,24 +473,29 @@ public partial class LyricShareViewModel : ViewModelBase
     private void RefreshPreview()
     {
         var generation = ++_renderGeneration;
-        var selected = Lines.Where(l => l.IsSelected)
-            .Select(l => l.Text)
-            .Where(t => !string.IsNullOrWhiteSpace(t))
-            .ToList();
+        var selectedLines = Lines.Where(l => l.IsSelected && !string.IsNullOrWhiteSpace(l.Text)).ToList();
+        var selected = selectedLines.Select(l => l.Text).ToList();
         if (selected.Count == 0)
         {
             CurrentPng = null;
             Preview = null;
+            TeardownAnimator();
             return;
         }
 
         var spec = BuildSpec(selected);
+        bool animate = KaraokeEnabled && _player != null
+            && selectedLines.Any(l => l.Words is { Count: > 0 });
+        var karaoke = animate ? BuildKaraokeLines(selectedLines) : null;
 
         Task.Run(() =>
         {
             try
             {
                 var png = ShareCardRenderer.RenderLyricCardStyled(spec);
+                var animator = karaoke != null
+                    ? new ShareCardRenderer.KaraokeCardAnimator(spec, karaoke, PreviewAnimatorScale)
+                    : null;
                 using var ms = new MemoryStream(png);
                 var bitmap = new Bitmap(ms);
                 Dispatcher.UIThread.Post(() =>
@@ -461,12 +503,14 @@ public partial class LyricShareViewModel : ViewModelBase
                     if (generation != _renderGeneration)
                     {
                         bitmap.Dispose();
+                        animator?.Dispose();
                         return;
                     }
                     var old = Preview;
                     CurrentPng = png;
                     Preview = bitmap;
                     old?.Dispose();
+                    SwapAnimator(animator);
                 });
             }
             catch (Exception ex)
@@ -475,6 +519,111 @@ public partial class LyricShareViewModel : ViewModelBase
                     "Share card render failed", ex.Message);
             }
         });
+    }
+
+    /// <summary>Installs the freshly built animator (or tears everything down when null),
+    /// reusing the WriteableBitmap when the pixel size is unchanged. UI thread only.</summary>
+    private void SwapAnimator(ShareCardRenderer.KaraokeCardAnimator? animator)
+    {
+        if (animator == null)
+        {
+            TeardownAnimator();
+            return;
+        }
+
+        _animator?.Dispose();
+        _animator = animator;
+        _animLastT = double.NaN;
+
+        if (_animBitmap == null
+            || _animBitmap.PixelSize.Width != animator.PixelWidth
+            || _animBitmap.PixelSize.Height != animator.PixelHeight)
+        {
+            var oldBmp = _animBitmap;
+            _animBitmap = new WriteableBitmap(
+                new PixelSize(animator.PixelWidth, animator.PixelHeight),
+                new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+            AnimatedPreview = _animBitmap;
+            oldBmp?.Dispose();
+        }
+
+        RenderAnimatedFrame();   // first frame immediately, even when paused
+
+        if (_animTimer == null)
+        {
+            _animTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
+            _animTimer.Tick += (_, _) => OnAnimTick();
+        }
+        _animTimer.Start();
+    }
+
+    private void TeardownAnimator()
+    {
+        _animTimer?.Stop();
+        _animator?.Dispose();
+        _animator = null;
+        var old = AnimatedPreview;
+        AnimatedPreview = null;
+        old?.Dispose();
+        _animBitmap = null;
+        _animLastT = double.NaN;
+    }
+
+    private void OnAnimTick()
+    {
+        if (_animator == null)
+        {
+            _animTimer?.Stop();
+            return;
+        }
+        double t = GetSmoothedPositionSeconds() + PreviewWordLookaheadSeconds;
+        // Paused (or between coarse position updates while paused) → nothing moved.
+        if (!double.IsNaN(_animLastT) && Math.Abs(t - _animLastT) < 0.0005)
+            return;
+        RenderAnimatedFrameAt(t);
+    }
+
+    private void RenderAnimatedFrame()
+        => RenderAnimatedFrameAt(GetSmoothedPositionSeconds() + PreviewWordLookaheadSeconds);
+
+    private void RenderAnimatedFrameAt(double t)
+    {
+        if (_animator == null || _animBitmap == null) return;
+        _animLastT = t;
+        using (var fb = _animBitmap.Lock())
+            _animator.RenderFrame(t, fb.Address, fb.RowBytes);
+        AnimatedFrameRendered?.Invoke();
+    }
+
+    /// <summary>Extrapolated playback position in seconds (see clock fields above).</summary>
+    private double GetSmoothedPositionSeconds()
+    {
+        if (_player == null) return 0;
+        var raw = _player.Position;
+        if (_player.State != PlaybackState.Playing)
+        {
+            // Not advancing — drop the anchor so resume re-anchors fresh.
+            _clockRawMs = -1;
+            _clockLastMs = raw.TotalMilliseconds;
+            return raw.TotalSeconds;
+        }
+
+        var rawMs = (long)raw.TotalMilliseconds;
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (rawMs != _clockRawMs)
+        {
+            _clockRawMs = rawMs;
+            _clockAnchorMs = rawMs;
+            _clockAnchorTimestamp = now;
+        }
+
+        var elapsedMs = (now - _clockAnchorTimestamp) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        if (elapsedMs > 1000) elapsedMs = 1000;   // stall guard: don't run away from a buffering player
+        var estimate = _clockAnchorMs + elapsedMs;
+        if (estimate < _clockLastMs && _clockLastMs - estimate < 300)
+            estimate = _clockLastMs;               // monotonic guard: hold tiny backwards re-anchors
+        _clockLastMs = estimate;
+        return estimate / 1000.0;
     }
 
     public void ReportStatus(string message) => StatusText = message;
@@ -602,6 +751,8 @@ public partial class LyricShareViewModel : ViewModelBase
     /// <summary>Unsubscribes from the player so the dialog can be garbage-collected.</summary>
     public void Detach()
     {
+        ++_renderGeneration;   // stale in-flight preview renders dispose instead of re-installing
+        TeardownAnimator();
         if (_player != null)
             _player.PropertyChanged -= OnPlayerPropertyChanged;
         foreach (var line in Lines)

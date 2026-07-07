@@ -192,6 +192,15 @@
                                    Stretch="Uniform"
                                    Margin="10"
                                    RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                            <!-- Live karaoke sweep, drawn over the static card while word
+                                 timings are animating. Same aspect/margins, so it covers
+                                 the still exactly; hidden (null) when not animating. -->
+                            <Image x:Name="AnimatedPreviewImage"
+                                   Source="{Binding AnimatedPreview}"
+                                   IsVisible="{Binding AnimatedPreview, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                   Stretch="Uniform"
+                                   Margin="10"
+                                   RenderOptions.BitmapInterpolationMode="HighQuality"/>
                         </Panel>
                     </Border>
                 </Grid>
