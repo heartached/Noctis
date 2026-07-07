@@ -123,17 +123,8 @@
             <Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="*,Auto">
 
                 <!-- Header -->
-                <StackPanel Grid.Row="0" Grid.Column="0" Spacing="2">
-                    <TextBlock Text="Share lyrics" FontSize="22" FontWeight="Bold"/>
-                    <TextBlock FontSize="13" Opacity="0.7">
-                        <TextBlock.Text>
-                            <MultiBinding StringFormat="{}{0} — {1}">
-                                <Binding Path="TrackTitle"/>
-                                <Binding Path="TrackArtist"/>
-                            </MultiBinding>
-                        </TextBlock.Text>
-                    </TextBlock>
-                </StackPanel>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Share lyrics" FontSize="22" FontWeight="Bold"
+                           VerticalAlignment="Center"/>
 
                 <Button Grid.Row="0" Grid.Column="1"
                         Background="Transparent"
@@ -288,12 +279,16 @@
                 <Grid Grid.Row="3" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,16,0,0">
                     <!-- Card options: format, text colour & sync collapsed into one dropdown -->
                     <Button Grid.Column="0" Classes="share-pill" VerticalAlignment="Center"
-                            MinWidth="176" HorizontalContentAlignment="Stretch"
+                            Width="236" HorizontalContentAlignment="Stretch"
                             ToolTip.Tip="Card format, text colour &amp; sync">
-                        <!-- Fixed-width content (text left, chevron pinned right) so toggling
-                             Format/Text/Sync can't resize the pill and shift the anchored flyout. -->
+                        <!-- Hard-fixed width (text left, chevron pinned right) so toggling
+                             Format/Text/Sync/Karaoke can't resize the pill and shift the
+                             anchored flyout. MinWidth wasn't enough: "· Karaoke" pushed the
+                             summary past it, so every toggle resized the pill again. Sized
+                             for the longest summary ("9:16 · White · Sync · Karaoke"). -->
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Grid.Column="0" Text="{Binding CardOptionsSummary}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="0" Text="{Binding CardOptionsSummary}"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                             <PathIcon Grid.Column="1" Margin="8,0,0,0"
                                       Data="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"
                                       Width="11" Height="11" Opacity="0.75" VerticalAlignment="Center"/>
