@@ -737,7 +737,7 @@
         <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
     </Style>
 
-    <!-- Now-playing row: accent-coloured text on the current track (Folders/Songs).
+    <!-- Now-playing row: accent-coloured text on the current track (Folders/Songs/Albums/Playlists).
          Lives on the row's inner Border (class toggled by Track.IsNowPlaying), so when the
          class is removed the setter reverts cleanly and text returns to the inherited white. -->
     <Style Selector="Border.now-playing :is(TextBlock)">

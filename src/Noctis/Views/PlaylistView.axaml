@@ -457,6 +457,7 @@
                         </ListBox.Styles>
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="m:Track">
+                                <Border Classes.now-playing="{Binding IsNowPlaying}">
                                 <Grid ColumnDefinitions="48,2*,1.4*,64,64,40"
                                       Margin="0,1" Background="Transparent">
 
@@ -588,6 +589,7 @@
                                                   VerticalAlignment="Center" />
                                     </Button>
                                 </Grid>
+                                </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>

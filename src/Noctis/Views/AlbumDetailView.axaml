@@ -471,6 +471,7 @@
             </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="m:Track">
+                    <Border Classes.now-playing="{Binding IsNowPlaying}">
                     <Grid ColumnDefinitions="32,*,Auto" Margin="0,3" Background="Transparent"
                           helpers:DragFileBehavior.EnableFileDrag="True"
                           Tag="{Binding}">
@@ -827,6 +828,7 @@
                             </Button>
                         </Grid>
                     </Grid>
+                    </Border>
                 </DataTemplate>
             </ListBox.ItemTemplate>
                         </ListBox>
