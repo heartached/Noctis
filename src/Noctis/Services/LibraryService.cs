@@ -529,6 +529,65 @@ public class LibraryService : ILibraryService
         var trackById = _tracks.ToDictionary(t => t.Id);
         var changed = false;
 
+        // Capture the pre-import library so a cancelled import can roll back the
+        // progressive partial publishes below and honour "cancel = no change".
+        var originalTracks = _tracks;
+        var originalAlbums = _albums;
+        var originalArtists = _artists;
+        var originalTrackIndex = _trackIndex;
+        var originalAlbumIndex = _albumIndex;
+        var didPublishPartial = false;
+        var imported = new ConcurrentBag<Track>();
+
+        void RestoreOriginalLibrary()
+        {
+            if (!didPublishPartial) return;
+            _tracks = originalTracks;
+            _albums = originalAlbums;
+            _artists = originalArtists;
+            _trackIndex = originalTrackIndex;
+            _albumIndex = originalAlbumIndex;
+            lock (_albumsByArtistLock) { _albumsByArtistIndex = null; }
+            LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        }
+
+        // Progressive publish: while the import runs, periodically surface the
+        // tracks imported so far so large drops fill into the views live instead
+        // of appearing all at once at the end (same pattern as ScanAsync).
+        // In-memory only — persistence happens once, in the final rebuild below.
+        async Task RunProgressivePublishAsync(CancellationToken pubCt)
+        {
+            var lastCount = 0;
+            try
+            {
+                while (!pubCt.IsCancellationRequested)
+                {
+                    await Task.Delay(ProgressivePublishMs, pubCt).ConfigureAwait(false);
+
+                    var snapshot = imported.ToArray();
+                    if (snapshot.Length == 0 || snapshot.Length == lastCount) continue;
+                    lastCount = snapshot.Length;
+
+                    var merged = new Dictionary<Guid, Track>(originalTracks.Count + snapshot.Length);
+                    foreach (var t in originalTracks) merged[t.Id] = t;
+                    foreach (var t in snapshot) merged[t.Id] = t;
+                    _tracks = merged.Values
+                        .OrderBy(t => t.Artist).ThenBy(t => t.Album)
+                        .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
+                    await RebuildIndexesAsync(persistCache: false).ConfigureAwait(false);
+                    didPublishPartial = true;
+                    LibraryUpdated?.Invoke(this, EventArgs.Empty);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch { /* best-effort; the final rebuild is authoritative */ }
+        }
+
+        using var publishCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var publishTask = RunProgressivePublishAsync(publishCts.Token);
+
+        try
+        {
         // Metadata/artwork reads are heavy file I/O; keep them off the caller's
         // (UI) thread so large drops don't freeze the window.
         await Task.Run(() =>
@@ -578,9 +637,26 @@ public class LibraryService : ILibraryService
 
             track.IsRecentImport = true;
             trackById[track.Id] = track;
+            imported.Add(track);
             changed = true;
         }
         }, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation is handled gracefully by the rollback below.
+        }
+        finally
+        {
+            publishCts.Cancel();
+            try { await publishTask.ConfigureAwait(false); } catch { /* publisher already stopping */ }
+        }
+
+        if (ct.IsCancellationRequested)
+        {
+            RestoreOriginalLibrary();
+            ct.ThrowIfCancellationRequested();
+        }
 
         if (!changed) return;
 
