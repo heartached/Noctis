@@ -330,6 +330,14 @@
                                                 HorizontalAlignment="Right"
                                                 Content="Sync" Command="{Binding ToggleSyncCommand}"/>
                                     </Grid>
+                                    <!-- Karaoke word sweep on Save Video (only when ELRC word timings exist) -->
+                                    <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding KaraokeAvailable}">
+                                        <TextBlock Text="Karaoke video" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1" Classes="share-pill" Classes.active="{Binding KaraokeEnabled}"
+                                                HorizontalAlignment="Right"
+                                                Content="Karaoke" Command="{Binding ToggleKaraokeCommand}"
+                                                ToolTip.Tip="Save Video renders moving word-by-word lyrics"/>
+                                    </Grid>
                                 </StackPanel>
                             </Flyout>
                         </Button.Flyout>
