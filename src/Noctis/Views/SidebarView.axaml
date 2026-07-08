@@ -20,7 +20,7 @@
         <DockPanel LastChildFill="True">
 
             <!-- Top spacing -->
-            <Border DockPanel.Dock="Top" Height="8" />
+            <Border DockPanel.Dock="Top" Height="4" />
 
             <!-- Back + contextual search, pinned above the scrolling nav.
                  State (can-go-back, search visibility/watermark/text) comes from TopBarViewModel. -->
@@ -65,14 +65,21 @@
                 </StackPanel.Styles>
 
                 <Button Classes="rail-action"
+                        Margin="0,8,0,0"
                         Classes.expanded="{Binding IsExpanded}"
                         Command="{Binding TopBar.BackCommand}"
                         IsEnabled="{Binding TopBar.IsBackButtonVisible, FallbackValue=False}"
                         ToolTip.Tip="Back">
                     <StackPanel Orientation="Horizontal" Spacing="14">
                         <Grid Width="28" Height="28">
+                            <!-- Y nudge centers the chevron glyph in the circular button
+                                 (the geometry sits slightly high in its viewbox). -->
                             <PathIcon Data="{StaticResource ChevronLeftIcon}" Width="17" Height="17"
-                                      Foreground="{DynamicResource IslandForeground}"/>
+                                      Foreground="{DynamicResource IslandForeground}">
+                                <PathIcon.RenderTransform>
+                                    <TranslateTransform Y="0.5" />
+                                </PathIcon.RenderTransform>
+                            </PathIcon>
                         </Grid>
                         <TextBlock Text="Back"
                                    FontSize="15"

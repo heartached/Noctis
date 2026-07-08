@@ -29,7 +29,6 @@ public partial class MainWindow : Window
     private System.ComponentModel.PropertyChangedEventHandler? _currentTrackPropertyChangedHandler;
     private Track? _trackedFavoriteTrack;
     private Border? _sidebarWrapper;
-    private Border? _lyricsPanelWrapper;
     private DockPanel? _contentDockPanel;
     private DockPanel? _rootPanel;
     private MiniPlayerWindow? _miniPlayer;
@@ -127,18 +126,13 @@ public partial class MainWindow : Window
                 vm.TopBar.PropertyChanged += _topBarPropertyChangedHandler;
                 UpdateViewModeToggleVisuals(vm.TopBar.IsCoverFlowMode, vm.TopBar.IsCollageMode);
 
-                // Wire lyrics panel + sidebar hover
+                // Wire sidebar hover
                 _sidebarWrapper = this.FindControl<Border>("SidebarWrapper");
-                _lyricsPanelWrapper = this.FindControl<Border>("LyricsPanelWrapper");
                 _contentDockPanel = this.FindControl<DockPanel>("ContentDockPanel");
                 _rootPanel = this.FindControl<DockPanel>("RootPanel");
                 _mainVmPropertyChangedHandler = (s, e) =>
                 {
                     var mainVm2 = (MainWindowViewModel)s!;
-                    if (e.PropertyName == nameof(MainWindowViewModel.IsLyricsPanelOpen))
-                    {
-                        if (_lyricsPanelWrapper != null) _lyricsPanelWrapper.Width = mainVm2.IsLyricsPanelOpen ? 356 : 0;
-                    }
                     if (e.PropertyName == nameof(MainWindowViewModel.IsLyricsViewActive))
                     {
                         if (_contentDockPanel != null)
@@ -479,17 +473,12 @@ public partial class MainWindow : Window
                 _taskbar?.UpdateFavoriteState(_trackedFavoriteTrack?.IsFavorite == true);
             }
 
-            // Update play/pause icon when playback state changes + mutual exclusion
+            // Update play/pause icon when playback state changes
             _playerPropertyChangedHandler = (_, e) =>
             {
                 if (e.PropertyName == nameof(PlayerViewModel.State))
                 {
                     _taskbar?.UpdatePlayPauseState(vm.Player.State == PlaybackState.Playing);
-                }
-                else if (e.PropertyName == nameof(PlayerViewModel.IsQueuePopupOpen))
-                {
-                    if (vm.Player.IsQueuePopupOpen)
-                        vm.IsLyricsPanelOpen = false;
                 }
                 else if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
                 {

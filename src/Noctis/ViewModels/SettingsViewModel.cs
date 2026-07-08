@@ -1056,8 +1056,16 @@ public partial class SettingsViewModel : ViewModelBase
             TryGetVlcPresetCurve(SelectedEqPresetIndex - 1, out var presetBands, out var presetPreamp))
             return (presetBands, presetPreamp);
 
+        // Custom curves ride VLC's EQ filter, which attenuates its input by
+        // EQZ_IN_FACTOR (−12 dB); the unity preamp cancels that so the overall
+        // level stays at native and only the shaped bands move. A side effect:
+        // an all-zero Custom curve no longer trips the flat-bypass (preamp is
+        // non-zero) — it plays through the EQ at exact unity instead, which
+        // also avoids a live filter-chain rebuild (audio dropout) every time a
+        // drag crosses flat.
         return (ParametricEqMath.MapToGraphicBands(
-            EqBands.Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q })), 0f);
+            EqBands.Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q })),
+            ParametricEqMath.VlcEqUnityPreampDb);
     }
 
     /// <summary>Maps the Song Transitions master toggle + style to the player's transition mode.</summary>
@@ -1089,10 +1097,11 @@ public partial class SettingsViewModel : ViewModelBase
             for (uint i = 0; i < 10; i++)
                 bands[i] = Math.Clamp(tempEq.Amp(i), -12f, 12f);
             preamp = Math.Clamp(tempEq.Preamp, -20f, 20f);
-            // VLC bakes a ~+12 dB preamp into its "Flat" preset (index 0), so a "flat"
-            // EQ would play ~12 dB louder than EQ-off and louder than a manually
-            // flattened Custom curve (which uses preamp 0). Force Flat to unity so
-            // Reset / Flat matches dragging every band to 0 and matches EQ-off.
+            // VLC's presets carry ~+12 dB preamp because the EQ filter itself
+            // attenuates by EQZ_IN_FACTOR (−12 dB) — preset preamps are unity
+            // make-up, not a boost. Zeroing Flat's preamp makes the whole curve
+            // register as flat so the player takes the true-bypass branch (no
+            // filter in the chain) instead of running a unity-gain filter.
             if (vlcPresetIndex == 0) preamp = 0f;
             return true;
         }

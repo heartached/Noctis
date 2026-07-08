@@ -130,8 +130,11 @@
             <Panel.Clip>
                 <RectangleGeometry Rect="0,0,336,336" RadiusX="20" RadiusY="20"/>
             </Panel.Clip>
-            <!-- Artwork (or placeholder note) fills the window -->
+            <!-- Artwork (or placeholder note) fills the window. 768 keeps the 336px
+                 cover sharp on high-DPI displays and shares the album-grid / player
+                 cache entry (the 512 default would decode the same cover again). -->
             <controls:CachedImage SourcePath="{Binding CurrentArtPath}"
+                                  DecodeWidth="768"
                                   Stretch="UniformToFill"
                                   RenderOptions.BitmapInterpolationMode="HighQuality"
                                   IsVisible="{Binding CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>

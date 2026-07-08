@@ -15,6 +15,15 @@ public partial class WordTiming : ObservableObject
     /// <summary>Word text. Per the Lyricsfile spec, trailing spaces are preserved except on the final word of a line.</summary>
     public string Text { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Text the sweep overlay renders: <see cref="Text"/> minus trailing whitespace.
+    /// The sweep mask is relative to the overlay's bounds, so if the trailing space is
+    /// included the edge spends the tail of every word's duration crossing invisible
+    /// whitespace — a visible stall at the end of each word. Leading whitespace must
+    /// stay so the overlay's glyphs keep lining up with the base layer.
+    /// </summary>
+    public string SweepText => Text.TrimEnd();
+
     /// <summary>Word start time.</summary>
     public TimeSpan Start { get; init; }
 

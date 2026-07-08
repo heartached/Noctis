@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,10 +19,13 @@ public record ShareSolidSwatch(string Hex, string Name, IBrush Preview);
 /// <summary>A lyric line the user can include on (and edit for) the share card.</summary>
 public partial class SelectableLyricLine : ObservableObject
 {
-    public SelectableLyricLine(string text, TimeSpan? timestamp = null)
+    public SelectableLyricLine(string text, TimeSpan? timestamp = null,
+        IReadOnlyList<WordTiming>? words = null, TimeSpan? endTimestamp = null)
     {
         _text = text;
         Timestamp = timestamp;
+        Words = words;
+        EndTimestamp = endTimestamp;
     }
 
     /// <summary>Editable line text — changes re-render the card preview.</summary>
@@ -36,6 +41,12 @@ public partial class SelectableLyricLine : ObservableObject
 
     /// <summary>Playback timestamp for this line, when the source lyrics were synced.</summary>
     public TimeSpan? Timestamp { get; }
+
+    /// <summary>Per-word (ELRC) timing when the source line has it; drives the karaoke clip.</summary>
+    public IReadOnlyList<WordTiming>? Words { get; }
+
+    /// <summary>Line end time (Lyricsfile) — bounds the last word's sweep.</summary>
+    public TimeSpan? EndTimestamp { get; }
 }
 
 /// <summary>
@@ -106,6 +117,53 @@ public partial class LyricShareViewModel : ViewModelBase
     /// <summary>Whether the source lyrics carry timestamps (sync toggle is meaningful).</summary>
     public bool SyncAvailable { get; }
 
+    /// <summary>Frame rate of the karaoke clip's frame sequence.</summary>
+    private const int KaraokeFps = 24;
+
+    /// <summary>True when any selected line carries word-level (ELRC) timing.</summary>
+    public bool KaraokeAvailable =>
+        Lines.Any(l => l.IsSelected && l.Words is { Count: > 0 });
+
+    /// <summary>When on (and available), Save Video renders the word-sweep karaoke clip.</summary>
+    [ObservableProperty] private bool _karaokeEnabled = true;
+
+    partial void OnKaraokeEnabledChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CardOptionsSummary));
+        RefreshPreview();   // starts/stops the live karaoke preview
+    }
+
+    // ── Live karaoke preview ─────────────────────────────────────────────
+    // A half-resolution animator repaints the card's word sweep ~30×/s into a
+    // WriteableBitmap shown over the static preview, following playback — so what
+    // you see is exactly what Save Video exports.
+
+    /// <summary>Preview renders at half card resolution — crisp at dialog size, cheap per frame.</summary>
+    private const float PreviewAnimatorScale = 0.5f;
+
+    /// <summary>Same small lead as the lyrics page so the sweep matches the vocal.</summary>
+    private const double PreviewWordLookaheadSeconds = 0.08;
+
+    /// <summary>Live word-sweep frame shown over the static preview; null when not animating.</summary>
+    [ObservableProperty] private Bitmap? _animatedPreview;
+
+    /// <summary>Raised after each animated frame so the view can invalidate the Image
+    /// (in-place WriteableBitmap updates don't notify the binding).</summary>
+    public event Action? AnimatedFrameRendered;
+
+    private ShareCardRenderer.KaraokeCardAnimator? _animator;
+    private WriteableBitmap? _animBitmap;
+    private DispatcherTimer? _animTimer;
+    private double _animLastT = double.NaN;
+
+    // Smoothed playback clock, mirroring the lyrics page: LibVLC refreshes Position
+    // only every ~150-300ms, so raw reads step; extrapolate with a Stopwatch between
+    // raw updates while playing (monotonic + stall guards).
+    private long _clockRawMs = -1;
+    private double _clockAnchorMs;
+    private long _clockAnchorTimestamp;
+    private double _clockLastMs;
+
     /// <summary>When on, the currently-playing line is highlighted and scrolled into view.</summary>
     [ObservableProperty] private bool _syncEnabled;
 
@@ -128,6 +186,8 @@ public partial class LyricShareViewModel : ViewModelBase
             var summary = $"{aspect} · {text}";
             if (SyncAvailable && SyncEnabled)
                 summary += " · Sync";
+            if (KaraokeAvailable && KaraokeEnabled)
+                summary += " · Karaoke";
             return summary;
         }
     }
@@ -168,7 +228,7 @@ public partial class LyricShareViewModel : ViewModelBase
     partial void OnIsRenderingChanged(bool value) => OnPropertyChanged(nameof(CanExportVideo));
 
     public LyricShareViewModel(Track track, IReadOnlyList<string> lines, int preselectIndex = 0)
-        : this(track, lines, null, null, preselectIndex)
+        : this(track, lines, null, null, null, null, preselectIndex)
     {
     }
 
@@ -177,6 +237,8 @@ public partial class LyricShareViewModel : ViewModelBase
         IReadOnlyList<string> lines,
         IReadOnlyList<TimeSpan?>? timestamps,
         PlayerViewModel? player,
+        IReadOnlyList<IReadOnlyList<WordTiming>?>? wordTimings = null,
+        IReadOnlyList<TimeSpan?>? endTimestamps = null,
         int preselectIndex = 0)
     {
         _track = track;
@@ -190,7 +252,9 @@ public partial class LyricShareViewModel : ViewModelBase
         for (int i = 0; i < lines.Count; i++)
         {
             var ts = timestamps != null && i < timestamps.Count ? timestamps[i] : null;
-            Lines.Add(new SelectableLyricLine(lines[i], ts));
+            var words = wordTimings != null && i < wordTimings.Count ? wordTimings[i] : null;
+            var end = endTimestamps != null && i < endTimestamps.Count ? endTimestamps[i] : null;
+            Lines.Add(new SelectableLyricLine(lines[i], ts, words, end));
         }
 
         SyncAvailable = player != null && Lines.Any(l => l.Timestamp.HasValue);
@@ -240,6 +304,8 @@ public partial class LyricShareViewModel : ViewModelBase
             }
 
             StatusText = string.Empty;
+            OnPropertyChanged(nameof(KaraokeAvailable));
+            OnPropertyChanged(nameof(CardOptionsSummary));
             RefreshPreview();
         }
         else if (e.PropertyName == nameof(SelectableLyricLine.Text) && line.IsSelected)
@@ -301,6 +367,8 @@ public partial class LyricShareViewModel : ViewModelBase
                 Lines[i].IsSelected = sel;
         }
         _syncUpdatingSelection = false;
+        OnPropertyChanged(nameof(KaraokeAvailable));
+        OnPropertyChanged(nameof(CardOptionsSummary));
         RefreshPreview();
     }
 
@@ -366,6 +434,9 @@ public partial class LyricShareViewModel : ViewModelBase
     private void ToggleSync() => SyncEnabled = !SyncEnabled;
 
     [RelayCommand]
+    private void ToggleKaraoke() => KaraokeEnabled = !KaraokeEnabled;
+
+    [RelayCommand]
     private void UseAutoText() => TextColor = ShareTextColor.Auto;
 
     [RelayCommand]
@@ -402,35 +473,29 @@ public partial class LyricShareViewModel : ViewModelBase
     private void RefreshPreview()
     {
         var generation = ++_renderGeneration;
-        var selected = Lines.Where(l => l.IsSelected)
-            .Select(l => l.Text)
-            .Where(t => !string.IsNullOrWhiteSpace(t))
-            .ToList();
+        var selectedLines = Lines.Where(l => l.IsSelected && !string.IsNullOrWhiteSpace(l.Text)).ToList();
+        var selected = selectedLines.Select(l => l.Text).ToList();
         if (selected.Count == 0)
         {
             CurrentPng = null;
             Preview = null;
+            TeardownAnimator();
             return;
         }
 
-        var spec = new LyricCardSpec
-        {
-            Title = _track.Title,
-            Artist = _track.ArtistDisplay,
-            ArtworkPath = _track.AlbumArtworkPath,
-            Lines = selected,
-            Format = IsStory ? ShareCardFormat.Story : ShareCardFormat.Square,
-            TextColor = TextColor,
-            IsExplicit = _track.IsExplicit,
-            Background = IsSolidBg ? ShareBackground.Solid : ShareBackground.Artwork,
-            SolidColorHex = SolidColorHex,
-        };
+        var spec = BuildSpec(selected);
+        bool animate = KaraokeEnabled && _player != null
+            && selectedLines.Any(l => l.Words is { Count: > 0 });
+        var karaoke = animate ? BuildKaraokeLines(selectedLines) : null;
 
         Task.Run(() =>
         {
             try
             {
                 var png = ShareCardRenderer.RenderLyricCardStyled(spec);
+                var animator = karaoke != null
+                    ? new ShareCardRenderer.KaraokeCardAnimator(spec, karaoke, PreviewAnimatorScale)
+                    : null;
                 using var ms = new MemoryStream(png);
                 var bitmap = new Bitmap(ms);
                 Dispatcher.UIThread.Post(() =>
@@ -438,12 +503,14 @@ public partial class LyricShareViewModel : ViewModelBase
                     if (generation != _renderGeneration)
                     {
                         bitmap.Dispose();
+                        animator?.Dispose();
                         return;
                     }
                     var old = Preview;
                     CurrentPng = png;
                     Preview = bitmap;
                     old?.Dispose();
+                    SwapAnimator(animator);
                 });
             }
             catch (Exception ex)
@@ -454,7 +521,166 @@ public partial class LyricShareViewModel : ViewModelBase
         });
     }
 
+    /// <summary>Installs the freshly built animator (or tears everything down when null),
+    /// reusing the WriteableBitmap when the pixel size is unchanged. UI thread only.</summary>
+    private void SwapAnimator(ShareCardRenderer.KaraokeCardAnimator? animator)
+    {
+        if (animator == null)
+        {
+            TeardownAnimator();
+            return;
+        }
+
+        _animator?.Dispose();
+        _animator = animator;
+        _animLastT = double.NaN;
+
+        if (_animBitmap == null
+            || _animBitmap.PixelSize.Width != animator.PixelWidth
+            || _animBitmap.PixelSize.Height != animator.PixelHeight)
+        {
+            var oldBmp = _animBitmap;
+            _animBitmap = new WriteableBitmap(
+                new PixelSize(animator.PixelWidth, animator.PixelHeight),
+                new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+            AnimatedPreview = _animBitmap;
+            oldBmp?.Dispose();
+        }
+
+        RenderAnimatedFrame();   // first frame immediately, even when paused
+
+        if (_animTimer == null)
+        {
+            _animTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
+            _animTimer.Tick += (_, _) => OnAnimTick();
+        }
+        _animTimer.Start();
+    }
+
+    private void TeardownAnimator()
+    {
+        _animTimer?.Stop();
+        _animator?.Dispose();
+        _animator = null;
+        var old = AnimatedPreview;
+        AnimatedPreview = null;
+        old?.Dispose();
+        _animBitmap = null;
+        _animLastT = double.NaN;
+    }
+
+    private void OnAnimTick()
+    {
+        if (_animator == null)
+        {
+            _animTimer?.Stop();
+            return;
+        }
+        double t = GetSmoothedPositionSeconds() + PreviewWordLookaheadSeconds;
+        // Paused (or between coarse position updates while paused) → nothing moved.
+        if (!double.IsNaN(_animLastT) && Math.Abs(t - _animLastT) < 0.0005)
+            return;
+        RenderAnimatedFrameAt(t);
+    }
+
+    private void RenderAnimatedFrame()
+        => RenderAnimatedFrameAt(GetSmoothedPositionSeconds() + PreviewWordLookaheadSeconds);
+
+    private void RenderAnimatedFrameAt(double t)
+    {
+        if (_animator == null || _animBitmap == null) return;
+        _animLastT = t;
+        using (var fb = _animBitmap.Lock())
+            _animator.RenderFrame(t, fb.Address, fb.RowBytes);
+        AnimatedFrameRendered?.Invoke();
+    }
+
+    /// <summary>Extrapolated playback position in seconds (see clock fields above).</summary>
+    private double GetSmoothedPositionSeconds()
+    {
+        if (_player == null) return 0;
+        var raw = _player.Position;
+        if (_player.State != PlaybackState.Playing)
+        {
+            // Not advancing — drop the anchor so resume re-anchors fresh.
+            _clockRawMs = -1;
+            _clockLastMs = raw.TotalMilliseconds;
+            return raw.TotalSeconds;
+        }
+
+        var rawMs = (long)raw.TotalMilliseconds;
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (rawMs != _clockRawMs)
+        {
+            _clockRawMs = rawMs;
+            _clockAnchorMs = rawMs;
+            _clockAnchorTimestamp = now;
+        }
+
+        var elapsedMs = (now - _clockAnchorTimestamp) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        if (elapsedMs > 1000) elapsedMs = 1000;   // stall guard: don't run away from a buffering player
+        var estimate = _clockAnchorMs + elapsedMs;
+        if (estimate < _clockLastMs && _clockLastMs - estimate < 300)
+            estimate = _clockLastMs;               // monotonic guard: hold tiny backwards re-anchors
+        _clockLastMs = estimate;
+        return estimate / 1000.0;
+    }
+
     public void ReportStatus(string message) => StatusText = message;
+
+    /// <summary>The card spec for the given lyric lines under the current options —
+    /// shared by the live preview and the karaoke frame renderer so they always match.</summary>
+    private LyricCardSpec BuildSpec(IReadOnlyList<string> lines) => new()
+    {
+        Title = _track.Title,
+        Artist = _track.ArtistDisplay,
+        ArtworkPath = _track.AlbumArtworkPath,
+        Lines = lines,
+        Format = IsStory ? ShareCardFormat.Story : ShareCardFormat.Square,
+        TextColor = TextColor,
+        IsExplicit = _track.IsExplicit,
+        Background = IsSolidBg ? ShareBackground.Solid : ShareBackground.Artwork,
+        SolidColorHex = SolidColorHex,
+    };
+
+    /// <summary>
+    /// Karaoke timing parallel to the card's lines: sanitized word tokens with resolved
+    /// end times (explicit end → next word → line end → next line start → +2 s).
+    /// Lines without word data get StartSeconds only (line-level highlight).
+    /// </summary>
+    private static IReadOnlyList<KaraokeLine> BuildKaraokeLines(IReadOnlyList<SelectableLyricLine> selected)
+    {
+        var result = new List<KaraokeLine>(selected.Count);
+        for (int i = 0; i < selected.Count; i++)
+        {
+            var line = selected[i];
+            double? nextLineStart = i + 1 < selected.Count ? selected[i + 1].Timestamp?.TotalSeconds : null;
+            if (line.Words is not { Count: > 0 } words)
+            {
+                result.Add(new KaraokeLine { StartSeconds = line.Timestamp?.TotalSeconds });
+                continue;
+            }
+
+            var karaokeWords = new List<KaraokeWord>(words.Count);
+            for (int k = 0; k < words.Count; k++)
+            {
+                var token = ShareCardRenderer.SanitizeForRender(words[k].Text);
+                if (token.Length == 0)
+                    continue;   // pure-whitespace word carries no rendered token
+                double start = words[k].Start.TotalSeconds;
+                double end = words[k].End?.TotalSeconds
+                    ?? (k + 1 < words.Count ? words[k + 1].Start.TotalSeconds
+                        : line.EndTimestamp?.TotalSeconds ?? nextLineStart ?? start + 2);
+                karaokeWords.Add(new KaraokeWord(token, start, end));
+            }
+            result.Add(new KaraokeLine
+            {
+                StartSeconds = line.Timestamp?.TotalSeconds,
+                Words = karaokeWords,
+            });
+        }
+        return result;
+    }
 
     /// <summary>Derives the clip's audio window from the selected lines and playback position.</summary>
     public ShareClipTiming GetClipTiming()
@@ -483,8 +709,38 @@ public partial class LyricShareViewModel : ViewModelBase
         IsRendering = true;
         try
         {
-            var (ok, error) = await ShareClipRenderer.RenderAsync(ffmpeg, png, _track.FilePath, outputPath, GetClipTiming());
-            return ok ? "Saved" : $"Clip failed: {error}";
+            if (!(KaraokeEnabled && KaraokeAvailable))
+            {
+                var (ok, error) = await ShareClipRenderer.RenderAsync(ffmpeg, png, _track.FilePath, outputPath, GetClipTiming());
+                return ok ? "Saved" : $"Clip failed: {error}";
+            }
+
+            // Karaoke path: per-frame word sweep → PNG sequence → ffmpeg mux.
+            // Same line filter as RefreshPreview so spec.Lines and karaoke stay parallel
+            // to what the card shows.
+            var selected = Lines.Where(l => l.IsSelected && !string.IsNullOrWhiteSpace(l.Text)).ToList();
+            var spec = BuildSpec(selected.Select(l => l.Text).ToList());
+            var karaoke = BuildKaraokeLines(selected);
+            var timing = GetClipTiming();
+
+            var frameDir = Path.Combine(Path.GetTempPath(), $"noctis-karaoke-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(frameDir);
+            try
+            {
+                await Task.Run(() => ShareCardRenderer.RenderKaraokeFrames(
+                    spec, karaoke, timing, KaraokeFps, frameDir,
+                    (done, total) => Dispatcher.UIThread.Post(() => StatusText = $"Rendering frames… {done}/{total}")));
+
+                StatusText = "Encoding clip…";
+                var pattern = Path.Combine(frameDir, "frame-%05d.png");
+                var (ok, error) = await ShareClipRenderer.RenderFramesAsync(
+                    ffmpeg, pattern, KaraokeFps, _track.FilePath, outputPath, timing);
+                return ok ? "Saved" : $"Clip failed: {error}";
+            }
+            finally
+            {
+                try { Directory.Delete(frameDir, true); } catch { /* best effort */ }
+            }
         }
         finally
         {
@@ -495,6 +751,8 @@ public partial class LyricShareViewModel : ViewModelBase
     /// <summary>Unsubscribes from the player so the dialog can be garbage-collected.</summary>
     public void Detach()
     {
+        ++_renderGeneration;   // stale in-flight preview renders dispose instead of re-installing
+        TeardownAnimator();
         if (_player != null)
             _player.PropertyChanged -= OnPlayerPropertyChanged;
         foreach (var line in Lines)

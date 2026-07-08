@@ -81,6 +81,8 @@ public sealed class AudioAnalysisCoordinator
             catch (InvalidOperationException) { return; }
         }
 
+        DebugLogger.Info(DebugLogger.Category.Playback, "Backfill.Start", $"pending={pending.Count}");
+
         bool anyWritten = false;
         foreach (var track in pending)
         {

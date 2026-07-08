@@ -866,13 +866,6 @@ public partial class PlaybackBarView : UserControl
             item.IsSubMenuOpen = true;
     }
 
-    private void OnLyricsPanelButtonClick(object? sender, RoutedEventArgs e)
-    {
-        var mainWindow = this.FindLogicalAncestorOfType<MainWindow>();
-        if (mainWindow?.DataContext is MainWindowViewModel mainVm)
-            mainVm.ToggleLyricsPanelCommand.Execute(null);
-    }
-
     private void OnLyricsButtonClick(object? sender, RoutedEventArgs e)
     {
         var mainWindow = this.FindLogicalAncestorOfType<MainWindow>();

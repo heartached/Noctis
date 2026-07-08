@@ -15,7 +15,8 @@
         <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter"/>
         <conv:VolumeToIconConverter x:Key="VolumeToIcon"/>
-        <conv:ProgressToSweepMaskConverter x:Key="ProgressToSweepMask"/>
+        <conv:ProgressToSweepForegroundConverter x:Key="ProgressToSweepFg"/>
+        <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
         <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect"/>
         <!-- Adaptive button/slider brushes (updated from code-behind) -->
         <SolidColorBrush x:Key="LyricsBtnBgRes" Color="#33FFFFFF"/>
@@ -901,23 +902,53 @@
                                                     <Panel Classes="word-cell"
                                                            Classes.current="{Binding IsCurrent}"
                                                            Classes.emphasis="{Binding IsEmphasis}">
-                                                        <!-- Soft glow under held-note words; fades in via word-glow styles. -->
-                                                        <TextBlock Text="{Binding Text}"
-                                                                   Classes="word-glow"
-                                                                   IsVisible="{Binding IsEmphasis}"
-                                                                   FontWeight="Bold"
-                                                                   Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                                                        <!-- Soft glow under held-note words; fades in via word-glow styles.
+                                                             Hosted in a Canvas so its blur surface can be padded out for the
+                                                             gaussian tail WITHOUT growing the word cell (which would space words
+                                                             apart). A negative Margin does NOT work here: unlike WPF, Avalonia
+                                                             collapses the arrange bounds to the layout slot, so the padded
+                                                             headroom never reaches the effect surface and blur(6) clips into a
+                                                             hard box. The Canvas reports zero desired size and never clips; the
+                                                             glow's Padding gives the blur room and the matching negative offset
+                                                             re-aligns its glyphs onto the base layer. -->
+                                                        <Canvas ClipToBounds="False">
+                                                            <TextBlock Text="{Binding Text}"
+                                                                       Classes="word-glow"
+                                                                       IsVisible="{Binding IsEmphasis}"
+                                                                       Canvas.Left="-40"
+                                                                       Canvas.Top="-40"
+                                                                       Padding="40"
+                                                                       FontWeight="Bold"
+                                                                       Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                                                        </Canvas>
                                                         <!-- Base layer: full opacity while the line is inactive, dims to a
                                                              soft ghost under the sweep while active (word-base styles). -->
+                                                        <!-- Right padding on line-final words only (see WordOverflowPaddingConverter):
+                                                             the dimmed base composites through a bounds-clipped layer that shears the
+                                                             last glyph of words with no trailing space. Costs no spacing — mid-line
+                                                             words already carry a trailing space and get zero padding. -->
                                                         <TextBlock Text="{Binding Text}"
                                                                    Classes="word-base"
+                                                                   Padding="{Binding Text, Converter={StaticResource WordOverflowPad}}"
                                                                    FontWeight="Bold"
                                                                    Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
-                                                        <!-- Bright overlay revealed left-to-right by Progress sweep. -->
-                                                        <TextBlock Text="{Binding Text}"
-                                                                   FontWeight="Bold"
-                                                                   Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
-                                                                   OpacityMask="{Binding Progress, Converter={StaticResource ProgressToSweepMask}}"/>
+                                                        <!-- Bright overlay revealed left-to-right by the Progress sweep, painted
+                                                             as a Foreground gradient — NOT an OpacityMask: the mask's compositor
+                                                             layer captured the sibling glow (multiplied it by the sweep and
+                                                             clipped it at the overlay bounds → hard box around emphasis words).
+                                                             SweepText + Left alignment shrink the gradient's domain to the glyphs:
+                                                             with the trailing space included, the edge spent the tail of every
+                                                             word's duration crossing invisible whitespace (per-word stall). -->
+                                                        <TextBlock Text="{Binding SweepText}"
+                                                                   HorizontalAlignment="Left"
+                                                                   FontWeight="Bold">
+                                                            <TextBlock.Foreground>
+                                                                <MultiBinding Converter="{StaticResource ProgressToSweepFg}">
+                                                                    <Binding Path="Progress"/>
+                                                                    <Binding Path="$parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg"/>
+                                                                </MultiBinding>
+                                                            </TextBlock.Foreground>
+                                                        </TextBlock>
                                                     </Panel>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>

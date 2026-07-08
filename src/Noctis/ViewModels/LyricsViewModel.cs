@@ -280,10 +280,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private IBrush _fullBackgroundBrush = CreateDefaultUnifiedBrush();
 
-    /// <summary>Vertical gradient optimized for the narrow side lyrics panel.</summary>
-    [ObservableProperty]
-    private IBrush _panelBackgroundBrush = CreateDefaultPanelBrush();
-
     // ── Fluid mesh colours (AMLL-style animated background blobs) ──
 
     [ObservableProperty] private Color _meshBaseColor = DefaultAdaptiveColor;
@@ -566,9 +562,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private static LinearGradientBrush CreateDefaultUnifiedBrush()
         => DominantColorExtractor.GenerateUnifiedBrush(DefaultAdaptiveColor);
 
-    private static LinearGradientBrush CreateDefaultPanelBrush()
-        => DominantColorExtractor.GeneratePanelBrush(DefaultAdaptiveColor);
-
     /// <summary>
     /// Extracts the dominant color from the current album art and updates
     /// both left and right panel brushes. Called on track change.
@@ -605,7 +598,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             LeftPanelBrush = CreateDefaultGradient();
             LyricsBackgroundBrush = CreateDefaultSubduedGradient();
             FullBackgroundBrush = CreateDefaultUnifiedBrush();
-            PanelBackgroundBrush = CreateDefaultPanelBrush();
             _averageArtworkColor = null;
             RefreshLyricsForegrounds();
             return;
@@ -620,7 +612,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             LeftPanelBrush = left;
             LyricsBackgroundBrush = right;
             FullBackgroundBrush = DominantColorExtractor.GenerateUnifiedBrush(dominant, secondary);
-            PanelBackgroundBrush = DominantColorExtractor.GeneratePanelBrush(dominant, secondary);
             UpdateMeshColors(dominant, secondary);
             _averageArtworkColor = artPath != null
                 ? DominantColorExtractor.GetOrExtractAverageColor(artPath, albumArt)
@@ -632,7 +623,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             LeftPanelBrush = CreateDefaultGradient();
             LyricsBackgroundBrush = CreateDefaultSubduedGradient();
             FullBackgroundBrush = CreateDefaultUnifiedBrush();
-            PanelBackgroundBrush = CreateDefaultPanelBrush();
             _averageArtworkColor = null;
             RefreshLyricsForegrounds();
         }
@@ -736,7 +726,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 var c2 = Color.Parse(parts[1]);
                 FullBackgroundBrush = DominantColorExtractor.GenerateGradientBrush(c1, c2);
                 LyricsBackgroundBrush = FullBackgroundBrush;
-                PanelBackgroundBrush = DominantColorExtractor.GeneratePanelBrush(c1, c2);
                 UpdateForegroundsForBackground(FullBackgroundBrush);
             }
             catch
@@ -756,7 +745,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 var brush = new SolidColorBrush(color);
                 FullBackgroundBrush = brush;
                 LyricsBackgroundBrush = brush;
-                PanelBackgroundBrush = brush;
                 UpdateForegroundsForBackground(brush);
             }
             catch
@@ -812,7 +800,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                         var c2 = Color.Parse(parts[1]);
                         FullBackgroundBrush = DominantColorExtractor.GenerateGradientBrush(c1, c2);
                         LyricsBackgroundBrush = FullBackgroundBrush;
-                        PanelBackgroundBrush = DominantColorExtractor.GeneratePanelBrush(c1, c2);
                         IsColorModeSolid = false;
                         IsColorModeGradient = true;
                     }
@@ -828,7 +815,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                     var brush = new SolidColorBrush(color);
                     FullBackgroundBrush = brush;
                     LyricsBackgroundBrush = brush;
-                    PanelBackgroundBrush = brush;
                     UpdateForegroundsForBackground(brush);
                 }
             }
@@ -1506,6 +1492,21 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        // A new track was picked, but TrackStarted (which reloads lyrics) only fires
+        // once playback actually starts — until then the PREVIOUS track's no-lyrics
+        // state kept the "Search Lyrics" button visible for a beat while the rest of
+        // the page already showed the new track. Hide it the moment the track changes;
+        // the full lyric load still lands via OnTrackStarted.
+        if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack) &&
+            _player.CurrentTrack is { } incomingTrack &&
+            !ReferenceEquals(incomingTrack, _currentTrack) &&
+            (ShowSearchButton || IsSearching))
+        {
+            ShowSearchButton = false;
+            IsSearching = false;
+            SearchFailedMessage = string.Empty;
+        }
+
         // Manage the sync timer based on playback state changes.
         // Only run the timer when synced tab is active.
         if (e.PropertyName == nameof(PlayerViewModel.State))
@@ -2100,6 +2101,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             shareable.Select(l => l.Text).ToList(),
             shareable.Select(l => l.Timestamp).ToList(),
             _player,
+            shareable.Select(l => l.Words).ToList(),
+            shareable.Select(l => l.EndTimestamp).ToList(),
             preselect);
         await Views.LyricShareDialog.ShowAsync(vm);
     }

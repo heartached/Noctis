@@ -100,6 +100,44 @@ public static class ShareCardRenderer
         int h = spec.Format == ShareCardFormat.Story ? 1920 : 1080;
 
         using var art = LoadArtwork(spec.ArtworkPath);
+        using var surface = SKSurface.Create(new SKImageInfo(w, h));
+        var canvas = surface.Canvas;
+
+        using var boldFace = ResolveTypeface(SKFontStyleWeight.Bold);
+        using var regularFace = ResolveTypeface(SKFontStyleWeight.Normal);
+        using var lyricFace = ResolveTypeface(
+            spec.LyricWeight == LyricCardWeight.Bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.SemiBold);
+
+        var chrome = DrawCardBase(canvas, spec, w, h, art, boldFace, regularFace, lyricFace);
+
+        using var lyricPaint = TextPaint(lyricFace, chrome.LyricSize, chrome.Fg);
+        float baseline = chrome.FirstBaseline;
+        foreach (var (line, _) in chrome.Wrapped)
+        {
+            DrawTextFallback(canvas, line, chrome.LyricX, baseline, lyricPaint);
+            baseline += chrome.LineHeight;
+        }
+
+        using var image = surface.Snapshot();
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        return data.ToArray();
+    }
+
+    /// <summary>Geometry the lyric block was laid out with, so per-frame redraws land
+    /// on exactly the same pixels as the still card.</summary>
+    private sealed record CardChrome(
+        SKColor Fg, float LyricX, float FirstBaseline,
+        List<(string Text, int Line)> Wrapped, float LyricSize, float LineHeight);
+
+    /// <summary>
+    /// Draws the full card EXCEPT the lyric rows (background, frosted/solid box, header,
+    /// wordmark) and returns the lyric-block geometry. Shared by the still card and the
+    /// karaoke frame loop so the two always agree pixel-for-pixel.
+    /// </summary>
+    private static CardChrome DrawCardBase(
+        SKCanvas canvas, LyricCardSpec spec, int w, int h, SKBitmap? art,
+        SKTypeface boldFace, SKTypeface regularFace, SKTypeface lyricFace)
+    {
         bool artworkBlur = spec.Background == ShareBackground.Artwork && art != null;
 
         // Solid color: an explicit swatch hex if given, else a vibrant color derived from
@@ -108,14 +146,6 @@ public static class ShareCardRenderer
                          && SKColor.TryParse(spec.SolidColorHex, out var parsed)
             ? parsed
             : DeriveVibrantColor(art);
-
-        using var surface = SKSurface.Create(new SKImageInfo(w, h));
-        var canvas = surface.Canvas;
-
-        using var boldFace = ResolveTypeface(SKFontStyleWeight.Bold);
-        using var regularFace = ResolveTypeface(SKFontStyleWeight.Normal);
-        using var lyricFace = ResolveTypeface(
-            spec.LyricWeight == LyricCardWeight.Bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.SemiBold);
 
         SKColor fg, fgSubtle, badgeLetter;
         SKRect contentRect;
@@ -188,31 +218,13 @@ public static class ShareCardRenderer
             contentRect = new SKRect(margin + pad, boxTop + pad, w - margin - pad, boxTop + boxH - pad);
         }
 
-        DrawCardContent(canvas, spec, contentRect, fg, fgSubtle, badgeLetter, art,
-                        boldFace, regularFace, lyricFace);
-
-        using var image = surface.Snapshot();
-        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-        return data.ToArray();
-    }
-
-    /// <summary>
-    /// Lays out a card's content inside <paramref name="rect"/>: header (thumbnail +
-    /// title/artist) anchored to the top, wordmark to the bottom, and the auto-fit lyric
-    /// block vertically centered in the space between them.
-    /// </summary>
-    private static void DrawCardContent(
-        SKCanvas canvas, LyricCardSpec spec, SKRect rect,
-        SKColor fg, SKColor fgSubtle, SKColor badgeLetter, SKBitmap? art,
-        SKTypeface boldFace, SKTypeface regularFace, SKTypeface lyricFace)
-    {
-        float x = rect.Left;
-        float contentW = rect.Width;
+        float x = contentRect.Left;
+        float contentW = contentRect.Width;
 
         // ── Header: album thumbnail + title/artist ──────────────────────
         const float artGap = 30f;
         float artSize = HeaderArtSize;
-        var artRect = new SKRect(x, rect.Top, x + artSize, rect.Top + artSize);
+        var artRect = new SKRect(x, contentRect.Top, x + artSize, contentRect.Top + artSize);
         if (art != null)
         {
             using var artPaint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
@@ -242,39 +254,270 @@ public static class ShareCardRenderer
         using var artistPaint = TextPaint(regularFace, 31, fgSubtle);
         float textX = x + artSize + artGap;
         float textMaxW = contentW - artSize - artGap;
-        float titleBaseline = rect.Top + 49;
+        float titleBaseline = contentRect.Top + 49;
         float badgeReserve = spec.IsExplicit ? titlePaint.TextSize * 0.72f + 14 : 0;
-        var titleText = Ellipsize(SanitizeForRender(spec.Title), textMaxW - badgeReserve, s => titlePaint.MeasureText(s));
-        canvas.DrawText(titleText, textX, titleBaseline, titlePaint);
+        var titleText = Ellipsize(SanitizeForRender(spec.Title), textMaxW - badgeReserve, s => MeasureTextFallback(titlePaint, s));
+        DrawTextFallback(canvas, titleText, textX, titleBaseline, titlePaint);
         if (spec.IsExplicit)
         {
-            float badgeX = textX + titlePaint.MeasureText(titleText) + 14;
+            float badgeX = textX + MeasureTextFallback(titlePaint, titleText) + 14;
             DrawExplicitBadge(canvas, regularFace, fg, badgeLetter,
                 badgeX, titleBaseline - titlePaint.TextSize * 0.34f, titlePaint.TextSize);
         }
-        canvas.DrawText(Ellipsize(SanitizeForRender(spec.Artist), textMaxW, s => artistPaint.MeasureText(s)),
-            textX, rect.Top + 49 + 38, artistPaint);
+        DrawTextFallback(canvas, Ellipsize(SanitizeForRender(spec.Artist), textMaxW, s => MeasureTextFallback(artistPaint, s)),
+            textX, contentRect.Top + 49 + 38, artistPaint);
 
-        float headerBottom = rect.Top + artSize;
+        float headerBottom = contentRect.Top + artSize;
 
         // ── Footer wordmark, pinned to the bottom of the content rect ───
-        float footerTop = rect.Bottom - FooterHeight;
+        float footerTop = contentRect.Bottom - FooterHeight;
         DrawWordmark(canvas, boldFace, fg, x, footerTop);
 
-        // ── Lyrics: auto-fit, then vertically center between header & footer ──
+        // ── Lyric geometry: auto-fit, then vertically center between header & footer ──
         float lyTop = headerBottom + LyricGapTop;
         float lyBottom = footerTop - LyricGapBottom;
         float avail = Math.Max(0f, lyBottom - lyTop);
 
         var (wrapped, lyricSize, lineHeight) = FitLyrics(spec, contentW, avail, lyricFace);
-        using var lyricPaint = TextPaint(lyricFace, lyricSize, fg);
-
         float blockH = wrapped.Count * lineHeight;
-        float baseline = lyTop + Math.Max(0f, (avail - blockH) / 2f) + lyricSize * 0.80f;
-        foreach (var line in wrapped)
+        float firstBaseline = lyTop + Math.Max(0f, (avail - blockH) / 2f) + lyricSize * 0.80f;
+        return new CardChrome(fg, x, firstBaseline, wrapped, lyricSize, lineHeight);
+    }
+
+    /// <summary>Alpha of unsung lyric text on karaoke frames (the dim base layer).</summary>
+    private const byte KaraokeDimAlpha = 0x5F;
+    /// <summary>Sweep feather, as a fraction of the current word's width — mirrors
+    /// <c>ProgressToSweepForegroundConverter.Feather</c> on the lyrics page.</summary>
+    private const float KaraokeFeather = 0.06f;
+
+    /// <summary>
+    /// Renders the karaoke frame sequence for a clip: the same card as
+    /// <see cref="RenderLyricCardStyled"/>, chrome drawn once, then per frame the lyric
+    /// block repainted with the word sweep at that frame's absolute track time
+    /// (timing.StartSeconds + frame/fps). Frames are written as frame-00000.png… into
+    /// <paramref name="frameDir"/>; <paramref name="karaoke"/> is parallel to
+    /// <see cref="LyricCardSpec.Lines"/>. Lines whose rendered rows can't be mapped back
+    /// to their word tokens degrade to a whole-line highlight. CPU-only — call off the
+    /// UI thread.
+    /// </summary>
+    public static void RenderKaraokeFrames(
+        LyricCardSpec spec, IReadOnlyList<KaraokeLine> karaoke, ShareClipTiming timing,
+        int fps, string frameDir, Action<int, int>? progress = null, CancellationToken ct = default)
+    {
+        int w = CanvasWidth;
+        int h = spec.Format == ShareCardFormat.Story ? 1920 : 1080;
+
+        using var art = LoadArtwork(spec.ArtworkPath);
+        using var surface = SKSurface.Create(new SKImageInfo(w, h));
+        var canvas = surface.Canvas;
+
+        using var boldFace = ResolveTypeface(SKFontStyleWeight.Bold);
+        using var regularFace = ResolveTypeface(SKFontStyleWeight.Normal);
+        using var lyricFace = ResolveTypeface(
+            spec.LyricWeight == LyricCardWeight.Bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.SemiBold);
+
+        var chrome = DrawCardBase(canvas, spec, w, h, art, boldFace, regularFace, lyricFace);
+        using var baseImage = surface.Snapshot();   // chrome only, no lyric rows
+
+        // Row → word-token ranges, resolved once (null = degrade that line to line highlight).
+        var rowRanges = MapKaraokeRows(chrome.Wrapped, karaoke);
+
+        using var dimPaint = TextPaint(lyricFace, chrome.LyricSize, chrome.Fg.WithAlpha(KaraokeDimAlpha));
+        using var brightPaint = TextPaint(lyricFace, chrome.LyricSize, chrome.Fg);
+
+        int total = Math.Max(1, (int)Math.Ceiling(fps * timing.DurationSeconds));
+        for (int frame = 0; frame < total; frame++)
         {
-            canvas.DrawText(line, x, baseline, lyricPaint);
-            baseline += lineHeight;
+            ct.ThrowIfCancellationRequested();
+            double t = timing.StartSeconds + (double)frame / fps;
+
+            canvas.DrawImage(baseImage, 0, 0);
+            DrawKaraokeRows(canvas, chrome, karaoke, rowRanges, brightPaint, dimPaint, t);
+
+            using var img = surface.Snapshot();
+            using var data = img.Encode(SKEncodedImageFormat.Png, 90);
+            using var fs = File.Create(Path.Combine(frameDir, $"frame-{frame:D5}.png"));
+            data.SaveTo(fs);
+
+            if (frame % 12 == 0 || frame == total - 1)
+                progress?.Invoke(frame + 1, total);
+        }
+    }
+
+    /// <summary>
+    /// Live karaoke card renderer for the share dialog's preview: the card chrome is
+    /// drawn once at construction (scaled), then <see cref="RenderFrame"/> repaints just
+    /// the lyric sweep for a playback time and copies the pixels into a caller-supplied
+    /// BGRA framebuffer (an Avalonia WriteableBitmap). Same drawing code as the exported
+    /// clip, so the preview is exactly what Save Video produces. Not thread-safe — build
+    /// off the UI thread if desired, then render from one thread at a time.
+    /// </summary>
+    public sealed class KaraokeCardAnimator : IDisposable
+    {
+        private readonly SKSurface _surface;
+        private readonly SKImage _baseImage;
+        private readonly CardChrome _chrome;
+        private readonly IReadOnlyList<KaraokeLine> _karaoke;
+        private readonly (int Start, int Count)?[] _rowRanges;
+        private readonly SKTypeface _lyricFace;
+        private readonly SKPaint _dimPaint;
+        private readonly SKPaint _brightPaint;
+        private readonly float _scale;
+
+        public int PixelWidth { get; }
+        public int PixelHeight { get; }
+
+        public KaraokeCardAnimator(LyricCardSpec spec, IReadOnlyList<KaraokeLine> karaoke, float scale)
+        {
+            _karaoke = karaoke;
+            _scale = scale;
+            int w = CanvasWidth;
+            int h = spec.Format == ShareCardFormat.Story ? 1920 : 1080;
+            PixelWidth = (int)Math.Round(w * scale);
+            PixelHeight = (int)Math.Round(h * scale);
+
+            // BGRA premul to match Avalonia's WriteableBitmap framebuffer — the per-frame
+            // readback is then a straight copy.
+            _surface = SKSurface.Create(new SKImageInfo(PixelWidth, PixelHeight, SKColorType.Bgra8888, SKAlphaType.Premul));
+            var canvas = _surface.Canvas;
+
+            using var art = LoadArtwork(spec.ArtworkPath);
+            using var boldFace = ResolveTypeface(SKFontStyleWeight.Bold);
+            using var regularFace = ResolveTypeface(SKFontStyleWeight.Normal);
+            _lyricFace = ResolveTypeface(
+                spec.LyricWeight == LyricCardWeight.Bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.SemiBold);
+
+            canvas.Save();
+            canvas.Scale(scale);
+            _chrome = DrawCardBase(canvas, spec, w, h, art, boldFace, regularFace, _lyricFace);
+            canvas.Restore();
+            _baseImage = _surface.Snapshot();
+
+            _rowRanges = MapKaraokeRows(_chrome.Wrapped, karaoke);
+            _dimPaint = TextPaint(_lyricFace, _chrome.LyricSize, _chrome.Fg.WithAlpha(KaraokeDimAlpha));
+            _brightPaint = TextPaint(_lyricFace, _chrome.LyricSize, _chrome.Fg);
+        }
+
+        /// <summary>Renders the card at absolute track time <paramref name="tSeconds"/>
+        /// into <paramref name="dest"/> (BGRA8888 premul, <see cref="PixelWidth"/> ×
+        /// <see cref="PixelHeight"/>).</summary>
+        public void RenderFrame(double tSeconds, IntPtr dest, int destRowBytes)
+        {
+            var canvas = _surface.Canvas;
+            canvas.DrawImage(_baseImage, 0, 0);
+            canvas.Save();
+            canvas.Scale(_scale);
+            DrawKaraokeRows(canvas, _chrome, _karaoke, _rowRanges, _brightPaint, _dimPaint, tSeconds);
+            canvas.Restore();
+            _surface.ReadPixels(
+                new SKImageInfo(PixelWidth, PixelHeight, SKColorType.Bgra8888, SKAlphaType.Premul),
+                dest, destRowBytes, 0, 0);
+        }
+
+        public void Dispose()
+        {
+            _dimPaint.Dispose();
+            _brightPaint.Dispose();
+            _baseImage.Dispose();
+            _surface.Dispose();
+            _lyricFace.Dispose();
+        }
+    }
+
+    /// <summary>Resolves each wrapped row's token range in its source line's word list;
+    /// a line whose rows don't cleanly re-assemble its tokens maps to null.</summary>
+    private static (int Start, int Count)?[] MapKaraokeRows(
+        List<(string Text, int Line)> wrapped, IReadOnlyList<KaraokeLine> karaoke)
+    {
+        var result = new (int Start, int Count)?[wrapped.Count];
+        foreach (var group in Enumerable.Range(0, wrapped.Count).GroupBy(i => wrapped[i].Line))
+        {
+            int line = group.Key;
+            var words = line < karaoke.Count ? karaoke[line].Words : null;
+            if (words == null || words.Count == 0)
+                continue;
+            var rowIdx = group.ToList();
+            var rows = rowIdx.Select(i => wrapped[i].Text).ToList();
+            var ranges = KaraokeSweep.MapRowsToTokenRanges(words.Select(kw => kw.Token).ToList(), rows);
+            if (ranges == null)
+                continue;
+            for (int r = 0; r < rowIdx.Count; r++)
+                result[rowIdx[r]] = ranges[r];
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Paints the lyric block at time <paramref name="t"/>: every row dim, then the sung
+    /// part bright — per-word sweep with a feathered leading edge when the row has word
+    /// mapping, whole-row highlight (lit once the line has started) otherwise. Painted as
+    /// overlaid foreground text, never OpacityMask (see ProgressToSweepForegroundConverter:
+    /// mask layers clipped/boxed the glow on the lyrics page).
+    /// </summary>
+    private static void DrawKaraokeRows(
+        SKCanvas canvas, CardChrome chrome, IReadOnlyList<KaraokeLine> karaoke,
+        (int Start, int Count)?[] rowRanges, SKPaint brightPaint, SKPaint dimPaint, double t)
+    {
+        float baseline = chrome.FirstBaseline;
+        for (int r = 0; r < chrome.Wrapped.Count; r++, baseline += chrome.LineHeight)
+        {
+            var (text, lineIdx) = chrome.Wrapped[r];
+            var line = lineIdx < karaoke.Count ? karaoke[lineIdx] : null;
+
+            DrawTextFallback(canvas, text, chrome.LyricX, baseline, dimPaint);
+
+            if (rowRanges[r] is not { } range || line?.Words is not { } words)
+            {
+                // Line-level highlight: lit once the line has started (always lit if unsynced).
+                bool lit = line == null || line.StartSeconds is not { } start || t >= start;
+                if (lit)
+                    DrawTextFallback(canvas, text, chrome.LyricX, baseline, brightPaint);
+                continue;
+            }
+
+            // Word sweep: bright width = fully-sung tokens + fraction of the current one.
+            var tokens = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            float brightW = MeasureTextFallback(brightPaint, text);   // default: every word sung
+            float featherW = 0f;
+            for (int k = 0; k < tokens.Length; k++)
+            {
+                var word = words[range.Start + k];
+                double p = KaraokeSweep.WordProgress(word.StartSeconds, word.EndSeconds, t);
+                if (p >= 1)
+                    continue;
+                float wordW = MeasureTextFallback(brightPaint, tokens[k]);
+                float prefixW = k > 0
+                    ? MeasureTextFallback(brightPaint, string.Join(' ', tokens.Take(k)) + " ")
+                    : 0f;
+                brightW = prefixW + (float)p * wordW;
+                // Feather shrinks toward the word's edges, like the lyrics-page converter.
+                featherW = (float)Math.Min(KaraokeFeather * wordW, Math.Min(p, 1 - p) * wordW);
+                break;
+            }
+
+            if (brightW <= 0f)
+                continue;
+            if (featherW <= 0.5f)
+            {
+                // Hard edge (word boundary): clip-rect reveal.
+                canvas.Save();
+                canvas.ClipRect(new SKRect(chrome.LyricX, baseline - chrome.LyricSize * 1.1f,
+                                           chrome.LyricX + brightW, baseline + chrome.LyricSize * 0.45f));
+                DrawTextFallback(canvas, text, chrome.LyricX, baseline, brightPaint);
+                canvas.Restore();
+            }
+            else
+            {
+                // Feathered edge mid-word: foreground gradient bright→transparent, same RGB.
+                using var shader = SKShader.CreateLinearGradient(
+                    new SKPoint(chrome.LyricX + brightW - featherW, 0),
+                    new SKPoint(chrome.LyricX + brightW + featherW, 0),
+                    new[] { brightPaint.Color, brightPaint.Color.WithAlpha(0) },
+                    null, SKShaderTileMode.Clamp);
+                using var sweep = TextPaint(brightPaint.Typeface!, chrome.LyricSize, brightPaint.Color);
+                sweep.Shader = shader;
+                DrawTextFallback(canvas, text, chrome.LyricX, baseline, sweep);
+            }
         }
     }
 
@@ -283,18 +526,18 @@ public static class ShareCardRenderer
     /// block fits <paramref name="maxLyricsH"/>; returns the wrapped lines, chosen size and
     /// line height. Shared by the box-sizing and draw passes so the two always agree.
     /// </summary>
-    private static (List<string> wrapped, float lyricSize, float lineHeight) FitLyrics(
+    private static (List<(string Text, int Line)> wrapped, float lyricSize, float lineHeight) FitLyrics(
         LyricCardSpec spec, float contentW, float maxLyricsH, SKTypeface lyricFace)
     {
         var renderLines = spec.Lines.Select(SanitizeForRender).ToList();
         float lyricSize = spec.Format == ShareCardFormat.Story ? 78f : 66f;
         using var lyricPaint = TextPaint(lyricFace, lyricSize, SKColors.White);
-        List<string> wrapped;
+        List<(string Text, int Line)> wrapped;
         float lineHeight;
         while (true)
         {
             lyricPaint.TextSize = lyricSize;
-            wrapped = WrapAll(renderLines, contentW, s => lyricPaint.MeasureText(s));
+            wrapped = WrapAll(renderLines, contentW, s => MeasureTextFallback(lyricPaint, s));
             lineHeight = lyricSize * 1.30f;
             if (wrapped.Count * lineHeight <= maxLyricsH || lyricSize <= 34f)
                 break;
@@ -594,6 +837,111 @@ public static class ShareCardRenderer
         return _logo;
     }
 
+    // ── Font fallback for non-Latin text ─────────────────────────────────
+    // SkiaSharp's DrawText paints a .notdef "tofu" box for any glyph the single
+    // typeface lacks — there is no per-run fallback like Avalonia's. Korean /
+    // Japanese / Chinese lyrics therefore rendered as boxes. These helpers split
+    // text into runs per typeface, matching missing scripts through the OS font
+    // manager (DirectWrite / CoreText / fontconfig), and are used for BOTH drawing
+    // and measuring so wrapping, fitting and the karaoke sweep stay aligned.
+
+    private static readonly Dictionary<(int Block, int Weight), SKTypeface?> _fallbackFaces = new();
+    private static readonly object _fallbackLock = new();
+
+    /// <summary>
+    /// Splits <paramref name="text"/> into runs drawable with one typeface each: the
+    /// primary face wherever it has the glyphs, otherwise an OS-matched fallback per
+    /// 256-codepoint block. Whitespace sticks to the current run. Runs concatenate
+    /// back to the input; codepoints nothing can draw stay on the primary face.
+    /// </summary>
+    public static List<(string Run, SKTypeface Face)> SplitFallbackRuns(string text, SKTypeface primary)
+    {
+        var runs = new List<(string Run, SKTypeface Face)>();
+        if (string.IsNullOrEmpty(text))
+            return runs;
+
+        var sb = new StringBuilder();
+        SKTypeface currentFace = primary;
+        for (int i = 0; i < text.Length;)
+        {
+            int cp = char.ConvertToUtf32(text, i);
+            int len = char.IsSurrogatePair(text, i) ? 2 : 1;
+
+            SKTypeface face;
+            if (char.IsWhiteSpace(text[i]) || primary.ContainsGlyph(cp))
+                face = sb.Length > 0 && char.IsWhiteSpace(text[i]) ? currentFace : primary;
+            else
+                face = MatchFallbackFace(primary, cp) ?? primary;
+
+            if (sb.Length > 0 && !ReferenceEquals(face, currentFace))
+            {
+                runs.Add((sb.ToString(), currentFace));
+                sb.Clear();
+            }
+            currentFace = face;
+            sb.Append(text, i, len);
+            i += len;
+        }
+        if (sb.Length > 0)
+            runs.Add((sb.ToString(), currentFace));
+        return runs;
+    }
+
+    /// <summary>OS-matched typeface for a codepoint the primary face can't draw,
+    /// cached per 256-codepoint block + weight. Null when no installed font has it.</summary>
+    private static SKTypeface? MatchFallbackFace(SKTypeface primary, int codepoint)
+    {
+        var key = (codepoint >> 8, (int)primary.FontStyle.Weight);
+        lock (_fallbackLock)
+        {
+            if (_fallbackFaces.TryGetValue(key, out var cached))
+                return cached;
+            var matched = SKFontManager.Default.MatchCharacter(null, primary.FontStyle, null, codepoint);
+            _fallbackFaces[key] = matched;   // cached for the process lifetime, never disposed
+            return matched;
+        }
+    }
+
+    /// <summary>Width of <paramref name="text"/> under <paramref name="paint"/> with
+    /// font fallback — the sum of each run measured with its own typeface.</summary>
+    private static float MeasureTextFallback(SKPaint paint, string text)
+    {
+        var runs = SplitFallbackRuns(text, paint.Typeface!);
+        if (runs.Count == 1 && ReferenceEquals(runs[0].Face, paint.Typeface))
+            return paint.MeasureText(text);
+
+        float width = 0;
+        var saved = paint.Typeface;
+        foreach (var (run, face) in runs)
+        {
+            paint.Typeface = face;
+            width += paint.MeasureText(run);
+        }
+        paint.Typeface = saved;
+        return width;
+    }
+
+    /// <summary>Draws <paramref name="text"/> with font fallback, advancing x run by
+    /// run — the drawing twin of <see cref="MeasureTextFallback"/>.</summary>
+    private static void DrawTextFallback(SKCanvas canvas, string text, float x, float y, SKPaint paint)
+    {
+        var runs = SplitFallbackRuns(text, paint.Typeface!);
+        if (runs.Count == 1 && ReferenceEquals(runs[0].Face, paint.Typeface))
+        {
+            canvas.DrawText(text, x, y, paint);
+            return;
+        }
+
+        var saved = paint.Typeface;
+        foreach (var (run, face) in runs)
+        {
+            paint.Typeface = face;
+            canvas.DrawText(run, x, y, paint);
+            x += paint.MeasureText(run);
+        }
+        paint.Typeface = saved;
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // Pure helpers (unit-tested)
     // ─────────────────────────────────────────────────────────────────────
@@ -716,11 +1064,12 @@ public static class ShareCardRenderer
         return "…";
     }
 
-    private static List<string> WrapAll(IReadOnlyList<string> lines, float maxWidth, Func<string, float> measure)
+    private static List<(string Text, int Line)> WrapAll(IReadOnlyList<string> lines, float maxWidth, Func<string, float> measure)
     {
-        var result = new List<string>();
-        foreach (var line in lines)
-            result.AddRange(WrapText(line, maxWidth, measure));
+        var result = new List<(string Text, int Line)>();
+        for (int i = 0; i < lines.Count; i++)
+            foreach (var row in WrapText(lines[i], maxWidth, measure))
+                result.Add((row, i));
         return result;
     }
 

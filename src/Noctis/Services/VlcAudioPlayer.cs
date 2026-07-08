@@ -1080,9 +1080,12 @@ public class VlcAudioPlayer : IAudioPlayer
         // A flat curve (every band 0 dB and 0 preamp — e.g. the default "Flat"
         // preset, which has no UI "off" switch) is applied as a true bypass via
         // the UnsetEqualizer branch below rather than routed through VLC's
-        // equalizer. An enabled-but-flat VLC EQ sits slightly below the native
-        // signal level (the source of the "quieter than other players" reports);
-        // bypassing keeps Flat at unity.
+        // equalizer. VLC's EQ filter scales its input by EQZ_IN_FACTOR (0.25 =
+        // −12 dB) and relies on the preamp for make-up, so a flat curve at
+        // preamp 0 plays ~12 dB under native (the "quieter than other players"
+        // reports); bypassing keeps Flat at unity. Non-flat curves carry
+        // ParametricEqMath.VlcEqUnityPreampDb (or the preset's own preamp) as
+        // the make-up instead.
         var isFlat = Math.Abs(preamp) < 0.05f;
         if (isFlat)
         {
@@ -1123,16 +1126,36 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             lock (_equalizerLock)
             {
-                // UnsetEqualizer, not SetEqualizer(null): LibVLCSharp dereferences
-                // the argument unconditionally, so the null form throws NRE on
-                // every call — which the apply queue then retried forever (see
-                // ProcessAdvancedEqualizerQueue).
-                if (_player != null)
-                    _player.UnsetEqualizer();
-                if (_standbyPrepared)
-                    _standbyPlayer.UnsetEqualizer();
-                _equalizer?.Dispose();
-                _equalizer = null;
+                // Removing "equalizer" from a LIVE output's filter chain forces
+                // an output restart — an audible ~1s dropout (VLC's FilterCallback
+                // only restarts when the audio-filter string CHANGES). So while a
+                // track is playing with a filter engaged, neutralize it to a
+                // unity-flat curve instead of unsetting: mathematically transparent
+                // (out = 4·(0.25·x + 0) = x), same level as true bypass, no restart.
+                // The filter is genuinely removed the next time a flat/disabled
+                // curve lands while nothing is playing (e.g. app start).
+                if (_equalizer != null && _player is { IsPlaying: true })
+                {
+                    _equalizer.SetPreamp(ParametricEqMath.VlcEqUnityPreampDb);
+                    for (uint i = 0; i < 10; i++)
+                        _equalizer.SetAmp(0f, i);
+                    _player.SetEqualizer(_equalizer);
+                    if (_standbyPrepared)
+                        _standbyPlayer.SetEqualizer(_equalizer);
+                }
+                else
+                {
+                    // UnsetEqualizer, not SetEqualizer(null): LibVLCSharp dereferences
+                    // the argument unconditionally, so the null form throws NRE on
+                    // every call — which the apply queue then retried forever (see
+                    // ProcessAdvancedEqualizerQueue).
+                    if (_player != null)
+                        _player.UnsetEqualizer();
+                    if (_standbyPrepared)
+                        _standbyPlayer.UnsetEqualizer();
+                    _equalizer?.Dispose();
+                    _equalizer = null;
+                }
             }
         }
     }
@@ -2143,11 +2166,12 @@ public class VlcAudioPlayer : IAudioPlayer
                 Thread.Sleep(10);
             }
 
-            // Carry the EQ onto the now-active player. When the curve is flat/bypassed
-            // (eqToApply == null) this UnsetEqualizer clears the leftover flat
-            // equalizer the player picked up as the inactive player during AutoMix
-            // cleanup — that filter sits below native level, so skipping it here (the
-            // old `!= null` guard) left the track quiet after the swap.
+            // Carry the EQ onto the now-active player. When engaged, the standby was
+            // already prepped with this equalizer before Play, so this only syncs
+            // values (same filter string → no output restart). When flat/bypassed,
+            // Unset is a no-op on the now-filterless player (AutoMix cleanup no
+            // longer plants a flat equalizer) — kept as a safety net so a stale
+            // curve can never survive a swap.
             Equalizer? eqToApply = null;
             lock (_equalizerLock)
             {
@@ -2299,8 +2323,8 @@ public class VlcAudioPlayer : IAudioPlayer
                 if (_advancedEqEnabled && _equalizer != null)
                     eqToApply = _equalizer;
             }
-            // Unset clears the leftover flat equalizer left on this player by an
-            // earlier AutoMix cleanup (below-native filter); see the SeqSwap note above.
+            // Engaged: value-only sync (standby was prepped with this equalizer).
+            // Flat: no-op safety Unset on a filterless player; see the SeqSwap note.
             if (eqToApply != null)
                 _player.SetEqualizer(eqToApply);
             else
@@ -2401,11 +2425,17 @@ public class VlcAudioPlayer : IAudioPlayer
                 }
                 try { inactivePlayer.Stop(); }
                 catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupStep", $"Stop: {ex.GetType().Name}: {ex.Message}"); }
-                // SetEqualizer(null) dereferences the null argument inside LibVLCSharp
-                // and throws NRE on a just-stopped player; apply a fresh flat equalizer
-                // instead to clear any curve before this player is reused.
-                try { using var flatEq = new Equalizer(); inactivePlayer.SetEqualizer(flatEq); }
-                catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupStep", $"SetEqualizer: {ex.GetType().Name}"); }
+                // Clear any leftover curve with UnsetEqualizer (safe on a stopped
+                // player — the old SetEqualizer(null) NRE was LibVLCSharp null
+                // marshaling, not player state). Do NOT plant a flat Equalizer
+                // here: it left "equalizer" in this player's filter chain, and
+                // stripping it at the next swap (UnsetEqualizer on the by-then
+                // LIVE incoming player) restarted its output — the split-second
+                // cut at the start of the next track. A stopped player has no
+                // output, so unsetting here is inaudible and the reused player
+                // starts filterless.
+                try { inactivePlayer.UnsetEqualizer(); }
+                catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupStep", $"UnsetEqualizer: {ex.GetType().Name}"); }
                 try { inactiveMedia?.Dispose(); }
                 catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupStep", $"Dispose: {ex.GetType().Name}"); }
 

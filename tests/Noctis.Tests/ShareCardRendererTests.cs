@@ -1,10 +1,44 @@
 using Noctis.Services;
+using SkiaSharp;
 using Xunit;
 
 namespace Noctis.Tests;
 
 public class ShareCardRendererTests
 {
+    // ── Font-fallback run splitting (CJK tofu fix) ──────────────────────
+    // Which fallback face gets matched depends on the OS's installed fonts, so these
+    // assert only platform-independent properties: no characters lost, ASCII stays
+    // on the primary face, runs are non-empty.
+
+    [Fact]
+    public void SplitFallbackRuns_AsciiIsSingleRunOnPrimaryFace()
+    {
+        using var face = SKTypeface.CreateDefault();
+        var runs = ShareCardRenderer.SplitFallbackRuns("hello world", face);
+        Assert.Single(runs);
+        Assert.Equal("hello world", runs[0].Run);
+        Assert.Same(face, runs[0].Face);
+    }
+
+    [Fact]
+    public void SplitFallbackRuns_MixedScriptsLoseNoCharacters()
+    {
+        using var face = SKTypeface.CreateDefault();
+        const string text = "잘 봐 One, two, three 가만히 바라봐";
+        var runs = ShareCardRenderer.SplitFallbackRuns(text, face);
+        Assert.Equal(text, string.Concat(runs.Select(r => r.Run)));
+        Assert.All(runs, r => Assert.False(string.IsNullOrEmpty(r.Run)));
+        Assert.All(runs, r => Assert.NotNull(r.Face));
+    }
+
+    [Fact]
+    public void SplitFallbackRuns_EmptyTextYieldsNoRuns()
+    {
+        using var face = SKTypeface.CreateDefault();
+        Assert.Empty(ShareCardRenderer.SplitFallbackRuns("", face));
+    }
+
     // Fake measurer: every character is 10 units wide.
     private static float Measure(string s) => s.Length * 10f;
 

@@ -107,20 +107,6 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarHidden = !IsSidebarHidden;
 
-    // ── Lyrics side panel ──
-
-    /// <summary>Whether the lyrics side panel overlay is open.</summary>
-    [ObservableProperty] private bool _isLyricsPanelOpen;
-
-    [RelayCommand]
-    private void ToggleLyricsPanel()
-    {
-        if (IsLyricsViewActive) return;
-        IsLyricsPanelOpen = !IsLyricsPanelOpen;
-        if (IsLyricsPanelOpen)
-            Player.IsQueuePopupOpen = false;
-    }
-
     private sealed class NavigationEntry
     {
         public required ViewModelBase View { get; init; }
@@ -263,16 +249,19 @@ public partial class MainWindowViewModel : ViewModelBase
         _statisticsVm.BackRequested += (_, _) =>
         {
             // Return to whatever section the user was in before opening Settings →
-            // "View All Stats". Statistics isn't a toggle-eligible section, so
-            // _currentSectionKey still holds that origin (e.g. "artists").
+            // "View All Stats" (Statistics isn't toggle-eligible, so _currentSectionKey
+            // still holds that origin, e.g. "artists"), then reopen the Settings modal
+            // on the Statistics tab they launched "View All Stats" from.
             Navigate(_currentSectionKey);
+            OpenSettings();
         };
         Settings.OpenStatisticsRequested += (_, _) =>
         {
             CloseSettings();
             Navigate("statistics");
-            TopBar.StatsBackCommand = _statisticsVm.GoBackCommand;
-            TopBar.IsStatsBackVisible = true;
+            // Repurpose the sidebar Back arrow to return to Settings. Using the standard
+            // back-button path also hides the redundant "Statistics" page title.
+            TopBar.ShowBackButton("Back", _statisticsVm.GoBackCommand);
         };
         _coverFlowVm = new CoverFlowViewModel(Player);
 
@@ -362,8 +351,6 @@ public partial class MainWindowViewModel : ViewModelBase
                 OnPropertyChanged(nameof(PlaybackBarOpacity));
                 OnPropertyChanged(nameof(IsPlaybackBarHitTestVisible));
             }
-            if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack) && Player.CurrentTrack == null)
-                IsLyricsPanelOpen = false;
         };
 
         // Wire up Discord RPC and Last.fm integrations
@@ -719,7 +706,11 @@ public partial class MainWindowViewModel : ViewModelBase
             // Copied drops lose sight of artwork images next to the ORIGINAL file
             // (cover.jpg etc.): extraction runs against the copy in the flat managed
             // root. For albums still missing art, retry from each file's source folder.
-            await BackfillDroppedFolderArtAsync(originalToFinal, ct);
+            // Album.ArtworkPath is only resolved during an index rebuild, and these
+            // covers land after ImportFilesAsync's rebuild — without another rebuild
+            // the album grid keeps its placeholder until the next launch.
+            if (await BackfillDroppedFolderArtAsync(originalToFinal, ct))
+                _library.NotifyMetadataChanged();
 
             // Force refresh to guarantee newly imported content is visible immediately.
             // Mark all VMs dirty first — the LibraryUpdated event may have already
@@ -756,14 +747,15 @@ public partial class MainWindowViewModel : ViewModelBase
     /// Extracts album art from the source location of copied drops. Only albums whose
     /// artwork is still missing after import are considered, so embedded art (already
     /// extracted from the copy) always wins over a source-folder image.
+    /// Returns true when at least one artwork file was written.
     /// </summary>
-    private async Task BackfillDroppedFolderArtAsync(
+    private async Task<bool> BackfillDroppedFolderArtAsync(
         Dictionary<string, string> originalToFinal, CancellationToken ct)
     {
         var copied = originalToFinal
             .Where(kv => !string.Equals(kv.Key, kv.Value, StringComparison.OrdinalIgnoreCase))
             .ToList();
-        if (copied.Count == 0) return;
+        if (copied.Count == 0) return false;
 
         var tracksByPath = new Dictionary<string, Track>(StringComparer.OrdinalIgnoreCase);
         foreach (var t in _library.Tracks)
@@ -772,6 +764,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 tracksByPath[t.FilePath] = t;
         }
 
+        var savedAny = false;
         await Task.Run(() =>
         {
             var checkedAlbums = new HashSet<Guid>();
@@ -786,7 +779,10 @@ public partial class MainWindowViewModel : ViewModelBase
                     if (File.Exists(_persistence.GetArtworkPath(track.AlbumId))) continue;
                     var artBytes = _metadata.ExtractAlbumArt(original);
                     if (artBytes != null)
+                    {
                         _persistence.SaveArtwork(track.AlbumId, artBytes);
+                        savedAny = true;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -795,6 +791,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
             }
         }, ct);
+        return savedAny;
     }
 
     /// <summary>
@@ -860,10 +857,8 @@ public partial class MainWindowViewModel : ViewModelBase
         var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
         var leavingLyrics = ReferenceEquals(oldValue, _lyricsVm) && !enteringLyrics;
 
-        // Close lyrics panel when entering lyrics full-screen view
         if (enteringLyrics)
         {
-            IsLyricsPanelOpen = false;
             NotifyPlaybackBarPresentationChanged();
             WireLyricsPageToPlayer();
         }
@@ -873,7 +868,6 @@ public partial class MainWindowViewModel : ViewModelBase
         if (leavingLyrics)
         {
             UnwireLyricsPageFromPlayer();
-            IsLyricsPanelOpen = false;
             NotifyPlaybackBarPresentationChanged();
         }
         else if (!enteringLyrics)
@@ -1305,10 +1299,6 @@ public partial class MainWindowViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.UI, "Navigate", $"key={key}, from={GetCurrentViewKey()}, coverFlow={_isCoverFlowMode}");
         ClearNavigationHistory();
 
-        // The Statistics "Back to Settings" pill only applies to the View All Stats
-        // entry point, which re-enables it right after this call returns.
-        TopBar.IsStatsBackVisible = false;
-
         var goingToEligibleSection = ToggleEligibleSections.Contains(key);
 
         // If we're in Cover Flow and the user clicks an ineligible destination
@@ -1536,7 +1526,6 @@ public partial class MainWindowViewModel : ViewModelBase
             PushCurrentViewToHistory();
         _albumDetailBackButtonText = NormalizeAlbumDetailBackButtonText(backButtonText ?? GetAlbumDetailBackButtonText());
         ClearAllTopBarActions();
-        IsLyricsPanelOpen = false;
         _isCoverFlowMode = false;
         TopBar.IsCoverFlowMode = false;
         _preCoverFlowView = null;

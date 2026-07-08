@@ -318,43 +318,6 @@
                     </ContentControl.Transitions>
                 </ContentControl>
 
-                <!-- Lyrics side panel overlays content so opening it does not resize album grids. -->
-                <Border x:Name="LyricsPanelWrapper"
-                        HorizontalAlignment="Right"
-                        Width="0"
-                        Margin="0,8,8,12"
-                        CornerRadius="16"
-                        ClipToBounds="True"
-                        ZIndex="10">
-                    <Border.Transitions>
-                        <Transitions>
-                            <DoubleTransition Property="Width" Duration="0:0:0.2">
-                                <DoubleTransition.Easing>
-                                    <CubicEaseOut/>
-                                </DoubleTransition.Easing>
-                            </DoubleTransition>
-                        </Transitions>
-                    </Border.Transitions>
-                    <Grid Width="340">
-                        <Grid>
-                            <!-- Opaque dark base so the panel never bleeds through -->
-                            <Border Background="{DynamicResource AppSidebarBackground}" CornerRadius="16" />
-                            <!-- Vertical album-art gradient tuned for the narrow panel: colorful top-to-bottom, no dark corners -->
-                            <Border Background="{Binding Lyrics.PanelBackgroundBrush}"
-                                    CornerRadius="16">
-                                <Border.Transitions>
-                                    <Transitions>
-                                        <DoubleTransition Property="Opacity" Duration="0:0:0.4">
-                                            <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
-                                        </DoubleTransition>
-                                    </Transitions>
-                                </Border.Transitions>
-                            </Border>
-                            <views:LyricsPanelView DataContext="{Binding Lyrics}" />
-                        </Grid>
-                    </Grid>
-                </Border>
-
                 <!-- Queue popup panel (right side, rounded, slightly transparent) -->
                 <Border x:Name="QueuePopupPanel"
                         HorizontalAlignment="Right"
@@ -828,8 +791,7 @@
     <Border IsVisible="{Binding IsDropImporting}"
             IsHitTestVisible="False"
             HorizontalAlignment="Center"
-            VerticalAlignment="Top"
-            Margin="0,48,0,0"
+            VerticalAlignment="Center"
             Background="{DynamicResource IslandBackground}"
             BorderBrush="#22FFFFFF"
             BorderThickness="1"

@@ -1033,6 +1033,8 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (oldValue != null) oldValue.IsNowPlaying = false;
         if (newValue != null) newValue.IsNowPlaying = true;
+        DebugLogger.Info(DebugLogger.Category.Playback, "CurrentTrack.Changed",
+            $"old={oldValue?.Title ?? "<null>"} new={newValue?.Title ?? "<null>"}");
     }
 
     /// <summary>
@@ -1456,15 +1458,14 @@ public partial class PlayerViewModel : ViewModelBase
 
     /// <summary>
     /// Decode width for the player-bar / now-playing artwork bitmap.
-    /// 512 px gives sharp results at both 40×40 (player bar) and 350×350 (now-playing)
-    /// while matching the shared <see cref="ArtworkCache"/> default width so the same
-    /// cover isn't decoded/cached a second time at a player-only size.
+    /// 768 px keeps the ~350px now-playing / 336px mini-player covers sharp on
+    /// 150–200% DPI displays (which need physical pixels beyond the logical size)
+    /// and matches the album-grid surfaces (Albums/Favorites/Home use 768), so
+    /// every large surface shares one <see cref="ArtworkCache"/> entry instead of
+    /// decoding the same cover at a player-only size. Mismatched sizes caused
+    /// visible cache-miss decodes — the artwork "flicker" on track switch.
     /// </summary>
-    // Aligned with ArtworkCache.DecodeWidth default (512) and the album-grid /
-    // album-detail header sizes so every surface shares the same cache entry.
-    // Mismatched sizes (was 768 here, 512 in grid, 128 in playback bar) caused
-    // visible cache-miss decodes — i.e. the artwork "flicker" on track switch.
-    private const int PlayerArtDecodeWidth = 512;
+    private const int PlayerArtDecodeWidth = 768;
 
     /// <summary>Bumped on every <see cref="LoadAlbumArt"/> call so a slow background
     /// decode that finishes after the track changed again is discarded.</summary>
