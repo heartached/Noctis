@@ -102,7 +102,14 @@ public partial class AnimatedCoverImage : UserControl
             try
             {
                 using var media = new Media(SharedLibVlc.Instance, source, FromType.FromPath,
-                    ":no-audio", ":input-repeat=65535");
+                    ":no-audio", ":input-repeat=65535",
+                    // Cap the cover's software video decode so it can't saturate every CPU
+                    // core and starve the audio output thread (macOS CoreAudio/auhal render),
+                    // which caused audible stutter when a cover was added mid-playback on
+                    // Apple Silicon. One decode thread + skipping the H.264 deblock loop
+                    // filter frees cores for audio; the cover is a small decorative loop so
+                    // the minor quality/frame-pacing cost is irrelevant.
+                    ":avcodec-threads=1", ":avcodec-skiploopfilter=all");
                 session.Player.Play(media);
             }
             catch
