@@ -1033,6 +1033,8 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (oldValue != null) oldValue.IsNowPlaying = false;
         if (newValue != null) newValue.IsNowPlaying = true;
+        DebugLogger.Info(DebugLogger.Category.Playback, "CurrentTrack.Changed",
+            $"old={oldValue?.Title ?? "<null>"} new={newValue?.Title ?? "<null>"}");
     }
 
     /// <summary>

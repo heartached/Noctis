@@ -9,6 +9,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using LibVLCSharp.Shared;
+using Noctis.Services;
 
 namespace Noctis.Controls;
 
@@ -49,6 +50,12 @@ public partial class AnimatedCoverImage : UserControl
     private const int RenderSize = 600;
     private const int Stride = RenderSize * 4;
     private const int BufferBytes = Stride * RenderSize;
+
+    // Cap how often a decoded frame is pushed to the UI thread. The cover is a
+    // decorative loop; pushing every source frame (up to 60 fps) floods the UI
+    // thread with two 1.44 MB copies + an invalidate each and starves it under
+    // load. ~15 fps looks fine and frees the thread for playback/render work.
+    private const long MinDisplayIntervalMs = 66;
 
     private readonly Image _image;
     private Session? _session;
@@ -111,6 +118,7 @@ public partial class AnimatedCoverImage : UserControl
                     // the minor quality/frame-pacing cost is irrelevant.
                     ":avcodec-threads=1", ":avcodec-skiploopfilter=all");
                 session.Player.Play(media);
+                DebugLogger.Info(DebugLogger.Category.Playback, "Cover.Play", $"src={Path.GetFileName(source)}");
             }
             catch
             {
@@ -154,6 +162,7 @@ public partial class AnimatedCoverImage : UserControl
         private readonly WriteableBitmap _bitmap;
         private volatile bool _framePending;            // coalesce UI invalidations
         private volatile bool _dead;
+        private long _lastDisplayTicks;                 // frame-rate gate (see MinDisplayIntervalMs)
 
         // Keep delegate instances alive for the player's lifetime — VLC stores raw
         // function pointers and will crash if these are garbage-collected.
@@ -190,6 +199,11 @@ public partial class AnimatedCoverImage : UserControl
         private void OnDisplay(IntPtr opaque, IntPtr picture)
         {
             if (_framePending || _dead) return;
+            // Throttle UI pushes to ~15 fps so the per-frame copies/invalidate
+            // can't starve the UI thread while a track is playing.
+            var now = Environment.TickCount64;
+            if (now - _lastDisplayTicks < MinDisplayIntervalMs) return;
+            _lastDisplayTicks = now;
             _framePending = true;
             Dispatcher.UIThread.Post(() =>
             {
@@ -217,6 +231,7 @@ public partial class AnimatedCoverImage : UserControl
         {
             if (_dead) return;
             _dead = true;
+            DebugLogger.Info(DebugLogger.Category.Playback, "Cover.Stop");
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 // Stop() is synchronous — after it returns, no more callbacks fire,
