@@ -18,6 +18,7 @@
         <conv:ProgressToSweepForegroundConverter x:Key="ProgressToSweepFg"/>
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
         <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect"/>
+        <conv:MetadataLineConverter x:Key="MetadataLine"/>
         <!-- Adaptive button/slider brushes (updated from code-behind) -->
         <SolidColorBrush x:Key="LyricsBtnBgRes" Color="#33FFFFFF"/>
         <SolidColorBrush x:Key="LyricsBtnBgHoverRes" Color="#55FFFFFF"/>
@@ -471,10 +472,12 @@
                             IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <TextBlock FontSize="12" Foreground="{Binding LyricsSubtleFg}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
                         <TextBlock.Text>
-                            <MultiBinding StringFormat="{}{0} · {1} · {2} tracks">
+                            <!-- MetadataLine skips empty segments: untagged files (no genre/year)
+                                 otherwise render a stray leading "· 2018 · 24 tracks" dot. -->
+                            <MultiBinding Converter="{StaticResource MetadataLine}" ConverterParameter="track">
                                 <Binding Path="Player.CurrentTrack.Genre" FallbackValue=""/>
-                                <Binding Path="Player.CurrentTrack.Year" FallbackValue=""/>
-                                <Binding Path="Player.CurrentTrack.TrackCount" FallbackValue=""/>
+                                <Binding Path="Player.CurrentTrack.Year" FallbackValue="0"/>
+                                <Binding Path="Player.CurrentTrack.TrackCount" FallbackValue="0"/>
                             </MultiBinding>
                         </TextBlock.Text>
                     </TextBlock>

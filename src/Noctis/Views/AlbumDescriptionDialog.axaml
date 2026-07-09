@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:conv="using:Noctis.Converters"
         x:Class="Noctis.Views.AlbumDescriptionDialog"
         x:DataType="vm:AlbumDetailViewModel"
         Title="Album Description"
@@ -9,6 +10,10 @@
         Background="Transparent"
         TransparencyLevelHint="Transparent"
         ShowInTaskbar="False">
+
+    <Window.Resources>
+        <conv:MetadataLineConverter x:Key="MetadataLine" />
+    </Window.Resources>
 
     <!-- Full-window dimmed overlay -->
     <Border Background="#98000000"
@@ -53,7 +58,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="0">
                         <TextBlock FontSize="17" Opacity="0.75" VerticalAlignment="Center">
                             <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0} · {1}">
+                                <MultiBinding Converter="{StaticResource MetadataLine}">
                                     <Binding Path="Album.Genre" />
                                     <Binding Path="Album.Year" />
                                 </MultiBinding>

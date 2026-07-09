@@ -15,6 +15,7 @@
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:ArtistTokensConverter x:Key="ArtistTokens" />
         <conv:TrackPlaylistCommandParameterConverter x:Key="TrackPlaylistParamConverter" />
+        <conv:MetadataLineConverter x:Key="MetadataLine" />
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -187,7 +188,7 @@
                             TextElement.Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}">
                     <TextBlock FontSize="13" Opacity="0.5" VerticalAlignment="Center">
                         <TextBlock.Text>
-                            <MultiBinding StringFormat="{}{0} · {1}">
+                            <MultiBinding Converter="{StaticResource MetadataLine}">
                                 <Binding Path="Album.Genre" />
                                 <Binding Path="Album.Year" />
                             </MultiBinding>
