@@ -375,8 +375,14 @@
                      those instant layout snaps into a visible grow/zoom every time the
                      page opened or the window was minimized/maximized. -->
 
+                <!-- Header: cover + track info. Wide mode stacks them (cover centered
+                     above the text); narrow mode flips to a compact row (small cover
+                     beside left-aligned text) via attached properties from code-behind,
+                     so the header never eats a short window's height. -->
+                <Grid x:Name="HeaderGrid" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
                 <!-- Album Art -->
                 <Border x:Name="AlbumArtBorder"
+                        Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
                         Width="630" Height="630"
                         CornerRadius="12"
                         ClipToBounds="True"
@@ -409,7 +415,9 @@
                 </Border>
 
                 <!-- Track Info -->
-                <StackPanel Spacing="4" HorizontalAlignment="Center" Margin="0,24,0,0">
+                <StackPanel x:Name="TrackInfoStack"
+                            Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                            Spacing="4" HorizontalAlignment="Center" Margin="0,24,0,0">
                     <!-- Title + Explicit badge -->
                     <controls:MarqueeTextBlock x:Name="TitleMarquee"
                                                Text="{Binding Player.CurrentTrack.Title, FallbackValue='No track playing'}"
@@ -435,7 +443,8 @@
                     </controls:MarqueeTextBlock>
 
                     <!-- Artist -->
-                    <Button Classes="link-btn"
+                    <Button x:Name="ArtistLinkButton"
+                            Classes="link-btn"
                             Command="{Binding ViewArtistCommand}"
                             HorizontalAlignment="Center">
                         <controls:MarqueeTextBlock x:Name="ArtistMarquee"
@@ -448,7 +457,8 @@
                     </Button>
 
                     <!-- Album -->
-                    <Button Classes="link-btn"
+                    <Button x:Name="AlbumLinkButton"
+                            Classes="link-btn"
                             Command="{Binding ViewAlbumCommand}"
                             HorizontalAlignment="Center"
                             IsVisible="{Binding Player.CurrentTrack.Album, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
@@ -460,14 +470,15 @@
                                                    IsLyricsPage="True"
                                                    IsForArtist="True"/>
                     </Button>
-                </StackPanel>
 
-                <!-- Genre · Year · Tracks · Lossless info -->
-                <StackPanel Orientation="Horizontal"
+                <!-- Genre · Year · Tracks · Lossless info (inside the info stack;
+                     Spacing 4 + Margin 4 preserves the previous 8px gap) -->
+                <StackPanel x:Name="MetadataRow"
+                            Orientation="Horizontal"
                             HorizontalAlignment="Center"
                             MaxWidth="560"
                             Spacing="0"
-                            Margin="0,8,0,0"
+                            Margin="0,4,0,0"
                             ClipToBounds="True"
                             IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <TextBlock FontSize="12" Foreground="{Binding LyricsSubtleFg}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
@@ -533,6 +544,8 @@
                               VerticalAlignment="Center"
                               IsVisible="{Binding ShowMetadataFavoriteHeart}"/>
                 </StackPanel>
+                </StackPanel>
+                </Grid>
 
                 <Grid x:Name="LyricsTimeline"
                       Margin="0,14,0,0"
