@@ -231,11 +231,16 @@ public partial class LyricsView : UserControl
 
             if (_isNarrowMode)
             {
-                // Narrow mode: stack vertically (cover row on top, lyrics below)
+                // Narrow mode: stack vertically (cover row on top, lyrics below).
+                // No MaxHeight cap here: the header (cover + info + timeline +
+                // playback bar) is ~450-620px tall and Border doesn't clip, so a
+                // cap made the centered stack overflow the Auto row and paint
+                // over the lyrics below. The row sizes to content instead, and
+                // the cover clamp below keeps the header from eating short
+                // windows.
                 Grid.SetColumnSpan(LeftPanel, 2);
                 Grid.SetRow(LeftPanel, 0);
                 Grid.SetRowSpan(LeftPanel, 1);
-                LeftPanel.MaxHeight = 320;
                 LeftPanel.Padding = new Thickness(30, 20);
 
                 Grid.SetColumn(RightPanel, 0);
@@ -249,7 +254,6 @@ public partial class LyricsView : UserControl
                 Grid.SetColumnSpan(LeftPanel, 1);
                 Grid.SetRow(LeftPanel, 0);
                 Grid.SetRowSpan(LeftPanel, 2);
-                LeftPanel.MaxHeight = double.PositiveInfinity;
                 LeftPanel.Padding = new Thickness(40, 30);
 
                 Grid.SetColumn(RightPanel, 1);
@@ -266,7 +270,10 @@ public partial class LyricsView : UserControl
         double stackWidth;
         if (_isNarrowMode)
         {
-            var cover = Math.Clamp(height * 0.25, 120, 200);
+            // height - 450 reserves the header's fixed content (~320px of info,
+            // timeline and playback bar) plus a minimum lyrics strip; at the
+            // 500px window minimum the cover bottoms out at 96px.
+            var cover = Math.Clamp(Math.Min(height * 0.25, height - 450), 96, 200);
             AlbumArtBorder.Width = cover;
             AlbumArtBorder.Height = cover;
             stackWidth = Math.Max(cover, 200);
