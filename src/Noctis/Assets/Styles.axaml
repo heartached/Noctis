@@ -496,11 +496,6 @@
         <Setter Property="Opacity" Value="0"/>
     </Style>
 
-    <!-- Page-level top separator (sits directly under the top bar / playback island) -->
-    <Style Selector="Separator.page-top-separator">
-        <Setter Property="Margin" Value="0" />
-    </Style>
-
     <!-- Context Menu / MenuFlyout popup chrome -->
     <Style Selector="ContextMenu">
         <Setter Property="CornerRadius" Value="16" />
@@ -884,14 +879,6 @@
         <Setter Property="Opacity" Value="0.8"/>
     </Style>
 
-    <!-- Section header text -->
-    <Style Selector="TextBlock.section-header">
-        <Setter Property="FontSize" Value="13" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Opacity" Value="0.6" />
-        <Setter Property="Margin" Value="18,14,18,6" />
-    </Style>
-
     <!-- Playback bar button styling -->
     <Style Selector="Button.transport-btn">
         <Setter Property="Background" Value="Transparent" />
@@ -920,20 +907,6 @@
         <Setter Property="CornerRadius" Value="20" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
-
-    <!-- Artist list item hover highlight -->
-    <Style Selector="Button.artist-item">
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.04"/>
-            </Transitions>
-        </Setter>
-    </Style>
-
-    <Style Selector="Button.artist-item:pointerover">
-        <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
-        <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
     <!-- Smooth fade-in for content areas -->
@@ -1008,10 +981,6 @@
         <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
-    <Style Selector="Button.artist-item:pointerover">
-        <Setter Property="RenderTransform" Value="scale(1)" />
-    </Style>
-
     <!-- Opt out of the global hover scale: the release-type filter chips (All/Albums/
          Singles/EPs/Other) sit flush against the top bar edges, so scaling them up on
          hover clips the first/last pills at the container bounds. -->
@@ -1025,14 +994,6 @@
 
     <Style Selector="Button:pressed">
         <Setter Property="RenderTransform" Value="scale(0.96)"/>
-    </Style>
-
-    <Style Selector="Button.artist-item:pressed">
-        <Setter Property="RenderTransform" Value="scale(1)" />
-    </Style>
-
-    <Style Selector="Button.artist-item:pressed /template/ ContentPresenter">
-        <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
     <!-- Accent/red pill buttons: keep their red fill on hover/press instead of Fluent's dark hover chrome.
