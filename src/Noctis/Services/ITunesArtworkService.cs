@@ -92,14 +92,19 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
         }
     }
 
-    /// <summary>Downloads the bytes at <paramref name="url"/>; returns null on failure.</summary>
-    public async Task<byte[]?> DownloadAsync(string url, CancellationToken ct = default)
+    // Animated covers are short video loops; generous cap so a hostile response
+    // still can't fill memory, while 1080p variants (~60 MB) pass untouched.
+    private const long MaxAnimatedCoverBytes = 256L * 1024 * 1024;
+
+    /// <summary>Downloads the bytes at <paramref name="url"/>; returns null on failure or oversize.</summary>
+    public async Task<byte[]?> DownloadAsync(string url, CancellationToken ct = default,
+        long maxBytes = HttpSafety.MaxImageBytes)
     {
         try
         {
-            using var resp = await _http.GetAsync(url, ct);
+            using var resp = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!resp.IsSuccessStatusCode) return null;
-            return await resp.Content.ReadAsByteArrayAsync(ct);
+            return await HttpSafety.ReadBytesBoundedAsync(resp.Content, maxBytes, ct);
         }
         catch (Exception ex)
         {
@@ -122,7 +127,7 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
             using var resp = await _http.SendAsync(req, ct);
             if (!resp.IsSuccessStatusCode) return Array.Empty<AnimatedArtworkVariant>();
 
-            var html = await resp.Content.ReadAsStringAsync(ct);
+            var html = await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct);
             var mediaUrls = ExtractAnimatedMediaUrls(html);
             var variants = new List<AnimatedArtworkVariant>();
 
@@ -171,7 +176,7 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
     {
         if (!variant.IsHls)
         {
-            var data = await DownloadAsync(variant.Url, ct);
+            var data = await DownloadAsync(variant.Url, ct, MaxAnimatedCoverBytes);
             if (data is null or { Length: 0 })
                 return false;
 
@@ -443,7 +448,7 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
         if (!resp.IsSuccessStatusCode)
             return null;
 
-        return await resp.Content.ReadAsStringAsync(ct);
+        return await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct);
     }
 
     private static (int Width, int Height) ParseResolution(string line)

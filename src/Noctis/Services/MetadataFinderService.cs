@@ -74,7 +74,7 @@ public sealed class MetadataFinderService : IMetadataFinderService
             using var resp = await _http.GetAsync(url, ct).ConfigureAwait(false);
             _lastRequestUtc = DateTime.UtcNow;
             resp.EnsureSuccessStatusCode();
-            return await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            return await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct).ConfigureAwait(false);
         }
         finally
         {

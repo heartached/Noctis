@@ -69,7 +69,7 @@ public class NetEaseService : INetEaseService
         using var response = await _http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return null;
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await HttpSafety.ReadStringBoundedAsync(response.Content);
         var searchResult = JsonSerializer.Deserialize<NetEaseSearchResponse>(json);
 
         var songs = searchResult?.Result?.Songs;
@@ -109,7 +109,7 @@ public class NetEaseService : INetEaseService
         using var response = await _http.SendAsync(request);
         if (!response.IsSuccessStatusCode) return null;
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await HttpSafety.ReadStringBoundedAsync(response.Content);
         var lyricsResponse = JsonSerializer.Deserialize<NetEaseLyricsResponse>(json);
 
         var syncedLyrics = lyricsResponse?.Lrc?.Lyric;

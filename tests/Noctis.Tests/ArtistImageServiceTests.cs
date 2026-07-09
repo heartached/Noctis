@@ -90,16 +90,21 @@ public class ArtistImageServiceTests
         };
 
     private static HttpResponseMessage ImageResponse()
-        => new(HttpStatusCode.OK)
+    {
+        // Must exceed ArtistImageService's 5120-byte Last.fm-placeholder purge
+        // threshold, otherwise the background purge task races the cache write
+        // and deletes the file before the test asserts File.Exists. Starts with
+        // JPEG magic bytes so it passes the HttpSafety.LooksLikeImage gate.
+        var bytes = new byte[6 * 1024];
+        bytes[0] = 0xFF; bytes[1] = 0xD8; bytes[2] = 0xFF; bytes[3] = 0xE0;
+        return new(HttpStatusCode.OK)
         {
-            // Must exceed ArtistImageService's 5120-byte Last.fm-placeholder purge
-            // threshold, otherwise the background purge task races the cache write
-            // and deletes the file before the test asserts File.Exists.
-            Content = new ByteArrayContent(new byte[6 * 1024])
+            Content = new ByteArrayContent(bytes)
             {
                 Headers = { ContentType = new("image/jpeg") }
             }
         };
+    }
 
     private sealed class StubHttpMessageHandler : HttpMessageHandler
     {

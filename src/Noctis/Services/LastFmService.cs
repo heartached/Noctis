@@ -105,7 +105,7 @@ public class LastFmService : ILastFmService
             parameters["format"] = "json";
 
             var url = BuildUrl(parameters);
-            var response = await _http.GetStringAsync(url);
+            var response = await GetStringBoundedAsync(url);
             using var doc = JsonDocument.Parse(response);
 
             if (doc.RootElement.TryGetProperty("session", out var session))
@@ -401,7 +401,7 @@ public class LastFmService : ILastFmService
             if (!response.IsSuccessStatusCode)
                 return null;
 
-            var payload = await response.Content.ReadAsStringAsync(ct);
+            var payload = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
             using var doc = JsonDocument.Parse(payload);
 
             if (doc.RootElement.TryGetProperty("error", out _))
@@ -619,13 +619,21 @@ public class LastFmService : ILastFmService
         parameters["format"] = "json";
 
         var url = BuildUrl(parameters);
-        var response = await _http.GetStringAsync(url);
+        var response = await GetStringBoundedAsync(url);
         using var doc = JsonDocument.Parse(response);
 
         if (doc.RootElement.TryGetProperty("token", out var token))
             return token.GetString();
 
         return null;
+    }
+
+    /// <summary>GET returning the body as a string with the shared byte cap applied.</summary>
+    private async Task<string> GetStringBoundedAsync(string url)
+    {
+        using var resp = await _http.GetAsync(url);
+        resp.EnsureSuccessStatusCode();
+        return await HttpSafety.ReadStringBoundedAsync(resp.Content);
     }
 
     private async Task<string?> GetAuthenticatedUsernameAsync()
@@ -642,7 +650,7 @@ public class LastFmService : ILastFmService
         parameters["format"] = "json";
 
         var url = BuildUrl(parameters);
-        var response = await _http.GetStringAsync(url);
+        var response = await GetStringBoundedAsync(url);
         using var doc = JsonDocument.Parse(response);
 
         if (doc.RootElement.TryGetProperty("user", out var user) &&

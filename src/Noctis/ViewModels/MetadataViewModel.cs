@@ -1164,7 +1164,7 @@ public partial class MetadataViewModel : ViewModelBase
             var url = useHighestResolution ? candidate.HiResUrl : candidate.StandardUrl;
             var data = await _itunes.DownloadAsync(url)
                        ?? await _itunes.DownloadAsync(candidate.ThumbUrl);
-            if (data is null or { Length: 0 })
+            if (data is null or { Length: 0 } || !Services.HttpSafety.LooksLikeImage(data))
             {
                 ArtworkSearchStatus = "Download failed.";
                 return;

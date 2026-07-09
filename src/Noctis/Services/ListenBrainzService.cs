@@ -52,7 +52,7 @@ public class ListenBrainzService : IListenBrainzService
             using var resp = await _http.SendAsync(req, ct);
             if (!resp.IsSuccessStatusCode) return null;
 
-            var body = await resp.Content.ReadAsStringAsync(ct);
+            var body = await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct);
             using var doc = JsonDocument.Parse(body);
 
             // ListenBrainz returns: { "code": 200, "message": "...", "valid": true, "user_name": "..." }
@@ -109,7 +109,7 @@ public class ListenBrainzService : IListenBrainzService
             using var resp = await _http.SendAsync(req);
             if (!resp.IsSuccessStatusCode)
             {
-                var body = await resp.Content.ReadAsStringAsync();
+                var body = await HttpSafety.ReadStringBoundedAsync(resp.Content);
                 Debug.WriteLine($"[ListenBrainz] submit-listens {kind} -> {(int)resp.StatusCode}: {Truncate(body, 200)}");
             }
         }

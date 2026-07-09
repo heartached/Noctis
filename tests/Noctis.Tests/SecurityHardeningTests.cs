@@ -57,6 +57,32 @@ public class SecurityHardeningTests
         Assert.Null(UpdateService.ParseSha256FromChecksums(null, "File.exe"));
     }
 
+    // ── Bounded network reads (LRCLIB / NetEase / Deezer / iTunes / Last.fm) ──
+
+    [Fact]
+    public async Task ReadStringBounded_returnsSmallBody()
+    {
+        using var content = new System.Net.Http.StringContent("{\"ok\":true}");
+        Assert.Equal("{\"ok\":true}", await HttpSafety.ReadStringBoundedAsync(content, maxBytes: 1024));
+    }
+
+    [Fact]
+    public async Task ReadStringBounded_throwsHttpRequestExceptionWhenOversize()
+    {
+        // HttpRequestException so existing "network failed" catch blocks absorb it.
+        using var content = new System.Net.Http.StringContent(new string('x', 2048));
+        await Assert.ThrowsAsync<System.Net.Http.HttpRequestException>(
+            () => HttpSafety.ReadStringBoundedAsync(content, maxBytes: 1024));
+    }
+
+    [Theory]
+    [InlineData(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0, 0, 0, 0, 0, 0, 0, 0 }, true)]   // JPEG
+    [InlineData(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0 }, true)] // PNG
+    [InlineData(new byte[] { (byte)'<', (byte)'h', (byte)'t', (byte)'m', (byte)'l', (byte)'>', 0, 0, 0, 0, 0, 0 }, false)] // HTML error page
+    [InlineData(new byte[] { 0, 1, 2 }, false)] // too short
+    public void LooksLikeImage_acceptsRasterSignaturesOnly(byte[] data, bool expected)
+        => Assert.Equal(expected, HttpSafety.LooksLikeImage(data));
+
     // ── Loon artwork relay: path-traversal containment ──
 
     [Fact]

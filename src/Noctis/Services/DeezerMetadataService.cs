@@ -114,6 +114,6 @@ public sealed class DeezerMetadataService
     {
         using var resp = await _http.GetAsync(url, ct).ConfigureAwait(false);
         if (!resp.IsSuccessStatusCode) return null;
-        return await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        return await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct).ConfigureAwait(false);
     }
 }

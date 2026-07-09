@@ -167,7 +167,8 @@ public sealed class UpdateService
         using var response = await _http.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
 
-        var releases = await response.Content.ReadFromJsonAsync<List<GitHubRelease>>(ct);
+        var releasesJson = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
+        var releases = System.Text.Json.JsonSerializer.Deserialize<List<GitHubRelease>>(releasesJson);
         if (releases is null || releases.Count == 0)
             return null;
 
@@ -552,7 +553,7 @@ public sealed class UpdateService
             new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/octet-stream"));
         using var response = await _http.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(ct);
+        return await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
     }
 
     private static async Task<string> ComputeSha256Async(string path, CancellationToken ct)
