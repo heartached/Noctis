@@ -96,6 +96,7 @@
 
                     <!-- Playback Island -->
                     <SolidColorBrush x:Key="IslandBackground" Color="#F0181818" />
+                    <SolidColorBrush x:Key="IslandBorder" Color="#40FFFFFF" />
                     <SolidColorBrush x:Key="IslandForeground" Color="#F0F0F0" />
                     <SolidColorBrush x:Key="IslandForegroundSecondary" Color="#A0A0A0" />
                     <SolidColorBrush x:Key="IslandForegroundTertiary" Color="#707070" />
@@ -203,6 +204,7 @@
 
                     <!-- Playback Island (dark pill on light backgrounds) -->
                     <SolidColorBrush x:Key="IslandBackground" Color="#F0181818" />
+                    <SolidColorBrush x:Key="IslandBorder" Color="#40FFFFFF" />
                     <SolidColorBrush x:Key="IslandForeground" Color="#F0F0F0" />
                     <SolidColorBrush x:Key="IslandForegroundSecondary" Color="#A0A0A0" />
                     <SolidColorBrush x:Key="IslandForegroundTertiary" Color="#707070" />

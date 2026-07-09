@@ -21,13 +21,15 @@ public class BoolToThicknessConverter : IValueConverter
         var parts = paramStr.Split(';');
         if (parts.Length != 2) return new Thickness(0);
 
+        // Invariant parse: parameters are XAML literals like "8,0,8,0" — the
+        // OS culture (comma-decimal locales) must not change how they read.
         var values = boolValue ? parts[0] : parts[1];
         var nums = values.Split(',');
         if (nums.Length == 4 &&
-            double.TryParse(nums[0], out var l) &&
-            double.TryParse(nums[1], out var t) &&
-            double.TryParse(nums[2], out var r) &&
-            double.TryParse(nums[3], out var b))
+            double.TryParse(nums[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var l) &&
+            double.TryParse(nums[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var t) &&
+            double.TryParse(nums[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var r) &&
+            double.TryParse(nums[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var b))
         {
             return new Thickness(l, t, r, b);
         }
