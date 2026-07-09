@@ -358,22 +358,26 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         if (favOnly)
             filtered = filtered.Where(t => t.IsFavorite);
 
-        if (!string.IsNullOrWhiteSpace(filter))
+        // Normalize the query once — these were recomputed per track inside the
+        // rank projection below, costing two string allocations per track per
+        // keystroke on large libraries.
+        var hasQuery = !string.IsNullOrWhiteSpace(filter);
+        var q = hasQuery ? filter.Trim() : string.Empty;
+        var qNoSpaces = hasQuery ? RemoveWhitespace(q) : string.Empty;
+
+        if (hasQuery)
         {
-            var q = filter.Trim();
-            var qNoSpaces = RemoveWhitespace(q);
             filtered = filtered.Where(t =>
                 MatchesSearch(t.Title, q, qNoSpaces) ||
                 MatchesSearch(t.Artist, q, qNoSpaces) ||
                 MatchesSearch(t.Album, q, qNoSpaces));
         }
 
-        var hasQuery = !string.IsNullOrWhiteSpace(filter);
         var ranked = filtered
             .Select(t => new
             {
                 Track = t,
-                Rank = hasQuery ? GetTrackSearchRank(t, filter.Trim(), RemoveWhitespace(filter.Trim())) : 0
+                Rank = hasQuery ? GetTrackSearchRank(t, q, qNoSpaces) : 0
             });
 
         var ordered = ranked.OrderBy(x => x.Rank);
