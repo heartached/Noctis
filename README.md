@@ -156,14 +156,7 @@ dotnet publish src/Noctis/Noctis.csproj -c Release -r linux-arm64 --self-contain
 
 ## Star History
 
-<!-- Rendered by .github/workflows/star-history.yml (star-history.com embeds
-     no longer work anonymously) and served from the star-history branch. -->
-<a href="https://github.com/heartached/Noctis/stargazers">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/heartached/Noctis/star-history/star-history-dark.svg">
-    <img alt="Star History Chart" src="https://raw.githubusercontent.com/heartached/Noctis/star-history/star-history.svg">
-  </picture>
-</a>
+[![Star History Chart](https://api.star-history.com/svg?repos=heartached/Noctis&type=Date)](https://star-history.com/#heartached/Noctis&Date)
 
 ---
 
