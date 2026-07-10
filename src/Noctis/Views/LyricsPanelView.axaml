@@ -14,6 +14,7 @@
     <UserControl.Resources>
         <conv:ProgressToSweepForegroundConverter x:Key="ProgressToSweepFg"/>
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
+        <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect"/>
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -132,14 +133,16 @@
         <!-- Lyrics flow. ClipToBounds=False so the active line's swell isn't
              hard-clipped; the OpacityMask fades the top/bottom edges. -->
         <Border ClipToBounds="False" Margin="0,10,0,10">
+            <!-- Edges only soften (like the lyrics page) — distant lines stay
+                 visible and the per-line BlurRadius below does the de-focus. -->
             <Border.OpacityMask>
                 <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
-                    <GradientStop Color="#00FFFFFF" Offset="0.0"/>
-                    <GradientStop Color="#E0FFFFFF" Offset="0.08"/>
-                    <GradientStop Color="#FFFFFFFF" Offset="0.16"/>
-                    <GradientStop Color="#FFFFFFFF" Offset="0.82"/>
-                    <GradientStop Color="#E0FFFFFF" Offset="0.92"/>
-                    <GradientStop Color="#00FFFFFF" Offset="1.0"/>
+                    <GradientStop Color="#A0FFFFFF" Offset="0.0"/>
+                    <GradientStop Color="#E0FFFFFF" Offset="0.06"/>
+                    <GradientStop Color="#FFFFFFFF" Offset="0.15"/>
+                    <GradientStop Color="#FFFFFFFF" Offset="0.80"/>
+                    <GradientStop Color="#E0FFFFFF" Offset="0.93"/>
+                    <GradientStop Color="#A0FFFFFF" Offset="1.0"/>
                 </LinearGradientBrush>
             </Border.OpacityMask>
 
@@ -171,7 +174,8 @@
                                     Cursor="Hand"
                                     IsHitTestVisible="{Binding IsClickable}"
                                     Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
-                                    CommandParameter="{Binding}">
+                                    CommandParameter="{Binding}"
+                                    Effect="{Binding BlurRadius, Converter={StaticResource BlurToEffect}}">
                                 <Panel HorizontalAlignment="Left"
                                        MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                     <!-- Plain text layer (lines without word timings) -->
