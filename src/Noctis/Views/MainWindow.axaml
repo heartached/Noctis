@@ -318,10 +318,14 @@
                     </ContentControl.Transitions>
                 </ContentControl>
 
-                <!-- Lyrics side panel overlays content so opening it does not resize album grids. -->
+                <!-- Lyrics side panel overlays content so opening it does not resize album grids.
+                     IsVisible gates the whole subtree while closed: the karaoke word cells
+                     otherwise keep measuring/arranging behind the 0-width clip on every
+                     lyrics load, stalling the UI thread at track start (frozen row EQ). -->
                 <Border x:Name="LyricsPanelWrapper"
                         HorizontalAlignment="Right"
                         Width="0"
+                        IsVisible="False"
                         Margin="0,8,8,12"
                         CornerRadius="16"
                         ClipToBounds="True"

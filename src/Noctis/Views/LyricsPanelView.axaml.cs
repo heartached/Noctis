@@ -62,7 +62,9 @@ public partial class LyricsPanelView : UserControl
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (_vm == null || this.GetVisualRoot() == null) return;
+        // Skip anchoring work entirely while the panel is closed (wrapper hidden);
+        // opening the panel re-anchors via EnsureLyricsForCurrentTrack.
+        if (_vm == null || this.GetVisualRoot() == null || !IsEffectivelyVisible) return;
 
         if (e.PropertyName == nameof(LyricsViewModel.ActiveLineIndex))
         {

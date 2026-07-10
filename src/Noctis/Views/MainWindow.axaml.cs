@@ -137,7 +137,27 @@ public partial class MainWindow : Window
                     var mainVm2 = (MainWindowViewModel)s!;
                     if (e.PropertyName == nameof(MainWindowViewModel.IsLyricsPanelOpen))
                     {
-                        if (_lyricsPanelWrapper != null) _lyricsPanelWrapper.Width = mainVm2.IsLyricsPanelOpen ? 356 : 0;
+                        if (_lyricsPanelWrapper != null)
+                        {
+                            if (mainVm2.IsLyricsPanelOpen)
+                            {
+                                _lyricsPanelWrapper.IsVisible = true;
+                                _lyricsPanelWrapper.Width = 356;
+                            }
+                            else
+                            {
+                                // Slide shut, then drop the subtree out of layout/render —
+                                // a hidden-but-visible panel re-laid-out its word cells on
+                                // every lyrics load (the track-start UI stall).
+                                _lyricsPanelWrapper.Width = 0;
+                                Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+                                {
+                                    if (_lyricsPanelWrapper != null &&
+                                        DataContext is MainWindowViewModel m && !m.IsLyricsPanelOpen)
+                                        _lyricsPanelWrapper.IsVisible = false;
+                                }, TimeSpan.FromMilliseconds(240));
+                            }
+                        }
                     }
                     if (e.PropertyName == nameof(MainWindowViewModel.IsLyricsViewActive))
                     {

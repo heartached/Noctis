@@ -146,11 +146,16 @@
             <ScrollViewer x:Name="PanelScrollViewer"
                           VerticalScrollBarVisibility="Hidden"
                           HorizontalScrollBarVisibility="Disabled"
-                          Padding="20,0,24,0">
-                <!-- FontSize here is inherited by the line and karaoke TextBlocks. -->
+                          Padding="24,0,24,0">
+                <!-- FontSize here is inherited by the line and karaoke TextBlocks.
+                     MaxWidth bounds the wrap width explicitly (as the lyrics page
+                     does) — the ScrollViewer's padding is not subtracted from the
+                     measure width, so unconstrained lines wrapped at the full panel
+                     width and ran under the right edge. 292 = 340 - 24 - 24. -->
                 <ItemsControl x:Name="PanelItemsControl"
                               ItemsSource="{Binding ActiveLyricLines}"
-                              FontSize="19"
+                              FontSize="20"
+                              MaxWidth="292"
                               HorizontalAlignment="Left">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="m:LyricLine">
@@ -159,20 +164,23 @@
                                     Classes.active="{Binding IsActive}"
                                     BorderThickness="0"
                                     Padding="0"
-                                    Margin="0,7"
+                                    Margin="0,10"
+                                    MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                     HorizontalAlignment="Left"
                                     HorizontalContentAlignment="Left"
                                     Cursor="Hand"
                                     IsHitTestVisible="{Binding IsClickable}"
                                     Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
                                     CommandParameter="{Binding}">
-                                <Panel HorizontalAlignment="Left">
+                                <Panel HorizontalAlignment="Left"
+                                       MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                     <!-- Plain text layer (lines without word timings) -->
                                     <TextBlock Text="{Binding Text}"
                                                Classes="panel-lyric-line"
                                                FontWeight="Bold"
                                                Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
                                                HorizontalAlignment="Left"
+                                               MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                Opacity="{Binding LineOpacity}"
                                                IsVisible="{Binding ShowLineText}"
                                                TextWrapping="Wrap"/>
@@ -184,7 +192,8 @@
                                                   Classes.active="{Binding IsActive}"
                                                   IsVisible="{Binding ShowWords}"
                                                   Opacity="{Binding LineOpacity}"
-                                                  HorizontalAlignment="Left">
+                                                  HorizontalAlignment="Left"
+                                                  MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                         <ItemsControl.Transitions>
                                             <Transitions>
                                                 <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
