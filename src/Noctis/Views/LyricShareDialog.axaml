@@ -96,6 +96,15 @@
             <Setter Property="Opacity" Value="1"/>
         </Style>
 
+        <!-- Preview box height follows the card aspect: 320 for 1:1 (300px image + margins),
+             480 for 9:16 — so the card fills the box instead of floating with empty bands. -->
+        <Style Selector="Border.preview-box">
+            <Setter Property="Height" Value="480"/>
+        </Style>
+        <Style Selector="Border.preview-box.square">
+            <Setter Property="Height" Value="320"/>
+        </Style>
+
         <!-- Dark, rounded flyout for the "Card options" dropdown so it matches the dialog card. -->
         <Style Selector="FlyoutPresenter">
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
@@ -177,9 +186,14 @@
                         </ScrollViewer>
                     </Border>
 
-                    <!-- Preview -->
-                    <Border Grid.Column="2"
-                            Width="320" Height="480"
+                    <!-- Preview. The outer panel reserves a fixed 320x480 slot so the dialog
+                         never resizes with the format; the visible box hugs the card's aspect
+                         (a 1:1 card in the full 480-tall box left empty bands above and below). -->
+                    <Panel Grid.Column="2" Width="320" Height="480">
+                    <Border Classes="preview-box"
+                            Classes.square="{Binding IsSquare}"
+                            Width="320"
+                            VerticalAlignment="Center"
                             Background="#18000000"
                             CornerRadius="8">
                         <Panel>
@@ -203,6 +217,7 @@
                                    RenderOptions.BitmapInterpolationMode="HighQuality"/>
                         </Panel>
                     </Border>
+                    </Panel>
                 </Grid>
 
                 <!-- Background: Artwork / Solid + solid swatch strip -->
