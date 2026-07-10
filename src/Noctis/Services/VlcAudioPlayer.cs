@@ -1968,7 +1968,16 @@ public class VlcAudioPlayer : IAudioPlayer
             {
                 // The outgoing track is at (or within a beat of) its end —
                 // silence it so the incoming audio is the only thing audible.
-                SetPlayerVolumeGuarded(_player, 0);
+                // Per-player path ONLY: on Windows mmdevice both players share
+                // ONE volume control (the process audio session), so zeroing the
+                // outgoing here also zeroes the just-started incoming — and when
+                // the incoming's aout hasn't opened yet, its finalVolume write
+                // below is cached inside VLC instead of hitting the session,
+                // which then sits at 0 until the reassert lands: the intermittent
+                // clipped start of the next track. The outgoing is at its end and
+                // deferred cleanup Stop()s it, so skipping the zero is inaudible.
+                if (_sessionVolume == null)
+                    SetPlayerVolumeGuarded(_player, 0);
             }
             else
             {

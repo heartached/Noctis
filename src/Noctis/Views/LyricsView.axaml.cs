@@ -93,6 +93,20 @@ public partial class LyricsView : UserControl
             _recenterOnNextLayout = true;
     }
 
+    // Re-anchor when the user returns to the app (alt-tab back). While the window is
+    // backgrounded the auto-scroll can silently go stale (the scroll work reads live
+    // visual-tree geometry and is marked done before it runs), leaving the viewport on
+    // a region where every line has opacity 0 until the next line change. Jump directly
+    // instead of arming _recenterOnNextLayout: plain activation may not trigger a
+    // layout pass, so LayoutUpdated might never fire.
+    private void OnHostWindowActivated(object? sender, EventArgs e)
+    {
+        if (DataContext is not LyricsViewModel vm) return;
+        if (!vm.IsSyncTabSelected || vm.IsAutoFollowPaused || vm.ActiveLineIndex < 0) return;
+
+        JumpToActiveLineWhenReady(vm.ActiveLineIndex);
+    }
+
     private void OnColorPickerFlyoutOpened(object? sender, EventArgs e)
     {
         if (!_swatchScrollersWired)
@@ -160,6 +174,7 @@ public partial class LyricsView : UserControl
         {
             _hostWindow = window;
             _hostWindow.PropertyChanged += OnHostWindowPropertyChanged;
+            _hostWindow.Activated += OnHostWindowActivated;
         }
 
         if (DataContext is LyricsViewModel vm)
@@ -196,6 +211,7 @@ public partial class LyricsView : UserControl
         if (_hostWindow != null)
         {
             _hostWindow.PropertyChanged -= OnHostWindowPropertyChanged;
+            _hostWindow.Activated -= OnHostWindowActivated;
             _hostWindow = null;
         }
 
@@ -231,17 +247,32 @@ public partial class LyricsView : UserControl
 
             if (_isNarrowMode)
             {
-                // Narrow mode: stack vertically (cover row on top, lyrics below)
+                // Narrow mode: header row on top, lyrics below. The full stacked
+                // header (630px cover centered above the text) ate most of a
+                // short window and its 320px cap used to overflow onto the
+                // lyrics, so the header flips to a compact row instead: small
+                // cover beside left-aligned track info, ~330px total, lyrics
+                // keep the rest.
                 Grid.SetColumnSpan(LeftPanel, 2);
                 Grid.SetRow(LeftPanel, 0);
                 Grid.SetRowSpan(LeftPanel, 1);
-                LeftPanel.MaxHeight = 320;
                 LeftPanel.Padding = new Thickness(30, 20);
 
                 Grid.SetColumn(RightPanel, 0);
                 Grid.SetColumnSpan(RightPanel, 2);
                 Grid.SetRow(RightPanel, 1);
                 Grid.SetRowSpan(RightPanel, 1);
+
+                Grid.SetColumnSpan(AlbumArtBorder, 1);
+                AlbumArtBorder.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
+                AlbumArtBorder.Margin = new Thickness(0, 0, 14, 0);
+
+                Grid.SetRow(TrackInfoStack, 0);
+                Grid.SetColumn(TrackInfoStack, 1);
+                Grid.SetColumnSpan(TrackInfoStack, 1);
+                TrackInfoStack.Margin = default;
+                TrackInfoStack.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
+                SetHeaderAlignment(Avalonia.Layout.HorizontalAlignment.Left);
             }
             else
             {
@@ -249,13 +280,23 @@ public partial class LyricsView : UserControl
                 Grid.SetColumnSpan(LeftPanel, 1);
                 Grid.SetRow(LeftPanel, 0);
                 Grid.SetRowSpan(LeftPanel, 2);
-                LeftPanel.MaxHeight = double.PositiveInfinity;
                 LeftPanel.Padding = new Thickness(40, 30);
 
                 Grid.SetColumn(RightPanel, 1);
                 Grid.SetColumnSpan(RightPanel, 1);
                 Grid.SetRow(RightPanel, 0);
                 Grid.SetRowSpan(RightPanel, 2);
+
+                Grid.SetColumnSpan(AlbumArtBorder, 2);
+                AlbumArtBorder.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch;
+                AlbumArtBorder.Margin = default;
+
+                Grid.SetRow(TrackInfoStack, 1);
+                Grid.SetColumn(TrackInfoStack, 0);
+                Grid.SetColumnSpan(TrackInfoStack, 2);
+                TrackInfoStack.Margin = new Thickness(0, 24, 0, 0);
+                TrackInfoStack.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch;
+                SetHeaderAlignment(Avalonia.Layout.HorizontalAlignment.Center);
             }
         }
 
@@ -266,10 +307,14 @@ public partial class LyricsView : UserControl
         double stackWidth;
         if (_isNarrowMode)
         {
-            var cover = Math.Clamp(height * 0.25, 120, 200);
+            // The cover rides beside the text, so it stays small; header height
+            // is dominated by the fixed rows (info/timeline/controls) either way.
+            var cover = Math.Clamp(height * 0.15, 84, 128);
             AlbumArtBorder.Width = cover;
             AlbumArtBorder.Height = cover;
-            stackWidth = Math.Max(cover, 200);
+            // Header text needs the window's width, not the cover's: clamping
+            // the stack to the cover clipped the genre · year · badge line.
+            stackWidth = Math.Clamp(width - 160, 280, 520);
             LyricsItemsControl.MaxWidth = Math.Max(240, width - 80);
             RightPanel.RenderTransform = null;
         }
@@ -289,8 +334,11 @@ public partial class LyricsView : UserControl
 
         LeftContentStack.Width = stackWidth;
 
-        // Track title/artist/album marquees must not run wider than the stack.
-        var marqueeMax = Math.Min(520, Math.Max(180, stackWidth - 40));
+        // Track title/artist/album marquees must not run wider than the stack
+        // (in narrow mode, than the text column beside the cover).
+        var marqueeMax = _isNarrowMode
+            ? Math.Max(160, stackWidth - AlbumArtBorder.Width - 54)
+            : Math.Min(520, Math.Max(180, stackWidth - 40));
         TitleMarquee.MaxDisplayWidth = marqueeMax;
         ArtistMarquee.MaxDisplayWidth = marqueeMax;
         AlbumMarquee.MaxDisplayWidth = marqueeMax;
@@ -300,6 +348,17 @@ public partial class LyricsView : UserControl
         // Inherited by the line/karaoke TextBlocks in the item template.
         var fontScale = Math.Clamp(Math.Min(height / 1000.0, width / 1700.0), 0.55, 1.0);
         LyricsItemsControl.FontSize = Math.Round(46 * fontScale);
+    }
+
+    /// <summary>Aligns the header text block (title/artist/album/metadata) for the
+    /// active mode: centered under the cover in wide, left beside it in narrow.</summary>
+    private void SetHeaderAlignment(Avalonia.Layout.HorizontalAlignment alignment)
+    {
+        TrackInfoStack.HorizontalAlignment = alignment;
+        TitleMarquee.HorizontalAlignment = alignment;
+        ArtistLinkButton.HorizontalAlignment = alignment;
+        AlbumLinkButton.HorizontalAlignment = alignment;
+        MetadataRow.HorizontalAlignment = alignment;
     }
 
     /// <summary>Debounced jump back to the active lyric line after a resize settles.</summary>

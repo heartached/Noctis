@@ -873,6 +873,13 @@ public partial class PlaybackBarView : UserControl
             mainVm.ToggleLyricsCommand.Execute(null);
     }
 
+    private void OnLyricsPanelButtonClick(object? sender, RoutedEventArgs e)
+    {
+        var mainWindow = this.FindLogicalAncestorOfType<MainWindow>();
+        if (mainWindow?.DataContext is MainWindowViewModel mainVm)
+            mainVm.ToggleLyricsPanelCommand.Execute(null);
+    }
+
     private void RefreshTrackInfoLayout()
     {
         ResetTrackTitleMarquee();

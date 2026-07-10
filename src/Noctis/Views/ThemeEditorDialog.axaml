@@ -90,7 +90,7 @@
                                            FontFamily="Consolas, Courier New, monospace"
                                            FontSize="12"
                                            FontWeight="Bold"
-                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
                         </StackPanel>
@@ -103,7 +103,7 @@
                                            FontFamily="Consolas, Courier New, monospace"
                                            FontSize="12"
                                            FontWeight="Bold"
-                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
                         </StackPanel>
@@ -116,7 +116,7 @@
                                            FontFamily="Consolas, Courier New, monospace"
                                            FontSize="12"
                                            FontWeight="Bold"
-                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
                         </StackPanel>

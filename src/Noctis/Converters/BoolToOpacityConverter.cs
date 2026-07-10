@@ -20,10 +20,12 @@ public class BoolToOpacityConverter : IValueConverter
         // Parse parameter "falseOpacity;trueOpacity"
         if (parameter is string paramStr)
         {
+            // Invariant parse: parameters are XAML literals like "0.4;1.0" — the
+            // OS culture (comma-decimal locales) must not change how they read.
             var parts = paramStr.Split(';');
             if (parts.Length == 2 &&
-                double.TryParse(parts[0], out var falseOpacity) &&
-                double.TryParse(parts[1], out var trueOpacity))
+                double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var falseOpacity) &&
+                double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var trueOpacity))
             {
                 return boolValue ? trueOpacity : falseOpacity;
             }

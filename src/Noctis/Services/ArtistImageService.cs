@@ -248,8 +248,9 @@ public class ArtistImageService
             response.Content.Headers.ContentType?.MediaType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) != true)
             return false;
 
-        var imageData = await response.Content.ReadAsByteArrayAsync();
-        if (imageData.Length == 0)
+        var imageData = await HttpSafety.ReadBytesBoundedAsync(response.Content, HttpSafety.MaxImageBytes);
+        // Magic-byte check: an error/HTML page must never be cached as artwork.
+        if (imageData.Length == 0 || !HttpSafety.LooksLikeImage(imageData))
             return false;
 
         await File.WriteAllBytesAsync(cachedPath, imageData);
@@ -269,7 +270,7 @@ public class ArtistImageService
             if (!response.IsSuccessStatusCode)
                 continue;
 
-            var json = await response.Content.ReadAsStringAsync();
+            var json = await HttpSafety.ReadStringBoundedAsync(response.Content);
             using var doc = JsonDocument.Parse(json);
 
             if (!doc.RootElement.TryGetProperty("data", out var data) ||

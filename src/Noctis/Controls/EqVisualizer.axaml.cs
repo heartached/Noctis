@@ -67,6 +67,15 @@ public class EqVisualizer : TemplatedControl
             StartAnimating();
     }
 
+    protected override void OnAttachedToLogicalTree(global::Avalonia.LogicalTree.LogicalTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToLogicalTree(e);
+        // Recycled rows re-attach without a template re-apply or an IsPlaying
+        // change; restart the oscillation or the bars come back frozen.
+        if (_initialized && IsPlaying)
+            StartAnimating();
+    }
+
     protected override void OnDetachedFromLogicalTree(global::Avalonia.LogicalTree.LogicalTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromLogicalTree(e);

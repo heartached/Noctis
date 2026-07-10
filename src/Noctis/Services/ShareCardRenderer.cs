@@ -158,9 +158,18 @@ public static class ShareCardRenderer
             using (var scrim = new SKPaint { Color = new SKColor(0, 0, 0, 0x6E) })
                 canvas.DrawRect(0, 0, w, h, scrim);
 
-            // A near-full-frame frosted card so the content fills the frame in both formats.
-            const float margin = 52f;
-            var cardRect = new SKRect(margin, margin, w - margin, h - margin);
+            // Content-hugging frosted card (like the solid box below): sized from the
+            // fitted lyric block and centered, so short selections don't leave empty
+            // bands between the header/lyrics and the wordmark.
+            const float margin = 52f, cardPad = 60f;
+            float cardContentW = w - 2 * margin - 2 * cardPad;
+            float fixedH = HeaderArtSize + LyricGapTop + LyricGapBottom + FooterHeight;
+            float maxCardH = h - 2 * margin;
+            var fit = FitLyrics(spec, cardContentW, maxCardH - 2 * cardPad - fixedH, lyricFace);
+            float contentH = fixedH + fit.wrapped.Count * fit.lineHeight;
+            float cardH = Math.Min(contentH + 2 * cardPad, maxCardH);
+            float cardTop = (h - cardH) / 2f;
+            var cardRect = new SKRect(margin, cardTop, w - margin, cardTop + cardH);
             using (var fill = new SKPaint { IsAntialias = true, Color = new SKColor(255, 255, 255, 0x24) })
                 canvas.DrawRoundRect(cardRect, CardRadius, CardRadius, fill);
             using (var border = new SKPaint
@@ -172,7 +181,6 @@ public static class ShareCardRenderer
             })
                 canvas.DrawRoundRect(cardRect, CardRadius, CardRadius, border);
 
-            const float cardPad = 60f;
             contentRect = new SKRect(cardRect.Left + cardPad, cardRect.Top + cardPad,
                                      cardRect.Right - cardPad, cardRect.Bottom - cardPad);
             fg = SKColors.White;
@@ -284,11 +292,35 @@ public static class ShareCardRenderer
         return new CardChrome(fg, x, firstBaseline, wrapped, lyricSize, lineHeight);
     }
 
-    /// <summary>Alpha of unsung lyric text on karaoke frames (the dim base layer).</summary>
-    private const byte KaraokeDimAlpha = 0x5F;
+    /// <summary>Alpha of unsung lyric text on karaoke frames (the dim base layer) —
+    /// mirrors the lyrics page's active-line word-base opacity of 0.45.</summary>
+    private const byte KaraokeDimAlpha = 0x73;
     /// <summary>Sweep feather, as a fraction of the current word's width — mirrors
     /// <c>ProgressToSweepForegroundConverter.Feather</c> on the lyrics page.</summary>
     private const float KaraokeFeather = 0.06f;
+    /// <summary>Held-note threshold — mirrors <c>LyricLine.EmphasisMs</c> on the lyrics page.</summary>
+    private const double KaraokeEmphasisSeconds = 1.0;
+    /// <summary>Glow fade in/out — mirrors the page's 0.45 s word-glow opacity transition.</summary>
+    private const double KaraokeGlowFadeSeconds = 0.45;
+    /// <summary>Peak glow opacity — mirrors the page's emphasis word-glow opacity of 0.5.</summary>
+    private const float KaraokeGlowAlpha = 0.5f;
+
+    /// <summary>
+    /// Glow strength for a word at time <paramref name="t"/>: 0 for words shorter than the
+    /// held-note threshold, else eased 0→peak over the fade-in, held while sung, and eased
+    /// back to 0 after the word ends — the page's emphasis glow timing.
+    /// </summary>
+    private static float KaraokeGlowLevel(double start, double end, double t)
+    {
+        if (end - start < KaraokeEmphasisSeconds) return 0f;
+        if (t < start || t > end + KaraokeGlowFadeSeconds) return 0f;
+        double x = t < start + KaraokeGlowFadeSeconds ? (t - start) / KaraokeGlowFadeSeconds
+                 : t <= end ? 1.0
+                 : 1.0 - (t - end) / KaraokeGlowFadeSeconds;
+        // CubicEaseInOut, like the page's word-glow transition.
+        double eased = x < 0.5 ? 4 * x * x * x : 1 - Math.Pow(-2 * x + 2, 3) / 2;
+        return (float)(KaraokeGlowAlpha * eased);
+    }
 
     /// <summary>
     /// Renders the karaoke frame sequence for a clip: the same card as
@@ -450,7 +482,8 @@ public static class ShareCardRenderer
     /// <summary>
     /// Paints the lyric block at time <paramref name="t"/>: every row dim, then the sung
     /// part bright — per-word sweep with a feathered leading edge when the row has word
-    /// mapping, whole-row highlight (lit once the line has started) otherwise. Painted as
+    /// mapping, whole-row highlight (lit once the line has started) otherwise. Held-note
+    /// words get the page's soft glow, drawn beneath the text layers. Painted as
     /// overlaid foreground text, never OpacityMask (see ProgressToSweepForegroundConverter:
     /// mask layers clipped/boxed the glow on the lyrics page).
     /// </summary>
@@ -459,15 +492,15 @@ public static class ShareCardRenderer
         (int Start, int Count)?[] rowRanges, SKPaint brightPaint, SKPaint dimPaint, double t)
     {
         float baseline = chrome.FirstBaseline;
+        using var glowBlur = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, chrome.LyricSize * 0.09f);
         for (int r = 0; r < chrome.Wrapped.Count; r++, baseline += chrome.LineHeight)
         {
             var (text, lineIdx) = chrome.Wrapped[r];
             var line = lineIdx < karaoke.Count ? karaoke[lineIdx] : null;
 
-            DrawTextFallback(canvas, text, chrome.LyricX, baseline, dimPaint);
-
             if (rowRanges[r] is not { } range || line?.Words is not { } words)
             {
+                DrawTextFallback(canvas, text, chrome.LyricX, baseline, dimPaint);
                 // Line-level highlight: lit once the line has started (always lit if unsynced).
                 bool lit = line == null || line.StartSeconds is not { } start || t >= start;
                 if (lit)
@@ -475,8 +508,27 @@ public static class ShareCardRenderer
                 continue;
             }
 
-            // Word sweep: bright width = fully-sung tokens + fraction of the current one.
             var tokens = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            // Held-note glow under the base text (page: word-cell.emphasis word-glow).
+            for (int k = 0; k < tokens.Length; k++)
+            {
+                var word = words[range.Start + k];
+                float glow = KaraokeGlowLevel(word.StartSeconds, word.EndSeconds, t);
+                if (glow <= 0.01f)
+                    continue;
+                float glowPrefixW = k > 0
+                    ? MeasureTextFallback(brightPaint, string.Join(' ', tokens.Take(k)) + " ")
+                    : 0f;
+                using var glowPaint = TextPaint(brightPaint.Typeface!, chrome.LyricSize,
+                    brightPaint.Color.WithAlpha((byte)(glow * 255)));
+                glowPaint.MaskFilter = glowBlur;
+                DrawTextFallback(canvas, tokens[k], chrome.LyricX + glowPrefixW, baseline, glowPaint);
+            }
+
+            DrawTextFallback(canvas, text, chrome.LyricX, baseline, dimPaint);
+
+            // Word sweep: bright width = fully-sung tokens + fraction of the current one.
             float brightW = MeasureTextFallback(brightPaint, text);   // default: every word sung
             float featherW = 0f;
             for (int k = 0; k < tokens.Length; k++)
