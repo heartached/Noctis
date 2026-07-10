@@ -750,6 +750,10 @@
     <Style Selector="Border.now-playing MenuItem.danger :is(TextBlock)">
         <Setter Property="Foreground" Value="#E74856" />
     </Style>
+    <!-- Keep the explicit "E" badge glyph white on now-playing rows. -->
+    <Style Selector="Border.now-playing TextBlock.explicit-badge-text">
+        <Setter Property="Foreground" Value="White" />
+    </Style>
 
     <!-- Note: ContentPresenter background overrides for track-list items are handled by
          TrackListBoxItemTheme (ControlTheme with BasedOn) applied via ItemContainerTheme above.
