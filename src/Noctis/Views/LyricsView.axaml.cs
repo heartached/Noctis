@@ -93,6 +93,20 @@ public partial class LyricsView : UserControl
             _recenterOnNextLayout = true;
     }
 
+    // Re-anchor when the user returns to the app (alt-tab back). While the window is
+    // backgrounded the auto-scroll can silently go stale (the scroll work reads live
+    // visual-tree geometry and is marked done before it runs), leaving the viewport on
+    // a region where every line has opacity 0 until the next line change. Jump directly
+    // instead of arming _recenterOnNextLayout: plain activation may not trigger a
+    // layout pass, so LayoutUpdated might never fire.
+    private void OnHostWindowActivated(object? sender, EventArgs e)
+    {
+        if (DataContext is not LyricsViewModel vm) return;
+        if (!vm.IsSyncTabSelected || vm.IsAutoFollowPaused || vm.ActiveLineIndex < 0) return;
+
+        JumpToActiveLineWhenReady(vm.ActiveLineIndex);
+    }
+
     private void OnColorPickerFlyoutOpened(object? sender, EventArgs e)
     {
         if (!_swatchScrollersWired)
@@ -160,6 +174,7 @@ public partial class LyricsView : UserControl
         {
             _hostWindow = window;
             _hostWindow.PropertyChanged += OnHostWindowPropertyChanged;
+            _hostWindow.Activated += OnHostWindowActivated;
         }
 
         if (DataContext is LyricsViewModel vm)
@@ -196,6 +211,7 @@ public partial class LyricsView : UserControl
         if (_hostWindow != null)
         {
             _hostWindow.PropertyChanged -= OnHostWindowPropertyChanged;
+            _hostWindow.Activated -= OnHostWindowActivated;
             _hostWindow = null;
         }
 
