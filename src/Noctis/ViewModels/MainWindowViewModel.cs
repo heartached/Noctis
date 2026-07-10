@@ -107,6 +107,26 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarHidden = !IsSidebarHidden;
 
+    // ── Lyrics side panel ──
+
+    /// <summary>Whether the lyrics side panel overlay is open.</summary>
+    [ObservableProperty] private bool _isLyricsPanelOpen;
+
+    [RelayCommand]
+    private void ToggleLyricsPanel()
+    {
+        if (IsLyricsViewActive) return;
+        IsLyricsPanelOpen = !IsLyricsPanelOpen;
+        if (IsLyricsPanelOpen)
+        {
+            // The lyrics VM reloads on TrackStarted regardless of visibility, but the
+            // panel can open mid-track after a cold start — make sure lyrics exist and
+            // the active line is current before the panel slides in.
+            _lyricsVm.EnsureLyricsForCurrentTrack();
+            Player.IsQueuePopupOpen = false;
+        }
+    }
+
     private sealed class NavigationEntry
     {
         public required ViewModelBase View { get; init; }
@@ -351,6 +371,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 OnPropertyChanged(nameof(PlaybackBarOpacity));
                 OnPropertyChanged(nameof(IsPlaybackBarHitTestVisible));
             }
+            if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack) && Player.CurrentTrack == null)
+                IsLyricsPanelOpen = false;
         };
 
         // Wire up Discord RPC and Last.fm integrations
@@ -859,6 +881,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (enteringLyrics)
         {
+            // The full-page lyrics view supersedes the side panel.
+            IsLyricsPanelOpen = false;
             NotifyPlaybackBarPresentationChanged();
             WireLyricsPageToPlayer();
         }
@@ -1526,6 +1550,7 @@ public partial class MainWindowViewModel : ViewModelBase
             PushCurrentViewToHistory();
         _albumDetailBackButtonText = NormalizeAlbumDetailBackButtonText(backButtonText ?? GetAlbumDetailBackButtonText());
         ClearAllTopBarActions();
+        IsLyricsPanelOpen = false;
         _isCoverFlowMode = false;
         TopBar.IsCoverFlowMode = false;
         _preCoverFlowView = null;

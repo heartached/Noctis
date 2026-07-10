@@ -1,0 +1,258 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             xmlns:conv="using:Noctis.Converters"
+             xmlns:helpers="using:Noctis.Helpers"
+             mc:Ignorable="d"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             x:Class="Noctis.Views.LyricsPanelView"
+             x:DataType="vm:LyricsViewModel"
+             Background="Transparent">
+
+    <UserControl.Resources>
+        <conv:ProgressToSweepForegroundConverter x:Key="ProgressToSweepFg"/>
+        <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- Compact mirror of the lyrics page's AMLL line presentation: inactive
+             lines rest at 0.96×, the active line springs to natural size. Origin
+             pinned left so text grows in place. -->
+        <Style Selector="Button.panel-lyric-line-btn">
+            <Setter Property="RenderTransformOrigin" Value="0,0.5"/>
+            <Setter Property="RenderTransform" Value="translate(0px,0px) scale(0.96)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.45">
+                        <TransformOperationsTransition.Easing>
+                            <helpers:SpringEase Damping="7.5" Frequency="4.0"/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.panel-lyric-line-btn.active">
+            <Setter Property="RenderTransform" Value="translate(0px,-1px) scale(1)"/>
+        </Style>
+        <!-- Suppress global hover-scale on panel lyric lines. -->
+        <Style Selector="ItemsControl#PanelItemsControl Button:pointerover">
+            <Setter Property="RenderTransform" Value="translate(0px,0px) scale(0.96)"/>
+        </Style>
+        <Style Selector="ItemsControl#PanelItemsControl Button.panel-lyric-line-btn.active:pointerover">
+            <Setter Property="RenderTransform" Value="translate(0px,-1px) scale(1)"/>
+        </Style>
+
+        <!-- Per-word lift (same feel as the page, scaled down). -->
+        <Style Selector="Panel.word-cell">
+            <Setter Property="RenderTransformOrigin" Value="0.5,1"/>
+            <Setter Property="RenderTransform" Value="translate(0px,0px) scale(1)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Panel.word-cell.current">
+            <Setter Property="RenderTransform" Value="translate(0px,-1px) scale(1.01)"/>
+        </Style>
+
+        <!-- Held-note emphasis: slow swell + soft glow, as on the lyrics page. -->
+        <Style Selector="Panel.word-cell.emphasis">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.8" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Panel.word-cell.emphasis.current">
+            <Setter Property="RenderTransform" Value="translate(0px,-1px) scale(1.03)"/>
+        </Style>
+        <Style Selector="TextBlock.word-glow">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Effect" Value="blur(4)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.45" Easing="CubicEaseInOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Panel.word-cell.emphasis.current TextBlock.word-glow">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+
+        <!-- Word base layer: full brightness on inactive lines, soft ghost under the
+             sweep while the line is active. -->
+        <Style Selector="ItemsControl.word-layer TextBlock.word-base">
+            <Setter Property="Opacity" Value="1.0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.35" Easing="CubicEaseInOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ItemsControl.word-layer.active TextBlock.word-base">
+            <Setter Property="Opacity" Value="0.45"/>
+        </Style>
+
+        <Style Selector="TextBlock.panel-lyric-line">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <!-- Intro dots: pulse as a group while the intro gap is active. -->
+        <Style Selector="StackPanel.panel-intro-dots.active">
+            <Style.Animations>
+                <Animation Duration="0:0:1.8" IterationCount="INFINITE" Easing="SineEaseInOut" PlaybackDirection="Alternate">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.35"/></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- Empty state -->
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="6"
+                    IsVisible="{Binding ShowSearchButton}">
+            <TextBlock Text="No lyrics for this track"
+                       FontSize="14"
+                       Foreground="{Binding LyricsPrimaryFg}"
+                       Opacity="0.55"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Lyrics flow. ClipToBounds=False so the active line's swell isn't
+             hard-clipped; the OpacityMask fades the top/bottom edges. -->
+        <Border ClipToBounds="False" Margin="0,10,0,10">
+            <Border.OpacityMask>
+                <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
+                    <GradientStop Color="#00FFFFFF" Offset="0.0"/>
+                    <GradientStop Color="#E0FFFFFF" Offset="0.08"/>
+                    <GradientStop Color="#FFFFFFFF" Offset="0.16"/>
+                    <GradientStop Color="#FFFFFFFF" Offset="0.82"/>
+                    <GradientStop Color="#E0FFFFFF" Offset="0.92"/>
+                    <GradientStop Color="#00FFFFFF" Offset="1.0"/>
+                </LinearGradientBrush>
+            </Border.OpacityMask>
+
+            <ScrollViewer x:Name="PanelScrollViewer"
+                          VerticalScrollBarVisibility="Hidden"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Padding="20,0,24,0">
+                <!-- FontSize here is inherited by the line and karaoke TextBlocks. -->
+                <ItemsControl x:Name="PanelItemsControl"
+                              ItemsSource="{Binding ActiveLyricLines}"
+                              FontSize="19"
+                              HorizontalAlignment="Left">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="m:LyricLine">
+                            <Button Background="Transparent"
+                                    Classes="panel-lyric-line-btn"
+                                    Classes.active="{Binding IsActive}"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Margin="0,7"
+                                    HorizontalAlignment="Left"
+                                    HorizontalContentAlignment="Left"
+                                    Cursor="Hand"
+                                    IsHitTestVisible="{Binding IsClickable}"
+                                    Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
+                                    CommandParameter="{Binding}">
+                                <Panel HorizontalAlignment="Left">
+                                    <!-- Plain text layer (lines without word timings) -->
+                                    <TextBlock Text="{Binding Text}"
+                                               Classes="panel-lyric-line"
+                                               FontWeight="Bold"
+                                               Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
+                                               HorizontalAlignment="Left"
+                                               Opacity="{Binding LineOpacity}"
+                                               IsVisible="{Binding ShowLineText}"
+                                               TextWrapping="Wrap"/>
+
+                                    <!-- Word-level karaoke layer — same three-layer structure as
+                                         the lyrics page (glow / dimmed base / gradient sweep). -->
+                                    <ItemsControl ItemsSource="{Binding Words}"
+                                                  Classes="word-layer"
+                                                  Classes.active="{Binding IsActive}"
+                                                  IsVisible="{Binding ShowWords}"
+                                                  Opacity="{Binding LineOpacity}"
+                                                  HorizontalAlignment="Left">
+                                        <ItemsControl.Transitions>
+                                            <Transitions>
+                                                <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                            </Transitions>
+                                        </ItemsControl.Transitions>
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="m:WordTiming">
+                                                <Panel Classes="word-cell"
+                                                       Classes.current="{Binding IsCurrent}"
+                                                       Classes.emphasis="{Binding IsEmphasis}">
+                                                    <!-- Glow hosted in a Canvas so the blur surface has
+                                                         headroom without growing the word cell (see the
+                                                         lyrics page template for the full rationale). -->
+                                                    <Canvas ClipToBounds="False">
+                                                        <TextBlock Text="{Binding Text}"
+                                                                   Classes="word-glow"
+                                                                   IsVisible="{Binding IsEmphasis}"
+                                                                   Canvas.Left="-24"
+                                                                   Canvas.Top="-24"
+                                                                   Padding="24"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                                                    </Canvas>
+                                                    <TextBlock Text="{Binding Text}"
+                                                               Classes="word-base"
+                                                               Padding="{Binding Text, Converter={StaticResource WordOverflowPad}}"
+                                                               FontWeight="Bold"
+                                                               Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                                                    <TextBlock Text="{Binding SweepText}"
+                                                               HorizontalAlignment="Left"
+                                                               FontWeight="Bold">
+                                                        <TextBlock.Foreground>
+                                                            <MultiBinding Converter="{StaticResource ProgressToSweepFg}">
+                                                                <Binding Path="Progress"/>
+                                                                <Binding Path="$parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg"/>
+                                                            </MultiBinding>
+                                                        </TextBlock.Foreground>
+                                                    </TextBlock>
+                                                </Panel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <!-- Intro dots -->
+                                    <StackPanel Orientation="Horizontal"
+                                                Spacing="5"
+                                                Classes="panel-intro-dots"
+                                                Classes.active="{Binding IsActive}"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                Margin="0,5"
+                                                Opacity="{Binding LineOpacity}"
+                                                IsVisible="{Binding IsIntroPlaceholder}">
+                                        <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"/>
+                                        <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"/>
+                                        <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"/>
+                                    </StackPanel>
+                                </Panel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>
