@@ -15,6 +15,7 @@
         <conv:ProgressToSweepForegroundConverter x:Key="ProgressToSweepFg"/>
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
         <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect"/>
+        <conv:OpacityFloorConverter x:Key="OpacityFloor"/>
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -185,7 +186,7 @@
                                                Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
                                                HorizontalAlignment="Left"
                                                MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
-                                               Opacity="{Binding LineOpacity}"
+                                               Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                IsVisible="{Binding ShowLineText}"
                                                TextWrapping="Wrap"/>
 
@@ -195,7 +196,7 @@
                                                   Classes="word-layer"
                                                   Classes.active="{Binding IsActive}"
                                                   IsVisible="{Binding ShowWords}"
-                                                  Opacity="{Binding LineOpacity}"
+                                                  Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                   HorizontalAlignment="Left"
                                                   MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                         <ItemsControl.Transitions>
@@ -254,7 +255,7 @@
                                                 HorizontalAlignment="Left"
                                                 VerticalAlignment="Center"
                                                 Margin="0,5"
-                                                Opacity="{Binding LineOpacity}"
+                                                Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                 IsVisible="{Binding IsIntroPlaceholder}">
                                         <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"/>
                                         <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"/>
