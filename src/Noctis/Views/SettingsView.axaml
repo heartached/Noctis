@@ -649,7 +649,15 @@
             </Button>
             <Button Classes="settings-tab" Classes.active="{Binding IsAboutTabSelected}"
                     Command="{Binding SelectSettingsTabCommand}" CommandParameter="About">
-                <TextBlock Text="About" FontSize="13" FontWeight="SemiBold"/>
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <TextBlock Text="About" FontSize="13" FontWeight="SemiBold"/>
+                    <!-- Update-available dot, mirroring the sidebar settings-icon badge -->
+                    <Ellipse Width="8" Height="8"
+                             Fill="{DynamicResource AccentColorBrush}"
+                             VerticalAlignment="Top"
+                             Margin="0,-1,-3,0"
+                             IsVisible="{Binding IsUpdateAvailable}"/>
+                </StackPanel>
             </Button>
         </StackPanel>
     </StackPanel>
@@ -908,6 +916,12 @@
 
                         <!-- Action buttons (top-right) -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <!-- Update-available dot next to the update pill, mirroring the
+                                 sidebar settings-icon badge -->
+                            <Ellipse Width="8" Height="8"
+                                     Fill="{DynamicResource AccentColorBrush}"
+                                     VerticalAlignment="Center"
+                                     IsVisible="{Binding IsUpdateAvailable}"/>
                             <Button Command="{Binding CheckForUpdateCommand}"
                                     Classes="pill"
                                     VerticalAlignment="Center"
