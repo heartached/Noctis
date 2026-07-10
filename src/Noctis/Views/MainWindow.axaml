@@ -340,20 +340,9 @@
                         </Transitions>
                     </Border.Transitions>
                     <Grid Width="340">
-                        <!-- Opaque dark base so the panel never bleeds through -->
+                        <!-- Opaque dark base so the panel never bleeds through; the view
+                             itself paints the page-matched background (artwork/solid/gradient). -->
                         <Border Background="{DynamicResource AppSidebarBackground}" CornerRadius="16"/>
-                        <!-- Adaptive album-art tint, same brush family as the lyrics page -->
-                        <Border Background="{Binding Lyrics.LyricsBackgroundBrush}"
-                                Opacity="0.85"
-                                CornerRadius="16">
-                            <Border.Transitions>
-                                <Transitions>
-                                    <DoubleTransition Property="Opacity" Duration="0:0:0.4">
-                                        <DoubleTransition.Easing><CubicEaseOut/></DoubleTransition.Easing>
-                                    </DoubleTransition>
-                                </Transitions>
-                            </Border.Transitions>
-                        </Border>
                         <views:LyricsPanelView DataContext="{Binding Lyrics}"/>
                     </Grid>
                 </Border>
