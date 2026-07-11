@@ -56,7 +56,7 @@ public class MetadataViewModelTests
     // ── Album scope: play count ──
 
     [Fact]
-    public void AlbumScope_ResetPlayCount_ClearsEveryTrack()
+    public async Task AlbumScope_ResetPlayCount_IsStagedUntilSave()
     {
         var tracks = Album("A", "X", 3);
         tracks[0].PlayCount = 5; tracks[0].LastPlayed = DateTime.UtcNow;
@@ -67,6 +67,17 @@ public class MetadataViewModelTests
         var vm = NewAlbumVm(tracks, p, out _, out _);
 
         vm.ResetPlayCountCommand.Execute(null);
+
+        // Staged only: the display shows zero, but nothing touches the Track
+        // models yet — Cancel must discard the reset.
+        Assert.Equal("0", vm.PlayCountDisplay);
+        Assert.All(tracks, t =>
+        {
+            Assert.NotEqual(0, t.PlayCount);
+            Assert.NotNull(t.LastPlayed);
+        });
+
+        await vm.SaveCommand.ExecuteAsync(null);
 
         Assert.All(tracks, t =>
         {
@@ -184,6 +195,82 @@ public class MetadataViewModelTests
 
         Assert.Contains("Rap/Hip Hop", vm.GenreOptions);
         Assert.Equal("Rap/Hip Hop", vm.Genre);
+    }
+
+    // ── Options: start/stop time parsing ──
+
+    [Fact]
+    public async Task TrackScope_StartTime_BareNumberParsesAsSeconds()
+    {
+        // "45" must mean 45 seconds — the TimeSpan.TryParse fallback reads it as 45 days.
+        var album = Album("A", "X", 1);
+        using var p = new TestPersistenceService();
+        var vm = new MetadataViewModel(album[0], new FakeMetadataService(),
+            new FakeLibraryService { TrackList = album.ToList() }, p, new FakeAnimatedCoverService(),
+            albumScoped: false, albumTracks: null);
+
+        vm.HasStartTime = true;
+        vm.StartTime = "45";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(45_000, album[0].StartTimeMs);
+    }
+
+    // ── Timestamp Lyrics: first manual timing pass must survive Save ──
+
+    [Fact]
+    public async Task TimestampEdit_OnPlainOnlyTrack_SavesSyncedLyrics()
+    {
+        var album = Album("A", "X", 1);
+        album[0].Lyrics = "line one\nline two";
+
+        using var p = new TestPersistenceService();
+        var vm = new MetadataViewModel(album[0], new FakeMetadataService(),
+            new FakeLibraryService { TrackList = album.ToList() }, p, new FakeAnimatedCoverService(),
+            albumScoped: false, albumTracks: null);
+
+        // Lines seeded from the plain lyrics; no synced lyrics exist yet.
+        Assert.Equal(2, vm.SyncedLyricLines.Count);
+        Assert.False(vm.HasCustomSyncedLyrics);
+
+        vm.SyncedLyricLines[0].TimestampText = "0:10.00";
+
+        Assert.True(vm.HasCustomSyncedLyrics);
+
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Contains("[00:10.00]line one", album[0].SyncedLyrics);
+    }
+
+    // ── Multi-select rename: lyric sidecars follow the audio file ──
+
+    [Fact]
+    public async Task MultiSelectRename_MovesLyricSidecarsWithFile()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"noctis-md-rename-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var tracks = Album("A", "X", 2);
+            tracks[0].FilePath = Path.Combine(dir, "a.flac");
+            tracks[1].FilePath = Path.Combine(dir, "b.flac");
+            File.WriteAllText(tracks[0].FilePath, "audio");
+            File.WriteAllText(tracks[1].FilePath, "audio");
+            File.WriteAllText(Path.Combine(dir, "a.lrc"), "[00:01.00] hi");
+
+            using var p = new TestPersistenceService();
+            var vm = new MetadataViewModel(tracks[0], new FakeMetadataService(),
+                new FakeLibraryService { TrackList = tracks.ToList() }, p, new FakeAnimatedCoverService(),
+                albumScoped: true, albumTracks: tracks.ToList(), multiSelect: true);
+
+            vm.ApplyRename = true; // default pattern: "%tracknumber2% - %title%"
+            await vm.SaveCommand.ExecuteAsync(null);
+
+            Assert.Equal(Path.Combine(dir, "01 - Track 1.flac"), tracks[0].FilePath);
+            Assert.True(File.Exists(Path.Combine(dir, "01 - Track 1.lrc")));
+            Assert.False(File.Exists(Path.Combine(dir, "a.lrc")));
+        }
+        finally { Directory.Delete(dir, true); }
     }
 
     // ── Helpers ──
