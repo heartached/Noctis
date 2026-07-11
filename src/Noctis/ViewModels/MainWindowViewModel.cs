@@ -652,6 +652,16 @@ public partial class MainWindowViewModel : ViewModelBase
             }
             }, ct);
 
+            if (files.Count == 0)
+            {
+                // Nothing playable in the drop (e.g. an album folder whose audio was
+                // removed earlier and only cover art / .lrc remain). Silently doing
+                // nothing here reads as a failed import — say so briefly instead.
+                DropImportStatus = "No audio files found in the dropped items";
+                try { await Task.Delay(2500, ct); } catch (OperationCanceledException) { }
+                return;
+            }
+
             if (files.Count > 0)
             {
                 var managedRoot = await EnsureManagedImportRootAsync(ct);
