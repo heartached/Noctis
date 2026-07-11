@@ -38,6 +38,19 @@ public static class KaraokeSweep
     }
 
     /// <summary>
+    /// Sweep end for a line's final word when neither the word nor the line carries an
+    /// explicit end time (start-tag-only enhanced LRC). Bounded by the next synced
+    /// line's start so the sweep hands off cleanly, and capped at two seconds past the
+    /// word's start so a long instrumental gap doesn't stretch the word into a crawl.
+    /// Without this bound the span is zero and the word snaps to lit instead of sweeping.
+    /// </summary>
+    public static TimeSpan ResolveOpenLastWordEnd(TimeSpan wordStart, TimeSpan? nextLineStart)
+    {
+        var cap = wordStart + TimeSpan.FromSeconds(2);
+        return nextLineStart.HasValue && nextLineStart.Value < cap ? nextLineStart.Value : cap;
+    }
+
+    /// <summary>
     /// Maps wrapped card rows back to ranges of <paramref name="lineTokens"/>. Each row
     /// must split (on spaces) into exactly the next run of tokens, and together the rows
     /// must consume every token — otherwise null, and the caller degrades that line to a

@@ -13,8 +13,9 @@ using Noctis.Services;
 
 namespace Noctis.ViewModels;
 
-/// <summary>A solid background-color choice on the share card.</summary>
-public record ShareSolidSwatch(string Hex, string Name, IBrush Preview);
+/// <summary>A solid background-color choice on the share card. An empty
+/// <paramref name="Hex"/> with <paramref name="IsAuto"/> means "derive from artwork".</summary>
+public record ShareSolidSwatch(string Hex, string Name, IBrush Preview, bool IsAuto = false);
 
 /// <summary>A lyric line the user can include on (and edit for) the share card.</summary>
 public partial class SelectableLyricLine : ObservableObject
@@ -75,6 +76,11 @@ public partial class LyricShareViewModel : ViewModelBase
 
     [ObservableProperty] private bool _isSquare = true;
     [ObservableProperty] private bool _isStory;
+
+    // ── Layout: Card (panel header) or Poster (big centered artwork) ────
+    [ObservableProperty] private bool _isPanelLayout = true;
+    [ObservableProperty] private bool _isPosterLayout;
+
     [ObservableProperty] private Bitmap? _preview;
     [ObservableProperty] private string _statusText = string.Empty;
 
@@ -89,16 +95,14 @@ public partial class LyricShareViewModel : ViewModelBase
     [ObservableProperty] private bool _isSolidBg = true;
     [ObservableProperty] private string _solidColorHex = "#1A1A2E";
 
-    /// <summary>Curated solid-color choices shown when "Solid" is selected.</summary>
-    public IReadOnlyList<ShareSolidSwatch> SolidSwatches { get; } = BuildSolidSwatches();
-
-    /// <summary>Preview brush for the "Auto" solid swatch — the artwork-derived color it applies.</summary>
-    public IBrush AutoSwatchBrush { get; }
+    /// <summary>Solid-color choices for the Background flyout: "Auto" (artwork-derived,
+    /// per track) first, then the curated colors.</summary>
+    public IReadOnlyList<ShareSolidSwatch> SolidSwatches { get; }
 
     /// <summary>True when the Solid background is the artwork-derived "Auto" color (drives the swatch ring).</summary>
     [ObservableProperty] private bool _isAutoSolid = true;
 
-    private static IReadOnlyList<ShareSolidSwatch> BuildSolidSwatches()
+    private static IReadOnlyList<ShareSolidSwatch> BuildSolidSwatches(string autoColorHex)
     {
         (string Hex, string Name)[] swatches =
         {
@@ -109,16 +113,22 @@ public partial class LyricShareViewModel : ViewModelBase
             ("#ABC1D8", "Sky"),      ("#F7C8B1", "Peach"),   ("#E4ECF4", "Mist"),
             ("#B4E4AC", "Mint"),     ("#D4B8E0", "Lilac"),   ("#F5E6CC", "Cream"),
         };
-        return swatches
-            .Select(s => new ShareSolidSwatch(s.Hex, s.Name, new SolidColorBrush(Color.Parse(s.Hex))))
-            .ToList();
+        var list = new List<ShareSolidSwatch>(swatches.Length + 1)
+        {
+            new(string.Empty, "Auto — from artwork",
+                new SolidColorBrush(Color.Parse(autoColorHex)), IsAuto: true),
+        };
+        list.AddRange(swatches.Select(s =>
+            new ShareSolidSwatch(s.Hex, s.Name, new SolidColorBrush(Color.Parse(s.Hex)))));
+        return list;
     }
 
     /// <summary>Whether the source lyrics carry timestamps (sync toggle is meaningful).</summary>
     public bool SyncAvailable { get; }
 
-    /// <summary>Frame rate of the karaoke clip's frame sequence.</summary>
-    private const int KaraokeFps = 24;
+    /// <summary>Frame rate of the karaoke clip's frame sequence — 60 so the word sweep
+    /// is as fluid in the exported video as it is on the lyrics page.</summary>
+    private const int KaraokeFps = 60;
 
     /// <summary>True when any selected line carries word-level (ELRC) timing.</summary>
     public bool KaraokeAvailable =>
@@ -134,7 +144,7 @@ public partial class LyricShareViewModel : ViewModelBase
     }
 
     // ── Live karaoke preview ─────────────────────────────────────────────
-    // A half-resolution animator repaints the card's word sweep ~30×/s into a
+    // A half-resolution animator repaints the card's word sweep ~60×/s into a
     // WriteableBitmap shown over the static preview, following playback — so what
     // you see is exactly what Save Video exports.
 
@@ -176,6 +186,7 @@ public partial class LyricShareViewModel : ViewModelBase
     {
         get
         {
+            var layout = IsPosterLayout ? "Poster" : "Card";
             var aspect = IsStory ? "9:16" : "1:1";
             var text = TextColor switch
             {
@@ -183,12 +194,25 @@ public partial class LyricShareViewModel : ViewModelBase
                 ShareTextColor.Black => "Black",
                 _ => "Auto",
             };
-            var summary = $"{aspect} · {text}";
+            var summary = $"{layout} · {aspect} · {text}";
             if (SyncAvailable && SyncEnabled)
                 summary += " · Sync";
             if (KaraokeAvailable && KaraokeEnabled)
                 summary += " · Karaoke";
             return summary;
+        }
+    }
+
+    /// <summary>Compact summary of the background choice, shown on the "Background" dropdown button.</summary>
+    public string BackgroundSummary
+    {
+        get
+        {
+            if (IsArtworkBg) return "Artwork";
+            if (IsAutoSolid) return "Solid · Auto";
+            var name = SolidSwatches.FirstOrDefault(s =>
+                string.Equals(s.Hex, SolidColorHex, StringComparison.OrdinalIgnoreCase))?.Name;
+            return name != null ? $"Solid · {name}" : "Solid";
         }
     }
 
@@ -247,7 +271,7 @@ public partial class LyricShareViewModel : ViewModelBase
         // The same vibrant color the card renderer derives, so the "Auto" swatch matches the card.
         _autoColorHex = ShareCardRenderer.GetVibrantColorHex(_track.AlbumArtworkPath);
         _solidColorHex = _autoColorHex;   // default Solid background uses the Auto color from the start
-        AutoSwatchBrush = new SolidColorBrush(Color.Parse(_autoColorHex));
+        SolidSwatches = BuildSolidSwatches(_autoColorHex);
 
         for (int i = 0; i < lines.Count; i++)
         {
@@ -399,16 +423,22 @@ public partial class LyricShareViewModel : ViewModelBase
 
     partial void OnIsArtworkBgChanged(bool value)
     {
+        OnPropertyChanged(nameof(BackgroundSummary));
         if (value) { IsSolidBg = false; RefreshPreview(); }
     }
 
     partial void OnIsSolidBgChanged(bool value)
     {
+        OnPropertyChanged(nameof(BackgroundSummary));
         if (value) { IsArtworkBg = false; RefreshPreview(); }
     }
 
+    partial void OnIsAutoSolidChanged(bool value)
+        => OnPropertyChanged(nameof(BackgroundSummary));
+
     partial void OnSolidColorHexChanged(string value)
     {
+        OnPropertyChanged(nameof(BackgroundSummary));
         if (IsSolidBg) RefreshPreview();
     }
 
@@ -424,11 +454,29 @@ public partial class LyricShareViewModel : ViewModelBase
         if (value) { IsSquare = false; RefreshPreview(); }
     }
 
+    partial void OnIsPanelLayoutChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CardOptionsSummary));
+        if (value) { IsPosterLayout = false; RefreshPreview(); }
+    }
+
+    partial void OnIsPosterLayoutChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CardOptionsSummary));
+        if (value) { IsPanelLayout = false; RefreshPreview(); }
+    }
+
     [RelayCommand]
     private void SelectSquare() => IsSquare = true;
 
     [RelayCommand]
     private void SelectStory() => IsStory = true;
+
+    [RelayCommand]
+    private void SelectPanelLayout() => IsPanelLayout = true;
+
+    [RelayCommand]
+    private void SelectPosterLayout() => IsPosterLayout = true;
 
     [RelayCommand]
     private void ToggleSync() => SyncEnabled = !SyncEnabled;
@@ -454,7 +502,8 @@ public partial class LyricShareViewModel : ViewModelBase
     [RelayCommand]
     private void SetSolidColor(string? hex)
     {
-        if (string.IsNullOrWhiteSpace(hex)) return;
+        // The "Auto" swatch carries an empty hex — route it to the artwork-derived color.
+        if (string.IsNullOrWhiteSpace(hex)) { SetAutoSolid(); return; }
         IsAutoSolid = false;       // a fixed swatch overrides Auto
         IsSolidBg = true;          // picking a swatch implies Solid mode
         SolidColorHex = hex;
@@ -551,7 +600,8 @@ public partial class LyricShareViewModel : ViewModelBase
 
         if (_animTimer == null)
         {
-            _animTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
+            // ~60 Hz: matches typical display refresh so the sweep never visibly steps.
+            _animTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
             _animTimer.Tick += (_, _) => OnAnimTick();
         }
         _animTimer.Start();
@@ -641,6 +691,7 @@ public partial class LyricShareViewModel : ViewModelBase
         IsExplicit = _track.IsExplicit,
         Background = IsSolidBg ? ShareBackground.Solid : ShareBackground.Artwork,
         SolidColorHex = SolidColorHex,
+        Layout = IsPosterLayout ? ShareCardLayout.Poster : ShareCardLayout.Panel,
     };
 
     /// <summary>
@@ -732,7 +783,7 @@ public partial class LyricShareViewModel : ViewModelBase
                     (done, total) => Dispatcher.UIThread.Post(() => StatusText = $"Rendering frames… {done}/{total}")));
 
                 StatusText = "Encoding clip…";
-                var pattern = Path.Combine(frameDir, "frame-%05d.png");
+                var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
                 var (ok, error) = await ShareClipRenderer.RenderFramesAsync(
                     ffmpeg, pattern, KaraokeFps, _track.FilePath, outputPath, timing);
                 return ok ? "Saved" : $"Clip failed: {error}";

@@ -281,6 +281,9 @@ public partial class MetadataViewModel : ViewModelBase
     {
         get
         {
+            // A staged (not yet saved) reset shows as zero.
+            if (_resetPlayCountPending) return "0";
+
             // Album-scoped: aggregate across every track — total plays and the
             // most recent "last played" of the album.
             if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
@@ -1323,6 +1326,13 @@ public partial class MetadataViewModel : ViewModelBase
             l.Timestamp is { } t
                 ? $"[{LrcEditorViewModel.FormatTimestamp(t)}]{l.Text}"
                 : l.Text));
+
+        // Manually timing lines counts as having custom synced lyrics. Save gates
+        // the synced write on HasCustomSyncedLyrics, which stays false when the
+        // lines were seeded from plain lyrics — without this, a first timing pass
+        // on the Timestamp Lyrics tab would be silently dropped on Save.
+        if (!HasCustomSyncedLyrics && LyricsTextHelper.ContainsTimestamps(SyncedLyrics))
+            HasCustomSyncedLyrics = true;
     }
 
     [RelayCommand]
@@ -1645,6 +1655,16 @@ public partial class MetadataViewModel : ViewModelBase
             ApplyAlbumPerTrackMatches();
         }
 
+        // Apply a staged play-count reset (kept pending so Cancel discards it).
+        if (_resetPlayCountPending)
+        {
+            foreach (var t in _albumTracks ?? new List<Track> { _track })
+            {
+                t.PlayCount = 0;
+                t.LastPlayed = null;
+            }
+        }
+
         // Apply Lyrics (plain + synced) — defensively strip timestamps from plain
         var plainToWrite = HasCustomLyrics
             ? (LyricsTextHelper.ContainsTimestamps(Lyrics) ? LyricsTextHelper.StripTimestamps(Lyrics) : Lyrics)
@@ -1853,7 +1873,12 @@ public partial class MetadataViewModel : ViewModelBase
                 if (newPath != null && !conflict
                     && !string.Equals(newPath, t.FilePath, StringComparison.OrdinalIgnoreCase))
                 {
-                    try { File.Move(t.FilePath, newPath); t.FilePath = newPath; }
+                    try
+                    {
+                        File.Move(t.FilePath, newPath);
+                        MoveLyricSidecars(t.FilePath, newPath);
+                        t.FilePath = newPath;
+                    }
                     catch { /* Non-fatal — skip this file */ }
                 }
             }
@@ -1880,6 +1905,23 @@ public partial class MetadataViewModel : ViewModelBase
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>Moves a renamed track's same-basename lyric sidecars (.lrc/.txt) with it —
+    /// lyrics resolve sidecar-first by basename, so leaving them behind detaches them.</summary>
+    private static void MoveLyricSidecars(string oldPath, string newPath)
+    {
+        foreach (var ext in new[] { ".lrc", ".txt" })
+        {
+            try
+            {
+                var oldSidecar = Path.ChangeExtension(oldPath, ext);
+                var newSidecar = Path.ChangeExtension(newPath, ext);
+                if (File.Exists(oldSidecar) && !File.Exists(newSidecar))
+                    File.Move(oldSidecar, newSidecar);
+            }
+            catch { /* Best effort — the audio rename already succeeded */ }
+        }
+    }
+
     [RelayCommand]
     private void Cancel()
     {
@@ -1898,29 +1940,26 @@ public partial class MetadataViewModel : ViewModelBase
             if (TimeSpan.TryParseExact(time, fmt, null, out var ts))
                 return (long)ts.TotalMilliseconds;
         }
+        // Bare numbers ("45", "12.5") are seconds. Without this, TimeSpan.TryParse
+        // below would read "45" as 45 DAYS.
+        if (double.TryParse(time, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var bareSeconds))
+            return bareSeconds > 0 ? (long)(bareSeconds * 1000) : 0;
         if (TimeSpan.TryParse(time, out var fallback))
             return (long)fallback.TotalMilliseconds;
         return 0;
     }
 
+    // Staged like every other edit in this dialog: applied on Save, discarded on
+    // Cancel. Resetting the Track models directly here leaked the reset past a
+    // Cancel (any later library save persisted it).
+    private bool _resetPlayCountPending;
+
     [RelayCommand]
     private void ResetPlayCount()
     {
+        _resetPlayCountPending = true;
         PlayCount = "0";
-        // Album-scoped: clear every track of the album, not just the first one.
-        if (_albumScoped && _albumTracks != null)
-        {
-            foreach (var t in _albumTracks)
-            {
-                t.PlayCount = 0;
-                t.LastPlayed = null;
-            }
-        }
-        else
-        {
-            _track.PlayCount = 0;
-            _track.LastPlayed = null;
-        }
         OnPropertyChanged(nameof(PlayCountDisplay));
     }
 

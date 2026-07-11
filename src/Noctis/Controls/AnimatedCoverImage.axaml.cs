@@ -51,12 +51,6 @@ public partial class AnimatedCoverImage : UserControl
     private const int Stride = RenderSize * 4;
     private const int BufferBytes = Stride * RenderSize;
 
-    // Cap how often a decoded frame is pushed to the UI thread. The cover is a
-    // decorative loop; pushing every source frame (up to 60 fps) floods the UI
-    // thread with two 1.44 MB copies + an invalidate each and starves it under
-    // load. ~15 fps looks fine and frees the thread for playback/render work.
-    private const long MinDisplayIntervalMs = 66;
-
     private readonly Image _image;
     private Session? _session;
 
@@ -109,14 +103,7 @@ public partial class AnimatedCoverImage : UserControl
             try
             {
                 using var media = new Media(SharedLibVlc.Instance, source, FromType.FromPath,
-                    ":no-audio", ":input-repeat=65535",
-                    // Cap the cover's software video decode so it can't saturate every CPU
-                    // core and starve the audio output thread (macOS CoreAudio/auhal render),
-                    // which caused audible stutter when a cover was added mid-playback on
-                    // Apple Silicon. One decode thread + skipping the H.264 deblock loop
-                    // filter frees cores for audio; the cover is a small decorative loop so
-                    // the minor quality/frame-pacing cost is irrelevant.
-                    ":avcodec-threads=1", ":avcodec-skiploopfilter=all");
+                    ":no-audio", ":input-repeat=65535");
                 session.Player.Play(media);
                 DebugLogger.Info(DebugLogger.Category.Playback, "Cover.Play", $"src={Path.GetFileName(source)}");
             }
@@ -162,7 +149,6 @@ public partial class AnimatedCoverImage : UserControl
         private readonly WriteableBitmap _bitmap;
         private volatile bool _framePending;            // coalesce UI invalidations
         private volatile bool _dead;
-        private long _lastDisplayTicks;                 // frame-rate gate (see MinDisplayIntervalMs)
 
         // Keep delegate instances alive for the player's lifetime — VLC stores raw
         // function pointers and will crash if these are garbage-collected.
@@ -199,11 +185,6 @@ public partial class AnimatedCoverImage : UserControl
         private void OnDisplay(IntPtr opaque, IntPtr picture)
         {
             if (_framePending || _dead) return;
-            // Throttle UI pushes to ~15 fps so the per-frame copies/invalidate
-            // can't starve the UI thread while a track is playing.
-            var now = Environment.TickCount64;
-            if (now - _lastDisplayTicks < MinDisplayIntervalMs) return;
-            _lastDisplayTicks = now;
             _framePending = true;
             Dispatcher.UIThread.Post(() =>
             {

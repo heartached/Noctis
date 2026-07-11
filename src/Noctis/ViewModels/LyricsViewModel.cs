@@ -585,10 +585,20 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // caches so a given artwork is only ever analyzed once per session.
         var artPath = albumArt != null ? _player.CurrentArtPath : null;
 
+        // The vibrant color the share-card renderer derives (path-cached) — used for the
+        // Solid·Auto background so the lyrics page, the share card and the share dialog's
+        // "A" swatch all show the exact same artwork color.
+        Color? vibrant = null;
+        if (artPath != null)
+        {
+            try { vibrant = Color.Parse(ShareCardRenderer.GetVibrantColorHex(artPath)); }
+            catch { /* fall back to the dominant color below */ }
+        }
+
         // Keep the "Auto" swatch showing the current track's artwork-derived color.
-        _autoSwatch.Preview = new SolidColorBrush(artPath != null
+        _autoSwatch.Preview = new SolidColorBrush(vibrant ?? (artPath != null
             ? DominantColorExtractor.GetOrExtractDominantColor(artPath, albumArt!)
-            : DominantColorExtractor.ExtractDominantColor(albumArt));
+            : DominantColorExtractor.ExtractDominantColor(albumArt)));
 
         // Don't override when a custom background color is selected
         if (_selectedColorHex != null) return;
@@ -611,7 +621,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var (left, right) = DominantColorExtractor.GenerateAdaptiveBrushes(dominant, secondary);
             LeftPanelBrush = left;
             LyricsBackgroundBrush = right;
-            FullBackgroundBrush = DominantColorExtractor.GenerateUnifiedBrush(dominant, secondary);
+            // Solid·Auto shows the artwork's vibrant color as a true solid; the unified
+            // gradient's hue-shifted stops drifted visibly away from the cover's color.
+            FullBackgroundBrush = IsColorModeSolid && vibrant is { } v
+                ? new SolidColorBrush(v)
+                : DominantColorExtractor.GenerateUnifiedBrush(dominant, secondary);
             UpdateMeshColors(dominant, secondary);
             _averageArtworkColor = artPath != null
                 ? DominantColorExtractor.GetOrExtractAverageColor(artPath, albumArt)
@@ -677,9 +691,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         IsColorModeArtwork = false;
         IsColorModeSolid = true;
         IsColorModeGradient = false;
-        // Visible surface is no longer the blurred artwork: re-pick foregrounds against
-        // the FullBackgroundBrush color so timeline/metadata text stays readable.
-        RefreshLyricsForegrounds();
+        // On Auto, Solid and Gradient derive different brushes from the artwork
+        // (vibrant solid vs unified gradient) — recompute for the new mode. That also
+        // re-picks foregrounds against the now-visible surface (no longer the blurred
+        // artwork) so timeline/metadata text stays readable.
+        if (_selectedColorHex == null)
+            UpdateAdaptiveBackground(_player.AlbumArt);
+        else
+            RefreshLyricsForegrounds();
         await PersistArtworkBackgroundPreferenceAsync(false);
     }
 
@@ -689,7 +708,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         IsColorModeArtwork = false;
         IsColorModeSolid = false;
         IsColorModeGradient = true;
-        RefreshLyricsForegrounds();
+        // Same contract as SelectColorModeSolid: Auto derives per mode.
+        if (_selectedColorHex == null)
+            UpdateAdaptiveBackground(_player.AlbumArt);
+        else
+            RefreshLyricsForegrounds();
         await PersistArtworkBackgroundPreferenceAsync(false);
     }
 
@@ -782,8 +805,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             }
             else if (!IsColorModeSolid && !IsColorModeGradient)
             {
-                // Color mode but no sub-mode persisted: default to Solid.
+                // Color mode but no sub-mode persisted: default to Solid. With no saved
+                // swatch the background stays on Auto — recompute it for Solid mode
+                // (vibrant solid) since the constructor derived it in artwork mode.
                 IsColorModeSolid = true;
+                if (string.IsNullOrEmpty(settings.LyricsBackgroundColorHex))
+                    UpdateAdaptiveBackground(_player.AlbumArt);
             }
 
             if (!string.IsNullOrEmpty(settings.LyricsBackgroundColorHex))
@@ -2282,7 +2309,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (target >= 0 && target < words.Count)
         {
             var w = words[target];
-            var end = w.End ?? (target + 1 < words.Count ? words[target + 1].Start : line.EndTimestamp ?? w.Start);
+            // Last word of a start-tag-only line has no end anywhere — bound it by the
+            // next line's start (capped) so it sweeps instead of snapping to lit.
+            var end = w.End ?? (target + 1 < words.Count
+                ? words[target + 1].Start
+                : line.EndTimestamp ?? KaraokeSweep.ResolveOpenLastWordEnd(w.Start, NextSyncedLineStart()));
             var span = (end - w.Start).TotalMilliseconds;
             double progress;
             if (span <= 0)
@@ -2299,6 +2330,18 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             if (w.Progress != progress)
                 w.Progress = progress;
         }
+    }
+
+    /// <summary>Start of the first synced line after the active one; null when none.</summary>
+    private TimeSpan? NextSyncedLineStart()
+    {
+        if (ActiveLineIndex < 0) return null;
+        for (int i = ActiveLineIndex + 1; i < LyricLines.Count; i++)
+        {
+            var ts = LyricLines[i].Timestamp;
+            if (ts.HasValue) return ts;
+        }
+        return null;
     }
 
     /// <summary>

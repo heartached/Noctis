@@ -22,16 +22,38 @@ public static class RecycleBin
         try
         {
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
-
-            if (OperatingSystem.IsWindows()) return WindowsRecycle(path);
-            if (OperatingSystem.IsMacOS()) return MacTrash(path);
-            if (OperatingSystem.IsLinux()) return LinuxTrash(path);
-            return false;
+            return TrashCore(path);
         }
         catch
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// Moves the directory at <paramref name="path"/> (and its contents) to the OS
+    /// trash. Returns true only when the directory existed and was trashed. All three
+    /// platform backends accept directories the same way they accept files.
+    /// </summary>
+    public static bool TryMoveDirectoryToTrash(string path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path)) return false;
+            return TrashCore(path);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool TrashCore(string path)
+    {
+        if (OperatingSystem.IsWindows()) return WindowsRecycle(path);
+        if (OperatingSystem.IsMacOS()) return MacTrash(path);
+        if (OperatingSystem.IsLinux()) return LinuxTrash(path);
+        return false;
     }
 
     // SHFileOperation with FOF_NOERRORUI/FOF_SILENT so a failure can never pop a
