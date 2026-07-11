@@ -103,9 +103,14 @@ jobs:
         continue-on-error: true
         run: |
           set -euo pipefail
-          curl -sSL https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o ffmpeg.tar.xz
+          # johnvansickle.com went unreachable (connect timeout) during the
+          # v1.2.6 release, which would have silently shipped Linux x64
+          # without ffmpeg. Use BtbN's GitHub-hosted static build like
+          # linux-arm64 already does; the binary lives at ffmpeg-*/bin/ffmpeg
+          # inside the archive.
+          curl -sSL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz -o ffmpeg.tar.xz
           tar -xf ffmpeg.tar.xz
-          cp ffmpeg-*-amd64-static/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
+          cp ffmpeg-*-linux64-gpl/bin/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
           chmod +x "publish/${{ matrix.rid }}/ffmpeg"
 
       - name: Bundle ffmpeg (Linux arm64)
