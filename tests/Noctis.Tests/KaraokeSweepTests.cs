@@ -58,4 +58,40 @@ public class KaraokeSweepTests
             new[] { "one", "two", "three" }, new[] { "one two" });
         Assert.Null(ranges);
     }
+
+    [Fact]
+    public void ResolveOpenLastWordEnd_UsesNextLineStartWithinCap()
+    {
+        // Next line starts 1.2s after the word — sweep runs until the handoff.
+        var end = KaraokeSweep.ResolveOpenLastWordEnd(
+            TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(11.2));
+        Assert.Equal(TimeSpan.FromSeconds(11.2), end);
+    }
+
+    [Fact]
+    public void ResolveOpenLastWordEnd_CapsLongGaps()
+    {
+        // 10s instrumental gap — the word isn't sung that long; cap at +2s.
+        var end = KaraokeSweep.ResolveOpenLastWordEnd(
+            TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20));
+        Assert.Equal(TimeSpan.FromSeconds(12), end);
+    }
+
+    [Fact]
+    public void ResolveOpenLastWordEnd_NoNextLineFallsBackToCap()
+    {
+        // Final line of the song — no next line to bound against.
+        var end = KaraokeSweep.ResolveOpenLastWordEnd(TimeSpan.FromSeconds(10), null);
+        Assert.Equal(TimeSpan.FromSeconds(12), end);
+    }
+
+    [Fact]
+    public void ResolveOpenLastWordEnd_NextLineBeforeWordPassesThrough()
+    {
+        // Malformed data (next line starts before the word) degrades to the old
+        // snap-to-lit behavior: end <= start means WordProgress returns 1 instantly.
+        var end = KaraokeSweep.ResolveOpenLastWordEnd(
+            TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(9));
+        Assert.Equal(TimeSpan.FromSeconds(9), end);
+    }
 }

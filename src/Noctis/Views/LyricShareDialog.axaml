@@ -129,7 +129,7 @@
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="1"
                 Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
-            <Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="*,Auto">
+            <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,Auto">
 
                 <!-- Header -->
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Share lyrics" FontSize="22" FontWeight="Bold"
@@ -220,96 +220,17 @@
                     </Panel>
                 </Grid>
 
-                <!-- Background: Artwork / Solid + solid swatch strip -->
-                <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,14,0,0"
-                      VerticalAlignment="Center" ColumnDefinitions="Auto,*">
-                    <StackPanel Grid.Column="0" Orientation="Horizontal"
-                                Spacing="8" VerticalAlignment="Center">
-                        <TextBlock Text="Background" FontSize="12" Opacity="0.7" VerticalAlignment="Center" Margin="0,0,2,0"/>
-                        <Button Classes="share-pill"
-                                Classes.active="{Binding IsArtworkBg}"
-                                Content="Artwork"
-                                Command="{Binding UseArtworkBgCommand}"/>
-                        <Button Classes="share-pill"
-                                Classes.active="{Binding IsSolidBg}"
-                                Content="Solid"
-                                Command="{Binding UseSolidBgCommand}"/>
-                    </StackPanel>
-
-                    <!-- Solid swatches (only when Solid is selected): Auto (artwork-derived) + curated colors.
-                         A bounded * column lets the strip scroll instead of overflowing (clipping) the dialog. -->
-                    <Grid Grid.Column="1" IsVisible="{Binding IsSolidBg}" Margin="6,0,0,0"
-                          VerticalAlignment="Center" MinHeight="36" ColumnDefinitions="Auto,Auto,*">
-                        <!-- Auto: derives the solid color from the album artwork -->
-                        <Button Grid.Column="0" Classes="color-swatch"
-                                Padding="0" Background="Transparent" BorderThickness="0"
-                                Cursor="Hand"
-                                Command="{Binding SetAutoSolidCommand}"
-                                ToolTip.Tip="Auto — from artwork">
-                            <!-- 26px wrapper leaves slack around the 22px chip so the app-wide
-                                 Button hover zoom (scale 1.045) never pushes the circle past the
-                                 presenter bounds — that clip flattened the chip's sides. -->
-                            <Panel Width="26" Height="26">
-                                <Border Width="22" Height="22" CornerRadius="11"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                                        Background="{Binding AutoSwatchBrush}"
-                                        BorderBrush="#55FFFFFF" BorderThickness="1"/>
-                                <TextBlock Text="A" FontSize="11" FontWeight="Bold" Foreground="White"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Panel>
-                        </Button>
-
-                        <Border Grid.Column="1" Width="1" Height="20" Background="#2EFFFFFF" Margin="6,0"/>
-
-                        <!-- Chips are centered in the row (aligned with the A button); the grid's
-                             MinHeight leaves room below them for the auto-hide horizontal scrollbar
-                             so it floats under the swatches instead of overlaying (clipping) them. -->
-                        <ScrollViewer Grid.Column="2"
-                                      HorizontalScrollBarVisibility="Auto"
-                                      VerticalScrollBarVisibility="Disabled"
-                                      Padding="2,0">
-                            <ItemsControl ItemsSource="{Binding SolidSwatches}"
-                                          VerticalAlignment="Center">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <!-- 2 + the wrappers' 2px slack per side = the old 6px visual gap. -->
-                                        <StackPanel Orientation="Horizontal" Spacing="2"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:ShareSolidSwatch">
-                                        <Button Classes="color-swatch"
-                                                Padding="0" Background="Transparent" BorderThickness="0"
-                                                Cursor="Hand"
-                                                Command="{Binding $parent[ItemsControl].((vm:LyricShareViewModel)DataContext).SetSolidColorCommand}"
-                                                CommandParameter="{Binding Hex}"
-                                                ToolTip.Tip="{Binding Name}">
-                                            <!-- Same 26px slack as the Auto chip (hover-zoom clip fix). -->
-                                            <Panel Width="26" Height="26">
-                                                <Border Width="22" Height="22" CornerRadius="11"
-                                                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                        Background="{Binding Preview}"
-                                                        BorderBrush="#55FFFFFF" BorderThickness="1"/>
-                                            </Panel>
-                                        </Button>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </Grid>
-                </Grid>
-
-                <!-- Footer: format / text-color / sync toggles + actions -->
-                <Grid Grid.Row="3" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,16,0,0">
-                    <!-- Card options: format, text colour & sync collapsed into one dropdown -->
+                <!-- Footer: card options + background dropdowns, status, actions -->
+                <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="0,16,0,0">
+                    <!-- Card options: layout, format, text colour & sync collapsed into one dropdown -->
                     <Button Grid.Column="0" Classes="share-pill" VerticalAlignment="Center"
-                            Width="236" HorizontalContentAlignment="Stretch"
-                            ToolTip.Tip="Card format, text colour &amp; sync">
+                            Width="270" HorizontalContentAlignment="Stretch"
+                            ToolTip.Tip="Card layout, format, text colour &amp; sync">
                         <!-- Hard-fixed width (text left, chevron pinned right) so toggling
-                             Format/Text/Sync/Karaoke can't resize the pill and shift the
-                             anchored flyout. MinWidth wasn't enough: "· Karaoke" pushed the
-                             summary past it, so every toggle resized the pill again. Sized
-                             for the longest summary ("9:16 · White · Sync · Karaoke"). -->
+                             Layout/Format/Text/Sync/Karaoke can't resize the pill and shift
+                             the anchored flyout. MinWidth wasn't enough: "· Karaoke" pushed
+                             the summary past it, so every toggle resized the pill again. Sized
+                             for the longest summary ("Poster · 9:16 · White · Sync · Karaoke"). -->
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Grid.Column="0" Text="{Binding CardOptionsSummary}"
                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
@@ -320,6 +241,18 @@
                         <Button.Flyout>
                             <Flyout Placement="TopEdgeAlignedLeft">
                                 <StackPanel x:DataType="vm:LyricShareViewModel" Width="250" Spacing="14">
+                                    <!-- Layout -->
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Text="Layout" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                                            <Button Classes="share-pill" Classes.active="{Binding IsPanelLayout}"
+                                                    Content="Card" Command="{Binding SelectPanelLayoutCommand}"
+                                                    ToolTip.Tip="Rounded card with an artwork header panel"/>
+                                            <Button Classes="share-pill" Classes.active="{Binding IsPosterLayout}"
+                                                    Content="Poster" Command="{Binding SelectPosterLayoutCommand}"
+                                                    ToolTip.Tip="Big centered artwork with centered lyrics"/>
+                                        </StackPanel>
+                                    </Grid>
                                     <!-- Format -->
                                     <Grid ColumnDefinitions="Auto,*">
                                         <TextBlock Text="Format" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
@@ -362,21 +295,93 @@
                         </Button.Flyout>
                     </Button>
 
-                    <TextBlock Grid.Column="1"
+                    <!-- Background: Artwork/Solid mode + the solid color swatches, in one dropdown -->
+                    <Button Grid.Column="1" Classes="share-pill" VerticalAlignment="Center"
+                            Margin="8,0,0,0" Width="150" HorizontalContentAlignment="Stretch"
+                            ToolTip.Tip="Card background: blurred artwork or a solid color">
+                        <!-- Same hard-fixed width contract as the Card options pill, so the
+                             anchored flyout never shifts when the summary changes. -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="{Binding BackgroundSummary}"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            <PathIcon Grid.Column="1" Margin="8,0,0,0"
+                                      Data="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                                      Width="11" Height="11" Opacity="0.75" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Button.Flyout>
+                            <Flyout Placement="TopEdgeAlignedLeft">
+                                <StackPanel x:DataType="vm:LyricShareViewModel" Width="250" Spacing="14">
+                                    <!-- Mode -->
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Text="Background" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                                            <Button Classes="share-pill" Classes.active="{Binding IsArtworkBg}"
+                                                    Content="Artwork" Command="{Binding UseArtworkBgCommand}"/>
+                                            <Button Classes="share-pill" Classes.active="{Binding IsSolidBg}"
+                                                    Content="Solid" Command="{Binding UseSolidBgCommand}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <!-- Solid colors: Auto (artwork-derived) first, then curated.
+                                         Picking any chip switches to Solid mode automatically. -->
+                                    <ItemsControl ItemsSource="{Binding SolidSwatches}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:ShareSolidSwatch">
+                                                <Button Classes="color-swatch"
+                                                        Padding="0" Background="Transparent" BorderThickness="0"
+                                                        Cursor="Hand"
+                                                        Command="{Binding $parent[ItemsControl].((vm:LyricShareViewModel)DataContext).SetSolidColorCommand}"
+                                                        CommandParameter="{Binding Hex}"
+                                                        ToolTip.Tip="{Binding Name}">
+                                                    <!-- 26px wrapper leaves slack around the 22px chip so the
+                                                         app-wide Button hover zoom (scale 1.045) never pushes the
+                                                         circle past the presenter bounds — that clip flattened
+                                                         the chip's sides. -->
+                                                    <Panel Width="26" Height="26" Margin="1">
+                                                        <Border Width="22" Height="22" CornerRadius="11"
+                                                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                Background="{Binding Preview}"
+                                                                BorderBrush="#55FFFFFF" BorderThickness="1">
+                                                            <!-- Nested in the circle so it centers on the chip itself;
+                                                                 the 1px translate drops the cap-only glyph (no descender)
+                                                                 onto the optical middle instead of sitting high. -->
+                                                            <TextBlock Text="A" FontSize="11" FontWeight="Bold" Foreground="White"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       IsVisible="{Binding IsAuto}">
+                                                                <TextBlock.RenderTransform>
+                                                                    <TranslateTransform Y="1"/>
+                                                                </TextBlock.RenderTransform>
+                                                            </TextBlock>
+                                                        </Border>
+                                                    </Panel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <TextBlock Grid.Column="2"
                                Text="{Binding StatusText}"
                                FontSize="12" Opacity="0.7"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
 
-                    <Button Grid.Column="2"
+                    <Button Grid.Column="3"
                             Classes="share-pill"
                             Margin="0,0,8,0"
                             Click="OnSaveVideoClick"
                             IsEnabled="{Binding CanExportVideo}"
                             Content="Save Video"
                             ToolTip.Tip="Save an MP4 clip — this lyric card with the song audio"/>
-                    <Button Grid.Column="3"
+                    <Button Grid.Column="4"
                             Classes="share-pill accent"
                             Click="OnSaveClick"
                             Content="Save Card"
