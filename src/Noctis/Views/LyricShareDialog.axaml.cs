@@ -94,7 +94,6 @@ public partial class LyricShareDialog : Window
             if (path is null)
                 return; // cancelled
 
-            vm.ReportStatus("Rendering clip…");
             var status = await vm.ExportClipAsync(path);
             vm.ReportStatus(status);
         }

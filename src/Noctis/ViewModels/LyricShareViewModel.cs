@@ -541,7 +541,7 @@ public partial class LyricShareViewModel : ViewModelBase
         {
             try
             {
-                var png = ShareCardRenderer.RenderLyricCardStyled(spec);
+                var png = ShareCardRenderer.RenderLyricCardStyled(spec, ShareCardRenderer.CardExportScale);
                 var animator = karaoke != null
                     ? new ShareCardRenderer.KaraokeCardAnimator(spec, karaoke, PreviewAnimatorScale)
                     : null;
@@ -748,7 +748,7 @@ public partial class LyricShareViewModel : ViewModelBase
     /// </summary>
     public async Task<string> ExportClipAsync(string outputPath)
     {
-        if (CurrentPng is not { } png)
+        if (CurrentPng is null)
             return "Nothing to export";
         if (string.IsNullOrWhiteSpace(_track.FilePath) || !File.Exists(_track.FilePath))
             return "No audio file for this track";
@@ -758,31 +758,36 @@ public partial class LyricShareViewModel : ViewModelBase
             return "ffmpeg not found — set its path in Settings";
 
         IsRendering = true;
+        StatusText = string.Empty;   // the footer spinner signals progress; text only for the frame pass
         try
         {
+            // Same line filter as RefreshPreview so the exported card, spec.Lines and
+            // karaoke stay parallel to what the preview shows.
+            var selected = Lines.Where(l => l.IsSelected && !string.IsNullOrWhiteSpace(l.Text)).ToList();
+            var spec = BuildSpec(selected.Select(l => l.Text).ToList());
+            var timing = GetClipTiming();
+
             if (!(KaraokeEnabled && KaraokeAvailable))
             {
-                var (ok, error) = await ShareClipRenderer.RenderAsync(ffmpeg, png, _track.FilePath, outputPath, GetClipTiming());
+                // Base-resolution still: the clip is 1080p-bound, so reusing the 2×
+                // supersampled CurrentPng would only quadruple the encode cost.
+                var still = await Task.Run(() => ShareCardRenderer.RenderLyricCardStyled(spec));
+                var (ok, error) = await ShareClipRenderer.RenderAsync(ffmpeg, still, _track.FilePath, outputPath, timing);
                 return ok ? "Saved" : $"Clip failed: {error}";
             }
 
-            // Karaoke path: per-frame word sweep → PNG sequence → ffmpeg mux.
-            // Same line filter as RefreshPreview so spec.Lines and karaoke stay parallel
-            // to what the card shows.
-            var selected = Lines.Where(l => l.IsSelected && !string.IsNullOrWhiteSpace(l.Text)).ToList();
-            var spec = BuildSpec(selected.Select(l => l.Text).ToList());
+            // Karaoke path: per-frame word sweep → JPEG sequence → ffmpeg mux.
             var karaoke = BuildKaraokeLines(selected);
-            var timing = GetClipTiming();
 
             var frameDir = Path.Combine(Path.GetTempPath(), $"noctis-karaoke-{Guid.NewGuid():N}");
             Directory.CreateDirectory(frameDir);
             try
             {
+                StatusText = "Saving";
                 await Task.Run(() => ShareCardRenderer.RenderKaraokeFrames(
-                    spec, karaoke, timing, KaraokeFps, frameDir,
-                    (done, total) => Dispatcher.UIThread.Post(() => StatusText = $"Rendering frames… {done}/{total}")));
+                    spec, karaoke, timing, KaraokeFps, frameDir));
 
-                StatusText = "Encoding clip…";
+                StatusText = string.Empty;
                 var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
                 var (ok, error) = await ShareClipRenderer.RenderFramesAsync(
                     ffmpeg, pattern, KaraokeFps, _track.FilePath, outputPath, timing);
