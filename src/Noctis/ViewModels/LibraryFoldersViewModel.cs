@@ -32,6 +32,10 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     /// <summary>Exposed so row templates can drive the playing-track EQ visualizer off player state.</summary>
     public PlayerViewModel Player => _player;
 
+    /// <summary>Track-list scroll offset saved when the view detaches (e.g. opening an
+    /// artist/album page from a row link) and restored when it re-attaches on Back.</summary>
+    public double SavedScrollOffset { get; set; }
+
     [ObservableProperty] private FolderNode? _selectedNode;
 
     /// <summary>Fires when the user clicks "Manage media folders…" — handled by MainWindowViewModel to switch views.</summary>
@@ -279,6 +283,26 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
 
     [RelayCommand]
     private void SearchLyrics(Track track) => _searchLyricsAction?.Invoke(track);
+
+    /// <summary>Fires when a track title is clicked — MainWindowViewModel opens the album detail page.</summary>
+    public event EventHandler<Track>? ViewAlbumRequested;
+
+    [RelayCommand]
+    private void ViewAlbum(Track track)
+    {
+        if (track == null) return;
+        ViewAlbumRequested?.Invoke(this, track);
+    }
+
+    private Action<string>? _viewArtistAction;
+    public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
+
+    [RelayCommand]
+    private void ViewArtist(string artistName)
+    {
+        if (!string.IsNullOrWhiteSpace(artistName))
+            _viewArtistAction?.Invoke(artistName);
+    }
 
     public void Dispose()
     {

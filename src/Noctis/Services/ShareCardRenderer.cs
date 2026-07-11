@@ -100,20 +100,28 @@ public static class ShareCardRenderer
     private const float LyricGapTop = 60f;       // gap between header and lyric block
     private const float LyricGapBottom = 60f;    // gap between lyric block and wordmark
 
+    /// <summary>Supersampling factor for the exported still card: geometry stays in
+    /// 1080-space and the surface doubles it (2160×2160 / 2160×3840), so lyrics, header
+    /// text, artwork and the wordmark export crisp instead of soft.</summary>
+    public const float CardExportScale = 2f;
+
     /// <summary>
     /// Spotify-style renderer: a full-bleed solid color (or an improved blurred-artwork
     /// card) with the content filling the frame — small header at the top, large lyrics
     /// centered in the middle, wordmark pinned to the bottom. Lyric weight is selectable.
-    /// Pure SkiaSharp; safe to call off the UI thread.
+    /// <paramref name="scale"/> supersamples the output without touching the layout
+    /// (all geometry stays in 1080-space). Pure SkiaSharp; safe to call off the UI thread.
     /// </summary>
-    public static byte[] RenderLyricCardStyled(LyricCardSpec spec)
+    public static byte[] RenderLyricCardStyled(LyricCardSpec spec, float scale = 1f)
     {
         int w = CanvasWidth;
         int h = spec.Format == ShareCardFormat.Story ? 1920 : 1080;
 
         using var art = LoadArtwork(spec.ArtworkPath);
-        using var surface = SKSurface.Create(new SKImageInfo(w, h));
+        using var surface = SKSurface.Create(new SKImageInfo(
+            (int)Math.Round(w * scale), (int)Math.Round(h * scale)));
         var canvas = surface.Canvas;
+        canvas.Scale(scale);
 
         using var boldFace = ResolveTypeface(SKFontStyleWeight.Bold);
         using var regularFace = ResolveTypeface(SKFontStyleWeight.Normal);
@@ -1316,8 +1324,9 @@ public static class ShareCardRenderer
         try
         {
             using var raw = SKBitmap.Decode(path);
-            // Downscale once so the average-color pass and card drawing stay cheap.
-            return raw?.Resize(new SKImageInfo(512, 512), SKFilterQuality.Medium);
+            // Downscale once so the color passes and card drawing stay cheap. 1024px keeps
+            // the artwork sharp on the 2× supersampled export (poster art draws at ~920px).
+            return raw?.Resize(new SKImageInfo(1024, 1024), SKFilterQuality.High);
         }
         catch
         {

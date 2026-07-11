@@ -44,6 +44,19 @@ internal class Program
             // Make services available to the Avalonia App
             App.Services = provider;
 
+            // Warm the LibVLC-backed audio player while Avalonia initializes.
+            // Its constructor (native libvlc load + plugin scan + audio device
+            // warm-up) is the heaviest single service; resolved lazily it runs
+            // synchronously on the UI thread inside the MainWindowViewModel
+            // resolve and delays first paint. DI serializes singleton creation,
+            // so the UI-thread resolve either finds it ready or waits exactly as
+            // it does today — the instance is never built twice.
+            _ = Task.Run(() =>
+            {
+                try { provider.GetRequiredService<IAudioPlayer>(); }
+                catch { /* a broken libvlc install surfaces the same error on the UI-thread resolve */ }
+            });
+
             // Mark login-launched runs (the autostart entry passes "--startup", plus
             // "--minimized" when the user wants it to start hidden in the tray) so the
             // main window can start minimized instead of popping up on boot.

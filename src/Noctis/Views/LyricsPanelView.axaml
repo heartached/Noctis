@@ -26,6 +26,9 @@
         <Style Selector="Button.panel-lyric-line-btn">
             <Setter Property="RenderTransformOrigin" Value="0,0.5"/>
             <Setter Property="RenderTransform" Value="translate(0px,0px) scale(0.96)"/>
+            <!-- Button defaults to ClipToBounds=True and hard-clips the word layer's
+                 emphasis swell/glow at the line box (see lyric-line-btn on the page). -->
+            <Setter Property="ClipToBounds" Value="False"/>
             <Setter Property="Transitions">
                 <Transitions>
                     <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.45">
@@ -39,6 +42,13 @@
         </Style>
         <Style Selector="Button.panel-lyric-line-btn.active">
             <Setter Property="RenderTransform" Value="translate(0px,-1px) scale(1)"/>
+        </Style>
+        <!-- No hover/press box on lyric lines: clickable (Cursor=Hand) but reads as text. -->
+        <Style Selector="Button.panel-lyric-line-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.panel-lyric-line-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
         <!-- Suppress global hover-scale on panel lyric lines. -->
         <Style Selector="ItemsControl#PanelItemsControl Button:pointerover">
@@ -196,10 +206,14 @@
                      does) — the ScrollViewer's padding is not subtracted from the
                      measure width, so unconstrained lines wrapped at the full panel
                      width and ran under the right edge. 292 = 340 - 24 - 24. -->
+                <!-- ClipToBounds=False here, on the word-layer ItemsControl and on the
+                     word-cell Viewbox: all clip by default and cut the emphasis swell
+                     and glow spill at their boxes (see the lyrics page). -->
                 <ItemsControl x:Name="PanelItemsControl"
                               ItemsSource="{Binding ActiveLyricLines}"
                               FontSize="20"
                               MaxWidth="292"
+                              ClipToBounds="False"
                               HorizontalAlignment="Left">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="m:LyricLine">
@@ -238,6 +252,7 @@
                                                   IsVisible="{Binding ShowWords}"
                                                   Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                   HorizontalAlignment="Left"
+                                                  ClipToBounds="False"
                                                   MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                         <ItemsControl.Transitions>
                                             <Transitions>
@@ -254,6 +269,12 @@
                                                 <Panel Classes="word-cell"
                                                        Classes.current="{Binding IsCurrent}"
                                                        Classes.emphasis="{Binding IsEmphasis}">
+                                                    <!-- DownOnly viewbox: shrinks a merged melisma word that outgrows
+                                                         the line MaxWidth so it can't overflow and clip at the panel
+                                                         edge (WrapPanel cells can't break mid-word); see the lyrics
+                                                         page template. Words that fit render 1:1. -->
+                                                    <Viewbox Stretch="Uniform" StretchDirection="DownOnly" ClipToBounds="False">
+                                                    <Panel>
                                                     <!-- Glow hosted in a Canvas so the blur surface has
                                                          headroom without growing the word cell (see the
                                                          lyrics page template for the full rationale). -->
@@ -282,6 +303,8 @@
                                                             </MultiBinding>
                                                         </TextBlock.Foreground>
                                                     </TextBlock>
+                                                    </Panel>
+                                                    </Viewbox>
                                                 </Panel>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>

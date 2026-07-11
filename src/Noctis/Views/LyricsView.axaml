@@ -152,6 +152,12 @@
         <Style Selector="Button.lyric-line-btn">
             <Setter Property="RenderTransformOrigin" Value="0,0.5"/>
             <Setter Property="RenderTransform" Value="translate(0px,0px) scale(0.96)"/>
+            <!-- Button defaults to ClipToBounds=True, which hard-clips anything the
+                 word layer renders past the line's layout box: the emphasis swell
+                 (1.04, centre origin) nibbled edge glyphs of full-width melisma words
+                 and the held-note glow spill got boxed. Verified via headless render:
+                 the button is the clipper, not the ScrollViewer or OpacityMask. -->
+            <Setter Property="ClipToBounds" Value="False"/>
             <Setter Property="Transitions">
                 <Transitions>
                     <!-- Near-critically-damped spring: <2% overshoot. Reads as a soft settle, not a bounce. -->
@@ -166,6 +172,14 @@
         </Style>
         <Style Selector="Button.lyric-line-btn.active">
             <Setter Property="RenderTransform" Value="translate(0px,-2px) scale(1)"/>
+        </Style>
+        <!-- No hover/press box on lyric lines: the line stays clickable (Cursor=Hand
+             on the button) but reads as text, not as a button. -->
+        <Style Selector="Button.lyric-line-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.lyric-line-btn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
         <!-- Suppress global hover-scale on lyric lines (match the resting transforms). -->
         <Style Selector="ItemsControl#LyricsItemsControl Button:pointerover">
@@ -854,10 +868,16 @@
                               Padding="24,0,48,0">
                     <!-- FontSize set here (and adjusted from code-behind per window size)
                          is inherited by the lyric-line and karaoke TextBlocks below. -->
+                    <!-- ClipToBounds=False here, on the word-layer ItemsControl and on the
+                         word-cell Viewbox below: all three clip by default and each one
+                         hard-cuts the active word's 1.04 emphasis swell (and the glow
+                         spill) at its own box. Verified per-element via headless render
+                         bisect; the ScrollViewer still provides the viewport clip. -->
                     <ItemsControl ItemsSource="{Binding ActiveLyricLines}"
                                   x:Name="LyricsItemsControl"
                                   MaxWidth="640"
                                   FontSize="46"
+                                  ClipToBounds="False"
                                   HorizontalAlignment="Left">
                         <!-- No MaxWidth transition: width is set from the window on
                              attach/resize and a transition animated the lyric column
@@ -902,6 +922,7 @@
                                                       IsVisible="{Binding ShowWords}"
                                                       Opacity="{Binding LineOpacity}"
                                                       HorizontalAlignment="Left"
+                                                      ClipToBounds="False"
                                                       MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                             <ItemsControl.Transitions>
                                                 <Transitions>
@@ -918,6 +939,14 @@
                                                     <Panel Classes="word-cell"
                                                            Classes.current="{Binding IsCurrent}"
                                                            Classes.emphasis="{Binding IsEmphasis}">
+                                                        <!-- DownOnly viewbox: a merged melisma word ("No-o-o-o-…") can outgrow
+                                                             the line MaxWidth, and a WrapPanel cell can't break mid-word — the
+                                                             overflow ran past the line box and was hard-clipped by the button
+                                                             (ClipToBounds, see lyric-line-btn). Scaling the whole cell down
+                                                             keeps glow/base/sweep pixel-aligned; words that fit the constraint
+                                                             render 1:1 as before. -->
+                                                        <Viewbox Stretch="Uniform" StretchDirection="DownOnly" ClipToBounds="False">
+                                                        <Panel>
                                                         <!-- Soft glow under held-note words; fades in via word-glow styles.
                                                              Hosted in a Canvas so its blur surface can be padded out for the
                                                              gaussian tail WITHOUT growing the word cell (which would space words
@@ -965,6 +994,8 @@
                                                                 </MultiBinding>
                                                             </TextBlock.Foreground>
                                                         </TextBlock>
+                                                        </Panel>
+                                                        </Viewbox>
                                                     </Panel>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>

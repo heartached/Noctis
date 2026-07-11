@@ -27,7 +27,9 @@ public static class ShareClipRenderer
             "-loop", "1", "-framerate", "2", "-i", framePngPath,
             "-ss", start, "-t", dur, "-i", audioPath,
             "-map", "0:v:0", "-map", "1:a:0",
-            "-c:v", "libx264", "-tune", "stillimage", "-pix_fmt", "yuv420p", "-r", "30",
+            // CRF 18 (near-transparent) instead of the x264 default 23 — the default
+            // visibly muddies the card's text and the logo on a mostly-static frame.
+            "-c:v", "libx264", "-tune", "stillimage", "-crf", "18", "-pix_fmt", "yuv420p", "-r", "30",
             "-c:a", "aac", "-b:a", "192k",
             "-movflags", "+faststart",
             // -shortest alone does NOT clamp a looped still-image video to the audio — it
@@ -56,7 +58,8 @@ public static class ShareClipRenderer
             "-framerate", fps.ToString(CultureInfo.InvariantCulture), "-i", framesPattern,
             "-ss", start, "-t", dur, "-i", audioPath,
             "-map", "0:v:0", "-map", "1:a:0",
-            "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            // Same CRF 18 as the still path: keeps lyric text crisp through the encode.
+            "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "192k",
             "-movflags", "+faststart",
             // Same clamp contract as BuildFfmpegArgs: the output -t pins every stream to

@@ -1682,6 +1682,14 @@ public partial class PlayerViewModel : ViewModelBase
         {
             Dispatcher.UIThread.Post(() =>
             {
+                // The timer is one-shot and has fired — clear it up front so the
+                // scheduler can re-arm if an early return below leaves the track
+                // still approaching its end (e.g. bailed on a pause/drag). A spent
+                // timer left in the field blocked all re-arming for the rest of
+                // the track, so a missed VLC TrackEnded stalled playback at the end.
+                _naturalEndFallbackTimer?.Dispose();
+                _naturalEndFallbackTimer = null;
+
                 if (CurrentTrack?.Id != trackId ||
                     _audioPlayer.CurrentSessionId != sessionId ||
                     State != PlaybackState.Playing ||
@@ -1702,8 +1710,6 @@ public partial class PlayerViewModel : ViewModelBase
                 // wait for the next sample rather than advancing prematurely.
                 if (Position > armedAtPosition + TimeSpan.FromSeconds(NaturalEndToleranceSeconds))
                 {
-                    _naturalEndFallbackTimer?.Dispose();
-                    _naturalEndFallbackTimer = null;
                     return;
                 }
 

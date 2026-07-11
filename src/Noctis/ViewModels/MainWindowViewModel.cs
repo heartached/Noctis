@@ -333,10 +333,11 @@ public partial class MainWindowViewModel : ViewModelBase
         // Wire up playlist detail navigation from playlists view
         _playlistsVm.PlaylistOpened += OnPlaylistOpened;
 
-        // Wire up "View Album" from Songs tab, Favorites tab, and Home tab
+        // Wire up "View Album" from Songs tab, Favorites tab, Home tab, and Folders tab
         _songsVm.ViewAlbumRequested += OnViewAlbumFromTrack;
         _favoritesVm.ViewAlbumRequested += OnViewAlbumFromTrack;
         _homeVm.ViewAlbumRequested += OnViewAlbumFromTrack;
+        _foldersVm.ViewAlbumRequested += OnViewAlbumFromTrack;
         _favoritesVm.AlbumOpened += OnAlbumOpened;
 
         // Wire up Search Lyrics action on ViewModels with track context menus
@@ -349,6 +350,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _homeVm.SetViewArtistAction(ViewArtistByName);
         _songsVm.SetViewArtistAction(ViewArtistByName);
         _favoritesVm.SetViewArtistAction(ViewArtistByName);
+        _foldersVm.SetViewArtistAction(ViewArtistByName);
         Player.SetViewArtistAction(ViewArtistByName);
         _coverFlowVm.SetViewArtistAction(ViewArtistByName);
         _coverFlowVm.SetViewAlbumAction(track => OnViewAlbumFromTrack(this, track));
