@@ -1,5 +1,7 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.ViewModels;
@@ -10,6 +12,7 @@ public partial class LibraryFoldersView : UserControl
 {
     private TrackContextMenuBuilder? _menuBuilder;
     private ListBoxItem? _menuOwnerItem;
+    private EventHandler? _pendingScrollRestore;
 
     public LibraryFoldersView()
     {
@@ -42,6 +45,10 @@ public partial class LibraryFoldersView : UserControl
 
     private void OnTrackDoubleTapped(object? sender, TappedEventArgs e)
     {
+        // Ignore double-taps on the title/artist link buttons — they navigate instead
+        if (e.Source is Control source && source.FindAncestorOfType<Button>() != null)
+            return;
+
         if (DataContext is not LibraryFoldersViewModel vm) return;
         if (TrackList.SelectedItem is Track track)
             vm.PlayTrackCommand.Execute(track);
@@ -123,5 +130,61 @@ public partial class LibraryFoldersView : UserControl
         menu.Placement = PlacementMode.Pointer;
         menu.Open(item);
         e.Handled = true;
+    }
+
+    // ── Track-list scroll persistence (same pattern as Songs/Albums views) ──
+    // The Folders view is rebuilt on every visit, so leaving it (e.g. clicking a
+    // row's artist/title link) and coming Back reset the list to the top. Save
+    // the offset on detach and restore it once layout has realized the rows.
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        CancelPendingScrollRestore();
+
+        if (DataContext is LibraryFoldersViewModel vm)
+        {
+            var sv = TrackList.FindDescendantOfType<ScrollViewer>();
+            if (sv != null)
+                vm.SavedScrollOffset = sv.Offset.Y;
+        }
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void CancelPendingScrollRestore()
+    {
+        if (_pendingScrollRestore != null)
+        {
+            TrackList.LayoutUpdated -= _pendingScrollRestore;
+            _pendingScrollRestore = null;
+        }
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+
+        if (DataContext is LibraryFoldersViewModel vm && vm.SavedScrollOffset > 0)
+        {
+            var targetOffset = vm.SavedScrollOffset;
+            var attempts = 0;
+
+            _pendingScrollRestore = (s, args) =>
+            {
+                attempts++;
+                var sv = TrackList.FindDescendantOfType<ScrollViewer>();
+                if (sv == null) return;
+
+                // Virtualized rows grow the extent over the first layout passes —
+                // wait for it to cover the target before clamping (bounded).
+                if (sv.Extent.Height < targetOffset && attempts < 10)
+                    return;
+
+                var clampedOffset = Math.Min(targetOffset, Math.Max(0, sv.Extent.Height - sv.Viewport.Height));
+                sv.Offset = new Vector(0, clampedOffset);
+                CancelPendingScrollRestore();
+            };
+
+            TrackList.LayoutUpdated += _pendingScrollRestore;
+        }
     }
 }

@@ -125,19 +125,25 @@
                                                IsVisible="{Binding !IsNowPlaying}" />
                                 </Panel>
 
-                                <!-- Title + explicit badge (title truncates; full text on hover) -->
+                                <!-- Title + explicit badge (title truncates; full text on hover).
+                                     Title is a link — clicking it opens the track's album detail page. -->
                                 <Grid Grid.Column="1"
                                       ColumnDefinitions="Auto,Auto"
                                       ClipToBounds="True"
                                       HorizontalAlignment="Left"
                                       VerticalAlignment="Center">
-                                    <TextBlock Grid.Column="0"
-                                               Classes="one-line-explicit-title"
-                                               Text="{Binding TitleDisplay}"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxWidth="520"
-                                               VerticalAlignment="Center"
-                                               ToolTip.Tip="{Binding TitleDisplay}" />
+                                    <Button Grid.Column="0"
+                                            Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
+                                            Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                            Command="{Binding $parent[UserControl].((vm:LibraryFoldersViewModel)DataContext).ViewAlbumCommand}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Classes="one-line-explicit-title"
+                                                   Text="{Binding TitleDisplay}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="520"
+                                                   VerticalAlignment="Center"
+                                                   ToolTip.Tip="{Binding TitleDisplay}" />
+                                    </Button>
                                     <Border Grid.Column="1"
                                             Classes="explicit-badge compact"
                                             Margin="6,0,0,0"
@@ -156,13 +162,19 @@
                                            VerticalAlignment="Center"
                                            Opacity="0.7"
                                            Margin="16,0" />
-                                <TextBlock Grid.Column="3"
-                                           Text="{Binding ArtistDisplay}"
-                                           VerticalAlignment="Center"
-                                           Opacity="0.7"
-                                           TextTrimming="CharacterEllipsis"
-                                           MaxLines="1"
-                                           ToolTip.Tip="{Binding ArtistDisplay}" />
+                                <!-- Artist is a link — clicking it opens the artist's discography page. -->
+                                <Button Grid.Column="3"
+                                        Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
+                                        Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                        Command="{Binding $parent[UserControl].((vm:LibraryFoldersViewModel)DataContext).ViewArtistCommand}"
+                                        CommandParameter="{Binding Artist}">
+                                    <TextBlock Text="{Binding ArtistDisplay}"
+                                               VerticalAlignment="Center"
+                                               Opacity="0.7"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxLines="1"
+                                               ToolTip.Tip="{Binding ArtistDisplay}" />
+                                </Button>
                             </Grid>
                         </Border>
                     </DataTemplate>
