@@ -7,9 +7,12 @@ namespace Noctis.Services;
 public sealed record MatchResult(PlaylistImportEntry Entry, Track? Match, double Score);
 
 /// <summary>
-/// Pure fuzzy matching of imported entries to library tracks. Exact normalized title+artist
-/// hits short-circuit; otherwise a Levenshtein-ratio score (title weighted over artist) is
-/// taken against the best candidate and accepted above a threshold.
+/// Pure fuzzy matching of imported entries to library tracks. Path-carrying entries
+/// (m3u) try an exact library-path hit, then a unique-filename hit — this is what makes
+/// playlists written on another machine (foreign absolute paths) resolve. Exact
+/// normalized title+artist hits short-circuit next; otherwise a Levenshtein-ratio score
+/// (title weighted over artist) is taken against the best candidate and accepted above
+/// a threshold.
 /// </summary>
 public static class FuzzyTrackMatcher
 {
@@ -32,9 +35,43 @@ public static class FuzzyTrackMatcher
             if (!exact.ContainsKey(key)) exact[key] = n.track;
         }
 
+        // Path/filename indexes, built only when some entry carries a file path (m3u).
+        Dictionary<string, Track>? byPath = null;
+        Dictionary<string, Track?>? byFileName = null; // null value = ambiguous name
+        if (entries.Any(e => e.FilePath.Length > 0))
+        {
+            byPath = new Dictionary<string, Track>(StringComparer.OrdinalIgnoreCase);
+            byFileName = new Dictionary<string, Track?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var t in library)
+            {
+                if (string.IsNullOrWhiteSpace(t.FilePath)) continue;
+                var p = NormalizePath(t.FilePath);
+                if (!byPath.ContainsKey(p)) byPath[p] = t;
+                var name = Path.GetFileName(p);
+                if (name.Length == 0) continue;
+                byFileName[name] = byFileName.TryGetValue(name, out _) ? null : t;
+            }
+        }
+
         var results = new List<MatchResult>(entries.Count);
         foreach (var e in entries)
         {
+            if (e.FilePath.Length > 0 && byPath != null)
+            {
+                var p = NormalizePath(e.FilePath);
+                if (byPath.TryGetValue(p, out var pathHit))
+                {
+                    results.Add(new MatchResult(e, pathHit, 1.0));
+                    continue;
+                }
+                var name = Path.GetFileName(p);
+                if (name.Length > 0 && byFileName!.TryGetValue(name, out var nameHit) && nameHit != null)
+                {
+                    results.Add(new MatchResult(e, nameHit, 0.95));
+                    continue;
+                }
+            }
+
             var et = Normalize(e.Title);
             var ea = Normalize(e.Artist);
             if (et.Length == 0) { results.Add(new MatchResult(e, null, 0)); continue; }
@@ -63,6 +100,9 @@ public static class FuzzyTrackMatcher
 
         return results;
     }
+
+    // Forward slashes + trim so Windows- and Unix-written paths compare equal.
+    private static string NormalizePath(string p) => p.Replace('\\', '/').Trim();
 
     private static string Normalize(string? s)
     {

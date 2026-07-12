@@ -3,15 +3,17 @@ using System.Text.Json;
 
 namespace Noctis.Services;
 
-/// <summary>One imported track reference, before matching against the local library.</summary>
-public sealed record PlaylistImportEntry(string Title, string Artist, string Album);
+/// <summary>One imported track reference, before matching against the local library.
+/// <paramref name="FilePath"/> is set only by m3u imports (absolute when resolvable),
+/// letting the matcher try exact path/filename hits before fuzzy text matching.</summary>
+public sealed record PlaylistImportEntry(string Title, string Artist, string Album, string FilePath = "");
 
 /// <summary>Parsed import file: a suggested playlist name plus its track entries.</summary>
 public sealed record PlaylistImportParseResult(string SuggestedName, IReadOnlyList<PlaylistImportEntry> Entries);
 
 /// <summary>
-/// Pure parsing of streaming-service playlist exports. Supports Exportify-style CSV and
-/// TuneMyMusic-style JSON, plus generic CSV/JSON with Title/Artist/Album fields. Column and
+/// Pure parsing of playlist files. Supports Exportify-style CSV, TuneMyMusic-style JSON
+/// (plus generic CSV/JSON with Title/Artist/Album fields), and m3u/m3u8. Column and
 /// key matching is case-insensitive; multiple artists collapse to the primary (first) artist.
 /// </summary>
 public static class PlaylistImportParser
@@ -22,9 +24,75 @@ public static class PlaylistImportParser
         var fallbackName = Path.GetFileNameWithoutExtension(filePath);
         var ext = Path.GetExtension(filePath).ToLowerInvariant();
 
+        if (ext == ".m3u" || ext == ".m3u8")
+        {
+            string baseDir;
+            try { baseDir = Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? string.Empty; }
+            catch { baseDir = string.Empty; }
+            return ParseM3u(text, fallbackName, baseDir);
+        }
+
         return ext == ".json" || LooksLikeJson(text)
             ? ParseJson(text, fallbackName)
             : ParseCsv(text, fallbackName);
+    }
+
+    // ── M3U / M3U8 ──
+
+    /// <summary>
+    /// Relative entries resolve against <paramref name="baseDir"/> (the playlist's own
+    /// folder), so a playlist exported with relative paths works no matter which machine
+    /// it was written on. #EXTINF display text ("Artist - Title") is kept as the fuzzy
+    /// fallback for when the path no longer matches anything.
+    /// </summary>
+    public static PlaylistImportParseResult ParseM3u(string text, string fallbackName, string baseDir)
+    {
+        var entries = new List<PlaylistImportEntry>();
+        var pendingTitle = string.Empty;
+        var pendingArtist = string.Empty;
+
+        foreach (var raw in text.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0) continue;
+
+            if (line.StartsWith("#EXTINF", StringComparison.OrdinalIgnoreCase))
+            {
+                // "#EXTINF:123,Artist - Title" — display text after the first comma.
+                var comma = line.IndexOf(',');
+                var display = comma >= 0 ? line[(comma + 1)..].Trim() : string.Empty;
+                var dash = display.IndexOf(" - ", StringComparison.Ordinal);
+                if (dash > 0)
+                {
+                    pendingArtist = display[..dash].Trim();
+                    pendingTitle = display[(dash + 3)..].Trim();
+                }
+                else
+                {
+                    pendingArtist = string.Empty;
+                    pendingTitle = display;
+                }
+                continue;
+            }
+            if (line.StartsWith('#')) continue;
+
+            var path = line.Replace('\\', '/');
+            try
+            {
+                if (!Path.IsPathRooted(path) && baseDir.Length > 0)
+                    path = Path.GetFullPath(Path.Combine(baseDir, path));
+            }
+            catch { /* malformed entry — keep raw for filename matching */ }
+
+            var title = pendingTitle.Length > 0
+                ? pendingTitle
+                : Path.GetFileNameWithoutExtension(path);
+            entries.Add(new PlaylistImportEntry(title, pendingArtist, string.Empty, path));
+            pendingTitle = string.Empty;
+            pendingArtist = string.Empty;
+        }
+
+        return new PlaylistImportParseResult(fallbackName, entries);
     }
 
     private static bool LooksLikeJson(string text)

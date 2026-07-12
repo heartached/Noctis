@@ -35,7 +35,7 @@ public partial class PlaylistImportDialog : Window
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
-                    new FilePickerFileType("Playlist exports") { Patterns = new[] { "*.csv", "*.json" } },
+                    new FilePickerFileType("Playlist exports") { Patterns = new[] { "*.csv", "*.json", "*.m3u", "*.m3u8" } },
                     FilePickerFileTypes.All
                 }
             });

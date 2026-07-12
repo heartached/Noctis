@@ -5,6 +5,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -182,6 +183,52 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
     private async Task ImportPlaylist()
     {
         await MetadataHelper.OpenPlaylistImportDialog();
+    }
+
+    [RelayCommand]
+    private async Task ExportPlaylist(PlaylistNavItem item)
+    {
+        var playlist = ResolvePlaylist(item);
+        if (playlist == null) return;
+        var tracks = ResolvePlaylistTracks(playlist);
+        if (tracks.Count == 0) return;
+
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
+            || desktop.MainWindow == null) return;
+        var topLevel = TopLevel.GetTopLevel(desktop.MainWindow);
+        if (topLevel == null) return;
+
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Export Playlist",
+            SuggestedFileName = SanitizeFileName(playlist.Name),
+            DefaultExtension = "m3u8",
+            FileTypeChoices = new[]
+            {
+                new FilePickerFileType("M3U playlist") { Patterns = new[] { "*.m3u8", "*.m3u" } }
+            }
+        });
+        if (file == null) return;
+
+        var path = file.TryGetLocalPath();
+        if (string.IsNullOrEmpty(path)) return;
+
+        var interop = App.Services!.GetRequiredService<IPlaylistInteropService>();
+        try
+        {
+            await interop.ExportM3uAsync(path, tracks);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.State, "Playlist.Export", ex.Message);
+        }
+    }
+
+    private static string SanitizeFileName(string name)
+    {
+        foreach (var c in Path.GetInvalidFileNameChars())
+            name = name.Replace(c, '_');
+        return string.IsNullOrWhiteSpace(name) ? "Playlist" : name.Trim();
     }
 
     [RelayCommand]

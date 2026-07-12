@@ -11,6 +11,7 @@ public sealed class PlaylistInteropService : IPlaylistInteropService
     public async Task ExportM3uAsync(string filePath, IEnumerable<Track> tracks, CancellationToken ct = default)
     {
         var ordered = tracks.ToList();
+        var baseDir = Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? string.Empty;
         var sb = new StringBuilder();
         sb.AppendLine("#EXTM3U");
 
@@ -19,10 +20,31 @@ public sealed class PlaylistInteropService : IPlaylistInteropService
             ct.ThrowIfCancellationRequested();
             var seconds = (int)Math.Round(track.Duration.TotalSeconds);
             sb.AppendLine($"#EXTINF:{seconds},{track.Artist} - {track.Title}");
-            sb.AppendLine(track.FilePath);
+            sb.AppendLine(PortablePath(baseDir, track.FilePath));
         }
 
         await File.WriteAllTextAsync(filePath, sb.ToString(), new UTF8Encoding(false), ct);
+    }
+
+    /// <summary>
+    /// Relative to the playlist's own folder with forward slashes whenever a
+    /// relative form exists, so the file keeps working when the library moves
+    /// between machines/OSes (Syncthing, NAS shares, other players). Absolute
+    /// only as a fallback (different drive/root).
+    /// </summary>
+    internal static string PortablePath(string baseDir, string trackPath)
+    {
+        try
+        {
+            var full = Path.GetFullPath(trackPath);
+            if (baseDir.Length == 0) return full;
+            var relative = Path.GetRelativePath(baseDir, full);
+            return Path.IsPathRooted(relative) ? full : relative.Replace('\\', '/');
+        }
+        catch (ArgumentException)
+        {
+            return trackPath; // invalid characters — write as stored
+        }
     }
 
     public async Task<IReadOnlyList<Track>> ImportM3uAsync(string filePath, IReadOnlyList<Track> libraryTracks, CancellationToken ct = default)

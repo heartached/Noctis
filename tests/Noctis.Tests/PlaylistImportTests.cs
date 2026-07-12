@@ -38,6 +38,77 @@ public class PlaylistImportTests
         Assert.Equal("Hello, Goodbye", entry.Title);
     }
 
+    // ── M3U parsing ──
+
+    [Fact]
+    public void M3u_ParsesExtinfAndResolvesRelativePaths()
+    {
+        var baseDir = OperatingSystem.IsWindows() ? @"C:\Music\Playlists" : "/music/playlists";
+        const string m3u =
+            "#EXTM3U\n" +
+            "#EXTINF:215,Adele - Hello\n" +
+            "sub/hello.mp3\n" +
+            "# a comment\n" +
+            "no-extinf.flac\n";
+
+        var result = PlaylistImportParser.ParseM3u(m3u, "My List", baseDir);
+
+        Assert.Equal(2, result.Entries.Count);
+        Assert.Equal("Hello", result.Entries[0].Title);
+        Assert.Equal("Adele", result.Entries[0].Artist);
+        Assert.Equal(Path.GetFullPath(Path.Combine(baseDir, "sub", "hello.mp3")), result.Entries[0].FilePath);
+        // No EXTINF: title falls back to the filename stem.
+        Assert.Equal("no-extinf", result.Entries[1].Title);
+    }
+
+    [Fact]
+    public void M3u_ForeignAbsolutePath_IsKeptForFilenameMatching()
+    {
+        var result = PlaylistImportParser.ParseM3u(
+            "C:\\Users\\other\\Music\\song.mp3\n", "f", "/music");
+        var entry = result.Entries.Single();
+        Assert.EndsWith("song.mp3", entry.FilePath.Replace('\\', '/'));
+        Assert.Equal("song", entry.Title);
+    }
+
+    // ── Path/filename matching ladder (m3u entries) ──
+
+    [Fact]
+    public void Match_ExactLibraryPath_Wins()
+    {
+        var track = new Track { Title = "Hello", Artist = "Adele", FilePath = @"C:\Music\hello.mp3" };
+        var entry = new PlaylistImportEntry("Different Title", "Nobody", "", @"C:\Music\hello.mp3");
+
+        var result = FuzzyTrackMatcher.Match(new[] { entry }, new[] { track }).Single();
+
+        Assert.Same(track, result.Match);
+        Assert.Equal(1.0, result.Score);
+    }
+
+    [Fact]
+    public void Match_ForeignAbsolutePath_ResolvesByUniqueFilename()
+    {
+        var track = new Track { Title = "Hello", Artist = "Adele", FilePath = @"C:\Mine\Library\hello.mp3" };
+        // Path from another machine — different root, same file name.
+        var entry = new PlaylistImportEntry("", "", "", "/home/other/music/hello.mp3");
+
+        var result = FuzzyTrackMatcher.Match(new[] { entry }, new[] { track }).Single();
+
+        Assert.Same(track, result.Match);
+    }
+
+    [Fact]
+    public void Match_AmbiguousFilename_FallsBackToExtinfText()
+    {
+        var a = new Track { Title = "Hello", Artist = "Adele", FilePath = @"C:\A\track01.mp3" };
+        var b = new Track { Title = "Yellow", Artist = "Coldplay", FilePath = @"C:\B\track01.mp3" };
+        var entry = new PlaylistImportEntry("Yellow", "Coldplay", "", "/foreign/track01.mp3");
+
+        var result = FuzzyTrackMatcher.Match(new[] { entry }, new[] { a, b }).Single();
+
+        Assert.Same(b, result.Match);
+    }
+
     // ── JSON parsing (TuneMyMusic / generic) ──
 
     [Fact]
