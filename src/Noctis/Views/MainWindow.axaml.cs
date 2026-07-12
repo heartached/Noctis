@@ -19,6 +19,7 @@ public partial class MainWindow : Window
 
     private TaskbarIntegrationService? _taskbar;
     private SmtcService? _smtc;
+    private MprisService? _mpris;
     private TrayIcon? _trayIcon;
     private bool _exitRequestedFromTray;
     private EventHandler<string>? _themeChangedHandler;
@@ -219,6 +220,10 @@ public partial class MainWindow : Window
                 // Windows media overlay (SMTC): now-playing card on the media-key
                 // flyout/lock screen + media-key control (no-op off Windows).
                 _smtc = new SmtcService(vm.Player, TryGetPlatformHandle()?.Handle ?? IntPtr.Zero);
+
+                // Linux media keys + GNOME/KDE media widgets (MPRIS over D-Bus).
+                // Null on other platforms; fail-soft without a session bus.
+                _mpris = MprisService.TryStart(vm.Player);
 
                 // Launched at login with "start minimized to tray" on (encoded in the
                 // autostart args, so it needs no async settings load) → hide to the tray
@@ -424,6 +429,8 @@ public partial class MainWindow : Window
         _taskbar?.Dispose();
         _smtc?.Dispose();
         _smtc = null;
+        _mpris?.Dispose();
+        _mpris = null;
         if (_trayIcon != null)
         {
             _trayIcon.IsVisible = false;

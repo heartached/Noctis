@@ -553,6 +553,13 @@ public class VlcAudioPlayer : IAudioPlayer
     private int _userVolume = 75;
     private int _volumeAdjust;
 
+    // User's mute intent, tracked separately from _player.Mute: on PulseAudio /
+    // PipeWire the OS can restore a muted state onto a freshly created stream
+    // (stream-restore entries are per-app, and older builds' keep-alive stream
+    // recorded itself muted there), so _player.Mute can read true when the user
+    // never muted. PlayInternal re-asserts this intent on every play.
+    private bool _userMuted;
+
     // ── ReplayGain ──
     // Linear multiplier applied on top of the curved VLC volume so RG-aware
     // playback can attenuate or boost without changing the user's slider.
@@ -660,6 +667,7 @@ public class VlcAudioPlayer : IAudioPlayer
         set
         {
             if (_disposed) return;
+            _userMuted = value;
             _player.Mute = value;
             if (_standbyPrepared)
                 _standbyPlayer.Mute = value;
@@ -1874,6 +1882,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // The new output session opens at 100% — push the user level onto it
             // as soon as it appears so there's no full-volume blip on track start.
             ScheduleSessionVolumeReassert(sessionId);
+            ScheduleMuteIntentReassert(sessionId);
 
             // Poll for accurate duration shortly after playback starts
             // VLC may not report accurate duration until decoding begins
@@ -2033,6 +2042,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // Restore the user level on the session after the crossfade (the fade
             // drove the session volume up to full as the incoming track came in).
             ScheduleSessionVolumeReassert(sessionId);
+            ScheduleMuteIntentReassert(sessionId);
 
             DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.PlayerSwapCommitted", $"session={sessionId}");
             QueueInactivePlayerCleanup(_standbyPlayer, outgoingMedia, sessionId);
@@ -2208,6 +2218,7 @@ public class VlcAudioPlayer : IAudioPlayer
 
             // Re-assert in case the session resolved late, then tear down the outgoing.
             ScheduleSessionVolumeReassert(sessionId);
+            ScheduleMuteIntentReassert(sessionId);
             QueueInactivePlayerCleanup(_standbyPlayer, outgoingMedia, sessionId);
 
             ThreadPool.QueueUserWorkItem(_ =>
@@ -2353,6 +2364,7 @@ public class VlcAudioPlayer : IAudioPlayer
             }
 
             ScheduleSessionVolumeReassert(sessionId);
+            ScheduleMuteIntentReassert(sessionId);
             QueueInactivePlayerCleanup(_standbyPlayer, outgoingMedia, sessionId);
 
             ThreadPool.QueueUserWorkItem(_ =>
@@ -2616,6 +2628,32 @@ public class VlcAudioPlayer : IAudioPlayer
     /// retrying briefly so the full-volume window after (re)open is inaudible.
     /// Runs on a worker; safe no-op when OS-session volume isn't used.
     /// </summary>
+    // Native-output counterpart to ScheduleSessionVolumeReassert: on PulseAudio /
+    // PipeWire a new stream can open with a restored mute from the app's
+    // stream-restore entry (poisoned by older builds' keep-alive stream, which
+    // recorded itself muted under the shared app identity), and VLC only syncs
+    // that state back a moment after the stream connects. Poll briefly and
+    // overwrite any mute that contradicts the user's intent; the corrective
+    // write also heals the OS-side restore entry for future streams.
+    private void ScheduleMuteIntentReassert(long sessionId)
+    {
+        if (_sessionVolume != null || ActiveCallbackSink != null) return;
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            for (var waited = 0; waited < 2000; waited += 50)
+            {
+                if (_disposed || sessionId != CurrentSessionId) return;
+                try
+                {
+                    if (_player.Mute != _userMuted)
+                        _player.Mute = _userMuted;
+                }
+                catch { /* player transitioning */ }
+                Thread.Sleep(50);
+            }
+        });
+    }
+
     private void ScheduleSessionVolumeReassert(long sessionId)
     {
         if (_sessionVolume == null) return;

@@ -24,7 +24,7 @@
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Margin="24,20,24,8" Spacing="2">
                     <TextBlock Text="Import Playlist" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-                    <TextBlock Text="Import an Exportify CSV or TuneMyMusic JSON export and match it against your library."
+                    <TextBlock Text="Import an M3U playlist, Exportify CSV, or TuneMyMusic JSON export and match it against your library."
                                FontSize="12" Opacity="0.6" HorizontalAlignment="Center" TextWrapping="Wrap" />
                 </StackPanel>
 

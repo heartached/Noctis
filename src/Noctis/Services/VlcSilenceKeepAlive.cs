@@ -5,8 +5,11 @@ namespace Noctis.Services;
 
 /// <summary>
 /// macOS/Linux counterpart to <see cref="WasapiSilenceKeepAlive"/>. Holds a
-/// private muted, volume-0 <see cref="MediaPlayer"/> looping a generated silent
-/// WAV so the native audio device endpoint stays open. The main player's first
+/// private <see cref="MediaPlayer"/> looping a generated silent WAV so the
+/// native audio device endpoint stays open. The player is deliberately NOT
+/// muted or volume-zeroed: the source is silent anyway, and on PulseAudio /
+/// PipeWire those writes poison the app-wide stream-restore entry that real
+/// playback streams inherit (see StartSilence). The main player's first
 /// Play() and every Stop()->Play() transition then open against a running device
 /// instead of cold-dropping the first buffers (the track-start clip). Windows
 /// keeps WasapiSilenceKeepAlive (a real silent WASAPI stream); this path relies
@@ -87,11 +90,12 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
 
     private void StartSilence()
     {
+        // Never set Mute/Volume on this player. The WAV is already silent, and on
+        // PulseAudio/PipeWire the stream shares the app's stream-restore entry with
+        // real playback (same application identity) — a mute/volume-0 write here is
+        // saved by the OS and re-applied to the NEXT playback stream, which is how
+        // Linux ended up starting muted / intermittently silent.
         _player.Play(_silence);
-        // Set after Play so the values stick once media is loaded; the source is
-        // already silent, so the brief pre-mute window is silent too.
-        _player.Mute = true;
-        _player.Volume = 0;
         _running = true;
     }
 

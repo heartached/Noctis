@@ -1540,7 +1540,7 @@
                     <Grid Classes="sub-setting" ColumnDefinitions="*,Auto" IsEnabled="{Binding BpmKeyAnalysisEnabled}">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="Save analysis to file tags" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Write detected BPM/key into file tags (TBPM/TKEY)."
+                            <TextBlock Text="Write detected BPM/key into file tags (TBPM/TKEY). Rewrites files, so sync tools like Syncthing will see changes."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
