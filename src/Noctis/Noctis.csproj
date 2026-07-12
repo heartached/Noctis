@@ -44,6 +44,9 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.18" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.18" />
     <PackageReference Include="Avalonia.Diagnostics" Version="11.3.18" Condition="'$(Configuration)' == 'Debug'" />
+    <!-- MPRIS media keys on Linux (MprisService). Same version Avalonia's
+         FreeDesktop backend already ships transitively — no new vendor. -->
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
   </ItemGroup>
 
