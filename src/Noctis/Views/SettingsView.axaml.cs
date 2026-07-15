@@ -139,6 +139,15 @@ public partial class SettingsView : UserControl
             case nameof(SettingsViewModel.SelectedSettingsTab):
                 ScrollToTop();
                 break;
+
+            // Version-manager download started: bring the progress bar + Cancel
+            // button into view (the release list can push them off-screen).
+            case nameof(SettingsViewModel.IsDevDownloading):
+                if (_trackedViewModel?.IsDevDownloading == true)
+                    Dispatcher.UIThread.Post(
+                        () => DevDownloadPanel.BringIntoView(),
+                        DispatcherPriority.Loaded);
+                break;
         }
     }
 

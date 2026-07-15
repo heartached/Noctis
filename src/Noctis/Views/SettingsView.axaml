@@ -30,6 +30,15 @@
             <Setter Property="Opacity" Value="0.4"/>
         </Style>
 
+        <!-- About-tab update pill: accent by default, subdued while showing the
+             transient "✓ Up to date" confirmation so it stops reading as a CTA. -->
+        <Style Selector="Button.update-pill">
+            <Setter Property="Background" Value="#E74856"/>
+        </Style>
+        <Style Selector="Button.update-pill.up-to-date">
+            <Setter Property="Background" Value="#26FFFFFF"/>
+        </Style>
+
         <!-- Circular loading spinner: a rotating arc shown during background work -->
         <Style Selector="Ellipse.loading-spinner">
             <Setter Property="Width" Value="14"/>
@@ -896,9 +905,23 @@
                             <StackPanel VerticalAlignment="Center" Spacing="2">
                                 <TextBlock Text="Noctis" FontSize="16" FontWeight="Bold"/>
                                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding AppVersion}"
-                                               FontSize="12" Opacity="0.5"
-                                               VerticalAlignment="Center"/>
+                                    <!-- Click-to-copy version + OS/arch (handy for bug reports) -->
+                                    <Button Background="Transparent"
+                                            Padding="0"
+                                            BorderThickness="0"
+                                            Cursor="Hand"
+                                            Command="{Binding CopyVersionInfoCommand}"
+                                            ToolTip.Tip="Click to copy version and system info"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding AppVersion}"
+                                                   FontSize="12" Opacity="0.5"
+                                                   VerticalAlignment="Center"/>
+                                    </Button>
+                                    <TextBlock Text="Copied!"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource AccentColorBrush}"
+                                               VerticalAlignment="Center"
+                                               IsVisible="{Binding VersionCopied}"/>
                                     <Border IsVisible="{Binding IsPrereleaseBuild}"
                                             Background="#E74856"
                                             CornerRadius="9"
@@ -923,12 +946,20 @@
                                      VerticalAlignment="Center"
                                      IsVisible="{Binding IsUpdateAvailable}"/>
                             <Button Command="{Binding CheckForUpdateCommand}"
-                                    Classes="pill"
+                                    Classes="pill update-pill"
+                                    Classes.up-to-date="{Binding IsUpToDate}"
                                     VerticalAlignment="Center"
                                     Padding="16,6"
-                                    Background="#E74856"
                                     IsVisible="{Binding ShowCheckForUpdatesButton}">
-                                <TextBlock Text="{Binding CheckForUpdatesButtonText}" FontSize="12" Foreground="White"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Ellipse Classes="loading-spinner"
+                                             Stroke="White"
+                                             IsVisible="{Binding IsCheckingForUpdate}"
+                                             VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding CheckForUpdatesButtonText}"
+                                               FontSize="12" Foreground="White"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
                             </Button>
 
                             <!-- Update Available button (replaces Check when a new release is detected).
@@ -939,7 +970,7 @@
                                     Padding="16,6"
                                     Background="#E74856"
                                     IsVisible="{Binding ShowInAppUpdateButton}">
-                                <TextBlock Text="Update available"
+                                <TextBlock Text="{Binding UpdateButtonText}"
                                            FontSize="12" Foreground="White" VerticalAlignment="Center"/>
                             </Button>
 
@@ -952,7 +983,7 @@
                                     Background="#E74856"
                                     ToolTip.Tip="{Binding ExternalUpdateHint}"
                                     IsVisible="{Binding ShowManualUpdateButton}">
-                                <TextBlock Text="Update available"
+                                <TextBlock Text="{Binding UpdateButtonText}"
                                            FontSize="12" Foreground="White" VerticalAlignment="Center"/>
                             </Button>
 
@@ -1054,6 +1085,169 @@
                     <!-- Signature -->
                     <TextBlock Text="Yours Truly, heartached."
                                FontSize="12" Opacity="0.4"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Developer -->
+            <Border Classes="setting-card" Padding="18,16" Margin="0,16,0,0">
+                <StackPanel Spacing="10">
+                    <!-- Toggle -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="Developer Mode" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Show the version manager and debug logs."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding DeveloperMode}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <StackPanel Spacing="10" IsVisible="{Binding DeveloperMode}">
+
+                        <!-- ── Version manager ── -->
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                            <TextBlock Grid.Column="0"
+                                       Text="Download and install any release from GitHub. Installing closes the app."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"
+                                       VerticalAlignment="Center"/>
+                            <Ellipse Grid.Column="1"
+                                     Classes="loading-spinner"
+                                     IsVisible="{Binding IsLoadingReleases}"
+                                     VerticalAlignment="Center"
+                                     Margin="8,0,0,0"/>
+                        </Grid>
+
+                        <TextBlock Text="No releases found."
+                                   FontSize="13" Opacity="0.55"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,8"
+                                   IsVisible="{Binding ShowDevReleasesEmpty}"/>
+
+                        <!-- Full release history; scrolls with the settings page itself -->
+                        <ItemsControl ItemsSource="{Binding DevReleases}"
+                                      IsEnabled="{Binding !IsDevDownloading}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:DevReleaseItem">
+                                        <Border Background="#12FFFFFF" CornerRadius="10"
+                                                Padding="12,8" Margin="0,3">
+                                            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding VersionDisplay}"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           VerticalAlignment="Center"/>
+                                                <Border Grid.Column="1"
+                                                        IsVisible="{Binding IsPrerelease}"
+                                                        Background="{DynamicResource AccentColorBrush}" CornerRadius="999"
+                                                        Padding="7,2" Margin="8,0,0,0"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="Pre-release" FontSize="10" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource AccentForegroundBrush}"/>
+                                                </Border>
+                                                <Border Grid.Column="2"
+                                                        IsVisible="{Binding IsCurrent}"
+                                                        Background="{DynamicResource AccentColorBrush}" CornerRadius="999"
+                                                        Padding="7,2" Margin="8,0,0,0"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="Latest" FontSize="10" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource AccentForegroundBrush}"/>
+                                                </Border>
+                                                <TextBlock Grid.Column="3"
+                                                           IsVisible="{Binding HasWarning}"
+                                                           Text="{Binding WarningText}"
+                                                           ToolTip.Tip="{Binding WarningText}"
+                                                           FontSize="11"
+                                                           Foreground="#F1C40F"
+                                                           Opacity="0.9"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Left"
+                                                           Margin="8,0,0,0"/>
+                                                <TextBlock Grid.Column="4"
+                                                           Text="{Binding DateDisplay}"
+                                                           FontSize="12" Opacity="0.5"
+                                                           VerticalAlignment="Center"
+                                                           Margin="12,0"/>
+                                                <Button Grid.Column="5"
+                                                        Classes="pill-action"
+                                                        IsVisible="{Binding !IsCurrent}"
+                                                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).InstallReleaseCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock Text="{Binding ActionLabel}" FontSize="12"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Expand to the full release history -->
+                        <Button IsVisible="{Binding HasHiddenReleases}"
+                                Command="{Binding ShowOlderReleasesCommand}"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                BorderThickness="0"
+                                CornerRadius="999"
+                                Padding="14,6"
+                                HorizontalAlignment="Center"
+                                Cursor="Hand">
+                            <TextBlock Text="{Binding ShowOlderVersionsLabel}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"/>
+                        </Button>
+
+                        <!-- Download status / progress -->
+                        <StackPanel x:Name="DevDownloadPanel" Spacing="10">
+                            <TextBlock Text="{Binding DevStatusText}"
+                                       FontSize="12" Opacity="0.7"
+                                       IsVisible="{Binding DevStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="12"
+                                        IsVisible="{Binding IsDevDownloading}">
+                                <ProgressBar Minimum="0" Maximum="100"
+                                             Value="{Binding DevDownloadProgress}"
+                                             Height="4" CornerRadius="2"
+                                             VerticalAlignment="Center"
+                                             MinWidth="200"/>
+                                <Button Classes="pill-action"
+                                        Command="{Binding CancelDevDownloadCommand}">
+                                    <TextBlock Text="Cancel" FontSize="12"/>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- ── Debug logs ── -->
+                        <TextBlock Text="Session log for troubleshooting. Share these when reporting bugs."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"
+                                   Margin="0,10,0,0"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Classes="pill-action" Command="{Binding CopyDevLogsCommand}">
+                                <TextBlock Text="Copy Logs" FontSize="12"/>
+                            </Button>
+                            <Button Classes="pill-action" Command="{Binding ClearDevLogsCommand}">
+                                <TextBlock Text="Clear" FontSize="12"/>
+                            </Button>
+                            <Button Classes="pill-action" Command="{Binding OpenLogsFolderCommand}"
+                                    ToolTip.Tip="Open the app data folder (also holds crash.log)">
+                                <TextBlock Text="Open Folder" FontSize="12"/>
+                            </Button>
+                            <TextBlock Text="Copied!"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource AccentColorBrush}"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding DevLogsCopied}"/>
+                        </StackPanel>
+                        <Border Background="#12FFFFFF" CornerRadius="10" Padding="12,8" MaxHeight="190">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <SelectableTextBlock Text="{Binding DevLogText}"
+                                                     FontSize="11"
+                                                     FontFamily="Consolas, Menlo, monospace"
+                                                     Opacity="0.8"
+                                                     TextWrapping="Wrap"/>
+                            </ScrollViewer>
+                        </Border>
+
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
@@ -1702,7 +1896,7 @@
                                   CornerRadius="999"
                                   Padding="14,8"/>
                     </Grid>
-                    <Grid ColumnDefinitions="120,*,Auto">
+                    <Grid Classes="sub-setting" ColumnDefinitions="120,*,Auto" IsEnabled="{Binding ReplayGainEnabled}">
                         <TextBlock Grid.Column="0" Text="Pre-amp (dB)" VerticalAlignment="Center"/>
                         <Grid Grid.Column="1" Height="20" ClipToBounds="False"
                               VerticalAlignment="Center" Margin="0,0,12,0">
