@@ -756,12 +756,19 @@ public partial class MainWindowViewModel : ViewModelBase
             _songsVm.MarkDirty();
             _albumsVm.MarkDirty();
             _artistsVm.MarkDirty();
+            _foldersVm.MarkDirty();
             _homeVm.MarkDirty();
             _favoritesVm.MarkDirty();
 
             _songsVm.Refresh();
             _albumsVm.Refresh();
             _artistsVm.Refresh();
+            // Folders is built from the library track list too — without this the
+            // dropped track lands in the library (Songs/Albums see it) but the folder
+            // tree keeps its stale, cached state and never shows the new file. A later
+            // Scan Library can't recover it either: the file is already imported, so
+            // the scan no-ops without firing LibraryUpdated.
+            _foldersVm.Refresh();
 
             _homeVm.Refresh();
             _favoritesVm.Refresh();
@@ -1390,6 +1397,12 @@ public partial class MainWindowViewModel : ViewModelBase
         // Clear search when switching views. Queue popup stays open across navigation —
         // it's only dismissed by toggling the Queue button itself or by Escape.
         TopBar.SearchText = string.Empty;
+        // Assigning SearchText only dispatches ApplyFilter when the box value actually
+        // changes (and via a debounce). If the box was already empty from a prior visit,
+        // the destination view keeps whatever filter it was last given — so it can show
+        // nothing even though the search box looks empty. Clear it directly here.
+        if (CurrentView is ISearchable searchableView)
+            searchableView.ApplyFilter(string.Empty);
 
         TopBar.CurrentTabName = key switch
         {

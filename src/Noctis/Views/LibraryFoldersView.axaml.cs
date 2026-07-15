@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Helpers;
 using Noctis.Models;
@@ -14,6 +15,7 @@ public partial class LibraryFoldersView : UserControl
     private FolderContextMenuBuilder? _folderMenuBuilder;
     private ListBoxItem? _menuOwnerItem;
     private EventHandler? _pendingScrollRestore;
+    private LibraryFoldersViewModel? _subscribedVm;
 
     public LibraryFoldersView()
     {
@@ -40,13 +42,32 @@ public partial class LibraryFoldersView : UserControl
         // bubbles, so one handler on the TreeView covers nested TreeViewItems too.
         FolderTree.ContextRequested += OnFolderContextRequested;
 
-        // Reset shared menus so they pick up new VM commands
+        // Reset shared menus so they pick up new VM commands, and (re)wire the
+        // search-reveal handler to the current ViewModel.
         DataContextChanged += (_, _) =>
         {
             _menuBuilder?.Reset();
             _menuBuilder = null;
             _folderMenuBuilder = null;
+
+            if (_subscribedVm != null)
+                _subscribedVm.ScrollToTrackRequested -= OnScrollToTrackRequested;
+            _subscribedVm = DataContext as LibraryFoldersViewModel;
+            if (_subscribedVm != null)
+                _subscribedVm.ScrollToTrackRequested += OnScrollToTrackRequested;
         };
+    }
+
+    // Search reveal: scroll the matching track into view and select it so it's
+    // highlighted, keeping the full folder list visible (a "find", not a filter).
+    private void OnScrollToTrackRequested(object? sender, Track track)
+    {
+        // Rows may have just been replaced; defer past layout so the target is realized.
+        Dispatcher.UIThread.Post(() =>
+        {
+            TrackList.SelectedItem = track;
+            TrackList.ScrollIntoView(track);
+        }, DispatcherPriority.Background);
     }
 
     private void OnTrackDoubleTapped(object? sender, TappedEventArgs e)

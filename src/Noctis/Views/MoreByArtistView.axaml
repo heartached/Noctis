@@ -16,7 +16,7 @@
         <ScrollViewer x:Name="AlbumScrollViewer"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto"
-                      Padding="32,16,32,0">
+                      Padding="12,16,2,0">
             <!-- Bottom margin (not ScrollViewer padding) so the last row scrolls clear of
                  the floating playback island, matching AlbumDetailView's breathing room. -->
             <ItemsControl ItemsSource="{Binding Albums}"

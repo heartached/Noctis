@@ -118,7 +118,9 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:Track">
                         <Border Classes.now-playing="{Binding IsNowPlaying}" Margin="0,2">
-                            <Grid ColumnDefinitions="34,1.6*,Auto,*">
+                            <!-- Number column is wide enough for 4-digit row numbers;
+                                 a large folder (100s–1000s of tracks) previously clipped them. -->
+                            <Grid ColumnDefinitions="48,1.6*,Auto,*">
 
                                 <!-- Row number, swapped for the animated EQ on the playing track.
                                      EQ is centered over the digit column; numbers use tabular
