@@ -215,6 +215,11 @@ public class VlcAudioPlayer : IAudioPlayer
     // does not expose a reliable IsPaused property.
     private volatile bool _isPaused;
 
+    // Seek() restarts the track for near-start seeks (see StartSeekRestartThresholdMs).
+    // When that restart happens while paused, the new input must open paused too —
+    // otherwise dragging the slider to the beginning while paused starts playback.
+    private volatile bool _restartPausedRequest;
+
     private long _playbackSessionId;
     private long _lastPlayStartTicksUtc;
 
@@ -1654,6 +1659,11 @@ public class VlcAudioPlayer : IAudioPlayer
         _keepAlive?.NotifyActivity();
         _currentMediaPath = filePath;
 
+        // Capture on the calling thread so a competing Play() queued right after
+        // cannot consume a restart-paused request meant for this call.
+        var startPaused = _restartPausedRequest;
+        _restartPausedRequest = false;
+
         // All heavy work on ThreadPool, serialized by the lock.
         ThreadPool.QueueUserWorkItem(_ =>
         {
@@ -1662,7 +1672,7 @@ public class VlcAudioPlayer : IAudioPlayer
 
             try
             {
-                PlayInternal(filePath);
+                PlayInternal(filePath, startPaused);
             }
             finally
             {
@@ -1684,7 +1694,7 @@ public class VlcAudioPlayer : IAudioPlayer
     /// the AAC/ALAC codec inside the MP4 container, causing silent playback
     /// or immediate EndReached.
     /// </summary>
-    private void PlayInternal(string filePath)
+    private void PlayInternal(string filePath, bool startPaused = false)
     {
         try
         {
@@ -1714,7 +1724,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // Crossfade needs two simultaneous streams; the WASAPI callback sinks
             // are single-stream, so disable the transition fade on those paths.
             var canTransitionFade = _crossfadeEnabled && hadPreviousMedia && !_player.Mute &&
-                                    _wasapiOut == null && !_exclusiveModeEnabled;
+                                    _wasapiOut == null && !_exclusiveModeEnabled && !startPaused;
             var fadeOutMs = canTransitionFade && _player.IsPlaying
                 ? Math.Clamp(_crossfadeDurationMs / 2, 100, 6000)
                 : 0;
@@ -1743,7 +1753,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // Gapless: no crossfade, but the next track was prepared on the
             // standby player — hand off to it instantly at full volume instead
             // of the audible stop/parse/start path.
-            if (!canTransitionFade && _gaplessEnabled && _standbyPrepared && hadPreviousMedia &&
+            if (!canTransitionFade && !startPaused && _gaplessEnabled && _standbyPrepared && hadPreviousMedia &&
                 TryStartPreparedAutoMix(filePath, targetVolume, sessionId, cancel, instantHandoff: true))
             {
                 Interlocked.Exchange(ref _pendingSeekMs, -1);
@@ -1817,9 +1827,17 @@ public class VlcAudioPlayer : IAudioPlayer
                 _currentMedia.AddOption(":audio-replay-gain-default=-7.0");
             }
 
+            // Restart requested while paused (drag-to-start / Previous): open the
+            // new input paused on its first frame so the restart never becomes
+            // audible playback.
+            if (startPaused)
+                _currentMedia.AddOption(":start-paused");
+
             // 5. Start playback
             Interlocked.Exchange(ref _lastPlayStartTicksUtc, DateTime.UtcNow.Ticks);
             _player.Play(_currentMedia);
+            if (startPaused)
+                _isPaused = true; // input opens paused (:start-paused) — keep reported state in sync
 
             // Re-apply volume curve and equalizer after starting new media
             if (fadeInMs > 0)
@@ -1877,7 +1895,9 @@ public class VlcAudioPlayer : IAudioPlayer
             }
 
             // 7. Start position timer and fire initial duration update after brief delay
-            _positionTimer.Start();
+            // (paused restarts leave it stopped, exactly like Pause() does)
+            if (!startPaused)
+                _positionTimer.Start();
 
             // The new output session opens at 100% — push the user level onto it
             // as soon as it appears so there's no full-volume blip on track start.
@@ -2821,6 +2841,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // Apply the residual offset (e.g. drag to 0.4s) after the clean
             // restart; exact-zero restarts need no pending seek.
             Interlocked.Exchange(ref _pendingSeekMs, clampedMs > 0 ? clampedMs : -1);
+            _restartPausedRequest = _isPaused;
             Play(_currentMediaPath);
             return;
         }
