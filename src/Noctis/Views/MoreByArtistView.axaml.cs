@@ -23,9 +23,11 @@ public partial class MoreByArtistView : UserControl
         if (e.NewSize.Width <= 0 || DataContext is not MoreByArtistViewModel vm)
             return;
 
-        var usable = e.NewSize.Width - 64;
+        // Mirror LibraryAlbumsView sizing so artwork fills the 5 columns identically:
+        // ScrollViewer Padding is 12,_,2 (14px horiz) + each tile Margin="2" (4px horiz).
+        var usable = e.NewSize.Width - 24;
         var tileContentWidth = usable / 5.0 - 8;
-        var newSize = Math.Max(96, tileContentWidth);
+        var newSize = Math.Max(80, tileContentWidth);
 
         if (Math.Abs(newSize - vm.TileArtworkSize) < 0.5)
             return;
