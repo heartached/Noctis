@@ -84,6 +84,12 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         var roots = settings.MusicFolders;
         var tracks = _library.Tracks.ToList();
 
+        // Capture the selected folder's path before the rebuild swaps in fresh
+        // FolderNode instances. Clearing RootNodes drops the TreeView's selection, so
+        // without re-selecting the equivalent new node a background refresh (e.g. a
+        // dropped/added track) kicks the user out of the folder they were viewing.
+        var selectedPath = SelectedNode?.FullPath;
+
         // Rebuilds create fresh FolderNode instances, so carry expansion over
         // by folder path or the tree collapses on every library update.
         var expansion = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
@@ -99,16 +105,18 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         foreach (var root in forest)
             RootNodes.Add(root);
 
-        var keep = SelectedNode;
-        if (keep == null || !ContainsNode(forest, keep.FullPath))
+        // Re-select the equivalent node in the rebuilt forest (matched by path) so the
+        // user stays in their folder and the track pane refreshes against the NEW node —
+        // which includes any just-added tracks in folder order.
+        var reselected = selectedPath != null ? FindNode(forest, selectedPath) : null;
+        if (reselected != null)
         {
-            SelectedNode = null;
-            SelectedFolderTracks.ReplaceAll(Array.Empty<Track>());
+            SelectedNode = reselected;
         }
         else
         {
-            // Re-run selection handler to refresh the track pane against the new forest.
-            OnSelectedNodeChanged(SelectedNode);
+            SelectedNode = null;
+            SelectedFolderTracks.ReplaceAll(Array.Empty<Track>());
         }
     }
 
@@ -121,33 +129,55 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         RebuildTrackPane();
     }
 
+    /// <summary>Raised when a search should reveal a track in a selected folder — the
+    /// view scrolls it into view and selects it (a "find", not a filter).</summary>
+    public event EventHandler<Track>? ScrollToTrackRequested;
+
     private void RebuildTrackPane()
     {
         var hasFilter = !string.IsNullOrWhiteSpace(_currentFilter);
-        var sink = new List<Track>();
 
+        // With a folder selected, a search does NOT filter the list: it keeps the full
+        // folder (numbered by real position) and scrolls to / highlights the first
+        // matching track, so it shows in context with its neighbours.
         if (SelectedNode != null)
-            Collect(SelectedNode, sink);
-        else if (hasFilter)
-            // No folder selected: search across all roots so the box still works.
-            foreach (var root in RootNodes)
-                Collect(root, sink);
-
-        if (hasFilter)
         {
-            var q = _currentFilter.Trim();
-            sink = sink.Where(t =>
-                (t.Title?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (t.Artist?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (t.Album?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+            var sink = new List<Track>();
+            Collect(SelectedNode, sink);
+            for (int i = 0; i < sink.Count; i++)
+                sink[i].RowNumber = i + 1;
+            SelectedFolderTracks.ReplaceAll(sink);
+
+            if (hasFilter)
+            {
+                var q = _currentFilter.Trim();
+                var match = sink.FirstOrDefault(t => MatchesFilter(t, q));
+                if (match != null)
+                    ScrollToTrackRequested?.Invoke(this, match);
+            }
+            return;
         }
 
-        // Assign 1-based list positions for the leading row-number column.
-        for (int i = 0; i < sink.Count; i++)
-            sink[i].RowNumber = i + 1;
-
-        SelectedFolderTracks.ReplaceAll(sink);
+        // No folder selected: fall back to filtering across all roots so the box still
+        // does something (there's no single list to scroll within). Numbers reflect the
+        // combined all-roots order.
+        var all = new List<Track>();
+        if (hasFilter)
+        {
+            foreach (var root in RootNodes)
+                Collect(root, all);
+            for (int i = 0; i < all.Count; i++)
+                all[i].RowNumber = i + 1;
+            var q = _currentFilter.Trim();
+            all = all.Where(t => MatchesFilter(t, q)).ToList();
+        }
+        SelectedFolderTracks.ReplaceAll(all);
     }
+
+    private static bool MatchesFilter(Track t, string q) =>
+        (t.Title?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+        (t.Artist?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+        (t.Album?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false);
 
     private static void Collect(FolderNode node, List<Track> sink)
     {
@@ -171,16 +201,17 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
             RestoreExpansion(child, map);
     }
 
-    private static bool ContainsNode(IReadOnlyList<FolderNode> forest, string fullPath)
+    private static FolderNode? FindNode(IReadOnlyList<FolderNode> forest, string fullPath)
     {
         foreach (var n in forest)
         {
             if (string.Equals(n.FullPath, fullPath, StringComparison.OrdinalIgnoreCase))
-                return true;
-            if (ContainsNode(n.Children.ToList(), fullPath))
-                return true;
+                return n;
+            var found = FindNode(n.Children.ToList(), fullPath);
+            if (found != null)
+                return found;
         }
-        return false;
+        return null;
     }
 
     [RelayCommand]
