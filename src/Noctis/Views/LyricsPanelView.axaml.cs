@@ -24,7 +24,8 @@ public partial class LyricsPanelView : UserControl
 {
     private LyricsViewModel? _vm;
     private int _lastScrolledIndex = -1;
-    private DispatcherTimer? _scrollTimer;
+    // Bumped to invalidate any in-flight frame-clock scroll animation (replaces stopping a timer).
+    private int _scrollAnimationGeneration;
     private DispatcherTimer? _followResumeTimer;
     private bool _isProgrammaticScroll;
     private bool _followPaused;
@@ -197,29 +198,56 @@ public partial class LyricsPanelView : UserControl
         }, TimeSpan.FromMilliseconds(10));
     }
 
+    // Frame-clock animation via TopLevel.RequestAnimationFrame: vsync-locked, unlike a
+    // 16ms DispatcherTimer that beats against the compositor's ~16.7ms frame interval.
     private void AnimateScroll(double from, double to, int durationMs)
     {
         CancelScrollAnimation();
         _isProgrammaticScroll = true;
 
+        var generation = _scrollAnimationGeneration;
         var stopwatch = Stopwatch.StartNew();
-        _scrollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        _scrollTimer.Tick += (_, _) =>
+
+        void Frame(TimeSpan _)
         {
+            // Superseded or cancelled: the canceller already reset the flag.
+            if (generation != _scrollAnimationGeneration) return;
+
             var t = Math.Min(1.0, stopwatch.Elapsed.TotalMilliseconds / durationMs);
             // Smootherstep: glides in and out instead of jumping.
             var eased = t * t * t * (t * (t * 6 - 15) + 10);
             PanelScrollViewer.Offset = new Vector(0, from + (to - from) * eased);
+
             if (t >= 1.0)
+            {
                 CancelScrollAnimation();
-        };
-        _scrollTimer.Start();
+                return;
+            }
+
+            RequestScrollFrame(Frame, to);
+        }
+
+        RequestScrollFrame(Frame, to);
+    }
+
+    // Schedules the next animation frame; if the panel left the visual tree mid-animation
+    // (no TopLevel → no frame callbacks), snaps to the target so the offset never strands.
+    private void RequestScrollFrame(Action<TimeSpan> frame, double to)
+    {
+        if (TopLevel.GetTopLevel(this) is { } topLevel)
+        {
+            topLevel.RequestAnimationFrame(frame);
+        }
+        else
+        {
+            PanelScrollViewer.Offset = new Vector(0, to);
+            CancelScrollAnimation();
+        }
     }
 
     private void CancelScrollAnimation()
     {
-        _scrollTimer?.Stop();
-        _scrollTimer = null;
+        _scrollAnimationGeneration++;
         _isProgrammaticScroll = false;
     }
 }

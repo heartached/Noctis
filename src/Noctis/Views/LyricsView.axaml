@@ -789,11 +789,13 @@
 
             <!-- (Color picker moved to left panel bottom) -->
 
-            <!-- Search Lyrics Button (when no lyrics) -->
+            <!-- Search Lyrics Button (when no lyrics) — frosted pill so it sits
+                 naturally on the blurred-artwork backdrop like the other
+                 lyrics-page pills. -->
             <StackPanel HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Margin="-50,0,0,0"
-                        Spacing="12"
+                        Spacing="14"
                         IsVisible="{Binding ShowSearchButton}"
                         ZIndex="3">
                 <TextBlock Text="{Binding SearchFailedMessage}"
@@ -801,39 +803,36 @@
                            Foreground="{Binding LyricsSubtleFg}"
                            HorizontalAlignment="Center"
                            IsVisible="{Binding SearchFailedMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                <Button Classes="accent-btn"
-                        Background="{DynamicResource AccentColorBrush}"
-                        Foreground="{DynamicResource AccentForegroundBrush}"
-                        Padding="16,8"
-                        FontSize="13"
-                        FontWeight="SemiBold"
-                        CornerRadius="20"
-                        Cursor="Hand"
+                <Button Classes="pill-btn"
+                        Padding="20,9"
+                        CornerRadius="22"
                         Command="{Binding SearchLyricsCommand}"
                         HorizontalAlignment="Center">
-                    <TextBlock Text="Search lyrics"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource AccentForegroundBrush}"/>
+                    <TextBlock Text="Search Lyrics"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="White"
+                               VerticalAlignment="Center"/>
                 </Button>
             </StackPanel>
 
-            <!-- Searching indicator with pulse animation -->
-            <TextBlock x:Name="SearchingText"
-                       Text="Searching for Lyrics..."
-                       FontSize="16"
-                       Foreground="{Binding LyricsSubtleFg}"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       Margin="-50,0,0,0"
-                       IsVisible="{Binding IsSearching}"
-                       ZIndex="3">
-                <TextBlock.Styles>
-                    <Style Selector="TextBlock#SearchingText[IsVisible=True]">
+            <!-- Searching indicator: three staggered pulsing dots + label -->
+            <StackPanel x:Name="SearchingIndicator"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Margin="-50,0,0,0"
+                        Spacing="14"
+                        IsVisible="{Binding IsSearching}"
+                        ZIndex="3">
+                <StackPanel.Styles>
+                    <!-- Animations keyed on [IsVisible=True] so they only run while
+                         searching (same pattern as the previous pulse text). -->
+                    <Style Selector="StackPanel#SearchingIndicator[IsVisible=True] Ellipse.dot1">
                         <Style.Animations>
-                            <Animation Duration="0:0:1.5" IterationCount="INFINITE"
+                            <Animation Duration="0:0:0.9" IterationCount="INFINITE"
                                        Easing="SineEaseInOut" PlaybackDirection="Alternate">
                                 <KeyFrame Cue="0%">
-                                    <Setter Property="Opacity" Value="0.3"/>
+                                    <Setter Property="Opacity" Value="0.25"/>
                                 </KeyFrame>
                                 <KeyFrame Cue="100%">
                                     <Setter Property="Opacity" Value="1.0"/>
@@ -841,8 +840,43 @@
                             </Animation>
                         </Style.Animations>
                     </Style>
-                </TextBlock.Styles>
-            </TextBlock>
+                    <Style Selector="StackPanel#SearchingIndicator[IsVisible=True] Ellipse.dot2">
+                        <Style.Animations>
+                            <Animation Duration="0:0:0.9" Delay="0:0:0.2" IterationCount="INFINITE"
+                                       Easing="SineEaseInOut" PlaybackDirection="Alternate">
+                                <KeyFrame Cue="0%">
+                                    <Setter Property="Opacity" Value="0.25"/>
+                                </KeyFrame>
+                                <KeyFrame Cue="100%">
+                                    <Setter Property="Opacity" Value="1.0"/>
+                                </KeyFrame>
+                            </Animation>
+                        </Style.Animations>
+                    </Style>
+                    <Style Selector="StackPanel#SearchingIndicator[IsVisible=True] Ellipse.dot3">
+                        <Style.Animations>
+                            <Animation Duration="0:0:0.9" Delay="0:0:0.4" IterationCount="INFINITE"
+                                       Easing="SineEaseInOut" PlaybackDirection="Alternate">
+                                <KeyFrame Cue="0%">
+                                    <Setter Property="Opacity" Value="0.25"/>
+                                </KeyFrame>
+                                <KeyFrame Cue="100%">
+                                    <Setter Property="Opacity" Value="1.0"/>
+                                </KeyFrame>
+                            </Animation>
+                        </Style.Animations>
+                    </Style>
+                </StackPanel.Styles>
+                <StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center">
+                    <Ellipse Classes="dot1" Width="9" Height="9" Fill="{Binding LyricsPrimaryFg}" Opacity="0.25"/>
+                    <Ellipse Classes="dot2" Width="9" Height="9" Fill="{Binding LyricsPrimaryFg}" Opacity="0.25"/>
+                    <Ellipse Classes="dot3" Width="9" Height="9" Fill="{Binding LyricsPrimaryFg}" Opacity="0.25"/>
+                </StackPanel>
+                <TextBlock Text="Searching for Lyrics"
+                           FontSize="14"
+                           Foreground="{Binding LyricsSubtleFg}"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
 
             <!-- Opacity-masked lyrics container.
                  ClipToBounds=False so the active line's 1.07× scale doesn't get hard-clipped

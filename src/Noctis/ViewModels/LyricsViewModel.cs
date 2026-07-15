@@ -35,7 +35,7 @@ public partial class ColorSwatch : ObservableObject
 /// <summary>
 /// ViewModel for the Lyrics view that displays synchronized lyrics
 /// alongside album art and playback controls.
-/// Supports: embedded lyrics, .lrc files with timestamp syncing.
+/// Supports: embedded lyrics, .lrc/.ttml files with timestamp syncing.
 /// </summary>
 public partial class LyricsViewModel : ViewModelBase, IDisposable
 {
@@ -1600,7 +1600,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// via <see cref="Dispatcher.UIThread.Post"/>. Guarded by <see cref="_searchGeneration"/>
     /// so stale results from a previous track can't overwrite the current track's lyrics.
     ///
-    /// Priority: .lyricsfile sidecar → .lrc sidecar → embedded tags → cache file.
+    /// Priority: .lyricsfile sidecar → .ttml sidecar → .lrc sidecar → embedded tags → cache file.
     /// </summary>
     private async Task LoadLocalLyricsAsync(Track track, int generation)
     {
@@ -1637,7 +1637,20 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
         catch { }
 
-        // Priority 2: .lrc sidecar (line-level).
+        // Priority 2: .ttml sidecar (word- or line-level, Apple Music style).
+        try
+        {
+            var sidecarTtml = TryReadSidecar(track.FilePath, new[] { ".ttml", ".TTML", ".Ttml" });
+            if (sidecarTtml != null)
+            {
+                var (lines, plain) = TtmlParser.Parse(sidecarTtml);
+                if (lines != null && lines.Count > 0)
+                    return new LocalLyricsProbe(lines, plain, "Sidecar:Ttml", FromCache: false);
+            }
+        }
+        catch { }
+
+        // Priority 3: .lrc sidecar (line-level).
         try
         {
             var sidecarLrc = TryReadSidecar(track.FilePath, new[] { ".lrc", ".LRC", ".Lrc" });
@@ -1650,13 +1663,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
         catch { }
 
-        // Priority 3: embedded metadata is pure in-memory — defer to the UI-thread handler.
+        // Priority 4: embedded metadata is pure in-memory — defer to the UI-thread handler.
         var hasSyncedField = !string.IsNullOrWhiteSpace(track.SyncedLyrics);
         var hasPlainField = !string.IsNullOrWhiteSpace(track.Lyrics);
         if (hasSyncedField || hasPlainField)
             return new LocalLyricsProbe(null, null, "Embedded", FromCache: false);
 
-        // Priority 4: online cache (Lyricsfile preferred, fall back to .lrc).
+        // Priority 5: online cache (Lyricsfile preferred, fall back to .lrc).
         try
         {
             var cachedYaml = TryReadCacheFile(track.Id, ".lyricsfile");

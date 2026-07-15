@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Noctis.ViewModels;
@@ -20,9 +21,31 @@ public partial class SyncedLyricEditorLine : ObservableObject
     {
         _timestamp = timestamp;
         Text = text;
+        DisplayText = StripWordTags(text);
+        HasWordTiming = DisplayText != text;
     }
 
     public string Text { get; }
+
+    /// <summary>
+    /// Lyric text with inline enhanced-LRC word tags (&lt;mm:ss.xx&gt;) stripped, so
+    /// display rows show the words instead of the markup. Save round-trips the raw
+    /// Text, so word timing is never lost by viewing.
+    /// </summary>
+    public string DisplayText { get; }
+
+    /// <summary>True when the raw text carries inline word-timing tags.</summary>
+    public bool HasWordTiming { get; }
+
+    private static readonly Regex WordTagRegex = new(@"<\d{1,2}:\d{2}(?:\.\d{1,3})?>", RegexOptions.Compiled);
+
+    private static string StripWordTags(string text)
+    {
+        if (!text.Contains('<')) return text;
+        var stripped = WordTagRegex.Replace(text, string.Empty);
+        if (ReferenceEquals(stripped, text) || stripped == text) return text;
+        return Regex.Replace(stripped, @"\s{2,}", " ").Trim();
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasTimestamp))]
