@@ -67,11 +67,30 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         _ => "Default",
     };
 
+    /// <summary>Label for the release-type dropdown button.</summary>
+    public string ReleaseTypeFilterLabel => ReleaseTypeFilter switch
+    {
+        ReleaseType.Album => "Albums",
+        ReleaseType.Single => "Singles",
+        ReleaseType.EP => "EPs",
+        ReleaseType.Compilation => "Other",
+        _ => "All",
+    };
+
+    /// <summary>Label for the quality dropdown button.</summary>
+    public string QualityFilterLabel => QualityFilter switch
+    {
+        "lossless" => "Lossless",
+        "hires" => "Hi-Res",
+        _ => "All",
+    };
+
     partial void OnQualityFilterChanged(string value)
     {
         foreach (var chip in QualityChips)
             chip.IsActive = chip.Key == value;
         OnPropertyChanged(nameof(HasActiveFilter));
+        OnPropertyChanged(nameof(QualityFilterLabel));
         RebuildFilteredRows();
     }
 
@@ -91,6 +110,21 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
     [RelayCommand]
     private void SetAlbumSort(string mode) => AlbumSortMode = mode;
+
+    /// <summary>Sets the release-type filter from a dropdown key ("all" clears it).</summary>
+    [RelayCommand]
+    private void SetReleaseTypeFilter(string key) => ReleaseTypeFilter = key switch
+    {
+        "album" => ReleaseType.Album,
+        "single" => ReleaseType.Single,
+        "ep" => ReleaseType.EP,
+        "other" => ReleaseType.Compilation,
+        _ => null,
+    };
+
+    /// <summary>Sets the quality filter from a dropdown key ("all" clears it).</summary>
+    [RelayCommand]
+    private void SetQualityFilter(string key) => QualityFilter = key == "all" ? string.Empty : key;
 
     partial void OnTileArtworkSizeChanged(double value)
     {
@@ -165,6 +199,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         foreach (var chip in ReleaseTypeChips)
             chip.IsActive = chip.Filter == value;
         OnPropertyChanged(nameof(HasActiveFilter));
+        OnPropertyChanged(nameof(ReleaseTypeFilterLabel));
         RebuildFilteredRows();
     }
 

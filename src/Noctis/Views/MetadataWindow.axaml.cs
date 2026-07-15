@@ -50,22 +50,20 @@ public partial class MetadataWindow : Window
         DataContext = viewModel;
         viewModel.CloseRequested += (_, _) => Close();
 
-        // Avalonia's Flyout.IsOpen binding receives state from the flyout but
-        // does NOT invoke Hide() when the source property flips to false. We
-        // bridge it manually so the VM can dismiss the flyout after the user
-        // picks a variant (download then runs in the background).
+        // Both search flyouts are AttachedFlyouts anchored on the preview borders
+        // (so they open centered over the artwork, not at the Search buttons) and
+        // AttachedFlyout has no IsOpen binding — drive open/close from the VM here.
         viewModel.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(MetadataViewModel.IsAnimatedArtworkSearchOpen) &&
-                !viewModel.IsAnimatedArtworkSearchOpen)
+            if (e.PropertyName == nameof(MetadataViewModel.IsAnimatedArtworkSearchOpen))
             {
-                (SearchAnimatedArtworkButton?.Flyout as Avalonia.Controls.Flyout)?.Hide();
+                if (viewModel.IsAnimatedArtworkSearchOpen)
+                    ShowAnimatedSearchFlyout();
+                else
+                    _animatedSearchFlyout?.Hide();
             }
             else if (e.PropertyName == nameof(MetadataViewModel.IsArtworkSearchOpen))
             {
-                // The artwork-search flyout is attached to the centered button bar
-                // (not the off-center Search button), so it opens centered in the
-                // dialog. Drive it from code since AttachedFlyout has no IsOpen binding.
                 if (viewModel.IsArtworkSearchOpen)
                     ShowArtworkSearchFlyout();
                 else
@@ -75,10 +73,12 @@ public partial class MetadataWindow : Window
     }
 
     private Avalonia.Controls.Flyout? _artworkSearchFlyout;
+    private Avalonia.Controls.Flyout? _animatedSearchFlyout;
 
     private void ShowArtworkSearchFlyout()
     {
-        if (ArtworkButtonsBar is null) return;
+        if (ArtworkButtonsBar is null || ArtworkPreviewAnchor is null) return;
+        // Declared on the button bar, but shown centered over the preview.
         _artworkSearchFlyout ??= FlyoutBase.GetAttachedFlyout(ArtworkButtonsBar) as Avalonia.Controls.Flyout;
         if (_artworkSearchFlyout is null) return;
 
@@ -86,13 +86,30 @@ public partial class MetadataWindow : Window
         // so a later search reopens it.
         _artworkSearchFlyout.Closed -= OnArtworkSearchFlyoutClosed;
         _artworkSearchFlyout.Closed += OnArtworkSearchFlyoutClosed;
-        _artworkSearchFlyout.ShowAt(ArtworkButtonsBar);
+        _artworkSearchFlyout.ShowAt(ArtworkPreviewAnchor);
     }
 
     private void OnArtworkSearchFlyoutClosed(object? sender, EventArgs e)
     {
         if (DataContext is MetadataViewModel vm)
             vm.IsArtworkSearchOpen = false;
+    }
+
+    private void ShowAnimatedSearchFlyout()
+    {
+        if (AnimatedCoverPreviewAnchor is null) return;
+        _animatedSearchFlyout ??= FlyoutBase.GetAttachedFlyout(AnimatedCoverPreviewAnchor) as Avalonia.Controls.Flyout;
+        if (_animatedSearchFlyout is null) return;
+
+        _animatedSearchFlyout.Closed -= OnAnimatedSearchFlyoutClosed;
+        _animatedSearchFlyout.Closed += OnAnimatedSearchFlyoutClosed;
+        _animatedSearchFlyout.ShowAt(AnimatedCoverPreviewAnchor);
+    }
+
+    private void OnAnimatedSearchFlyoutClosed(object? sender, EventArgs e)
+    {
+        if (DataContext is MetadataViewModel vm)
+            vm.IsAnimatedArtworkSearchOpen = false;
     }
 
     private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)

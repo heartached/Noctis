@@ -16,8 +16,8 @@ public sealed partial class MetadataChangeRow : ObservableObject
     public string OldValue { get; }
     public string NewValue { get; }
 
-    /// <summary>"old → new" display string for the row template.</summary>
-    public string Display => $"{(string.IsNullOrEmpty(OldValue) ? "—" : OldValue)}  →  {NewValue}";
+    /// <summary>Old value for the row template ("—" when the field was empty).</summary>
+    public string OldDisplay => OldValue.Length == 0 ? "—" : OldValue;
 
     [ObservableProperty] private bool _apply = true;
 

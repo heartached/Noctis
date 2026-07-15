@@ -289,15 +289,23 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _albumSortCommand;
     [ObservableProperty] private string _albumSortLabel = "Default";
 
+    // Dropdown variants of the release-type / quality filters (albums grid top bar).
+    [ObservableProperty] private ICommand? _releaseTypeFilterCommand;
+    [ObservableProperty] private string _releaseTypeFilterLabel = "All";
+    [ObservableProperty] private ICommand? _qualityFilterCommand;
+    [ObservableProperty] private string _qualityFilterLabel = "All";
+
     public void ShowReleaseTypeChips(ObservableCollection<ReleaseTypeChip> chips, ICommand selectCommand,
         ObservableCollection<QualityChip>? qualityChips = null, ICommand? qualityCommand = null,
-        ICommand? sortCommand = null)
+        ICommand? sortCommand = null, ICommand? releaseTypeFilterCommand = null, ICommand? qualityFilterCommand = null)
     {
         ReleaseTypeChips = chips;
         ReleaseTypeChipCommand = selectCommand;
         QualityChips = qualityChips;
         QualityChipCommand = qualityCommand;
         AlbumSortCommand = sortCommand;
+        ReleaseTypeFilterCommand = releaseTypeFilterCommand;
+        QualityFilterCommand = qualityFilterCommand;
         HasReleaseTypeChips = true;
     }
 

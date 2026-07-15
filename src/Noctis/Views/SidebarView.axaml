@@ -143,8 +143,10 @@
                     Opacity="0.1"
                     Margin="8,0,8,6" />
 
-            <!-- Scrollable content fills remaining space -->
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
+            <!-- Scrollable content fills remaining space. Scrollbar stays hidden
+                 (wheel/touch still scroll) so it never cuts through the 60px
+                 collapsed rail when many playlists overflow the viewport. -->
+            <ScrollViewer VerticalScrollBarVisibility="Hidden"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
 

@@ -114,7 +114,7 @@ public sealed class TaskbarIntegrationService : IDisposable
 
     private const uint THB_ICON = 0x0002, THB_TOOLTIP = 0x0004, THB_FLAGS = 0x0008;
     private const uint THBF_ENABLED = 0x0000;
-    private const uint WM_COMMAND = 0x0111, THBN_CLICKED = 0x1800;
+    private const uint WM_COMMAND = 0x0111, WM_SETTINGCHANGE = 0x001A, THBN_CLICKED = 0x1800;
     private const uint ID_PREV = 1, ID_PLAY = 2, ID_NEXT = 3, ID_FAVORITE = 4;
     private const int IconSize = 20;
     private const uint DWMWA_DISALLOW_PEEK = 11;
@@ -154,6 +154,9 @@ public sealed class TaskbarIntegrationService : IDisposable
     private IntPtr _icoHeart, _icoHeartFilled;
     private bool _ready;
     private uint _taskbarButtonCreatedMsg;
+    // The thumbnail flyout follows the Windows (taskbar) theme, not the app theme;
+    // glyphs must be dark on a light flyout to stay readable.
+    private bool _lightTaskbar;
     // Last known UI state, so re-added buttons show the right glyphs after the
     // taskbar button is recreated (tray hide/show, Explorer restart, DPI change).
     private bool _isPlaying, _isFavorite;
@@ -184,14 +187,8 @@ public sealed class TaskbarIntegrationService : IDisposable
             int disallowPeek = 1;
             DwmSetWindowAttribute(_hwnd, DWMWA_DISALLOW_PEEK, ref disallowPeek, sizeof(int));
 
-            _icoPrev = MakeIcon(PathPrevious);
-            _icoPlay = MakeIcon(PathPlay);
-            _icoPause = MakeIcon(PathPause);
-            _icoNext = MakeIcon(PathNext);
-            // The outline heart is a thin-outline glyph that reads lighter than the solid
-            // play/prev/next icons. Add a bold stroke pass so its visual weight matches at 20×20.
-            _icoHeart = MakeIcon(PathHeartOutline, boldenOutline: true);
-            _icoHeartFilled = MakeIcon(PathHeartFilled);
+            _lightTaskbar = IsLightTaskbarTheme();
+            CreateIcons();
 
             AddButtons();
 
@@ -238,14 +235,57 @@ public sealed class TaskbarIntegrationService : IDisposable
     {
         if (_taskbar == null) return;
 
-        var buttons = new[]
-        {
-            Btn(ID_PREV, _icoPrev, "Previous"),
-            Btn(ID_PLAY, _isPlaying ? _icoPause : _icoPlay, _isPlaying ? "Pause" : "Play"),
-            Btn(ID_NEXT, _icoNext, "Forward"),
-            Btn(ID_FAVORITE, _isFavorite ? _icoHeartFilled : _icoHeart, _isFavorite ? "Unfavorite" : "Favorite"),
-        };
+        var buttons = BuildButtons();
         _taskbar.ThumbBarAddButtons(_hwnd, (uint)buttons.Length, buttons);
+    }
+
+    private THUMBBUTTON[] BuildButtons() => new[]
+    {
+        Btn(ID_PREV, _icoPrev, "Previous"),
+        Btn(ID_PLAY, _isPlaying ? _icoPause : _icoPlay, _isPlaying ? "Pause" : "Play"),
+        Btn(ID_NEXT, _icoNext, "Forward"),
+        Btn(ID_FAVORITE, _isFavorite ? _icoHeartFilled : _icoHeart, _isFavorite ? "Unfavorite" : "Favorite"),
+    };
+
+    private void CreateIcons()
+    {
+        _icoPrev = MakeIcon(PathPrevious);
+        _icoPlay = MakeIcon(PathPlay);
+        _icoPause = MakeIcon(PathPause);
+        _icoNext = MakeIcon(PathNext);
+        // The outline heart is a thin-outline glyph that reads lighter than the solid
+        // play/prev/next icons. Add a bold stroke pass so its visual weight matches at 20×20.
+        _icoHeart = MakeIcon(PathHeartOutline, boldenOutline: true);
+        _icoHeartFilled = MakeIcon(PathHeartFilled);
+    }
+
+    private void DestroyIcons()
+    {
+        if (_icoPrev != IntPtr.Zero) DestroyIcon(_icoPrev);
+        if (_icoPlay != IntPtr.Zero) DestroyIcon(_icoPlay);
+        if (_icoPause != IntPtr.Zero) DestroyIcon(_icoPause);
+        if (_icoNext != IntPtr.Zero) DestroyIcon(_icoNext);
+        if (_icoHeart != IntPtr.Zero) DestroyIcon(_icoHeart);
+        if (_icoHeartFilled != IntPtr.Zero) DestroyIcon(_icoHeartFilled);
+        _icoPrev = _icoPlay = _icoPause = _icoNext = _icoHeart = _icoHeartFilled = IntPtr.Zero;
+    }
+
+    /// <summary>
+    /// True when the Windows shell (taskbar/flyouts) uses the light theme —
+    /// "SystemUsesLightTheme", distinct from the app theme ("AppsUseLightTheme").
+    /// </summary>
+    private static bool IsLightTaskbarTheme()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            return key?.GetValue("SystemUsesLightTheme") is int i && i != 0;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     // ── WndProc hook ─────────────────────────────────────────────
@@ -257,6 +297,23 @@ public sealed class TaskbarIntegrationService : IDisposable
         {
             // Taskbar button was recreated — the old thumbnail toolbar is gone.
             AddButtons();
+        }
+        else if (msg == WM_SETTINGCHANGE && lParam != IntPtr.Zero &&
+                 Marshal.PtrToStringUni(lParam) == "ImmersiveColorSet")
+        {
+            // Windows theme changed while running — re-render the glyphs so they
+            // stay readable against the new flyout background.
+            bool light = IsLightTaskbarTheme();
+            if (light != _lightTaskbar && _taskbar != null)
+            {
+                _lightTaskbar = light;
+                var old = new[] { _icoPrev, _icoPlay, _icoPause, _icoNext, _icoHeart, _icoHeartFilled };
+                CreateIcons();
+                var buttons = BuildButtons();
+                _taskbar.ThumbBarUpdateButtons(_hwnd, (uint)buttons.Length, buttons);
+                foreach (var h in old)
+                    if (h != IntPtr.Zero) DestroyIcon(h);
+            }
         }
         else if (msg == WM_COMMAND)
         {
@@ -290,7 +347,7 @@ public sealed class TaskbarIntegrationService : IDisposable
 
     // ── Icon creation via SkiaSharp (SVG path rendering) ─────────
 
-    private static IntPtr MakeIcon(string svgPathData, byte alpha = 0xFF, bool boldenOutline = false)
+    private IntPtr MakeIcon(string svgPathData, byte alpha = 0xFF, bool boldenOutline = false)
     {
         const float viewBox = 24f;
         const float padding = 2f;
@@ -308,9 +365,12 @@ public sealed class TaskbarIntegrationService : IDisposable
         canvas.Translate(padding, padding);
         canvas.Scale(scale, scale);
 
+        // White glyphs on the dark flyout, near-black on the light one (matches
+        // Windows' own light-theme glyph color).
+        byte lum = _lightTaskbar ? (byte)0x1B : (byte)0xFF;
         using var paint = new SKPaint
         {
-            Color = new SKColor(0xFF, 0xFF, 0xFF, alpha),
+            Color = new SKColor(lum, lum, lum, alpha),
             IsAntialias = true,
             Style = SKPaintStyle.Fill,
         };
@@ -367,12 +427,7 @@ public sealed class TaskbarIntegrationService : IDisposable
         if (_ready && _hwnd != IntPtr.Zero && _wndProc != null)
             RemoveWindowSubclass(_hwnd, _wndProc, (UIntPtr)1);
 
-        if (_icoPrev != IntPtr.Zero) DestroyIcon(_icoPrev);
-        if (_icoPlay != IntPtr.Zero) DestroyIcon(_icoPlay);
-        if (_icoPause != IntPtr.Zero) DestroyIcon(_icoPause);
-        if (_icoNext != IntPtr.Zero) DestroyIcon(_icoNext);
-        if (_icoHeart != IntPtr.Zero) DestroyIcon(_icoHeart);
-        if (_icoHeartFilled != IntPtr.Zero) DestroyIcon(_icoHeartFilled);
+        DestroyIcons();
 
         _ready = false;
     }

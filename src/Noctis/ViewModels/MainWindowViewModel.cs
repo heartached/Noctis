@@ -234,11 +234,15 @@ public partial class MainWindowViewModel : ViewModelBase
         _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService, playHistory);
         _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence);
         _albumsVm = new LibraryAlbumsViewModel(library, Player, Sidebar, Settings);
-        // Keep the top-bar sort dropdown's label in sync with the Albums grid sort.
+        // Keep the top-bar dropdown labels in sync with the Albums grid filters/sort.
         _albumsVm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumSortLabel))
                 TopBar.AlbumSortLabel = _albumsVm.AlbumSortLabel;
+            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.ReleaseTypeFilterLabel))
+                TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
+            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.QualityFilterLabel))
+                TopBar.QualityFilterLabel = _albumsVm.QualityFilterLabel;
         };
         _artistsVm = new LibraryArtistsViewModel(library);
         _artistsVm.SetArtistImageService(artistImageService);
@@ -1767,8 +1771,11 @@ public partial class MainWindowViewModel : ViewModelBase
         if (show)
         {
             TopBar.ShowReleaseTypeChips(_albumsVm.ReleaseTypeChips, _albumsVm.SelectReleaseTypeChipCommand,
-                _albumsVm.QualityChips, _albumsVm.SelectQualityChipCommand, _albumsVm.SetAlbumSortCommand);
+                _albumsVm.QualityChips, _albumsVm.SelectQualityChipCommand, _albumsVm.SetAlbumSortCommand,
+                _albumsVm.SetReleaseTypeFilterCommand, _albumsVm.SetQualityFilterCommand);
             TopBar.AlbumSortLabel = _albumsVm.AlbumSortLabel;
+            TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
+            TopBar.QualityFilterLabel = _albumsVm.QualityFilterLabel;
         }
         else
         {

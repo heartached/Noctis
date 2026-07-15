@@ -15,10 +15,23 @@
         <conv:MetadataLineConverter x:Key="MetadataLine" />
     </Window.Resources>
 
-    <!-- Full-window dimmed overlay -->
-    <Border Background="#98000000"
+    <!-- Full-window dimmed overlay.
+         Starts transparent; code-behind fades it in on open and back out
+         before closing (mirrors the Settings modal animation). -->
+    <Border x:Name="DialogOverlay"
+            Background="#98000000"
+            Opacity="0"
             PointerPressed="OnOverlayPointerPressed"
             PointerWheelChanged="OnOverlayWheel">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
 
         <!-- Centered dialog card -->
         <Border x:Name="AlbumDescriptionCard"
@@ -32,7 +45,18 @@
                 CornerRadius="12"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="1"
+                RenderTransformOrigin="50%,50%"
+                RenderTransform="scale(0.96)"
                 Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Border.Transitions>
             <Grid RowDefinitions="Auto,*"
                   ColumnDefinitions="*,Auto,Auto">
                 <StackPanel Grid.Row="0"

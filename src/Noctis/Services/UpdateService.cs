@@ -14,6 +14,9 @@ public sealed class UpdateService
     // the in-app updater. We pick the highest-version release that has this platform's installer asset.
     private const string ReleaseUrl = "https://api.github.com/repos/heartached/Noctis/releases?per_page=10";
 
+    // Developer Mode version manager fetches the full recent history (GitHub caps per_page at 100).
+    private const string ReleaseListUrl = "https://api.github.com/repos/heartached/Noctis/releases?per_page=100";
+
     private readonly HttpClient _http;
 
     public UpdateService(HttpClient http)
@@ -211,6 +214,108 @@ public sealed class UpdateService
     }
 
     /// <summary>
+    /// Lists recent GitHub releases for the Developer Mode version manager,
+    /// newest first. Each entry carries the same verified-download fields the
+    /// updater uses, so any listed version can be installed via
+    /// <see cref="DownloadInstallerAsync(UpdateInfo, IProgress{double}?, CancellationToken)"/>.
+    /// </summary>
+    public async Task<List<ReleaseListItem>> ListReleasesAsync(CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, ReleaseListUrl);
+        request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+
+        using var response = await _http.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+
+        var releasesJson = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
+        var releases = System.Text.Json.JsonSerializer.Deserialize<List<GitHubRelease>>(releasesJson);
+        if (releases is null) return new List<ReleaseListItem>();
+
+        var items = new List<ReleaseListItem>();
+        foreach (var release in releases.Where(r => !r.Draft && !string.IsNullOrEmpty(r.TagName)))
+        {
+            var version = ParseTag(release.TagName!);
+            if (version is null) continue;
+
+            var installerAsset = FindInstallerAsset(release);
+            var checksumsAsset = FindChecksumsAsset(release);
+            var releaseUrl = release.HtmlUrl ?? $"https://github.com/heartached/Noctis/releases/tag/{release.TagName}";
+
+            items.Add(new ReleaseListItem
+            {
+                Version = version,
+                PublishedAt = release.PublishedAt,
+                WarningText = ExtractReleaseWarning(release.Body),
+                Info = new UpdateInfo
+                {
+                    TagName = release.TagName!,
+                    Version = version,
+                    IsPrerelease = release.Prerelease,
+                    InstallerApiUrl = installerAsset?.Url,
+                    InstallerUrl = installerAsset?.BrowserDownloadUrl,
+                    InstallerSize = installerAsset?.Size ?? 0,
+                    InstallerAssetName = installerAsset?.Name,
+                    ChecksumsApiUrl = checksumsAsset?.Url,
+                    ReleaseUrl = releaseUrl
+                }
+            });
+        }
+
+        return items.OrderByDescending(i => i.Version).ToList();
+    }
+
+    /// <summary>
+    /// Pulls the warning text out of a GitHub release body's "[!WARNING]" admonition
+    /// (the blockquote lines following the marker), so releases flagged in their notes
+    /// — e.g. v1.2.0's startup crash — surface a warning in the version manager
+    /// without hardcoding version numbers. The result is trimmed for a one-line UI:
+    /// markdown is stripped and only the first sentence is kept.
+    /// Returns null when the notes carry no warning.
+    /// </summary>
+    internal static string? ExtractReleaseWarning(string? body)
+    {
+        if (string.IsNullOrEmpty(body)) return null;
+
+        var lines = body.Replace("\r", "").Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (!lines[i].Contains("[!WARNING]", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var text = new List<string>();
+            for (int j = i + 1; j < lines.Length; j++)
+            {
+                var line = lines[j].Trim();
+                if (!line.StartsWith('>')) break;
+                var content = line.TrimStart('>', ' ').Trim();
+                if (content.Length > 0) text.Add(content);
+            }
+
+            return text.Count > 0
+                ? ShortenWarning(string.Join(" ", text))
+                : "This release has a known issue — see the release notes.";
+        }
+        return null;
+    }
+
+    /// <summary>Strips markdown links/emphasis and truncates to the first sentence.</summary>
+    private static string ShortenWarning(string text)
+    {
+        // "[label](url)" → "label", drop bold/code markers.
+        text = System.Text.RegularExpressions.Regex.Replace(text, @"\[([^\]]*)\]\([^)]*\)", "$1");
+        text = text.Replace("**", "").Replace("`", "").Trim();
+
+        // First sentence only. A period counts as a sentence end only when followed
+        // by whitespace or end-of-text, so version numbers like "1.2.1" don't cut it.
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (text[i] is '.' or '!' or '?' &&
+                (i + 1 == text.Length || char.IsWhiteSpace(text[i + 1])))
+                return text[..(i + 1)];
+        }
+        return text;
+    }
+
+    /// <summary>
     /// Picks the release asset the in-app updater can install on this platform:
     /// Windows gets the Inno Setup exe ("Noctis-Setup.exe"), macOS gets the
     /// per-architecture disk image ("Noctis-osx-arm64.dmg"), and Linux x64 gets the
@@ -270,31 +375,39 @@ public sealed class UpdateService
             (a.Name.Contains("SHA256", StringComparison.OrdinalIgnoreCase) ||
              a.Name.Equals("checksums.txt", StringComparison.OrdinalIgnoreCase)));
 
+    /// <param name="update">Release to download.</param>
+    /// <param name="progress">Receives 0-100 download progress.</param>
+    /// <param name="ct">Cancels the download.</param>
+    /// <param name="destinationPath">Where to save the installer; defaults to the
+    /// updater's fixed temp path. The Developer Mode version manager passes the
+    /// user's Downloads folder here.</param>
     public Task<string> DownloadInstallerAsync(
         UpdateInfo update,
         IProgress<double>? progress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? destinationPath = null)
     {
         if (update.InstallerApiUrl is null)
             throw new InvalidOperationException("In-app updates require the GitHub release asset API URL.");
 
         return DownloadInstallerAsync(
             update.InstallerApiUrl, update.InstallerSize,
-            update.ChecksumsApiUrl, update.InstallerAssetName, progress, ct);
+            update.ChecksumsApiUrl, update.InstallerAssetName, progress, ct, destinationPath);
     }
 
     private async Task<string> DownloadInstallerAsync(
         string url, long expectedSize,
         string? checksumsUrl, string? assetName,
         IProgress<double>? progress,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? destinationPath = null)
     {
         // The installer is launched with elevation, so only ever pull it from GitHub over
         // HTTPS — never from a host smuggled into a tampered API response.
         if (!IsTrustedGitHubUrl(url))
             throw new InvalidOperationException("Refusing to download an update from an untrusted (non-GitHub) URL.");
 
-        var tempPath = Path.Combine(Path.GetTempPath(),
+        var tempPath = destinationPath ?? Path.Combine(Path.GetTempPath(),
             OperatingSystem.IsMacOS() ? "Noctis-Update.dmg"
             : OperatingSystem.IsLinux() ? "Noctis-Update.AppImage"
             : "Noctis-Update-Setup.exe");
@@ -582,6 +695,12 @@ public sealed class UpdateService
 
         [JsonPropertyName("draft")]
         public bool Draft { get; set; }
+
+        [JsonPropertyName("published_at")]
+        public DateTimeOffset? PublishedAt { get; set; }
+
+        [JsonPropertyName("body")]
+        public string? Body { get; set; }
     }
 
     private sealed class GitHubAsset
@@ -616,6 +735,18 @@ public sealed class UpdateInfo
     /// <summary>GitHub API asset URL of the SHA-256 checksums manifest, when the release publishes one.</summary>
     public string? ChecksumsApiUrl { get; init; }
     public required string ReleaseUrl { get; init; }
+}
+
+/// <summary>One release row in the Developer Mode version manager.</summary>
+public sealed class ReleaseListItem
+{
+    public required Version Version { get; init; }
+    public DateTimeOffset? PublishedAt { get; init; }
+    /// <summary>Warning pulled from the release notes' "[!WARNING]" admonition, if any.</summary>
+    public string? WarningText { get; init; }
+    /// <summary>Download/install fields, shaped like a normal update so the
+    /// existing verified download + launch pipeline applies unchanged.</summary>
+    public required UpdateInfo Info { get; init; }
 }
 
 /// <summary>How the running copy of Noctis was installed.</summary>

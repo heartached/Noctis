@@ -289,7 +289,7 @@ public partial class SidebarViewModel : ViewModelBase
             playlistDescription = args.Description;
         };
 
-        dialogVm.CloseRequested += (_, _) => dialog.Close();
+        dialogVm.CloseRequested += (_, _) => _ = dialog.CloseAnimatedAsync();
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow is Window owner)
@@ -479,7 +479,7 @@ public partial class SidebarViewModel : ViewModelBase
             newName = args.Name;
             newDescription = args.Description;
         };
-        dialogVm.CloseRequested += (_, _) => dialog.Close();
+        dialogVm.CloseRequested += (_, _) => _ = dialog.CloseAnimatedAsync();
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow is Window owner)
@@ -627,7 +627,7 @@ public partial class SidebarViewModel : ViewModelBase
             createdPlaylist = playlist;
         };
 
-        dialogVm.CloseRequested += (_, _) => dialog.Close();
+        dialogVm.CloseRequested += (_, _) => _ = dialog.CloseAnimatedAsync();
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow is Window owner)

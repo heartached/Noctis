@@ -271,5 +271,8 @@ internal class Program
         {
             // Last-resort: don't let crash logging itself crash
         }
+
+        // Also surface it in the in-app session log (Settings → About → Developer Mode).
+        try { Services.DebugLog.Write(source, ex); } catch { }
     }
 }

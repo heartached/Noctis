@@ -155,6 +155,8 @@ public partial class MetadataViewModel : ViewModelBase
     // into SyncedLyrics (which Save still reads).
     public ObservableCollection<SyncedLyricEditorLine> SyncedLyricLines { get; } = new();
     [ObservableProperty] private bool _hasSyncedLines;
+    /// <summary>True when any synced line carries inline word-timing tags (enhanced LRC).</summary>
+    [ObservableProperty] private bool _hasWordTimedLines;
 
     // ── Options tab ──
     [ObservableProperty] private bool _skipWhenShuffling;
@@ -400,7 +402,17 @@ public partial class MetadataViewModel : ViewModelBase
     private bool _albumPerTrackApproved;
 
     public bool HasSearchMetadataStatus => !string.IsNullOrWhiteSpace(SearchMetadataStatus);
-    partial void OnSearchMetadataStatusChanged(string value) => OnPropertyChanged(nameof(HasSearchMetadataStatus));
+
+    /// <summary>The standalone status line hides while the review panel is open (the panel shows the status as its subtitle).</summary>
+    public bool ShowSearchMetadataStatusRow => HasSearchMetadataStatus && !IsSearchMetadataOpen;
+
+    partial void OnSearchMetadataStatusChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasSearchMetadataStatus));
+        OnPropertyChanged(nameof(ShowSearchMetadataStatusRow));
+    }
+
+    partial void OnIsSearchMetadataOpenChanged(bool value) => OnPropertyChanged(nameof(ShowSearchMetadataStatusRow));
 
     /// <summary>Search button shows for single tracks and whole albums, but not arbitrary multi-select.</summary>
     public bool ShowSearchMetadata => !_multiSelect;
@@ -455,7 +467,9 @@ public partial class MetadataViewModel : ViewModelBase
         if (MetadataChanges.Count > 0)
         {
             IsSearchMetadataOpen = true;
-            SearchMetadataStatus = $"Found {MetadataChanges.Count} change(s) — review below.";
+            SearchMetadataStatus = MetadataChanges.Count == 1
+                ? "Found 1 change — untick anything you don't want."
+                : $"Found {MetadataChanges.Count} changes — untick anything you don't want.";
         }
         else
         {
@@ -1116,12 +1130,20 @@ public partial class MetadataViewModel : ViewModelBase
 
             if (!string.IsNullOrWhiteSpace(artist))
             {
-                results = results
-                    .Where(r => string.Equals(
-                        (r.ArtistName ?? string.Empty).Trim(),
-                        artist.Trim(),
-                        StringComparison.OrdinalIgnoreCase))
-                    .ToList();
+                // Multi-artist tags ("Rema & Selena Gomez") rarely equal iTunes's
+                // artist string exactly, so match loosely on normalized text —
+                // and keep the ranked list untouched when nothing survives,
+                // since the service already sorts best matches first.
+                var wanted = NormalizeArtistForMatch(artist);
+                var matched = results.Where(r =>
+                {
+                    var got = NormalizeArtistForMatch(r.ArtistName);
+                    return got.Length > 0 &&
+                           (got.Contains(wanted, StringComparison.Ordinal) ||
+                            wanted.Contains(got, StringComparison.Ordinal));
+                }).ToList();
+                if (matched.Count > 0)
+                    results = matched;
             }
             foreach (var r in results)
             {
@@ -1315,6 +1337,7 @@ public partial class MetadataViewModel : ViewModelBase
         }
 
         HasSyncedLines = SyncedLyricLines.Count > 0;
+        HasWordTimedLines = SyncedLyricLines.Any(l => l.HasWordTiming);
     }
 
     private void OnSyncedLineChanged() => RebuildSyncedTextFromLines();
@@ -1481,6 +1504,18 @@ public partial class MetadataViewModel : ViewModelBase
         }
 
         return tempPath;
+    }
+
+    /// <summary>Lowercases and strips punctuation/joiners so artist strings from
+    /// tags and iTunes compare on words alone ("A & B" == "a b").</summary>
+    private static string NormalizeArtistForMatch(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var normalized = System.Text.RegularExpressions.Regex.Replace(
+            value.ToLowerInvariant(), @"[^\p{L}\p{Nd}]+", " ");
+        return System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", " ").Trim();
     }
 
     private string GetArtworkSearchAlbumTerm()
@@ -1905,11 +1940,11 @@ public partial class MetadataViewModel : ViewModelBase
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Moves a renamed track's same-basename lyric sidecars (.lrc/.txt) with it —
+    /// <summary>Moves a renamed track's same-basename lyric sidecars (.lrc/.ttml/.txt) with it —
     /// lyrics resolve sidecar-first by basename, so leaving them behind detaches them.</summary>
     private static void MoveLyricSidecars(string oldPath, string newPath)
     {
-        foreach (var ext in new[] { ".lrc", ".txt" })
+        foreach (var ext in new[] { ".lrc", ".ttml", ".txt" })
         {
             try
             {

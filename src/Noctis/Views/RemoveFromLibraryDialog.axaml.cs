@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media.Transformation;
+using Avalonia.Threading;
 using Noctis.Helpers;
 
 namespace Noctis.Views;
@@ -18,9 +20,33 @@ public partial class RemoveFromLibraryDialog : Window
 {
     public RemoveFromLibraryChoice Choice { get; private set; } = RemoveFromLibraryChoice.Cancel;
 
+    private bool _closing;
+
     public RemoveFromLibraryDialog()
     {
         InitializeComponent();
+    }
+
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        // Settle to the open state on the next frame so the fade/scale
+        // transitions animate it (same pattern as the Settings modal).
+        Dispatcher.UIThread.Post(() =>
+        {
+            DialogOverlay.Opacity = 1;
+            DialogCard.RenderTransform = TransformOperations.Parse("scale(1)");
+        }, DispatcherPriority.Loaded);
+    }
+
+    private async Task CloseAnimatedAsync()
+    {
+        if (_closing) return;
+        _closing = true;
+        DialogOverlay.Opacity = 0;
+        DialogCard.RenderTransform = TransformOperations.Parse("scale(0.96)");
+        await Task.Delay(200);
+        Close();
     }
 
     public RemoveFromLibraryDialog(int itemCount) : this()
@@ -37,19 +63,19 @@ public partial class RemoveFromLibraryDialog : Window
     private void OnTrashClick(object? sender, RoutedEventArgs e)
     {
         Choice = RemoveFromLibraryChoice.Trash;
-        Close();
+        _ = CloseAnimatedAsync();
     }
 
     private void OnKeepClick(object? sender, RoutedEventArgs e)
     {
         Choice = RemoveFromLibraryChoice.KeepFiles;
-        Close();
+        _ = CloseAnimatedAsync();
     }
 
     private void OnCancelClick(object? sender, RoutedEventArgs e)
     {
         Choice = RemoveFromLibraryChoice.Cancel;
-        Close();
+        _ = CloseAnimatedAsync();
     }
 
     private void OnOverlayWheel(object? sender, PointerWheelEventArgs e)

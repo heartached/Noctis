@@ -70,6 +70,9 @@ public class AppSettings
     /// <summary>When true, the in-app updater also offers GitHub pre-releases. Off = stable channel only.</summary>
     public bool IncludePrereleaseUpdates { get; set; } = false;
 
+    /// <summary>Shows the Developer section (version manager + debug logs) in Settings → About.</summary>
+    public bool DeveloperMode { get; set; } = false;
+
     /// <summary>Default page index (0=Home, 1=Songs, 2=Albums, 3=Artists, 4=Genres, 5=Playlists, 6=Favorites).</summary>
     public int DefaultPageIndex { get; set; } = 0;
 

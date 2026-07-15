@@ -514,7 +514,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowCheckForUpdatesButton))]
     private bool _isReadyToInstall;
-    [ObservableProperty] private string _latestVersionTag = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UpdateButtonText))]
+    private string _latestVersionTag = "";
     [ObservableProperty] private bool _isLatestPrerelease;
     [ObservableProperty] private bool _includePrereleaseUpdates;
 
@@ -525,8 +527,14 @@ public partial class SettingsViewModel : ViewModelBase
     /// otherwise the default call to action.</summary>
     public string CheckForUpdatesButtonText =>
         IsCheckingForUpdate ? "Checking..."
-        : IsUpToDate ? "You're up to date"
+        : IsUpToDate ? "✓ Up to date"
         : "Check for Updates";
+
+    /// <summary>Label for the update-available buttons, naming the target version
+    /// when known (e.g. "Update to 1.2.8").</summary>
+    public string UpdateButtonText => string.IsNullOrEmpty(LatestVersionTag)
+        ? "Update available"
+        : $"Update to {LatestVersionTag.TrimStart('v', 'V')}";
 
     /// <summary>True when this copy can update itself via the bundled installer
     /// (Inno install on Windows, or any non-Windows build). False for Scoop /
@@ -596,6 +604,13 @@ public partial class SettingsViewModel : ViewModelBase
                 catch { }
             });
         };
+
+        // Keep the Developer Mode log view live while it's visible.
+        DebugLog.Changed += () => Dispatcher.UIThread.Post(() =>
+        {
+            if (DeveloperMode)
+                DevLogText = DebugLog.Snapshot();
+        });
 
         if (Avalonia.Application.Current is Noctis.App app)
         {
@@ -729,6 +744,7 @@ public partial class SettingsViewModel : ViewModelBase
             OrganizePattern = _settings.OrganizePattern;
             OrganizeTargetRoot = _settings.OrganizeTargetRoot;
             IncludePrereleaseUpdates = _settings.IncludePrereleaseUpdates;
+            DeveloperMode = _settings.DeveloperMode;
 
             // Playback
             MigrateTransitionSettings(_settings);
@@ -2698,6 +2714,7 @@ public partial class SettingsViewModel : ViewModelBase
             OrganizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
             OrganizeTargetRoot = string.Empty;
             IncludePrereleaseUpdates = false;
+            DeveloperMode = false;
 
             // Playback
             CrossfadeEnabled = false;
@@ -2885,10 +2902,10 @@ public partial class SettingsViewModel : ViewModelBase
 
             if (update is null)
             {
-                // Show the result inline on the button ("You're up to date")
+                // Show the result inline on the button ("✓ Up to date")
                 // rather than as a separate status line.
                 IsUpToDate = true;
-                _ = ClearUpdateStatusAfterDelay();
+                _ = ClearUpdateStatusAfterDelay(3000);
             }
             else if (update.InstallerApiUrl is null)
             {
@@ -2904,6 +2921,7 @@ public partial class SettingsViewModel : ViewModelBase
                     ? $"{update.TagName} is available."
                     : $"{update.TagName} is available. {ExternalUpdateHint}";
                 IsUpdateAvailable = true;
+                DebugLog.Write("Updater", $"Update found: {update.TagName}");
             }
         }
         catch (OperationCanceledException)
@@ -2911,10 +2929,11 @@ public partial class SettingsViewModel : ViewModelBase
             UpdateStatusText = "Update check timed out. Try again later.";
             _ = ClearUpdateStatusAfterDelay();
         }
-        catch
+        catch (Exception ex)
         {
             UpdateStatusText = "Couldn't check for updates. Try again later.";
             _ = ClearUpdateStatusAfterDelay();
+            DebugLog.Write("Updater", ex);
         }
         finally
         {
@@ -2971,10 +2990,11 @@ public partial class SettingsViewModel : ViewModelBase
             UpdateStatusText = "Download cancelled.";
             _ = ClearUpdateStatusAfterDelay();
         }
-        catch
+        catch (Exception ex)
         {
             UpdateStatusText = "Download failed. Try again.";
             _ = ClearUpdateStatusAfterDelay();
+            DebugLog.Write("Updater", ex);
         }
         finally
         {
@@ -3009,9 +3029,9 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    private async Task ClearUpdateStatusAfterDelay()
+    private async Task ClearUpdateStatusAfterDelay(int delayMs = 5000)
     {
-        await Task.Delay(5000);
+        await Task.Delay(delayMs);
         if (!IsUpdateAvailable && !IsDownloadingUpdate && !IsReadyToInstall)
         {
             UpdateStatusText = "";
@@ -3019,12 +3039,302 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
+    // ── Developer Mode (About tab) ──
+
+    [ObservableProperty] private bool _developerMode;
+
+    /// <summary>Rows shown by the version manager: the newest few releases, plus the
+    /// rest once "Show older versions" is clicked.</summary>
+    public ObservableCollection<DevReleaseItem> DevReleases { get; } = new();
+
+    /// <summary>Full fetched release list backing <see cref="DevReleases"/>.</summary>
+    private readonly List<DevReleaseItem> _allReleases = new();
+
+    /// <summary>How many releases show before the "Show older versions" link.</summary>
+    private const int VisibleReleaseLimit = 8;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasHiddenReleases))]
+    [NotifyPropertyChangedFor(nameof(ShowOlderVersionsLabel))]
+    private int _hiddenReleaseCount;
+
+    public bool HasHiddenReleases => HiddenReleaseCount > 0;
+
+    public string ShowOlderVersionsLabel => $"Show {HiddenReleaseCount} older versions";
+
+    [ObservableProperty] private bool _isLoadingReleases;
+    [ObservableProperty] private bool _showDevReleasesEmpty;
+    [ObservableProperty] private string _devStatusText = "";
+    [ObservableProperty] private bool _isDevDownloading;
+    [ObservableProperty] private double _devDownloadProgress;
+    [ObservableProperty] private string _devLogText = "";
+    [ObservableProperty] private bool _devLogsCopied;
+
+    private CancellationTokenSource? _devCts;
+
+    partial void OnDeveloperModeChanged(bool value)
+    {
+        _settings.DeveloperMode = value;
+        _ = SaveAsync();
+
+        if (value)
+        {
+            DevLogText = DebugLog.Snapshot();
+            _ = RefreshReleasesAsync();
+        }
+    }
+
+    /// <summary>Version equality ignoring the assembly's 4th (revision) component.</summary>
+    private static bool IsSameVersion(Version a, Version b) =>
+        a.Major == b.Major && a.Minor == b.Minor && Math.Max(a.Build, 0) == Math.Max(b.Build, 0);
+
+    private async Task RefreshReleasesAsync()
+    {
+        if (_updateService is null || IsLoadingReleases) return;
+
+        IsLoadingReleases = true;
+        ShowDevReleasesEmpty = false;
+        DevStatusText = "";
+
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var releases = await _updateService.ListReleasesAsync(cts.Token);
+
+            var current = UpdateService.CurrentVersion;
+            _allReleases.Clear();
+            foreach (var release in releases)
+            {
+                var isCurrent = IsSameVersion(release.Version, current);
+                _allReleases.Add(new DevReleaseItem
+                {
+                    TagName = release.Info.TagName,
+                    VersionDisplay = $"{release.Version.Major}.{release.Version.Minor}.{release.Version.Build}",
+                    DateDisplay = release.PublishedAt?.ToLocalTime().ToString("MMM d, yyyy") ?? "",
+                    IsPrerelease = release.Info.IsPrerelease,
+                    IsCurrent = isCurrent,
+                    CanInstall = !isCurrent
+                                 && UpdateService.SupportsInAppUpdate
+                                 && release.Info.InstallerApiUrl is not null,
+                    WarningText = release.WarningText,
+                    Info = release.Info
+                });
+            }
+
+            DevReleases.Clear();
+            foreach (var item in _allReleases.Take(VisibleReleaseLimit))
+                DevReleases.Add(item);
+            HiddenReleaseCount = Math.Max(0, _allReleases.Count - VisibleReleaseLimit);
+
+            ShowDevReleasesEmpty = DevReleases.Count == 0;
+            DebugLog.Write("VersionManager", $"Loaded {_allReleases.Count} releases from GitHub.");
+        }
+        catch (Exception ex)
+        {
+            DevStatusText = "Couldn't load releases. Try again later.";
+            ShowDevReleasesEmpty = DevReleases.Count == 0;
+            DebugLog.Write("VersionManager", ex);
+        }
+        finally
+        {
+            IsLoadingReleases = false;
+        }
+    }
+
+    /// <summary>Expands the version list to the full fetched history.</summary>
+    [RelayCommand]
+    private void ShowOlderReleases()
+    {
+        foreach (var item in _allReleases.Skip(DevReleases.Count))
+            DevReleases.Add(item);
+        HiddenReleaseCount = 0;
+    }
+
+    /// <summary>
+    /// Installs the picked release through the same verified pipeline as a normal
+    /// update (size + SHA-256 checks), then shuts down so the installer can swap
+    /// files. Copies that can't self-install open the release page instead.
+    /// </summary>
+    [RelayCommand]
+    private async Task InstallReleaseAsync(DevReleaseItem? item)
+    {
+        if (item is null || _updateService is null || IsDevDownloading) return;
+
+        if (!item.CanInstall)
+        {
+            // Copies that can't self-install: download the installer in-app (same
+            // verified pipeline, with progress + cancel) into the user's Downloads
+            // folder. Releases without a matching asset open the release page.
+            if (item.Info.InstallerApiUrl is null)
+                Helpers.PlatformHelper.OpenUrl(item.Info.ReleaseUrl);
+            else
+                await DownloadReleaseToDownloadsAsync(item);
+            return;
+        }
+
+        IsDevDownloading = true;
+        DevDownloadProgress = 0;
+        DevStatusText = $"Downloading {item.TagName}...";
+        DebugLog.Write("VersionManager", $"Installing {item.TagName}...");
+
+        try
+        {
+            _devCts?.Cancel();
+            _devCts?.Dispose();
+            _devCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+
+            var progress = new Progress<double>(p =>
+                Dispatcher.UIThread.Post(() =>
+                {
+                    DevDownloadProgress = p;
+                    DevStatusText = $"Downloading {item.TagName}... {p:F0}%";
+                }));
+
+            var installerPath = await _updateService.DownloadInstallerAsync(item.Info, progress, _devCts.Token);
+
+            DevStatusText = $"Installing {item.TagName}...";
+            if (_updateService.LaunchInstaller(installerPath))
+            {
+                if (Avalonia.Application.Current?.ApplicationLifetime
+                    is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+                {
+                    desktop.Shutdown(0);
+                }
+            }
+            else
+            {
+                DevStatusText = "Couldn't start installer. Download manually from GitHub.";
+                DebugLog.Write("VersionManager", "LaunchInstaller returned false.");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            DevStatusText = "Download cancelled.";
+        }
+        catch (Exception ex)
+        {
+            DevStatusText = "Download failed. Try again.";
+            DebugLog.Write("VersionManager", ex);
+        }
+        finally
+        {
+            IsDevDownloading = false;
+        }
+    }
+
+    /// <summary>
+    /// Downloads a release's installer to the user's Downloads folder through the
+    /// verified pipeline (GitHub-pinned URL, size + SHA-256 checks), then reveals
+    /// the file. Used when this copy can't install in place (Scoop / portable).
+    /// </summary>
+    private async Task DownloadReleaseToDownloadsAsync(DevReleaseItem item)
+    {
+        if (_updateService is null) return;
+
+        IsDevDownloading = true;
+        DevDownloadProgress = 0;
+        DevStatusText = $"Downloading {item.TagName}...";
+
+        try
+        {
+            _devCts?.Cancel();
+            _devCts?.Dispose();
+            _devCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+
+            var downloads = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            Directory.CreateDirectory(downloads);
+            var destination = Path.Combine(
+                downloads, item.Info.InstallerAssetName ?? $"Noctis-{item.TagName}-installer");
+
+            var progress = new Progress<double>(p =>
+                Dispatcher.UIThread.Post(() =>
+                {
+                    DevDownloadProgress = p;
+                    DevStatusText = $"Downloading {item.TagName}... {p:F0}%";
+                }));
+
+            var path = await _updateService.DownloadInstallerAsync(
+                item.Info, progress, _devCts.Token, destination);
+
+            DevStatusText = $"{item.TagName} saved to Downloads.";
+            DebugLog.Write("VersionManager", $"Downloaded {item.TagName} to {path}");
+            Helpers.PlatformHelper.ShowInFileManager(path);
+        }
+        catch (OperationCanceledException)
+        {
+            DevStatusText = "Download cancelled.";
+        }
+        catch (Exception ex)
+        {
+            DevStatusText = "Download failed. Try again.";
+            DebugLog.Write("VersionManager", ex);
+        }
+        finally
+        {
+            IsDevDownloading = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelDevDownload() => _devCts?.Cancel();
+
+    [RelayCommand]
+    private async Task CopyDevLogsAsync()
+    {
+        var clipboard = (Avalonia.Application.Current?.ApplicationLifetime
+            as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+            ?.MainWindow?.Clipboard;
+        if (clipboard is null) return;
+
+        try { await clipboard.SetTextAsync(DebugLog.Snapshot()); } catch { return; }
+
+        DevLogsCopied = true;
+        await Task.Delay(1500);
+        DevLogsCopied = false;
+    }
+
+    [RelayCommand]
+    private void ClearDevLogs()
+    {
+        DebugLog.Clear();
+        DevLogText = DebugLog.Snapshot();
+    }
+
+    /// <summary>Opens the app data folder, which also holds crash.log.</summary>
+    [RelayCommand]
+    private void OpenLogsFolder() => Helpers.PlatformHelper.OpenFolder(Helpers.AppPaths.DataRoot);
+
     [RelayCommand]
     private void OpenGitHub()
     {
         Helpers.PlatformHelper.OpenUrl("https://github.com/heartached/Noctis");
     }
 
+    /// <summary>True briefly after the version is copied — drives the inline
+    /// "Copied!" confirmation next to the version number.</summary>
+    [ObservableProperty] private bool _versionCopied;
+
+    /// <summary>Copies version + OS/arch info to the clipboard (handy for bug reports).</summary>
+    [RelayCommand]
+    private async Task CopyVersionInfoAsync()
+    {
+        var v = UpdateService.CurrentVersion;
+        var info = $"Noctis {v.Major}.{v.Minor}.{v.Build} — " +
+                   $"{System.Runtime.InteropServices.RuntimeInformation.OSDescription} " +
+                   $"({System.Runtime.InteropServices.RuntimeInformation.OSArchitecture})";
+
+        var clipboard = (Avalonia.Application.Current?.ApplicationLifetime
+            as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+            ?.MainWindow?.Clipboard;
+        if (clipboard is null) return;
+
+        try { await clipboard.SetTextAsync(info); } catch { return; }
+
+        VersionCopied = true;
+        await Task.Delay(1500);
+        VersionCopied = false;
+    }
     /// <summary>Opens the GitHub release page for the available update — used by
     /// Scoop / portable copies that can't safely run the in-app installer.</summary>
     [RelayCommand]

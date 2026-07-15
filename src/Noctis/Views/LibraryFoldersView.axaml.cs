@@ -11,6 +11,7 @@ namespace Noctis.Views;
 public partial class LibraryFoldersView : UserControl
 {
     private TrackContextMenuBuilder? _menuBuilder;
+    private FolderContextMenuBuilder? _folderMenuBuilder;
     private ListBoxItem? _menuOwnerItem;
     private EventHandler? _pendingScrollRestore;
 
@@ -35,11 +36,16 @@ public partial class LibraryFoldersView : UserControl
             }
         }
 
-        // Reset shared menu so it picks up new VM commands
+        // Right-click a folder in the tree for folder-level actions. ContextRequested
+        // bubbles, so one handler on the TreeView covers nested TreeViewItems too.
+        FolderTree.ContextRequested += OnFolderContextRequested;
+
+        // Reset shared menus so they pick up new VM commands
         DataContextChanged += (_, _) =>
         {
             _menuBuilder?.Reset();
             _menuBuilder = null;
+            _folderMenuBuilder = null;
         };
     }
 
@@ -127,6 +133,43 @@ public partial class LibraryFoldersView : UserControl
         DetachMenuFromOwner();
         _menuOwnerItem = item;
         item.ContextMenu = menu;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(item);
+        e.Handled = true;
+    }
+
+    // ── Folder-tree context menu ──
+
+    private void OnFolderContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (DataContext is not LibraryFoldersViewModel vm) return;
+        if (e.Source is not Control source) return;
+
+        // Innermost TreeViewItem under the pointer = the right-clicked folder node.
+        var item = source.FindAncestorOfType<TreeViewItem>(includeSelf: true);
+        if (item?.DataContext is not FolderNode node) return;
+
+        if (_folderMenuBuilder == null)
+        {
+            _folderMenuBuilder = new FolderContextMenuBuilder();
+            _folderMenuBuilder.Build();
+        }
+
+        _folderMenuBuilder.Bind(
+            node,
+            playCommand: vm.PlayNodeCommand,
+            shuffleCommand: vm.ShuffleNodeCommand,
+            playNextCommand: vm.PlayNodeNextCommand,
+            addToQueueCommand: vm.AddNodeToQueueCommand,
+            addToPlaylistCommand: vm.AddNodeToNewPlaylistCommand,
+            showFolderCommand: vm.ShowNodeInExplorerCommand);
+
+        var menu = _folderMenuBuilder.Menu;
+        if (menu.IsOpen)
+            menu.Close();
+
+        // Opened directly (never assigned to a control's ContextMenu property) so
+        // recycled TreeViewItems can't auto-open a menu bound to a stale node.
         menu.Placement = PlacementMode.Pointer;
         menu.Open(item);
         e.Handled = true;

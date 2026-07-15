@@ -107,10 +107,14 @@ public partial class SidebarView : UserControl
     // next frame, cancel-then-animate close); scoped here because that helper is
     // specialized to ContextMenu/MenuFlyout.
 
-    private const double SearchOpenMs = 150;
-    private const double SearchCloseMs = 120;
+    private const double SearchAnimMs = 150;
     private bool _searchCloseAnimating;
     private bool _searchCloseAfterAnimation;
+
+    /// <summary>The flyout presenter (the pill surface) when available, else the content.
+    /// Animating only the inner content left the pill background popping in/out abruptly.</summary>
+    private static Control GetSearchAnimTarget(Control content) =>
+        content.FindAncestorOfType<FlyoutPresenter>() as Control ?? content;
 
     private void OnSearchFlyoutOpened(object? sender, EventArgs e)
     {
@@ -119,13 +123,14 @@ public partial class SidebarView : UserControl
 
         // Slide in from the search icon: start hidden + nudged left, settle into
         // place on the next frame so the transitions animate the change.
-        EnsureSearchTransitions(content, TimeSpan.FromMilliseconds(SearchOpenMs));
-        content.Opacity = 0;
-        content.RenderTransform = TransformOperations.Parse("translateX(-10px)");
+        var target = GetSearchAnimTarget(content);
+        EnsureSearchTransitions(target, TimeSpan.FromMilliseconds(SearchAnimMs));
+        target.Opacity = 0;
+        target.RenderTransform = TransformOperations.Parse("translateX(-10px)");
         Dispatcher.UIThread.Post(() =>
         {
-            content.Opacity = 1;
-            content.RenderTransform = TransformOperations.Parse("translateX(0px)");
+            target.Opacity = 1;
+            target.RenderTransform = TransformOperations.Parse("translateX(0px)");
             var box = content as TextBox ?? content.GetVisualDescendants().OfType<TextBox>().FirstOrDefault();
             box?.Focus();
         }, DispatcherPriority.Render);
@@ -148,13 +153,15 @@ public partial class SidebarView : UserControl
             return;
         }
 
+        // Mirror of the open animation: same distance, duration and easing.
         e.Cancel = true;
         _searchCloseAnimating = true;
-        EnsureSearchTransitions(content, TimeSpan.FromMilliseconds(SearchCloseMs));
-        content.Opacity = 0;
-        content.RenderTransform = TransformOperations.Parse("translateX(-8px)");
+        var target = GetSearchAnimTarget(content);
+        EnsureSearchTransitions(target, TimeSpan.FromMilliseconds(SearchAnimMs));
+        target.Opacity = 0;
+        target.RenderTransform = TransformOperations.Parse("translateX(-10px)");
 
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(SearchCloseMs) };
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(SearchAnimMs) };
         timer.Tick += (_, _) =>
         {
             timer.Stop();

@@ -433,7 +433,7 @@ public sealed class MprisService : IDisposable
                     var iface = reader.ReadString();
                     var prop = reader.ReadString();
                     var writer = context.CreateReplyWriter("v");
-                    if (WriteProperty(writer, iface, prop))
+                    if (WriteProperty(ref writer, iface, prop))
                     {
                         context.Reply(writer.CreateMessage());
                     }
@@ -455,7 +455,7 @@ public sealed class MprisService : IDisposable
                     {
                         writer.WriteDictionaryEntryStart();
                         writer.WriteString(prop);
-                        WriteProperty(writer, iface, prop);
+                        WriteProperty(ref writer, iface, prop);
                     }
                     writer.WriteDictionaryEnd(dict);
                     context.Reply(writer.CreateMessage());
@@ -528,7 +528,11 @@ public sealed class MprisService : IDisposable
             "CanPlay", "CanPause", "CanSeek", "CanControl",
         };
 
-        private bool WriteProperty(MessageWriter writer, string iface, string prop)
+        // MessageWriter is a ref struct with value-copy semantics: passed by value,
+        // the property data lands in a copy and the finalized reply goes out with an
+        // empty body — the bus daemon drops the connection for the malformed message
+        // (the "MPRIS name silently vanishes on first widget query" bug). Keep `ref`.
+        private bool WriteProperty(ref MessageWriter writer, string iface, string prop)
         {
             if (iface == IfaceRoot)
             {

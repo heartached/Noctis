@@ -59,6 +59,14 @@ public partial class AnimatedCoverImage : UserControl
     // and shuts itself down instead of becoming current.
     private int _sessionGeneration;
 
+    // Last decoded frame of the previous session, kept on screen while a
+    // same-source session warms up (page re-attach), so the static cover
+    // never flashes through. Disposed when the new session paints or the
+    // source changes. _liveSource is the source of the running session.
+    private WriteableBitmap? _lingerBitmap;
+    private string? _lingerSource;
+    private string? _liveSource;
+
     public AnimatedCoverImage()
     {
         InitializeComponent();
@@ -66,8 +74,9 @@ public partial class AnimatedCoverImage : UserControl
         // Teardown on detach, rebuild on re-attach: a TabControl detaches the
         // hosting tab's content when you switch tabs and re-attaches it on return,
         // and Source/IsActive don't change across that, so nothing else restarts us.
+        // The last frame is kept so the return trip doesn't flash the static cover.
         AttachedToVisualTree += (_, _) => Refresh();
-        DetachedFromVisualTree += (_, _) => Teardown();
+        DetachedFromVisualTree += (_, _) => Teardown(keepLastFrame: true);
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
@@ -81,12 +90,17 @@ public partial class AnimatedCoverImage : UserControl
 
     private void Refresh()
     {
-        Teardown();
-
         var source = Source;
-        if (!IsActive || string.IsNullOrEmpty(source) || !File.Exists(source))
+        var active = IsActive && !string.IsNullOrEmpty(source) && File.Exists(source);
+        // Bridge the VLC warm-up with the previous frame only when restarting
+        // the same video; a different source must clear to the static cover.
+        var keep = active && (source == _liveSource || source == _lingerSource);
+        Teardown(keepLastFrame: keep);
+
+        if (!active || string.IsNullOrEmpty(source))
             return;
 
+        _liveSource = source;
         var generation = _sessionGeneration;
         ThreadPool.QueueUserWorkItem(_ =>
         {
@@ -127,13 +141,53 @@ public partial class AnimatedCoverImage : UserControl
         });
     }
 
-    private void Teardown()
+    private void Teardown(bool keepLastFrame = false)
     {
         _sessionGeneration++;
         var session = _session;
         _session = null;
-        _image.Source = null;
-        session?.ShutDown();
+
+        if (keepLastFrame)
+        {
+            // Leave whatever frame is showing (the ending session's bitmap or an
+            // earlier lingering one) so a same-source restart is seamless.
+            if (session != null && ReferenceEquals(_image.Source, session.Bitmap))
+            {
+                var previous = _lingerBitmap;
+                _lingerBitmap = session.Bitmap;
+                _lingerSource = _liveSource;
+                if (previous != null)
+                    Dispatcher.UIThread.Post(previous.Dispose);
+                session.ShutDown(keepBitmap: true);
+            }
+            else
+            {
+                session?.ShutDown();
+            }
+        }
+        else
+        {
+            _image.Source = null;
+            session?.ShutDown();
+            var linger = _lingerBitmap;
+            _lingerBitmap = null;
+            _lingerSource = null;
+            if (linger != null)
+                Dispatcher.UIThread.Post(linger.Dispose);
+        }
+
+        _liveSource = null;
+    }
+
+    /// <summary>Drops the lingering bridge frame once the live session has painted
+    /// over it; the bitmap can only be disposed after it left the Image.</summary>
+    private void ReleaseLingerFrame(WriteableBitmap current)
+    {
+        var linger = _lingerBitmap;
+        if (linger == null || ReferenceEquals(linger, current)) return;
+        _lingerBitmap = null;
+        _lingerSource = null;
+        Dispatcher.UIThread.Post(linger.Dispose);
     }
 
     /// <summary>
@@ -149,6 +203,9 @@ public partial class AnimatedCoverImage : UserControl
         private readonly WriteableBitmap _bitmap;
         private volatile bool _framePending;            // coalesce UI invalidations
         private volatile bool _dead;
+
+        /// <summary>The frame target; the owner adopts it as a bridge frame on teardown.</summary>
+        public WriteableBitmap Bitmap => _bitmap;
 
         // Keep delegate instances alive for the player's lifetime — VLC stores raw
         // function pointers and will crash if these are garbage-collected.
@@ -200,6 +257,7 @@ public partial class AnimatedCoverImage : UserControl
                 {
                     _owner._image.Source = _bitmap; // no-op after the first frame; reveals real content
                     _owner._image.InvalidateVisual();
+                    _owner.ReleaseLingerFrame(_bitmap);
                 }
             }, DispatcherPriority.Render);
         }
@@ -207,8 +265,10 @@ public partial class AnimatedCoverImage : UserControl
         /// <summary>
         /// Stops and disposes the player on a worker thread (Stop blocks in LibVLC 3.x).
         /// Safe to call multiple times; called on the UI thread or a startup worker.
+        /// With <paramref name="keepBitmap"/> the owner adopted <see cref="Bitmap"/>
+        /// as a bridge frame and now owns its disposal.
         /// </summary>
-        public void ShutDown()
+        public void ShutDown(bool keepBitmap = false)
         {
             if (_dead) return;
             _dead = true;
@@ -221,7 +281,8 @@ public partial class AnimatedCoverImage : UserControl
                 try { Player.SetVideoCallbacks(null, null, null); } catch { }
                 try { Player.Dispose(); } catch { }
                 Marshal.FreeHGlobal(_buffer);
-                Dispatcher.UIThread.Post(_bitmap.Dispose);
+                if (!keepBitmap)
+                    Dispatcher.UIThread.Post(_bitmap.Dispose);
             });
         }
 

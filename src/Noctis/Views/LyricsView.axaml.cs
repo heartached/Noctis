@@ -17,7 +17,8 @@ namespace Noctis.Views;
 public partial class LyricsView : UserControl
 {
     private int _lastScrolledIndex = -1;
-    private DispatcherTimer? _activeScrollTimer;
+    // Bumped to invalidate any in-flight frame-clock scroll animation (replaces stopping a timer).
+    private int _scrollAnimationGeneration;
     private bool _isProgrammaticScroll;
     // Lines currently carrying a transient cascade translate (Apple Music-style
     // staggered glide); cleared whenever the scroll animation ends or is cancelled.
@@ -570,9 +571,8 @@ public partial class LyricsView : UserControl
 
     private void CancelScrollAnimation()
     {
+        _scrollAnimationGeneration++;
         _isProgrammaticScroll = false;
-        _activeScrollTimer?.Stop();
-        _activeScrollTimer = null;
         ClearCascadeTransforms();
     }
 
@@ -757,7 +757,9 @@ public partial class LyricsView : UserControl
     private const int CascadeMaxLines = 8;
 
     /// <summary>
-    /// Time-based scroll animation using Stopwatch for smooth, frame-accurate motion.
+    /// Frame-clock scroll animation: each step is scheduled via TopLevel.RequestAnimationFrame,
+    /// so movement is vsync-locked instead of a 16ms DispatcherTimer beating against the
+    /// compositor's ~16.7ms frame interval (which dropped/doubled a frame about once a second).
     /// Uses smootherstep easing so lyric movement glides in and out instead of jumping.
     /// When the lines panel and active index are supplied, lines below the active line
     /// lag the base glide with a per-line stagger (transient translate that relaxes to
@@ -782,25 +784,23 @@ public partial class LyricsView : UserControl
         }
         _cascadeLines = cascade.Count > 0 ? cascade : null;
 
+        var generation = _scrollAnimationGeneration;
         var sw = Stopwatch.StartNew();
         var totalMs = (double)durationMs;
         var maxDelayMs = cascade.Count > 0 ? cascade[^1].DelayMs : 0;
 
-        // ~60fps tick rate for smooth rendering
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        _activeScrollTimer = timer;
-
-        timer.Tick += (_, _) =>
+        void Frame(TimeSpan _)
         {
+            // Superseded or cancelled: the canceller already reset flags/transforms.
+            if (generation != _scrollAnimationGeneration) return;
+
             var elapsed = sw.Elapsed.TotalMilliseconds;
             var t = Math.Min(1.0, elapsed / totalMs);
 
             // Scroll easing: smootherstep glides without overshoot. Spring overshoot here
             // reads as "the lyrics jumped past, then snapped back" — opposite of smooth.
             var eased = Easing.SmootherStep(t);
-            var value = from + delta * eased;
-
-            scrollViewer.Offset = new Vector(0, value);
+            scrollViewer.Offset = new Vector(0, from + delta * eased);
 
             // Stagger: each cascade line is displaced by the gap between the base ease
             // and its own delayed ease — positive while catching up, zero when settled.
@@ -818,14 +818,30 @@ public partial class LyricsView : UserControl
             {
                 scrollViewer.Offset = new Vector(0, to);
                 ClearCascadeTransforms();
-                timer.Stop();
-                sw.Stop();
                 _isProgrammaticScroll = false;
-                if (_activeScrollTimer == timer)
-                    _activeScrollTimer = null;
+                return;
             }
-        };
-        timer.Start();
+
+            RequestScrollFrame(Frame, scrollViewer, to);
+        }
+
+        RequestScrollFrame(Frame, scrollViewer, to);
+    }
+
+    /// <summary>Schedules the next animation frame. If the view left the visual tree
+    /// mid-animation (no TopLevel → no frame callbacks), snaps to the target instead
+    /// so the offset never strands mid-glide.</summary>
+    private void RequestScrollFrame(Action<TimeSpan> frame, ScrollViewer scrollViewer, double to)
+    {
+        if (TopLevel.GetTopLevel(this) is { } topLevel)
+        {
+            topLevel.RequestAnimationFrame(frame);
+        }
+        else
+        {
+            scrollViewer.Offset = new Vector(0, to);
+            CancelScrollAnimation();
+        }
     }
 
 }
