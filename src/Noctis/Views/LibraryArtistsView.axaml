@@ -37,6 +37,20 @@
                     <Style Selector="ListBoxItem">
                         <Setter Property="Focusable" Value="False" />
                     </Style>
+                    <!-- Rows exist only for virtualization: press-dragging across the grid
+                         must not paint the row-wide hover/selection band. -->
+                    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                        <Setter Property="Background" Value="Transparent" />
+                    </Style>
+                    <Style Selector="ListBoxItem:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                        <Setter Property="Background" Value="Transparent" />
+                    </Style>
+                    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+                        <Setter Property="Background" Value="Transparent" />
+                    </Style>
+                    <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                        <Setter Property="Background" Value="Transparent" />
+                    </Style>
                 </ListBox.Styles>
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:ArtistRow">
@@ -61,24 +75,10 @@
                                             CommandParameter="{Binding}">
                                         <Button.ContextMenu>
                                             <ContextMenu DataContext="{Binding}">
-                                                <MenuItem Header="Change Picture" Click="OnChangeArtistImageClick">
-                                                    <MenuItem.Icon>
-                                                        <PathIcon Data="{StaticResource CameraIcon}" Width="14" Height="14"
-                                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
-                                                <MenuItem Header="Find Picture Online" Click="OnSearchArtistImageClick">
-                                                    <MenuItem.Icon>
-                                                        <PathIcon Data="{StaticResource SearchGlobeIcon}" Width="14" Height="14"
-                                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
+                                                <MenuItem Header="Choose from File…" Click="OnChangeArtistImageClick" />
+                                                <MenuItem Header="Find Picture Online" Click="OnSearchArtistImageClick" />
                                                 <MenuItem Header="Remove Picture" Classes="danger" Click="OnRemoveArtistImageClick"
-                                                          IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                                    <MenuItem.Icon>
-                                                        <PathIcon Data="{StaticResource TrashIcon}" Width="14" Height="14" />
-                                                    </MenuItem.Icon>
-                                                </MenuItem>
+                                                          IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             </ContextMenu>
                                         </Button.ContextMenu>
                                         <StackPanel Spacing="10" HorizontalAlignment="Center">
