@@ -213,6 +213,66 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         _player.ReplaceQueueAndPlay(list, index);
     }
 
+    // ── Folder context-menu commands (right-click on a folder in the tree) ──
+
+    /// <summary>All tracks under a folder node (direct + descendants), in tree order.</summary>
+    private static List<Track> CollectTracks(FolderNode? node)
+    {
+        var sink = new List<Track>();
+        if (node != null)
+            Collect(node, sink);
+        return sink;
+    }
+
+    [RelayCommand]
+    private void PlayNode(FolderNode node)
+    {
+        var tracks = CollectTracks(node);
+        if (tracks.Count == 0) return;
+        _player.ReplaceQueueAndPlay(tracks, 0);
+    }
+
+    [RelayCommand]
+    private void ShuffleNode(FolderNode node)
+    {
+        var tracks = CollectTracks(node);
+        if (tracks.Count == 0) return;
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(tracks);
+        _player.ReplaceQueueAndPlay(shuffled, 0);
+    }
+
+    [RelayCommand]
+    private void PlayNodeNext(FolderNode node)
+    {
+        var tracks = CollectTracks(node);
+        // Add in reverse order so they play in folder order when inserted up front.
+        for (int i = tracks.Count - 1; i >= 0; i--)
+            _player.AddNext(tracks[i]);
+    }
+
+    [RelayCommand]
+    private void AddNodeToQueue(FolderNode node)
+    {
+        var tracks = CollectTracks(node);
+        if (tracks.Count == 0) return;
+        _player.AddRangeToQueue(tracks);
+    }
+
+    [RelayCommand]
+    private async Task AddNodeToNewPlaylist(FolderNode node)
+    {
+        var tracks = CollectTracks(node);
+        if (tracks.Count == 0) return;
+        await _sidebar.CreatePlaylistWithTracksAsync(tracks);
+    }
+
+    [RelayCommand]
+    private void ShowNodeInExplorer(FolderNode node)
+    {
+        if (node == null || !Directory.Exists(node.FullPath)) return;
+        PlatformHelper.OpenFolder(node.FullPath);
+    }
+
     // ── Track context-menu commands (same menu as the Songs view) ──
 
     [RelayCommand]

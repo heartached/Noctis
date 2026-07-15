@@ -40,7 +40,8 @@
             <!-- AutoScrollToSelectedItem off: rows are wider than the pane (long folder
                  names), so the default scroll-into-view on click yanked the horizontal
                  scrollbar to the right. The clicked row is already visible anyway. -->
-            <TreeView ItemsSource="{Binding RootNodes}"
+            <TreeView x:Name="FolderTree"
+                      ItemsSource="{Binding RootNodes}"
                       SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
                       AutoScrollToSelectedItem="False">
                 <TreeView.ItemTemplate>
@@ -56,14 +57,20 @@
 
         <!-- Right pane: header + track list -->
         <DockPanel Grid.Column="1" Margin="16,0,0,0">
+            <!-- All actions grouped left, ordered by emphasis: Play (accent) →
+                 Shuffle (neutral pill) → Manage Media Folders (quiet chip).
+                 The selected-folder label fills the remaining space on the right. -->
             <Grid DockPanel.Dock="Top"
-                  ColumnDefinitions="Auto,Auto,*,Auto"
+                  ColumnDefinitions="Auto,Auto,Auto,*"
                   Margin="0,0,0,8">
                 <Button Grid.Column="0"
                         Content="Play"
                         Command="{Binding PlayFolderCommand}"
+                        Classes="accent-btn"
+                        Background="{DynamicResource AccentColorBrush}"
+                        Foreground="{DynamicResource AccentForegroundBrush}"
                         CornerRadius="999"
-                        Padding="16,6"
+                        Padding="18,6"
                         FontWeight="SemiBold"
                         Cursor="Hand"
                         Margin="0,0,8,0" />
@@ -75,23 +82,32 @@
                         FontWeight="SemiBold"
                         Cursor="Hand"
                         Margin="0,0,8,0" />
-                <TextBlock Grid.Column="2"
-                           Text="{Binding SelectedNode.DisplayName, FallbackValue='Select a folder'}"
-                           VerticalAlignment="Center"
-                           FontSize="14"
-                           Opacity="0.7" />
-                <Button Grid.Column="3"
-                        Content="Manage Media Folders"
+                <Button Grid.Column="2"
                         Command="{Binding OpenMediaFolderSettingsCommand}"
                         ToolTip.Tip="Open Settings to add or remove the music folders that get scanned."
-                        Classes="accent-btn"
-                        Background="#E74856"
-                        Foreground="White"
+                        Background="{DynamicResource ChipBackground}"
+                        BorderThickness="0"
                         CornerRadius="999"
-                        Padding="14,7"
-                        FontSize="12"
-                        FontWeight="Bold"
-                        Cursor="Hand" />
+                        Padding="14,6"
+                        Cursor="Hand"
+                        Margin="0,0,12,0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource SettingsIcon}"
+                                  Width="13" Height="13"
+                                  Opacity="0.8"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="Manage Media Folders"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <TextBlock Grid.Column="3"
+                           Text="{Binding SelectedNode.DisplayName, FallbackValue='Select a folder'}"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           FontSize="14"
+                           Opacity="0.7" />
             </Grid>
 
             <ListBox x:Name="TrackList"
