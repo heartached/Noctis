@@ -49,25 +49,38 @@
                            TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center" />
 
-                <!-- Release-type filter chips on the artist discography page -->
-                <ItemsControl ItemsSource="{Binding ReleaseTypeChips}"
-                              IsVisible="{Binding HasReleaseTypeChips}"
-                              VerticalAlignment="Center">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="8" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:ReleaseTypeChip">
-                            <Button Classes="release-chip"
-                                    Classes.active="{Binding IsActive}"
-                                    Content="{Binding Label}"
-                                    Command="{Binding $parent[UserControl].((vm:TopBarViewModel)DataContext).ReleaseTypeChipCommand}"
-                                    CommandParameter="{Binding}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <!-- Release-type filter dropdown on the artist discography page (same
+                     control as the Albums grid Type dropdown below) -->
+                <Button Classes="release-chip"
+                        IsVisible="{Binding HasReleaseTypeChips}"
+                        VerticalAlignment="Center"
+                        ToolTip.Tip="Filter by release type">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="Type:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding ReleaseTypeFilterLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
+                                  RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Header="All"
+                                      Command="{Binding ReleaseTypeFilterCommand}"
+                                      CommandParameter="all"/>
+                            <MenuItem Header="Albums"
+                                      Command="{Binding ReleaseTypeFilterCommand}"
+                                      CommandParameter="album"/>
+                            <MenuItem Header="Singles"
+                                      Command="{Binding ReleaseTypeFilterCommand}"
+                                      CommandParameter="single"/>
+                            <MenuItem Header="EPs"
+                                      Command="{Binding ReleaseTypeFilterCommand}"
+                                      CommandParameter="ep"/>
+                            <MenuItem Header="Other"
+                                      Command="{Binding ReleaseTypeFilterCommand}"
+                                      CommandParameter="other"/>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
             </StackPanel>
         </DockPanel>
 
@@ -83,46 +96,65 @@
                        FontSize="22"
                        FontWeight="Bold" />
 
-            <ItemsControl ItemsSource="{Binding ReleaseTypeChips}"
-                          IsVisible="{Binding HasReleaseTypeChips}"
-                          VerticalAlignment="Center">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="8" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ReleaseTypeChip">
-                        <Button Classes="release-chip"
-                                Classes.active="{Binding IsActive}"
-                                Content="{Binding Label}"
-                                Command="{Binding $parent[UserControl].((vm:TopBarViewModel)DataContext).ReleaseTypeChipCommand}"
-                                CommandParameter="{Binding}"/>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <!-- Release-type filter dropdown, albums grid only -->
+            <Button Classes="release-chip"
+                    IsVisible="{Binding HasReleaseTypeChips}"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="Filter by release type">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Type:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding ReleaseTypeFilterLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
+                              RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                </StackPanel>
+                <Button.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                        <MenuItem Header="All"
+                                  Command="{Binding ReleaseTypeFilterCommand}"
+                                  CommandParameter="all"/>
+                        <MenuItem Header="Albums"
+                                  Command="{Binding ReleaseTypeFilterCommand}"
+                                  CommandParameter="album"/>
+                        <MenuItem Header="Singles"
+                                  Command="{Binding ReleaseTypeFilterCommand}"
+                                  CommandParameter="single"/>
+                        <MenuItem Header="EPs"
+                                  Command="{Binding ReleaseTypeFilterCommand}"
+                                  CommandParameter="ep"/>
+                        <MenuItem Header="Other"
+                                  Command="{Binding ReleaseTypeFilterCommand}"
+                                  CommandParameter="other"/>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
 
-            <!-- Quality filter chips (Lossless / Hi-Res), albums grid only -->
+            <!-- Quality filter dropdown (Lossless / Hi-Res), albums grid only -->
             <Border Width="1" Height="16" Background="#30808080" VerticalAlignment="Center"
                     IsVisible="{Binding HasReleaseTypeChips}"/>
-            <ItemsControl ItemsSource="{Binding QualityChips}"
-                          IsVisible="{Binding HasReleaseTypeChips}"
-                          VerticalAlignment="Center">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="8" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:QualityChip">
-                        <Button Classes="release-chip"
-                                Classes.active="{Binding IsActive}"
-                                Content="{Binding Label}"
-                                Command="{Binding $parent[UserControl].((vm:TopBarViewModel)DataContext).QualityChipCommand}"
-                                CommandParameter="{Binding}"/>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <Button Classes="release-chip"
+                    IsVisible="{Binding HasReleaseTypeChips}"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="Filter by audio quality">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Quality:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding QualityFilterLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
+                              RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                </StackPanel>
+                <Button.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                        <MenuItem Header="All"
+                                  Command="{Binding QualityFilterCommand}"
+                                  CommandParameter="all"/>
+                        <MenuItem Header="Lossless"
+                                  Command="{Binding QualityFilterCommand}"
+                                  CommandParameter="lossless"/>
+                        <MenuItem Header="Hi-Res"
+                                  Command="{Binding QualityFilterCommand}"
+                                  CommandParameter="hires"/>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
 
             <!-- Sort dropdown, albums grid only. Uses release-chip class so it gets the
                  same hover highlight as the filter chips (and opts out of the hover zoom). -->

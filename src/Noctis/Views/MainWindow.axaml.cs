@@ -33,6 +33,8 @@ public partial class MainWindow : Window
     private Border? _lyricsPanelWrapper;
     private DockPanel? _contentDockPanel;
     private DockPanel? _rootPanel;
+    private Border? _settingsOverlay;
+    private Border? _settingsCard;
     private MiniPlayerWindow? _miniPlayer;
     private Action? _singleInstanceActivationHandler;
 
@@ -133,6 +135,8 @@ public partial class MainWindow : Window
                 _lyricsPanelWrapper = this.FindControl<Border>("LyricsPanelWrapper");
                 _contentDockPanel = this.FindControl<DockPanel>("ContentDockPanel");
                 _rootPanel = this.FindControl<DockPanel>("RootPanel");
+                _settingsOverlay = this.FindControl<Border>("SettingsOverlay");
+                _settingsCard = this.FindControl<Border>("SettingsCard");
                 _mainVmPropertyChangedHandler = (s, e) =>
                 {
                     var mainVm2 = (MainWindowViewModel)s!;
@@ -173,6 +177,38 @@ public partial class MainWindow : Window
                         {
                             mainVm2.IsSidebarHidden = false;
                             if (_sidebarWrapper != null) _sidebarWrapper.Width = 60;
+                        }
+                    }
+                    if (e.PropertyName == nameof(MainWindowViewModel.IsSettingsModalOpen))
+                    {
+                        if (_settingsOverlay != null && _settingsCard != null)
+                        {
+                            if (mainVm2.IsSettingsModalOpen)
+                            {
+                                // Backdrop fades in while the card scales up; the settle
+                                // happens on the next frame so the transitions animate it.
+                                _settingsOverlay.IsVisible = true;
+                                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                                {
+                                    _settingsOverlay.Opacity = 1;
+                                    _settingsCard.RenderTransform =
+                                        Avalonia.Media.Transformation.TransformOperations.Parse("scale(1)");
+                                }, Avalonia.Threading.DispatcherPriority.Render);
+                            }
+                            else
+                            {
+                                // Mirror of the open animation, then drop the overlay out
+                                // of the tree once the 180ms transitions have played.
+                                _settingsOverlay.Opacity = 0;
+                                _settingsCard.RenderTransform =
+                                    Avalonia.Media.Transformation.TransformOperations.Parse("scale(0.96)");
+                                Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+                                {
+                                    if (_settingsOverlay != null &&
+                                        DataContext is MainWindowViewModel m && !m.IsSettingsModalOpen)
+                                        _settingsOverlay.IsVisible = false;
+                                }, TimeSpan.FromMilliseconds(200));
+                            }
                         }
                     }
                     if (e.PropertyName == nameof(MainWindowViewModel.IsSidebarHidden))
