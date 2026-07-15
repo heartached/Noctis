@@ -8,19 +8,44 @@
         TransparencyLevelHint="Transparent"
         ShowInTaskbar="False">
 
-    <!-- Full-window dimmed overlay that captures all input -->
-    <Border Background="#50000000"
+    <!-- Full-window dimmed overlay that captures all input.
+         Starts transparent; code-behind fades it in on open and back out
+         before closing (mirrors the Settings modal animation). -->
+    <Border x:Name="DialogOverlay"
+            Background="#50000000"
+            Opacity="0"
             PointerPressed="OnOverlayPointerPressed"
             PointerWheelChanged="OnOverlayWheel">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
 
         <!-- Centered dialog card -->
-        <Border Background="{DynamicResource AppMainBackground}"
+        <Border x:Name="DialogCard"
+                Background="{DynamicResource AppMainBackground}"
                 CornerRadius="24"
                 ClipToBounds="True"
                 Width="380"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
+                RenderTransformOrigin="50%,50%"
+                RenderTransform="scale(0.96)"
                 BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Border.Transitions>
         <DockPanel Margin="0">
 
             <!-- Bottom: Confirm / Cancel buttons -->

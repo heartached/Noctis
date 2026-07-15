@@ -100,9 +100,9 @@ public static class LibraryRemovalHelper
         return done;
     }
 
-    /// <summary>Lyric sidecars the app writes next to a track as
-    /// <c>Path.ChangeExtension(track, ext)</c>: synced .lrc and plain .txt.</summary>
-    private static readonly string[] SidecarExtensions = { ".lrc", ".txt" };
+    /// <summary>Lyric sidecars living next to a track as
+    /// <c>Path.ChangeExtension(track, ext)</c>: synced .lrc/.ttml and plain .txt.</summary>
+    private static readonly string[] SidecarExtensions = { ".lrc", ".ttml", ".txt" };
 
     /// <summary>Trashes each trashed audio file's same-basename lyric sidecars.</summary>
     internal static void TrashSidecarFiles(IEnumerable<string> trashedAudioPaths, Func<string, bool> tryTrash)
@@ -123,7 +123,7 @@ public static class LibraryRemovalHelper
     // Leftover types allowed to ride along when an emptied folder is trashed: artwork,
     // lyrics/playlist text, and OS detritus. Any other file keeps the folder alive.
     private static readonly HashSet<string> DisposableLeftoverExtensions = new(StringComparer.OrdinalIgnoreCase)
-    { ".lrc", ".txt", ".nfo", ".cue", ".log", ".m3u", ".m3u8", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp" };
+    { ".lrc", ".ttml", ".txt", ".nfo", ".cue", ".log", ".m3u", ".m3u8", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp" };
 
     private static readonly HashSet<string> DisposableLeftoverNames = new(StringComparer.OrdinalIgnoreCase)
     { "Thumbs.db", "desktop.ini", ".DS_Store" };

@@ -22,6 +22,14 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
 
     public bool HasPlaylists => Playlists.Count > 0;
 
+    /// <summary>Dialog title follows the mode: list view vs inline create form.</summary>
+    public string DialogTitle => IsCreatingNew ? "Create New Playlist" : "Add to Playlist";
+
+    /// <summary>The existing-playlists section is hidden while the create form is open.</summary>
+    public bool ShowPlaylistList => HasPlaylists && !IsCreatingNew;
+
+    public bool ShowEmptyState => !HasPlaylists && !IsCreatingNew;
+
     public AddToPlaylistDialogViewModel(ObservableCollection<PlaylistNavItem> playlists, int trackCount)
     {
         Playlists = playlists;
@@ -79,6 +87,13 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
     private void Cancel()
     {
         CloseRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    partial void OnIsCreatingNewChanged(bool value)
+    {
+        OnPropertyChanged(nameof(DialogTitle));
+        OnPropertyChanged(nameof(ShowPlaylistList));
+        OnPropertyChanged(nameof(ShowEmptyState));
     }
 
     partial void OnNewPlaylistNameChanged(string value)

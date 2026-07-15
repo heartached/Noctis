@@ -28,20 +28,45 @@
         </Style>
     </Window.Styles>
 
-    <!-- Full-window dimmed overlay that captures all input -->
-    <Border Background="#50000000"
+    <!-- Full-window dimmed overlay that captures all input.
+         Starts transparent; code-behind fades it in on open and back out
+         before closing (mirrors the Settings modal animation). -->
+    <Border x:Name="DialogOverlay"
+            Background="#50000000"
+            Opacity="0"
             PointerPressed="OnOverlayPointerPressed"
             PointerWheelChanged="OnOverlayWheel">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
 
         <!-- Centered dialog card -->
-        <Border CornerRadius="24"
+        <Border x:Name="DialogCard"
+                CornerRadius="24"
                 ClipToBounds="True"
                 Background="{DynamicResource AppMainBackground}"
                 Width="520"
                 MaxHeight="600"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
+                RenderTransformOrigin="50%,50%"
+                RenderTransform="scale(0.96)"
                 BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Border.Transitions>
             <DockPanel Margin="0">
 
                 <!-- Bottom bar: Cancel -->
@@ -55,6 +80,7 @@
                         </TextBlock>
                         <Button Grid.Column="1"
                                 Content="Cancel"
+                                IsVisible="{Binding !IsCreatingNew}"
                                 Command="{Binding CancelCommand}"
                                 Width="100"
                                 Padding="0,8"
@@ -70,7 +96,7 @@
                     <StackPanel Margin="24,20,24,16" Spacing="14">
 
                         <!-- Title -->
-                        <TextBlock Text="Add to Playlist"
+                        <TextBlock Text="{Binding DialogTitle}"
                                    FontSize="20"
                                    FontWeight="Bold"
                                    HorizontalAlignment="Center" />
@@ -78,20 +104,16 @@
                         <!-- Create new: collapsed pill -->
                         <Button Command="{Binding ShowCreateCommand}"
                                 IsVisible="{Binding !IsCreatingNew}"
-                                Classes="accent-btn no-zoom"
+                                Content="Create New Playlist"
+                                Classes="accent-btn"
                                 Background="{DynamicResource AccentColorBrush}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
                                 HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Left"
+                                HorizontalContentAlignment="Center"
                                 Padding="16,10"
                                 CornerRadius="999"
                                 FontWeight="SemiBold"
-                                Cursor="Hand">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <PathIcon Data="{StaticResource AddIcon}" Width="12" Height="12" VerticalAlignment="Center" />
-                                <TextBlock Text="Create Playlist" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
+                                Cursor="Hand" />
 
                         <!-- Create new: expanded form -->
                         <Border IsVisible="{Binding IsCreatingNew}"
@@ -99,10 +121,9 @@
                                 CornerRadius="12"
                                 Padding="14">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="New Playlist" FontSize="13" FontWeight="SemiBold" />
                                 <TextBox Text="{Binding NewPlaylistName}"
                                          Classes="crisp-input"
-                                         Watermark="Playlist name..."
+                                         Watermark="Playlist name"
                                          CornerRadius="999"
                                          Padding="14,8"
                                          x:Name="NewNameTextBox" />
@@ -112,11 +133,11 @@
                                            IsVisible="{Binding ShowNameRequiredError}" />
                                 <TextBox Text="{Binding NewPlaylistDescription}"
                                          Classes="crisp-input"
-                                         Watermark="Description (optional)..."
+                                         Watermark="Description (optional)"
                                          CornerRadius="999"
                                          Padding="14,8" />
                                 <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                                    <Button Content="Cancel"
+                                    <Button Content="Back"
                                             Command="{Binding CancelCreateCommand}"
                                             Width="90"
                                             Padding="0,7"
@@ -144,7 +165,7 @@
                                    FontSize="16"
                                    FontWeight="SemiBold"
                                    Margin="0,4,0,0"
-                                   IsVisible="{Binding HasPlaylists}" />
+                                   IsVisible="{Binding ShowPlaylistList}" />
 
                         <!-- Empty state -->
                         <TextBlock Text="No playlists yet — create one above."
@@ -152,10 +173,10 @@
                                    Opacity="0.55"
                                    HorizontalAlignment="Center"
                                    Margin="0,16,0,0"
-                                   IsVisible="{Binding !HasPlaylists}" />
+                                   IsVisible="{Binding ShowEmptyState}" />
 
                         <!-- Existing playlists list -->
-                        <ItemsControl ItemsSource="{Binding Playlists}" IsVisible="{Binding HasPlaylists}">
+                        <ItemsControl ItemsSource="{Binding Playlists}" IsVisible="{Binding ShowPlaylistList}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="m:PlaylistNavItem">
                                     <Button Classes="no-zoom"

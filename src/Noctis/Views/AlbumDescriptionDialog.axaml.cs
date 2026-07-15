@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media.Transformation;
+using Avalonia.Threading;
 using Noctis.Helpers;
 using Noctis.ViewModels;
 
@@ -8,6 +10,8 @@ namespace Noctis.Views;
 
 public partial class AlbumDescriptionDialog : Window
 {
+    private bool _closing;
+
     public AlbumDescriptionDialog()
     {
         InitializeComponent();
@@ -18,9 +22,31 @@ public partial class AlbumDescriptionDialog : Window
         DataContext = vm;
     }
 
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        // Settle to the open state on the next frame so the fade/scale
+        // transitions animate it (same pattern as the Settings modal).
+        Dispatcher.UIThread.Post(() =>
+        {
+            DialogOverlay.Opacity = 1;
+            AlbumDescriptionCard.RenderTransform = TransformOperations.Parse("scale(1)");
+        }, DispatcherPriority.Loaded);
+    }
+
+    private async Task CloseAnimatedAsync()
+    {
+        if (_closing) return;
+        _closing = true;
+        DialogOverlay.Opacity = 0;
+        AlbumDescriptionCard.RenderTransform = TransformOperations.Parse("scale(0.96)");
+        await Task.Delay(200);
+        Close();
+    }
+
     private void OnCloseClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        Close();
+        _ = CloseAnimatedAsync();
     }
 
     private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)

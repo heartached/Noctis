@@ -35,239 +35,264 @@
         </Style>
     </Window.Styles>
 
-<!-- Full-window dimmed overlay that captures all input -->
-    <Border Background="#50000000"
+    <!-- Full-window dimmed overlay that captures all input.
+         Starts transparent; code-behind fades it in on open and back out
+         before closing (same animation as the Add to Playlist dialog). -->
+    <Border x:Name="DialogOverlay"
+            Background="#50000000"
+            Opacity="0"
             PointerPressed="OnOverlayPointerPressed"
             PointerWheelChanged="OnOverlayWheel">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
 
-    <!-- Centered dialog card -->
-    <Border CornerRadius="24"
-            ClipToBounds="True"
-            Background="{DynamicResource AppMainBackground}"
-            Width="620"
-            MaxHeight="560"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-    <DockPanel Margin="0">
+        <!-- Centered dialog card -->
+        <Border x:Name="DialogCard"
+                CornerRadius="24"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="620"
+                MaxHeight="560"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                RenderTransformOrigin="50%,50%"
+                RenderTransform="scale(0.96)"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Border.Transitions>
+            <DockPanel Margin="0">
 
-        <!-- Bottom bar: preview count + Create/Cancel -->
-        <Border DockPanel.Dock="Bottom"
-                Padding="24,12,24,16">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13" Opacity="0.6">
-                    <TextBlock.Text>
-                        <Binding Path="MatchingTrackCount" StringFormat="Matches {0} tracks" />
-                    </TextBlock.Text>
-                </TextBlock>
-                <Button Grid.Column="2"
-                        Content="Cancel"
-                        Command="{Binding CancelCommand}"
-                        BorderThickness="0"
-                        Width="100"
-                        Padding="0,8"
-                        FontWeight="Bold"
-                        HorizontalContentAlignment="Center"
-                        CornerRadius="999"
-                        Margin="0,0,8,0"
-                        Cursor="Hand" />
-                <Button Grid.Column="3"
-                        Content="Create"
-                        Command="{Binding CreateCommand}"
-                        Width="100"
-                        Padding="0,8"
-                        Classes="accent-btn"
-                            Background="{DynamicResource AccentColorBrush}"
-                        Foreground="{DynamicResource AccentForegroundBrush}"
-                        FontWeight="Bold"
-                        HorizontalContentAlignment="Center"
-                        CornerRadius="999"
-                        Cursor="Hand" />
-            </Grid>
-        </Border>
+                <!-- Bottom bar: preview count + Create/Cancel -->
+                <Border DockPanel.Dock="Bottom"
+                        Padding="24,12,24,16">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                        <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13" Opacity="0.6">
+                            <TextBlock.Text>
+                                <Binding Path="MatchingTrackCount" StringFormat="Matches {0} tracks" />
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <Button Grid.Column="2"
+                                Content="Cancel"
+                                Command="{Binding CancelCommand}"
+                                BorderThickness="0"
+                                Width="100"
+                                Padding="0,8"
+                                FontWeight="Bold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Margin="0,0,8,0"
+                                Cursor="Hand" />
+                        <Button Grid.Column="3"
+                                Content="Create"
+                                Command="{Binding CreateCommand}"
+                                Width="100"
+                                Padding="0,8"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                FontWeight="Bold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand" />
+                    </Grid>
+                </Border>
 
-        <!-- Scrollable content -->
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="24,20,24,16" Spacing="14">
+                <!-- Scrollable content -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24,20,24,16" Spacing="14">
 
-                <!-- Title -->
-                <TextBlock Text="Create Smart Playlist"
-                           FontSize="20"
-                           FontWeight="Bold"
-                           HorizontalAlignment="Center" />
+                        <!-- Title -->
+                        <TextBlock Text="Create Smart Playlist"
+                                   FontSize="20"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center" />
 
-                <!-- Playlist Name -->
-                <StackPanel Spacing="6">
-                    <TextBlock Text="Playlist Name" FontSize="13" FontWeight="SemiBold" />
-                    <TextBox Text="{Binding PlaylistName}"
-                             Classes="crisp-input"
-                             Watermark="Enter playlist name..."
-                             CornerRadius="999"
-                             Padding="14,8"
-                             x:Name="NameTextBox" />
-                    <TextBlock Text="Name is required"
-                               FontSize="11"
-                               Foreground="{DynamicResource AccentColorBrush}"
-                               IsVisible="{Binding ShowNameRequiredError}" />
-                </StackPanel>
+                        <!-- Name + description: same pill inputs as the other playlist dialogs -->
+                        <StackPanel Spacing="10" Margin="0,4,0,0">
+                            <TextBox Text="{Binding PlaylistName}"
+                                     Classes="crisp-input"
+                                     Watermark="Playlist name"
+                                     CornerRadius="999"
+                                     Padding="14,8"
+                                     x:Name="NameTextBox" />
+                            <TextBlock Text="Name is required"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource AccentColorBrush}"
+                                       IsVisible="{Binding ShowNameRequiredError}" />
+                            <TextBox Text="{Binding PlaylistDescription}"
+                                     Classes="crisp-input"
+                                     Watermark="Description (optional)"
+                                     CornerRadius="999"
+                                     Padding="14,8" />
+                        </StackPanel>
 
-                <!-- Description -->
-                <StackPanel Spacing="6">
-                    <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" />
-                    <TextBox Text="{Binding PlaylistDescription}"
-                             Classes="crisp-input"
-                             Watermark="Enter description..."
-                             CornerRadius="999"
-                             Padding="14,8" />
-                </StackPanel>
+                        <!-- Rules header with the match mode inline on the right -->
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                            <TextBlock Grid.Column="0"
+                                       Text="Rules"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Match"
+                                           VerticalAlignment="Center"
+                                           FontSize="13"
+                                           Opacity="0.7" />
+                                <ToggleSwitch IsChecked="{Binding MatchAll}"
+                                              OnContent="ALL rules"
+                                              OffContent="ANY rule" />
+                            </StackPanel>
+                        </Grid>
 
-                <!-- Match mode -->
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Match" VerticalAlignment="Center" FontSize="13" />
-                    <ToggleSwitch IsChecked="{Binding MatchAll}"
-                                  OnContent="ALL rules"
-                                  OffContent="ANY rule" />
-                </StackPanel>
+                        <!-- Rules list -->
+                        <ItemsControl ItemsSource="{Binding Rules}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SmartPlaylistRuleViewModel">
+                                    <Border Background="{DynamicResource ChipBackground}" CornerRadius="12" Padding="12" Margin="0,3">
+                                        <Grid ColumnDefinitions="*,*,*,Auto">
+                                            <!-- Field dropdown -->
+                                            <ComboBox Grid.Column="0"
+                                                      ItemsSource="{Binding $parent[Window].((vm:CreateSmartPlaylistDialogViewModel)DataContext).AllFields}"
+                                                      SelectedItem="{Binding SelectedField}"
+                                                      Margin="0,0,8,0"
+                                                      CornerRadius="999"
+                                                      Padding="14,0"
+                                                      VerticalAlignment="Center"
+                                                      VerticalContentAlignment="Center"
+                                                      HorizontalAlignment="Stretch">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate x:DataType="m:RuleField">
+                                                        <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
 
-                <!-- Rules header -->
-                <TextBlock Text="Rules" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                            <!-- Operator dropdown -->
+                                            <ComboBox Grid.Column="1"
+                                                      ItemsSource="{Binding AvailableOperators}"
+                                                      SelectedItem="{Binding SelectedOperator}"
+                                                      Margin="0,0,8,0"
+                                                      CornerRadius="999"
+                                                      Padding="14,0"
+                                                      VerticalAlignment="Center"
+                                                      VerticalContentAlignment="Center"
+                                                      HorizontalAlignment="Stretch">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate x:DataType="m:RuleOperator">
+                                                        <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
 
-                <!-- Rules list -->
-                <ItemsControl ItemsSource="{Binding Rules}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:SmartPlaylistRuleViewModel">
-                            <Border Background="{DynamicResource ChipBackground}" CornerRadius="8" Padding="12" Margin="0,4">
-                                <Grid ColumnDefinitions="*,*,*,Auto">
-                                    <!-- Field dropdown -->
-                                    <ComboBox Grid.Column="0"
-                                              ItemsSource="{Binding $parent[Window].((vm:CreateSmartPlaylistDialogViewModel)DataContext).AllFields}"
-                                              SelectedItem="{Binding SelectedField}"
-                                              Margin="0,0,8,0"
-                                              CornerRadius="999"
-                                              Padding="14,0"
-                                              VerticalAlignment="Center"
-                                              VerticalContentAlignment="Center"
-                                              HorizontalAlignment="Stretch">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate x:DataType="m:RuleField">
-                                                <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
+                                            <!-- Value input(s) -->
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                                                <TextBox Text="{Binding Value}"
+                                                         Classes="crisp-input"
+                                                         IsVisible="{Binding ShowValueInput}"
+                                                         Watermark="Value..."
+                                                         MinWidth="100"
+                                                         CornerRadius="999"
+                                                         Padding="12,6"
+                                                         VerticalAlignment="Center"
+                                                         VerticalContentAlignment="Center"
+                                                         HorizontalAlignment="Stretch" />
+                                                <TextBox Text="{Binding Value2}"
+                                                         Classes="crisp-input"
+                                                         IsVisible="{Binding ShowValue2Input}"
+                                                         Watermark="To..."
+                                                         Width="80"
+                                                         CornerRadius="999"
+                                                         Padding="12,6"
+                                                         VerticalAlignment="Center"
+                                                         VerticalContentAlignment="Center" />
+                                            </StackPanel>
 
-                                    <!-- Operator dropdown -->
-                                    <ComboBox Grid.Column="1"
-                                              ItemsSource="{Binding AvailableOperators}"
-                                              SelectedItem="{Binding SelectedOperator}"
-                                              Margin="0,0,8,0"
-                                              CornerRadius="999"
-                                              Padding="14,0"
-                                              VerticalAlignment="Center"
-                                              VerticalContentAlignment="Center"
-                                              HorizontalAlignment="Stretch">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate x:DataType="m:RuleOperator">
-                                                <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
+                                            <!-- Remove button -->
+                                            <Button Grid.Column="3"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    CornerRadius="999"
+                                                    Padding="8,4"
+                                                    Margin="4,0,0,0"
+                                                    Cursor="Hand"
+                                                    VerticalAlignment="Center"
+                                                    Command="{Binding $parent[Window].((vm:CreateSmartPlaylistDialogViewModel)DataContext).RemoveRuleCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" />
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
-                                    <!-- Value input(s) -->
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
-                                        <TextBox Text="{Binding Value}"
-                                                 Classes="crisp-input"
-                                                 IsVisible="{Binding ShowValueInput}"
-                                                 Watermark="Value..."
-                                                 MinWidth="100"
-                                                 CornerRadius="999"
-                                                 Padding="12,6"
-                                                 VerticalAlignment="Center"
-                                                 VerticalContentAlignment="Center"
-                                                 HorizontalAlignment="Stretch" />
-                                        <TextBox Text="{Binding Value2}"
-                                                 Classes="crisp-input"
-                                                 IsVisible="{Binding ShowValue2Input}"
-                                                 Watermark="To..."
-                                                 Width="80"
-                                                 CornerRadius="999"
-                                                 Padding="12,6"
-                                                 VerticalAlignment="Center"
-                                                 VerticalContentAlignment="Center" />
-                                    </StackPanel>
+                        <!-- Add Rule button — quiet chip so Create stays the only accent action -->
+                        <Button Command="{Binding AddRuleCommand}"
+                                Background="{DynamicResource ChipBackground}"
+                                BorderThickness="0"
+                                HorizontalAlignment="Left"
+                                Padding="16,7"
+                                CornerRadius="999"
+                                FontWeight="SemiBold"
+                                Cursor="Hand">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource AddIcon}" Width="12" Height="12" VerticalAlignment="Center" />
+                                <TextBlock Text="Add Rule" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
 
-                                    <!-- Remove button -->
-                                    <Button Grid.Column="3"
-                                            Background="Transparent"
-                                            BorderThickness="0"
-                                            CornerRadius="999"
-                                            Padding="8,4"
-                                            Margin="4,0,0,0"
-                                            Cursor="Hand"
-                                            VerticalAlignment="Center"
-                                            Command="{Binding $parent[Window].((vm:CreateSmartPlaylistDialogViewModel)DataContext).RemoveRuleCommand}"
-                                            CommandParameter="{Binding}">
-                                        <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" />
-                                    </Button>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                        <!-- Limit section -->
+                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
+                            <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding HasLimit}" Content="Limit to" VerticalAlignment="Center" Padding="4,0,0,0" />
+                            <NumericUpDown Value="{Binding LimitCount}"
+                                           Minimum="1" Maximum="1000"
+                                           IsEnabled="{Binding HasLimit}"
+                                           Width="90"
+                                           Height="36"
+                                           Classes="limit-pill-number"
+                                           CornerRadius="999"
+                                           ShowButtonSpinner="False"
+                                           FormatString="0"
+                                           Padding="0"
+                                           TextAlignment="Center"
+                                           HorizontalContentAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           VerticalContentAlignment="Center" />
+                            <TextBlock Text="tracks, sorted by" VerticalAlignment="Center" FontSize="13" />
+                            <ComboBox ItemsSource="{Binding AllSortOptions}"
+                                      SelectedItem="{Binding SortBy}"
+                                      IsEnabled="{Binding HasLimit}"
+                                      Width="160"
+                                      CornerRadius="999"
+                                      Padding="14,0"
+                                      VerticalAlignment="Center"
+                                      VerticalContentAlignment="Center">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="m:SmartPlaylistSortBy">
+                                        <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
 
-                <!-- Add Rule button -->
-                <Button Command="{Binding AddRuleCommand}"
-                        Classes="accent-btn"
-                            Background="{DynamicResource AccentColorBrush}"
-                        Foreground="{DynamicResource AccentForegroundBrush}"
-                        HorizontalAlignment="Left"
-                        Padding="16,7"
-                        CornerRadius="999"
-                        FontWeight="SemiBold"
-                        Cursor="Hand">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Data="{StaticResource AddIcon}" Width="12" Height="12" VerticalAlignment="Center" />
-                        <TextBlock Text="Add Rule" VerticalAlignment="Center" />
                     </StackPanel>
-                </Button>
+                </ScrollViewer>
 
-                <!-- Limit section -->
-                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
-                    <CheckBox Classes="metadata-pill-checkbox" IsChecked="{Binding HasLimit}" Content="Limit to" VerticalAlignment="Center" Padding="4,0,0,0" />
-                    <NumericUpDown Value="{Binding LimitCount}"
-                                   Minimum="1" Maximum="1000"
-                                   IsEnabled="{Binding HasLimit}"
-                                   Width="90"
-                                   Height="36"
-                                   Classes="limit-pill-number"
-                                   CornerRadius="999"
-                                   ShowButtonSpinner="False"
-                                   FormatString="0"
-                                   Padding="0"
-                                   TextAlignment="Center"
-                                   HorizontalContentAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   VerticalContentAlignment="Center" />
-                    <TextBlock Text="tracks, sorted by" VerticalAlignment="Center" FontSize="13" />
-                    <ComboBox ItemsSource="{Binding AllSortOptions}"
-                              SelectedItem="{Binding SortBy}"
-                              IsEnabled="{Binding HasLimit}"
-                              Width="160"
-                              CornerRadius="999"
-                              Padding="14,0"
-                              VerticalAlignment="Center"
-                              VerticalContentAlignment="Center">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate x:DataType="m:SmartPlaylistSortBy">
-                                <TextBlock Text="{Binding Converter={StaticResource DisplayName}}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                </StackPanel>
-
-            </StackPanel>
-        </ScrollViewer>
-
-    </DockPanel>
-    </Border>
+            </DockPanel>
+        </Border>
     </Border>
 </Window>

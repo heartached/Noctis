@@ -11,84 +11,103 @@
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
 
-<!-- Full-window dimmed overlay that captures all input -->
-    <Border Background="#50000000"
+    <!-- Full-window dimmed overlay that captures all input.
+         Starts transparent; code-behind fades it in on open and back out
+         before closing (same animation as the Add to Playlist dialog). -->
+    <Border x:Name="DialogOverlay"
+            Background="#50000000"
+            Opacity="0"
             PointerPressed="OnOverlayPointerPressed"
             PointerWheelChanged="OnOverlayWheel">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
 
-    <!-- Centered dialog card -->
-    <Border CornerRadius="24"
-            ClipToBounds="True"
-            Background="{DynamicResource AppMainBackground}"
-            Width="450"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
-        <DockPanel>
+        <!-- Centered dialog card -->
+        <Border x:Name="DialogCard"
+                CornerRadius="24"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
+                Width="450"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                RenderTransformOrigin="50%,50%"
+                RenderTransform="scale(0.96)"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Border.Transitions>
+            <DockPanel>
 
-            <!-- Bottom: OK / Cancel buttons -->
-            <Border DockPanel.Dock="Bottom"
-                    Padding="24,12,24,16">
-                <Grid ColumnDefinitions="*,Auto,Auto">
-                    <Button Grid.Column="1"
-                            Content="Cancel"
-                            Command="{Binding CancelCommand}"
-                            Width="100"
-                            Padding="0,8"
-                            HorizontalContentAlignment="Center"
-                            CornerRadius="999"
-                            Margin="0,0,8,0"
-                            Cursor="Hand" />
-                    <Button Grid.Column="2"
-                            Content="Create"
-                            Command="{Binding CreateCommand}"
-                            Width="100"
-                            Padding="0,8"
-                            Classes="accent-btn"
-                            Background="{DynamicResource AccentColorBrush}"
-                            Foreground="{DynamicResource AccentForegroundBrush}"
-                            FontWeight="SemiBold"
-                            HorizontalContentAlignment="Center"
-                            CornerRadius="999"
-                            Cursor="Hand" />
-                </Grid>
-            </Border>
+                <!-- Bottom: Create / Cancel buttons -->
+                <Border DockPanel.Dock="Bottom"
+                        Padding="24,12,24,16">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <Button Grid.Column="1"
+                                Content="Cancel"
+                                Command="{Binding CancelCommand}"
+                                Width="100"
+                                Padding="0,8"
+                                FontWeight="Bold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Margin="0,0,8,0"
+                                Cursor="Hand" />
+                        <Button Grid.Column="2"
+                                Content="Create"
+                                Command="{Binding CreateCommand}"
+                                Width="100"
+                                Padding="0,8"
+                                Classes="accent-btn"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                FontWeight="Bold"
+                                HorizontalContentAlignment="Center"
+                                CornerRadius="999"
+                                Cursor="Hand" />
+                    </Grid>
+                </Border>
 
-            <!-- Content -->
-            <StackPanel Margin="24,20,24,16" Spacing="14">
+                <!-- Content: same pill inputs as the Add to Playlist create form -->
+                <StackPanel Margin="24,20,24,16" Spacing="14">
 
-                <!-- Title -->
-                <TextBlock Text="Create New Playlist"
-                           FontSize="20"
-                           FontWeight="Bold"
-                           HorizontalAlignment="Center" />
+                    <!-- Title -->
+                    <TextBlock Text="Create New Playlist"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               HorizontalAlignment="Center" />
 
-                <!-- Playlist Name -->
-                <StackPanel Spacing="4">
-                    <TextBlock Text="Playlist Name" FontSize="13" FontWeight="SemiBold" />
-                    <TextBox Text="{Binding PlaylistName}"
-                             Classes="crisp-input"
-                             Watermark="Enter playlist name..."
-                             CornerRadius="999"
-                             x:Name="NameTextBox" />
-                    <TextBlock Text="Name is required"
-                               FontSize="11"
-                               Foreground="{DynamicResource AccentColorBrush}"
-                               IsVisible="{Binding ShowNameRequiredError}" />
+                    <StackPanel Spacing="10" Margin="0,4,0,0">
+                        <TextBox Text="{Binding PlaylistName}"
+                                 Classes="crisp-input"
+                                 Watermark="Playlist name"
+                                 CornerRadius="999"
+                                 Padding="14,8"
+                                 x:Name="NameTextBox" />
+                        <TextBlock Text="Name is required"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource AccentColorBrush}"
+                                   IsVisible="{Binding ShowNameRequiredError}" />
+                        <TextBox Text="{Binding PlaylistDescription}"
+                                 Classes="crisp-input"
+                                 Watermark="Description (optional)"
+                                 CornerRadius="999"
+                                 Padding="14,8" />
+                    </StackPanel>
                 </StackPanel>
-
-                <!-- Playlist Description -->
-                <StackPanel Spacing="4">
-                    <TextBlock Text="Description" FontSize="13" FontWeight="SemiBold" />
-                    <TextBox Text="{Binding PlaylistDescription}"
-                             Classes="crisp-input"
-                             Watermark="Enter playlist description..."
-                             AcceptsReturn="True"
-                             TextWrapping="Wrap"
-                             MinHeight="70" />
-                </StackPanel>
-            </StackPanel>
-        </DockPanel>
-    </Border>
+            </DockPanel>
+        </Border>
     </Border>
 </Window>
