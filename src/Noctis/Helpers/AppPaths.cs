@@ -15,7 +15,10 @@ public static class AppPaths
     {
         var env = Environment.GetEnvironmentVariable("NOCTIS_DATA_DIR");
         if (!string.IsNullOrWhiteSpace(env))
-            return env;
+            // Expand tokens like %LOCALAPPDATA% (launchSettings.json sets the dev
+            // profile that way) so we never create a literal "%LOCALAPPDATA%..."
+            // folder in the working directory, and resolve to an absolute path.
+            return Path.GetFullPath(Environment.ExpandEnvironmentVariables(env));
 
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 #if DEBUG
