@@ -1238,7 +1238,8 @@
                                        IsVisible="{Binding DevLogsCopied}"/>
                         </StackPanel>
                         <Border Background="#12FFFFFF" CornerRadius="10" Padding="12,8" MaxHeight="190">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
                                 <SelectableTextBlock Text="{Binding DevLogText}"
                                                      FontSize="11"
                                                      FontFamily="Consolas, Menlo, monospace"
