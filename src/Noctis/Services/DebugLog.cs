@@ -19,6 +19,29 @@ public static class DebugLog
     /// <summary>Raised after a write or clear. May fire on any thread.</summary>
     public static event Action? Changed;
 
+    private static bool _vlcBridgeEnabled;
+
+    /// <summary>Raised when <see cref="VlcBridgeEnabled"/> changes.</summary>
+    public static event Action? VlcBridgeChanged;
+
+    /// <summary>
+    /// When true, the audio player mirrors LibVLC warning/error log lines into
+    /// this log, so "Copy Logs" captures audio-engine complaints (underruns,
+    /// "playback too late", device errors) without the NOCTIS_VLC_LOG env var.
+    /// Follows the Developer Mode toggle. The player subscribes to VLC's log
+    /// callback only while enabled — normal sessions pay no per-message cost.
+    /// </summary>
+    public static bool VlcBridgeEnabled
+    {
+        get => _vlcBridgeEnabled;
+        set
+        {
+            if (_vlcBridgeEnabled == value) return;
+            _vlcBridgeEnabled = value;
+            VlcBridgeChanged?.Invoke();
+        }
+    }
+
     public static void Write(string source, string message)
     {
         lock (Lock)
