@@ -3077,6 +3077,10 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.DeveloperMode = value;
         _ = SaveAsync();
 
+        // Mirror LibVLC warnings/errors into the session log while dev mode is
+        // on, so "Copy Logs" captures audio-engine complaints (see DebugLog).
+        DebugLog.VlcBridgeEnabled = value;
+
         if (value)
         {
             DevLogText = DebugLog.Snapshot();

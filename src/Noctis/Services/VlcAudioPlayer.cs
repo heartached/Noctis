@@ -158,6 +158,15 @@ public class VlcAudioPlayer : IAudioPlayer
     private readonly object _vlcDiagLock = new();
     private long _vlcDiagStartTicks;
 
+    // ── Dev-mode VLC log bridge (Settings → Developer Mode session log) ──
+    // Mirrors LibVLC Warning/Error lines into DebugLog so in-app "Copy Logs"
+    // captures audio-engine complaints without the NOCTIS_VLC_LOG env var.
+    // The VLC log callback is subscribed only while Developer Mode is on.
+    private bool _devBridgeAttached;
+    private readonly object _devBridgeLock = new();
+    private string? _devBridgeLastMsg;
+    private long _devBridgeLastTicks;
+
     // Serializes Play/Stop operations so rapid track switching
     // (e.g. spamming Next) doesn't overlap Stop+Play calls.
     private readonly SemaphoreSlim _playbackLock = new(1, 1);
@@ -438,6 +447,11 @@ public class VlcAudioPlayer : IAudioPlayer
             DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Config",
                 $"args={string.Join(' ', vlcArgs)}");
         }
+
+        // Dev-mode bridge: attach now if Developer Mode was already on at
+        // startup, and follow later toggles for the player's lifetime.
+        DebugLog.VlcBridgeChanged += OnVlcBridgeChanged;
+        OnVlcBridgeChanged();
 
         _player = new MediaPlayer(_libVlc);
         _standbyPlayer = new MediaPlayer(_libVlc);
@@ -3206,6 +3220,15 @@ public class VlcAudioPlayer : IAudioPlayer
             _equalizer?.Dispose();
             _equalizer = null;
         }
+        DebugLog.VlcBridgeChanged -= OnVlcBridgeChanged;
+        lock (_devBridgeLock)
+        {
+            if (_devBridgeAttached)
+            {
+                try { _libVlc.Log -= OnVlcLogForBridge; } catch { }
+                _devBridgeAttached = false;
+            }
+        }
         if (_vlcDiagWriter != null)
         {
             try { _libVlc.Log -= OnVlcLog; } catch { }
@@ -3282,6 +3305,47 @@ public class VlcAudioPlayer : IAudioPlayer
 
     private void OnVlcLog(object? sender, LogEventArgs e)
         => WriteVlcDiag($"[{e.Level}] {e.Module}: {e.Message}");
+
+    private void OnVlcBridgeChanged()
+    {
+        bool justAttached = false;
+        lock (_devBridgeLock)
+        {
+            var want = DebugLog.VlcBridgeEnabled && !_disposed;
+            if (want == _devBridgeAttached) return;
+            try
+            {
+                if (want) _libVlc.Log += OnVlcLogForBridge;
+                else _libVlc.Log -= OnVlcLogForBridge;
+                _devBridgeAttached = want;
+                justAttached = want;
+            }
+            catch
+            {
+                // Bridging is best-effort instrumentation — never break playback.
+                _devBridgeAttached = false;
+            }
+        }
+        if (justAttached)
+            DebugLog.Write("VLC", "audio-engine log bridge on — VLC warnings/errors will appear here");
+    }
+
+    private void OnVlcLogForBridge(object? sender, LogEventArgs e)
+    {
+        if (e.Level is not (LogLevel.Warning or LogLevel.Error)) return;
+        var msg = $"{e.Level} {e.Module}: {e.Message}";
+        // Collapse identical repeats within 2s — a stutter spiral can emit the
+        // same "playback too late" line many times per second, which would
+        // flush the bounded session log.
+        var now = Stopwatch.GetTimestamp();
+        lock (_devBridgeLock)
+        {
+            if (msg == _devBridgeLastMsg && now - _devBridgeLastTicks < Stopwatch.Frequency * 2) return;
+            _devBridgeLastMsg = msg;
+            _devBridgeLastTicks = now;
+        }
+        DebugLog.Write("VLC", msg);
+    }
 
     private void WriteVlcDiag(string line)
     {
