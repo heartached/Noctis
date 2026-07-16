@@ -54,14 +54,6 @@
                         <Setter Property="Padding" Value="10,0"/>
                         <Setter Property="HorizontalContentAlignment" Value="Left"/>
                     </Style>
-                    <!-- Pill presenter for the rail search flyout; content is animated
-                         from code-behind (rise-in / fade-out like the app's menus). -->
-                    <Style Selector="FlyoutPresenter.rail-search">
-                        <Setter Property="CornerRadius" Value="999"/>
-                        <Setter Property="Padding" Value="12,5"/>
-                        <Setter Property="MinWidth" Value="0"/>
-                        <Setter Property="MinHeight" Value="0"/>
-                    </Style>
                 </StackPanel.Styles>
 
                 <Button Classes="rail-action"
@@ -88,15 +80,17 @@
                     </StackPanel>
                 </Button>
 
-                <Button Classes="rail-action"
+                <Button x:Name="SearchButton"
+                        Classes="rail-action"
                         Classes.expanded="{Binding IsExpanded}"
                         IsEnabled="{Binding TopBar.IsSearchVisible, FallbackValue=False}"
-                        ToolTip.Tip="Search">
+                        Click="OnSearchButtonClick"
+                        ToolTip.Tip="Search (Ctrl+F)">
                     <StackPanel Orientation="Horizontal" Spacing="14">
                         <Grid Width="28" Height="28">
                             <PathIcon Data="{StaticResource SearchIcon}" Width="16" Height="16"
                                       Foreground="{DynamicResource IslandForeground}"/>
-                            <!-- Active-filter dot: search text survives the flyout closing,
+                            <!-- Active-filter dot: search text survives the pill closing,
                                  so mark the icon while a query is filtering the page. -->
                             <Ellipse Width="7" Height="7"
                                      Fill="{DynamicResource AccentColorBrush}"
@@ -110,30 +104,46 @@
                                    VerticalAlignment="Center"
                                    IsVisible="{Binding IsExpanded}"/>
                     </StackPanel>
-                    <Button.Flyout>
-                        <Flyout Placement="Right"
-                                FlyoutPresenterClasses="rail-search"
-                                Opened="OnSearchFlyoutOpened"
-                                Closing="OnSearchFlyoutClosing">
-                            <Grid ColumnDefinitions="*,Auto" Width="180">
-                                <TextBox Grid.Column="0"
-                                         Classes="search-box"
-                                         Text="{Binding TopBar.SearchText, Mode=TwoWay}"
-                                         Watermark="{Binding TopBar.SearchWatermark}"
-                                         Background="Transparent" BorderThickness="0"
-                                         FontSize="12" Padding="4,2"
-                                         VerticalAlignment="Center"/>
-                                <Button Grid.Column="1"
-                                        Command="{Binding TopBar.ClearSearchCommand}"
-                                        IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"
-                                        Background="Transparent" BorderThickness="0"
-                                        Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
-                                    <TextBlock Text="&#x2715;" FontSize="11" Opacity="0.5"/>
-                                </Button>
-                            </Grid>
-                        </Flyout>
-                    </Button.Flyout>
                 </Button>
+
+                <!-- Persistent search pill: a non-light-dismiss popup (unlike the old
+                     flyout) so it stays open while the user browses the filtered page.
+                     Closed explicitly via the Search button toggle or Esc; opened via
+                     the button or Ctrl+F. Open/close animation lives in code-behind. -->
+                <Popup x:Name="SearchPopup"
+                       PlacementTarget="{Binding #SearchButton}"
+                       Placement="Right"
+                       HorizontalOffset="4"
+                       IsLightDismissEnabled="False"
+                       WindowManagerAddShadowHint="False"
+                       IsOpen="{Binding TopBar.IsSearchOpen, Mode=TwoWay}"
+                       Opened="OnSearchPopupOpened">
+                    <Border x:Name="SearchPopupContent"
+                            Background="{DynamicResource IslandBackground}"
+                            BorderBrush="{DynamicResource IslandBorder}"
+                            BorderThickness="1"
+                            CornerRadius="999"
+                            Padding="12,5">
+                        <Grid ColumnDefinitions="*,Auto" Width="180">
+                            <TextBox x:Name="SearchBox"
+                                     Grid.Column="0"
+                                     Classes="search-box"
+                                     Text="{Binding TopBar.SearchText, Mode=TwoWay}"
+                                     Watermark="{Binding TopBar.SearchWatermark}"
+                                     KeyDown="OnSearchBoxKeyDown"
+                                     Background="Transparent" BorderThickness="0"
+                                     FontSize="12" Padding="4,2"
+                                     VerticalAlignment="Center"/>
+                            <Button Grid.Column="1"
+                                    Command="{Binding TopBar.ClearSearchCommand}"
+                                    IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"
+                                    Background="Transparent" BorderThickness="0"
+                                    Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
+                                <TextBlock Text="&#x2715;" FontSize="11" Opacity="0.5"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </Popup>
             </StackPanel>
 
             <!-- Divider between rail actions and navigation -->

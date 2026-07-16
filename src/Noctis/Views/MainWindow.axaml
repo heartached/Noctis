@@ -20,6 +20,7 @@
         <KeyBinding Gesture="Ctrl+Right" Command="{Binding Player.NextCommand}" />
         <KeyBinding Gesture="Ctrl+Left" Command="{Binding Player.PreviousCommand}" />
         <KeyBinding Gesture="Ctrl+N" Command="{Binding Sidebar.CreatePlaylistCommand}" />
+        <KeyBinding Gesture="Ctrl+F" Command="{Binding Sidebar.TopBar.OpenSearchCommand}" />
     </Window.KeyBindings>
 
     <Window.Styles>

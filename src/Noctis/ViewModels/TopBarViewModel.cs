@@ -24,6 +24,10 @@ public partial class TopBarViewModel : ViewModelBase
     public string PageTitleDisplay => IsCoverFlowMode ? (IsCollageMode ? "Cover Collage" : "Cover Flow") : CurrentTabName;
     [ObservableProperty] private string _searchWatermark = "Search in Library";
     [ObservableProperty] private bool _isSearchVisible = true;
+    // The search pill is a persistent (non-light-dismiss) popup: it stays open while
+    // the user browses/filters and only closes explicitly (toggle, Esc, or navigating
+    // to a page without search).
+    [ObservableProperty] private bool _isSearchOpen;
 
     // Back button (shown in detail views like Album Detail, Genre Detail, etc.)
     [ObservableProperty] private bool _isBackButtonVisible;
@@ -328,6 +332,7 @@ public partial class TopBarViewModel : ViewModelBase
     partial void OnCurrentTabNameChanged(string value)
     {
         IsSearchVisible = value is not ("Home" or "Settings" or "Lyrics");
+        if (!IsSearchVisible) IsSearchOpen = false;
         SearchWatermark = $"Search in {value}";
         UpdatePageTitleVisibility();
     }
@@ -370,5 +375,16 @@ public partial class TopBarViewModel : ViewModelBase
     private void FocusSearch()
     {
         IsSearchFocused = true;
+    }
+
+    /// <summary>Raised when search should open/focus (Ctrl+F), even if already open.</summary>
+    public event EventHandler? SearchOpenRequested;
+
+    [RelayCommand]
+    private void OpenSearch()
+    {
+        if (!IsSearchVisible) return;
+        IsSearchOpen = true;
+        SearchOpenRequested?.Invoke(this, EventArgs.Empty);
     }
 }
