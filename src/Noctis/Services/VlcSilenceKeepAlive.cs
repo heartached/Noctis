@@ -38,8 +38,17 @@ internal sealed class VlcSilenceKeepAlive : IAudioKeepAlive
 
     public static VlcSilenceKeepAlive? TryStart(LibVLC libVlc)
     {
-        if (Environment.GetEnvironmentVariable("NOCTIS_KEEPALIVE") == "0") return null;
+        var env = Environment.GetEnvironmentVariable("NOCTIS_KEEPALIVE");
+        if (env == "0") return null;
         if (OperatingSystem.IsWindows()) return null; // Windows uses WasapiSilenceKeepAlive
+        // macOS: opt-in only (NOCTIS_KEEPALIVE=1). Running this second looping
+        // aout stream alongside real playback corrupts audible output on
+        // CoreAudio — repeating channel-alternating distortion + dropouts
+        // (Apple Silicon, VLC.app libvlc, first real-hardware report 2026-07-16).
+        // CoreAudio doesn't cold-drop first buffers the way WASAPI does, so the
+        // keep-alive's benefit there is unproven while the cost is unlistenable
+        // playback; Linux keeps it (verified working over PulseAudio/PipeWire).
+        if (OperatingSystem.IsMacOS() && env != "1") return null;
         try { return new VlcSilenceKeepAlive(libVlc); }
         catch (Exception ex)
         {
