@@ -13,9 +13,9 @@ public enum FileChangeKind
 }
 
 /// <summary>A coalesced batch of import/remove actions ready to apply to the library.</summary>
-public readonly record struct WatchBatch(IReadOnlyList<string> ToImport, IReadOnlyList<string> ToRemove)
+public readonly record struct WatchBatch(IReadOnlyList<string> ToImport, IReadOnlyList<string> ToRemove, IReadOnlyList<string> ToRemoveDirs)
 {
-    public bool IsEmpty => ToImport.Count == 0 && ToRemove.Count == 0;
+    public bool IsEmpty => ToImport.Count == 0 && ToRemove.Count == 0 && ToRemoveDirs.Count == 0;
 }
 
 /// <summary>
@@ -31,13 +31,25 @@ public readonly record struct WatchBatch(IReadOnlyList<string> ToImport, IReadOn
 public sealed class WatchDebouncer
 {
     private readonly Dictionary<string, FileChangeKind> _pending = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _pendingDirRemovals = new(StringComparer.OrdinalIgnoreCase);
 
-    public bool HasPending => _pending.Count > 0;
+    public bool HasPending => _pending.Count > 0 || _pendingDirRemovals.Count > 0;
 
     public void Record(string path, FileChangeKind kind)
     {
         if (string.IsNullOrWhiteSpace(path)) return;
         _pending[path] = kind;
+    }
+
+    /// <summary>
+    /// Records the deletion of a whole directory — every library track under it is removed.
+    /// Deleting/recycling a folder raises a single directory-level event with no per-file
+    /// deletes, so removal has to be by path prefix rather than exact file path.
+    /// </summary>
+    public void RecordDirectoryDeleted(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        _pendingDirRemovals.Add(path);
     }
 
     /// <summary>Records a rename as a delete of the old path plus a create of the new path.</summary>
@@ -50,8 +62,8 @@ public sealed class WatchDebouncer
     /// <summary>Returns the coalesced batch and clears pending state.</summary>
     public WatchBatch Drain()
     {
-        if (_pending.Count == 0)
-            return new WatchBatch(Array.Empty<string>(), Array.Empty<string>());
+        if (_pending.Count == 0 && _pendingDirRemovals.Count == 0)
+            return new WatchBatch(Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>());
 
         var toImport = new List<string>();
         var toRemove = new List<string>();
@@ -60,7 +72,9 @@ public sealed class WatchDebouncer
             if (kind == FileChangeKind.CreatedOrChanged) toImport.Add(path);
             else toRemove.Add(path);
         }
+        var toRemoveDirs = _pendingDirRemovals.ToList();
         _pending.Clear();
-        return new WatchBatch(toImport, toRemove);
+        _pendingDirRemovals.Clear();
+        return new WatchBatch(toImport, toRemove, toRemoveDirs);
     }
 }

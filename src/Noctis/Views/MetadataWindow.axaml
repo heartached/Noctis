@@ -1494,6 +1494,7 @@
                             BorderThickness="1"
                             CornerRadius="10"
                             Background="#18000000"
+                            Padding="0,10"
                             IsEnabled="{Binding HasCustomSyncedLyrics}">
                         <!-- The formatted preview is plain TextBlocks, which have no
                              theme disabled-state; dim the whole card so toggling
@@ -1519,7 +1520,7 @@
                             <ScrollViewer IsVisible="{Binding !#SyncedRawToggle.IsChecked}"
                                           VerticalScrollBarVisibility="Auto"
                                           HorizontalScrollBarVisibility="Disabled"
-                                          Padding="12,10,16,0">
+                                          Padding="12,0,16,0">
                                 <StackPanel>
                                     <ItemsControl ItemsSource="{Binding SyncedLyricLines}"
                                                   IsVisible="{Binding HasSyncedLines}">
@@ -1547,7 +1548,6 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <Border Height="16" />
                                 </StackPanel>
                             </ScrollViewer>
 

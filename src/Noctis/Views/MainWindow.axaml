@@ -20,6 +20,7 @@
         <KeyBinding Gesture="Ctrl+Right" Command="{Binding Player.NextCommand}" />
         <KeyBinding Gesture="Ctrl+Left" Command="{Binding Player.PreviousCommand}" />
         <KeyBinding Gesture="Ctrl+N" Command="{Binding Sidebar.CreatePlaylistCommand}" />
+        <KeyBinding Gesture="Ctrl+F" Command="{Binding Sidebar.TopBar.OpenSearchCommand}" />
     </Window.KeyBindings>
 
     <Window.Styles>
@@ -385,7 +386,10 @@
                     </Grid>
                 </Border>
 
-                <!-- Queue popup panel (right side, rounded, slightly transparent) -->
+                <!-- Queue popup panel (right side, rounded, slightly transparent).
+                     Visibility and the fade/slide open-close animation are driven from
+                     code-behind (IsQueuePopupOpen handler) so the close can play before
+                     the panel leaves the tree — same pattern as the Settings modal. -->
                 <Border x:Name="QueuePopupPanel"
                         HorizontalAlignment="Right"
                         Width="330"
@@ -394,9 +398,26 @@
                         ClipToBounds="True"
                         Background="#E61C1C1C"
                         TextElement.Foreground="White"
-                        IsVisible="{Binding Player.IsQueuePopupOpen}"
+                        IsVisible="False"
+                        Opacity="0"
+                        RenderTransformOrigin="100%,50%"
+                        RenderTransform="translateX(16px) scale(0.97)"
                         BoxShadow="-2 0 12 0 #40000000"
                         ZIndex="20">
+                    <Border.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                                <DoubleTransition.Easing>
+                                    <CubicEaseOut/>
+                                </DoubleTransition.Easing>
+                            </DoubleTransition>
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                                <TransformOperationsTransition.Easing>
+                                    <CubicEaseOut/>
+                                </TransformOperationsTransition.Easing>
+                            </TransformOperationsTransition>
+                        </Transitions>
+                    </Border.Transitions>
 
                     <Panel>
 
@@ -455,33 +476,76 @@
                                 <Setter Property="Background" Value="#33FFFFFF"/>
                             </Style>
                         </DockPanel.Styles>
-                        <!-- "Currently Playing" big header + Clear pill on the right -->
-                        <Grid DockPanel.Dock="Top" Margin="20,16,20,8"
-                              ColumnDefinitions="*,Auto">
-                            <TextBlock Grid.Column="0"
-                                       Text="Currently Playing"
-                                       FontSize="20"
-                                       FontWeight="Bold"
-                                       Foreground="White"
-                                       VerticalAlignment="Center" />
+                        <!-- Compact header: "Queue • N" + save-as-playlist / Clear ghost actions -->
+                        <Grid DockPanel.Dock="Top" Margin="20,16,12,6"
+                              ColumnDefinitions="*,Auto,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="Queue"
+                                           FontSize="18"
+                                           FontWeight="Bold"
+                                           Foreground="White" />
+                                <TextBlock Text="{Binding Player.UpNext.Count, StringFormat='&#x2022; {0}'}"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="White"
+                                           Opacity="0.5"
+                                           VerticalAlignment="Center"
+                                           Margin="0,2,0,0"
+                                           IsVisible="{Binding !!Player.UpNext.Count}" />
+                            </StackPanel>
                             <Button Grid.Column="1"
-                                     Classes="accent-btn"
-                                     Background="{DynamicResource AccentColorBrush}"
-                                     Foreground="{DynamicResource AccentForegroundBrush}"
+                                    Width="30" Height="30"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
                                     CornerRadius="999"
-                                    Padding="14,5"
                                     Cursor="Hand"
-                                    Content="Clear"
-                                    FontSize="12"
-                                    FontWeight="SemiBold"
+                                    ToolTip.Tip="Save the current queue as a playlist"
+                                    Command="{Binding Player.SaveQueueAsPlaylistCommand}"
+                                    IsVisible="{Binding !!Player.UpNext.Count}"
+                                    VerticalAlignment="Center">
+                                <Border Width="14" Height="14"
+                                        Background="White"
+                                        Opacity="0.65"
+                                        RenderOptions.BitmapInterpolationMode="HighQuality">
+                                    <Border.OpacityMask>
+                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Playlist%20icon.png" Stretch="Uniform" />
+                                    </Border.OpacityMask>
+                                </Border>
+                            </Button>
+                            <Button Grid.Column="2"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="9,5"
+                                    CornerRadius="999"
+                                    Cursor="Hand"
+                                    Margin="2,0,0,0"
                                     Click="OnQueueClearClick"
                                     IsVisible="{Binding !!Player.UpNext.Count}"
-                                    VerticalAlignment="Center" />
+                                    VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Border Width="13" Height="13"
+                                            Background="White"
+                                            Opacity="0.65"
+                                            RenderOptions.BitmapInterpolationMode="HighQuality">
+                                        <Border.OpacityMask>
+                                            <ImageBrush Source="avares://Noctis/Assets/Icons/Clear%20Queue%20ICON.png" Stretch="Uniform" />
+                                        </Border.OpacityMask>
+                                    </Border>
+                                    <TextBlock Text="Clear"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Foreground="White"
+                                               Opacity="0.8"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
                         </Grid>
 
                         <!-- Now-playing track card (Aurora: larger art, live progress, equalizer) -->
                         <Border DockPanel.Dock="Top"
-                                Margin="20,4,20,8"
+                                Margin="20,4,20,12"
                                 IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
                             <Border.Styles>
                                 <Style Selector="ProgressBar.np-progress">
@@ -558,46 +622,6 @@
                             </Grid>
                         </Border>
 
-                        <!-- Track count line + save-as-playlist -->
-                        <Grid DockPanel.Dock="Top" Margin="20,2,20,10" ColumnDefinitions="*,Auto">
-                            <TextBlock Grid.Column="0"
-                                       Text="{Binding Player.UpNext.Count, StringFormat='{}{0} &#x2022; tracks'}"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"
-                                       Foreground="White"
-                                       VerticalAlignment="Center"
-                                       Opacity="0.55" />
-                            <Button Grid.Column="1"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Padding="6,2"
-                                    Cursor="Hand"
-                                    ToolTip.Tip="Save the current queue as a playlist"
-                                    Command="{Binding Player.SaveQueueAsPlaylistCommand}"
-                                    IsVisible="{Binding !!Player.UpNext.Count}">
-                                <StackPanel Orientation="Horizontal" Spacing="5">
-                                    <!-- Uses the same PNG the Playlists nav renders (not the generic list
-                                         glyph); nudged up a touch to sit centred with the label. -->
-                                    <Border Width="13" Height="13"
-                                            Margin="0,-3,0,0"
-                                            VerticalAlignment="Center"
-                                            Opacity="0.55"
-                                            Background="White"
-                                            RenderOptions.BitmapInterpolationMode="HighQuality">
-                                        <Border.OpacityMask>
-                                            <ImageBrush Source="avares://Noctis/Assets/Icons/Playlist%20icon.png" Stretch="Uniform" />
-                                        </Border.OpacityMask>
-                                    </Border>
-                                    <TextBlock Text="Save as playlist"
-                                               FontSize="11"
-                                               FontWeight="SemiBold"
-                                               Foreground="White"
-                                               Opacity="0.55"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                        </Grid>
-
                         <!-- Separator -->
                         <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.08" Margin="20,0" />
 
@@ -618,7 +642,7 @@
                                 <ListBox.Styles>
                                     <Style Selector="ListBoxItem">
                                         <Setter Property="Padding" Value="0"/>
-                                        <Setter Property="Margin" Value="0,3"/>
+                                        <Setter Property="Margin" Value="0,1"/>
                                         <Setter Property="Cursor" Value="Hand"/>
                                         <Setter Property="Background" Value="Transparent"/>
                                         <Setter Property="Foreground" Value="White"/>
@@ -643,13 +667,12 @@
                                 </ListBox.Styles>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate x:DataType="m:Track">
-                                        <StackPanel Spacing="0">
                                         <!-- Single rounded-pill container wraps the entire row so the
-                                             drag highlight covers album art + text + duration as one card. -->
+                                             drag highlight covers album art + text + number as one card. -->
                                         <Border Classes="queue-row"
-                                                Margin="14,2,14,2"
-                                                Padding="6,4"
-                                                CornerRadius="14"
+                                                Margin="12,1,12,1"
+                                                Padding="8,4"
+                                                CornerRadius="10"
                                                 Tag="{Binding}"
                                                 PointerPressed="OnQueueItemPointerPressed"
                                                 PointerMoved="OnQueueItemPointerMoved"
@@ -671,12 +694,12 @@
                                                     </MenuItem>
                                                 </ContextMenu>
                                             </Border.ContextMenu>
-                                        <Grid ColumnDefinitions="Auto,*,Auto" Height="50"
+                                        <Grid ColumnDefinitions="Auto,*,Auto" Height="44"
                                               Background="Transparent">
 
                                             <!-- Album art thumbnail -->
                                             <Border Grid.Column="0"
-                                                    Width="44" Height="44"
+                                                    Width="36" Height="36"
                                                     CornerRadius="6"
                                                     ClipToBounds="True"
                                                     VerticalAlignment="Center"
@@ -716,28 +739,28 @@
                                                             Padding="2,0,3,0">
                                                         <TextBlock Text="{Binding ArtistDisplay}"
                                                                    FontSize="11"
-                                                                   FontWeight="Bold"
-                                                                   Foreground="{DynamicResource AccentColorBrush}"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="White"
+                                                                   Opacity="0.55"
                                                                    TextTrimming="CharacterEllipsis"
                                                                    MaxLines="1" />
                                                     </Border>
                                                 </Button>
                                             </StackPanel>
-                                            <!-- Track duration -->
+                                            <!-- Queue position (stamped from code-behind; virtualization
+                                                 recycles rows, so there is no per-item index to bind). -->
                                             <TextBlock Grid.Column="2"
-                                                       Text="{Binding DurationFormatted}"
+                                                       x:Name="QueueRowNumber"
                                                        FontSize="12"
+                                                       FontWeight="SemiBold"
                                                        Foreground="White"
                                                        Opacity="0.4"
-                                                       VerticalAlignment="Center" />
+                                                       MinWidth="20"
+                                                       TextAlignment="Right"
+                                                       VerticalAlignment="Center"
+                                                       Margin="4,0,4,0" />
                                         </Grid>
                                         </Border>
-                                        <!-- Separator line between tracks -->
-                                        <Border Height="1"
-                                                Margin="78,0,18,0"
-                                                Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                Opacity="0.06" />
-                                        </StackPanel>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
@@ -762,9 +785,9 @@
                                     x:DataType="m:Track"
                                     IsHitTestVisible="False"
                                     IsVisible="False"
-                                    Margin="14,0,14,0"
-                                    Padding="6,4"
-                                    CornerRadius="14"
+                                    Margin="12,0,12,0"
+                                    Padding="8,4"
+                                    CornerRadius="10"
                                     Background="{DynamicResource AccentColorBrush}"
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Top"
@@ -772,9 +795,9 @@
                                 <Border.RenderTransform>
                                     <TranslateTransform Y="0"/>
                                 </Border.RenderTransform>
-                                <Grid ColumnDefinitions="Auto,*,Auto" Height="50">
+                                <Grid ColumnDefinitions="Auto,*,Auto" Height="44">
                                     <Border Grid.Column="0"
-                                            Width="44" Height="44"
+                                            Width="36" Height="36"
                                             CornerRadius="6"
                                             ClipToBounds="True"
                                             VerticalAlignment="Center"
@@ -798,12 +821,6 @@
                                                    MaxLines="1"
                                                    Margin="0,2,0,0" />
                                     </StackPanel>
-                                    <TextBlock Grid.Column="2"
-                                               Text="{Binding DurationFormatted}"
-                                               FontSize="12"
-                                               Foreground="{DynamicResource AccentForegroundBrush}"
-                                               Opacity="0.7"
-                                               VerticalAlignment="Center" />
                                 </Grid>
                             </Border>
                         </Grid>

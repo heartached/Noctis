@@ -94,7 +94,51 @@ public class WatchDebouncerTests
         var d = new WatchDebouncer();
         d.Record("", FileChangeKind.CreatedOrChanged);
         d.Record("   ", FileChangeKind.Deleted);
+        d.RecordDirectoryDeleted("");
+        d.RecordDirectoryDeleted("   ");
         Assert.False(d.HasPending);
+    }
+
+    [Fact]
+    public void RecordDirectoryDeleted_DrainsIntoToRemoveDirs()
+    {
+        var d = new WatchDebouncer();
+        d.RecordDirectoryDeleted(@"C:\m\Album");
+        Assert.True(d.HasPending);
+
+        var batch = d.Drain();
+        Assert.False(batch.IsEmpty);
+        Assert.Empty(batch.ToImport);
+        Assert.Empty(batch.ToRemove);
+        Assert.Equal(new[] { @"C:\m\Album" }, batch.ToRemoveDirs);
+
+        Assert.False(d.HasPending);
+        Assert.True(d.Drain().IsEmpty);
+    }
+
+    [Fact]
+    public void RecordDirectoryDeleted_DeduplicatesCaseInsensitively()
+    {
+        var d = new WatchDebouncer();
+        d.RecordDirectoryDeleted(@"C:\m\Album");
+        d.RecordDirectoryDeleted(@"c:\M\ALBUM");
+
+        var batch = d.Drain();
+        Assert.Single(batch.ToRemoveDirs);
+    }
+
+    [Fact]
+    public void RecordDirectoryDeleted_CoexistsWithFileEvents()
+    {
+        var d = new WatchDebouncer();
+        d.Record(@"C:\m\new.mp3", FileChangeKind.CreatedOrChanged);
+        d.Record(@"C:\m\gone.mp3", FileChangeKind.Deleted);
+        d.RecordDirectoryDeleted(@"C:\m\Album");
+
+        var batch = d.Drain();
+        Assert.Equal(new[] { @"C:\m\new.mp3" }, batch.ToImport);
+        Assert.Equal(new[] { @"C:\m\gone.mp3" }, batch.ToRemove);
+        Assert.Equal(new[] { @"C:\m\Album" }, batch.ToRemoveDirs);
     }
 
     [Fact]

@@ -3,9 +3,10 @@ using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using System.ComponentModel;
 using Noctis.Models;
 using Noctis.ViewModels;
@@ -16,6 +17,7 @@ public partial class SidebarView : UserControl
 {
     private bool _isSyncingSelection;
     private SidebarViewModel? _vm;
+    private TopBarViewModel? _topBarVm;
 
     public SidebarView()
     {
@@ -30,6 +32,7 @@ public partial class SidebarView : UserControl
         _vm = DataContext as SidebarViewModel;
         if (_vm != null)
             _vm.PropertyChanged += OnViewModelPropertyChanged;
+        AttachTopBar(_vm?.TopBar);
 
         SyncSelectionFromViewModel();
     }
@@ -38,6 +41,18 @@ public partial class SidebarView : UserControl
     {
         if (e.PropertyName == nameof(SidebarViewModel.SelectedNavItem))
             SyncSelectionFromViewModel();
+        else if (e.PropertyName == nameof(SidebarViewModel.TopBar))
+            AttachTopBar(_vm?.TopBar);
+    }
+
+    // TopBar is assigned to the sidebar VM after composition, so (re)subscribe
+    // whenever it changes rather than only at DataContext time.
+    private void AttachTopBar(TopBarViewModel? topBar)
+    {
+        if (ReferenceEquals(_topBarVm, topBar)) return;
+        if (_topBarVm != null) _topBarVm.SearchOpenRequested -= OnSearchOpenRequested;
+        _topBarVm = topBar;
+        if (_topBarVm != null) _topBarVm.SearchOpenRequested += OnSearchOpenRequested;
     }
 
     private void OnNavListSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -102,28 +117,40 @@ public partial class SidebarView : UserControl
 
     private ListBox[] GetNavLists() => new[] { NavList, FavoritesList, PlaylistList };
 
-    // ── Rail search flyout open/close animation ──
+    // ── Rail search pill open/close animation ──
     // Same mechanism as MenuOpenAnimation (per-instance transitions, settle on the
-    // next frame, cancel-then-animate close); scoped here because that helper is
-    // specialized to ContextMenu/MenuFlyout.
+    // next frame, animate-then-close); scoped here because that helper is
+    // specialized to ContextMenu/MenuFlyout. The pill is a non-light-dismiss Popup
+    // so it stays open while the user interacts with the filtered page beneath it.
 
     private const double SearchAnimMs = 150;
     private bool _searchCloseAnimating;
-    private bool _searchCloseAfterAnimation;
 
-    /// <summary>The flyout presenter (the pill surface) when available, else the content.
-    /// Animating only the inner content left the pill background popping in/out abruptly.</summary>
-    private static Control GetSearchAnimTarget(Control content) =>
-        content.FindAncestorOfType<FlyoutPresenter>() as Control ?? content;
-
-    private void OnSearchFlyoutOpened(object? sender, EventArgs e)
+    private void OnSearchButtonClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Flyout flyout || flyout.Content is not Control content)
-            return;
+        var topBar = _vm?.TopBar;
+        if (topBar == null) return;
 
+        if (topBar.IsSearchOpen)
+            CloseSearchPopup(topBar);
+        else
+            topBar.OpenSearchCommand.Execute(null);
+    }
+
+    private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape) return;
+        e.Handled = true;
+        var topBar = _vm?.TopBar;
+        if (topBar != null) CloseSearchPopup(topBar);
+    }
+
+    private void OnSearchPopupOpened(object? sender, EventArgs e)
+    {
         // Slide in from the search icon: start hidden + nudged left, settle into
         // place on the next frame so the transitions animate the change.
-        var target = GetSearchAnimTarget(content);
+        var target = SearchPopupContent;
+        _searchCloseAnimating = false;
         EnsureSearchTransitions(target, TimeSpan.FromMilliseconds(SearchAnimMs));
         target.Opacity = 0;
         target.RenderTransform = TransformOperations.Parse("translateX(-10px)");
@@ -131,32 +158,17 @@ public partial class SidebarView : UserControl
         {
             target.Opacity = 1;
             target.RenderTransform = TransformOperations.Parse("translateX(0px)");
-            var box = content as TextBox ?? content.GetVisualDescendants().OfType<TextBox>().FirstOrDefault();
-            box?.Focus();
+            SearchBox.Focus();
         }, DispatcherPriority.Render);
     }
 
-    private void OnSearchFlyoutClosing(object? sender, CancelEventArgs e)
+    private void CloseSearchPopup(TopBarViewModel topBar)
     {
-        if (sender is not Flyout flyout || flyout.Content is not Control content)
-            return;
-
-        if (_searchCloseAfterAnimation)
-        {
-            _searchCloseAfterAnimation = false;
-            return;
-        }
-
-        if (_searchCloseAnimating)
-        {
-            e.Cancel = true;
-            return;
-        }
+        if (_searchCloseAnimating) return;
 
         // Mirror of the open animation: same distance, duration and easing.
-        e.Cancel = true;
         _searchCloseAnimating = true;
-        var target = GetSearchAnimTarget(content);
+        var target = SearchPopupContent;
         EnsureSearchTransitions(target, TimeSpan.FromMilliseconds(SearchAnimMs));
         target.Opacity = 0;
         target.RenderTransform = TransformOperations.Parse("translateX(-10px)");
@@ -166,13 +178,19 @@ public partial class SidebarView : UserControl
         {
             timer.Stop();
             _searchCloseAnimating = false;
-            if (flyout.IsOpen)
-            {
-                _searchCloseAfterAnimation = true;
-                flyout.Hide();
-            }
+            topBar.IsSearchOpen = false;
         };
         timer.Start();
+    }
+
+    private void OnSearchOpenRequested(object? sender, EventArgs e)
+    {
+        // Ctrl+F with the pill already open: re-focus the box (a fresh open is
+        // focused by OnSearchPopupOpened instead).
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (SearchPopup.IsOpen) SearchBox.Focus();
+        }, DispatcherPriority.Render);
     }
 
     private static void EnsureSearchTransitions(Control control, TimeSpan duration)
@@ -188,5 +206,6 @@ public partial class SidebarView : UserControl
     {
         if (_vm != null)
             _vm.PropertyChanged -= OnViewModelPropertyChanged;
+        AttachTopBar(null);
     }
 }

@@ -1569,6 +1569,8 @@ public partial class PlayerViewModel : ViewModelBase
         Dispatcher.UIThread.Post(() =>
         {
             _positionUpdateQueued = false;
+            // Audio is demonstrably playing — the error-cascade breaker resets.
+            if (_consecutivePlaybackErrors != 0) _consecutivePlaybackErrors = 0;
             var latest = _latestVlcPosition;
 
             if (_isSeeking) return; // don't update while user is dragging
@@ -2010,11 +2012,27 @@ public partial class PlayerViewModel : ViewModelBase
         });
     }
 
+    // Circuit breaker for the error→skip loop: a single missing/corrupt file is
+    // skipped, but a queue full of dead paths (e.g. the music folder renamed or
+    // unmounted while the app was closed) must not cascade through thousands of
+    // tracks in a tight error loop. Reset by the first real position callback.
+    private const int MaxConsecutivePlaybackErrors = 5;
+    private int _consecutivePlaybackErrors;
+
     private void OnPlaybackError(object? sender, string message)
     {
         DebugLogger.Error(DebugLogger.Category.Playback, "PlaybackError", $"msg={message}, track={CurrentTrack?.Title}");
         Dispatcher.UIThread.Post(() =>
         {
+            if (++_consecutivePlaybackErrors >= MaxConsecutivePlaybackErrors)
+            {
+                DebugLogger.Error(DebugLogger.Category.Playback, "PlaybackError.CascadeStop",
+                    $"{_consecutivePlaybackErrors} consecutive playback errors — stopping instead of skipping");
+                _consecutivePlaybackErrors = 0;
+                StopAndClear();
+                return;
+            }
+
             // Skip to next track on error
             if (UpNext.Count > 0)
                 AdvanceQueue(QueueAdvanceReason.Error);

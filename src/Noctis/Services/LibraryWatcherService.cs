@@ -66,10 +66,13 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
                     var w = new FileSystemWatcher(folder)
                     {
                         IncludeSubdirectories = true,
-                        NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
+                        // DirectoryName is required to see folder deletes/moves/renames:
+                        // recycling or moving an album folder is a single directory-level
+                        // event on Windows — no per-file events are raised for its contents.
+                        NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size,
                         InternalBufferSize = 64 * 1024
                     };
-                    w.Created += OnChanged;
+                    w.Created += OnCreated;
                     w.Changed += OnChanged;
                     w.Deleted += OnDeleted;
                     w.Renamed += OnRenamed;
@@ -95,20 +98,70 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
         Record(() => _debouncer.Record(e.FullPath, FileChangeKind.CreatedOrChanged));
     }
 
+    private void OnCreated(object sender, FileSystemEventArgs e)
+    {
+        if (IsAudio(e.FullPath))
+        {
+            Record(() => _debouncer.Record(e.FullPath, FileChangeKind.CreatedOrChanged));
+            return;
+        }
+        // A folder moved into the watched tree arrives as a single directory-create
+        // with no per-file events — pick up the audio it already contains.
+        if (Directory.Exists(e.FullPath))
+            RecordDirectoryContents(e.FullPath);
+    }
+
     private void OnDeleted(object sender, FileSystemEventArgs e)
     {
-        if (!IsAudio(e.FullPath)) return;
-        Record(() => _debouncer.Record(e.FullPath, FileChangeKind.Deleted));
+        if (IsAudio(e.FullPath))
+        {
+            Record(() => _debouncer.Record(e.FullPath, FileChangeKind.Deleted));
+            return;
+        }
+        // The entry is already gone, so a folder can't be told apart from a non-audio
+        // file — record a directory (prefix) removal either way; a non-audio file's
+        // path prefixes no track paths, so that case is a harmless no-op.
+        Record(() => _debouncer.RecordDirectoryDeleted(e.FullPath));
     }
 
     private void OnRenamed(object sender, RenamedEventArgs e)
     {
+        // A folder rename/move-within-the-tree is a single directory event: drop
+        // every track under the old path and import the folder's current contents.
+        if (Directory.Exists(e.FullPath))
+        {
+            Record(() => _debouncer.RecordDirectoryDeleted(e.OldFullPath));
+            RecordDirectoryContents(e.FullPath);
+            return;
+        }
         // Either side may carry a non-audio name (e.g. a download's ".part" → ".mp3").
         var oldAudio = IsAudio(e.OldFullPath);
         var newAudio = IsAudio(e.FullPath);
         if (!oldAudio && !newAudio) return;
         Record(() => _debouncer.RecordRename(oldAudio ? e.OldFullPath : null,
                                              newAudio ? e.FullPath : null));
+    }
+
+    private void RecordDirectoryContents(string dir)
+    {
+        List<string> files;
+        try
+        {
+            files = Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)
+                .Where(IsAudio)
+                .ToList();
+        }
+        catch
+        {
+            // Directory vanished mid-enumeration — later events or the next scan reconcile.
+            return;
+        }
+        if (files.Count == 0) return;
+        Record(() =>
+        {
+            foreach (var f in files)
+                _debouncer.Record(f, FileChangeKind.CreatedOrChanged);
+        });
     }
 
     private void OnError(object sender, ErrorEventArgs e)
@@ -174,11 +227,11 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
             }
         }
 
-        if (toImport.Count == 0 && batch.ToRemove.Count == 0) return;
+        if (toImport.Count == 0 && batch.ToRemove.Count == 0 && batch.ToRemoveDirs.Count == 0) return;
 
         // The timer callback already runs off the UI thread; apply asynchronously
         // so we never block the timer thread on library I/O.
-        _ = ApplyBatchAsync(new WatchBatch(toImport, batch.ToRemove));
+        _ = ApplyBatchAsync(new WatchBatch(toImport, batch.ToRemove, batch.ToRemoveDirs));
     }
 
     /// <summary>
@@ -233,19 +286,26 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
         await _applyLock.WaitAsync().ConfigureAwait(false);
         try
         {
-            if (batch.ToImport.Count > 0)
-                await _library.ImportFilesAsync(batch.ToImport).ConfigureAwait(false);
-
-            if (batch.ToRemove.Count > 0)
+            // Removals go first so a folder moved away and back within one batch
+            // (dir-removal + re-imports of the same files) ends up imported, not removed.
+            if (batch.ToRemove.Count > 0 || batch.ToRemoveDirs.Count > 0)
             {
                 var removeSet = new HashSet<string>(batch.ToRemove, StringComparer.OrdinalIgnoreCase);
+                var dirPrefixes = batch.ToRemoveDirs
+                    .Select(d => d.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                                 + Path.DirectorySeparatorChar)
+                    .ToList();
                 var ids = _library.Tracks
-                    .Where(t => removeSet.Contains(t.FilePath))
+                    .Where(t => removeSet.Contains(t.FilePath) ||
+                                dirPrefixes.Any(p => t.FilePath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
                     .Select(t => t.Id)
                     .ToList();
                 if (ids.Count > 0)
                     await _library.RemoveTracksAsync(ids).ConfigureAwait(false);
             }
+
+            if (batch.ToImport.Count > 0)
+                await _library.ImportFilesAsync(batch.ToImport).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

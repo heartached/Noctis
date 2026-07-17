@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private DockPanel? _rootPanel;
     private Border? _settingsOverlay;
     private Border? _settingsCard;
+    private Border? _queuePopupPanel;
     private MiniPlayerWindow? _miniPlayer;
     private Action? _singleInstanceActivationHandler;
 
@@ -137,6 +138,20 @@ public partial class MainWindow : Window
                 _rootPanel = this.FindControl<DockPanel>("RootPanel");
                 _settingsOverlay = this.FindControl<Border>("SettingsOverlay");
                 _settingsCard = this.FindControl<Border>("SettingsCard");
+                _queuePopupPanel = this.FindControl<Border>("QueuePopupPanel");
+
+                // Queue row position numbers: rows are virtualized and recycled, so
+                // there is no per-item index to bind — stamp the 1-based position when
+                // a container is prepared and re-stamp the visible rows whenever the
+                // queue mutates (reorder / remove / insert).
+                var queueList = this.FindControl<ListBox>("QueuePopupListBox");
+                if (queueList != null)
+                {
+                    queueList.ContainerPrepared += (_, e) => SetQueueRowNumber(e.Container, e.Index);
+                    vm.Player.UpNext.CollectionChanged += (_, _) =>
+                        Dispatcher.UIThread.Post(() => RenumberQueueRows(queueList),
+                            DispatcherPriority.Loaded);
+                }
                 _mainVmPropertyChangedHandler = (s, e) =>
                 {
                     var mainVm2 = (MainWindowViewModel)s!;
@@ -554,6 +569,8 @@ public partial class MainWindow : Window
                     // Queue popup and lyrics panel share the right edge — mutual exclusion.
                     if (vm.Player.IsQueuePopupOpen)
                         vm.IsLyricsPanelOpen = false;
+                    AnimateSidePanel(_queuePopupPanel, vm.Player.IsQueuePopupOpen,
+                        () => DataContext is MainWindowViewModel m && !m.Player.IsQueuePopupOpen);
                 }
                 else if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
                 {
@@ -860,6 +877,66 @@ public partial class MainWindow : Window
     //   clicks and double-taps continue to work normally for selection/play.
 
     private const double QueueDragThreshold = 6.0;
+
+    /// <summary>
+    /// Open/close animation for the queue popup, mirroring the Settings modal:
+    /// fade + slide/scale settle on open, the reverse on close, then the closed
+    /// panel drops out of the tree so it stops participating in layout/render.
+    /// <paramref name="stillClosed"/> re-checks the state when the close timer
+    /// fires, so a quick re-open never hides an open panel.
+    /// (The lyrics panel intentionally keeps its own width-slide animation.)
+    /// </summary>
+    private static void AnimateSidePanel(Border? panel, bool open, Func<bool> stillClosed)
+    {
+        if (panel == null) return;
+        if (open)
+        {
+            // Show first; the settle runs on the next frame so the transitions animate it.
+            panel.IsVisible = true;
+            Dispatcher.UIThread.Post(() =>
+            {
+                panel.Opacity = 1;
+                panel.RenderTransform =
+                    Avalonia.Media.Transformation.TransformOperations.Parse("translateX(0px) scale(1)");
+            }, DispatcherPriority.Render);
+        }
+        else
+        {
+            panel.Opacity = 0;
+            panel.RenderTransform =
+                Avalonia.Media.Transformation.TransformOperations.Parse("translateX(16px) scale(0.97)");
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (stillClosed())
+                    panel.IsVisible = false;
+            }, TimeSpan.FromMilliseconds(200));
+        }
+    }
+
+    /// <summary>Stamps the 1-based queue position into a (possibly recycled) row container.</summary>
+    private static void SetQueueRowNumber(Control container, int index)
+    {
+        // Deferred: the row's template may not be applied yet when the container is prepared.
+        Dispatcher.UIThread.Post(() =>
+        {
+            var tb = container.GetVisualDescendants().OfType<TextBlock>()
+                              .FirstOrDefault(t => t.Name == "QueueRowNumber");
+            if (tb != null) tb.Text = (index + 1).ToString();
+        }, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>Re-stamps positions on the realized rows after the queue mutates.</summary>
+    private static void RenumberQueueRows(ListBox listBox)
+    {
+        foreach (var container in listBox.GetRealizedContainers())
+        {
+            var i = listBox.IndexFromContainer(container);
+            if (i < 0) continue;
+            var tb = container.GetVisualDescendants().OfType<TextBlock>()
+                              .FirstOrDefault(t => t.Name == "QueueRowNumber");
+            if (tb != null) tb.Text = (i + 1).ToString();
+        }
+    }
 
     private Point _queueDragStartPos;
     private bool _queueDragActive;
