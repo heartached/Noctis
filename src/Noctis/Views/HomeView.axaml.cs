@@ -80,7 +80,15 @@ public partial class HomeView : UserControl
     private void OpenTrackMenu(object? sender, ContextRequestedEventArgs e,
         Func<HomeViewModel, ICommand> playCommand, Func<HomeViewModel, ICommand> shuffleCommand)
     {
-        if (sender is not Control owner || owner.DataContext is not Track track) return;
+        if (sender is not Control owner) return;
+        // Top-song rows wrap their Track in a TopSongRow for rank/bar display.
+        var track = owner.DataContext switch
+        {
+            Track t => t,
+            TopSongRow r => r.Track,
+            _ => null,
+        };
+        if (track == null) return;
         if (DataContext is not HomeViewModel vm) return;
 
         if (_trackMenuBuilder == null)

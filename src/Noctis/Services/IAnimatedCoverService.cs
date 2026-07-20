@@ -27,7 +27,11 @@ public interface IAnimatedCoverService
     Task<string> ImportAsync(Track track, string sourcePath, AnimatedCoverScope scope);
 
     /// <summary>
-    /// Removes the managed-cache entry for the given scope. Sidecar files are NEVER deleted.
+    /// Removes the track's managed-cache entries — both the track-scoped and the
+    /// album-scoped file, since <see cref="Resolve"/> falls back across scopes and
+    /// removing only one would leave the cover showing. Retries briefly so a file
+    /// still held open by a winding-down player session is not skipped silently.
+    /// Sidecar files are NEVER deleted.
     /// </summary>
-    void Remove(Track track, AnimatedCoverScope scope);
+    Task RemoveAsync(Track track, AnimatedCoverScope scope);
 }

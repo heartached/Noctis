@@ -38,6 +38,9 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
 
     [ObservableProperty] private FolderNode? _selectedNode;
 
+    /// <summary>"2,144 items · 61.2 GB" line for the selected folder's header.</summary>
+    [ObservableProperty] private string _folderSummaryText = string.Empty;
+
     /// <summary>Fires when the user clicks "Manage media folders…" — handled by MainWindowViewModel to switch views.</summary>
     public event EventHandler? NavigateToSettingsRequested;
 
@@ -117,6 +120,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         {
             SelectedNode = null;
             SelectedFolderTracks.ReplaceAll(Array.Empty<Track>());
+            UpdateFolderSummary();
         }
     }
 
@@ -147,6 +151,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
             for (int i = 0; i < sink.Count; i++)
                 sink[i].RowNumber = i + 1;
             SelectedFolderTracks.ReplaceAll(sink);
+            UpdateFolderSummary();
 
             if (hasFilter)
             {
@@ -172,6 +177,26 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
             all = all.Where(t => MatchesFilter(t, q)).ToList();
         }
         SelectedFolderTracks.ReplaceAll(all);
+        UpdateFolderSummary();
+    }
+
+    private void UpdateFolderSummary()
+    {
+        var count = SelectedFolderTracks.Count;
+        if (count == 0)
+        {
+            FolderSummaryText = string.Empty;
+            return;
+        }
+
+        long bytes = 0;
+        foreach (var t in SelectedFolderTracks)
+            bytes += t.FileSize;
+
+        var items = count == 1 ? "1 item" : $"{count:N0} items";
+        var gb = bytes / (1024.0 * 1024.0 * 1024.0);
+        var size = gb >= 1 ? $"{gb:0.#} GB" : $"{bytes / (1024.0 * 1024.0):0} MB";
+        FolderSummaryText = $"{items} · {size}";
     }
 
     private static bool MatchesFilter(Track t, string q) =>

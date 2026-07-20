@@ -134,7 +134,7 @@ public partial class PlayerViewModel : ViewModelBase
     private TimeSpan _pendingSeekTarget = TimeSpan.Zero; // latest seek target while dragging
     private bool _hasPendingSeekTarget; // whether a drag seek target is waiting to be committed
     private TimeSpan _lastCommittedSeekTarget; // the position we last seeked to (for anchoring)
-    private const int SeekSettleWindowMs = 300; // must be less than VLC's file-caching (500ms)
+    private const int SeekSettleWindowMs = 300; // must be less than VLC's file-caching (1000ms, see VlcAudioPlayer)
     private const int SeekDebounceMs = 60; // coalesces rapid clicks so VLC receives fewer seeks
     private const int TrackStartStalePositionGuardMs = 9000;
     private const int NaturalEndFallbackDelayMs = 1400;
@@ -695,6 +695,7 @@ public partial class PlayerViewModel : ViewModelBase
             State = PlaybackState.Stopped;
             CurrentTrack = null;
             AlbumArt = null;
+            CurrentAnimatedCoverPath = null;
         }
 
         if (choice == Views.RemoveFromLibraryChoice.Trash)
@@ -822,6 +823,9 @@ public partial class PlayerViewModel : ViewModelBase
         // AlbumArt bitmaps are owned by the shared ArtworkCache — drop the reference,
         // don't dispose (other UI surfaces and the cache may still hold it).
         AlbumArt = null;
+        // Stop the animated cover with playback — otherwise the loop keeps
+        // playing over the "No track playing" state after the queue drains.
+        CurrentAnimatedCoverPath = null;
     }
 
     /// <summary>Reorders a track in the UpNext queue via drag & drop.</summary>
@@ -1010,6 +1014,17 @@ public partial class PlayerViewModel : ViewModelBase
     /// so the exact value is applied without waiting for the trailing timer.
     /// </summary>
     public void CommitVolume() => _audioPlayer.CommitVolume();
+
+    /// <summary>
+    /// Unmute when the user actively adjusts volume (slider drag or wheel) —
+    /// adjusting while muted means they want to hear the result.
+    /// </summary>
+    public void UnmuteForAdjust()
+    {
+        if (!IsMuted) return;
+        IsMuted = false;
+        _audioPlayer.IsMuted = false;
+    }
 
     partial void OnCurrentTrackChanged(Track? value)
     {

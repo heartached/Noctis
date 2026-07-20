@@ -1307,6 +1307,19 @@
                                                            Opacity="0.75"
                                                            VerticalAlignment="Center"/>
                                             </StackPanel>
+
+                                            <!-- Status also shown here: download errors were only
+                                                 rendered in the pre-results section, so a failed
+                                                 variant download looked like a silent no-op. Hidden
+                                                 while empty so it reserves no space. -->
+                                            <TextBlock Text="{Binding AnimatedSearchStatus}"
+                                                       FontSize="11"
+                                                       Opacity="0.75"
+                                                       HorizontalAlignment="Center"
+                                                       TextWrapping="Wrap"
+                                                       MaxWidth="260"
+                                                       TextAlignment="Center"
+                                                       IsVisible="{Binding AnimatedSearchStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                         </StackPanel>
                                     </Border>
                                 </Panel>
@@ -1467,6 +1480,20 @@
                                     Orientation="Horizontal"
                                     VerticalAlignment="Center"
                                     Spacing="10">
+                            <TextBlock Text="Copied!"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource AccentColorBrush}"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding SyncedLyricsCopied}" />
+                            <Button Content="Copy lyrics"
+                                    Command="{Binding CopySyncedLyricsCommand}"
+                                    IsEnabled="{Binding HasSyncedLines}"
+                                    ToolTip.Tip="Copy the synced lyrics (LRC with timestamps) to the clipboard"
+                                    Padding="14,6"
+                                    CornerRadius="999"
+                                    Cursor="Hand"
+                                    FontWeight="SemiBold"
+                                    FontSize="12" />
                             <Button Content="Search lyrics"
                                     Command="{Binding SearchSyncedLyricsCommand}"
                                     Padding="14,6"
@@ -1539,11 +1566,11 @@
                                                                    Foreground="{DynamicResource AccentColorBrush}"
                                                                    HorizontalAlignment="Center" />
                                                     </Border>
-                                                    <TextBlock Grid.Column="1"
-                                                               Text="{Binding DisplayText}"
-                                                               FontSize="13.5"
-                                                               TextWrapping="Wrap"
-                                                               Margin="12,3,8,0" />
+                                                    <SelectableTextBlock Grid.Column="1"
+                                                                         Text="{Binding DisplayText}"
+                                                                         FontSize="13.5"
+                                                                         TextWrapping="Wrap"
+                                                                         Margin="12,3,8,0" />
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>

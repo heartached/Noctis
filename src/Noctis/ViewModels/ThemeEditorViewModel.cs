@@ -32,6 +32,7 @@ public partial class ThemeEditorViewModel : ObservableObject
 
     public string Id { get; }
     public bool IsEdit => _isEdit;
+    public string DialogTitle => _isEdit ? "Edit Custom Theme" : "New Custom Theme";
 
     [ObservableProperty] private string _name = "";
     [ObservableProperty] private bool _isDarkMode = true;
@@ -50,6 +51,8 @@ public partial class ThemeEditorViewModel : ObservableObject
     [ObservableProperty] private IBrush? _previewIslandFgSecondary;
     [ObservableProperty] private IBrush? _previewSidebarHover;
     [ObservableProperty] private IBrush? _previewOutline;
+    [ObservableProperty] private IBrush? _previewStripe;
+    [ObservableProperty] private IBrush? _previewAccentFg;
 
     // ── Validation ──
     public bool HasInvalidName => string.IsNullOrWhiteSpace(Name);
@@ -78,6 +81,8 @@ public partial class ThemeEditorViewModel : ObservableObject
         PreviewIslandFg           = (IBrush)dict["IslandForeground"];
         PreviewIslandFgSecondary  = (IBrush)dict["IslandForegroundSecondary"];
         PreviewSidebarHover       = (IBrush)dict["SidebarHoverBrush"];
+        PreviewStripe             = (IBrush)dict["TrackListStripeBrush"];
+        PreviewAccentFg           = (IBrush)dict["AccentForegroundBrush"];
         PreviewOutline            = new SolidColorBrush(Color.Parse(IsDarkMode ? "#1FFFFFFF" : "#26000000"));
     }
 
@@ -90,6 +95,12 @@ public partial class ThemeEditorViewModel : ObservableObject
         SidebarBackgroundHex = SidebarHex,
         AccentHex = AccentHex,
     };
+
+    /// <summary>Sets the base mode absolutely ("Dark"/"Light"), so clicking the
+    /// already-active pill is a no-op instead of a ToggleButton un-check flip.</summary>
+    [RelayCommand]
+    private void SetBaseMode(string mode)
+        => IsDarkMode = string.Equals(mode, "Dark", StringComparison.OrdinalIgnoreCase);
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private void Save() => Saved?.Invoke(ToDefinition());

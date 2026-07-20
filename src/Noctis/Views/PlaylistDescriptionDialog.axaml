@@ -10,9 +10,22 @@
         TransparencyLevelHint="Transparent"
         ShowInTaskbar="False">
 
-    <Border Background="#98000000"
+    <!-- Fade/scale open-close animation: same pattern as the Create Playlist dialog
+         (code-behind settles to the open state on the next frame, mirrors on close). -->
+    <Border x:Name="DialogOverlay"
+            Background="#98000000"
+            Opacity="0"
             PointerPressed="OnOverlayPointerPressed"
             PointerWheelChanged="OnOverlayWheel">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
 
         <Border x:Name="DescriptionCard"
                 HorizontalAlignment="Center"
@@ -25,7 +38,18 @@
                 CornerRadius="12"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="1"
+                RenderTransformOrigin="50%,50%"
+                RenderTransform="scale(0.96)"
                 Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Border.Transitions>
             <Grid RowDefinitions="Auto,*"
                   ColumnDefinitions="*,Auto,Auto">
                 <StackPanel Grid.Row="0"
@@ -51,6 +75,17 @@
                                 Spacing="8"
                                 Margin="0,8,0,0"
                                 IsVisible="{Binding IsDescriptionEditing}">
+                        <Button Content="Cancel"
+                                Command="{Binding CancelDescriptionEditCommand}"
+                                Padding="12,6"
+                                FontSize="12"
+                                FontWeight="Bold"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                Background="{DynamicResource AccentColorBrush}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                Classes="album-desc-btn"
+                                IsVisible="{Binding IsDescriptionEditing}" />
                         <Button Content="Save"
                                 Command="{Binding SaveDescriptionEditCommand}"
                                 Padding="12,6"
@@ -63,17 +98,6 @@
                                 Classes="album-desc-btn"
                                 IsVisible="{Binding IsDescriptionEditing}"
                                 IsEnabled="{Binding HasDescriptionChanges}" />
-                        <Button Content="Cancel"
-                                Command="{Binding CancelDescriptionEditCommand}"
-                                Padding="12,6"
-                                FontSize="12"
-                                FontWeight="Bold"
-                                CornerRadius="999"
-                                Cursor="Hand"
-                                Background="{DynamicResource AccentColorBrush}"
-                                Foreground="{DynamicResource AccentForegroundBrush}"
-                                Classes="album-desc-btn"
-                                IsVisible="{Binding IsDescriptionEditing}" />
                     </StackPanel>
                 </StackPanel>
 

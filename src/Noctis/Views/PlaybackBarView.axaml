@@ -517,8 +517,13 @@
 
                             <!-- Track title + explicit badge -->
                             <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6">
+                            <!-- Width + right margin keep the original 200px footprint but pull
+                                 the clip edge 8px inward, so clipped/ellipsized text always has a
+                                 gap before whatever sits to the right. (Shrinking the width alone
+                                 is a no-op: the auto-sized column shrinks with it.) -->
                             <Border x:Name="TrackTitleViewport"
-                                    Width="200"
+                                    Width="192"
+                                    Margin="0,0,8,0"
                                     ClipToBounds="True"
                                     HorizontalAlignment="Left"
                                     VerticalAlignment="Center">
@@ -572,7 +577,8 @@
                                  to the artist name itself, not the blank space to its right. -->
                             <Border x:Name="ArtistNameViewport"
                                     Grid.Row="1"
-                                    Width="200"
+                                    Width="192"
+                                    Margin="0,0,8,0"
                                     ClipToBounds="True"
                                     HorizontalAlignment="Left">
                                 <Button Classes="artist-link-btn"
@@ -935,7 +941,9 @@
                     <!-- Volume control: clicking the icon opens a small slider popup above it.
                          Click 1 opens the popup; click 2 (while open) toggles mute and keeps the
                          popup visible. Moving the cursor off both the icon and the popup closes it. -->
-                    <Panel x:Name="VolumeContainer" VerticalAlignment="Center">
+                    <StackPanel x:Name="VolumeContainer" Orientation="Horizontal" Spacing="5"
+                                VerticalAlignment="Center"
+                                PointerWheelChanged="OnVolumeWheelChanged">
                         <Button x:Name="VolumeButton"
                                 Classes="secondary-btn"
                                 Click="OnVolumeIconClick"
@@ -972,15 +980,37 @@
                                VerticalOffset="-4"
                                IsLightDismissEnabled="False"
                                WindowManagerAddShadowHint="False">
+                            <StackPanel>
+                            <!-- Floating % bubble above the pill; follows the thumb while dragging. -->
+                            <Canvas x:Name="VolumeBubbleLayer" Height="24" Width="102" IsHitTestVisible="False">
+                                <Border x:Name="VolumeBubble"
+                                        Background="{DynamicResource IslandBackground}"
+                                        BorderBrush="{DynamicResource IslandBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="7,2"
+                                        Opacity="0"
+                                        Canvas.Top="0">
+                                    <Border.Transitions>
+                                        <Transitions>
+                                            <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
+                                        </Transitions>
+                                    </Border.Transitions>
+                                    <TextBlock x:Name="VolumeBubbleText"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource IslandIconFill}"/>
+                                </Border>
+                            </Canvas>
                             <Border x:Name="VolumeFlyoutContent"
                                     Background="{DynamicResource IslandBackground}"
                                     BorderBrush="{DynamicResource IslandBorder}"
                                     BorderThickness="1"
                                     CornerRadius="999"
-                                    Padding="10,6"
+                                    Padding="8,3"
                                     Opacity="0"
                                     PointerEntered="OnVolumeFlyoutPointerEntered"
-                                    PointerExited="OnVolumeFlyoutPointerExited">
+                                    PointerExited="OnVolumeFlyoutPointerExited"
+                                    PointerWheelChanged="OnVolumeWheelChanged">
                                 <Border.RenderTransform>
                                     <TranslateTransform Y="6">
                                         <TranslateTransform.Transitions>
@@ -1023,12 +1053,12 @@
                                                 Background="{DynamicResource IslandSliderFilled}"
                                                 Canvas.Top="7"/>
                                         <Border x:Name="VolumeThumb"
-                                                Width="14"
-                                                Height="14"
-                                                CornerRadius="7"
+                                                Width="12"
+                                                Height="12"
+                                                CornerRadius="6"
                                                 Background="{DynamicResource IslandSliderFilled}"
                                                 BoxShadow="0 1 3 0 #40000000"
-                                                Canvas.Top="3"/>
+                                                Canvas.Top="4"/>
                                     </Canvas>
                                     <Slider Classes="volume-horizontal"
                                             Value="{Binding Volume, Mode=TwoWay}"
@@ -1039,8 +1069,9 @@
                                             x:Name="VolumeSlider"/>
                                 </Grid>
                             </Border>
+                            </StackPanel>
                         </Popup>
-                    </Panel>
+                    </StackPanel>
                 </StackPanel>
 
             </Grid>

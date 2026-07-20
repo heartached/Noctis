@@ -33,6 +33,12 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     [ObservableProperty] private bool _showOnlyFavorites = false;
     [ObservableProperty] private bool _isFilterMenuOpen = false;
 
+    /// <summary>Quality filter for the top-bar chips: "All", "Lossless" or "HiRes".</summary>
+    [ObservableProperty] private string _qualityFilter = "All";
+
+    /// <summary>"2,144 songs · 138 hours" line for the top bar; reflects the current filters.</summary>
+    [ObservableProperty] private string _summaryText = string.Empty;
+
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter);
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
@@ -85,8 +91,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         // previous list for a frame.
         Interlocked.Increment(ref _filterGeneration);
         _allTracks = _library.Tracks.ToList();
-        var rebuilt = BuildFilteredAndSortedTracks(_allTracks, _currentFilter, SortColumn, SortAscending, ShowOnlyFavorites);
+        var rebuilt = BuildFilteredAndSortedTracks(_allTracks, _currentFilter, SortColumn, SortAscending, ShowOnlyFavorites, QualityFilter);
         FilteredTracks.ReplaceAll(rebuilt);
+        UpdateSummaryText();
     }
 
     public void ApplyFilter(string query)
@@ -129,6 +136,14 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     private void ToggleFilterMenu()
     {
         IsFilterMenuOpen = !IsFilterMenuOpen;
+    }
+
+    [RelayCommand]
+    private void SetQualityFilter(string quality)
+    {
+        if (QualityFilter == quality) return;
+        QualityFilter = quality;
+        ApplyFilterAndSort();
     }
 
     [RelayCommand]
@@ -322,6 +337,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             var sortCol = SortColumn;
             var sortAsc = SortAscending;
             var favOnly = ShowOnlyFavorites;
+            var quality = QualityFilter;
             var tracks = _allTracks;
             var library = refreshFromLibrary ? _library : null;
 
@@ -332,7 +348,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
                 if (library != null)
                     tracks = library.Tracks.ToList();
 
-                return BuildFilteredAndSortedTracks(tracks, filter, sortCol, sortAsc, favOnly);
+                return BuildFilteredAndSortedTracks(tracks, filter, sortCol, sortAsc, favOnly, quality);
             });
 
             // Discard stale results if a newer filter/sort has been requested
@@ -343,6 +359,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
                 _allTracks = tracks;
 
             FilteredTracks.ReplaceAll(result);
+            UpdateSummaryText();
         }
         catch (Exception ex)
         {
@@ -350,13 +367,43 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         }
     }
 
+    private void UpdateSummaryText()
+    {
+        var count = FilteredTracks.Count;
+        var total = TimeSpan.Zero;
+        foreach (var t in FilteredTracks)
+            total += t.Duration;
+
+        var songs = count == 1 ? "song" : "songs";
+        string time;
+        if (total.TotalHours >= 1)
+        {
+            var hours = (int)Math.Round(total.TotalHours);
+            time = hours == 1 ? "1 hour" : $"{hours:N0} hours";
+        }
+        else
+        {
+            var minutes = (int)Math.Round(total.TotalMinutes);
+            time = minutes == 1 ? "1 minute" : $"{minutes} minutes";
+        }
+
+        SummaryText = $"{count:N0} {songs} · {time}";
+    }
+
     private static List<Track> BuildFilteredAndSortedTracks(
-        List<Track> tracks, string filter, string sortCol, bool sortAsc, bool favOnly)
+        List<Track> tracks, string filter, string sortCol, bool sortAsc, bool favOnly, string qualityFilter)
     {
         var filtered = tracks.AsEnumerable();
 
         if (favOnly)
             filtered = filtered.Where(t => t.IsFavorite);
+
+        filtered = qualityFilter switch
+        {
+            "Lossless" => filtered.Where(t => t.IsLossless),
+            "HiRes" => filtered.Where(t => t.IsHiResLossless),
+            _ => filtered,
+        };
 
         // Normalize the query once — these were recomputed per track inside the
         // rank projection below, costing two string allocations per track per

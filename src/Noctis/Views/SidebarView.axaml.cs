@@ -18,12 +18,63 @@ public partial class SidebarView : UserControl
     private bool _isSyncingSelection;
     private SidebarViewModel? _vm;
     private TopBarViewModel? _topBarVm;
+    private Window? _hostWindow;
+    private bool _searchClosedByMinimize;
 
     public SidebarView()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
-        DetachedFromVisualTree += (_, _) => UnsubscribeFromViewModel();
+        DetachedFromVisualTree += (_, _) =>
+        {
+            UnsubscribeFromViewModel();
+            DetachHostWindow();
+        };
+        AttachedToVisualTree += (_, _) => AttachHostWindow();
+    }
+
+    // ── Search pill vs window minimize ──
+    // The pill is a native popup window; it is not automatically hidden with its
+    // owner, so without this it keeps floating over other apps while Noctis is
+    // minimized. Close it on minimize and restore it when the window comes back.
+
+    private void AttachHostWindow()
+    {
+        DetachHostWindow();
+        _hostWindow = TopLevel.GetTopLevel(this) as Window;
+        if (_hostWindow != null)
+            _hostWindow.PropertyChanged += OnHostWindowPropertyChanged;
+    }
+
+    private void DetachHostWindow()
+    {
+        if (_hostWindow != null)
+            _hostWindow.PropertyChanged -= OnHostWindowPropertyChanged;
+        _hostWindow = null;
+    }
+
+    private void OnHostWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property != Window.WindowStateProperty) return;
+        var topBar = _vm?.TopBar;
+        if (topBar == null) return;
+
+        if (e.GetNewValue<WindowState>() == WindowState.Minimized)
+        {
+            if (topBar.IsSearchOpen)
+            {
+                // Close instantly (no animation timer): the popup must not linger
+                // on screen after the window is gone. SearchText is untouched, so
+                // the filtered page state survives the round trip.
+                _searchClosedByMinimize = true;
+                topBar.IsSearchOpen = false;
+            }
+        }
+        else if (_searchClosedByMinimize)
+        {
+            _searchClosedByMinimize = false;
+            topBar.IsSearchOpen = true;
+        }
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)

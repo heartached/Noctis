@@ -107,8 +107,178 @@
                             VerticalAlignment="Center"
                             Margin="0,0,12,0"
                             IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsLyricsViewActive, Converter={x:Static BoolConverters.Not}, FallbackValue=True}">
+                    <StackPanel.Styles>
+                        <Style Selector="Button.release-chip">
+                            <Setter Property="Background" Value="{DynamicResource ChipBackground}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                            <Setter Property="CornerRadius" Value="999"/>
+                            <Setter Property="Padding" Value="14,6"/>
+                            <Setter Property="FontSize" Value="12"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Cursor" Value="Hand"/>
+                        </Style>
+                        <Style Selector="Button.release-chip:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
+                        </Style>
+                    </StackPanel.Styles>
 
-                    <!-- Page action buttons (e.g. Songs: Shuffle, Queue, Options). Hidden in Cover Flow mode. -->
+                    <!-- Artist discography: Type dropdown (right-aligned, mirrors the Albums grid) -->
+                    <Button Classes="release-chip" VerticalAlignment="Center"
+                            ToolTip.Tip="Filter by release type">
+                        <Button.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="HasReleaseTypeChips"/>
+                                <Binding Path="!IsPageTitleVisible"/>
+                            </MultiBinding>
+                        </Button.IsVisible>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="Type:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding ReleaseTypeFilterLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
+                                      RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuItem Header="All"
+                                          Command="{Binding ReleaseTypeFilterCommand}"
+                                          CommandParameter="all"/>
+                                <MenuItem Header="Albums"
+                                          Command="{Binding ReleaseTypeFilterCommand}"
+                                          CommandParameter="album"/>
+                                <MenuItem Header="Singles"
+                                          Command="{Binding ReleaseTypeFilterCommand}"
+                                          CommandParameter="single"/>
+                                <MenuItem Header="EPs"
+                                          Command="{Binding ReleaseTypeFilterCommand}"
+                                          CommandParameter="ep"/>
+                                <MenuItem Header="Other"
+                                          Command="{Binding ReleaseTypeFilterCommand}"
+                                          CommandParameter="other"/>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <!-- Albums grid: Type / Quality / Sort dropdowns (right-aligned). Hidden on the
+                         artist discography page (back button visible), which shows its own Type chip above. -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <StackPanel.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="HasReleaseTypeChips"/>
+                                <Binding Path="IsPageTitleVisible"/>
+                            </MultiBinding>
+                        </StackPanel.IsVisible>
+
+                        <Button Classes="release-chip" VerticalAlignment="Center"
+                                ToolTip.Tip="Filter by release type">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Type:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding ReleaseTypeFilterLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
+                                          RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuItem Header="All"
+                                              Command="{Binding ReleaseTypeFilterCommand}"
+                                              CommandParameter="all"/>
+                                    <MenuItem Header="Albums"
+                                              Command="{Binding ReleaseTypeFilterCommand}"
+                                              CommandParameter="album"/>
+                                    <MenuItem Header="Singles"
+                                              Command="{Binding ReleaseTypeFilterCommand}"
+                                              CommandParameter="single"/>
+                                    <MenuItem Header="EPs"
+                                              Command="{Binding ReleaseTypeFilterCommand}"
+                                              CommandParameter="ep"/>
+                                    <MenuItem Header="Other"
+                                              Command="{Binding ReleaseTypeFilterCommand}"
+                                              CommandParameter="other"/>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+
+                        <Button Classes="release-chip" VerticalAlignment="Center"
+                                ToolTip.Tip="Filter by audio quality">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Quality:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding QualityFilterLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
+                                          RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuItem Header="All"
+                                              Command="{Binding QualityFilterCommand}"
+                                              CommandParameter="all"/>
+                                    <MenuItem Header="Lossless"
+                                              Command="{Binding QualityFilterCommand}"
+                                              CommandParameter="lossless"/>
+                                    <MenuItem Header="Hi-Res"
+                                              Command="{Binding QualityFilterCommand}"
+                                              CommandParameter="hires"/>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+
+                        <Button Classes="release-chip" VerticalAlignment="Center"
+                                ToolTip.Tip="Sort albums">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Sort:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding AlbumSortLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
+                                          RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuItem Header="Default"
+                                              Command="{Binding AlbumSortCommand}"
+                                              CommandParameter="default"/>
+                                    <MenuItem Header="Recently added"
+                                              Command="{Binding AlbumSortCommand}"
+                                              CommandParameter="dateadded"/>
+                                    <MenuItem Header="Most played"
+                                              Command="{Binding AlbumSortCommand}"
+                                              CommandParameter="mostplayed"/>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Songs quality filter chips (All / Lossless / Hi-Res). Hidden in Cover Flow mode. -->
+                    <Border IsVisible="{Binding SongsFiltersVisible}"
+                            Background="{DynamicResource ChipBackground}"
+                            CornerRadius="999" Padding="3"
+                            VerticalAlignment="Center">
+                        <Border.Styles>
+                            <Style Selector="Button.quality-chip">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Style>
+                            <Style Selector="Button.quality-chip.on">
+                                <Setter Property="Opacity" Value="1"/>
+                                <Setter Property="Background" Value="#30FFFFFF"/>
+                            </Style>
+                        </Border.Styles>
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <Button Classes="ghost-btn quality-chip" Classes.on="{Binding SongsQualityAll}"
+                                    Padding="10,6" CornerRadius="999" Cursor="Hand"
+                                    Content="All" FontSize="12" FontWeight="SemiBold"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding SongsQualityCommand}" CommandParameter="All" />
+                            <Button Classes="ghost-btn quality-chip" Classes.on="{Binding SongsQualityLossless}"
+                                    Padding="10,6" CornerRadius="999" Cursor="Hand"
+                                    Content="Lossless" FontSize="12" FontWeight="SemiBold"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding SongsQualityCommand}" CommandParameter="Lossless" />
+                            <Button Classes="ghost-btn quality-chip" Classes.on="{Binding SongsQualityHiRes}"
+                                    Padding="10,6" CornerRadius="999" Cursor="Hand"
+                                    Content="Hi-Res" FontSize="12" FontWeight="SemiBold"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding SongsQualityCommand}" CommandParameter="HiRes" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Page action buttons (e.g. Songs: Shuffle, Options). Hidden in Cover Flow mode. -->
                     <Border IsVisible="{Binding PageActionsVisible}"
                             Background="{DynamicResource ChipBackground}"
                             CornerRadius="999" Padding="3"
@@ -120,17 +290,6 @@
                                     ToolTip.Tip="Shuffle" VerticalAlignment="Center">
                                 <PathIcon Data="{StaticResource ShuffleIcon}" Width="14" Height="14"
                                          VerticalAlignment="Center" />
-                            </Button>
-                            <Button Classes="ghost-btn"
-                                    Padding="10,6" CornerRadius="999" Cursor="Hand"
-                                    Command="{Binding PageQueueCommand}" Tag="QueueToggle"
-                                    ToolTip.Tip="Queue" VerticalAlignment="Center">
-                                <Border Width="17" Height="17" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality">
-                                    <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform" />
-                                    </Border.OpacityMask>
-                                </Border>
                             </Button>
                             <Button Classes="ghost-btn"
                                     Padding="10,6" CornerRadius="999" Cursor="Hand"
@@ -273,27 +432,25 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Favorites action buttons -->
+                    <!-- Favorites action buttons — same neutral chip pill as the Songs page actions -->
                     <Border IsVisible="{Binding HasFavoritesActions}"
-                            Background="{DynamicResource AccentColorBrush}"
-                            BorderBrush="{DynamicResource AccentBorderBrush}"
-                            BorderThickness="1"
+                            Background="{DynamicResource ChipBackground}"
                             CornerRadius="999" Padding="3"
                             VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="0">
-                            <Button Classes="accent-btn" Background="Transparent"
-                                    BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
+                            <Button Classes="ghost-btn"
+                                    Padding="10,6" CornerRadius="999" Cursor="Hand"
                                     Command="{Binding PageShuffleFavoritesCommand}"
                                     ToolTip.Tip="Shuffle" VerticalAlignment="Center">
                                 <PathIcon Data="{StaticResource ShuffleIcon}"
                                           Width="14" Height="14"
-                                          VerticalAlignment="Center" Foreground="{DynamicResource AccentForegroundBrush}" />
+                                          VerticalAlignment="Center" />
                             </Button>
-                            <Button Classes="accent-btn" Background="Transparent"
-                                    BorderThickness="0" Padding="10,6" CornerRadius="999" Cursor="Hand"
+                            <Button Classes="ghost-btn"
+                                    Padding="10,6" CornerRadius="999" Cursor="Hand"
                                     Command="{Binding PagePlayFavoritesCommand}"
                                     ToolTip.Tip="Play" VerticalAlignment="Center">
-                                <Border Width="14" Height="14" Background="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"
+                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"
                                         Margin="2,0,0,0"
                                         RenderOptions.BitmapInterpolationMode="HighQuality">
                                     <Border.OpacityMask>
@@ -303,6 +460,48 @@
                             </Button>
                         </StackPanel>
                     </Border>
+
+                    <!-- Folders action buttons: Play (accent) + Shuffle / Manage Folders (neutral chips) -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                                IsVisible="{Binding HasFoldersActions}">
+                        <Button Classes="accent-btn" Background="{DynamicResource AccentColorBrush}"
+                                Padding="16,6" CornerRadius="999" Cursor="Hand"
+                                Command="{Binding PagePlayFolderCommand}"
+                                ToolTip.Tip="Play folder" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Border Width="12" Height="12" Background="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"
+                                        RenderOptions.BitmapInterpolationMode="HighQuality">
+                                    <Border.OpacityMask>
+                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Play%20ICON.png" Stretch="Uniform" />
+                                    </Border.OpacityMask>
+                                </Border>
+                                <TextBlock Text="Play" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentForegroundBrush}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Background="{DynamicResource ChipBackground}"
+                                BorderThickness="0" Padding="14,6" CornerRadius="999" Cursor="Hand"
+                                Command="{Binding PageShuffleFolderCommand}"
+                                Content="Shuffle" FontSize="12" FontWeight="SemiBold"
+                                ToolTip.Tip="Shuffle folder" VerticalAlignment="Center" />
+                        <Button Background="{DynamicResource ChipBackground}"
+                                BorderThickness="0" Padding="14,6" CornerRadius="999" Cursor="Hand"
+                                Command="{Binding PageManageFoldersCommand}"
+                                ToolTip.Tip="Open Settings to add or remove the music folders that get scanned."
+                                VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource SettingsIcon}"
+                                          Width="13" Height="13"
+                                          Opacity="0.8"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Manage Folders"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
 
                     <!-- View mode toggle (Library / Cover Flow) -->
                     <Border IsVisible="{Binding HasViewModeToggle}"
@@ -421,28 +620,6 @@
 
                     <Panel>
 
-                    <!-- Aurora glow: the now-playing cover, blurred and bled from the top edge,
-                         gives the header an ambient colour wash drawn from the artwork itself. -->
-                    <Border VerticalAlignment="Top" Height="230" IsHitTestVisible="False" ClipToBounds="True"
-                            IsVisible="{Binding Player.CurrentTrack.AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <Border.OpacityMask>
-                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                                <GradientStop Offset="0" Color="#FFFFFFFF"/>
-                                <GradientStop Offset="1" Color="#00FFFFFF"/>
-                            </LinearGradientBrush>
-                        </Border.OpacityMask>
-                        <Panel>
-                            <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
-                                                  Stretch="UniformToFill" Opacity="0.42">
-                                <controls:CachedImage.Effect>
-                                    <BlurEffect Radius="60"/>
-                                </controls:CachedImage.Effect>
-                            </controls:CachedImage>
-                            <!-- keep header text readable over bright art -->
-                            <Border Background="#59000000"/>
-                        </Panel>
-                    </Border>
-
                     <DockPanel>
                         <DockPanel.Styles>
                             <!-- Artist credit acts as a link: no button chrome, subtle highlight
@@ -476,9 +653,9 @@
                                 <Setter Property="Background" Value="#33FFFFFF"/>
                             </Style>
                         </DockPanel.Styles>
-                        <!-- Compact header: "Queue • N" + save-as-playlist / Clear ghost actions -->
+                        <!-- Compact header: "Queue • N" + Clear ghost action -->
                         <Grid DockPanel.Dock="Top" Margin="20,16,12,6"
-                              ColumnDefinitions="*,Auto,Auto">
+                              ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7"
                                         VerticalAlignment="Center">
                                 <TextBlock Text="Queue"
@@ -486,7 +663,7 @@
                                            FontWeight="Bold"
                                            Foreground="White" />
                                 <TextBlock Text="{Binding Player.UpNext.Count, StringFormat='&#x2022; {0}'}"
-                                           FontSize="13"
+                                           FontSize="15"
                                            FontWeight="SemiBold"
                                            Foreground="White"
                                            Opacity="0.5"
@@ -495,26 +672,6 @@
                                            IsVisible="{Binding !!Player.UpNext.Count}" />
                             </StackPanel>
                             <Button Grid.Column="1"
-                                    Width="30" Height="30"
-                                    Padding="0"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    CornerRadius="999"
-                                    Cursor="Hand"
-                                    ToolTip.Tip="Save the current queue as a playlist"
-                                    Command="{Binding Player.SaveQueueAsPlaylistCommand}"
-                                    IsVisible="{Binding !!Player.UpNext.Count}"
-                                    VerticalAlignment="Center">
-                                <Border Width="14" Height="14"
-                                        Background="White"
-                                        Opacity="0.65"
-                                        RenderOptions.BitmapInterpolationMode="HighQuality">
-                                    <Border.OpacityMask>
-                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Playlist%20icon.png" Stretch="Uniform" />
-                                    </Border.OpacityMask>
-                                </Border>
-                            </Button>
-                            <Button Grid.Column="2"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Padding="9,5"
@@ -542,89 +699,6 @@
                                 </StackPanel>
                             </Button>
                         </Grid>
-
-                        <!-- Now-playing track card (Aurora: larger art, live progress, equalizer) -->
-                        <Border DockPanel.Dock="Top"
-                                Margin="20,4,20,12"
-                                IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <Border.Styles>
-                                <Style Selector="ProgressBar.np-progress">
-                                    <Setter Property="Height" Value="4"/>
-                                    <Setter Property="MinHeight" Value="4"/>
-                                    <Setter Property="CornerRadius" Value="99"/>
-                                    <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}"/>
-                                    <Setter Property="Background" Value="#26FFFFFF"/>
-                                </Style>
-                                <Style Selector="ProgressBar.np-progress /template/ Border#PART_Indicator">
-                                    <Setter Property="CornerRadius" Value="99"/>
-                                </Style>
-                            </Border.Styles>
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <Border Grid.Column="0"
-                                        Width="56" Height="56"
-                                        CornerRadius="8"
-                                        ClipToBounds="True"
-                                        VerticalAlignment="Center"
-                                        BoxShadow="0 6 16 0 #66000000">
-                                    <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
-                                                          Stretch="UniformToFill" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
-                                    <Grid ColumnDefinitions="Auto,Auto">
-                                        <TextBlock Grid.Column="0"
-                                                   Text="{Binding Player.CurrentTrack.Title}"
-                                                   FontSize="15"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="White"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   MaxLines="1"
-                                                   MaxWidth="190" />
-                                        <Border Grid.Column="1"
-                                                Classes="explicit-badge compact"
-                                                Margin="6,0,0,0"
-                                                IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                                ToolTip.Tip="Explicit"
-                                                VerticalAlignment="Center">
-                                            <TextBlock Text="E"
-                                                       Classes="explicit-badge-text compact"
-                                                       FontSize="9"
-                                                       Opacity="0.9" />
-                                        </Border>
-                                    </Grid>
-                                    <Button Classes="queue-link"
-                                            HorizontalAlignment="Left"
-                                            Margin="0,2,0,0"
-                                            Command="{Binding Player.ViewCurrentArtistCommand}">
-                                        <Border Classes="artist-text-hover"
-                                                CornerRadius="2"
-                                                Padding="2,0,3,0">
-                                            <TextBlock Text="{Binding Player.CurrentTrack.Artist}"
-                                                       FontSize="12"
-                                                       FontWeight="Bold"
-                                                       Foreground="{DynamicResource AccentColorBrush}"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       MaxLines="1" />
-                                        </Border>
-                                    </Button>
-                                    <ProgressBar Classes="np-progress"
-                                                 Minimum="0" Maximum="1"
-                                                 Value="{Binding Player.PositionFraction}"
-                                                 Margin="8,10,0,0" />
-                                </StackPanel>
-                                <!-- Now-playing EQ — the same EqVisualizer used in the track/album lists
-                                     (5 sine bars that ease flat on pause). -->
-                                <controls:EqVisualizer Grid.Column="2"
-                                                       Width="34" Height="22"
-                                                       VerticalAlignment="Center"
-                                                       Margin="8,0,2,0"
-                                                       Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                       IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}" />
-                            </Grid>
-                        </Border>
-
-                        <!-- Separator -->
-                        <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.08" Margin="20,0" />
-
 
                         <!-- Queue track list (virtualized, drag-reorder enabled) -->
                         <Grid x:Name="QueueListWrapper">
@@ -694,17 +768,18 @@
                                                     </MenuItem>
                                                 </ContextMenu>
                                             </Border.ContextMenu>
-                                        <Grid ColumnDefinitions="Auto,*,Auto" Height="44"
+                                        <Grid ColumnDefinitions="Auto,*,Auto" Height="48"
                                               Background="Transparent">
 
                                             <!-- Album art thumbnail -->
                                             <Border Grid.Column="0"
-                                                    Width="36" Height="36"
-                                                    CornerRadius="6"
+                                                    Width="42" Height="42"
+                                                    CornerRadius="7"
                                                     ClipToBounds="True"
                                                     VerticalAlignment="Center"
                                                     Margin="0,0,10,0">
                                                 <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
                                                                       Stretch="UniformToFill" />
                                             </Border>
                                             <!-- Title + Artist -->
@@ -751,7 +826,7 @@
                                                  recycles rows, so there is no per-item index to bind). -->
                                             <TextBlock Grid.Column="2"
                                                        x:Name="QueueRowNumber"
-                                                       FontSize="12"
+                                                       FontSize="14"
                                                        FontWeight="SemiBold"
                                                        Foreground="White"
                                                        Opacity="0.4"
@@ -795,14 +870,15 @@
                                 <Border.RenderTransform>
                                     <TranslateTransform Y="0"/>
                                 </Border.RenderTransform>
-                                <Grid ColumnDefinitions="Auto,*,Auto" Height="44">
+                                <Grid ColumnDefinitions="Auto,*,Auto" Height="48">
                                     <Border Grid.Column="0"
-                                            Width="36" Height="36"
-                                            CornerRadius="6"
+                                            Width="42" Height="42"
+                                            CornerRadius="7"
                                             ClipToBounds="True"
                                             VerticalAlignment="Center"
                                             Margin="0,0,10,0">
                                         <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                              RenderOptions.BitmapInterpolationMode="HighQuality"
                                                               Stretch="UniformToFill" />
                                     </Border>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">

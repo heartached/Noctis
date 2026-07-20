@@ -1,10 +1,13 @@
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Controls;
 using Noctis.Helpers;
@@ -69,11 +72,239 @@ public partial class PlaylistView : UserControl
         item.AddHandler(PointerCaptureLostEvent, OnTrackRowPointerCaptureLost, RoutingStrategies.Tunnel);
     }
 
+    private PlaylistViewModel? _observedVm;
+
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         // Reset shared menu so it picks up new VM commands
         _menuBuilder?.Reset();
         _menuBuilder = null;
+
+        if (_observedVm != null)
+        {
+            _observedVm.PropertyChanged -= OnVmPropertyChanged;
+            _observedVm.Tracks.CollectionChanged -= OnTracksCollectionChanged;
+        }
+        _observedVm = DataContext as PlaylistViewModel;
+        if (_observedVm != null)
+        {
+            _observedVm.PropertyChanged += OnVmPropertyChanged;
+            _observedVm.Tracks.CollectionChanged += OnTracksCollectionChanged;
+        }
+    }
+
+    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        // Focus + select the inline rename box once it becomes visible.
+        if (e.PropertyName == nameof(PlaylistViewModel.IsRenamingName)
+            && _observedVm?.IsRenamingName == true)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                RenameBox.Focus();
+                RenameBox.SelectAll();
+            }, DispatcherPriority.Render);
+        }
+    }
+
+    // ── Row number + repeated-album dimming ──
+    // The # cell and album-run dim depend on the row's position, which a
+    // virtualized item template can't know. Containers are stamped here on
+    // realize/recycle and re-stamped whenever the displayed order changes.
+
+    private void OnTracksCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        Dispatcher.UIThread.Post(RefreshAllRowVisuals, DispatcherPriority.Loaded);
+    }
+
+    private void RefreshAllRowVisuals()
+    {
+        foreach (var container in TrackList.GetRealizedContainers())
+            if (container is ListBoxItem item)
+                UpdateRowIndexVisuals(item);
+    }
+
+    private void UpdateRowIndexVisuals(ListBoxItem item)
+    {
+        if (DataContext is not PlaylistViewModel vm) return;
+        var index = TrackList.IndexFromContainer(item);
+        if (index < 0 || index >= vm.Tracks.Count) return;
+
+        var descendants = item.GetVisualDescendants().ToList();
+
+        var indexText = descendants.OfType<TextBlock>()
+            .FirstOrDefault(t => t.Classes.Contains("row-index"));
+        if (indexText != null)
+            indexText.Text = (index + 1).ToString();
+
+        var album = vm.Tracks[index].Album;
+        var sameAsPrevious = index > 0
+                             && !string.IsNullOrEmpty(album)
+                             && string.Equals(album, vm.Tracks[index - 1].Album,
+                                 StringComparison.OrdinalIgnoreCase);
+
+        var albumBtn = descendants.OfType<Button>()
+            .FirstOrDefault(b => b.Classes.Contains("album-btn"));
+        if (albumBtn != null)
+            albumBtn.Opacity = sameAsPrevious ? 0.4 : 1.0;
+
+        // Zebra stripe parity (the row Border paints it now, not the ListBoxItem)
+        var rowBody = descendants.OfType<Border>()
+            .FirstOrDefault(b => b.Classes.Contains("row-body"));
+        rowBody?.Classes.Set("even", index % 2 == 1);
+
+        UpdateAlbumRunHeader(descendants, vm, index, album, isRunStart: !sameAsPrevious);
+    }
+
+    /// <summary>Shows "ALBUM · N TRACKS" above the first row of each consecutive
+    /// same-album run, mirroring the approved mockup. Hidden while a filter is
+    /// active (the filtered list no longer reflects real runs).</summary>
+    private static void UpdateAlbumRunHeader(List<Avalonia.Visual> descendants,
+        PlaylistViewModel vm, int index, string album, bool isRunStart)
+    {
+        var header = descendants.OfType<StackPanel>()
+            .FirstOrDefault(p => p.Classes.Contains("album-run-header"));
+        if (header == null) return;
+
+        var show = isRunStart
+                   && !string.IsNullOrEmpty(album)
+                   && string.IsNullOrWhiteSpace(vm.SearchText);
+        header.IsVisible = show;
+        if (!show) return;
+
+        // Tighter gap for the very first header; breathing room between runs.
+        header.Margin = index == 0 ? new Thickness(8, 4, 8, 6) : new Thickness(8, 18, 8, 6);
+
+        var runLength = 1;
+        while (index + runLength < vm.Tracks.Count
+               && string.Equals(vm.Tracks[index + runLength].Album, album,
+                   StringComparison.OrdinalIgnoreCase))
+            runLength++;
+
+        var albumText = header.Children.OfType<TextBlock>()
+            .FirstOrDefault(t => t.Classes.Contains("run-album"));
+        if (albumText != null)
+            albumText.Text = album.ToUpperInvariant();
+
+        var countText = header.Children.OfType<TextBlock>()
+            .FirstOrDefault(t => t.Classes.Contains("run-count"));
+        if (countText != null)
+            countText.Text = $"·  {runLength} TRACK{(runLength == 1 ? "" : "S")}";
+    }
+
+    // ── Inline title rename ──
+
+    private async void OnRenameBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        // async void: an escaped exception would crash the app.
+        try
+        {
+            if (DataContext is not PlaylistViewModel vm) return;
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                await vm.CommitRenameAsync();
+            }
+            else if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                vm.CancelRename();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PlaylistView] Rename failed: {ex.Message}");
+        }
+    }
+
+    private async void OnRenameBoxLostFocus(object? sender, RoutedEventArgs e)
+    {
+        // async void: an escaped exception would crash the app.
+        try
+        {
+            // Only commit when the edit is still active — Enter/Escape already
+            // ended it before the focus moved away.
+            if (DataContext is PlaylistViewModel vm && vm.IsRenamingName)
+                await vm.CommitRenameAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PlaylistView] Rename failed: {ex.Message}");
+        }
+    }
+
+    // ── Floating selection bar ──
+
+    private void SyncSelectionToViewModel()
+    {
+        if (DataContext is not PlaylistViewModel vm) return;
+        vm.CtrlSelectedTracks = _selectedTracks.ToList();
+        vm.SelectedCount = _selectedTracks.Count;
+    }
+
+    private void ClearSelectionState()
+    {
+        MultiSelectHelper.ClearTrackSelectionsByData(_selectedTracks, TrackList);
+        if (DataContext is PlaylistViewModel vm)
+        {
+            vm.CtrlSelectedTracks = new List<Track>();
+            vm.SelectedCount = 0;
+        }
+    }
+
+    private async void OnSelectionAddToPlaylistClick(object? sender, RoutedEventArgs e)
+    {
+        // async void: an escaped exception would crash the app.
+        try
+        {
+            if (DataContext is not PlaylistViewModel vm || _selectedTracks.Count == 0) return;
+            vm.CtrlSelectedTracks = _selectedTracks.ToList();
+            await vm.OpenAddSelectedToPlaylistAsync();
+            ClearSelectionState();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PlaylistView] Selection add-to-playlist failed: {ex.Message}");
+        }
+    }
+
+    private async void OnSelectionFavoriteClick(object? sender, RoutedEventArgs e)
+    {
+        // async void: an escaped exception would crash the app.
+        try
+        {
+            if (DataContext is not PlaylistViewModel vm || _selectedTracks.Count == 0) return;
+            var tracks = _selectedTracks.ToList();
+            vm.CtrlSelectedTracks = tracks;
+            await vm.ToggleFavoriteCommand.ExecuteAsync(tracks[0]);
+            ClearSelectionState();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PlaylistView] Selection favorite failed: {ex.Message}");
+        }
+    }
+
+    private async void OnSelectionRemoveClick(object? sender, RoutedEventArgs e)
+    {
+        // async void: an escaped exception would crash the app.
+        try
+        {
+            if (DataContext is not PlaylistViewModel vm || _selectedTracks.Count == 0) return;
+            var tracks = _selectedTracks.ToList();
+            vm.CtrlSelectedTracks = tracks;
+            await vm.RemoveTrackCommand.ExecuteAsync(tracks[0]);
+            ClearSelectionState();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PlaylistView] Selection remove failed: {ex.Message}");
+        }
+    }
+
+    private void OnSelectionClearClick(object? sender, RoutedEventArgs e)
+    {
+        ClearSelectionState();
     }
 
     private void OnTrackPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -85,6 +316,7 @@ public partial class PlaylistView : UserControl
         if (item.DataContext is not Track track) return;
 
         MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
+        SyncSelectionToViewModel();
 
         if (_selectedTracks.Count > 0)
             Focus();
@@ -94,15 +326,15 @@ public partial class PlaylistView : UserControl
     {
         if (e.Key == Key.Escape && _selectedTracks.Count > 0)
         {
-            MultiSelectHelper.ClearTrackSelectionsByData(_selectedTracks, TrackList);
-            if (DataContext is PlaylistViewModel selVm) selVm.CtrlSelectedTracks = new List<Track>();
+            ClearSelectionState();
             e.Handled = true;
             return;
         }
 
         if (DataContext is PlaylistViewModel vm && vm.IsDescriptionOpen)
             return;
-        MultiSelectHelper.HandleTrackSelectAllByData(e, TrackList, _selectedTracks);
+        if (MultiSelectHelper.HandleTrackSelectAllByData(e, TrackList, _selectedTracks))
+            SyncSelectionToViewModel();
     }
 
     private ContextMenu GetOrCreateContextMenu()
@@ -183,6 +415,8 @@ public partial class PlaylistView : UserControl
         {
             WireTrackItem(item);
             MultiSelectHelper.SyncContainerVisual(item, _selectedTracks);
+            // Template children don't exist yet at prepare time; stamp after layout.
+            Dispatcher.UIThread.Post(() => UpdateRowIndexVisuals(item), DispatcherPriority.Loaded);
         }
     }
 
@@ -472,7 +706,11 @@ public partial class PlaylistView : UserControl
         _selectedTracks.Clear();
         foreach (var child in TrackList.GetVisualDescendants())
             if (child is ListBoxItem li) li.Classes.Remove("ctrl-selected");
-        if (DataContext is PlaylistViewModel selVm) selVm.CtrlSelectedTracks = new List<Track>();
+        if (DataContext is PlaylistViewModel selVm)
+        {
+            selVm.CtrlSelectedTracks = new List<Track>();
+            selVm.SelectedCount = 0;
+        }
 
         base.OnDetachedFromVisualTree(e);
     }

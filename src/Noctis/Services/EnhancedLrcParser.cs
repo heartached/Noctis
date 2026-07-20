@@ -67,7 +67,46 @@ public static partial class EnhancedLrcParser
         }
 
         var plain = WordTagRegex().Replace(body, "").Trim();
-        return (plain, words.Count > 0 ? MergeSyllables(words) : null);
+        var normalized = ShiftLeadingSpaces(words);
+        return (plain, normalized.Count > 0 ? MergeSyllables(normalized) : null);
+    }
+
+    /// <summary>
+    /// Moves each token's leading whitespace onto the previous token's tail. The sweep
+    /// overlay trims trailing whitespace (<see cref="WordTiming.SweepText"/>) but must
+    /// keep leading whitespace for glyph alignment, so "&lt;t&gt;word&lt;t&gt; word"
+    /// files stall the sweep on invisible space at the start of every word's window.
+    /// Tokens left empty are dropped; their time span becomes a plain gap. The first
+    /// token is trimmed to match the Trim()ed display text.
+    /// </summary>
+    private static List<WordTiming> ShiftLeadingSpaces(List<WordTiming> words)
+    {
+        var shifted = new List<WordTiming>(words.Count);
+        foreach (var w in words)
+        {
+            var text = w.Text;
+            var lead = 0;
+            while (lead < text.Length && char.IsWhiteSpace(text[lead])) lead++;
+
+            if (lead > 0)
+            {
+                if (shifted.Count > 0)
+                {
+                    var prev = shifted[^1];
+                    shifted[^1] = new WordTiming
+                    {
+                        Text = prev.Text + text[..lead],
+                        Start = prev.Start,
+                        End = prev.End,
+                    };
+                }
+                text = text[lead..];
+            }
+
+            if (text.Length > 0)
+                shifted.Add(new WordTiming { Text = text, Start = w.Start, End = w.End });
+        }
+        return shifted;
     }
 
     /// <summary>
@@ -109,6 +148,120 @@ public static partial class EnhancedLrcParser
     // whitespace, punctuation and CJK characters keep segments separate.
     private static bool IsJoinable(char c) =>
         (char.IsLetterOrDigit(c) || c is '\'' or '’' or '-') && c < '⺀';
+
+    /// <summary>
+    /// Folds fully-parenthesized word-timed lines — the common ELRC convention for
+    /// Apple Music background vocals / adlibs — into the preceding synced line's
+    /// <see cref="LyricLine.BackgroundWords"/> layer, so they render as a smaller
+    /// karaoke row under the main line instead of taking a full line slot.
+    /// Call after the line list is sorted by timestamp. Conservative: lines with any
+    /// parenthesis inside the outer pair (e.g. "(Hey) yeah (hey)") are left alone.
+    /// </summary>
+    public static void FoldBackgroundLines(List<LyricLine> lines)
+    {
+        LyricLine? lastMain = null;
+        for (int i = 0; i < lines.Count; i++)
+        {
+            var line = lines[i];
+            if (lastMain != null && IsBackgroundCandidate(line))
+            {
+                var words = line.Words!;
+                var bgEnd = line.EndTimestamp ?? words[^1].End;
+                AppendBackground(lastMain, words, bgEnd);
+                lines.RemoveAt(i);
+                i--;
+                continue;
+            }
+
+            // Adlibs embedded inline — "late at night (I will wait)" — split the
+            // parenthesized run(s) out of the main words into the background layer.
+            if (line.HasWords)
+                ExtractInlineBackground(line);
+
+            if (line.Timestamp.HasValue && !line.IsIntroPlaceholder)
+                lastMain = line;
+        }
+    }
+
+    private static void AppendBackground(LyricLine target, IReadOnlyList<WordTiming> words, TimeSpan? bgEnd)
+    {
+        if (target.HasBackgroundWords)
+        {
+            // Joined adlib parts share one row; make sure the seam keeps a space
+            // so the WrapPanel cells don't run together.
+            var merged = new List<WordTiming>(target.BackgroundWords!);
+            var seam = merged[^1];
+            if (!seam.Text.EndsWith(' '))
+                merged[^1] = new WordTiming { Text = seam.Text + " ", Start = seam.Start, End = seam.End };
+            merged.AddRange(words);
+            target.BackgroundEndTimestamp = bgEnd ?? target.BackgroundEndTimestamp;
+            target.BackgroundWords = merged;
+        }
+        else
+        {
+            target.BackgroundEndTimestamp = bgEnd;
+            target.BackgroundWords = new List<WordTiming>(words);
+        }
+    }
+
+    /// <summary>
+    /// Splits parenthesized word runs — "(word … word)" — out of a line's word list
+    /// into its background layer. The line must keep at least one main word (fully
+    /// parenthesized lines are the fold case instead). An unmatched open paren
+    /// abandons the whole extraction so lop-sided text is never mangled.
+    /// </summary>
+    private static void ExtractInlineBackground(LyricLine line)
+    {
+        var words = line.Words!;
+        List<WordTiming>? main = null;
+        List<WordTiming>? bg = null;
+        var inRun = false;
+
+        for (int i = 0; i < words.Count; i++)
+        {
+            var w = words[i];
+            var visible = w.Text.Trim();
+            if (!inRun && visible.Length > 0 && visible[0] is '(' or '（')
+            {
+                if (main == null)
+                {
+                    main = new List<WordTiming>(words.Take(i));
+                    bg = new List<WordTiming>();
+                }
+                inRun = true;
+            }
+
+            if (inRun)
+            {
+                bg!.Add(w);
+                if (visible.Length > 0 && visible[^1] is ')' or '）')
+                    inRun = false;
+            }
+            else
+            {
+                main?.Add(w);
+            }
+        }
+
+        // No runs, an unmatched open paren, or nothing left for the main row → leave alone.
+        if (main == null || inRun || main.Count == 0 || bg!.Count == 0)
+            return;
+
+        line.Words = main;
+        AppendBackground(line, bg, bg[^1].End ?? line.EndTimestamp);
+    }
+
+    private static bool IsBackgroundCandidate(LyricLine line)
+    {
+        if (!line.HasWords || !line.Timestamp.HasValue) return false;
+        var text = line.Text.Trim();
+        if (text.Length < 2) return false;
+        var open = text[0] is '(' or '（';
+        var close = text[^1] is ')' or '）';
+        if (!open || !close) return false;
+        var inner = text[1..^1];
+        return !inner.Any(c => c is '(' or ')' or '（' or '）');
+    }
 
     /// <summary>Strips inline word tags from an enhanced-LRC body (display fallback).</summary>
     public static string StripWordTags(string? body) =>

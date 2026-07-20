@@ -34,18 +34,42 @@
         </Style>
     </Window.Styles>
 
-    <!-- Full-window dimmed overlay -->
-    <Border Background="#50000000"
+    <!-- Full-window dimmed overlay.
+         Fade/scale open-close animation: same pattern as the Create Playlist dialog. -->
+    <Border x:Name="DialogOverlay"
+            Background="#50000000"
+            Opacity="0"
             PointerPressed="OnOverlayPointerPressed"
             PointerWheelChanged="OnOverlayWheel">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
 
-        <Border CornerRadius="24"
+        <Border x:Name="DialogCard"
+                CornerRadius="24"
                 ClipToBounds="True"
                 Background="{DynamicResource AppMainBackground}"
                 Width="520" Height="620"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
+                RenderTransformOrigin="50%,50%"
+                RenderTransform="scale(0.96)"
                 BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Border.Transitions>
             <DockPanel>
 
                 <!-- Header: title + search -->
@@ -58,6 +82,33 @@
                              Watermark="Search your library…"
                              CornerRadius="999"
                              x:Name="SearchBox" />
+
+                    <!-- Shuffled-picks subheader (no search yet) -->
+                    <Grid ColumnDefinitions="*,Auto"
+                          IsVisible="{Binding IsShuffleMode}">
+                        <TextBlock Grid.Column="0"
+                                   Text="Shuffled from your library"
+                                   FontSize="11"
+                                   FontWeight="Bold"
+                                   Opacity="0.55"
+                                   LetterSpacing="0.5"
+                                   VerticalAlignment="Center" />
+                        <Button Grid.Column="1"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                CornerRadius="999"
+                                Padding="10,3"
+                                MinHeight="0"
+                                Cursor="Hand"
+                                ToolTip.Tip="Shuffle again"
+                                Command="{Binding ReshuffleCommand}">
+                            <TextBlock Text="Shuffle"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Opacity="0.6"
+                                       VerticalAlignment="Center" />
+                        </Button>
+                    </Grid>
                 </StackPanel>
 
                 <!-- Footer: Cancel / Add -->
@@ -110,7 +161,12 @@
                                                                       Stretch="UniformToFill" />
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="1">
-                                                <Grid ColumnDefinitions="Auto,Auto">
+                                                <!-- Auto,Auto keeps the E badge hugging the title; the LayoutUpdated
+                                                     handler caps the title's MaxWidth so long titles trim instead of
+                                                     running over the selection circle. -->
+                                                <Grid ColumnDefinitions="Auto,Auto"
+                                                      ClipToBounds="True"
+                                                      LayoutUpdated="OnTitleCellLayoutUpdated">
                                                     <TextBlock Grid.Column="0"
                                                                Classes="one-line-explicit-title"
                                                                Text="{Binding Track.Title}"
@@ -165,13 +221,13 @@
                         </ItemsControl>
                     </ScrollViewer>
 
-                    <!-- Prompt (no search yet) -->
+                    <!-- Prompt (nothing to shuffle and no search) -->
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                 Spacing="6" IsVisible="{Binding ShowPrompt}">
-                        <TextBlock Text="Search your library to add songs"
+                        <TextBlock Text="Nothing left to add"
                                    FontSize="15" Opacity="0.5"
                                    HorizontalAlignment="Center" TextAlignment="Center" />
-                        <TextBlock Text="Type a title, artist, or album above"
+                        <TextBlock Text="Every song in your library is already in this playlist"
                                    FontSize="12" Opacity="0.3"
                                    HorizontalAlignment="Center" TextAlignment="Center" />
                     </StackPanel>

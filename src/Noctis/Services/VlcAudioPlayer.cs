@@ -3096,10 +3096,23 @@ public class VlcAudioPlayer : IAudioPlayer
                         if (savedMilli < 0)
                             savedMilli = CurvedVolumeToLevelMilli(
                                 ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100))));
-                        sv.SetLevel(0);
+                        // Duck to 25% (~-12 dB) instead of muting. A full dip to 0
+                        // measured as ~63-120 ms of dead output at the endpoint (the
+                        // OS ramps every session write, stretching the 20 ms hold),
+                        // audible as a split-second cut on every timeline/lyrics
+                        // click. -12 dB still masks the buffer-flush click, but the
+                        // output never goes silent.
+                        sv.SetLevel(savedMilli / 4 / 1000.0);
                         _player.Time = targetMs;
                         Thread.Sleep(SeekFadeMs);
-                        sv.SetLevel(savedMilli / 1000.0);
+                        if (!sv.SetLevel(savedMilli / 1000.0))
+                        {
+                            // A failed restore strands the session ducked — and
+                            // Windows persists per-app session volume across app
+                            // restarts. Re-resolve the session and retry once.
+                            sv.Invalidate();
+                            sv.SetLevel(savedMilli / 1000.0);
+                        }
                         Volatile.Write(ref _rampCurrentMilli, savedMilli);
                     }
                     else if (ActiveCallbackSink == null)

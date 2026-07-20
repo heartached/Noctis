@@ -19,6 +19,73 @@
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
         <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect"/>
         <conv:MetadataLineConverter x:Key="MetadataLine"/>
+        <conv:DoubleScaleConverter x:Key="FontScale"/>
+
+        <!-- Shared karaoke word cell (glow / dimmed base / gradient sweep), used by the
+             main word layer and the background-vocal (adlib) layer below it. -->
+        <DataTemplate x:Key="WordCellTemplate" x:DataType="m:WordTiming">
+            <Panel Classes="word-cell"
+                   Classes.current="{Binding IsCurrent}"
+                   Classes.emphasis="{Binding IsEmphasis}">
+                <!-- DownOnly viewbox: a merged melisma word ("No-o-o-o-…") can outgrow
+                     the line MaxWidth, and a WrapPanel cell can't break mid-word — the
+                     overflow ran past the line box and was hard-clipped by the button
+                     (ClipToBounds, see lyric-line-btn). Scaling the whole cell down
+                     keeps glow/base/sweep pixel-aligned; words that fit the constraint
+                     render 1:1 as before. -->
+                <Viewbox Stretch="Uniform" StretchDirection="DownOnly" ClipToBounds="False">
+                <Panel>
+                <!-- Soft glow under held-note words; fades in via word-glow styles.
+                     Hosted in a Canvas so its blur surface can be padded out for the
+                     gaussian tail WITHOUT growing the word cell (which would space words
+                     apart). A negative Margin does NOT work here: unlike WPF, Avalonia
+                     collapses the arrange bounds to the layout slot, so the padded
+                     headroom never reaches the effect surface and blur(6) clips into a
+                     hard box. The Canvas reports zero desired size and never clips; the
+                     glow's Padding gives the blur room and the matching negative offset
+                     re-aligns its glyphs onto the base layer. -->
+                <Canvas ClipToBounds="False">
+                    <TextBlock Text="{Binding Text}"
+                               Classes="word-glow"
+                               IsVisible="{Binding IsEmphasis}"
+                               Canvas.Left="-40"
+                               Canvas.Top="-40"
+                               Padding="40"
+                               FontWeight="Bold"
+                               Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                </Canvas>
+                <!-- Base layer: full opacity while the line is inactive, dims to a
+                     soft ghost under the sweep while active (word-base styles). -->
+                <!-- Right padding on line-final words only (see WordOverflowPaddingConverter):
+                     the dimmed base composites through a bounds-clipped layer that shears the
+                     last glyph of words with no trailing space. Costs no spacing — mid-line
+                     words already carry a trailing space and get zero padding. -->
+                <TextBlock Text="{Binding Text}"
+                           Classes="word-base"
+                           Padding="{Binding Text, Converter={StaticResource WordOverflowPad}}"
+                           FontWeight="Bold"
+                           Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                <!-- Bright overlay revealed left-to-right by the Progress sweep, painted
+                     as a Foreground gradient — NOT an OpacityMask: the mask's compositor
+                     layer captured the sibling glow (multiplied it by the sweep and
+                     clipped it at the overlay bounds → hard box around emphasis words).
+                     SweepText + Left alignment shrink the gradient's domain to the glyphs:
+                     with the trailing space included, the edge spent the tail of every
+                     word's duration crossing invisible whitespace (per-word stall). -->
+                <TextBlock Text="{Binding SweepText}"
+                           HorizontalAlignment="Left"
+                           FontWeight="Bold">
+                    <TextBlock.Foreground>
+                        <MultiBinding Converter="{StaticResource ProgressToSweepFg}">
+                            <Binding Path="Progress"/>
+                            <Binding Path="$parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg"/>
+                        </MultiBinding>
+                    </TextBlock.Foreground>
+                </TextBlock>
+                </Panel>
+                </Viewbox>
+            </Panel>
+        </DataTemplate>
         <!-- Adaptive button/slider brushes (updated from code-behind) -->
         <SolidColorBrush x:Key="LyricsBtnBgRes" Color="#33FFFFFF"/>
         <SolidColorBrush x:Key="LyricsBtnBgHoverRes" Color="#55FFFFFF"/>
@@ -932,8 +999,9 @@
                                         Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
                                         CommandParameter="{Binding}"
                                         Effect="{Binding BlurRadius, Converter={StaticResource BlurToEffect}}">
-                                    <Panel HorizontalAlignment="Left"
-                                           MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
+                                    <StackPanel HorizontalAlignment="Left"
+                                                MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
+                                    <Panel HorizontalAlignment="Left">
                                         <!-- Main text layer (only for lines without word timings; intro uses dots) -->
                                         <TextBlock Text="{Binding Text}"
                                                    Classes="lyric-line"
@@ -957,7 +1025,8 @@
                                                       Opacity="{Binding LineOpacity}"
                                                       HorizontalAlignment="Left"
                                                       ClipToBounds="False"
-                                                      MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
+                                                      MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                                      ItemTemplate="{StaticResource WordCellTemplate}">
                                             <ItemsControl.Transitions>
                                                 <Transitions>
                                                     <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
@@ -968,71 +1037,6 @@
                                                     <WrapPanel Orientation="Horizontal"/>
                                                 </ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="m:WordTiming">
-                                                    <Panel Classes="word-cell"
-                                                           Classes.current="{Binding IsCurrent}"
-                                                           Classes.emphasis="{Binding IsEmphasis}">
-                                                        <!-- DownOnly viewbox: a merged melisma word ("No-o-o-o-…") can outgrow
-                                                             the line MaxWidth, and a WrapPanel cell can't break mid-word — the
-                                                             overflow ran past the line box and was hard-clipped by the button
-                                                             (ClipToBounds, see lyric-line-btn). Scaling the whole cell down
-                                                             keeps glow/base/sweep pixel-aligned; words that fit the constraint
-                                                             render 1:1 as before. -->
-                                                        <Viewbox Stretch="Uniform" StretchDirection="DownOnly" ClipToBounds="False">
-                                                        <Panel>
-                                                        <!-- Soft glow under held-note words; fades in via word-glow styles.
-                                                             Hosted in a Canvas so its blur surface can be padded out for the
-                                                             gaussian tail WITHOUT growing the word cell (which would space words
-                                                             apart). A negative Margin does NOT work here: unlike WPF, Avalonia
-                                                             collapses the arrange bounds to the layout slot, so the padded
-                                                             headroom never reaches the effect surface and blur(6) clips into a
-                                                             hard box. The Canvas reports zero desired size and never clips; the
-                                                             glow's Padding gives the blur room and the matching negative offset
-                                                             re-aligns its glyphs onto the base layer. -->
-                                                        <Canvas ClipToBounds="False">
-                                                            <TextBlock Text="{Binding Text}"
-                                                                       Classes="word-glow"
-                                                                       IsVisible="{Binding IsEmphasis}"
-                                                                       Canvas.Left="-40"
-                                                                       Canvas.Top="-40"
-                                                                       Padding="40"
-                                                                       FontWeight="Bold"
-                                                                       Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
-                                                        </Canvas>
-                                                        <!-- Base layer: full opacity while the line is inactive, dims to a
-                                                             soft ghost under the sweep while active (word-base styles). -->
-                                                        <!-- Right padding on line-final words only (see WordOverflowPaddingConverter):
-                                                             the dimmed base composites through a bounds-clipped layer that shears the
-                                                             last glyph of words with no trailing space. Costs no spacing — mid-line
-                                                             words already carry a trailing space and get zero padding. -->
-                                                        <TextBlock Text="{Binding Text}"
-                                                                   Classes="word-base"
-                                                                   Padding="{Binding Text, Converter={StaticResource WordOverflowPad}}"
-                                                                   FontWeight="Bold"
-                                                                   Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
-                                                        <!-- Bright overlay revealed left-to-right by the Progress sweep, painted
-                                                             as a Foreground gradient — NOT an OpacityMask: the mask's compositor
-                                                             layer captured the sibling glow (multiplied it by the sweep and
-                                                             clipped it at the overlay bounds → hard box around emphasis words).
-                                                             SweepText + Left alignment shrink the gradient's domain to the glyphs:
-                                                             with the trailing space included, the edge spent the tail of every
-                                                             word's duration crossing invisible whitespace (per-word stall). -->
-                                                        <TextBlock Text="{Binding SweepText}"
-                                                                   HorizontalAlignment="Left"
-                                                                   FontWeight="Bold">
-                                                            <TextBlock.Foreground>
-                                                                <MultiBinding Converter="{StaticResource ProgressToSweepFg}">
-                                                                    <Binding Path="Progress"/>
-                                                                    <Binding Path="$parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg"/>
-                                                                </MultiBinding>
-                                                            </TextBlock.Foreground>
-                                                        </TextBlock>
-                                                        </Panel>
-                                                        </Viewbox>
-                                                    </Panel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
                                         </ItemsControl>
                                         <!-- Intro dots -->
                                         <StackPanel Orientation="Horizontal"
@@ -1101,6 +1105,35 @@
                                             </Ellipse>
                                         </StackPanel>
                                     </Panel>
+
+                                    <!-- Background vocals (adlibs): smaller karaoke row under the
+                                         main words, Apple Music style. Same cell template, so it
+                                         gets the full glow/base/sweep treatment; font size tracks
+                                         the responsive lyrics size at 60%. Present whenever the
+                                         line has one, so wrap geometry never changes on activation. -->
+                                    <ItemsControl ItemsSource="{Binding BackgroundWords}"
+                                                  Classes="word-layer bg-vocals"
+                                                  Classes.active="{Binding IsActive}"
+                                                  IsVisible="{Binding ShowBackgroundWords}"
+                                                  Opacity="{Binding LineOpacity}"
+                                                  HorizontalAlignment="Left"
+                                                  ClipToBounds="False"
+                                                  Margin="0,6,0,0"
+                                                  FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
+                                                  MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                                  ItemTemplate="{StaticResource WordCellTemplate}">
+                                        <ItemsControl.Transitions>
+                                            <Transitions>
+                                                <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                            </Transitions>
+                                        </ItemsControl.Transitions>
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                    </ItemsControl>
+                                    </StackPanel>
                                 </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

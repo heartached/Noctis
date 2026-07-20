@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -67,6 +68,52 @@ public partial class AnimatedCoverImage : UserControl
     private string? _lingerSource;
     private string? _liveSource;
 
+    // Process-wide bridge-frame cache (UI thread only): the last decoded frame of
+    // recently played covers, keyed by source path. On a track skip the control shows
+    // the cached frame immediately while VLC warms up, instead of flashing the static
+    // cover underneath. Cached bitmaps are owned by the cache and are not referenced
+    // by any Image while they sit here; TakeCachedFrame transfers ownership out.
+    private const int FrameCacheCapacity = 8;
+    private static readonly List<(string Source, WriteableBitmap Bitmap)> s_frameCache = new();
+
+    private static void CacheFrame(string source, WriteableBitmap bitmap)
+    {
+        for (var i = 0; i < s_frameCache.Count; i++)
+        {
+            if (s_frameCache[i].Source == source)
+            {
+                var old = s_frameCache[i].Bitmap;
+                s_frameCache.RemoveAt(i);
+                if (!ReferenceEquals(old, bitmap))
+                    Dispatcher.UIThread.Post(old.Dispose);
+                break;
+            }
+        }
+
+        s_frameCache.Add((source, bitmap));
+        if (s_frameCache.Count > FrameCacheCapacity)
+        {
+            var evicted = s_frameCache[0].Bitmap;
+            s_frameCache.RemoveAt(0);
+            Dispatcher.UIThread.Post(evicted.Dispose);
+        }
+    }
+
+    private static WriteableBitmap? TakeCachedFrame(string source)
+    {
+        for (var i = 0; i < s_frameCache.Count; i++)
+        {
+            if (s_frameCache[i].Source == source)
+            {
+                var bitmap = s_frameCache[i].Bitmap;
+                s_frameCache.RemoveAt(i);
+                return bitmap;
+            }
+        }
+
+        return null;
+    }
+
     public AnimatedCoverImage()
     {
         InitializeComponent();
@@ -99,6 +146,15 @@ public partial class AnimatedCoverImage : UserControl
 
         if (!active || string.IsNullOrEmpty(source))
             return;
+
+        // Seamless track skip: bridge the warm-up with the last frame this source
+        // rendered anywhere in the app, so the static cover never flashes through.
+        if (_lingerBitmap == null && TakeCachedFrame(source) is { } cached)
+        {
+            _lingerBitmap = cached;
+            _lingerSource = source;
+            _image.Source = cached;
+        }
 
         _liveSource = source;
         var generation = _sessionGeneration;
@@ -167,13 +223,32 @@ public partial class AnimatedCoverImage : UserControl
         }
         else
         {
+            // Retire whatever frame was showing into the bridge cache (keyed by its
+            // source) so a later session for the same file starts seamlessly. A session
+            // that never painted still holds uninitialized pixels — never cache those.
+            var sessionPainted = session != null && ReferenceEquals(_image.Source, session.Bitmap);
             _image.Source = null;
-            session?.ShutDown();
+            if (session != null && sessionPainted && _liveSource != null)
+            {
+                session.ShutDown(keepBitmap: true);
+                CacheFrame(_liveSource, session.Bitmap);
+            }
+            else
+            {
+                session?.ShutDown();
+            }
+
             var linger = _lingerBitmap;
+            var lingerSource = _lingerSource;
             _lingerBitmap = null;
             _lingerSource = null;
             if (linger != null)
-                Dispatcher.UIThread.Post(linger.Dispose);
+            {
+                if (lingerSource != null)
+                    CacheFrame(lingerSource, linger);
+                else
+                    Dispatcher.UIThread.Post(linger.Dispose);
+            }
         }
 
         _liveSource = null;

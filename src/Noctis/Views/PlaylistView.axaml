@@ -14,6 +14,8 @@
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:HexColorToBrushConverter x:Key="HexColorConverter" />
         <conv:GuidEqualsConverter x:Key="GuidEquals" />
+        <conv:DateAddedDisplayConverter x:Key="DateAddedDisplay" />
+        <conv:RecentlyAddedConverter x:Key="RecentAdded" />
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -101,6 +103,158 @@
         <Style Selector="Button.heart-btn:pointerover PathIcon.faint-heart">
             <Setter Property="Opacity" Value="0.7" />
         </Style>
+
+        <!-- Album run headers live inside each run-start item, so the row
+             background (stripe/hover/ctrl-select) moves off the ListBoxItem onto
+             the inner row-body Border — otherwise the header line would get
+             striped and highlighted along with the row. Scoped to this view. -->
+        <Style Selector="ListBox.track-list ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n)">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem:pointerover">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n):pointerover">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem:selected">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n):selected">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:nth-child(2n)">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:pointerover">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:nth-child(2n):pointerover">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <!-- Row body: carries the stripe ("even" stamped by code-behind), hover
+             and ctrl-select backgrounds the ListBoxItem used to paint -->
+        <Style Selector="Border.row-body">
+            <Setter Property="Padding" Value="0,6,8,6" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.04" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.row-body.even">
+            <Setter Property="Background" Value="{DynamicResource TrackListStripeBrush}" />
+        </Style>
+        <Style Selector="Border.row-body:pointerover">
+            <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
+        </Style>
+        <Style Selector="ListBoxItem.ctrl-selected Border.row-body">
+            <Setter Property="Background" Value="#3FFFFFFF" />
+        </Style>
+
+        <!-- # column: the row number fades into a grip hint on hover, but only
+             when reorder is actually possible (manual playlist + manual sort + no filter) -->
+        <Style Selector="TextBlock.row-index, TextBlock.row-grip">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.row-body.reorderable:pointerover TextBlock.row-index">
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+        <Style Selector="Border.row-body.reorderable:pointerover TextBlock.row-grip">
+            <Setter Property="Opacity" Value="0.55" />
+        </Style>
+
+        <!-- Artwork play overlay: hidden until the row is hovered; no global button zoom -->
+        <Style Selector="Button.art-play-overlay">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.row-body:pointerover Button.art-play-overlay">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="Button.art-play-overlay:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.art-play-overlay:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+
+        <!-- Floating selection action bar: fades/slides in when rows are Ctrl-selected -->
+        <Style Selector="Border#SelectionBar">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="RenderTransform" Value="translateY(14px)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border#SelectionBar.visible">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="IsHitTestVisible" Value="True" />
+            <Setter Property="RenderTransform" Value="translateY(0px)" />
+        </Style>
+        <Style Selector="Border#SelectionBar Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Border#SelectionBar Button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#22FFFFFF" />
+        </Style>
+        <Style Selector="Border#SelectionBar Button:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Border#SelectionBar Button:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+
+        <!-- Suggested-song add button: subtle outline that lights up on hover -->
+        <Style Selector="Button.suggest-add">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="#3DFFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="Button.suggest-add:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.suggest-add:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.suggest-add:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
     </UserControl.Styles>
 
     <Panel>
@@ -159,14 +313,40 @@
                         </Panel>
                     </Border>
 
-                    <!-- Name + Smart badge -->
+                    <!-- Name (click to rename inline) + Smart badge -->
                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="2,16,0,0">
-                        <TextBlock Text="{Binding Name}"
-                                   FontSize="24"
-                                   FontWeight="Bold"
-                                   TextTrimming="CharacterEllipsis"
-                                   MaxLines="2"
-                                   TextWrapping="Wrap" />
+                        <Panel>
+                            <Button Classes="featured-header"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    MinHeight="0"
+                                    HorizontalAlignment="Left"
+                                    HorizontalContentAlignment="Left"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="Rename playlist"
+                                    Command="{Binding StartRenameCommand}"
+                                    IsVisible="{Binding !IsRenamingName}">
+                                <TextBlock Text="{Binding Name}"
+                                           FontSize="24"
+                                           FontWeight="Bold"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxLines="2"
+                                           TextWrapping="Wrap" />
+                            </Button>
+                            <TextBox x:Name="RenameBox"
+                                     Text="{Binding NameEditorText, Mode=TwoWay}"
+                                     FontSize="24"
+                                     FontWeight="Bold"
+                                     MinWidth="200"
+                                     Padding="0"
+                                     Background="Transparent"
+                                     BorderThickness="0,0,0,1"
+                                     BorderBrush="{DynamicResource AccentColorBrush}"
+                                     KeyDown="OnRenameBoxKeyDown"
+                                     LostFocus="OnRenameBoxLostFocus"
+                                     IsVisible="{Binding IsRenamingName}" />
+                        </Panel>
                         <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="999" Padding="9,3"
                                 VerticalAlignment="Center"
                                 IsVisible="{Binding IsSmartPlaylist}">
@@ -185,8 +365,14 @@
                             </MultiBinding>
                         </TextBlock.Text>
                     </TextBlock>
-                    <TextBlock Text="{Binding CreatedDateDisplay}"
-                               FontSize="12" Opacity="0.55" Margin="2,1,0,0" />
+                    <TextBlock FontSize="12" Opacity="0.55" Margin="2,1,0,0">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0} · {1}">
+                                <Binding Path="CreatedDateDisplay" />
+                                <Binding Path="ModifiedDateDisplay" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
 
                     <!-- Description (clickable, opens dialog) -->
                     <Button Classes="neutral-desc-btn"
@@ -207,6 +393,23 @@
                                    TextWrapping="Wrap"
                                    MaxLines="3"
                                    TextTrimming="CharacterEllipsis" />
+                    </Button>
+
+                    <!-- Ghost affordance when there is no description yet -->
+                    <Button Classes="neutral-desc-btn"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="2,2"
+                            MinHeight="0"
+                            HorizontalAlignment="Left"
+                            Cursor="Hand"
+                            Margin="0,8,0,0"
+                            Command="{Binding AddDescriptionCommand}"
+                            IsVisible="{Binding !HasDescription}">
+                        <TextBlock Text="Add a description…"
+                                   FontSize="12.5"
+                                   FontStyle="Italic"
+                                   Opacity="0.45" />
                     </Button>
 
                     <!-- Play / Shuffle / options — compact pills matching the Albums/Singles header -->
@@ -280,7 +483,7 @@
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <Separator />
-                                    <MenuItem Header="Add Songs…"
+                                    <MenuItem Header="Add Songs"
                                               Command="{Binding AddSongsCommand}"
                                               IsVisible="{Binding IsManualPlaylist}">
                                         <MenuItem.Icon>
@@ -412,6 +615,100 @@
                         </ItemsControl>
                     </StackPanel>
 
+                    <!-- Suggested songs: library-only picks from this playlist's artists -->
+                    <StackPanel Margin="0,26,0,0"
+                                IsVisible="{Binding HasSuggestions}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Text="SUGGESTED"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       Opacity="0.6"
+                                       LetterSpacing="1"
+                                       Margin="2,0,0,0"
+                                       VerticalAlignment="Center"
+                                       ToolTip.Tip="From your library, based on the artists in this playlist" />
+                            <Button Grid.Column="1"
+                                    Classes="featured-header"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="4,2"
+                                    MinHeight="0"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="Refresh suggestions"
+                                    Command="{Binding RefreshSuggestionsCommand}">
+                                <TextBlock Text="&#xE72C;"
+                                           FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                           FontSize="11"
+                                           Opacity="0.55" />
+                            </Button>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding SuggestedTracks}"
+                                      Margin="0,8,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Vertical" Spacing="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="m:Track">
+                                    <Grid ColumnDefinitions="44,*,Auto" Margin="4,3">
+                                        <Border Grid.Column="0"
+                                                Width="36" Height="36"
+                                                CornerRadius="5"
+                                                ClipToBounds="True"
+                                                VerticalAlignment="Center"
+                                                Background="#18FFFFFF">
+                                            <Panel>
+                                                <PathIcon Data="{StaticResource SongsIcon}"
+                                                          Width="14" Height="14"
+                                                          Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          IsVisible="{Binding !HasAlbumArt}" />
+                                                <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                                      DecodeWidth="256"
+                                                                      Stretch="UniformToFill"
+                                                                      IsVisible="{Binding HasAlbumArt}" />
+                                            </Panel>
+                                        </Border>
+                                        <StackPanel Grid.Column="1"
+                                                    VerticalAlignment="Center"
+                                                    Margin="8,0,8,0"
+                                                    Spacing="1">
+                                            <TextBlock Text="{Binding TitleDisplay}"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="1" />
+                                            <TextBlock Text="{Binding ArtistDisplay}"
+                                                       FontSize="10.5"
+                                                       FontWeight="SemiBold"
+                                                       Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="1" />
+                                        </StackPanel>
+                                        <Button Grid.Column="2"
+                                                Classes="suggest-add"
+                                                Padding="0"
+                                                Width="24" Height="24"
+                                                HorizontalContentAlignment="Center"
+                                                VerticalContentAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Cursor="Hand"
+                                                ToolTip.Tip="Add to this playlist"
+                                                Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).AddSuggestedCommand}"
+                                                CommandParameter="{Binding}">
+                                            <PathIcon Data="{StaticResource AddIcon}"
+                                                      Width="11" Height="11"
+                                                      Opacity="0.8" />
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
                 </StackPanel>
             </ScrollViewer>
 
@@ -424,23 +721,27 @@
                      row content box (1px ListBoxItem border + 8px right padding) so each
                      header sits exactly over its column's data. -->
                 <Grid Grid.Row="0"
-                      ColumnDefinitions="48,2*,1.4*,64,64,40"
+                      ColumnDefinitions="34,48,2*,1.4*,70,64,64,40"
                       Margin="1,0,9,6">
-                    <TextBlock Grid.Column="1" Text="Title"
-                               FontSize="12" FontWeight="SemiBold" Opacity="0.5"
-                               Margin="12,0,0,0" />
-                    <TextBlock Grid.Column="2" Text="Album"
-                               FontSize="12" FontWeight="SemiBold" Opacity="0.5" />
-                    <TextBlock Grid.Column="3" Text="Favorite"
+                    <TextBlock Grid.Column="0" Text="#"
                                FontSize="12" FontWeight="SemiBold" Opacity="0.5"
                                HorizontalAlignment="Center" />
-                    <TextBlock Grid.Column="4" Text="Time"
+                    <TextBlock Grid.Column="2" Text="Title"
+                               FontSize="12" FontWeight="SemiBold" Opacity="0.5"
+                               Margin="12,0,0,0" />
+                    <TextBlock Grid.Column="3" Text="Album"
+                               FontSize="12" FontWeight="SemiBold" Opacity="0.5" />
+                    <TextBlock Grid.Column="4" Text="Added"
+                               FontSize="12" FontWeight="SemiBold" Opacity="0.5"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Grid.Column="5" Text="Favorite"
+                               FontSize="12" FontWeight="SemiBold" Opacity="0.5"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Grid.Column="6" Text="Time"
                                FontSize="12" FontWeight="SemiBold" Opacity="0.5"
                                HorizontalAlignment="Left" />
-                    <TextBlock Grid.Column="5" />
+                    <TextBlock Grid.Column="7" />
                 </Grid>
-
-                <Separator Grid.Row="1" Margin="0,0,0,2" />
 
                 <!-- Track list: the only scrolling region (virtualized) -->
                 <Grid Grid.Row="2" x:Name="TrackListWrapper">
@@ -457,12 +758,51 @@
                         </ListBox.Styles>
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="m:Track">
-                                <Border Classes.now-playing="{Binding IsNowPlaying}">
-                                <Grid ColumnDefinitions="48,2*,1.4*,64,64,40"
+                                <StackPanel>
+
+                                <!-- Album run header: stamped by code-behind on the first row of
+                                     each consecutive same-album run (hidden while filtering) -->
+                                <StackPanel Classes="album-run-header"
+                                            IsVisible="False"
+                                            Orientation="Horizontal"
+                                            Spacing="8"
+                                            Margin="8,18,8,6">
+                                    <TextBlock Classes="run-album"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               LetterSpacing="1"
+                                               Opacity="0.6"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Classes="run-count"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Opacity="0.35"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+
+                                <Border Classes="row-body"
+                                        Classes.now-playing="{Binding IsNowPlaying}"
+                                        Classes.reorderable="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).CanReorder}">
+                                <Grid ColumnDefinitions="34,48,2*,1.4*,70,64,64,40"
                                       Margin="0,1" Background="Transparent">
 
-                                    <!-- Cover art thumbnail -->
-                                    <Border Grid.Column="0"
+                                    <!-- Row number; becomes a grip hint on hover when reorder is possible -->
+                                    <Panel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Classes="row-index"
+                                                   FontSize="11.5"
+                                                   Opacity="0.4"
+                                                   HorizontalAlignment="Center" />
+                                        <TextBlock Classes="row-grip"
+                                                   Text="&#xE784;"
+                                                   FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                                   FontSize="12"
+                                                   Opacity="0"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Panel>
+
+                                    <!-- Cover art thumbnail (play overlay on hover) -->
+                                    <Border Grid.Column="1"
                                             Width="36" Height="36"
                                             CornerRadius="5"
                                             ClipToBounds="True"
@@ -480,11 +820,28 @@
                                                                   Stretch="UniformToFill"
                                                                   RenderOptions.BitmapInterpolationMode="HighQuality"
                                                                   IsVisible="{Binding HasAlbumArt}" />
+                                            <Button Classes="art-play-overlay"
+                                                    Background="#66000000"
+                                                    BorderThickness="0"
+                                                    Padding="0"
+                                                    CornerRadius="5"
+                                                    HorizontalAlignment="Stretch"
+                                                    VerticalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Center"
+                                                    VerticalContentAlignment="Center"
+                                                    Cursor="Hand"
+                                                    ToolTip.Tip="Play from here"
+                                                    Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).PlayFromCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <PathIcon Data="{StaticResource PlaySolidIcon}"
+                                                          Width="14" Height="14"
+                                                          Foreground="White" />
+                                            </Button>
                                         </Panel>
                                     </Border>
 
                                     <!-- Title over artist -->
-                                    <StackPanel Grid.Column="1"
+                                    <StackPanel Grid.Column="2"
                                                 Margin="12,4,12,4"
                                                 VerticalAlignment="Center"
                                                 Spacing="1">
@@ -502,6 +859,18 @@
                                                            FontSize="9"
                                                            Opacity="0.9" />
                                             </Border>
+                                            <Border CornerRadius="999"
+                                                    Padding="6,1.5"
+                                                    VerticalAlignment="Center"
+                                                    BorderThickness="1"
+                                                    BorderBrush="{DynamicResource AccentTextExactBrush}"
+                                                    IsVisible="{Binding DateAdded, Converter={StaticResource RecentAdded}}"
+                                                    ToolTip.Tip="Added in the last 7 days">
+                                                <TextBlock Text="NEW"
+                                                           FontSize="8"
+                                                           FontWeight="Bold"
+                                                           Foreground="{DynamicResource AccentTextExactBrush}" />
+                                            </Border>
                                         </StackPanel>
                                         <Button Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                                 Cursor="Hand" HorizontalAlignment="Left"
@@ -516,8 +885,9 @@
                                         </Button>
                                     </StackPanel>
 
-                                    <!-- Album (clickable, red) -->
-                                    <Button Grid.Column="2"
+                                    <!-- Album (clickable, red; dimmed by code-behind when repeating the row above) -->
+                                    <Button Grid.Column="3"
+                                            Classes="album-btn"
                                             Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                             Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
                                             Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewAlbumCommand}"
@@ -531,8 +901,16 @@
                                                                      VerticalAlignment="Center" />
                                     </Button>
 
+                                    <!-- Added date -->
+                                    <TextBlock Grid.Column="4"
+                                               Text="{Binding DateAdded, Converter={StaticResource DateAddedDisplay}}"
+                                               FontSize="11.5"
+                                               Opacity="0.5"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+
                                     <!-- Favorite heart toggle: red when favorited, faint otherwise (click toggles this track only) -->
-                                    <Button Grid.Column="3"
+                                    <Button Grid.Column="5"
                                             Classes="heart-btn"
                                             Background="Transparent"
                                             BorderThickness="0"
@@ -563,7 +941,7 @@
                                     </Button>
 
                                     <!-- Time / duration -->
-                                    <TextBlock Grid.Column="4"
+                                    <TextBlock Grid.Column="6"
                                                Text="{Binding DurationFormatted}"
                                                FontSize="12"
                                                Opacity="0.5"
@@ -571,7 +949,7 @@
                                                VerticalAlignment="Center" />
 
                                     <!-- 3-dots menu -->
-                                    <Button Grid.Column="5"
+                                    <Button Grid.Column="7"
                                             Background="Transparent"
                                             BorderThickness="0"
                                             Padding="0"
@@ -590,6 +968,7 @@
                                     </Button>
                                 </Grid>
                                 </Border>
+                                </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
@@ -721,6 +1100,45 @@
                                    HorizontalAlignment="Center"
                                    TextAlignment="Center" />
                     </StackPanel>
+
+                    <!-- Floating multi-select action bar -->
+                    <Border x:Name="SelectionBar"
+                            Classes.visible="{Binding HasSelection}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,0,26"
+                            CornerRadius="999"
+                            Padding="16,6,8,6"
+                            Background="{DynamicResource IslandBackground}"
+                            BorderBrush="{DynamicResource IslandBorder}"
+                            BorderThickness="1"
+                            BoxShadow="0 8 30 0 #99000000">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="{Binding SelectedCount, StringFormat='{}{0} selected'}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,8,0" />
+                            <Button Click="OnSelectionAddToPlaylistClick"
+                                    ToolTip.Tip="Add the selected tracks to a playlist">
+                                <TextBlock Text="Add to playlist" FontSize="12" FontWeight="SemiBold" />
+                            </Button>
+                            <Button Click="OnSelectionFavoriteClick"
+                                    ToolTip.Tip="Toggle favorite on the selected tracks">
+                                <TextBlock Text="Favorite" FontSize="12" FontWeight="SemiBold" />
+                            </Button>
+                            <Button Click="OnSelectionRemoveClick"
+                                    IsVisible="{Binding IsManualPlaylist}"
+                                    ToolTip.Tip="Remove the selected tracks from this playlist">
+                                <TextBlock Text="Remove" FontSize="12" FontWeight="SemiBold" />
+                            </Button>
+                            <Button Click="OnSelectionClearClick"
+                                    Padding="8,5"
+                                    ToolTip.Tip="Clear selection">
+                                <TextBlock Text="&#x2715;" FontSize="11" Opacity="0.6" />
+                            </Button>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Grid>
         </Grid>

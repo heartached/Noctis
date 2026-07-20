@@ -62,7 +62,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Label for the sort dropdown button.</summary>
     public string AlbumSortLabel => AlbumSortMode switch
     {
-        "dateadded" => "Date added",
+        "dateadded" => "Recently added",
         "mostplayed" => "Most played",
         _ => "Default",
     };

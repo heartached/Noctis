@@ -106,6 +106,7 @@ public static class DragFileBehavior
         return dc switch
         {
             Track t when !string.IsNullOrEmpty(t.FilePath) => new List<string> { t.FilePath },
+            TopSongRow r when !string.IsNullOrEmpty(r.Track.FilePath) => new List<string> { r.Track.FilePath },
             Album a when a.Tracks?.Count > 0 => a.Tracks
                 .Where(t => !string.IsNullOrEmpty(t.FilePath))
                 .Select(t => t.FilePath)

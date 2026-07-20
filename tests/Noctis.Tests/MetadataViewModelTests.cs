@@ -344,7 +344,7 @@ public class MetadataViewModelTests
         public string? Resolve(Track track) => null;
         public Task<string> ImportAsync(Track track, string sourcePath, AnimatedCoverScope scope)
             => Task.FromResult(string.Empty);
-        public void Remove(Track track, AnimatedCoverScope scope) { }
+        public Task RemoveAsync(Track track, AnimatedCoverScope scope) => Task.CompletedTask;
     }
 
     private sealed class FakeLibraryService : ILibraryService

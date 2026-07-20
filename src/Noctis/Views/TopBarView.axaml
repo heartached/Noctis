@@ -48,39 +48,6 @@
                            MaxWidth="480"
                            TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center" />
-
-                <!-- Release-type filter dropdown on the artist discography page (same
-                     control as the Albums grid Type dropdown below) -->
-                <Button Classes="release-chip"
-                        IsVisible="{Binding HasReleaseTypeChips}"
-                        VerticalAlignment="Center"
-                        ToolTip.Tip="Filter by release type">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="Type:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding ReleaseTypeFilterLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                        <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
-                                  RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
-                    </StackPanel>
-                    <Button.Flyout>
-                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
-                            <MenuItem Header="All"
-                                      Command="{Binding ReleaseTypeFilterCommand}"
-                                      CommandParameter="all"/>
-                            <MenuItem Header="Albums"
-                                      Command="{Binding ReleaseTypeFilterCommand}"
-                                      CommandParameter="album"/>
-                            <MenuItem Header="Singles"
-                                      Command="{Binding ReleaseTypeFilterCommand}"
-                                      CommandParameter="single"/>
-                            <MenuItem Header="EPs"
-                                      Command="{Binding ReleaseTypeFilterCommand}"
-                                      CommandParameter="ep"/>
-                            <MenuItem Header="Other"
-                                      Command="{Binding ReleaseTypeFilterCommand}"
-                                      CommandParameter="other"/>
-                        </MenuFlyout>
-                    </Button.Flyout>
-                </Button>
             </StackPanel>
         </DockPanel>
 
@@ -96,96 +63,14 @@
                        FontSize="22"
                        FontWeight="Bold" />
 
-            <!-- Release-type filter dropdown, albums grid only -->
-            <Button Classes="release-chip"
-                    IsVisible="{Binding HasReleaseTypeChips}"
-                    VerticalAlignment="Center"
-                    ToolTip.Tip="Filter by release type">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="Type:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding ReleaseTypeFilterLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
-                              RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
-                </StackPanel>
-                <Button.Flyout>
-                    <MenuFlyout Placement="BottomEdgeAlignedLeft">
-                        <MenuItem Header="All"
-                                  Command="{Binding ReleaseTypeFilterCommand}"
-                                  CommandParameter="all"/>
-                        <MenuItem Header="Albums"
-                                  Command="{Binding ReleaseTypeFilterCommand}"
-                                  CommandParameter="album"/>
-                        <MenuItem Header="Singles"
-                                  Command="{Binding ReleaseTypeFilterCommand}"
-                                  CommandParameter="single"/>
-                        <MenuItem Header="EPs"
-                                  Command="{Binding ReleaseTypeFilterCommand}"
-                                  CommandParameter="ep"/>
-                        <MenuItem Header="Other"
-                                  Command="{Binding ReleaseTypeFilterCommand}"
-                                  CommandParameter="other"/>
-                    </MenuFlyout>
-                </Button.Flyout>
-            </Button>
+            <!-- Songs page: "2,144 songs · 138 hours" summary next to the title -->
+            <TextBlock Text="{Binding SongsSummaryText}"
+                       IsVisible="{Binding SongsFiltersVisible}"
+                       FontSize="12"
+                       Opacity="0.55"
+                       Margin="-4,4,0,0"
+                       VerticalAlignment="Center" />
 
-            <!-- Quality filter dropdown (Lossless / Hi-Res), albums grid only -->
-            <Border Width="1" Height="16" Background="#30808080" VerticalAlignment="Center"
-                    IsVisible="{Binding HasReleaseTypeChips}"/>
-            <Button Classes="release-chip"
-                    IsVisible="{Binding HasReleaseTypeChips}"
-                    VerticalAlignment="Center"
-                    ToolTip.Tip="Filter by audio quality">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="Quality:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding QualityFilterLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
-                              RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
-                </StackPanel>
-                <Button.Flyout>
-                    <MenuFlyout Placement="BottomEdgeAlignedLeft">
-                        <MenuItem Header="All"
-                                  Command="{Binding QualityFilterCommand}"
-                                  CommandParameter="all"/>
-                        <MenuItem Header="Lossless"
-                                  Command="{Binding QualityFilterCommand}"
-                                  CommandParameter="lossless"/>
-                        <MenuItem Header="Hi-Res"
-                                  Command="{Binding QualityFilterCommand}"
-                                  CommandParameter="hires"/>
-                    </MenuFlyout>
-                </Button.Flyout>
-            </Button>
-
-            <!-- Sort dropdown, albums grid only. Uses release-chip class so it gets the
-                 same hover highlight as the filter chips (and opts out of the hover zoom). -->
-            <Button Classes="release-chip"
-                    IsVisible="{Binding HasReleaseTypeChips}"
-                    Background="{DynamicResource ChipBackground}"
-                    Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                    CornerRadius="999" Padding="14,6" FontSize="12" FontWeight="SemiBold"
-                    BorderThickness="0" Cursor="Hand"
-                    VerticalAlignment="Center"
-                    ToolTip.Tip="Sort albums">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="Sort:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding AlbumSortLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
-                              RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
-                </StackPanel>
-                <Button.Flyout>
-                    <MenuFlyout Placement="BottomEdgeAlignedLeft">
-                        <MenuItem Header="Default"
-                                  Command="{Binding AlbumSortCommand}"
-                                  CommandParameter="default"/>
-                        <MenuItem Header="Date added"
-                                  Command="{Binding AlbumSortCommand}"
-                                  CommandParameter="dateadded"/>
-                        <MenuItem Header="Most played"
-                                  Command="{Binding AlbumSortCommand}"
-                                  CommandParameter="mostplayed"/>
-                    </MenuFlyout>
-                </Button.Flyout>
-            </Button>
         </StackPanel>
 
       </Grid>

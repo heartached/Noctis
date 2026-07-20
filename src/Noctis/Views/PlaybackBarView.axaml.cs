@@ -58,7 +58,7 @@ public partial class PlaybackBarView : UserControl
     // stale Thumb state or stray pointer moves from triggering seeks.
     private bool _isSeekDragging;
     private bool _isVolumeDragging;
-    private const double VolumeThumbSize = 14;
+    private const double VolumeThumbSize = 12;
     private const double VolumeSliderVisualWidth = 84;
     private readonly TranslateTransform _volumeThumbTransform = new();
 
@@ -652,14 +652,56 @@ public partial class PlaybackBarView : UserControl
         }
     }
 
+    private void ShowVolumeBubble(bool show)
+    {
+        if (show) UpdateVolumeBubble();
+        VolumeBubble.Opacity = show ? 1 : 0;
+    }
+
+    // Keep the % bubble centered above the thumb (clamped to the flyout edges).
+    private void UpdateVolumeBubble()
+    {
+        var value = (int)Math.Round(VolumeSlider.Value);
+        VolumeBubbleText.Text = $"{value}%";
+        var frac = Math.Clamp(VolumeSlider.Value / Math.Max(1, VolumeSlider.Maximum), 0, 1);
+        var thumbCenter = frac * (VolumeSliderVisualWidth - VolumeThumbSize) + VolumeThumbSize / 2;
+        // Measure the TEXT, not the bubble Border: setting Text only invalidates
+        // the TextBlock's own measure, so Measure() on the still-valid Border is
+        // a cached no-op and the clamp used the previous value's width — which
+        // let wider readouts like "100%" hang past the popup edge and clip.
+        VolumeBubbleText.Measure(Size.Infinity);
+        // 16 = bubble Padding (7+7) + BorderThickness (1+1).
+        var bubbleWidth = VolumeBubbleText.DesiredSize.Width + 16;
+        var layerWidth = VolumeBubbleLayer.Bounds.Width > 0 ? VolumeBubbleLayer.Bounds.Width : 102;
+        // 9 = flyout border (1) + pill padding (8) offsets the slider inside the pill.
+        // 2px edge inset: at exactly layerWidth the border sits on the popup's last
+        // pixel and gets shaved on fractional display scales.
+        var left = 9 + thumbCenter - bubbleWidth / 2;
+        Canvas.SetLeft(VolumeBubble, Math.Clamp(left, 2, Math.Max(2, layerWidth - bubbleWidth - 2)));
+    }
+
+    private void OnVolumeWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (DataContext is not PlayerViewModel vm) return;
+        var step = e.Delta.Y > 0 ? 5 : e.Delta.Y < 0 ? -5 : 0;
+        if (step == 0) return;
+        vm.UnmuteForAdjust();
+        vm.Volume = Math.Clamp(vm.Volume + step, 0, 100);
+        vm.CommitVolume();
+        if (!VolumeFlyout.IsOpen) OpenVolumeFlyout();
+        e.Handled = true;
+    }
+
     private void OnVolumeSliderPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is not Slider slider) return;
         if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed) return;
 
         _isVolumeDragging = true;
+        (DataContext as PlayerViewModel)?.UnmuteForAdjust();
         e.Pointer.Capture(slider);
         slider.Value = GetVolumeFromPointer(slider, e.GetPosition(slider));
+        ShowVolumeBubble(true);
         e.Handled = true;
     }
 
@@ -680,6 +722,7 @@ public partial class PlaybackBarView : UserControl
             e.Handled = true;
         }
 
+        ShowVolumeBubble(false);
         (DataContext as PlayerViewModel)?.CommitVolume();
         // The drag suppressed any hover-close; now that it's over, close if the
         // cursor ended up away from the icon and popup.
@@ -691,6 +734,7 @@ public partial class PlaybackBarView : UserControl
         if (!_isVolumeDragging) return;
 
         _isVolumeDragging = false;
+        ShowVolumeBubble(false);
         (DataContext as PlayerViewModel)?.CommitVolume();
         ReevaluateVolumeFlyoutHover();
     }
@@ -713,6 +757,8 @@ public partial class PlaybackBarView : UserControl
             enabledBackgroundOpacity: 0.4,
             disabledBackgroundOpacity: 0.25);
 
+        if (_isVolumeDragging)
+            UpdateVolumeBubble();
     }
 
     private static double GetVolumeFromPointer(Slider slider, Point position)

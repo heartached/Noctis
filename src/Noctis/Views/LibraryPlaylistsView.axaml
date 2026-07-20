@@ -181,6 +181,14 @@
                                                              TextTrimming="CharacterEllipsis"
                                                              MaxLines="1"
                                                              Margin="2,6,2,0" />
+                                    <!-- "16 tracks · 54 min" -->
+                                    <TextBlock Text="{Binding MetaText}"
+                                               FontSize="12"
+                                               Opacity="0.55"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxLines="1"
+                                               Margin="2,2,2,0"
+                                               IsVisible="{Binding MetaText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                 </StackPanel>
                             </Button>
                         </DataTemplate>

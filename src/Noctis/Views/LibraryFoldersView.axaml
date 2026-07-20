@@ -57,58 +57,28 @@
 
         <!-- Right pane: header + track list -->
         <DockPanel Grid.Column="1" Margin="16,0,0,0">
-            <!-- All actions grouped left, ordered by emphasis: Play (accent) →
-                 Shuffle (neutral pill) → Manage Media Folders (quiet chip).
-                 The selected-folder label fills the remaining space on the right. -->
-            <Grid DockPanel.Dock="Top"
-                  ColumnDefinitions="Auto,Auto,Auto,*"
-                  Margin="0,0,0,8">
-                <Button Grid.Column="0"
-                        Content="Play"
-                        Command="{Binding PlayFolderCommand}"
-                        Classes="accent-btn"
-                        Background="{DynamicResource AccentColorBrush}"
-                        Foreground="{DynamicResource AccentForegroundBrush}"
-                        CornerRadius="999"
-                        Padding="18,6"
-                        FontWeight="SemiBold"
-                        Cursor="Hand"
-                        Margin="0,0,8,0" />
-                <Button Grid.Column="1"
-                        Content="Shuffle"
-                        Command="{Binding ShuffleFolderCommand}"
-                        CornerRadius="999"
-                        Padding="16,6"
-                        FontWeight="SemiBold"
-                        Cursor="Hand"
-                        Margin="0,0,8,0" />
-                <Button Grid.Column="2"
-                        Command="{Binding OpenMediaFolderSettingsCommand}"
-                        ToolTip.Tip="Open Settings to add or remove the music folders that get scanned."
-                        Background="{DynamicResource ChipBackground}"
-                        BorderThickness="0"
-                        CornerRadius="999"
-                        Padding="14,6"
-                        Cursor="Hand"
-                        Margin="0,0,12,0">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Data="{StaticResource SettingsIcon}"
-                                  Width="13" Height="13"
-                                  Opacity="0.8"
-                                  VerticalAlignment="Center" />
-                        <TextBlock Text="Manage Media Folders"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
-                <TextBlock Grid.Column="3"
-                           Text="{Binding SelectedNode.DisplayName, FallbackValue='Select a folder'}"
+            <!-- Header: selected folder name + items/size summary. The Play / Shuffle /
+                 Manage Folders actions live in the top bar's right cluster. -->
+            <StackPanel DockPanel.Dock="Top"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        Margin="4,0,0,10">
+                <TextBlock Text="{Binding SelectedNode.DisplayName, FallbackValue='Select a folder'}"
                            VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis"
+                           MaxWidth="480"
                            FontSize="14"
-                           Opacity="0.7" />
-            </Grid>
+                           FontWeight="SemiBold" />
+                <TextBlock Text="·"
+                           VerticalAlignment="Center"
+                           Opacity="0.4"
+                           IsVisible="{Binding FolderSummaryText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Text="{Binding FolderSummaryText}"
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           Opacity="0.55"
+                           IsVisible="{Binding FolderSummaryText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
 
             <ListBox x:Name="TrackList"
                      Classes="track-list"
@@ -120,7 +90,7 @@
                         <Border Classes.now-playing="{Binding IsNowPlaying}" Margin="0,2">
                             <!-- Number column is wide enough for 4-digit row numbers;
                                  a large folder (100s–1000s of tracks) previously clipped them. -->
-                            <Grid ColumnDefinitions="48,1.6*,Auto,*">
+                            <Grid ColumnDefinitions="48,*,Auto,64">
 
                                 <!-- Row number, swapped for the animated EQ on the playing track.
                                      EQ is centered over the digit column; numbers use tabular
@@ -175,15 +145,12 @@
                                     </Border>
                                 </Grid>
 
-                                <TextBlock Grid.Column="2"
-                                           Text="{Binding DurationFormatted}"
-                                           VerticalAlignment="Center"
-                                           Opacity="0.7"
-                                           Margin="16,0" />
-                                <!-- Artist is a link — clicking it opens the artist's discography page. -->
-                                <Button Grid.Column="3"
+                                <!-- Artist is a link — clicking it opens the artist's discography page.
+                                     Right-aligned with the dim duration at the row's far edge. -->
+                                <Button Grid.Column="2"
                                         Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
-                                        Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                        Cursor="Hand" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                        Margin="16,0,0,0"
                                         Command="{Binding $parent[UserControl].((vm:LibraryFoldersViewModel)DataContext).ViewArtistCommand}"
                                         CommandParameter="{Binding Artist}">
                                     <TextBlock Text="{Binding ArtistDisplay}"
@@ -191,8 +158,16 @@
                                                Opacity="0.7"
                                                TextTrimming="CharacterEllipsis"
                                                MaxLines="1"
+                                               MaxWidth="440"
                                                ToolTip.Tip="{Binding ArtistDisplay}" />
                                 </Button>
+                                <TextBlock Grid.Column="3"
+                                           Text="{Binding DurationFormatted}"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Right"
+                                           FontFeatures="+tnum"
+                                           Opacity="0.5"
+                                           Margin="0,0,10,0" />
                             </Grid>
                         </Border>
                     </DataTemplate>
