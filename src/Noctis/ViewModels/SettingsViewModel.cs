@@ -1263,12 +1263,17 @@ public partial class SettingsViewModel : ViewModelBase
 
         var owner = (Avalonia.Application.Current?.ApplicationLifetime
                       as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-        if (owner != null) await dialog.ShowDialog(owner);
+        if (owner != null)
+        {
+            Helpers.DialogHelper.SizeToOwner(dialog, owner);
+            await dialog.ShowDialog(owner);
+        }
         else dialog.Show();
 
         if (dialog.Result == null) return;
 
         var result = dialog.Result;
+        var wasActive = existingTile?.IsActive == true;
         if (existingTile != null)
         {
             existingTile.Name = result.Name;
@@ -1290,8 +1295,12 @@ public partial class SettingsViewModel : ViewModelBase
             });
         }
 
-        if (_settingsLoaded) _ = SaveAsync();
-        ApplyCustomTheme(result.Id);
+        // Activate new themes right away; re-apply an edited theme only if it was
+        // already the active one — editing must not steal activation.
+        if (existingTile == null || wasActive)
+            ApplyCustomTheme(result.Id);
+        else if (_settingsLoaded)
+            _ = SaveAsync();
     }
 
     // ── Accent commands ──

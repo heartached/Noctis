@@ -5,7 +5,6 @@
         x:Class="Noctis.Views.ThemeEditorDialog"
         x:DataType="vm:ThemeEditorViewModel"
         Title="Theme Editor"
-        Width="920" Height="680"
         CanResize="False"
         SystemDecorations="None"
         TransparencyLevelHint="Transparent"
@@ -13,19 +12,77 @@
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
 
-    <Border Background="Transparent">
-        <Border CornerRadius="32"
-                HorizontalAlignment="Center" VerticalAlignment="Center"
+    <!-- Full-window dimmed overlay that captures all input; code-behind fades it
+         in on open and back out before closing (unified dialog pattern). -->
+    <Border x:Name="DialogOverlay"
+            Background="#50000000"
+            Opacity="0"
+            PointerPressed="OnOverlayPointerPressed"
+            PointerWheelChanged="OnOverlayWheel">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
+
+        <!-- Centered dialog card -->
+        <Border x:Name="DialogCard"
+                CornerRadius="24"
+                ClipToBounds="True"
+                Background="{DynamicResource AppMainBackground}"
                 Width="760" Height="520"
-                BoxShadow="0 0 34 0 #66000000, 0 18 48 0 #80000000, 12 18 32 0 #4D000000">
-            <Border CornerRadius="32"
-                    ClipToBounds="True"
-                    Background="{DynamicResource AppMainBackground}">
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                RenderTransformOrigin="50%,50%"
+                RenderTransform="scale(0.96)"
+                BoxShadow="0 8 32 0 #80000000, 0 0 0 1 #33FFFFFF">
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Border.Transitions>
+
+            <Border.Styles>
+                <!-- Dark/Light pills: absolute set via SetBaseModeCommand; the active
+                     pill fills with the accent. -->
+                <Style Selector="Button.mode-pill">
+                    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+                    <!-- Outline keeps the inactive pill visible on dark themes, where the
+                         BaseLow fill nearly matches the card background. -->
+                    <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="CornerRadius" Value="999"/>
+                    <Setter Property="Padding" Value="18,6"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Style>
+                <Style Selector="Button.mode-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="BorderBrush" Value="{TemplateBinding BorderBrush}"/>
+                </Style>
+                <Style Selector="Button.mode-pill.active">
+                    <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+                    <Setter Property="BorderBrush" Value="Transparent"/>
+                </Style>
+                <Style Selector="Button.mode-pill.active /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+                </Style>
+            </Border.Styles>
+
             <DockPanel>
 
                 <!-- Bottom buttons (match MetadataWindow: Cancel left, accent Save right). -->
                 <Border DockPanel.Dock="Bottom"
-                        Padding="24,12"
+                        Padding="24,12,24,16"
                         BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                         BorderThickness="0,1,0,0">
                     <Grid ColumnDefinitions="*,Auto,Auto">
@@ -54,71 +111,99 @@
                     </Grid>
                 </Border>
 
-                <Grid ColumnDefinitions="320,*" Margin="20,16">
+                <Grid ColumnDefinitions="300,*" Margin="24,20,24,16">
 
                     <!-- Left: inputs -->
-                    <StackPanel Grid.Column="0" Spacing="14" Margin="0,0,20,0">
-                        <TextBlock Text="Custom Theme" FontSize="20" FontWeight="Bold"/>
+                    <StackPanel Grid.Column="0" Spacing="16" Margin="0,0,22,0">
+                        <TextBlock Text="{Binding DialogTitle}" FontSize="20" FontWeight="Bold"/>
 
-                        <StackPanel Spacing="4">
+                        <StackPanel Spacing="5">
                             <TextBlock Text="Name" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBox Text="{Binding Name, Mode=TwoWay}"
-                                     Watermark="My Theme" CornerRadius="999"/>
+                            <TextBox x:Name="NameTextBox"
+                                     Text="{Binding Name, Mode=TwoWay}"
+                                     Classes="crisp-input"
+                                     Watermark="My Theme"
+                                     CornerRadius="999"
+                                     Padding="14,8"/>
                             <TextBlock Text="A theme with this name already exists"
                                        FontSize="11"
                                        Foreground="{DynamicResource AccentColorBrush}"
                                        IsVisible="{Binding HasDuplicateName}"/>
                         </StackPanel>
 
-                        <StackPanel Spacing="4">
+                        <StackPanel Spacing="6">
                             <TextBlock Text="Base mode" FontSize="13" FontWeight="SemiBold"/>
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <ToggleButton Content="Dark"
-                                              IsChecked="{Binding IsDarkMode, Mode=TwoWay}"
-                                              CornerRadius="999" Padding="16,6"/>
-                                <ToggleButton Content="Light"
-                                              IsChecked="{Binding !IsDarkMode, Mode=TwoWay}"
-                                              CornerRadius="999" Padding="16,6"/>
+                                <Button Content="Dark"
+                                        Classes="mode-pill"
+                                        Classes.active="{Binding IsDarkMode}"
+                                        Command="{Binding SetBaseModeCommand}"
+                                        CommandParameter="Dark"/>
+                                <Button Content="Light"
+                                        Classes="mode-pill"
+                                        Classes.active="{Binding !IsDarkMode}"
+                                        Command="{Binding SetBaseModeCommand}"
+                                        CommandParameter="Light"/>
                             </StackPanel>
                         </StackPanel>
 
                         <StackPanel Spacing="6">
-                            <TextBlock Text="Main background" FontSize="13" FontWeight="SemiBold"/>
-                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                <controls:ColorPickerFlyout Hex="{Binding MainHex, Mode=TwoWay}" SwatchSize="28"/>
-                                <TextBlock Text="{Binding MainHex}"
-                                           FontFamily="Consolas, Courier New, monospace"
-                                           FontSize="12"
-                                           FontWeight="Bold"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                                           VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </StackPanel>
-
-                        <StackPanel Spacing="6">
-                            <TextBlock Text="Sidebar background" FontSize="13" FontWeight="SemiBold"/>
-                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                <controls:ColorPickerFlyout Hex="{Binding SidebarHex, Mode=TwoWay}" SwatchSize="28"/>
-                                <TextBlock Text="{Binding SidebarHex}"
-                                           FontFamily="Consolas, Courier New, monospace"
-                                           FontSize="12"
-                                           FontWeight="Bold"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                                           VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </StackPanel>
-
-                        <StackPanel Spacing="6">
-                            <TextBlock Text="Accent" FontSize="13" FontWeight="SemiBold"/>
-                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                <controls:ColorPickerFlyout Hex="{Binding AccentHex, Mode=TwoWay}" SwatchSize="28"/>
-                                <TextBlock Text="{Binding AccentHex}"
-                                           FontFamily="Consolas, Courier New, monospace"
-                                           FontSize="12"
-                                           FontWeight="Bold"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                                           VerticalAlignment="Center"/>
-                            </StackPanel>
+                            <TextBlock Text="Colors" FontSize="13" FontWeight="SemiBold"/>
+                            <Border CornerRadius="14"
+                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                                    Padding="12,4">
+                                <StackPanel>
+                                    <Grid ColumnDefinitions="Auto,*,Auto" Height="44">
+                                        <!-- -3 margin cancels the picker's internal hover-scale headroom
+                                             so the swatch keeps its original resting position. -->
+                                        <controls:ColorPickerFlyout Grid.Column="0"
+                                                                    Hex="{Binding MainHex, Mode=TwoWay}"
+                                                                    SwatchSize="26"
+                                                                    Margin="-3"
+                                                                    VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="Main background"
+                                                   FontSize="13" Margin="10,0,8,0"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding MainHex}"
+                                                   FontFamily="Consolas, Courier New, monospace"
+                                                   FontSize="12" FontWeight="Bold"
+                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.08"/>
+                                    <Grid ColumnDefinitions="Auto,*,Auto" Height="44">
+                                        <controls:ColorPickerFlyout Grid.Column="0"
+                                                                    Hex="{Binding SidebarHex, Mode=TwoWay}"
+                                                                    SwatchSize="26"
+                                                                    Margin="-3"
+                                                                    VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="Sidebar background"
+                                                   FontSize="13" Margin="10,0,8,0"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding SidebarHex}"
+                                                   FontFamily="Consolas, Courier New, monospace"
+                                                   FontSize="12" FontWeight="Bold"
+                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseHighBrush}" Opacity="0.08"/>
+                                    <Grid ColumnDefinitions="Auto,*,Auto" Height="44">
+                                        <controls:ColorPickerFlyout Grid.Column="0"
+                                                                    Hex="{Binding AccentHex, Mode=TwoWay}"
+                                                                    SwatchSize="26"
+                                                                    Margin="-3"
+                                                                    VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="Accent"
+                                                   FontSize="13" Margin="10,0,8,0"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding AccentHex}"
+                                                   FontFamily="Consolas, Courier New, monospace"
+                                                   FontSize="12" FontWeight="Bold"
+                                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </StackPanel>
 
@@ -126,19 +211,19 @@
                     <Border Grid.Column="1"
                             CornerRadius="14" ClipToBounds="True"
                             BorderBrush="{Binding PreviewOutline}" BorderThickness="1">
-                        <Grid ColumnDefinitions="120,*" RowDefinitions="*,Auto">
+                        <Grid ColumnDefinitions="110,*" RowDefinitions="*,Auto">
                             <!-- Fake sidebar -->
-                            <Border Grid.Column="0" Grid.Row="0"
+                            <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
                                     Background="{Binding PreviewSidebar}">
-                                <StackPanel Margin="10,16" Spacing="8">
-                                    <Border CornerRadius="8" Padding="10,8"
+                                <StackPanel Margin="10,16" Spacing="6">
+                                    <Border CornerRadius="8" Padding="10,7"
                                             Background="{Binding PreviewSidebarHover}">
                                         <TextBlock Text="Home" FontSize="12"
                                                    Foreground="{Binding PreviewPrimaryText}"/>
                                     </Border>
-                                    <TextBlock Text="Library" FontSize="12" Margin="10,0"
+                                    <TextBlock Text="Library" FontSize="12" Margin="10,4"
                                                Foreground="{Binding PreviewSecondaryText}"/>
-                                    <TextBlock Text="Playlists" FontSize="12" Margin="10,0"
+                                    <TextBlock Text="Playlists" FontSize="12" Margin="10,4"
                                                Foreground="{Binding PreviewSecondaryText}"/>
                                 </StackPanel>
                             </Border>
@@ -146,44 +231,91 @@
                             <!-- Fake main -->
                             <Border Grid.Column="1" Grid.Row="0"
                                     Background="{Binding PreviewMain}">
-                                <StackPanel Margin="20,18" Spacing="12">
-                                    <TextBlock Text="Preview" FontSize="18" FontWeight="Bold"
+                                <StackPanel Margin="18,16" Spacing="10">
+                                    <TextBlock Text="Preview" FontSize="17" FontWeight="Bold"
                                                Foreground="{Binding PreviewPrimaryText}"/>
-                                    <Border CornerRadius="8" Padding="12,10"
-                                            Background="{Binding PreviewSidebarHover}">
-                                        <Grid ColumnDefinitions="Auto,*,Auto" >
-                                            <Border Grid.Column="0" Width="34" Height="34"
-                                                    CornerRadius="4" Background="{Binding PreviewAccent}"/>
-                                            <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
-                                                <TextBlock Text="Track title"
-                                                           Foreground="{Binding PreviewPrimaryText}" FontWeight="SemiBold"/>
-                                                <TextBlock Text="Artist · Album"
-                                                           Foreground="{Binding PreviewSecondaryText}" FontSize="12"/>
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="2" Text="3:24"
-                                                       Foreground="{Binding PreviewSecondaryText}" VerticalAlignment="Center"/>
-                                        </Grid>
-                                    </Border>
+
+                                    <!-- Accent buttons -->
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Border CornerRadius="999" Padding="14,5"
+                                                Background="{Binding PreviewAccent}">
+                                            <TextBlock Text="Play" FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="{Binding PreviewAccentFg}"/>
+                                        </Border>
+                                        <Border CornerRadius="999" Padding="14,5"
+                                                Background="{Binding PreviewSidebarHover}">
+                                            <TextBlock Text="Shuffle" FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="{Binding PreviewPrimaryText}"/>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- Track rows (accent art + alternating stripe) -->
+                                    <StackPanel Spacing="2" Margin="0,4,0,0">
+                                        <Border CornerRadius="8" Padding="10,8"
+                                                Background="{Binding PreviewSidebarHover}">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <Border Grid.Column="0" Width="30" Height="30"
+                                                        CornerRadius="4" Background="{Binding PreviewAccent}"/>
+                                                <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="Track title" FontSize="13"
+                                                               Foreground="{Binding PreviewPrimaryText}" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="Artist · Album" FontSize="11"
+                                                               Foreground="{Binding PreviewSecondaryText}"/>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="3:24" FontSize="12"
+                                                           Foreground="{Binding PreviewSecondaryText}" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                        <Border CornerRadius="8" Padding="10,8"
+                                                Background="{Binding PreviewStripe}">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <Border Grid.Column="0" Width="30" Height="30"
+                                                        CornerRadius="4" Background="{Binding PreviewSidebarHover}"/>
+                                                <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="Another song" FontSize="13"
+                                                               Foreground="{Binding PreviewPrimaryText}"/>
+                                                    <TextBlock Text="Artist" FontSize="11"
+                                                               Foreground="{Binding PreviewSecondaryText}"/>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="2:58" FontSize="12"
+                                                           Foreground="{Binding PreviewSecondaryText}" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                        <Border CornerRadius="8" Padding="10,8">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <Border Grid.Column="0" Width="30" Height="30"
+                                                        CornerRadius="4" Background="{Binding PreviewSidebarHover}"/>
+                                                <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="Third track" FontSize="13"
+                                                               Foreground="{Binding PreviewPrimaryText}"/>
+                                                    <TextBlock Text="Artist" FontSize="11"
+                                                               Foreground="{Binding PreviewSecondaryText}"/>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="4:12" FontSize="12"
+                                                           Foreground="{Binding PreviewSecondaryText}" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 
                             <!-- Fake Island -->
-                            <Border Grid.ColumnSpan="2" Grid.Row="1"
-                                    Margin="20,0,20,16"
+                            <Border Grid.Column="1" Grid.Row="1"
+                                    Margin="18,0,18,14"
                                     Padding="14,8" CornerRadius="999"
                                     Background="{Binding PreviewIslandBg}"
                                     BorderBrush="{Binding PreviewOutline}"
                                     BorderThickness="1">
-                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
                                     <Border Grid.Column="0" Width="28" Height="28"
                                             CornerRadius="4" Background="{Binding PreviewAccent}"/>
-                                    <StackPanel Grid.Column="1" Margin="10,0">
-                                        <TextBlock Text="Now Playing"
+                                    <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Now Playing" FontSize="12"
                                                    Foreground="{Binding PreviewIslandFg}" FontWeight="SemiBold"/>
-                                        <TextBlock Text="Artist"
-                                                   Foreground="{Binding PreviewIslandFgSecondary}" FontSize="11"/>
+                                        <TextBlock Text="Artist" FontSize="11"
+                                                   Foreground="{Binding PreviewIslandFgSecondary}"/>
                                     </StackPanel>
-                                    <Border Grid.Column="2" Width="28" Height="28" CornerRadius="14"
+                                    <Border Grid.Column="2" Width="26" Height="26" CornerRadius="13"
                                             Background="{Binding PreviewIslandFg}" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
@@ -191,7 +323,6 @@
                     </Border>
                 </Grid>
             </DockPanel>
-            </Border>
         </Border>
     </Border>
 </Window>

@@ -97,6 +97,15 @@ public static class MomentumScrollBehavior
         if (scrollViewer == null || scrollViewer.Extent.Height <= scrollViewer.Viewport.Height)
             return;
 
+        // Wheel over a nested scrollable region (e.g. the Developer Mode log box):
+        // leave the event alone so the inner ScrollViewer scrolls instead of the page.
+        if (e.Source is Visual source)
+        {
+            var inner = source as ScrollViewer ?? source.FindAncestorOfType<ScrollViewer>();
+            if (inner != null && inner != scrollViewer && inner.Extent.Height > inner.Viewport.Height)
+                return;
+        }
+
         var maxY = Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height);
         if ((scrollViewer.Offset.Y <= 0 && e.Delta.Y > 0) ||
             (scrollViewer.Offset.Y >= maxY && e.Delta.Y < 0))

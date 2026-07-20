@@ -42,8 +42,11 @@
             BorderThickness="0"
             Padding="0">
         <Button.Content>
+            <!-- 3px headroom so the global hover scale (1.045) never pushes the swatch
+                 past the button's layout bounds, where it gets clipped flat at the sides. -->
             <Panel Width="{Binding #Root.SwatchSize}"
-                   Height="{Binding #Root.SwatchSize}">
+                   Height="{Binding #Root.SwatchSize}"
+                   Margin="3">
                 <!-- Default visual: filled circle showing the current Hex. -->
                 <Ellipse x:Name="DefaultSwatch"
                          IsVisible="{Binding #Root.SwatchContent, Converter={x:Static ObjectConverters.IsNull}}"
