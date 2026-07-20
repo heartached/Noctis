@@ -48,6 +48,15 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     [ObservableProperty] private PlaylistSortMode _sortMode = PlaylistSortMode.Manual;
 
     public bool IsManualSort => SortMode == PlaylistSortMode.Manual;
+
+    /// <summary>True when drag-reorder is possible: manual playlist, manual sort, no active filter.
+    /// Drives the row grip-handle affordance in the # column.</summary>
+    public bool CanReorder => IsManualPlaylist && IsManualSort && string.IsNullOrWhiteSpace(SearchText);
+
+    partial void OnSearchTextChanged(string value)
+    {
+        OnPropertyChanged(nameof(CanReorder));
+    }
     public string SortLabel => SortMode switch
     {
         PlaylistSortMode.Title => "Title",
@@ -62,6 +71,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         OnPropertyChanged(nameof(IsManualSort));
         OnPropertyChanged(nameof(SortLabel));
+        OnPropertyChanged(nameof(CanReorder));
         LoadTracks();
     }
 
@@ -79,9 +89,24 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
     public bool IsManualPlaylist => !IsSmartPlaylist;
 
+    /// <summary>Id of the playlist shown; used to sync the sidebar highlight on Back/Forward.</summary>
+    public Guid PlaylistId => _playlist.Id;
+
     /// <summary>Formatted creation date, e.g. "Created July 2026".</summary>
     public string CreatedDateDisplay =>
         $"Created {_playlist.CreatedAt.ToLocalTime():MMMM yyyy}";
+
+    /// <summary>Formatted last-modified date, e.g. "Updated Jul 18".</summary>
+    public string ModifiedDateDisplay
+    {
+        get
+        {
+            var modified = _playlist.ModifiedAt.ToLocalTime();
+            return modified.Year == DateTime.Now.Year
+                ? $"Updated {modified:MMM d}"
+                : $"Updated {modified:MMM yyyy}";
+        }
+    }
 
     /// <summary>Playlist cover color (hex).</summary>
     public string PlaylistColor => _playlist.Color;
@@ -104,6 +129,19 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
     /// <summary>Resolved tracks in this playlist (order matches playlist).</summary>
     public ObservableCollection<Track> Tracks { get; } = new();
+
+    /// <summary>Library-only suggestions (same artists as the playlist) shown in the left rail.</summary>
+    public ObservableCollection<Track> SuggestedTracks { get; } = new();
+    public bool HasSuggestions => IsManualPlaylist && SuggestedTracks.Count > 0;
+
+    /// <summary>Number of Ctrl-selected rows; drives the floating selection action bar.</summary>
+    [ObservableProperty] private int _selectedCount;
+    public bool HasSelection => SelectedCount > 0;
+    partial void OnSelectedCountChanged(int value) => OnPropertyChanged(nameof(HasSelection));
+
+    /// <summary>Inline title rename state (click the title to edit).</summary>
+    [ObservableProperty] private bool _isRenamingName;
+    [ObservableProperty] private string _nameEditorText = string.Empty;
 
     /// <summary>Unique artists represented by tracks in this playlist.</summary>
     public ObservableCollection<PlaylistFeaturedArtist> FeaturedArtists { get; } = new();
@@ -267,7 +305,80 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         UpdateEmptyStateFlags(allResolvedTracks.Count);
 
         RebuildFeaturedArtists(allResolvedTracks);
+        RebuildSuggestions();
+        OnPropertyChanged(nameof(ModifiedDateDisplay));
     }
+
+    // ── Suggested songs (left rail) ──────────────────────────
+
+    /// <summary>Membership snapshot so filter/sort reloads don't reshuffle the picks.</summary>
+    private string? _lastSuggestionKey;
+
+    private void RebuildSuggestions(bool force = false)
+    {
+        if (IsSmartPlaylist) return;
+
+        var key = string.Join(",", _playlist.TrackIds);
+        if (!force && key == _lastSuggestionKey) return;
+        _lastSuggestionKey = key;
+
+        SuggestedTracks.Clear();
+
+        var inPlaylist = new HashSet<Guid>(_playlist.TrackIds);
+        var playlistArtists = new HashSet<string>(
+            _playlist.TrackIds
+                .Select(id => _library.GetTrackById(id))
+                .OfType<Track>()
+                .SelectMany(t => Track.ParseArtistTokens(t.Artist)),
+            StringComparer.OrdinalIgnoreCase);
+
+        if (playlistArtists.Count > 0)
+        {
+            var candidates = _library.Tracks
+                .Where(t => !inPlaylist.Contains(t.Id)
+                            && Track.ParseArtistTokens(t.Artist).Any(playlistArtists.Contains))
+                .ToList();
+
+            foreach (var pick in candidates.OrderBy(_ => Random.Shared.Next()).Take(3))
+                SuggestedTracks.Add(pick);
+        }
+
+        OnPropertyChanged(nameof(HasSuggestions));
+    }
+
+    [RelayCommand]
+    private void RefreshSuggestions() => RebuildSuggestions(force: true);
+
+    [RelayCommand]
+    private async Task AddSuggested(Track track)
+    {
+        if (track == null || IsSmartPlaylist) return;
+        // Raises PlaylistTracksChanged, which reloads this view (and the suggestions).
+        await _sidebar.AddTracksToPlaylist(_playlist.Id, new[] { track });
+    }
+
+    // ── Inline title rename ──────────────────────────────────
+
+    [RelayCommand]
+    private void StartRename()
+    {
+        NameEditorText = Name;
+        IsRenamingName = true;
+    }
+
+    public async Task CommitRenameAsync()
+    {
+        var newName = (NameEditorText ?? string.Empty).Trim();
+        IsRenamingName = false;
+        if (string.IsNullOrEmpty(newName) || string.Equals(newName, Name, StringComparison.Ordinal))
+            return;
+
+        await _sidebar.RenamePlaylist(_playlist.Id, newName);
+        Name = _playlist.Name;
+        OnPropertyChanged(nameof(ModifiedDateDisplay));
+    }
+
+    public void CancelRename() => IsRenamingName = false;
 
     /// <param name="unfilteredCount">Track count before the search filter was applied.</param>
     private void UpdateEmptyStateFlags(int unfilteredCount)
@@ -428,6 +539,16 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
+    /// <summary>Opens the add-to-playlist picker for the current multi-selection
+    /// (floating selection bar).</summary>
+    public async Task OpenAddSelectedToPlaylistAsync()
+    {
+        var tracks = CtrlSelectedTracks.ToList();
+        if (tracks.Count == 0) return;
+        CtrlSelectedTracks.Clear();
+        await _sidebar.OpenAddToPlaylistAsync(tracks);
+    }
+
     [RelayCommand]
     private async Task AddToNewPlaylist(Track track)
     {
@@ -554,6 +675,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         DescriptionEditorText = PlaylistDescription;
         IsDescriptionEditing = false;
+        await Views.PlaylistDescriptionDialog.ShowAsync(this);
+        IsDescriptionEditing = false;
+    }
+
+    /// <summary>Opens the description dialog straight into edit mode (ghost
+    /// "Add a description…" affordance shown when the playlist has none).</summary>
+    [RelayCommand]
+    private async Task AddDescription()
+    {
+        DescriptionEditorText = string.Empty;
+        IsDescriptionEditing = true;
         await Views.PlaylistDescriptionDialog.ShowAsync(this);
         IsDescriptionEditing = false;
     }

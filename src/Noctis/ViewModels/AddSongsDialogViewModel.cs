@@ -12,18 +12,22 @@ namespace Noctis.ViewModels;
 public partial class AddSongsDialogViewModel : ViewModelBase
 {
     private const int MaxResults = 100;
+    private const int ShuffledPickCount = 30;
 
     private readonly IReadOnlyList<Track> _library;
     private readonly HashSet<Guid> _alreadyInPlaylist;
     private readonly HashSet<Guid> _selected = new();
+    private List<Track> _shuffledPicks = new();
 
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private int _selectedCount;
 
     public ObservableCollection<AddSongItem> Results { get; } = new();
 
-    public bool ShowPrompt => string.IsNullOrWhiteSpace(SearchText);
-    public bool ShowNoResults => !ShowPrompt && Results.Count == 0;
+    /// <summary>True while the search box is empty and shuffled library picks are shown.</summary>
+    public bool IsShuffleMode => string.IsNullOrWhiteSpace(SearchText) && _shuffledPicks.Count > 0;
+    public bool ShowPrompt => string.IsNullOrWhiteSpace(SearchText) && _shuffledPicks.Count == 0;
+    public bool ShowNoResults => !string.IsNullOrWhiteSpace(SearchText) && Results.Count == 0;
     public bool HasSelection => _selected.Count > 0;
     public string AddButtonText => _selected.Count > 0 ? $"Add {_selected.Count}" : "Add";
 
@@ -37,29 +41,48 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     {
         _library = library ?? Array.Empty<Track>();
         _alreadyInPlaylist = new HashSet<Guid>(alreadyInPlaylist ?? Enumerable.Empty<Guid>());
+        BuildShuffledPicks();
+        RefreshResults();
     }
 
     partial void OnSearchTextChanged(string value) => RefreshResults();
+
+    /// <summary>Random library sample (tracks not already in the playlist), shown before any search.</summary>
+    private void BuildShuffledPicks()
+    {
+        _shuffledPicks = _library
+            .Where(t => !_alreadyInPlaylist.Contains(t.Id))
+            .OrderBy(_ => Random.Shared.Next())
+            .Take(ShuffledPickCount)
+            .ToList();
+    }
+
+    [RelayCommand]
+    private void Reshuffle()
+    {
+        BuildShuffledPicks();
+        RefreshResults();
+    }
 
     private void RefreshResults()
     {
         Results.Clear();
 
         var query = (SearchText ?? string.Empty).Trim();
-        if (query.Length > 0)
+        var source = query.Length > 0
+            ? _library.Where(t => PlaylistViewModel.MatchesSearch(t, query)).Take(MaxResults)
+            : _shuffledPicks;
+
+        foreach (var track in source)
         {
-            foreach (var track in _library
-                         .Where(t => PlaylistViewModel.MatchesSearch(t, query))
-                         .Take(MaxResults))
+            Results.Add(new AddSongItem(track)
             {
-                Results.Add(new AddSongItem(track)
-                {
-                    IsInPlaylist = _alreadyInPlaylist.Contains(track.Id),
-                    IsSelected = _selected.Contains(track.Id)
-                });
-            }
+                IsInPlaylist = _alreadyInPlaylist.Contains(track.Id),
+                IsSelected = _selected.Contains(track.Id)
+            });
         }
 
+        OnPropertyChanged(nameof(IsShuffleMode));
         OnPropertyChanged(nameof(ShowPrompt));
         OnPropertyChanged(nameof(ShowNoResults));
     }

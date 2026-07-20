@@ -9,6 +9,9 @@ public partial class PlaylistNavItem : NavItem
 {
     [ObservableProperty] private int _trackCount;
 
+    /// <summary>"16 tracks · 54 min" line shown under the tile name on the Playlists grid.</summary>
+    [ObservableProperty] private string _metaText = string.Empty;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasCustomArt))]
     [NotifyPropertyChangedFor(nameof(HasCollageArt))]
