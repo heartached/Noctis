@@ -1034,16 +1034,6 @@ public partial class MainWindowViewModel : ViewModelBase
                || _forwardHistory.Any(entry => ReferenceEquals(entry.View, view));
     }
 
-    private void ClearNavigationHistory()
-    {
-        while (_navigationHistory.Count > 0)
-        {
-            var entry = _navigationHistory.Pop();
-            DisposeViewIfTransient(entry.View);
-        }
-        ClearForwardHistory();
-    }
-
     private void ClearForwardHistory()
     {
         while (_forwardHistory.Count > 0)
@@ -1136,9 +1126,28 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void PushCurrentViewToHistory()
     {
-        _navigationHistory.Push(CaptureCurrentNavigationEntry());
+        PushHistoryEntry(CaptureCurrentNavigationEntry());
         // Navigating to a new branch invalidates any forward history.
         ClearForwardHistory();
+    }
+
+    /// <summary>Every navigation (including sidebar section switches) is history-eligible,
+    /// so the stack is capped to keep transient detail VMs from accumulating forever.</summary>
+    private const int MaxNavigationHistory = 30;
+
+    private void PushHistoryEntry(NavigationEntry entry)
+    {
+        _navigationHistory.Push(entry);
+        if (_navigationHistory.Count <= MaxNavigationHistory)
+            return;
+
+        var kept = _navigationHistory.Take(MaxNavigationHistory).ToList();
+        var dropped = _navigationHistory.Skip(MaxNavigationHistory).ToList();
+        _navigationHistory.Clear();
+        for (var i = kept.Count - 1; i >= 0; i--)
+            _navigationHistory.Push(kept[i]);
+        foreach (var old in dropped)
+            DisposeViewIfTransient(old.View);
     }
 
     public bool CanGoBack => _navigationHistory.Count > 0;
@@ -1184,6 +1193,21 @@ public partial class MainWindowViewModel : ViewModelBase
         // Restore page-specific top bar actions for the target view
         RestoreTopBarActionsForView(target.View);
         RefreshBackButton();
+        SyncSidebarSelectionToHistoryEntry(target);
+    }
+
+    /// <summary>Keeps the sidebar highlight in sync when Back/Forward restores a view —
+    /// the sidebar only updates its own selection on direct clicks.</summary>
+    private void SyncSidebarSelectionToHistoryEntry(NavigationEntry target)
+    {
+        NavItem? item = target.View is PlaylistViewModel playlistView
+            ? Sidebar.PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistView.PlaylistId)
+            : Sidebar.NavItems.FirstOrDefault(n => n.Key == target.SectionKey)
+              ?? Sidebar.FavoritesItems.FirstOrDefault(n => n.Key == target.SectionKey);
+
+        // Views without a sidebar entry (queue, lyrics, …) keep the current highlight.
+        if (item != null)
+            Sidebar.SetSelectedNavItemSilently(item);
     }
 
     private string GetRootBackButtonText(ViewModelBase view)
@@ -1344,7 +1368,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private void Navigate(string key)
     {
         DebugLogger.Info(DebugLogger.Category.UI, "Navigate", $"key={key}, from={GetCurrentViewKey()}, coverFlow={_isCoverFlowMode}");
-        ClearNavigationHistory();
+        // Section switches join the browser-style history (instead of clearing it)
+        // so Back/Forward work across top-level views, e.g. Songs → Album → Artists.
+        // Captured before any state mutation below; pushed only if the view changes.
+        var previousEntry = CurrentView != null ? CaptureCurrentNavigationEntry() : null;
 
         var goingToEligibleSection = ToggleEligibleSections.Contains(key);
 
@@ -1394,6 +1421,12 @@ public partial class MainWindowViewModel : ViewModelBase
             };
         }
 
+        if (previousEntry != null && !ReferenceEquals(CurrentView, previousEntry.View))
+        {
+            PushHistoryEntry(previousEntry);
+            ClearForwardHistory();
+        }
+
         // Clear search when switching views. Queue popup stays open across navigation —
         // it's only dismissed by toggling the Queue button itself or by Escape.
         TopBar.SearchText = string.Empty;
@@ -1424,7 +1457,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Clear all top bar actions, then set up the correct ones for the destination
         ClearAllTopBarActions();
         if (key == "lyrics") WireLyricsPageToPlayer();
-        if (goingToEligibleSection || key.StartsWith("playlist:"))
+        if (goingToEligibleSection)
             SetupGlobalViewModeToggle();
         if (key == "songs")
             SetupSongsTopBarActions();
@@ -1432,6 +1465,8 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand, _playlistsVm.ImportPlaylistCommand);
         else if (key == "favorites")
             TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
+        else if (key == "folders")
+            TopBar.ShowFoldersActions(_foldersVm.PlayFolderCommand, _foldersVm.ShuffleFolderCommand, _foldersVm.OpenMediaFolderSettingsCommand);
 
         RefreshBackButton();
     }
@@ -1547,7 +1582,6 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         PushCurrentViewToHistory();
         ClearAllTopBarActions();
-        SetupGlobalViewModeToggle();
 
         // Re-scope the top-bar search to the detail view (the history entry above
         // captured the grid's query, so Back restores it). Without this the grid's
@@ -1684,6 +1718,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _songsVm.SetShowAllItemsCommand,
             _songsVm.SetShowOnlyFavoritesCommand,
             _songsVm.SortCommand);
+        TopBar.ShowSongsFilters(_songsVm.SummaryText, _songsVm.QualityFilter, _songsVm.SetQualityFilterCommand);
         _songsVmTopBarHandler = (_, e) =>
         {
             if (e.PropertyName == nameof(LibrarySongsViewModel.ShowOnlyFavorites))
@@ -1692,6 +1727,10 @@ public partial class MainWindowViewModel : ViewModelBase
                 TopBar.PageSortAscending = _songsVm.SortAscending;
             else if (e.PropertyName == nameof(LibrarySongsViewModel.SortColumn))
                 TopBar.PageSortColumn = _songsVm.SortColumn;
+            else if (e.PropertyName == nameof(LibrarySongsViewModel.SummaryText))
+                TopBar.SongsSummaryText = _songsVm.SummaryText;
+            else if (e.PropertyName == nameof(LibrarySongsViewModel.QualityFilter))
+                TopBar.SongsQualityFilter = _songsVm.QualityFilter;
         };
         _songsVm.PropertyChanged += _songsVmTopBarHandler;
     }
@@ -1704,6 +1743,7 @@ public partial class MainWindowViewModel : ViewModelBase
             _songsVmTopBarHandler = null;
         }
         TopBar.HidePageActions();
+        TopBar.HideSongsFilters();
     }
 
     /// <summary>Clears all page-specific, playlist, artist, and view-mode top bar actions.</summary>
@@ -1714,6 +1754,7 @@ public partial class MainWindowViewModel : ViewModelBase
         TopBar.HidePlaylistActions();
         TopBar.HideArtistActions();
         TopBar.HideFavoritesActions();
+        TopBar.HideFoldersActions();
         TopBar.HideViewModeToggle();
     }
 
@@ -1843,7 +1884,7 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Restores the correct top bar actions when navigating back to a view.</summary>
     private void RestoreTopBarActionsForView(ViewModelBase view)
     {
-        // The toggle is shown for any of the 7 long-lived section views, a playlist detail, or while in Cover Flow.
+        // The toggle is shown for any of the 7 long-lived section views or while in Cover Flow.
         if (ReferenceEquals(view, _homeVm)
             || ReferenceEquals(view, _songsVm)
             || ReferenceEquals(view, _albumsVm)
@@ -1851,8 +1892,7 @@ public partial class MainWindowViewModel : ViewModelBase
             || ReferenceEquals(view, _foldersVm)
             || ReferenceEquals(view, _playlistsVm)
             || ReferenceEquals(view, _favoritesVm)
-            || ReferenceEquals(view, _coverFlowVm)
-            || view is PlaylistViewModel)
+            || ReferenceEquals(view, _coverFlowVm))
         {
             SetupGlobalViewModeToggle();
         }
@@ -2046,7 +2086,8 @@ public partial class MainWindowViewModel : ViewModelBase
             _preLyricsViewKey = GetCurrentViewKey();
             // Push current view to history so we can restore it (including detail views)
             PushCurrentViewToHistory();
-            // Set lyrics directly — don't call Navigate() which would ClearNavigationHistory()
+            // Set lyrics directly — Navigate() would clear the search/tab state we
+            // want restored when toggling back out of lyrics.
             EnsureLyricsAndReturn(_lyricsVm);
             CurrentView = _lyricsVm;
             Player.IsQueuePopupOpen = false;

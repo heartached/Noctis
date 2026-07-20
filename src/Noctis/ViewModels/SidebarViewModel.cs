@@ -245,6 +245,19 @@ public partial class SidebarViewModel : ViewModelBase
             Folder = pl.Folder,
         };
 
+        // "16 tracks · 54 min" meta line for the Playlists grid tiles
+        var totalDuration = TimeSpan.Zero;
+        foreach (var trackId in pl.TrackIds)
+        {
+            var t = _library.GetTrackById(trackId);
+            if (t != null) totalDuration += t.Duration;
+        }
+        var tracksLabel = pl.TrackIds.Count == 1 ? "1 track" : $"{pl.TrackIds.Count:N0} tracks";
+        var durationLabel = totalDuration.TotalHours >= 1
+            ? $"{(int)totalDuration.TotalHours} hr {totalDuration.Minutes} min"
+            : $"{(int)Math.Round(totalDuration.TotalMinutes)} min";
+        item.MetaText = $"{tracksLabel} · {durationLabel}";
+
         // Resolve up to 4 unique album arts for collage thumbnail
         if (string.IsNullOrEmpty(pl.CoverArtPath))
         {
@@ -380,6 +393,7 @@ public partial class SidebarViewModel : ViewModelBase
         {
             var rebuilt = BuildPlaylistNavItem(playlist);
             navItem.TrackCount = rebuilt.TrackCount;
+            navItem.MetaText = rebuilt.MetaText;
             navItem.Art1 = rebuilt.Art1;
             navItem.Art2 = rebuilt.Art2;
             navItem.Art3 = rebuilt.Art3;
@@ -401,7 +415,7 @@ public partial class SidebarViewModel : ViewModelBase
 
         IReadOnlyList<Track>? chosen = null;
         dialogVm.SongsChosen += (_, tracks) => chosen = tracks;
-        dialogVm.CloseRequested += (_, _) => dialog.Close();
+        dialogVm.CloseRequested += (_, _) => _ = dialog.CloseAnimatedAsync();
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow is Window owner)
@@ -549,7 +563,7 @@ public partial class SidebarViewModel : ViewModelBase
             newDescription = args.Description;
         };
 
-        dialogVm.CloseRequested += (_, _) => dialog.Close();
+        dialogVm.CloseRequested += (_, _) => _ = dialog.CloseAnimatedAsync();
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow is Window owner)
@@ -598,6 +612,7 @@ public partial class SidebarViewModel : ViewModelBase
             var rebuilt = BuildPlaylistNavItem(playlist);
             navItem.Label = newName;
             navItem.TrackCount = rebuilt.TrackCount;
+            navItem.MetaText = rebuilt.MetaText;
             navItem.CoverArtPath = rebuilt.CoverArtPath;
             navItem.Art1 = rebuilt.Art1;
             navItem.Art2 = rebuilt.Art2;
