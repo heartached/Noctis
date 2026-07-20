@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
@@ -7,8 +8,10 @@ using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Helpers;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
@@ -29,6 +32,13 @@ public partial class LyricsPanelView : UserControl
     private DispatcherTimer? _followResumeTimer;
     private bool _isProgrammaticScroll;
     private bool _followPaused;
+
+    // Cascade tuning (mirrors the lyrics page): each line below the active one starts
+    // its glide this much later, up to this many lines deep — the Apple Music
+    // "settle top-down" feel.
+    private const double CascadeDelayPerLineMs = 35;
+    private const int CascadeMaxLines = 8;
+    private List<(Control Control, double DelayMs)>? _cascadeLines;
 
     public LyricsPanelView()
     {
@@ -117,28 +127,28 @@ public partial class LyricsPanelView : UserControl
 
     // ── Scrolling ──────────────────────────────────────────────────────
 
-    private Control? FindLineControl(int index)
+    private Panel? GetLinesPanel()
     {
-        if (PanelItemsControl == null || index < 0 || index >= PanelItemsControl.ItemCount)
-            return null;
-        var presenter = PanelItemsControl.GetVisualDescendants()
+        var presenter = PanelItemsControl?.GetVisualDescendants()
             .OfType<ItemsPresenter>()
             .FirstOrDefault();
-        var panel = presenter?.GetVisualChildren().FirstOrDefault() as Panel;
+        return presenter?.GetVisualChildren().FirstOrDefault() as Panel;
+    }
+
+    private Control? FindLineControl(int index)
+    {
+        if (index < 0) return null;
+        var panel = GetLinesPanel();
         if (panel == null || index >= panel.Children.Count) return null;
         return panel.Children[index];
     }
 
     private double? ComputeTargetOffset(int index)
     {
-        var target = FindLineControl(index);
-        if (target == null || PanelScrollViewer == null) return null;
-
-        var presenter = PanelItemsControl.GetVisualDescendants()
-            .OfType<ItemsPresenter>()
-            .FirstOrDefault();
-        var panel = presenter?.GetVisualChildren().FirstOrDefault() as Panel;
-        if (panel == null) return null;
+        var panel = GetLinesPanel();
+        if (panel == null || index < 0 || index >= panel.Children.Count || PanelScrollViewer == null)
+            return null;
+        var target = panel.Children[index];
 
         var transform = target.TransformToVisual(panel);
         if (transform == null) return null;
@@ -147,8 +157,8 @@ public partial class LyricsPanelView : UserControl
         var childHeight = target.Bounds.Height;
         var viewportHeight = PanelScrollViewer.Viewport.Height;
 
-        // Anchor the active line ~30% down the panel viewport.
-        var offset = childTop - (viewportHeight * 0.30) + (childHeight / 2.0);
+        // Anchor the active line ~22% down the panel viewport (matches the lyrics page).
+        var offset = childTop - (viewportHeight * 0.22) + (childHeight / 2.0);
         return Math.Max(0, offset);
     }
 
@@ -191,8 +201,9 @@ public partial class LyricsPanelView : UserControl
                     return;
                 }
 
-                var durationMs = (int)Math.Min(900, Math.Max(450, Math.Abs(diff) * 0.9));
-                AnimateScroll(current, target, durationMs);
+                var distance = Math.Abs(diff);
+                var durationMs = (int)Math.Min(1050, Math.Max(650, distance * 0.85));
+                AnimateScroll(current, target, durationMs, GetLinesPanel(), index);
             }
             catch { }
         }, TimeSpan.FromMilliseconds(10));
@@ -200,27 +211,61 @@ public partial class LyricsPanelView : UserControl
 
     // Frame-clock animation via TopLevel.RequestAnimationFrame: vsync-locked, unlike a
     // 16ms DispatcherTimer that beats against the compositor's ~16.7ms frame interval.
-    private void AnimateScroll(double from, double to, int durationMs)
+    // Mirrors the lyrics page's AnimateScroll: smootherstep base glide with a per-line
+    // stagger below the active line (transient translate that relaxes to zero), so the
+    // stack settles top-down instead of moving as one rigid slab.
+    private void AnimateScroll(double from, double to, int durationMs,
+        Panel? linesPanel = null, int activeIndex = -1)
     {
         CancelScrollAnimation();
         _isProgrammaticScroll = true;
 
+        var delta = to - from;
+        var cascade = new List<(Control Control, double DelayMs)>();
+        if (linesPanel != null && activeIndex >= 0 && Math.Abs(delta) > 8)
+        {
+            for (int i = activeIndex + 1;
+                 i < linesPanel.Children.Count && i - activeIndex <= CascadeMaxLines;
+                 i++)
+            {
+                cascade.Add((linesPanel.Children[i], (i - activeIndex) * CascadeDelayPerLineMs));
+            }
+        }
+        _cascadeLines = cascade.Count > 0 ? cascade : null;
+
         var generation = _scrollAnimationGeneration;
         var stopwatch = Stopwatch.StartNew();
+        var totalMs = (double)durationMs;
+        var maxDelayMs = cascade.Count > 0 ? cascade[^1].DelayMs : 0;
 
         void Frame(TimeSpan _)
         {
-            // Superseded or cancelled: the canceller already reset the flag.
+            // Superseded or cancelled: the canceller already reset flags/transforms.
             if (generation != _scrollAnimationGeneration) return;
 
-            var t = Math.Min(1.0, stopwatch.Elapsed.TotalMilliseconds / durationMs);
-            // Smootherstep: glides in and out instead of jumping.
-            var eased = t * t * t * (t * (t * 6 - 15) + 10);
-            PanelScrollViewer.Offset = new Vector(0, from + (to - from) * eased);
+            var elapsed = stopwatch.Elapsed.TotalMilliseconds;
+            var t = Math.Min(1.0, elapsed / totalMs);
+            // Smootherstep glides in and out without overshoot.
+            var eased = Easing.SmootherStep(t);
+            PanelScrollViewer.Offset = new Vector(0, from + delta * eased);
 
-            if (t >= 1.0)
+            // Stagger: each cascade line is displaced by the gap between the base ease
+            // and its own delayed ease — positive while catching up, zero when settled.
+            foreach (var (control, delayMs) in cascade)
             {
-                CancelScrollAnimation();
+                var tLine = Math.Clamp((elapsed - delayMs) / totalMs, 0.0, 1.0);
+                var lag = delta * (eased - Easing.SmootherStep(tLine));
+                if (control.RenderTransform is TranslateTransform tt)
+                    tt.Y = lag;
+                else
+                    control.RenderTransform = new TranslateTransform(0, lag);
+            }
+
+            if (t >= 1.0 && elapsed >= totalMs + maxDelayMs)
+            {
+                PanelScrollViewer.Offset = new Vector(0, to);
+                ClearCascadeTransforms();
+                _isProgrammaticScroll = false;
                 return;
             }
 
@@ -249,5 +294,17 @@ public partial class LyricsPanelView : UserControl
     {
         _scrollAnimationGeneration++;
         _isProgrammaticScroll = false;
+        ClearCascadeTransforms();
+    }
+
+    private void ClearCascadeTransforms()
+    {
+        if (_cascadeLines == null) return;
+        foreach (var (control, _) in _cascadeLines)
+        {
+            if (control.RenderTransform is TranslateTransform tt)
+                tt.Y = 0;
+        }
+        _cascadeLines = null;
     }
 }
