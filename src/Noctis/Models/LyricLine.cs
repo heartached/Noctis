@@ -51,21 +51,40 @@ public partial class LyricLine : ObservableObject
         set
         {
             _words = value;
-            ComputeWordEmphasis();
+            ComputeWordEmphasis(_words, EndTimestamp);
         }
     }
     private IReadOnlyList<WordTiming>? _words;
 
+    /// <summary>
+    /// Background vocals / adlibs (Apple Music "x-bg") sung alongside or after this
+    /// line — rendered as a smaller karaoke row under the main words. Null when the
+    /// line has none.
+    /// </summary>
+    public IReadOnlyList<WordTiming>? BackgroundWords
+    {
+        get => _backgroundWords;
+        set
+        {
+            _backgroundWords = value;
+            ComputeWordEmphasis(_backgroundWords, BackgroundEndTimestamp);
+        }
+    }
+    private IReadOnlyList<WordTiming>? _backgroundWords;
+
+    /// <summary>End of the background vocal; bounds its last word's highlight. Set before <see cref="BackgroundWords"/>.</summary>
+    public TimeSpan? BackgroundEndTimestamp { get; set; }
+
     /// <summary>Words sung at least this long count as held notes and get the swell/glow emphasis.</summary>
     private const double EmphasisMs = 1000;
 
-    private void ComputeWordEmphasis()
+    private static void ComputeWordEmphasis(IReadOnlyList<WordTiming>? words, TimeSpan? lineEnd)
     {
-        if (_words == null) return;
-        for (int i = 0; i < _words.Count; i++)
+        if (words == null) return;
+        for (int i = 0; i < words.Count; i++)
         {
-            var w = _words[i];
-            var end = w.End ?? (i + 1 < _words.Count ? _words[i + 1].Start : EndTimestamp);
+            var w = words[i];
+            var end = w.End ?? (i + 1 < words.Count ? words[i + 1].Start : lineEnd);
             w.IsEmphasis = end.HasValue
                 && (end.Value - w.Start).TotalMilliseconds >= EmphasisMs
                 && !string.IsNullOrWhiteSpace(w.Text);
@@ -75,6 +94,19 @@ public partial class LyricLine : ObservableObject
     /// <summary>True when the line has word-level timing data.</summary>
     public bool HasWords => Words != null && Words.Count > 0;
 
+    /// <summary>True when the line carries a word-timed background vocal.</summary>
+    public bool HasBackgroundWords => BackgroundWords != null && BackgroundWords.Count > 0;
+
+    /// <summary>True when the view should render the background-vocal karaoke row.</summary>
+    public bool ShowBackgroundWords => HasBackgroundWords && !IsIntroPlaceholder;
+
+    /// <summary>
+    /// True when the line's entire content is a background vocal (e.g. a TTML paragraph
+    /// holding only an x-bg span). <see cref="Text"/> then carries the bg text for the
+    /// Unsync tab, but the main line layer must not render it — only the small bg row.
+    /// </summary>
+    public bool IsBackgroundOnly { get; set; }
+
     /// <summary>
     /// True when the view should render the per-word karaoke layer. Word-timed lines
     /// render this layer whether active or not, so the wrap geometry never changes
@@ -82,19 +114,27 @@ public partial class LyricLine : ObservableObject
     /// </summary>
     public bool ShowWords => HasWords && !IsIntroPlaceholder;
 
-    /// <summary>True when the view should render the normal line-level text (not intro, no word timings).</summary>
-    public bool ShowLineText => !IsIntroPlaceholder && !HasWords;
+    /// <summary>True when the view should render the normal line-level text (not intro, no word timings, not a bg-only line).</summary>
+    public bool ShowLineText => !IsIntroPlaceholder && !HasWords && !IsBackgroundOnly;
 
     /// <summary>Index of the currently-singing word in <see cref="Words"/>. -1 = before line, Words.Count = after line.</summary>
     [ObservableProperty]
     private int _currentWordIndex = -1;
 
-    partial void OnCurrentWordIndexChanged(int value)
+    partial void OnCurrentWordIndexChanged(int value) => ApplyWordIndex(Words, value);
+
+    /// <summary>Index of the currently-singing background word. -1 = before, count = after.</summary>
+    [ObservableProperty]
+    private int _backgroundWordIndex = -1;
+
+    partial void OnBackgroundWordIndexChanged(int value) => ApplyWordIndex(BackgroundWords, value);
+
+    private static void ApplyWordIndex(IReadOnlyList<WordTiming>? words, int value)
     {
-        if (Words == null) return;
-        for (int i = 0; i < Words.Count; i++)
+        if (words == null) return;
+        for (int i = 0; i < words.Count; i++)
         {
-            var w = Words[i];
+            var w = words[i];
             var isCurrent = i == value;
             var isPast = i < value;
             if (w.IsCurrent != isCurrent) w.IsCurrent = isCurrent;

@@ -51,6 +51,67 @@ public class TtmlParserTests
     }
 
     [Fact]
+    public void Parse_BackgroundVocalSpan_SplitsIntoBackgroundWords()
+    {
+        // Apple background vocals: a wrapper span with ttm:role="x-bg" containing its
+        // own timed spans. They must become the line's background layer, not main words.
+        var ttml = $@"<tt {Ns} xmlns:ttm=""http://www.w3.org/ns/ttml#metadata""><body><div>
+            <p begin=""0:10.000"" end=""0:16.000"">
+                <span begin=""0:10.000"" end=""0:10.500"">Wait</span> <span begin=""0:10.500"" end=""0:11.000"">for</span> <span begin=""0:11.000"" end=""0:11.500"">me</span>
+                <span ttm:role=""x-bg""><span begin=""0:12.000"" end=""0:13.000"">(I</span> <span begin=""0:13.000"" end=""0:14.000"">will)</span></span>
+            </p>
+        </div></body></tt>";
+
+        var (lines, _) = TtmlParser.Parse(ttml);
+
+        var line = lines![0];
+        Assert.Equal("Wait for me", line.Text);
+        Assert.Equal(3, line.Words!.Count);
+
+        Assert.True(line.HasBackgroundWords);
+        var bg = line.BackgroundWords!;
+        Assert.Equal(2, bg.Count);
+        Assert.Equal("(I ", bg[0].Text);
+        Assert.Equal(TimeSpan.FromMilliseconds(12_000), bg[0].Start);
+        Assert.Equal("will)", bg[1].Text);
+        Assert.Equal(TimeSpan.FromMilliseconds(14_000), line.BackgroundEndTimestamp);
+    }
+
+    [Fact]
+    public void Parse_BackgroundOnlyParagraph_KeptAsBackgroundOnlyLine()
+    {
+        // A <p> whose entire content is background vocals must not be dropped: it
+        // becomes a line with no main words that renders only the small bg row.
+        var ttml = $@"<tt {Ns} xmlns:ttm=""http://www.w3.org/ns/ttml#metadata""><body><div>
+            <p begin=""0:10.000"" end=""0:12.000""><span begin=""0:10.000"" end=""0:10.500"">Lead</span></p>
+            <p begin=""0:12.000"" end=""0:14.000""><span ttm:role=""x-bg""><span begin=""0:12.000"" end=""0:13.000"">(Ooh)</span></span></p>
+        </div></body></tt>";
+
+        var (lines, _) = TtmlParser.Parse(ttml);
+
+        Assert.Equal(2, lines!.Count);
+        var bgLine = lines[1];
+        Assert.True(bgLine.HasBackgroundWords);
+        Assert.Null(bgLine.Words);
+        Assert.True(bgLine.IsBackgroundOnly);
+        Assert.False(bgLine.ShowLineText);
+        Assert.Equal("(Ooh)", bgLine.Text);
+        Assert.Equal(TimeSpan.FromMilliseconds(12_000), bgLine.Timestamp);
+    }
+
+    [Fact]
+    public void Parse_NoBackgroundSpan_LeavesBackgroundNull()
+    {
+        var ttml = $@"<tt {Ns}><body><div>
+            <p begin=""0:10.000"" end=""0:12.000""><span begin=""0:10.000"" end=""0:10.500"">Hello</span></p>
+        </div></body></tt>";
+
+        var (lines, _) = TtmlParser.Parse(ttml);
+
+        Assert.False(lines![0].HasBackgroundWords);
+    }
+
+    [Fact]
     public void Parse_SyllableSpansWithoutWhitespace_MergeIntoOneWord()
     {
         // Apple-style syllable timing: no whitespace between spans of the same word.
@@ -69,7 +130,7 @@ public class TtmlParserTests
     }
 
     [Fact]
-    public void Parse_BackgroundVocalWrapperSpan_RecursesIntoTimedChildren()
+    public void Parse_BackgroundVocalWrapperSpan_TimedChildrenBecomeBackgroundWords()
     {
         var ttml = $@"<tt {Ns} xmlns:ttm=""http://www.w3.org/ns/ttml#metadata""><body><div>
             <p begin=""0:20.000"" end=""0:24.000"">
@@ -79,10 +140,12 @@ public class TtmlParserTests
 
         var (lines, _) = TtmlParser.Parse(ttml);
 
-        var words = lines![0].Words;
-        Assert.Equal(2, words!.Count);
-        Assert.Equal("(echo)", words[1].Text.Trim());
-        Assert.Equal(TimeSpan.FromMilliseconds(21_000), words[1].Start);
+        var line = lines![0];
+        Assert.Single(line.Words!);
+        Assert.Equal("Lead", line.Words![0].Text.Trim());
+        Assert.Single(line.BackgroundWords!);
+        Assert.Equal("(echo)", line.BackgroundWords![0].Text);
+        Assert.Equal(TimeSpan.FromMilliseconds(21_000), line.BackgroundWords![0].Start);
     }
 
     [Fact]

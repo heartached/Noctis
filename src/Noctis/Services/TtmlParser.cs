@@ -74,83 +74,114 @@ public static class TtmlParser
 
         var text = new StringBuilder();
         var words = new List<WordTiming>();
-        CollectContent(p, text, words);
+        var bgText = new StringBuilder();
+        var bgWords = new List<WordTiming>();
+        CollectContent(p, text, words, bgText, bgWords, inBackground: false);
 
         var lineText = text.ToString().Trim();
-        if (lineText.Length == 0) return null;
+        var bgLineText = bgText.ToString().Trim();
+
+        // Background-only paragraph (entire <p> is an x-bg span): keep it — it renders
+        // as just the small bg row; its Text feeds the Unsync tab.
+        var backgroundOnly = lineText.Length == 0 && bgWords.Count > 0;
+        if (lineText.Length == 0 && !backgroundOnly) return null;
 
         var line = new LyricLine
         {
             Timestamp = start,
             EndTimestamp = end,
-            Text = lineText,
+            Text = backgroundOnly ? bgLineText : lineText,
+            IsBackgroundOnly = backgroundOnly,
         };
 
         if (words.Count > 0)
+            line.Words = FinishWords(words, end);
+
+        if (bgWords.Count > 0)
         {
-            // Trailing spaces are preserved on words except the final one (Lyricsfile
-            // convention) — markup whitespace before </p> shouldn't widen the last cell.
-            var lastWord = words[^1];
-            if (lastWord.Text.TrimEnd() is { Length: > 0 } trimmed && trimmed != lastWord.Text)
-            {
-                words[^1] = new WordTiming { Text = trimmed, Start = lastWord.Start, End = lastWord.End };
-            }
-
-            // Backfill missing End times from the next word's Start, and the final word
-            // from the line end (falls back to last word's Start + 300ms as a minimum).
-            for (int i = 0; i < words.Count; i++)
-            {
-                if (words[i].End.HasValue) continue;
-                TimeSpan fallback;
-                if (i + 1 < words.Count)
-                    fallback = words[i + 1].Start;
-                else if (end.HasValue)
-                    fallback = end.Value;
-                else
-                    fallback = words[i].Start + TimeSpan.FromMilliseconds(300);
-
-                words[i] = new WordTiming
-                {
-                    Text = words[i].Text,
-                    Start = words[i].Start,
-                    End = fallback,
-                };
-            }
-
-            line.Words = EnhancedLrcParser.MergeSyllables(words);
+            var finished = FinishWords(bgWords, end);
+            line.BackgroundEndTimestamp = finished[^1].End;
+            line.BackgroundWords = finished;
         }
 
         return line;
+    }
+
+    private static List<WordTiming> FinishWords(List<WordTiming> words, TimeSpan? end)
+    {
+        // Trailing spaces are preserved on words except the final one (Lyricsfile
+        // convention) — markup whitespace before the closing tag shouldn't widen the last cell.
+        var lastWord = words[^1];
+        if (lastWord.Text.TrimEnd() is { Length: > 0 } trimmed && trimmed != lastWord.Text)
+        {
+            words[^1] = new WordTiming { Text = trimmed, Start = lastWord.Start, End = lastWord.End };
+        }
+
+        // Backfill missing End times from the next word's Start, and the final word
+        // from the line end (falls back to last word's Start + 300ms as a minimum).
+        for (int i = 0; i < words.Count; i++)
+        {
+            if (words[i].End.HasValue) continue;
+            TimeSpan fallback;
+            if (i + 1 < words.Count)
+                fallback = words[i + 1].Start;
+            else if (end.HasValue)
+                fallback = end.Value;
+            else
+                fallback = words[i].Start + TimeSpan.FromMilliseconds(300);
+
+            words[i] = new WordTiming
+            {
+                Text = words[i].Text,
+                Start = words[i].Start,
+                End = fallback,
+            };
+        }
+
+        return EnhancedLrcParser.MergeSyllables(words);
     }
 
     /// <summary>
     /// Walks a line's content in document order. Timed spans append a word; whitespace
     /// between spans is attached to the previous word's tail (Lyricsfile convention:
     /// trailing spaces preserved) so syllable merging keeps word boundaries intact.
+    /// Spans marked ttm:role="x-bg" (Apple background vocals) collect into the
+    /// background text/word buffers instead of the main line.
     /// </summary>
-    private static void CollectContent(XElement parent, StringBuilder text, List<WordTiming> words)
+    private static void CollectContent(
+        XElement parent,
+        StringBuilder text, List<WordTiming> words,
+        StringBuilder bgText, List<WordTiming> bgWords,
+        bool inBackground)
     {
+        var targetText = inBackground ? bgText : text;
+        var targetWords = inBackground ? bgWords : words;
+
         foreach (var node in parent.Nodes())
         {
             switch (node)
             {
                 case XText t:
-                    AppendText(t.Value, text, words);
+                    AppendText(t.Value, targetText, targetWords);
                     break;
 
                 case XElement el when LocalNameIs(el, "br"):
-                    AppendText(" ", text, words);
+                    AppendText(" ", targetText, targetWords);
                     break;
 
                 case XElement el when LocalNameIs(el, "span"):
+                    var isBg = inBackground || IsBackgroundRole(el);
+                    var spanText = isBg ? bgText : text;
+                    var spanWords = isBg ? bgWords : words;
+
                     var begin = ParseTime(el.Attribute("begin")?.Value);
                     if (begin.HasValue && !el.Elements().Any())
                     {
                         var wordText = el.Value;
                         if (wordText.Length > 0)
                         {
-                            text.Append(wordText);
-                            words.Add(new WordTiming
+                            spanText.Append(wordText);
+                            spanWords.Add(new WordTiming
                             {
                                 Text = wordText,
                                 Start = begin.Value,
@@ -160,13 +191,19 @@ public static class TtmlParser
                     }
                     else
                     {
-                        // Untimed or wrapper span (e.g. background vocals) — recurse.
-                        CollectContent(el, text, words);
+                        // Untimed or wrapper span — recurse (background wrappers route
+                        // their timed descendants into the background buffers).
+                        CollectContent(el, text, words, bgText, bgWords, isBg);
                     }
                     break;
             }
         }
     }
+
+    private static bool IsBackgroundRole(XElement el) =>
+        el.Attributes().Any(a =>
+            string.Equals(a.Name.LocalName, "role", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(a.Value, "x-bg", StringComparison.OrdinalIgnoreCase));
 
     private static void AppendText(string value, StringBuilder text, List<WordTiming> words)
     {

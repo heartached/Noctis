@@ -17,6 +17,53 @@
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
         <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect"/>
         <conv:OpacityFloorConverter x:Key="OpacityFloor"/>
+        <conv:DoubleScaleConverter x:Key="FontScale"/>
+
+        <!-- Shared karaoke word cell (glow / dimmed base / gradient sweep), used by the
+             main word layer and the background-vocal (adlib) layer below it. Panel copy
+             of the lyrics page template (smaller glow headroom). -->
+        <DataTemplate x:Key="WordCellTemplate" x:DataType="m:WordTiming">
+            <Panel Classes="word-cell"
+                   Classes.current="{Binding IsCurrent}"
+                   Classes.emphasis="{Binding IsEmphasis}">
+                <!-- DownOnly viewbox: shrinks a merged melisma word that outgrows
+                     the line MaxWidth so it can't overflow and clip at the panel
+                     edge (WrapPanel cells can't break mid-word); see the lyrics
+                     page template. Words that fit render 1:1. -->
+                <Viewbox Stretch="Uniform" StretchDirection="DownOnly" ClipToBounds="False">
+                <Panel>
+                <!-- Glow hosted in a Canvas so the blur surface has
+                     headroom without growing the word cell (see the
+                     lyrics page template for the full rationale). -->
+                <Canvas ClipToBounds="False">
+                    <TextBlock Text="{Binding Text}"
+                               Classes="word-glow"
+                               IsVisible="{Binding IsEmphasis}"
+                               Canvas.Left="-24"
+                               Canvas.Top="-24"
+                               Padding="24"
+                               FontWeight="Bold"
+                               Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                </Canvas>
+                <TextBlock Text="{Binding Text}"
+                           Classes="word-base"
+                           Padding="{Binding Text, Converter={StaticResource WordOverflowPad}}"
+                           FontWeight="Bold"
+                           Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                <TextBlock Text="{Binding SweepText}"
+                           HorizontalAlignment="Left"
+                           FontWeight="Bold">
+                    <TextBlock.Foreground>
+                        <MultiBinding Converter="{StaticResource ProgressToSweepFg}">
+                            <Binding Path="Progress"/>
+                            <Binding Path="$parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg"/>
+                        </MultiBinding>
+                    </TextBlock.Foreground>
+                </TextBlock>
+                </Panel>
+                </Viewbox>
+            </Panel>
+        </DataTemplate>
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -231,8 +278,9 @@
                                     Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).SeekToLineCommand}"
                                     CommandParameter="{Binding}"
                                     Effect="{Binding BlurRadius, Converter={StaticResource BlurToEffect}}">
-                                <Panel HorizontalAlignment="Left"
-                                       MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
+                                <StackPanel HorizontalAlignment="Left"
+                                            MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
+                                <Panel HorizontalAlignment="Left">
                                     <!-- Plain text layer (lines without word timings) -->
                                     <TextBlock Text="{Binding Text}"
                                                Classes="panel-lyric-line"
@@ -253,7 +301,8 @@
                                                   Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                   HorizontalAlignment="Left"
                                                   ClipToBounds="False"
-                                                  MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
+                                                  MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                                  ItemTemplate="{StaticResource WordCellTemplate}">
                                         <ItemsControl.Transitions>
                                             <Transitions>
                                                 <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
@@ -264,50 +313,6 @@
                                                 <WrapPanel Orientation="Horizontal"/>
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="m:WordTiming">
-                                                <Panel Classes="word-cell"
-                                                       Classes.current="{Binding IsCurrent}"
-                                                       Classes.emphasis="{Binding IsEmphasis}">
-                                                    <!-- DownOnly viewbox: shrinks a merged melisma word that outgrows
-                                                         the line MaxWidth so it can't overflow and clip at the panel
-                                                         edge (WrapPanel cells can't break mid-word); see the lyrics
-                                                         page template. Words that fit render 1:1. -->
-                                                    <Viewbox Stretch="Uniform" StretchDirection="DownOnly" ClipToBounds="False">
-                                                    <Panel>
-                                                    <!-- Glow hosted in a Canvas so the blur surface has
-                                                         headroom without growing the word cell (see the
-                                                         lyrics page template for the full rationale). -->
-                                                    <Canvas ClipToBounds="False">
-                                                        <TextBlock Text="{Binding Text}"
-                                                                   Classes="word-glow"
-                                                                   IsVisible="{Binding IsEmphasis}"
-                                                                   Canvas.Left="-24"
-                                                                   Canvas.Top="-24"
-                                                                   Padding="24"
-                                                                   FontWeight="Bold"
-                                                                   Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
-                                                    </Canvas>
-                                                    <TextBlock Text="{Binding Text}"
-                                                               Classes="word-base"
-                                                               Padding="{Binding Text, Converter={StaticResource WordOverflowPad}}"
-                                                               FontWeight="Bold"
-                                                               Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
-                                                    <TextBlock Text="{Binding SweepText}"
-                                                               HorizontalAlignment="Left"
-                                                               FontWeight="Bold">
-                                                        <TextBlock.Foreground>
-                                                            <MultiBinding Converter="{StaticResource ProgressToSweepFg}">
-                                                                <Binding Path="Progress"/>
-                                                                <Binding Path="$parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg"/>
-                                                            </MultiBinding>
-                                                        </TextBlock.Foreground>
-                                                    </TextBlock>
-                                                    </Panel>
-                                                    </Viewbox>
-                                                </Panel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
                                     </ItemsControl>
 
                                     <!-- Intro dots -->
@@ -325,6 +330,32 @@
                                         <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"/>
                                     </StackPanel>
                                 </Panel>
+
+                                <!-- Background vocals (adlibs): smaller karaoke row under the
+                                     main words, mirroring the lyrics page. -->
+                                <ItemsControl ItemsSource="{Binding BackgroundWords}"
+                                              Classes="word-layer bg-vocals"
+                                              Classes.active="{Binding IsActive}"
+                                              IsVisible="{Binding ShowBackgroundWords}"
+                                              Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                              HorizontalAlignment="Left"
+                                              ClipToBounds="False"
+                                              Margin="0,4,0,0"
+                                              FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
+                                              MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
+                                              ItemTemplate="{StaticResource WordCellTemplate}">
+                                    <ItemsControl.Transitions>
+                                        <Transitions>
+                                            <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
+                                        </Transitions>
+                                    </ItemsControl.Transitions>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                                </StackPanel>
                             </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

@@ -2014,8 +2014,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                         if (lineWords != null)
                         {
                             var shifted = offsetMs == 0 ? lineWords : ShiftWords(lineWords, offsetMs);
-                            line.Words = shifted;
+                            // End before Words: the Words setter computes held-note
+                            // emphasis, and the last word's span needs the line end.
                             line.EndTimestamp = shifted[^1].End;
+                            line.Words = shifted;
                         }
 
                         lines.Add(line);
@@ -2029,14 +2031,19 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             }
         }
 
-        // Sort by timestamp for synced lyrics
-        lines.Sort((a, b) =>
-        {
-            if (a.Timestamp == null && b.Timestamp == null) return 0;
-            if (a.Timestamp == null) return 1;
-            if (b.Timestamp == null) return -1;
-            return a.Timestamp.Value.CompareTo(b.Timestamp.Value);
-        });
+        // Sort by timestamp for synced lyrics. Stable (OrderBy) so lines sharing a
+        // timestamp — e.g. an adlib synced to the same instant as its main line —
+        // keep their file order, which the background fold below relies on.
+        var sorted = lines
+            .OrderBy(l => l.Timestamp == null ? 1 : 0)
+            .ThenBy(l => l.Timestamp ?? TimeSpan.Zero)
+            .ToList();
+        lines.Clear();
+        lines.AddRange(sorted);
+
+        // Fold parenthesized adlib lines into the preceding line's background layer
+        // (Apple Music-style background vocals).
+        EnhancedLrcParser.FoldBackgroundLines(lines);
 
         return lines;
     }
@@ -2218,7 +2225,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
         _lastSyncPosition = position;
 
-        var adjusted = position + LyricsLookahead;
+        // Per-line lookahead: word-timed lines activate on the word clock's small lead.
+        // The 350ms line-level lead would switch lines early, force-completing the
+        // outgoing line's final word sweep ~270ms before its end and leaving the
+        // incoming words dark — a visible jump-then-pause at every line boundary.
+        TimeSpan AdjustedFor(LyricLine l) =>
+            position + (l.HasWords || l.HasBackgroundWords ? WordLookahead : LyricsLookahead);
 
         // Clamp cursor into range (collection may have shrunk).
         if (_lineCursor >= LyricLines.Count) _lineCursor = LyricLines.Count - 1;
@@ -2228,7 +2240,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         while (_lineCursor + 1 < LyricLines.Count)
         {
             var next = LyricLines[_lineCursor + 1];
-            if (next.Timestamp.HasValue && next.Timestamp.Value <= adjusted)
+            if (next.Timestamp.HasValue && next.Timestamp.Value <= AdjustedFor(next))
                 _lineCursor++;
             else
                 break;
@@ -2237,7 +2249,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         var candidate = LyricLines[_lineCursor];
         LyricLine? bestMatch = null;
         int bestIndex = -1;
-        if (candidate.Timestamp.HasValue && candidate.Timestamp.Value <= adjusted)
+        if (candidate.Timestamp.HasValue && candidate.Timestamp.Value <= AdjustedFor(candidate))
         {
             bestMatch = candidate;
             bestIndex = _lineCursor;
@@ -2262,6 +2274,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 _currentActiveLine.IsActive = false;
                 if (_currentActiveLine.HasWords)
                     _currentActiveLine.CurrentWordIndex = _currentActiveLine.Words!.Count;
+                if (_currentActiveLine.HasBackgroundWords)
+                    _currentActiveLine.BackgroundWordIndex = _currentActiveLine.BackgroundWords!.Count;
             }
 
             // Activate new line
@@ -2289,12 +2303,26 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     private void UpdateActiveWord(TimeSpan position)
     {
         var line = _currentActiveLine;
-        if (line == null || !line.HasWords) return;
+        if (line == null || (!line.HasWords && !line.HasBackgroundWords)) return;
 
-        var words = line.Words!;
         var adjusted = position + WordLookahead;
 
-        // Past the line's end → last word remains highlighted until the line changes.
+        if (line.HasWords)
+            DriveWordLayer(line.Words!, adjusted, line.EndTimestamp,
+                line.CurrentWordIndex, i => line.CurrentWordIndex = i);
+
+        // Background vocals (adlibs) run as an independent layer with their own clock.
+        if (line.HasBackgroundWords)
+            DriveWordLayer(line.BackgroundWords!, adjusted, line.BackgroundEndTimestamp,
+                line.BackgroundWordIndex, i => line.BackgroundWordIndex = i);
+    }
+
+    /// <summary>Advances one word layer's current-word index and sweeps the active word.</summary>
+    private void DriveWordLayer(
+        IReadOnlyList<WordTiming> words, TimeSpan adjusted, TimeSpan? layerEnd,
+        int currentIndex, Action<int> setIndex)
+    {
+        // Past the layer's end → last word remains highlighted until the line changes.
         int target;
         if (adjusted < words[0].Start)
         {
@@ -2315,18 +2343,18 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             }
         }
 
-        if (line.CurrentWordIndex != target)
-            line.CurrentWordIndex = target;
+        if (currentIndex != target)
+            setIndex(target);
 
-        // Drive AMLL-style sweep on the currently-sung word (no-op for -1 / past line end).
+        // Drive AMLL-style sweep on the currently-sung word (no-op for -1 / past layer end).
         if (target >= 0 && target < words.Count)
         {
             var w = words[target];
-            // Last word of a start-tag-only line has no end anywhere — bound it by the
+            // Last word of a start-tag-only layer has no end anywhere — bound it by the
             // next line's start (capped) so it sweeps instead of snapping to lit.
             var end = w.End ?? (target + 1 < words.Count
                 ? words[target + 1].Start
-                : line.EndTimestamp ?? KaraokeSweep.ResolveOpenLastWordEnd(w.Start, NextSyncedLineStart()));
+                : layerEnd ?? KaraokeSweep.ResolveOpenLastWordEnd(w.Start, NextSyncedLineStart()));
             var span = (end - w.Start).TotalMilliseconds;
             double progress;
             if (span <= 0)
@@ -2420,7 +2448,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         _hasSyncedLyrics
         && _player.State == Models.PlaybackState.Playing
         && _lyricsSyncTimer.IsEnabled
-        && _currentActiveLine?.HasWords == true;
+        && (_currentActiveLine?.HasWords == true || _currentActiveLine?.HasBackgroundWords == true);
 
     private void OnWordClockFrame(TimeSpan _)
     {
@@ -2486,10 +2514,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var blur = absDist switch
             {
                 0 => 0.0,
-                1 => 1.5,
-                2 => 3.0,
-                3 => 4.5,
-                _ => 5.5,
+                1 => 4.0,
+                2 => 6.0,
+                3 => 8.0,
+                _ => 10.0,
             };
             var line = LyricLines[i];
             // Only set if changed — avoids unnecessary PropertyChanged notifications and re-renders
