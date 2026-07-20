@@ -848,8 +848,9 @@ public partial class MainWindow : Window
         var index = listBox.SelectedIndex;
         if (index < 0) return;
 
+        // Play the tapped track but keep the popup open, so the user can keep
+        // browsing/queuing without it dismissing out from under them.
         vm.Player.PlayFromUpNextAt(index);
-        vm.Player.IsQueuePopupOpen = false;
     }
 
     private void OnQueueRemoveClick(object? sender, RoutedEventArgs e)
