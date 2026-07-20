@@ -94,7 +94,7 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
 
     // Animated covers are short video loops; generous cap so a hostile response
     // still can't fill memory, while 1080p variants (~60 MB) pass untouched.
-    private const long MaxAnimatedCoverBytes = 256L * 1024 * 1024;
+    public const long MaxAnimatedCoverBytes = 256L * 1024 * 1024;
 
     /// <summary>Downloads the bytes at <paramref name="url"/>; returns null on failure or oversize.</summary>
     public async Task<byte[]?> DownloadAsync(string url, CancellationToken ct = default,
@@ -217,7 +217,10 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
             await using var output = File.Create(destinationPath);
             foreach (var part in parts.DistinctBy(p => p.ToString()))
             {
-                var data = await DownloadAsync(part.ToString(), ct);
+                // Animated-cover cap, not the 24MB image cap: Apple often serves the
+                // whole loop as ONE fMP4 part (~31MB at 1080p, ~90MB at 2160p), and
+                // the image cap silently failed every download over 24MB.
+                var data = await DownloadAsync(part.ToString(), ct, MaxAnimatedCoverBytes);
                 if (data is null or { Length: 0 })
                     return false;
 
@@ -424,12 +427,12 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
         });
         var v1080 = Pick(tier1080, 1080);
         if (v1080 != null)
-            picked.Add(v1080 with { Label = $"1080p · {GetCodecFamily(v1080.Codec)}" });
+            picked.Add(v1080 with { Label = "1080p" });
 
         var tier2160 = variants.Where(v => Math.Max(v.Width, v.Height) >= 1900);
         var v2160 = Pick(tier2160, 2160);
         if (v2160 != null)
-            picked.Add(v2160 with { Label = $"2160p · {GetCodecFamily(v2160.Codec)}" });
+            picked.Add(v2160 with { Label = "2160p" });
 
         if (picked.Count > 0)
             return picked;
@@ -439,7 +442,7 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
         var fallback = Pick(variants, 1080);
         return fallback == null
             ? Array.Empty<AnimatedArtworkVariant>()
-            : new[] { fallback with { Label = $"{Math.Max(fallback.Width, fallback.Height)}p · {GetCodecFamily(fallback.Codec)}" } };
+            : new[] { fallback with { Label = $"{Math.Max(fallback.Width, fallback.Height)}p" } };
     }
 
     private async Task<string?> GetTextAsync(string url, CancellationToken ct)

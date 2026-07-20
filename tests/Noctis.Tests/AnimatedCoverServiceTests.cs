@@ -153,42 +153,30 @@ public class AnimatedCoverServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Remove_Track_DeletesOnlyTrackEntry()
+    public async Task Remove_DeletesBothScopeEntries()
     {
+        // Resolve falls back track → album, so Remove must clear both scopes or the
+        // cover keeps showing (a track-scoped dialog couldn't remove an album cover).
         var t = NewTrack(out var folder);
         var src = Path.Combine(folder, "src.mp4"); File.WriteAllBytes(src, new byte[] { 1 });
         var trackDst = await _svc.ImportAsync(t, src, AnimatedCoverScope.Track);
         var albumDst = await _svc.ImportAsync(t, src, AnimatedCoverScope.Album);
 
-        _svc.Remove(t, AnimatedCoverScope.Track);
+        await _svc.RemoveAsync(t, AnimatedCoverScope.Track);
 
         Assert.False(File.Exists(trackDst));
-        Assert.True(File.Exists(albumDst));
-    }
-
-    [Fact]
-    public async Task Remove_Album_DeletesOnlyAlbumEntry()
-    {
-        var t = NewTrack(out var folder);
-        var src = Path.Combine(folder, "src.mp4"); File.WriteAllBytes(src, new byte[] { 1 });
-        var trackDst = await _svc.ImportAsync(t, src, AnimatedCoverScope.Track);
-        var albumDst = await _svc.ImportAsync(t, src, AnimatedCoverScope.Album);
-
-        _svc.Remove(t, AnimatedCoverScope.Album);
-
-        Assert.True(File.Exists(trackDst));
         Assert.False(File.Exists(albumDst));
     }
 
     [Fact]
-    public void Remove_DoesNotDeleteSidecars()
+    public async Task Remove_DoesNotDeleteSidecars()
     {
         var t = NewTrack(out var folder);
         var sidecar = Path.Combine(folder, "song.mp4");
         Touch(sidecar);
 
-        _svc.Remove(t, AnimatedCoverScope.Track);
-        _svc.Remove(t, AnimatedCoverScope.Album);
+        await _svc.RemoveAsync(t, AnimatedCoverScope.Track);
+        await _svc.RemoveAsync(t, AnimatedCoverScope.Album);
 
         Assert.True(File.Exists(sidecar));
     }

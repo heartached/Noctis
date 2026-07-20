@@ -152,6 +152,15 @@ public static class MetadataHelper
         var lrcLib = App.Services!.GetService<ILrcLibService>();
         var vm = new MetadataViewModel(track, metadata, library, persistence, animatedCovers, albumScoped, albumTracks, itunes, lrcLib, autoMatch: App.Services!.GetService<AutoMatchCoordinator>());
 
+        vm.AnimatedCoverChanging += (_, _) =>
+        {
+            // Release the playing loop's file handle before Save deletes/overwrites the
+            // cover — LibVLC keeps it open and the file operation would silently fail.
+            var main = App.Services!.GetService<MainWindowViewModel>();
+            if (main?.Player.CurrentTrack?.AlbumId == track.AlbumId)
+                main.Player.CurrentAnimatedCoverPath = null;
+        };
+
         vm.ChangesSaved += (_, _) =>
         {
             var main = App.Services!.GetService<MainWindowViewModel>();

@@ -354,6 +354,13 @@ public partial class MetadataViewModel : ViewModelBase
     /// <summary>Fires when the user clicks OK and changes were saved.</summary>
     public event EventHandler? ChangesSaved;
 
+    /// <summary>
+    /// Fires just before Save replaces or deletes this track's animated cover, so the
+    /// player can drop its reference and release the file handle LibVLC holds on the
+    /// currently playing loop (deletes silently fail while the file is open).
+    /// </summary>
+    public event EventHandler? AnimatedCoverChanging;
+
     /// <summary>Fires when the window should close.</summary>
     public event EventHandler? CloseRequested;
 
@@ -1275,7 +1282,9 @@ public partial class MetadataViewModel : ViewModelBase
                 return;
             }
 
-            AnimatedSearchStatus = $"{AnimatedArtworkSearchResults.Count} animated option(s). Click one to apply.";
+            // No informational status once results are showing — the buttons speak for
+            // themselves; the status line stays reserved for errors.
+            AnimatedSearchStatus = string.Empty;
 
             // Download the lowest-bitrate variant in the background to drive the
             // live preview inside the popup. The user keeps a snappy UI; the
@@ -1312,6 +1321,24 @@ public partial class MetadataViewModel : ViewModelBase
         HasCustomSyncedLyrics = false;
         SyncedLyricsSearchStatus = string.Empty;
         RebuildSyncedLinesFromText();
+    }
+
+    [ObservableProperty] private bool _syncedLyricsCopied;
+
+    [RelayCommand]
+    private async Task CopySyncedLyricsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(SyncedLyrics)) return;
+        var clipboard = (Avalonia.Application.Current?.ApplicationLifetime
+            as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+            ?.MainWindow?.Clipboard;
+        if (clipboard is null) return;
+
+        try { await clipboard.SetTextAsync(SyncedLyrics); } catch { return; }
+
+        SyncedLyricsCopied = true;
+        await Task.Delay(1500);
+        SyncedLyricsCopied = false;
     }
 
     // ── Synced lyrics manual editor plumbing ──
@@ -1456,7 +1483,8 @@ public partial class MetadataViewModel : ViewModelBase
             return;
 
         IsDownloadingAnimatedCover = true;
-        AnimatedSearchStatus = "Downloading…";
+        // Clear any prior error; the spinner row carries its own "Downloading…" label.
+        AnimatedSearchStatus = string.Empty;
         try
         {
             var tempPath = await DownloadAnimatedVariantAsync(result.Variant);
@@ -1486,7 +1514,8 @@ public partial class MetadataViewModel : ViewModelBase
         var tempPath = Path.Combine(Path.GetTempPath(), $"noctis-animatedcover-{Guid.NewGuid():N}.mp4");
         if (!variant.IsHls)
         {
-            var data = await _itunes!.DownloadAsync(variant.Url);
+            var data = await _itunes!.DownloadAsync(variant.Url,
+                maxBytes: ITunesArtworkService.MaxAnimatedCoverBytes);
             if (data is null or { Length: 0 })
             {
                 AnimatedSearchStatus = "Animated cover download failed.";
@@ -1877,12 +1906,16 @@ public partial class MetadataViewModel : ViewModelBase
         var animScope = _albumScoped ? AnimatedCoverScope.Album : AnimatedCoverScope.Track;
         if (_newAnimatedCoverSource != null)
         {
+            // Let the player release the old cover's file handle first — LibVLC keeps
+            // the playing loop's file open and the overwrite/delete would fail silently.
+            AnimatedCoverChanging?.Invoke(this, EventArgs.Empty);
             try { await _animatedCovers.ImportAsync(_track, _newAnimatedCoverSource, animScope); }
             catch { /* Non-fatal — preview still showed source */ }
         }
         else if (_animatedCoverRemoved)
         {
-            _animatedCovers.Remove(_track, animScope);
+            AnimatedCoverChanging?.Invoke(this, EventArgs.Empty);
+            await _animatedCovers.RemoveAsync(_track, animScope);
         }
         else if (oldAlbumId != _track.AlbumId)
         {

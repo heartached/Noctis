@@ -70,22 +70,52 @@ public class AnimatedCoverService : IAnimatedCoverService
         // File.Create return synchronous handles, so CopyToAsync would block the calling
         // (UI) thread for the whole copy — a multi-MB animated cover froze the window for
         // 10s+. Overlapped I/O lets the copy run without holding the thread.
-        await using var src = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        await using var dstStream = new FileStream(dst, FileMode.Create, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous);
-        await src.CopyToAsync(dstStream);
-        return dst;
+        // Retry on sharing violations: replacing the cover that is currently playing
+        // races the asynchronous release of the old file's LibVLC session.
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                await using var src = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                await using var dstStream = new FileStream(dst, FileMode.Create, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous);
+                await src.CopyToAsync(dstStream);
+                return dst;
+            }
+            catch (IOException) when (attempt < 5)
+            {
+                await Task.Delay(300);
+            }
+        }
     }
 
-    public void Remove(Track track, AnimatedCoverScope scope)
+    public async Task RemoveAsync(Track track, AnimatedCoverScope scope)
     {
-        var trackId = scope == AnimatedCoverScope.Track ? (Guid?)track.Id : null;
+        // Delete BOTH scopes: Resolve falls back track → album, so a track-scoped
+        // dialog removing only its own file would leave an album-scoped cover
+        // showing (and vice versa). Sidecar files next to the music are untouched.
+        var candidates = new List<string>();
         foreach (var ext in SupportedExtensions)
         {
-            var p = _persistence.GetAnimatedCoverPath(track.AlbumId, trackId, ext);
-            if (File.Exists(p))
+            candidates.Add(_persistence.GetAnimatedCoverPath(track.AlbumId, track.Id, ext));
+            candidates.Add(_persistence.GetAnimatedCoverPath(track.AlbumId, null, ext));
+        }
+
+        // The visible cover is held open by a LibVLC session; the UI releases it just
+        // before this runs, but the session teardown is asynchronous — retry briefly
+        // instead of letting a sharing violation silently keep the file.
+        for (var attempt = 0; attempt < 6; attempt++)
+        {
+            foreach (var p in candidates)
             {
-                try { File.Delete(p); } catch { }
+                try { if (File.Exists(p)) File.Delete(p); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
             }
+
+            if (!candidates.Any(File.Exists))
+                return;
+
+            await Task.Delay(300);
         }
     }
 
