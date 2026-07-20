@@ -34,6 +34,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// <summary>Top songs sorted by play count descending.</summary>
     public BulkObservableCollection<Track> TopSongs { get; } = new();
 
+    /// <summary>Ranked display rows for TopSongs (rank numeral + play-count bar).</summary>
+    public BulkObservableCollection<TopSongRow> TopSongRows { get; } = new();
+
     /// <summary>Recently played albums (grouped from playback history).</summary>
     public BulkObservableCollection<Album> RecentlyPlayedAlbums { get; } = new();
 
@@ -144,10 +147,12 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                         .Take(6)
                         .ToList());
                 TopSongs.ReplaceAll(top);
+                TopSongRows.ReplaceAll(BuildTopSongRows(top));
             }
             else
             {
                 TopSongs.ReplaceAll(Array.Empty<Track>());
+                TopSongRows.ReplaceAll(Array.Empty<TopSongRow>());
             }
 
             // Recently played albums: O(1) lookups via GetAlbumById
@@ -267,6 +272,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         if (tracks.Count == 0) return;
         _player.ReplaceQueueAndPlay(tracks, index);
     }
+
+    private static List<TopSongRow> BuildTopSongRows(IReadOnlyList<Track> top)
+        => top.Select((t, i) => new TopSongRow { Track = t, Rank = i + 1 }).ToList();
 
     private static string GetGreeting()
     {

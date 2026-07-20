@@ -30,6 +30,34 @@
         <Style Selector="Button.home-history-pill:pointerover">
             <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}"/>
         </Style>
+
+        <!-- Rank numerals for the Most Listened To rows -->
+        <Style Selector="TextBlock.rank-num">
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Opacity" Value="0.32"/>
+        </Style>
+
+        <!-- Recently Played: art lifts and a play button fades in on hover -->
+        <Style Selector="Button.album-tile:pointerover Border#RecentArt">
+            <Setter Property="RenderTransform" Value="scale(1.03)"/>
+        </Style>
+        <Style Selector="Button.recent-play">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.album-tile:pointerover Button.recent-play">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.recent-play:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
+        <Style Selector="Button.recent-play:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="*">
@@ -37,24 +65,21 @@
                       VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="28,20,28,115" Spacing="32">
 
-                <!-- Section title -->
-                <TextBlock Text="Most Listened To"
-                           FontSize="30"
-                           FontWeight="Bold"
-                           IsVisible="{Binding TopSongs.Count}" />
-
-                <!-- Top Songs (pill grid) -->
+                <!-- Top Songs (ranked pill grid) -->
                 <StackPanel Spacing="14"
-                            IsVisible="{Binding TopSongs.Count}">
+                            IsVisible="{Binding TopSongRows.Count}">
+                    <TextBlock Text="Most Listened To"
+                               FontSize="30"
+                               FontWeight="Bold" />
 
-                    <ItemsControl ItemsSource="{Binding TopSongs}">
+                    <ItemsControl ItemsSource="{Binding TopSongRows}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <UniformGrid Columns="3" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="m:Track">
+                            <DataTemplate x:DataType="m:TopSongRow">
                                 <Button Classes="browse-item"
                                         Background="{DynamicResource HomeCardBackground}"
                                         BorderThickness="0"
@@ -68,15 +93,15 @@
                                         helpers:DragFileBehavior.EnableFileDrag="True"
                                         ContextRequested="OnTopSongContextRequested"
                                         Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayTopSongCommand}"
-                                        CommandParameter="{Binding}">
+                                        CommandParameter="{Binding Track}">
                                     <Button.Styles>
                                         <Style Selector="Button:pointerover">
                                             <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}" />
                                         </Style>
                                     </Button.Styles>
 
-                                    <!-- Pill content: artwork + title + explicit badge + play count -->
-                                    <Grid ColumnDefinitions="56,*,Auto">
+                                    <!-- Pill content: artwork + rank + title + play bar + play count -->
+                                    <Grid ColumnDefinitions="56,38,*,Auto">
                                         <Border Grid.Column="0"
                                                 Width="56" Height="56"
                                                 CornerRadius="6,0,0,6"
@@ -88,27 +113,32 @@
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
                                                            Opacity="0.2"
-                                                           IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                <Image Source="{Binding AlbumArtworkPath, Converter={StaticResource ArtworkConverter}}"
+                                                           IsVisible="{Binding Track.AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                                <Image Source="{Binding Track.AlbumArtworkPath, Converter={StaticResource ArtworkConverter}}"
                                                        Stretch="UniformToFill"
                                                        RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                       IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                       IsVisible="{Binding Track.AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             </Panel>
                                         </Border>
-                                        <Grid Grid.Column="1"
+                                        <TextBlock Grid.Column="1"
+                                                   Classes="rank-num"
+                                                   Text="{Binding Rank}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                        <Grid Grid.Column="2"
                                               ColumnDefinitions="*,Auto"
                                               VerticalAlignment="Center"
-                                              Margin="12,0,8,0">
+                                              Margin="0,0,10,0">
                                             <TextBlock Grid.Column="0"
                                                        FontSize="13"
                                                        FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis"
                                                        MaxLines="1">
-                                                <Run Text="{Binding Title}" />
+                                                <Run Text="{Binding Track.Title}" />
                                                 <InlineUIContainer BaselineAlignment="Center">
                                                     <Border Classes="explicit-badge compact"
                                                             Margin="6,0,0,0"
-                                                            IsVisible="{Binding IsExplicit}"
+                                                            IsVisible="{Binding Track.IsExplicit}"
                                                             ToolTip.Tip="Explicit">
                                                         <TextBlock Text="E"
                                                                    Classes="explicit-badge-text compact"
@@ -123,29 +153,25 @@
                                                       Foreground="#E74856"
                                                       Margin="6,0,0,0"
                                                       VerticalAlignment="Center"
-                                                      IsVisible="{Binding IsFavorite}" />
+                                                      IsVisible="{Binding Track.IsFavorite}" />
                                         </Grid>
-                                        <Border Grid.Column="2"
-                                                Margin="0,0,14,0"
-                                                Padding="7,3"
-                                                CornerRadius="999"
-                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-                                                VerticalAlignment="Center"
-                                                ToolTip.Tip="Listen count">
-                                            <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding PlayCount}"
-                                                           FontSize="11"
-                                                           FontWeight="SemiBold"
-                                                           Opacity="0.75"
-                                                           VerticalAlignment="Center" />
-                                                <TextBlock Text="plays"
-                                                           FontSize="11"
-                                                           FontWeight="SemiBold"
-                                                           Opacity="0.75"
-                                                           VerticalAlignment="Center"
-                                                           Margin="0,0,0,2" />
-                                            </StackPanel>
-                                        </Border>
+                                        <StackPanel Grid.Column="3"
+                                                    Orientation="Horizontal"
+                                                    Spacing="3"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,0,14,0"
+                                                    ToolTip.Tip="Listen count">
+                                            <TextBlock Text="{Binding Track.PlayCount}"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       Opacity="0.75"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Text="plays"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       Opacity="0.55"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
                                     </Grid>
                                 </Button>
                             </DataTemplate>
@@ -176,6 +202,7 @@
                                     <Button.Styles>
                                         <Style Selector="Button:pointerover Border#ArtistAvatar">
                                             <Setter Property="RenderTransform" Value="scale(1.04)" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
                                         </Style>
                                         <!-- Keep the tile transparent on hover/press: only the
                                              avatar scales, no gray square behind it. -->
@@ -191,11 +218,14 @@
                                                 Width="140" Height="140"
                                                 CornerRadius="70"
                                                 ClipToBounds="True"
+                                                BorderThickness="2"
+                                                BorderBrush="Transparent"
                                                 Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
                                                 RenderTransformOrigin="50%,50%">
                                             <Border.Transitions>
                                                 <Transitions>
                                                     <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15"/>
+                                                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
                                                 </Transitions>
                                             </Border.Transitions>
                                             <Panel>
@@ -251,9 +281,16 @@
                                         Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).OpenAlbumCommand}"
                                         CommandParameter="{Binding}">
                                     <StackPanel Spacing="0">
-                                        <Border CornerRadius="6"
+                                        <Border x:Name="RecentArt"
+                                                CornerRadius="6"
                                                 ClipToBounds="True"
-                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                                                RenderTransformOrigin="50%,50%">
+                                            <Border.Transitions>
+                                                <Transitions>
+                                                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15"/>
+                                                </Transitions>
+                                            </Border.Transitions>
                                             <Border.Styles>
                                                 <Style Selector="Border">
                                                     <Setter Property="Height" Value="{Binding $self.Bounds.Width}" />
@@ -278,6 +315,25 @@
                                                            VerticalAlignment="Bottom"
                                                            Margin="0,0,8,8"
                                                            IsVisible="{Binding HasFavoriteTrack}" />
+                                                 <Button Classes="recent-play"
+                                                         Width="40" Height="40"
+                                                         CornerRadius="20"
+                                                         Padding="0"
+                                                         HorizontalAlignment="Left"
+                                                         VerticalAlignment="Bottom"
+                                                         Margin="10,0,0,10"
+                                                         Background="{DynamicResource AccentColorBrush}"
+                                                         BorderThickness="0"
+                                                         Cursor="Hand"
+                                                         Opacity="0"
+                                                         ToolTip.Tip="Play"
+                                                         Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).PlayAlbumCommand}"
+                                                         CommandParameter="{Binding}">
+                                                     <PathIcon Data="{StaticResource PlayIcon}"
+                                                               Width="16" Height="16"
+                                                               Margin="2,0,0,0"
+                                                               Foreground="{DynamicResource AccentForegroundBrush}" />
+                                                 </Button>
                                              </Panel>
                                          </Border>
                                         <TextBlock Margin="0,5,0,0"
