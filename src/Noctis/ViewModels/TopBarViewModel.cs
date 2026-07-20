@@ -58,7 +58,9 @@ public partial class TopBarViewModel : ViewModelBase
         || HasPlaylistActions
         || HasViewModeToggle
         || HasArtistActions
-        || HasFavoritesActions;
+        || HasFavoritesActions
+        || HasFoldersActions
+        || SongsFiltersVisible;
 
     public void ShowBackButton(string text, ICommand command, string? contextTitle = null)
     {
@@ -114,8 +116,45 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _pageShuffleCommand;
     [ObservableProperty] private ICommand? _pageQueueCommand;
 
-    /// <summary>Page actions (Shuffle/Queue/Options) are hidden in Cover Flow mode — they don't apply there.</summary>
+    /// <summary>Page actions (Shuffle/Options) are hidden in Cover Flow mode — they don't apply there.</summary>
     public bool PageActionsVisible => HasPageActions && !IsCoverFlowMode;
+
+    // Songs page: library summary ("2,144 songs · 138 hours") + quality filter chips
+    // (All / Lossless / Hi-Res). Owned by LibrarySongsViewModel, mirrored here for
+    // top-bar placement — same pattern as the Albums release-type chips.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SongsFiltersVisible))]
+    [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    private bool _hasSongsFilters;
+    [ObservableProperty] private string _songsSummaryText = string.Empty;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SongsQualityAll))]
+    [NotifyPropertyChangedFor(nameof(SongsQualityLossless))]
+    [NotifyPropertyChangedFor(nameof(SongsQualityHiRes))]
+    private string _songsQualityFilter = "All";
+    [ObservableProperty] private ICommand? _songsQualityCommand;
+
+    /// <summary>Songs filter chips are hidden in Cover Flow mode, like the page actions.</summary>
+    public bool SongsFiltersVisible => HasSongsFilters && !IsCoverFlowMode;
+
+    public bool SongsQualityAll => SongsQualityFilter == "All";
+    public bool SongsQualityLossless => SongsQualityFilter == "Lossless";
+    public bool SongsQualityHiRes => SongsQualityFilter == "HiRes";
+
+    public void ShowSongsFilters(string summaryText, string qualityFilter, ICommand qualityCommand)
+    {
+        SongsSummaryText = summaryText;
+        SongsQualityFilter = qualityFilter;
+        SongsQualityCommand = qualityCommand;
+        HasSongsFilters = true;
+    }
+
+    public void HideSongsFilters()
+    {
+        HasSongsFilters = false;
+        SongsSummaryText = string.Empty;
+        SongsQualityCommand = null;
+    }
 
     // Playlist-specific action buttons
     [ObservableProperty]
@@ -131,6 +170,7 @@ public partial class TopBarViewModel : ViewModelBase
     private bool _hasViewModeToggle;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageActionsVisible))]
+    [NotifyPropertyChangedFor(nameof(SongsFiltersVisible))]
     [NotifyPropertyChangedFor(nameof(PageTitleDisplay))]
     [NotifyPropertyChangedFor(nameof(HasBarContent))]
     private bool _isCoverFlowMode;
@@ -149,6 +189,14 @@ public partial class TopBarViewModel : ViewModelBase
     private bool _hasArtistActions;
     [ObservableProperty] private ICommand? _pageShuffleArtistCommand;
     [ObservableProperty] private ICommand? _pagePlayArtistCommand;
+
+    // Folders action buttons (Play / Shuffle / Manage Folders)
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBarContent))]
+    private bool _hasFoldersActions;
+    [ObservableProperty] private ICommand? _pagePlayFolderCommand;
+    [ObservableProperty] private ICommand? _pageShuffleFolderCommand;
+    [ObservableProperty] private ICommand? _pageManageFoldersCommand;
 
     // Favorites action buttons
     [ObservableProperty]
@@ -240,6 +288,22 @@ public partial class TopBarViewModel : ViewModelBase
         HasArtistActions = false;
         PageShuffleArtistCommand = null;
         PagePlayArtistCommand = null;
+    }
+
+    public void ShowFoldersActions(ICommand playCommand, ICommand shuffleCommand, ICommand manageCommand)
+    {
+        PagePlayFolderCommand = playCommand;
+        PageShuffleFolderCommand = shuffleCommand;
+        PageManageFoldersCommand = manageCommand;
+        HasFoldersActions = true;
+    }
+
+    public void HideFoldersActions()
+    {
+        HasFoldersActions = false;
+        PagePlayFolderCommand = null;
+        PageShuffleFolderCommand = null;
+        PageManageFoldersCommand = null;
     }
 
     public void ShowFavoritesActions(ICommand shuffleCommand, ICommand playCommand)
