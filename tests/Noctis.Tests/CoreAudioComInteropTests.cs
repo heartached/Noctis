@@ -87,4 +87,32 @@ public class CoreAudioComInteropTests
         using var naudio = new NAudio.CoreAudioApi.MMDeviceEnumerator();
         Assert.NotNull(naudio);
     }
+
+    [Fact]
+    public void NAudioActivation_WhileInteropEnumeratorHeld_DoesNotThrow()
+    {
+        if (!OperatingSystem.IsWindows())
+            return; // Core Audio COM is Windows-only.
+
+        // The enumerator CLSID is a per-process COM singleton: every activation
+        // returns the same underlying object, so one shared RCW wraps it and that
+        // RCW's managed type is set by whichever wrapper is alive. In the app,
+        // WindowsSessionVolume and WasapiSilenceKeepAlive HOLD their interop-created
+        // wrap for the whole session — NAudio activation must still succeed while
+        // such a wrap is alive. This is the exact in-app sequence behind the silent
+        // Exclusive Mode report (noctis_wasapi.log: every TryCreateExclusive AND
+        // shared TryCreate threw InvalidCastException, AudioSetup returned -1,
+        // LibVLC looped "failed to create audio output").
+        CoreAudioComInterop.EnsureInitialized();
+        var held = CoreAudioComInterop.CreateMMDeviceEnumerator();
+        try
+        {
+            using var naudio = new NAudio.CoreAudioApi.MMDeviceEnumerator();
+            Assert.NotNull(naudio);
+        }
+        finally
+        {
+            Marshal.ReleaseComObject(held);
+        }
+    }
 }

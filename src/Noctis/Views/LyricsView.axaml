@@ -18,6 +18,7 @@
         <conv:ProgressToSweepForegroundConverter x:Key="ProgressToSweepFg"/>
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
         <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect"/>
+        <conv:PreBlurredArtworkConverter x:Key="PreBlurArt"/>
         <conv:MetadataLineConverter x:Key="MetadataLine"/>
         <conv:DoubleScaleConverter x:Key="FontScale"/>
 
@@ -405,33 +406,23 @@
               ClipToBounds="True"
               IsHitTestVisible="False"
               IsVisible="{Binding IsColorModeArtwork}">
-            <!-- Instant fallback: Player.AlbumArt is the in-memory bitmap already shown
-                 in the mini-player, so it paints synchronously the moment the page
-                 mounts. The high-res CachedImage below replaces it once decoded,
-                 eliminating the gray flicker between page-attach and image-decode. -->
-            <Image Source="{Binding Player.AlbumArt}"
+            <!-- Pre-blurred ONCE per artwork (PreBlurredArtworkConverter): a live
+                 BlurEffect here was re-executed every rendered frame, and during the
+                 line-change scroll glide two stacked fullscreen radius-72 gaussians
+                 dropped the whole page to ~25fps on software rendering / weak GPUs
+                 (issue #11). Player.AlbumArt (the mini-player's in-memory 768px
+                 bitmap) paints synchronously on page mount, and after this much blur
+                 a higher-res source adds nothing — so the old hi-res CachedImage
+                 layer is gone entirely. -->
+            <Image Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
                    Stretch="UniformToFill"
                    RenderOptions.BitmapInterpolationMode="HighQuality"
                    IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <Image.Effect>
-                    <BlurEffect Radius="72"/>
-                </Image.Effect>
+                <!-- Gentle outward scale so blur edges never reveal the underlying solid fill. -->
                 <Image.RenderTransform>
                     <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
                 </Image.RenderTransform>
             </Image>
-            <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
-                                  DecodeWidth="800"
-                                  Stretch="UniformToFill"
-                                  RenderOptions.BitmapInterpolationMode="HighQuality">
-                <controls:CachedImage.Effect>
-                    <BlurEffect Radius="72"/>
-                </controls:CachedImage.Effect>
-                <!-- Gentle outward scale so blur edges never reveal the underlying solid fill. -->
-                <controls:CachedImage.RenderTransform>
-                    <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
-                </controls:CachedImage.RenderTransform>
-            </controls:CachedImage>
             <!-- Dark scrim: drops the cover's brightness so white lyrics stay readable.
                  Kept strong enough that bright/near-white covers don't bleed a light
                  halo around the title/artist/album text. -->

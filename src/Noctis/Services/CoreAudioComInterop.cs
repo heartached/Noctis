@@ -39,8 +39,10 @@ namespace Noctis.Services;
 ///   2. NAudio CANNOT be changed and REQUIRES its own coclass cast to succeed, so
 ///      its coclass must be the one that wins. <see cref="EnsureInitialized"/>
 ///      activates NAudio's enumerator once, before anything else binds the CLSID,
-///      so NAudio's coclass is cached as the winner. Our GetTypeFromCLSID path
-///      keeps working regardless, so all three consumers coexist.
+///      and KEEPS IT ALIVE — the binding lives only as long as a wrapper does, so
+///      the winner must stay referenced for the process lifetime. Our
+///      GetTypeFromCLSID path keeps working regardless, so all three consumers
+///      coexist.
 /// </summary>
 [SupportedOSPlatform("windows")]
 internal static class CoreAudioComInterop
@@ -52,12 +54,24 @@ internal static class CoreAudioComInterop
     private static readonly object _initGate = new();
     private static bool _initialized;
 
+    // Pins NAudio's coclass as the singleton's live wrapper for the process
+    // lifetime. The enumerator CLSID is a per-process COM singleton: every
+    // activation returns the SAME underlying object, so one shared RCW wraps it
+    // and that RCW's managed type is set by whichever wrapper is alive. The type
+    // binding does NOT survive disposal — if this instance were disposed, the next
+    // GetTypeFromCLSID activation (held for the whole session by
+    // WindowsSessionVolume / WasapiSilenceKeepAlive) would re-wrap the singleton
+    // as System.__ComObject and every later NAudio activation would throw
+    // InvalidCastException again (the silent Exclusive Mode failure).
+    private static MMDeviceEnumerator? _naudioPin;
+
     /// <summary>
-    /// Activate NAudio's <c>MMDeviceEnumerator</c> exactly once, before any other
-    /// code binds this CLSID, so NAudio's internal <c>[ComImport]</c> coclass wins
-    /// the CLR's per-CLSID binding and NAudio's own casts keep working. Idempotent,
-    /// thread-safe, and best-effort — a failure here is no worse than not calling
-    /// it. Call as early as possible in audio startup (e.g. the player ctor).
+    /// Activate NAudio's <c>MMDeviceEnumerator</c> once, before any other code
+    /// binds this CLSID, and keep it alive so NAudio's internal <c>[ComImport]</c>
+    /// coclass stays the singleton's wrapper and NAudio's own casts keep working.
+    /// Idempotent, thread-safe, and best-effort — a failure here leaves the next
+    /// call to retry. Call as early as possible in audio startup (e.g. the player
+    /// ctor).
     /// </summary>
     public static void EnsureInitialized()
     {
@@ -69,16 +83,16 @@ internal static class CoreAudioComInterop
             {
                 // Constructing NAudio's wrapper activates NAudio's coclass; this is
                 // a pure COM-object creation (no audio endpoint required), so it
-                // works even with no playback device present. Dispose immediately —
-                // the process-wide per-CLSID type binding persists past disposal.
-                using var _ = new MMDeviceEnumerator();
+                // works even with no playback device present.
+                _naudioPin = new MMDeviceEnumerator();
+                _initialized = true;
             }
             catch
             {
-                // Best effort: if NAudio's enumerator can't be created here, its
-                // own later attempts are no more broken than before this fix.
+                // Transient activation failure: leave _initialized false so the
+                // next audio-path call retries before anything else can bind the
+                // CLSID to the generic __ComObject wrapper.
             }
-            _initialized = true;
         }
     }
 
