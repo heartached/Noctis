@@ -33,10 +33,13 @@ public partial class SidebarView : UserControl
         AttachedToVisualTree += (_, _) => AttachHostWindow();
     }
 
-    // ── Search pill vs window minimize ──
+    // ── Search pill vs window minimize/hide ──
     // The pill is a native popup window; it is not automatically hidden with its
     // owner, so without this it keeps floating over other apps while Noctis is
-    // minimized. Close it on minimize and restore it when the window comes back.
+    // gone. Minimize is only one of the ways the window disappears: close-to-tray
+    // and the mini player call Hide() with WindowState still Normal, so the pill
+    // must track window VISIBILITY as well as state. Close it whenever the window
+    // leaves the screen and restore it when the window comes back.
 
     private void AttachHostWindow()
     {
@@ -55,11 +58,14 @@ public partial class SidebarView : UserControl
 
     private void OnHostWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
-        if (e.Property != Window.WindowStateProperty) return;
+        if (e.Property != Window.WindowStateProperty && e.Property != Visual.IsVisibleProperty)
+            return;
         var topBar = _vm?.TopBar;
-        if (topBar == null) return;
+        if (topBar == null || _hostWindow == null) return;
 
-        if (e.GetNewValue<WindowState>() == WindowState.Minimized)
+        var windowGone = !_hostWindow.IsVisible ||
+                         _hostWindow.WindowState == WindowState.Minimized;
+        if (windowGone)
         {
             if (topBar.IsSearchOpen)
             {
