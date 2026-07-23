@@ -37,7 +37,10 @@ public partial class SyncedLyricEditorLine : ObservableObject
     /// <summary>True when the raw text carries inline word-timing tags.</summary>
     public bool HasWordTiming { get; }
 
-    private static readonly Regex WordTagRegex = new(@"<\d{1,2}:\d{2}(?:\.\d{1,3})?>", RegexOptions.Compiled);
+    // Kept in sync with the ELRC parser's accepted forms: up to 3 minute digits
+    // and either '.' or ':' before the fraction — narrower here left raw tags
+    // visible in the editor rows for files the parser reads fine.
+    private static readonly Regex WordTagRegex = new(@"<\d{1,3}:\d{2}(?:[.:]\d{1,3})?>", RegexOptions.Compiled);
 
     private static string StripWordTags(string text)
     {
