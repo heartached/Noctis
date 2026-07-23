@@ -180,6 +180,15 @@ public partial class LyricsView : UserControl
 
         if (DataContext is LyricsViewModel vm)
         {
+            // Re-subscribe on re-attach (detach unsubscribed; DataContextChanged
+            // won't fire again when the DataContext is unchanged).
+            if (_subscribedVm == null)
+            {
+                vm.PropertyChanged += OnViewModelPropertyChanged;
+                vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
+                _subscribedVm = vm;
+            }
+
             vm.IsAutoFollowPaused = false;
             _isJumpingOnAttach = true;
             try
@@ -204,9 +213,15 @@ public partial class LyricsView : UserControl
                 vm.Player.EndSeek();
         }
 
+        // Full VM unsubscribe: the VM is a process singleton and this view is
+        // recreated per visit — DataContextChanged never fires for a discarded
+        // view, so leaving PropertyChanged attached leaks the whole view and
+        // keeps its scroll handler running for every later line change.
         if (_subscribedVm != null)
         {
+            _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
             _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
+            _subscribedVm = null;
         }
 
         if (_hostWindow != null)
