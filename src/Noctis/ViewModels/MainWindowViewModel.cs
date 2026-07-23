@@ -513,6 +513,42 @@ public partial class MainWindowViewModel : ViewModelBase
             .Concat(Sidebar.PlaylistItems);
         Sidebar.SelectedNavItem = allNavItems.FirstOrDefault(n => n.Key == defaultKey)
                                   ?? Sidebar.NavItems[0];
+
+        // Play any files this launch was asked to open ("Open with Noctis"),
+        // now that the window and player are up. Background priority so first
+        // paint isn't delayed by the metadata read.
+        if (App.PendingOpenFiles.Count > 0)
+        {
+            var pending = App.PendingOpenFiles;
+            App.PendingOpenFiles = Array.Empty<string>();
+            Dispatcher.UIThread.Post(() => OpenExternalFiles(pending), DispatcherPriority.Background);
+        }
+    }
+
+    /// <summary>
+    /// Plays audio files handed to the app from outside ("Open with Noctis" on
+    /// launch, or forwarded from a second launch through the single-instance
+    /// pipe). Library entries are preferred so play counts/ratings attach;
+    /// unknown files play from a direct metadata read without being imported.
+    /// </summary>
+    public void OpenExternalFiles(IReadOnlyList<string> paths)
+    {
+        var tracks = new List<Track>();
+        foreach (var path in paths)
+        {
+            if (!File.Exists(path) ||
+                !MetadataService.SupportedExtensions.Contains(Path.GetExtension(path)))
+                continue;
+
+            var existing = _library.Tracks.FirstOrDefault(t =>
+                string.Equals(t.FilePath, path, StringComparison.OrdinalIgnoreCase));
+            var track = existing ?? _metadata.ReadTrackMetadata(path);
+            if (track != null)
+                tracks.Add(track);
+        }
+
+        if (tracks.Count == 0) return;
+        Player.ReplaceQueueAndPlay(tracks, 0);
     }
 
     /// <summary>
