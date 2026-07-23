@@ -287,16 +287,20 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
         try
         {
             var iid = IidAudioSessionControl;
-            if (client.GetService(ref iid, out var obj) < 0 || obj is not IAudioSessionControl2 ctl)
+            if (client.GetService(ref iid, out var obj) < 0)
                 return null;
             try
             {
+                // Release in finally either way: a successful GetService with a
+                // failed cast would otherwise leak the returned RCW.
+                if (obj is not IAudioSessionControl2 ctl)
+                    return null;
                 if (ctl.GetSessionInstanceIdentifier(out var ptr) < 0 || ptr == IntPtr.Zero)
                     return null;
                 try { return Marshal.PtrToStringUni(ptr); }
                 finally { Marshal.FreeCoTaskMem(ptr); }
             }
-            finally { TryRelease(ctl); }
+            finally { TryRelease(obj); }
         }
         catch
         {

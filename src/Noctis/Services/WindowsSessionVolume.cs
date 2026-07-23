@@ -35,6 +35,7 @@ internal sealed class WindowsSessionVolume
 
     private readonly object _gate = new();
     private readonly uint _pid = (uint)Environment.ProcessId;
+    private bool _disposed;
     private IMMDeviceEnumerator? _enumerator;
     // The single audio session we currently drive (the active render session for
     // this process). Null until audio is flowing / between resolves.
@@ -67,6 +68,9 @@ internal sealed class WindowsSessionVolume
         level = Math.Clamp(level, 0.0, 1.0);
         lock (_gate)
         {
+            // A ramp-worker write can land just after Dispose(); without this
+            // guard EnsureFresh would re-create the COM enumerator (leak).
+            if (_disposed) return false;
             EnsureFresh();
             if (_activeVolume == null) return false;
 
@@ -253,6 +257,7 @@ internal sealed class WindowsSessionVolume
     {
         lock (_gate)
         {
+            _disposed = true;
             ReleaseActive();
             TryRelease(_enumerator);
             _enumerator = null;
