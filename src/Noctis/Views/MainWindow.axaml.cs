@@ -37,7 +37,7 @@ public partial class MainWindow : Window
     private Border? _settingsCard;
     private Border? _queuePopupPanel;
     private MiniPlayerWindow? _miniPlayer;
-    private Action? _singleInstanceActivationHandler;
+    private Action<IReadOnlyList<string>>? _singleInstanceActivationHandler;
 
     /// <summary>
     /// Opens the compact always-on-top mini player (hiding the main window), or closes
@@ -300,8 +300,14 @@ public partial class MainWindow : Window
         Closed += OnWindowClosed;
 
         // A second launch (taskbar/pinned icon while we sit in the tray) signals
-        // the single-instance pipe — surface this window instead.
-        _singleInstanceActivationHandler = () => Dispatcher.UIThread.Post(ShowFromTray);
+        // the single-instance pipe — surface this window, and play any files
+        // that launch was asked to open ("Open with Noctis" while running).
+        _singleInstanceActivationHandler = files => Dispatcher.UIThread.Post(() =>
+        {
+            ShowFromTray();
+            if (files.Count > 0 && DataContext is MainWindowViewModel vm)
+                vm.OpenExternalFiles(files);
+        });
         Helpers.SingleInstanceGuard.ActivationRequested += _singleInstanceActivationHandler;
 
         // Minimize-to-tray: hide the window when it minimizes and the setting is on.

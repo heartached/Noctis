@@ -27,14 +27,23 @@ internal class Program
                 Thread.CurrentThread.SetApartmentState(ApartmentState.STA);
             }
 
+            // Audio files passed on the command line ("Open with Noctis" /
+            // double-clicked track): forwarded to the running instance, or
+            // played once this instance finishes starting.
+            var filesToOpen = args
+                .Where(a => !a.StartsWith('-') && File.Exists(a))
+                .ToArray();
+
             // One instance per user: launching again (e.g. pinned taskbar icon while
             // the app sits in the tray) surfaces the running window instead of
             // starting a second player.
             if (!SingleInstanceGuard.TryAcquire())
             {
-                SingleInstanceGuard.SignalFirstInstance();
+                SingleInstanceGuard.SignalFirstInstance(filesToOpen);
                 return;
             }
+
+            App.PendingOpenFiles = filesToOpen;
 
             // Configure DI container
             var services = new ServiceCollection();

@@ -69,11 +69,14 @@ public sealed class SmtcService : IDisposable
             _smtc.IsPreviousEnabled = true;
             _smtc.IsEnabled = true;
             _smtc.ButtonPressed += OnButtonPressed;
+            _smtc.PlaybackPositionChangeRequested += OnPositionChangeRequested;
             _player.PropertyChanged += OnPlayerPropertyChanged;
+            _player.Seeked += OnPlayerSeeked;
 
             // Reflect whatever is already loaded (e.g. the restored queue).
             UpdatePlaybackStatus();
             UpdateMetadata();
+            UpdateTimeline(force: true);
         }
         catch (Exception ex)
         {
@@ -95,12 +98,19 @@ public sealed class SmtcService : IDisposable
             case nameof(PlayerViewModel.CurrentTrack):
                 UpdatePlaybackStatus();
                 UpdateMetadata();
+                UpdateTimeline(force: true);
                 break;
             case nameof(PlayerViewModel.CurrentArtPath):
                 UpdateMetadata();
                 break;
+            case nameof(PlayerViewModel.Position):
+            case nameof(PlayerViewModel.Duration):
+                UpdateTimeline();
+                break;
         }
     }
+
+    private void OnPlayerSeeked(object? sender, TimeSpan newPosition) => UpdateTimeline(force: true);
 
     /// <summary>SMTC button presses arrive on a WinRT thread — hop to the UI
     /// thread before touching player commands.</summary>
@@ -124,6 +134,52 @@ public sealed class SmtcService : IDisposable
                     _player.PreviousCommand.Execute(null);
                     break;
             }
+        });
+    }
+
+    // Feeds the media flyout's progress bar/scrubber. Position updates arrive
+    // ~4x/sec; a 1s throttle keeps the WinRT chatter down (seeks and track
+    // changes push immediately via force).
+    private DateTime _lastTimelinePushUtc;
+
+    private void UpdateTimeline(bool force = false)
+    {
+        var smtc = _smtc;
+        if (smtc == null) return;
+
+        var now = DateTime.UtcNow;
+        if (!force && now - _lastTimelinePushUtc < TimeSpan.FromSeconds(1)) return;
+        _lastTimelinePushUtc = now;
+
+        try
+        {
+            var duration = _player.Duration;
+            smtc.UpdateTimelineProperties(new SystemMediaTransportControlsTimelineProperties
+            {
+                StartTime = TimeSpan.Zero,
+                MinSeekTime = TimeSpan.Zero,
+                Position = _player.Position,
+                MaxSeekTime = duration,
+                EndTime = duration
+            });
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.Playback, "Smtc.Timeline", ex.Message);
+        }
+    }
+
+    /// <summary>Scrubber drag in the media flyout — hop to the UI thread and
+    /// route through the same seek command the in-app slider uses.</summary>
+    private void OnPositionChangeRequested(SystemMediaTransportControls sender, PlaybackPositionChangeRequestedEventArgs args)
+    {
+        var requested = args.RequestedPlaybackPosition;
+        Dispatcher.UIThread.Post(() =>
+        {
+            var duration = _player.Duration;
+            if (duration <= TimeSpan.Zero) return;
+            var fraction = Math.Clamp(requested.Ticks / (double)duration.Ticks, 0.0, 1.0);
+            _player.SeekToPositionCommand.Execute(fraction);
         });
     }
 
@@ -222,11 +278,13 @@ public sealed class SmtcService : IDisposable
         // Invalidate any in-flight thumbnail load so it can't touch a dead SMTC.
         Interlocked.Increment(ref _thumbnailGeneration);
         _player.PropertyChanged -= OnPlayerPropertyChanged;
+        _player.Seeked -= OnPlayerSeeked;
         if (_smtc != null)
         {
             try
             {
                 _smtc.ButtonPressed -= OnButtonPressed;
+                _smtc.PlaybackPositionChangeRequested -= OnPositionChangeRequested;
                 _smtc.IsEnabled = false;
             }
             catch { /* best effort on shutdown */ }

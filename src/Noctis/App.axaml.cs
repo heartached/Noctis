@@ -24,6 +24,10 @@ public partial class App : Application
     /// registered command carries a "--startup" arg), as opposed to a manual launch.</summary>
     public static bool LaunchedAtStartup { get; set; }
 
+    /// <summary>Audio files passed on this launch's command line ("Open with
+    /// Noctis"), consumed by the main window once the player is ready.</summary>
+    public static IReadOnlyList<string> PendingOpenFiles { get; set; } = Array.Empty<string>();
+
     /// <summary>True when the autostart entry additionally requested a minimized (tray)
     /// start ("--startup --minimized"). Read from args at process start so the decision
     /// needs no async settings load — the main window hides immediately if the tray is up.</summary>

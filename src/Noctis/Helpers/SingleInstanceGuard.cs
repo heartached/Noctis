@@ -18,8 +18,16 @@ public static class SingleInstanceGuard
 
     private static Mutex? _mutex;
 
-    /// <summary>Raised on a background thread when another launch asks this instance to surface its window.</summary>
-    public static event Action? ActivationRequested;
+    // Payload cap for the activation pipe: it only ever carries a handful of
+    // file paths from our own second launch.
+    private const int MaxActivationPayloadBytes = 64 * 1024;
+
+    /// <summary>
+    /// Raised on a background thread when another launch asks this instance to
+    /// surface its window. Carries the audio-file paths that launch was given
+    /// ("Open with Noctis" while running) — empty for a plain activation.
+    /// </summary>
+    public static event Action<IReadOnlyList<string>>? ActivationRequested;
 
     /// <summary>
     /// Returns true if this process is the first instance (and starts the
@@ -48,14 +56,22 @@ public static class SingleInstanceGuard
         return true;
     }
 
-    /// <summary>Asks the already-running instance to show its window. Best effort.</summary>
-    public static void SignalFirstInstance()
+    /// <summary>
+    /// Asks the already-running instance to show its window, forwarding any
+    /// file paths this launch was asked to open. Best effort.
+    /// </summary>
+    public static void SignalFirstInstance(IReadOnlyList<string>? filesToOpen = null)
     {
         try
         {
             using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
             client.Connect(2000);
-            client.WriteByte(1);
+            var payload = filesToOpen is { Count: > 0 }
+                ? string.Join('\n', filesToOpen.Select(Path.GetFullPath))
+                : string.Empty;
+            var bytes = System.Text.Encoding.UTF8.GetBytes(payload);
+            client.Write(bytes, 0, bytes.Length);
+            client.Flush();
         }
         catch
         {
@@ -74,7 +90,7 @@ public static class SingleInstanceGuard
                 using var server = CreateActivationServer();
                 await server.WaitForConnectionAsync().ConfigureAwait(false);
                 consecutiveFailures = 0;
-                ActivationRequested?.Invoke();
+                ActivationRequested?.Invoke(await ReadForwardedFilesAsync(server).ConfigureAwait(false));
             }
             catch
             {
@@ -91,6 +107,31 @@ public static class SingleInstanceGuard
                 }
                 await Task.Delay(1000).ConfigureAwait(false);
             }
+        }
+    }
+
+    private static async Task<IReadOnlyList<string>> ReadForwardedFilesAsync(NamedPipeServerStream server)
+    {
+        try
+        {
+            using var ms = new MemoryStream();
+            var buffer = new byte[4096];
+            int read;
+            while ((read = await server.ReadAsync(buffer).ConfigureAwait(false)) > 0)
+            {
+                if (ms.Length + read > MaxActivationPayloadBytes) return Array.Empty<string>();
+                ms.Write(buffer, 0, read);
+            }
+            if (ms.Length == 0) return Array.Empty<string>();
+
+            return System.Text.Encoding.UTF8.GetString(ms.ToArray())
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(File.Exists)
+                .ToArray();
+        }
+        catch
+        {
+            return Array.Empty<string>(); // malformed payload → plain activation
         }
     }
 

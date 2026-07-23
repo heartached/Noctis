@@ -73,59 +73,61 @@ jobs:
           -o publish/${{ matrix.rid }}
 
       # Bundle ffmpeg for the Audio Converter feature so users don't need a
-      # system install. Marked continue-on-error so a download-host outage
-      # never blocks a release — the app falls back to auto-detecting ffmpeg
-      # on PATH at runtime. Each platform pulls a static build from the
-      # canonical mirror for that OS.
+      # system install. Every download is version-PINNED and SHA-256-verified,
+      # and a failure FAILS the build: the old continue-on-error meant an
+      # outage (or a tampered/changed upstream binary, since "latest" was a
+      # moving tag) shipped a release silently missing or altering ffmpeg.
+      # To bump a pin: update the URL + hash together (sha256sum the download).
       - name: Bundle ffmpeg (Windows)
         if: matrix.rid == 'win-x64'
-        continue-on-error: true
         shell: pwsh
         run: |
           $url = 'https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-essentials_build.zip'
+          $expected = 'fa7d4d7e795db0e2503f49f105f46ed5852386f0cfdd819899be3b65ebde24fc'
           Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip
+          $actual = (Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "ffmpeg.zip SHA-256 mismatch: got $actual" }
           Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-extract
           Copy-Item (Get-ChildItem -Recurse ffmpeg-extract -Filter ffmpeg.exe | Select-Object -First 1).FullName "publish/${{ matrix.rid }}/ffmpeg.exe"
+          if (-not (Test-Path "publish/${{ matrix.rid }}/ffmpeg.exe")) { throw "ffmpeg.exe missing from payload" }
 
       - name: Bundle ffmpeg (macOS)
         if: startsWith(matrix.rid, 'osx-')
-        continue-on-error: true
         run: |
           set -euo pipefail
           # evermeet.cx ships universal2 builds that work on both arm64 and x64.
-          curl -sSL https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip -o ffmpeg.zip
+          curl -sSL https://evermeet.cx/ffmpeg/ffmpeg-8.1.2.zip -o ffmpeg.zip
+          echo "e91df72a1ee7c26606f90dd2dd4dcccc6a75140ff9ea6fdd50faae828b82ba69  ffmpeg.zip" | shasum -a 256 -c -
           unzip -q ffmpeg.zip -d ffmpeg-extract
           cp ffmpeg-extract/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
           chmod +x "publish/${{ matrix.rid }}/ffmpeg"
+          test -x "publish/${{ matrix.rid }}/ffmpeg"
 
       - name: Bundle ffmpeg (Linux x64)
         if: matrix.rid == 'linux-x64'
-        continue-on-error: true
         run: |
           set -euo pipefail
-          # johnvansickle.com went unreachable (connect timeout) during the
-          # v1.2.6 release, which would have silently shipped Linux x64
-          # without ffmpeg. Use BtbN's GitHub-hosted static build like
-          # linux-arm64 already does; the binary lives at ffmpeg-*/bin/ffmpeg
-          # inside the archive.
-          curl -sSL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz -o ffmpeg.tar.xz
+          # BtbN's GitHub-hosted static build, pinned to a dated autobuild tag
+          # (the "latest" tag is rewritten daily). johnvansickle.com was dropped
+          # after going unreachable during the v1.2.6 release.
+          curl -sSL https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-07-22-13-36/ffmpeg-N-125716-g1b1f602699-linux64-gpl.tar.xz -o ffmpeg.tar.xz
+          echo "99bef6849a0b5bc9a5588b4e3ad7c183e29d4d55f3e2d7e7a175419bd21eecab  ffmpeg.tar.xz" | sha256sum -c -
           tar -xf ffmpeg.tar.xz
           cp ffmpeg-*-linux64-gpl/bin/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
           chmod +x "publish/${{ matrix.rid }}/ffmpeg"
+          test -x "publish/${{ matrix.rid }}/ffmpeg"
 
       - name: Bundle ffmpeg (Linux arm64)
         if: matrix.rid == 'linux-arm64'
-        continue-on-error: true
         run: |
           set -euo pipefail
-          # johnvansickle.com has no reliable arm64 static host (it serves an HTML
-          # page, not the tarball — "tar: This does not look like a tar archive").
-          # Use BtbN's GitHub-hosted static arm64 build instead; the binary lives
-          # at ffmpeg-*/bin/ffmpeg inside the archive.
-          curl -sSL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linuxarm64-gpl.tar.xz -o ffmpeg.tar.xz
+          # Same pinned BtbN autobuild as linux-x64 (arm64 asset).
+          curl -sSL https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-07-22-13-36/ffmpeg-N-125716-g1b1f602699-linuxarm64-gpl.tar.xz -o ffmpeg.tar.xz
+          echo "9b9ce236268ce6bd82e074e1ccb46491115517cbf84b16623dab8aee9e5b45bb  ffmpeg.tar.xz" | sha256sum -c -
           tar -xf ffmpeg.tar.xz
           cp ffmpeg-*-linuxarm64-gpl/bin/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
           chmod +x "publish/${{ matrix.rid }}/ffmpeg"
+          test -e "publish/${{ matrix.rid }}/ffmpeg"
 
       # ── macOS: bundle as Noctis.app, wrap in a .dmg ─────────────────
       - name: Package macOS .app + .dmg
@@ -286,8 +288,10 @@ jobs:
           DESKTOP
           cp "$APPDIR/noctis.desktop" "$APPDIR/usr/share/applications/"
 
-          # Fetch appimagetool
-          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          # Fetch appimagetool — pinned release + SHA-256 (the "continuous" tag
+          # is rewritten on every upstream commit).
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage -O appimagetool
+          echo "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5  appimagetool" | sha256sum -c -
           chmod +x appimagetool
 
           mkdir -p packaged
