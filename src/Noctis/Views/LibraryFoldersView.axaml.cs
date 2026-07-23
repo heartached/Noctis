@@ -205,6 +205,14 @@ public partial class LibraryFoldersView : UserControl
     {
         CancelPendingScrollRestore();
 
+        // Unsubscribe the singleton VM's event so the discarded view isn't
+        // pinned alive (DataContextChanged never fires on presenter discard).
+        if (_subscribedVm != null)
+        {
+            _subscribedVm.ScrollToTrackRequested -= OnScrollToTrackRequested;
+            _subscribedVm = null;
+        }
+
         if (DataContext is LibraryFoldersViewModel vm)
         {
             var sv = TrackList.FindDescendantOfType<ScrollViewer>();
@@ -226,6 +234,14 @@ public partial class LibraryFoldersView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+
+        // Re-subscribe on re-attach (detach unsubscribed; DataContextChanged
+        // won't fire again when the DataContext is unchanged).
+        if (_subscribedVm == null && DataContext is LibraryFoldersViewModel subscribed)
+        {
+            _subscribedVm = subscribed;
+            _subscribedVm.ScrollToTrackRequested += OnScrollToTrackRequested;
+        }
 
         if (DataContext is LibraryFoldersViewModel vm && vm.SavedScrollOffset > 0)
         {

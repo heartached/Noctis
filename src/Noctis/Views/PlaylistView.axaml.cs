@@ -695,6 +695,16 @@ public partial class PlaylistView : UserControl
         CancelPendingScrollRestore();
         ResetPlaylistDragState();
 
+        // Unsubscribe VM events: DataContextChanged never fires for a view the
+        // presenter discards, so these would pin the view alive via a VM that
+        // navigation history retains.
+        if (_observedVm != null)
+        {
+            _observedVm.PropertyChanged -= OnVmPropertyChanged;
+            _observedVm.Tracks.CollectionChanged -= OnTracksCollectionChanged;
+            _observedVm = null;
+        }
+
         if (DataContext is PlaylistViewModel vm)
         {
             var sv = TrackList.FindDescendantOfType<ScrollViewer>();
@@ -727,6 +737,15 @@ public partial class PlaylistView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+
+        // Re-subscribe on re-attach (detach unsubscribed; DataContextChanged
+        // won't fire again when the DataContext is unchanged).
+        if (_observedVm == null && DataContext is PlaylistViewModel observed)
+        {
+            _observedVm = observed;
+            _observedVm.PropertyChanged += OnVmPropertyChanged;
+            _observedVm.Tracks.CollectionChanged += OnTracksCollectionChanged;
+        }
 
         if (DataContext is PlaylistViewModel vm && vm.SavedScrollOffset > 0)
         {

@@ -60,6 +60,7 @@ public sealed class MprisService : IDisposable
     {
         _player = player;
         _player.PropertyChanged += OnPlayerPropertyChanged;
+        _player.Seeked += OnPlayerSeeked;
         SnapshotState();
         _ = Task.Run(InitializeAsync);
     }
@@ -298,8 +299,10 @@ public sealed class MprisService : IDisposable
     {
         OnUiThread(() =>
         {
+            // TryShutdown (not Shutdown) so ShutdownRequested fires and the
+            // graceful-save handler (queue snapshot, history flush) runs.
             if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-                desktop.Shutdown();
+                desktop.TryShutdown();
         });
     }
 
@@ -308,8 +311,33 @@ public sealed class MprisService : IDisposable
         if (_disposed) return;
         _disposed = true;
         _player.PropertyChanged -= OnPlayerPropertyChanged;
+        _player.Seeked -= OnPlayerSeeked;
         try { _connection?.Dispose(); } catch { /* best effort on shutdown */ }
         _connection = null;
+    }
+
+    // MPRIS2 requires the Seeked signal on any discontinuous position change —
+    // without it GNOME/KDE widgets and playerctl keep counting from the pre-seek
+    // position until the next track change.
+    private void OnPlayerSeeked(object? sender, TimeSpan newPosition)
+    {
+        var conn = _connection;
+        if (conn == null || _disposed) return;
+        try
+        {
+            using var writer = conn.GetMessageWriter();
+            writer.WriteSignalHeader(
+                path: MprisPath,
+                @interface: IfacePlayer,
+                member: "Seeked",
+                signature: "x");
+            writer.WriteInt64(newPosition.Ticks / 10); // microseconds
+            conn.TrySendMessage(writer.CreateMessage());
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.Playback, "Mpris.Seeked", ex.Message);
+        }
     }
 
     /// <summary>

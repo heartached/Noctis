@@ -22,11 +22,20 @@ public static class PlatformHelper
         {
             if (IsWindows)
             {
+                // Explorer's /select syntax needs the quoted single-string form;
+                // Windows filenames can't contain quotes, so this can't split.
                 Process.Start("explorer.exe", $"/select,\"{filePath}\"");
             }
             else if (IsMacOS)
             {
-                Process.Start("open", $"-R \"{filePath}\"");
+                // ArgumentList, not a hand-quoted string: a filename containing
+                // a quote would otherwise split into extra arguments.
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "open",
+                    ArgumentList = { "-R", filePath },
+                    UseShellExecute = false
+                });
             }
             else if (IsLinux)
             {
@@ -84,6 +93,13 @@ public static class PlatformHelper
     /// </summary>
     public static void OpenUrl(string url)
     {
+        // ShellExecute launches whatever it is handed (file:, UNC, custom
+        // protocols, .exe paths) — restrict to real web URLs so a future caller
+        // can't be steered into launching something else.
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            return;
+
         try
         {
             Process.Start(new ProcessStartInfo
@@ -123,7 +139,13 @@ public static class PlatformHelper
             }
             else if (IsMacOS)
             {
-                Process.Start("open", $"\"{folderPath}\"");
+                // ArgumentList — see ShowInFileManager.
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "open",
+                    ArgumentList = { folderPath },
+                    UseShellExecute = false
+                });
             }
             else if (IsLinux)
             {

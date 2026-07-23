@@ -1273,6 +1273,8 @@ public class VlcAudioPlayer : IAudioPlayer
         ResetEndReachedPending();
         Interlocked.Exchange(ref _latestSeekMs, -1);
         _positionTimer.Stop();
+        DrainPositionTimerCallback();
+        DrainSeekWorker();
         ReleasePreparedNext();
         try { _player.Stop(); } catch { }
         var oldMedia = _currentMedia;
@@ -1284,8 +1286,12 @@ public class VlcAudioPlayer : IAudioPlayer
         _player.EncounteredError -= OnError;
         _standbyPlayer.EndReached -= OnEndReached;
         _standbyPlayer.EncounteredError -= OnError;
-        try { _player.Dispose(); } catch { }
-        try { _standbyPlayer.Dispose(); } catch { }
+        // Deferred disposal: UI property getters (State/Duration/Position) and any
+        // straggler VLC thread read _player without a lock, so freeing the handle
+        // here could still be a use-after-free. Swap the field first; reclaim the
+        // old instances once no reader can plausibly still hold them.
+        DisposePlayerDeferred(_player);
+        DisposePlayerDeferred(_standbyPlayer);
 
         _player = new MediaPlayer(_libVlc);
         _standbyPlayer = new MediaPlayer(_libVlc);
@@ -1607,15 +1613,13 @@ public class VlcAudioPlayer : IAudioPlayer
                 SetPlayerVolumeGuarded(_standbyPlayer, 0);
                 _standbyPlayer.Mute = _player.Mute;
 
-                Equalizer? equalizerToApply = null;
+                // Under the lock — see PlayInternal: a captured equalizer reference
+                // used outside the lock races the snapshot path's Dispose.
                 lock (_equalizerLock)
                 {
                     if (_advancedEqEnabled && _equalizer != null)
-                        equalizerToApply = _equalizer;
+                        _standbyPlayer.SetEqualizer(_equalizer);
                 }
-
-                if (equalizerToApply != null)
-                    _standbyPlayer.SetEqualizer(equalizerToApply);
 
                 DebugLogger.Info(
                     DebugLogger.Category.Playback,
@@ -1889,16 +1893,13 @@ public class VlcAudioPlayer : IAudioPlayer
             }
             _crossfadeEnabled = false;
 
-            Equalizer? equalizerToApply = null;
+            // SetEqualizer stays under the lock: the snapshot path can Dispose the
+            // shared equalizer concurrently, so a reference captured then used
+            // outside the lock could be freed mid-call (native use-after-free).
             lock (_equalizerLock)
             {
                 if (_advancedEqEnabled && _equalizer != null)
-                    equalizerToApply = _equalizer;
-            }
-
-            if (equalizerToApply != null)
-            {
-                _player.SetEqualizer(equalizerToApply);
+                    _player.SetEqualizer(_equalizer);
             }
 
             // 6. Apply pending seek (start time / saved position) now that media is playing
@@ -2225,16 +2226,15 @@ public class VlcAudioPlayer : IAudioPlayer
             // Unset is a no-op on the now-filterless player (AutoMix cleanup no
             // longer plants a flat equalizer) — kept as a safety net so a stale
             // curve can never survive a swap.
-            Equalizer? eqToApply = null;
+            // Under the lock — see PlayInternal: a captured equalizer reference
+            // used outside the lock races the snapshot path's Dispose.
             lock (_equalizerLock)
             {
                 if (_advancedEqEnabled && _equalizer != null)
-                    eqToApply = _equalizer;
+                    _player.SetEqualizer(_equalizer);
+                else
+                    _player.UnsetEqualizer();
             }
-            if (eqToApply != null)
-                _player.SetEqualizer(eqToApply);
-            else
-                _player.UnsetEqualizer();
 
             _positionTimer.Start();
             DebugLogger.Info(DebugLogger.Category.Playback, "Crossfade.SeqSwap", $"session={sessionId}, warmupMs={warmupMs}");
@@ -2371,18 +2371,17 @@ public class VlcAudioPlayer : IAudioPlayer
             _isPaused = false;
             ResetEndReachedPending();
 
-            Equalizer? eqToApply = null;
+            // Engaged: value-only sync (standby was prepped with this equalizer).
+            // Flat: no-op safety Unset on a filterless player; see the SeqSwap note.
+            // Under the lock — a captured reference used outside it races the
+            // snapshot path's Dispose (native use-after-free).
             lock (_equalizerLock)
             {
                 if (_advancedEqEnabled && _equalizer != null)
-                    eqToApply = _equalizer;
+                    _player.SetEqualizer(_equalizer);
+                else
+                    _player.UnsetEqualizer();
             }
-            // Engaged: value-only sync (standby was prepped with this equalizer).
-            // Flat: no-op safety Unset on a filterless player; see the SeqSwap note.
-            if (eqToApply != null)
-                _player.SetEqualizer(eqToApply);
-            else
-                _player.UnsetEqualizer();
 
             _positionTimer.Start();
             DebugLogger.Info(DebugLogger.Category.Playback, "Crossfade.OverlapSwap", $"session={sessionId}");
@@ -2944,6 +2943,14 @@ public class VlcAudioPlayer : IAudioPlayer
         PlaybackError?.Invoke(this, "VLC encountered a playback error.");
     }
 
+    // 1 while a position-timer callback is inside the body. Timer.Stop() does NOT
+    // wait for an in-flight Elapsed callback, so RebuildOutputModeLocked/Dispose
+    // spin on this after stopping the timer — otherwise the old player can be
+    // disposed while a late callback is still inside a native _player call
+    // (use-after-free the CLR can't catch).
+    private int _positionTickActive;
+    private long _lastPositionTickUtcTicks;
+
     private void OnPositionTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
     {
         if (_disposed) return;
@@ -2951,6 +2958,23 @@ public class VlcAudioPlayer : IAudioPlayer
         // The timer runs only while audio is playing — it doubles as the
         // keep-alive's "still in use" heartbeat (cheap: one volatile write).
         _keepAlive?.NotifyActivity();
+
+        if (Interlocked.CompareExchange(ref _positionTickActive, 1, 0) != 0) return;
+
+        // Rare-dropout diagnostic (2026-07-23 fingerprint: VLC "PCR too late" +
+        // "buffer too late" with the 1000ms cushion exhausted): a tick-to-tick
+        // gap far past the 100ms cadence means THIS process/system stalled too.
+        // Next occurrence: gap line + VLC lines = system-wide freeze; VLC lines
+        // alone = native input (disk) stall. Gaps right after a pause/seek are
+        // expected — ignore those when reading the log. One line per event.
+        var tickNowTicks = DateTime.UtcNow.Ticks;
+        var tickPrevTicks = Interlocked.Exchange(ref _lastPositionTickUtcTicks, tickNowTicks);
+        if (tickPrevTicks != 0 && !_isPaused && _currentMedia != null)
+        {
+            var gapMs = (tickNowTicks - tickPrevTicks) / TimeSpan.TicksPerMillisecond;
+            if (gapMs is > 750 and < 10_000)
+                DebugLogger.Info(DebugLogger.Category.Playback, "PositionTimer.Stall", $"gapMs={gapMs}");
+        }
 
         try
         {
@@ -3010,6 +3034,39 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             // Player may have been disposed between check and read — safe to ignore
         }
+        finally
+        {
+            Volatile.Write(ref _positionTickActive, 0);
+        }
+    }
+
+    // Bounded spin-waits used before disposing a player: drain a late in-flight
+    // position-timer callback / seek-worker iteration so neither is still inside
+    // a native _player call when the handle is freed. Bounded so a wedged native
+    // call can't hang rebuild/shutdown.
+    private void DrainPositionTimerCallback(int maxMs = 500)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (Volatile.Read(ref _positionTickActive) != 0 && sw.ElapsedMilliseconds < maxMs)
+            Thread.Sleep(1);
+    }
+
+    private void DrainSeekWorker(int maxMs = 1000)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (Volatile.Read(ref _seekWorkerActive) != 0 && sw.ElapsedMilliseconds < maxMs)
+            Thread.Sleep(1);
+    }
+
+    // RCU-style reclamation for a swapped-out MediaPlayer: readers hold the old
+    // reference for microseconds, so a generous delay makes the free safe without
+    // locking every _player read. Used by RebuildOutputModeLocked (not shutdown —
+    // Dispose() reclaims immediately after draining, when no UI reader remains).
+    private static void DisposePlayerDeferred(MediaPlayer player)
+    {
+        _ = Task.Delay(TimeSpan.FromSeconds(5)).ContinueWith(
+            _ => { try { player.Dispose(); } catch { } },
+            TaskScheduler.Default);
     }
 
     private void EnsureSeekWorker()
@@ -3202,6 +3259,11 @@ public class VlcAudioPlayer : IAudioPlayer
         Interlocked.Exchange(ref _latestSeekMs, -1);
         _positionTimer.Stop();
         _positionTimer.Dispose();
+        // Timer.Stop/Dispose don't wait for an in-flight callback; drain it (and
+        // the seek worker) so the _player.Dispose() below can't free a handle a
+        // late callback is still using.
+        DrainPositionTimerCallback();
+        DrainSeekWorker();
 
         _player.EndReached -= OnEndReached;
         _player.EncounteredError -= OnError;

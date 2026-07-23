@@ -1271,9 +1271,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     public void SearchLyricsForTrack(Track track)
     {
-        Dispatcher.UIThread.Post(() =>
+        Dispatcher.UIThread.Post(async () =>
         {
             LoadLyricsForTrack(track);
+
+            // The local-lyric probe is async; ShowSearchButton only becomes
+            // true once it completes and finds nothing. Checking it synchronously
+            // here made the auto-search below dead code — await the probe first.
+            var generation = _searchGeneration;
+            try { await _localProbeTask; }
+            catch { /* probe failures already surface via the load path */ }
+            if (generation != _searchGeneration) return; // another track took over
 
             // If no local lyrics were found, trigger online search automatically
             if (ShowSearchButton)
@@ -1592,8 +1600,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         _lyricsSyncTimer.Interval = TimeSpan.FromMilliseconds(LineSyncIntervalMs);
 
         // Fire-and-forget: all file I/O runs off the UI thread, result is posted back.
-        _ = LoadLocalLyricsAsync(track, generation);
+        // The task is kept so SearchLyricsForTrack can await the probe's outcome.
+        _localProbeTask = LoadLocalLyricsAsync(track, generation);
     }
+
+    // Completes only after the probe result has been APPLIED on the UI thread —
+    // not merely posted — so ShowSearchButton is trustworthy after awaiting it.
+    private Task _localProbeTask = Task.CompletedTask;
 
     /// <summary>
     /// Probes local lyric sources in priority order off the UI thread, applying the result
@@ -1608,11 +1621,20 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         if (generation != _searchGeneration) return;
 
+        var applied = new TaskCompletionSource();
         Dispatcher.UIThread.Post(() =>
         {
-            if (generation != _searchGeneration) return;
-            ApplyLocalLyricsResult(track, probe);
+            try
+            {
+                if (generation == _searchGeneration)
+                    ApplyLocalLyricsResult(track, probe);
+            }
+            finally
+            {
+                applied.SetResult();
+            }
         });
+        await applied.Task;
     }
 
     private readonly record struct LocalLyricsProbe(

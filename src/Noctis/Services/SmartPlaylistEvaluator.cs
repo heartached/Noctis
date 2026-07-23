@@ -178,12 +178,30 @@ public static class SmartPlaylistEvaluator
     {
         return rule.Operator switch
         {
-            RuleOperator.Before => DateTime.TryParse(rule.Value, out var before) && fieldValue < before,
-            RuleOperator.After => DateTime.TryParse(rule.Value, out var after) && fieldValue > after,
+            RuleOperator.Before => TryParseRuleDate(rule.Value, out var before) && fieldValue < before,
+            RuleOperator.After => TryParseRuleDate(rule.Value, out var after) && fieldValue > after,
             RuleOperator.InLastNDays => int.TryParse(rule.Value, out var days)
                                         && fieldValue >= DateTime.UtcNow.AddDays(-days),
             _ => false
         };
+    }
+
+    // Invariant-first (ISO "2026-07-23" means the same thing on every locale),
+    // current-culture fallback so locally-typed formats keep working. The rule
+    // date is a local calendar day; DateAdded/LastPlayed are UTC, so convert —
+    // the old local-vs-UTC tick comparison was off by the timezone offset.
+    private static bool TryParseRuleDate(string? value, out DateTime utc)
+    {
+        if (DateTime.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeLocal, out var parsed) ||
+            DateTime.TryParse(value, System.Globalization.CultureInfo.CurrentCulture,
+                System.Globalization.DateTimeStyles.AssumeLocal, out parsed))
+        {
+            utc = parsed.ToUniversalTime();
+            return true;
+        }
+        utc = default;
+        return false;
     }
 
     private static bool EvaluateBoolean(bool fieldValue, SmartPlaylistRule rule)

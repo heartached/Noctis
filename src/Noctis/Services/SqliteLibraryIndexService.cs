@@ -145,12 +145,15 @@ public sealed class SqliteLibraryIndexService : ISqliteLibraryIndexService
         {
             ct.ThrowIfCancellationRequested();
             pId.Value = track.Id.ToString("N");
-            pFilePath.Value = track.FilePath;
-            pTitle.Value = track.Title;
-            pArtist.Value = track.Artist;
-            pAlbum.Value = track.Album;
-            pAlbumArtist.Value = track.AlbumArtist;
-            pGenre.Value = track.Genre;
+            // Coalesce every NOT NULL text column (matching the source-id fields
+            // below): one null — e.g. from a hand-edited/corrupt library.json —
+            // otherwise throws and rolls back the whole batch transaction.
+            pFilePath.Value = track.FilePath ?? string.Empty;
+            pTitle.Value = track.Title ?? string.Empty;
+            pArtist.Value = track.Artist ?? string.Empty;
+            pAlbum.Value = track.Album ?? string.Empty;
+            pAlbumArtist.Value = track.AlbumArtist ?? string.Empty;
+            pGenre.Value = track.Genre ?? string.Empty;
             pYear.Value = track.Year;
             pDuration.Value = (long)track.Duration.TotalMilliseconds;
             pFileSize.Value = track.FileSize;

@@ -66,21 +66,55 @@ public static class SingleInstanceGuard
 
     private static async Task ListenForActivationAsync()
     {
+        var consecutiveFailures = 0;
         while (true)
         {
             try
             {
-                using var server = new NamedPipeServerStream(
-                    PipeName, PipeDirection.In, maxNumberOfServerInstances: 1,
-                    PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                using var server = CreateActivationServer();
                 await server.WaitForConnectionAsync().ConfigureAwait(false);
+                consecutiveFailures = 0;
                 ActivationRequested?.Invoke();
             }
             catch
             {
-                // Pipe hiccup — brief pause so a persistent failure can't spin the CPU.
+                // Persistent failure (e.g. another process squatting the pipe
+                // name) — retrying forever just burns a thread. Give up after a
+                // few attempts: the mutex still prevents duplicate instances,
+                // only surface-window-on-second-launch degrades.
+                if (++consecutiveFailures >= 5)
+                {
+                    Services.DebugLogger.Error(Services.DebugLogger.Category.Error,
+                        "SingleInstance.PipeGaveUp",
+                        "activation pipe unavailable after 5 attempts; second launches won't surface the window");
+                    return;
+                }
                 await Task.Delay(1000).ConfigureAwait(false);
             }
         }
+    }
+
+    private static NamedPipeServerStream CreateActivationServer()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            // Lock the pipe to the current user. Its name lives in the
+            // machine-global pipe namespace, so the default ACL would let any
+            // local process connect (spam activations) or squat the name.
+            var security = new PipeSecurity();
+            using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+            security.AddAccessRule(new PipeAccessRule(
+                identity.User!,
+                PipeAccessRights.FullControl,
+                System.Security.AccessControl.AccessControlType.Allow));
+            return NamedPipeServerStreamAcl.Create(
+                PipeName, PipeDirection.In, maxNumberOfServerInstances: 1,
+                PipeTransmissionMode.Byte, PipeOptions.Asynchronous,
+                inBufferSize: 0, outBufferSize: 0, security);
+        }
+
+        return new NamedPipeServerStream(
+            PipeName, PipeDirection.In, maxNumberOfServerInstances: 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
     }
 }

@@ -1542,12 +1542,18 @@ public class LibraryService : ILibraryService
         HashSet<string> ignoredNames)
     {
         var stack = new Stack<string>();
+        // Cycle guard keyed on the RESOLVED path: a junction/symlink pointing at
+        // an ancestor re-enters the tree under an ever-growing logical path, so
+        // the walked path alone never repeats and the DFS loops forever.
+        var visited = new HashSet<string>(
+            OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
         stack.Push(root);
 
         while (stack.Count > 0)
         {
             var current = stack.Pop();
             if (IsUnderAnyRoot(current, excludedRoots)) continue;
+            if (!visited.Add(ResolveRealPath(current))) continue;
 
             IEnumerable<string> directories;
             IEnumerable<string> files;
@@ -1575,6 +1581,24 @@ public class LibraryService : ILibraryService
                 if (MetadataService.SupportedExtensions.Contains(ext))
                     yield return file;
             }
+        }
+    }
+
+    // Symlinked/junctioned directories are followed (symlinked music libraries are
+    // legitimate); resolving to the final target is what makes the visited-set
+    // above detect a loop regardless of the logical path it was reached through.
+    private static string ResolveRealPath(string dir)
+    {
+        try
+        {
+            var info = new DirectoryInfo(dir);
+            if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
+                return info.ResolveLinkTarget(returnFinalTarget: true)?.FullName ?? info.FullName;
+            return info.FullName;
+        }
+        catch
+        {
+            return dir;
         }
     }
 

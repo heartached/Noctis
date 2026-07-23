@@ -860,6 +860,10 @@ public partial class SettingsViewModel : ViewModelBase
             if (_discord != null && DiscordRichPresenceEnabled)
             {
                 _ = _discord.ConnectAsync();
+                // Loon exists solely to serve Discord cover art — it follows the
+                // presence lifecycle instead of connecting unconditionally at
+                // startup (an always-on remote channel nobody may be using).
+                _ = ConnectLoonAsync();
             }
 
             // Ensure player gets the persisted startup settings even if no toggle changed.
@@ -1784,6 +1788,8 @@ public partial class SettingsViewModel : ViewModelBase
             }
             else
             {
+                // Loon first so the artwork URL resolves for the republish below.
+                await ConnectLoonAsync();
                 // Republish current playback state so the track appears immediately.
                 await RepublishDiscordPresenceAsync();
             }
@@ -1792,9 +1798,45 @@ public partial class SettingsViewModel : ViewModelBase
         {
             await _discord!.ClearAsync();
             await _discord.DisconnectAsync();
+            await DisconnectLoonAsync();
         }
 
         await SaveAsync();
+    }
+
+    // Loon rides the Discord presence lifecycle (see the startup connect note).
+    private async Task ConnectLoonAsync()
+    {
+        if (_loon == null || _loon.IsConnected) return;
+        var url = _settings.LoonServerUrl;
+        if (string.IsNullOrWhiteSpace(url))
+            url = "https://noctis-loon.duckdns.org";
+        // Upgrade a persisted plaintext default from before TLS was enabled on
+        // the relay (the server now serves wss:// via Caddy). Custom user-set
+        // hosts are left untouched.
+        else if (url.Equals("http://noctis-loon.duckdns.org", StringComparison.OrdinalIgnoreCase))
+            url = "https://noctis-loon.duckdns.org";
+        try
+        {
+            await _loon.ConnectAsync(url);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Loon] Connection failed: {ex.Message}");
+        }
+    }
+
+    private async Task DisconnectLoonAsync()
+    {
+        if (_loon == null) return;
+        try
+        {
+            await _loon.DisconnectAsync();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Loon] Disconnect failed: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -2785,11 +2827,12 @@ public partial class SettingsViewModel : ViewModelBase
             ListenBrainzStatusText = "Not connected";
             _listenBrainz?.Logout();
 
-            // Disconnect Discord if connected
+            // Disconnect Discord if connected (Loon rides its lifecycle)
             if (_discord != null)
             {
                 _ = _discord.DisconnectAsync();
             }
+            _ = DisconnectLoonAsync();
 
             // Apply audio settings
             ApplyAudioSettings();
@@ -2984,7 +3027,7 @@ public partial class SettingsViewModel : ViewModelBase
                 }));
 
             _downloadedInstallerPath = await _updateService.DownloadInstallerAsync(
-                update, progress, _updateCts.Token);
+                update, progress, _updateCts.Token, requireChecksums: true);
 
             UpdateStatusText = "Update ready to install.";
             IsReadyToInstall = true;
@@ -3024,11 +3067,14 @@ public partial class SettingsViewModel : ViewModelBase
 
         if (_updateService.LaunchInstaller(_downloadedInstallerPath))
         {
-            // Shut down the app so Inno Setup can replace files
+            // Shut down the app so Inno Setup can replace files.
+            // TryShutdown (not Shutdown) so ShutdownRequested fires and the
+            // graceful-save handler runs — Shutdown() skips it and loses the
+            // queue snapshot / history flush / final scrobble on every update.
             if (Avalonia.Application.Current?.ApplicationLifetime
                 is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.Shutdown(0);
+                desktop.TryShutdown(0);
             }
         }
         else
@@ -3208,10 +3254,11 @@ public partial class SettingsViewModel : ViewModelBase
             DevStatusText = $"Installing {item.TagName}...";
             if (_updateService.LaunchInstaller(installerPath))
             {
+                // TryShutdown so the ShutdownRequested save handler runs (see InstallUpdate).
                 if (Avalonia.Application.Current?.ApplicationLifetime
                     is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
                 {
-                    desktop.Shutdown(0);
+                    desktop.TryShutdown(0);
                 }
             }
             else

@@ -237,10 +237,21 @@ public sealed class NavidromeMediaSourceConnector : IMediaSourceConnector
     {
         if (string.IsNullOrWhiteSpace(connection.BaseUriOrPath)) return null;
         var baseUri = connection.BaseUriOrPath.TrimEnd('/');
+
+        // Subsonic salted-token auth (API 1.13+, Navidrome-supported): the raw
+        // password never travels in the URL. The legacy p= form put it on the
+        // wire (cleartext on http servers) and into server/proxy access logs.
+        var salt = Guid.NewGuid().ToString("N")[..12];
+        var token = Convert.ToHexString(
+                System.Security.Cryptography.MD5.HashData(
+                    System.Text.Encoding.UTF8.GetBytes(connection.TokenOrPassword + salt)))
+            .ToLowerInvariant();
+
         var query = new List<string>
         {
             $"u={Uri.EscapeDataString(connection.Username)}",
-            $"p={Uri.EscapeDataString(connection.TokenOrPassword)}",
+            $"t={token}",
+            $"s={salt}",
             "v=1.16.1",
             "c=Noctis",
             "f=json"

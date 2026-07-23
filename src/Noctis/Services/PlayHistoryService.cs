@@ -115,6 +115,11 @@ public sealed class PlayHistoryService : IPlayHistoryService
         _saveDebounce = new Timer(_ => Save(), null, SaveDebounceMs, Timeout.Infinite);
     }
 
+    // Serializes concurrent Save() calls (debounce timer vs FlushAsync — Dispose
+    // doesn't stop an already-running callback), which otherwise race on the
+    // shared ".tmp" opened exclusively and drop one write.
+    private readonly object _saveGate = new();
+
     private void Save()
     {
         try
@@ -126,10 +131,13 @@ public sealed class PlayHistoryService : IPlayHistoryService
                 snapshot = _events.ToArray();
             }
 
-            Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
-            var tmp = _filePath + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(snapshot));
-            File.Move(tmp, _filePath, overwrite: true);
+            lock (_saveGate)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
+                var tmp = _filePath + ".tmp";
+                File.WriteAllText(tmp, JsonSerializer.Serialize(snapshot));
+                File.Move(tmp, _filePath, overwrite: true);
+            }
         }
         catch (Exception ex)
         {

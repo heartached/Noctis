@@ -64,7 +64,7 @@ public sealed class PlaylistInteropService : IPlaylistInteropService
             var line = raw.Trim();
             if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#')) continue;
 
-            var candidate = line;
+            var candidate = DecodeM3uEntry(line);
             if (!Path.IsPathRooted(candidate))
                 candidate = Path.GetFullPath(Path.Combine(playlistDir, candidate));
 
@@ -73,6 +73,38 @@ public sealed class PlaylistInteropService : IPlaylistInteropService
         }
 
         return resolved;
+    }
+
+    // M3U8s written by VLC/foobar/web tools carry file:// URIs and/or
+    // percent-encoding ("%20"); matching them raw against library paths
+    // produced zero hits. Decode both forms; plain paths pass through.
+    private static string DecodeM3uEntry(string line)
+    {
+        if (line.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                return new Uri(line).LocalPath;
+            }
+            catch (UriFormatException)
+            {
+                // Fall through and treat it as a literal path.
+            }
+        }
+
+        if (line.Contains('%'))
+        {
+            try
+            {
+                return Uri.UnescapeDataString(line);
+            }
+            catch (UriFormatException)
+            {
+                // Literal % in a real filename — keep as-is.
+            }
+        }
+
+        return line;
     }
 
     private static string NormalizePath(string value) =>

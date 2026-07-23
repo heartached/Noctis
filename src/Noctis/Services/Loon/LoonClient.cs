@@ -117,6 +117,14 @@ public sealed class LoonClient : IDisposable
         _connected = false;
 
         var wsUri = new Uri(_serverUrl!.Replace("https://", "wss://").Replace("http://", "ws://").TrimEnd('/') + "/ws");
+
+        // Refuse a cleartext ws:// downgrade to a non-local host: the handshake
+        // carries the HMAC ConnectionSecret, so a plaintext link (tampered
+        // setting or MITM) would leak it. Loopback stays allowed for dev relays.
+        if (wsUri.Scheme == "ws" && !wsUri.IsLoopback)
+            throw new InvalidOperationException(
+                $"Refusing insecure ws:// connection to non-local host '{wsUri.Host}'. Use wss://.");
+
         await _ws.ConnectAsync(wsUri, ct);
 
         // Wait for Hello message
@@ -317,6 +325,10 @@ public sealed class LoonClient : IDisposable
 
     // ── WebSocket I/O ──
 
+    // Inbound messages are tiny control frames; the cap stops a hostile/hijacked
+    // relay from streaming an unbounded message into memory.
+    private const int MaxInboundMessageBytes = 4 * 1024 * 1024;
+
     private async Task<byte[]?> ReceiveMessageAsync(CancellationToken ct)
     {
         var buffer = new byte[1024 * 64];
@@ -338,6 +350,7 @@ public sealed class LoonClient : IDisposable
 
             if (result.MessageType == WebSocketMessageType.Close) return null;
 
+            if (ms.Length + result.Count > MaxInboundMessageBytes) return null;
             ms.Write(buffer, 0, result.Count);
             if (result.EndOfMessage) return ms.ToArray();
         }

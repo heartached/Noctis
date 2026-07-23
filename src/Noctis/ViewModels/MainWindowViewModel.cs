@@ -214,7 +214,12 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetLastFm(lastFm);
         Settings.SetListenBrainz(listenBrainz);
         Settings.SetUpdateService(App.Services!.GetRequiredService<UpdateService>());
-        Settings.SettingsReset += async (_, _) => await Sidebar.LoadPlaylistsAsync();
+        Settings.SettingsReset += async (_, _) =>
+        {
+            // Guarded: an unhandled throw from an async-void handler crashes the app.
+            try { await Sidebar.LoadPlaylistsAsync(); }
+            catch (Exception ex) { DebugLogger.Error(DebugLogger.Category.Error, "SettingsReset.ReloadPlaylists", ex.Message); }
+        };
 
         // Mirror the "update available" state onto the Settings sidebar item so a
         // dot nudges the user without them opening Settings. The silent update
@@ -460,21 +465,9 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         });
 
-        // Connect loon client for Discord cover art
-        var loonUrl = Settings.GetSettings().LoonServerUrl;
-        if (string.IsNullOrWhiteSpace(loonUrl))
-            loonUrl = "http://noctis-loon.duckdns.org";
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _loon.ConnectAsync(loonUrl);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Loon] Connection failed: {ex.Message}");
-            }
-        });
+        // Loon (Discord cover-art relay) is no longer connected unconditionally
+        // here — SettingsViewModel connects/disconnects it with the Discord
+        // presence toggle, so the remote channel only exists while it's needed.
 
         // Navigate to the user's preferred default page
         var defaultKey = Settings.GetDefaultPageKey();
@@ -1332,6 +1325,7 @@ public partial class MainWindowViewModel : ViewModelBase
                || ReferenceEquals(view, _songsVm)
                || ReferenceEquals(view, _albumsVm)
                || ReferenceEquals(view, _artistsVm)
+               || ReferenceEquals(view, _foldersVm)
                || ReferenceEquals(view, _playlistsVm)
                || ReferenceEquals(view, _favoritesVm)
 

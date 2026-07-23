@@ -10,7 +10,9 @@ namespace Noctis.Controls;
 /// </summary>
 internal static class SharedLibVlc
 {
-    private static LibVLC? _instance;
+    // volatile: the lock-free fast path below needs acquire semantics so a
+    // half-constructed LibVLC is never observed on weakly-ordered CPUs (ARM).
+    private static volatile LibVLC? _instance;
     private static readonly object _lock = new();
 
     public static LibVLC Instance

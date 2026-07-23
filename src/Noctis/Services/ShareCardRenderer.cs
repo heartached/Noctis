@@ -500,7 +500,10 @@ public static class ShareCardRenderer
         for (int frame = 0; frame < total; frame++)
         {
             ct.ThrowIfCancellationRequested();
-            double t = timing.StartSeconds + (double)frame / fps;
+            // Same 80 ms word lookahead as the live preview and the lyrics page
+            // (PreviewWordLookaheadSeconds) — without it the exported sweep
+            // trails the vocal by a frame-visible margin.
+            double t = timing.StartSeconds + (double)frame / fps + 0.08;
 
             canvas.DrawImage(baseImage, 0, 0);
             DrawKaraokeRows(canvas, chrome, karaoke, rowRanges, brightPaint, dimPaint, t);

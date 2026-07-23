@@ -37,7 +37,17 @@ public sealed class MetadataFinderService : IMetadataFinderService
             {
                 var hits = await _deezer.SearchAsync(track.PrimaryArtist, track.Title, track.Album, ct)
                     .ConfigureAwait(false);
-                if (hits.Count > 0) return hits;
+                // Deezer's API gives no relevance score — compute a real confidence
+                // against the track's current tags so callers can rank and gate on
+                // it (raw API order auto-applied wrong-track tags at "0%").
+                if (hits.Count > 0)
+                    return hits
+                        .Select(h => h with
+                        {
+                            Confidence = FuzzyTrackMatcher.TagSimilarity(track.Title, track.PrimaryArtist, h.Title, h.Artist)
+                        })
+                        .OrderByDescending(h => h.Confidence)
+                        .ToList();
             }
             catch (OperationCanceledException) { throw; }
             catch { /* fall through to MusicBrainz */ }
