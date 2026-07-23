@@ -96,6 +96,12 @@ public sealed class WebRemoteServer : IDisposable
             || (b[0] == 169 && b[1] == 254);
     }
 
+    // Bounds simultaneous request handlers so a LAN host can't exhaust
+    // threads/sockets by holding connections open; excess connections are
+    // dropped immediately. A phone remote uses 1-2 at a time.
+    private const int MaxConcurrentClients = 16;
+    private readonly SemaphoreSlim _clientSlots = new(MaxConcurrentClients, MaxConcurrentClients);
+
     private async Task AcceptLoopAsync(TcpListener listener, CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
@@ -114,7 +120,14 @@ public sealed class WebRemoteServer : IDisposable
                 DebugLogger.Error(DebugLogger.Category.Error, "WebRemote.Accept", ex.Message);
                 continue;
             }
-            _ = HandleClientAsync(client, ct);
+
+            if (!_clientSlots.Wait(0))
+            {
+                client.Dispose();
+                continue;
+            }
+            _ = HandleClientAsync(client, ct)
+                .ContinueWith(_ => _clientSlots.Release(), TaskScheduler.Default);
         }
     }
 

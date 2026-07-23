@@ -385,14 +385,16 @@ public sealed class UpdateService
         UpdateInfo update,
         IProgress<double>? progress = null,
         CancellationToken ct = default,
-        string? destinationPath = null)
+        string? destinationPath = null,
+        bool requireChecksums = false)
     {
         if (update.InstallerApiUrl is null)
             throw new InvalidOperationException("In-app updates require the GitHub release asset API URL.");
 
         return DownloadInstallerAsync(
             update.InstallerApiUrl, update.InstallerSize,
-            update.ChecksumsApiUrl, update.InstallerAssetName, progress, ct, destinationPath);
+            update.ChecksumsApiUrl, update.InstallerAssetName, progress, ct,
+            requireChecksums, destinationPath);
     }
 
     private async Task<string> DownloadInstallerAsync(
@@ -400,6 +402,7 @@ public sealed class UpdateService
         string? checksumsUrl, string? assetName,
         IProgress<double>? progress,
         CancellationToken ct,
+        bool requireChecksums,
         string? destinationPath = null)
     {
         // The installer is launched with elevation, so only ever pull it from GitHub over
@@ -407,10 +410,21 @@ public sealed class UpdateService
         if (!IsTrustedGitHubUrl(url))
             throw new InvalidOperationException("Refusing to download an update from an untrusted (non-GitHub) URL.");
 
+        // Normal updates fail closed without a SHA256SUMS manifest (every release
+        // ships one per the release process) — otherwise integrity silently
+        // degrades to a size-only check. The dev Version Manager opts out so
+        // pre-manifest releases stay installable.
+        if (requireChecksums && string.IsNullOrEmpty(checksumsUrl))
+            throw new InvalidOperationException(
+                "This release has no SHA256SUMS manifest — refusing to install an unverifiable update.");
+
+        // Random per-run filename: a fixed predictable path invited a same-user
+        // verify-then-launch swap (TOCTOU) on the elevated installer.
+        var runTag = Guid.NewGuid().ToString("N")[..8];
         var tempPath = destinationPath ?? Path.Combine(Path.GetTempPath(),
-            OperatingSystem.IsMacOS() ? "Noctis-Update.dmg"
-            : OperatingSystem.IsLinux() ? "Noctis-Update.AppImage"
-            : "Noctis-Update-Setup.exe");
+            OperatingSystem.IsMacOS() ? $"Noctis-Update-{runTag}.dmg"
+            : OperatingSystem.IsLinux() ? $"Noctis-Update-{runTag}.AppImage"
+            : $"Noctis-Update-{runTag}-Setup.exe");
 
         try
         {
