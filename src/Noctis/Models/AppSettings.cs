@@ -209,7 +209,7 @@ public class AppSettings
     public bool DiscordRichPresenceEnabled { get; set; }
 
     /// <summary>Loon server URL for Discord cover art (e.g. "wss://loon.example.com").</summary>
-    public string LoonServerUrl { get; set; } = "http://noctis-loon.duckdns.org";
+    public string LoonServerUrl { get; set; } = "https://noctis-loon.duckdns.org";
 
     /// <summary>Whether Last.fm scrobbling is enabled.</summary>
     public bool LastFmScrobblingEnabled { get; set; } = true;
