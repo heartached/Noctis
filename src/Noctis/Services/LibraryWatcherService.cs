@@ -147,7 +147,16 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
         List<string> files;
         try
         {
-            files = Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)
+            // MaxRecursionDepth bounds a junction/symlink cycle (which recurses
+            // forever under SearchOption.AllDirectories). AttributesToSkip=None
+            // keeps the previous include-hidden behavior.
+            files = Directory.EnumerateFiles(dir, "*", new EnumerationOptions
+                {
+                    RecurseSubdirectories = true,
+                    MaxRecursionDepth = 64,
+                    IgnoreInaccessible = true,
+                    AttributesToSkip = FileAttributes.None
+                })
                 .Where(IsAudio)
                 .ToList();
         }

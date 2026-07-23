@@ -23,15 +23,25 @@ public sealed class OfflineCacheService : IOfflineCacheService
         LoadIndex();
     }
 
-    public Task<string?> ResolvePlaybackPathAsync(Track track, CancellationToken ct = default)
+    public async Task<string?> ResolvePlaybackPathAsync(Track track, CancellationToken ct = default)
     {
-        if (_index.TryGetValue(track.Id, out var entry) && File.Exists(entry.Path))
-            return Task.FromResult<string?>(entry.Path);
+        // Under the gate: PinAsync mutates _index concurrently, and a Dictionary
+        // read during a resizing add is a torn read on the playback hot path.
+        await _gate.WaitAsync(ct);
+        try
+        {
+            if (_index.TryGetValue(track.Id, out var entry) && File.Exists(entry.Path))
+                return entry.Path;
+        }
+        finally
+        {
+            _gate.Release();
+        }
 
         if (track.SourceType == SourceType.Local && File.Exists(track.FilePath))
-            return Task.FromResult<string?>(track.FilePath);
+            return track.FilePath;
 
-        return Task.FromResult<string?>(null);
+        return null;
     }
 
     public async Task PinAsync(Track track, Stream sourceStream, CancellationToken ct = default)
@@ -44,9 +54,16 @@ public sealed class OfflineCacheService : IOfflineCacheService
         await _gate.WaitAsync(ct);
         try
         {
-            await using var fs = File.Create(path);
-            sourceStream.Position = 0;
-            await sourceStream.CopyToAsync(fs, ct);
+            // Copy to a temp file and move into place: File.Create on the final
+            // path truncated an existing good cache file up front, so a failed or
+            // cancelled copy left the index pointing at a zero-byte/corrupt file.
+            var tmp = path + ".tmp";
+            await using (var fs = File.Create(tmp))
+            {
+                sourceStream.Position = 0;
+                await sourceStream.CopyToAsync(fs, ct);
+            }
+            File.Move(tmp, path, overwrite: true);
             _index[track.Id] = new CacheEntry { Path = path, Pinned = true, UpdatedUtc = DateTime.UtcNow };
             await SaveIndexAsync(ct);
         }

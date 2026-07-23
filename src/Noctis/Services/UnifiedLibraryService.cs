@@ -11,7 +11,11 @@ public sealed class UnifiedLibraryService : IUnifiedLibraryService
     private readonly IPersistenceService _persistence;
     private readonly IReadOnlyList<IMediaSourceConnector> _connectors;
     private readonly IAuditTrailService _auditTrail;
-    private readonly Dictionary<Guid, List<Track>> _remoteCache = new();
+    // Volatile reference swapped wholesale by RefreshRemoteSourcesAsync: readers
+    // enumerate a snapshot, so a UI fetch never races an in-place Clear/insert
+    // (Dictionary is unsafe for concurrent read + structural write), and remote
+    // tracks don't transiently vanish for the duration of a network refresh.
+    private volatile Dictionary<Guid, List<Track>> _remoteCache = new();
 
     public UnifiedLibraryService(
         ILibraryService localLibrary,
@@ -27,9 +31,10 @@ public sealed class UnifiedLibraryService : IUnifiedLibraryService
 
     public Task<IReadOnlyList<Track>> GetUnifiedTracksAsync(CancellationToken ct = default)
     {
-        var all = new List<Track>(_localLibrary.Tracks.Count + _remoteCache.Values.Sum(v => v.Count));
+        var remote = _remoteCache;
+        var all = new List<Track>(_localLibrary.Tracks.Count + remote.Values.Sum(v => v.Count));
         all.AddRange(_localLibrary.Tracks);
-        foreach (var tracks in _remoteCache.Values)
+        foreach (var tracks in remote.Values)
             all.AddRange(tracks);
 
         // Stable deterministic ordering for unified views.
@@ -48,7 +53,7 @@ public sealed class UnifiedLibraryService : IUnifiedLibraryService
         var settings = await _persistence.LoadSettingsAsync();
         var enabled = settings.SourceConnections.Where(c => c.Enabled).ToList();
 
-        _remoteCache.Clear();
+        var fresh = new Dictionary<Guid, List<Track>>();
         foreach (var connection in enabled)
         {
             ct.ThrowIfCancellationRequested();
@@ -59,7 +64,7 @@ public sealed class UnifiedLibraryService : IUnifiedLibraryService
             if (!valid) continue;
 
             var tracks = (await connector.ScanAsync(connection, ct)).ToList();
-            _remoteCache[connection.Id] = tracks;
+            fresh[connection.Id] = tracks;
 
             await _auditTrail.AppendAsync(new AuditEvent
             {
@@ -75,5 +80,7 @@ public sealed class UnifiedLibraryService : IUnifiedLibraryService
                 }
             }, ct);
         }
+
+        _remoteCache = fresh;
     }
 }

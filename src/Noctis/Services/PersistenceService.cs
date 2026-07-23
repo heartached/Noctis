@@ -56,10 +56,12 @@ public class PersistenceService : IPersistenceService
     public async Task<AppSettings> LoadSettingsAsync()
     {
         var settings = await LoadJsonAsync<AppSettings>(SettingsPath) ?? new AppSettings();
-        // Decrypt at-rest-protected scrobbler credentials (see SaveSettingsAsync).
+        // Decrypt at-rest-protected credentials (see SaveSettingsAsync).
         // Legacy plaintext values pass through unchanged.
         settings.LastFmSessionKey = UnprotectSecret(settings.LastFmSessionKey);
         settings.ListenBrainzToken = UnprotectSecret(settings.ListenBrainzToken);
+        foreach (var conn in settings.SourceConnections)
+            conn.TokenOrPassword = UnprotectSecret(conn.TokenOrPassword);
         return settings;
     }
 
@@ -73,6 +75,12 @@ public class PersistenceService : IPersistenceService
         {
             ProtectField(obj, "lastFmSessionKey");
             ProtectField(obj, "listenBrainzToken");
+            // Remote-source (Navidrome/WebDAV/SMB) passwords get the same
+            // at-rest protection as the scrobbler tokens.
+            if (obj["sourceConnections"] is System.Text.Json.Nodes.JsonArray connections)
+                foreach (var conn in connections)
+                    if (conn is JsonObject connObj)
+                        ProtectField(connObj, "tokenOrPassword");
         }
         await SaveJsonAsync(SettingsPath, node);
     }
@@ -260,7 +268,27 @@ public class PersistenceService : IPersistenceService
     private static Task SaveJsonAsync<T>(string path, T data)
         => Task.Run(() => SaveJsonCoreAsync(path, data));
 
+    // One writer per target file: two overlapping saves share the fixed ".tmp"
+    // name (opened FileShare.None), so the loser threw a sharing violation —
+    // unobserved on fire-and-forget paths — or the temp was renamed mid-write.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> _writeGates =
+        new(StringComparer.OrdinalIgnoreCase);
+
     private static async Task SaveJsonCoreAsync<T>(string path, T data)
+    {
+        var gate = _writeGates.GetOrAdd(path, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync();
+        try
+        {
+            await SaveJsonSerializedAsync(path, data);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private static async Task SaveJsonSerializedAsync<T>(string path, T data)
     {
         // Write to temp file first, then rename — prevents data loss on crash
         var tempPath = path + ".tmp";

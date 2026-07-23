@@ -120,10 +120,12 @@ public static class LibraryRemovalHelper
         }
     }
 
-    // Leftover types allowed to ride along when an emptied folder is trashed: artwork,
-    // lyrics/playlist text, and OS detritus. Any other file keeps the folder alive.
+    // Leftover types allowed to ride along when an emptied folder is trashed:
+    // artwork, per-track lyric sidecars, and OS detritus. User-authored files
+    // (.m3u/.m3u8 playlists, .cue sheets, .nfo/.txt/.log notes) deliberately
+    // keep the folder alive — sweeping them trashed real user data unprompted.
     private static readonly HashSet<string> DisposableLeftoverExtensions = new(StringComparer.OrdinalIgnoreCase)
-    { ".lrc", ".ttml", ".txt", ".nfo", ".cue", ".log", ".m3u", ".m3u8", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp" };
+    { ".lrc", ".ttml", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp" };
 
     private static readonly HashSet<string> DisposableLeftoverNames = new(StringComparer.OrdinalIgnoreCase)
     { "Thumbs.db", "desktop.ini", ".DS_Store" };
