@@ -403,8 +403,29 @@ public partial class PlayerViewModel : ViewModelBase
             }
             else if (_originalQueue.Count > 0)
             {
-                // Restore original queue order
-                UpNext.ReplaceAll(_originalQueue);
+                // Restore original queue order — but only tracks still pending.
+                // Tracks that played (or were removed) while shuffled are gone
+                // from UpNext; re-injecting the full snapshot would replay them.
+                var pending = new Dictionary<Guid, int>();
+                foreach (var t in UpNext)
+                    pending[t.Id] = pending.TryGetValue(t.Id, out var n) ? n + 1 : 1;
+                var restored = new List<Track>(UpNext.Count);
+                foreach (var t in _originalQueue)
+                {
+                    // SkipWhenShuffling tracks were filtered out of the shuffled
+                    // queue (not played) — always bring them back.
+                    if (t.SkipWhenShuffling)
+                    {
+                        restored.Add(t);
+                        continue;
+                    }
+                    if (pending.TryGetValue(t.Id, out var n) && n > 0)
+                    {
+                        pending[t.Id] = n - 1;
+                        restored.Add(t);
+                    }
+                }
+                UpNext.ReplaceAll(restored);
                 _originalQueue.Clear();
             }
         }
@@ -1360,7 +1381,10 @@ public partial class PlayerViewModel : ViewModelBase
 
         // Handle repeat one mode — replay via PlayTrack() so PlayCount is
         // incremented, TrackStarted fires, and all state updates properly.
-        if (RepeatMode == RepeatMode.One && CurrentTrack != null)
+        // Only on natural end: an explicit Next/Previous must still advance,
+        // otherwise the user is stuck on the repeating track.
+        if (RepeatMode == RepeatMode.One && CurrentTrack != null &&
+            reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix)
         {
             PlayTrack(CurrentTrack);
             return;
