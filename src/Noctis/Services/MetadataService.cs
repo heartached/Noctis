@@ -338,7 +338,13 @@ public class MetadataService : IMetadataService
             tag.Performers = SplitArtistList(track.Artist);
             tag.AlbumArtists = SplitArtistList(track.AlbumArtist);
             tag.Album = track.Album;
-            tag.Genres = string.IsNullOrWhiteSpace(track.Genre) ? Array.Empty<string>() : new[] { track.Genre };
+            // The model holds a single genre (FirstGenre on read). Rewrite only
+            // when it actually changed, so an ordinary save of an untouched track
+            // doesn't collapse a file's multi-value genre list to one entry.
+            var newGenre = string.IsNullOrWhiteSpace(track.Genre) ? null : track.Genre;
+            var currentFirstGenre = tag.Genres is { Length: > 0 } existingGenres ? existingGenres[0] : null;
+            if (!string.Equals(newGenre, currentFirstGenre, StringComparison.Ordinal))
+                tag.Genres = newGenre == null ? Array.Empty<string>() : new[] { newGenre };
             tag.Track = (uint)Math.Max(0, track.TrackNumber);
             tag.TrackCount = (uint)Math.Max(0, track.TrackCount);
             tag.Disc = (uint)Math.Max(0, track.DiscNumber);
@@ -434,9 +440,17 @@ public class MetadataService : IMetadataService
     {
         return SaveTagsAtomically(filePath, file =>
         {
+            // Only front-cover-ish pictures (FrontCover, plus the ambiguous Other
+            // that many taggers use for the cover) are replaced/removed; back
+            // covers, booklets and artist images embedded in the file survive.
+            static bool IsCover(TagLib.IPicture p) =>
+                p.Type is TagLib.PictureType.FrontCover or TagLib.PictureType.Other;
+
+            var kept = file.Tag.Pictures.Where(p => !IsCover(p));
+
             if (imageData == null || imageData.Length == 0)
             {
-                file.Tag.Pictures = Array.Empty<TagLib.IPicture>();
+                file.Tag.Pictures = kept.ToArray();
                 return;
             }
 
@@ -454,7 +468,8 @@ public class MetadataService : IMetadataService
                 Type = TagLib.PictureType.FrontCover,
                 MimeType = mimeType
             };
-            file.Tag.Pictures = new TagLib.IPicture[] { pic };
+            // New front cover first — players typically use the first picture.
+            file.Tag.Pictures = kept.Prepend(pic).ToArray();
         });
     }
 

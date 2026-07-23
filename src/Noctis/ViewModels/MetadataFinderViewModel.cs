@@ -164,6 +164,10 @@ public partial class MetadataFinderViewModel : ViewModelBase
 
         public int? ProposedYear { get; private set; }
 
+        // Below this confidence a proposal is shown but NOT pre-checked — the
+        // user must opt in, so a wrong-track hit can't overwrite tags in bulk.
+        private const double AutoApplyConfidence = 0.70;
+
         public void ApplyProposal(TagSuggestion s)
         {
             ProposedTitle = s.Title;
@@ -172,8 +176,8 @@ public partial class MetadataFinderViewModel : ViewModelBase
             ProposedYear = s.Year;
             HasProposal = !string.IsNullOrWhiteSpace(s.Title) || !string.IsNullOrWhiteSpace(s.Artist);
             ConfidenceText = $"{s.Source} · {s.Confidence * 100:0}%";
-            Status = HasProposal ? "Matched" : "No match";
-            Apply = HasProposal;
+            Apply = HasProposal && s.Confidence >= AutoApplyConfidence;
+            Status = !HasProposal ? "No match" : Apply ? "Matched" : "Review";
         }
 
         partial void OnApplyChanged(bool value) => _onChanged();

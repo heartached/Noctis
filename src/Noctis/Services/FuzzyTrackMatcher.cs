@@ -101,6 +101,23 @@ public static class FuzzyTrackMatcher
         return results;
     }
 
+    /// <summary>
+    /// Similarity in [0,1] between two (title, artist) tag pairs — title weighted
+    /// over artist, same normalization/weights as playlist matching. Used to score
+    /// metadata-lookup suggestions against a track's current tags.
+    /// </summary>
+    public static double TagSimilarity(string? titleA, string? artistA, string? titleB, string? artistB)
+    {
+        var ta = Normalize(titleA);
+        var tb = Normalize(titleB);
+        if (ta.Length == 0 || tb.Length == 0) return 0;
+        var aa = Normalize(artistA);
+        var ab = Normalize(artistB);
+        var titleSim = Ratio(ta, tb);
+        var artistSim = aa.Length == 0 || ab.Length == 0 ? 0.5 : Ratio(aa, ab);
+        return 0.65 * titleSim + 0.35 * artistSim;
+    }
+
     // Forward slashes + trim so Windows- and Unix-written paths compare equal.
     private static string NormalizePath(string p) => p.Replace('\\', '/').Trim();
 
