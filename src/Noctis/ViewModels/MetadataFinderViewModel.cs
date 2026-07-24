@@ -102,18 +102,44 @@ public partial class MetadataFinderViewModel : ViewModelBase
         IsBusy = true;
         StatusMessage = $"Writing tags to {toApply.Count}…";
 
+        // Rows whose tag write failed. The in-memory Track fields were mutated *before*
+        // the write and every row was marked "Applied" unconditionally, so a locked or
+        // read-only file left the library showing tags the file never received — invisible
+        // until the next rescan silently reverted them.
+        var failed = new HashSet<MetaRow>();
+
         var written = await Task.Run(() =>
         {
             var n = 0;
             foreach (var row in toApply)
             {
+                // Snapshot so a failed write can be rolled back.
+                var prevTitle = row.Track.Title;
+                var prevArtist = row.Track.Artist;
+                var prevAlbumArtist = row.Track.AlbumArtist;
+                var prevAlbum = row.Track.Album;
+                var prevYear = row.Track.Year;
+
                 row.Track.Title = row.ProposedTitle;
                 row.Track.Artist = row.ProposedArtist;
                 row.Track.AlbumArtist = string.IsNullOrWhiteSpace(row.Track.AlbumArtist) || row.Track.AlbumArtist == "Unknown Artist"
                     ? row.ProposedArtist : row.Track.AlbumArtist;
                 row.Track.Album = row.ProposedAlbum;
                 if (row.ProposedYear is { } y && y > 0) row.Track.Year = y;
-                if (_metadata.WriteTrackMetadata(row.Track)) n++;
+
+                if (_metadata.WriteTrackMetadata(row.Track))
+                {
+                    n++;
+                }
+                else
+                {
+                    row.Track.Title = prevTitle;
+                    row.Track.Artist = prevArtist;
+                    row.Track.AlbumArtist = prevAlbumArtist;
+                    row.Track.Album = prevAlbum;
+                    row.Track.Year = prevYear;
+                    lock (failed) failed.Add(row);
+                }
             }
             return n;
         });
@@ -121,11 +147,13 @@ public partial class MetadataFinderViewModel : ViewModelBase
         _library.NotifyMetadataChanged();
 
         foreach (var row in toApply)
-            row.Status = "Applied";
+            row.Status = failed.Contains(row) ? "Write failed" : "Applied";
 
         IsBusy = false;
         RecomputeSelection();
-        StatusMessage = $"Applied {written} track{(written == 1 ? string.Empty : "s")}";
+        StatusMessage = failed.Count > 0
+            ? $"Applied {written} track{(written == 1 ? string.Empty : "s")}, {failed.Count} failed"
+            : $"Applied {written} track{(written == 1 ? string.Empty : "s")}";
     }
 
     [RelayCommand]

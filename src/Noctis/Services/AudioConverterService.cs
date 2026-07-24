@@ -237,6 +237,20 @@ public sealed class AudioConverterService : IAudioConverterService
             return summary;
         }
 
+        // Every source path in this batch. Without this, converting a folder of MP3s to
+        // MP3 with "Overwrite existing" on could truncate a file that was still queued
+        // later in the same run — the per-track same-as-source check below only compared
+        // the current track against itself.
+        var batchSources = new HashSet<string>(
+            tracks.Where(t => !string.IsNullOrWhiteSpace(t.FilePath))
+                  .Select(t => { try { return Path.GetFullPath(t.FilePath); } catch { return t.FilePath; } }),
+            StringComparer.OrdinalIgnoreCase);
+
+        // Output paths already claimed by an earlier track in this batch, so two tracks
+        // that expand to the same name (a duplicate, or a compilation with a repeated
+        // title) don't silently overwrite each other's output.
+        var reserved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var track in tracks)
         {
             ct.ThrowIfCancellationRequested();
@@ -246,12 +260,35 @@ public sealed class AudioConverterService : IAudioConverterService
             // Guard against converting a file onto itself (e.g. mp3→mp3 in place):
             // ffmpeg opens the source for reading while -y truncates the same path,
             // which corrupts the original. Skip rather than destroy the source.
-            if (!string.IsNullOrWhiteSpace(track.FilePath) &&
-                string.Equals(Path.GetFullPath(outPath), Path.GetFullPath(track.FilePath), StringComparison.OrdinalIgnoreCase))
+            if (batchSources.Contains(outPath))
             {
-                progress.Report(new ConvertProgress { Track = track, Status = "Skipped (same as source)", Done = true });
+                var isOwnSource = !string.IsNullOrWhiteSpace(track.FilePath) &&
+                    string.Equals(outPath, Path.GetFullPath(track.FilePath), StringComparison.OrdinalIgnoreCase);
+                progress.Report(new ConvertProgress
+                {
+                    Track = track,
+                    Status = isOwnSource ? "Skipped (same as source)" : "Skipped (would overwrite another selected file)",
+                    Done = true
+                });
                 summary.Skipped++;
                 continue;
+            }
+
+            // Disambiguate against outputs already produced by this batch.
+            if (!reserved.Add(outPath))
+            {
+                var dir = Path.GetDirectoryName(outPath)!;
+                var stem = Path.GetFileNameWithoutExtension(outPath);
+                var ext = Path.GetExtension(outPath);
+                for (var n = 2; n < 1000; n++)
+                {
+                    var candidate = Path.Combine(dir, $"{stem} ({n}){ext}");
+                    if (reserved.Add(candidate) && !batchSources.Contains(candidate))
+                    {
+                        outPath = candidate;
+                        break;
+                    }
+                }
             }
 
             progress.Report(new ConvertProgress { Track = track, Status = "Converting…" });
@@ -339,7 +376,29 @@ public sealed class AudioConverterService : IAudioConverterService
         // Extension comes from the format descriptor, not the key — e.g. both
         // "aac" and "alac" differ from their on-disk extension (.aac vs .m4a).
         var ext = FindFormat(options.Format)?.Extension ?? ("." + options.Format);
-        return Path.Combine(dir, name + ext);
+        var combined = Path.Combine(dir, name + ext);
+
+        // Defence in depth behind TitleFormatter's sanitizer: the expanded name is built
+        // from tag values, so assert the result actually lands inside the output folder
+        // before anything writes to it. If a pattern or a future sanitizer change lets a
+        // separator through, fall back to the bare filename rather than writing outside.
+        var fullDir = Path.GetFullPath(dir);
+        var fullOut = Path.GetFullPath(combined);
+        if (!IsUnder(fullOut, fullDir))
+            return Path.Combine(fullDir, Path.GetFileName(name) + ext);
+
+        return fullOut;
+    }
+
+    /// <summary>True when <paramref name="path"/> sits inside <paramref name="root"/>.</summary>
+    private static bool IsUnder(string path, string root)
+    {
+        var normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var comparison = OperatingSystem.IsLinux()
+            ? StringComparison.Ordinal
+            : StringComparison.OrdinalIgnoreCase;
+        return path.StartsWith(normalizedRoot + Path.DirectorySeparatorChar, comparison) ||
+               path.StartsWith(normalizedRoot + Path.AltDirectorySeparatorChar, comparison);
     }
 
     private static async Task<(bool ok, string error)> RunFfmpegAsync(

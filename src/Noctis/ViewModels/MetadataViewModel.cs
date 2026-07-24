@@ -841,6 +841,14 @@ public partial class MetadataViewModel : ViewModelBase
 
         // Lyrics — synced from Track.SyncedLyrics or .lrc sidecar; plain from Track.Lyrics or .txt sidecar.
         // Plain tab must NEVER contain timestamps; if a legacy track stored synced text in Lyrics, strip it.
+        // A sidecar we failed to READ must never be deleted on save. Previously any
+        // transient failure here (file locked, AV scan, permission blip, network share
+        // hiccup) left the field empty, and the save path read that emptiness as "the
+        // user cleared the lyrics" and hard-deleted a hand-timed .lrc the app cannot
+        // regenerate — triggered by something as innocuous as fixing a typo in the Year.
+        _syncedSidecarUnreadable = false;
+        _plainSidecarUnreadable = false;
+
         var syncedFromTrack = _track.SyncedLyrics;
         if (string.IsNullOrWhiteSpace(syncedFromTrack))
         {
@@ -850,7 +858,10 @@ public partial class MetadataViewModel : ViewModelBase
                 if (File.Exists(lrcPath))
                     syncedFromTrack = File.ReadAllText(lrcPath);
             }
-            catch { /* Non-fatal */ }
+            catch
+            {
+                _syncedSidecarUnreadable = true;
+            }
         }
 
         var plainFromTrack = _track.Lyrics;
@@ -862,7 +873,10 @@ public partial class MetadataViewModel : ViewModelBase
                 if (File.Exists(txtPath))
                     plainFromTrack = File.ReadAllText(txtPath);
             }
-            catch { /* Non-fatal */ }
+            catch
+            {
+                _plainSidecarUnreadable = true;
+            }
         }
 
         // If the plain field accidentally holds timestamped text, treat it as synced (legacy migration)
@@ -887,6 +901,9 @@ public partial class MetadataViewModel : ViewModelBase
         Lyrics = plainFromTrack ?? string.Empty;
         HasCustomLyrics = !string.IsNullOrWhiteSpace(Lyrics);
         HasCustomSyncedLyrics = !string.IsNullOrWhiteSpace(SyncedLyrics);
+        _loadedSyncedLyrics = SyncedLyrics;
+        _loadedPlainLyrics = Lyrics;
+        _syncedLyricsRemovedByUser = false;
         RebuildSyncedLinesFromText();
 
         // Options
@@ -1314,11 +1331,37 @@ public partial class MetadataViewModel : ViewModelBase
         return match.Success && long.TryParse(match.Value, out id);
     }
 
+    // Set only when the user explicitly clears synced lyrics via the Remove button.
+    private bool _syncedLyricsRemovedByUser;
+
+    // Set when a sidecar exists on disk but could not be read during load, so save
+    // leaves it strictly alone.
+    private bool _syncedSidecarUnreadable;
+    private bool _plainSidecarUnreadable;
+
+    // What load actually produced, so save can tell "the user emptied this field"
+    // (a real removal) from "load never managed to populate it" (not a removal).
+    private string _loadedSyncedLyrics = string.Empty;
+    private string _loadedPlainLyrics = string.Empty;
+
+    /// <summary>True when the user cleared synced lyrics that were genuinely loaded.</summary>
+    private bool SyncedLyricsWereRemoved =>
+        (_syncedLyricsRemovedByUser || !string.IsNullOrWhiteSpace(_loadedSyncedLyrics)) &&
+        string.IsNullOrWhiteSpace(_track.SyncedLyrics) &&
+        !_syncedSidecarUnreadable;
+
+    /// <summary>True when the user cleared plain lyrics that were genuinely loaded.</summary>
+    private bool PlainLyricsWereRemoved =>
+        !string.IsNullOrWhiteSpace(_loadedPlainLyrics) &&
+        string.IsNullOrWhiteSpace(_track.Lyrics) &&
+        !_plainSidecarUnreadable;
+
     [RelayCommand]
     private void RemoveSyncedLyrics()
     {
         SyncedLyrics = string.Empty;
         HasCustomSyncedLyrics = false;
+        _syncedLyricsRemovedByUser = true;
         SyncedLyricsSearchStatus = string.Empty;
         RebuildSyncedLinesFromText();
     }
@@ -1789,49 +1832,75 @@ public partial class MetadataViewModel : ViewModelBase
         // opens and rewrites the audio file, so run the batch on a worker thread —
         // doing it on the UI thread froze the app for seconds on large albums
         // (e.g. saving an animated cover for a 20+ track album).
+        // Files whose tags could not be written. Collected rather than discarded: the
+        // write result used to be dropped on the floor, so a failed save (most commonly
+        // the currently-playing track, whose handle libVLC holds) closed the dialog
+        // cleanly and showed the new tags while the file on disk was untouched — the
+        // edit then silently vanished on the next rescan.
+        var failedWrites = new List<string>();
+
         if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
         {
             var tagWriteTargets = _albumTracks.ToList();
             await Task.Run(() =>
             {
                 foreach (var t in tagWriteTargets)
-                    _metadata.WriteTrackMetadata(t);
+                    if (!_metadata.WriteTrackMetadata(t))
+                        lock (failedWrites) failedWrites.Add(Path.GetFileName(t.FilePath));
             });
         }
         else
         {
-            await Task.Run(() => _metadata.WriteTrackMetadata(_track));
+            var ok = await Task.Run(() => _metadata.WriteTrackMetadata(_track));
+            if (!ok) failedWrites.Add(Path.GetFileName(_track.FilePath));
         }
 
-        // Write advanced fields (sort, people, identifiers, custom tags)
+        // Write advanced fields (sort, people, identifiers, custom tags).
+        // Runs on a worker thread for the same reason as the writes above — this opens
+        // the file and rewrites every tag block, which for a large FLAC/WAV/DSD froze
+        // the window for the duration when it ran inline.
         if (!_albumScoped && _originalAdvancedFields != null)
         {
             var advFields = BuildAdvancedFields();
-            AdvancedTagIO.WriteAll(_track.FilePath, advFields, _originalAdvancedFields);
+            var originalAdv = _originalAdvancedFields;
+            var advPath = _track.FilePath;
+            // Routed through the metadata service's atomic path: AdvancedTagIO.WriteAll
+            // does an in-place file.Save(), which on macOS/Linux corrupts the player's
+            // open read of the track being tagged (the "audio silently stops on save"
+            // bug) and is not crash-safe anywhere.
+            if (!await Task.Run(() => _metadata.WriteAdvancedFields(advPath, advFields, originalAdv)))
+                failedWrites.Add(Path.GetFileName(advPath));
 
             // Sync advisory → IsExplicit for immediate badge update
             _track.IsExplicit = advFields.ItunesAdvisory == 1;
         }
 
-        // Write synced lyrics to sidecar .lrc file
+        // Write synced lyrics to sidecar .lrc file.
+        // Deletion is gated on an explicit user removal and never happens when the
+        // sidecar failed to load — and it goes to the trash, not File.Delete, so a
+        // mistake is recoverable.
         try
         {
             var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
             if (!string.IsNullOrWhiteSpace(_track.SyncedLyrics))
                 await File.WriteAllTextAsync(lrcPath, _track.SyncedLyrics);
-            else if (File.Exists(lrcPath))
-                File.Delete(lrcPath);
+            else if (SyncedLyricsWereRemoved && File.Exists(lrcPath))
+                Helpers.RecycleBin.TryMoveToTrash(lrcPath);
         }
         catch { /* Best effort — sidecar write is non-fatal */ }
 
-        // Write plain lyrics to sidecar .txt file
+        // Write plain lyrics to sidecar .txt file.
+        // Only write when the plain text actually changed: LoadFromTrack fills this
+        // field from the *embedded* tag when no .txt exists, so an unconditional write
+        // created a new file in the user's music folder after editing an unrelated field.
         try
         {
             var txtPath = Path.ChangeExtension(_track.FilePath, ".txt");
-            if (!string.IsNullOrWhiteSpace(_track.Lyrics))
+            var plainChanged = !string.Equals(_track.Lyrics, _loadedPlainLyrics, StringComparison.Ordinal);
+            if (!string.IsNullOrWhiteSpace(_track.Lyrics) && (plainChanged || File.Exists(txtPath)))
                 await File.WriteAllTextAsync(txtPath, _track.Lyrics);
-            else if (File.Exists(txtPath))
-                File.Delete(txtPath);
+            else if (PlainLyricsWereRemoved && File.Exists(txtPath))
+                Helpers.RecycleBin.TryMoveToTrash(txtPath);
         }
         catch { /* Best effort — sidecar write is non-fatal */ }
 
@@ -1970,8 +2039,35 @@ public partial class MetadataViewModel : ViewModelBase
         _library.NotifyMetadataChanged();
 
         ChangesSaved?.Invoke(this, EventArgs.Empty);
+
+        // Keep the dialog open when the tags did not actually reach disk, so the edit
+        // isn't silently lost on the next rescan. The most common cause is the file
+        // being held open by the player or another app.
+        if (failedWrites.Count > 0)
+        {
+            SaveErrorMessage = failedWrites.Count == 1
+                ? $"Couldn't write tags to \"{failedWrites[0]}\". The file may be in use — " +
+                  "stop playback or close other apps using it, then try again."
+                : $"Couldn't write tags to {failedWrites.Count} files (e.g. \"{failedWrites[0]}\"). " +
+                  "They may be in use — stop playback or close other apps using them, then try again.";
+            return;
+        }
+
+        SaveErrorMessage = string.Empty;
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// Non-empty when the last save could not write one or more files. Bound by
+    /// MetadataWindow to an inline error strip; the dialog stays open so the user's
+    /// edits survive and can be retried.
+    /// </summary>
+    [ObservableProperty] private string _saveErrorMessage = string.Empty;
+
+    /// <summary>Drives the visibility of the inline save-error strip.</summary>
+    public bool HasSaveError => !string.IsNullOrEmpty(SaveErrorMessage);
+
+    partial void OnSaveErrorMessageChanged(string value) => OnPropertyChanged(nameof(HasSaveError));
 
     /// <summary>Moves a renamed track's same-basename lyric sidecars (.lrc/.ttml/.txt) with it —
     /// lyrics resolve sidecar-first by basename, so leaving them behind detaches them.</summary>

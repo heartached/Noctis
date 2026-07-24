@@ -159,11 +159,37 @@ internal static class AdvancedTagIO
     //  WRITE
     // ══════════════════════════════════════════════════════════════
 
+    /// <summary>
+    /// Opens the file, applies the advanced fields and saves in place.
+    /// </summary>
+    /// <remarks>
+    /// Prefer <see cref="ApplyAll"/> via <c>IMetadataService.WriteAdvancedFields</c>: an
+    /// in-place <c>file.Save()</c> corrupts the player's open read of the track being
+    /// tagged on macOS/Linux (the "audio silently stops on save" bug) and has no
+    /// crash-safe temp+rename on any platform.
+    /// </remarks>
     public static bool WriteAll(string filePath, AdvancedFields fields, AdvancedFields original)
     {
         try
         {
             using var file = TagFile.Create(filePath);
+            ApplyAll(file, fields, original);
+            file.Save();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Applies the advanced fields to an already-open file without saving it, so the
+    /// caller can route the write through a crash-safe temp-copy + atomic rename.
+    /// </summary>
+    public static void ApplyAll(TagFile file, AdvancedFields fields, AdvancedFields original)
+    {
+        {
             var tag = file.Tag;
 
             // ── Sort fields ──
@@ -211,13 +237,6 @@ internal static class AdvancedTagIO
                 if (!string.IsNullOrWhiteSpace(kv.Key))
                     WriteCustomField(file, kv.Key, kv.Value);
             }
-
-            file.Save();
-            return true;
-        }
-        catch
-        {
-            return false;
         }
     }
 

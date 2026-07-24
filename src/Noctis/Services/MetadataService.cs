@@ -72,12 +72,21 @@ public class MetadataService : IMetadataService
         if (filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
             return null;
 
-        // Skip very large files that are unlikely to be audio (>2GB)
+        // Sanity cap only. This was 2 GB with the comment "unlikely to be audio", which
+        // silently excluded real content from the library with no message: a single-file
+        // DSD128 album rip, a long 24/192 live set, or a full-concert WAV all exceed it.
+        // 16 GB still catches a genuinely wrong file without excluding hi-res audio.
+        const long MaxAudioFileBytes = 16L * 1024 * 1024 * 1024;
         try
         {
             var fi = new FileInfo(filePath);
-            if (fi.Length > 2L * 1024 * 1024 * 1024)
+            if (fi.Length > MaxAudioFileBytes)
+            {
+                DebugLog.Write("Metadata",
+                    $"Skipped '{filePath}' — {fi.Length / (1024 * 1024)} MB exceeds the " +
+                    $"{MaxAudioFileBytes / (1024 * 1024 * 1024)} GB import cap.");
                 return null;
+            }
         }
         catch
         {
@@ -383,31 +392,42 @@ public class MetadataService : IMetadataService
     /// path is kept there to avoid a needless full-file copy.
     /// </summary>
     private static bool SaveTagsAtomically(string targetFilePath, Action<TagLib.File> applyTags)
+        => SaveTagsAtomically(targetFilePath, applyTags, out _);
+
+    /// <inheritdoc cref="SaveTagsAtomically(string, Action{TagLib.File})"/>
+    /// <param name="error">
+    /// Human-readable reason the save failed, or null on success. Callers surface this
+    /// instead of silently reporting success — the old blanket <c>catch { return false; }</c>
+    /// combined with every caller discarding the bool meant editing the currently-playing
+    /// track (whose handle libVLC holds) closed the dialog cleanly, showed the new tags,
+    /// and left the file untouched until the next rescan reverted the edit.
+    /// </param>
+    private static bool SaveTagsAtomically(string targetFilePath, Action<TagLib.File> applyTags, out string? error)
     {
-        if (OperatingSystem.IsWindows())
-        {
-            try
-            {
-                using var file = TagLib.File.Create(targetFilePath);
-                applyTags(file);
-                file.Save();
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
+        error = null;
 
         // Same directory keeps the rename on one filesystem (so it is atomic); the
         // leading dot hides the transient file; the original extension is preserved
         // so TagLib still detects the format from the work copy.
+        //
+        // This path is now used on Windows too. The old Windows branch called
+        // file.Save() directly on the target: a crash, power loss or full disk midway
+        // through TagLib's rewrite left the user's audio file corrupt with no backup,
+        // and there was no recovery path at all. Copy-then-rename costs one file copy
+        // and makes the write crash-safe on every platform.
         var dir = Path.GetDirectoryName(targetFilePath);
         if (string.IsNullOrEmpty(dir)) dir = ".";
         var tempPath = Path.Combine(dir, $".noctis-{Guid.NewGuid():N}{Path.GetExtension(targetFilePath)}");
         try
         {
             File.Copy(targetFilePath, tempPath, overwrite: true);
+
+            // Preserve the original's permission bits: File.Copy creates the temp with
+            // the default umask, and the rename then replaces the inode — so without
+            // this a shared/NAS library quietly became unreadable to other users after
+            // the first rating or tag edit.
+            TryCopyUnixFileMode(targetFilePath, tempPath);
+
             using (var file = TagLib.File.Create(tempPath))
             {
                 applyTags(file);
@@ -416,17 +436,37 @@ public class MetadataService : IMetadataService
             File.Move(tempPath, targetFilePath, overwrite: true);
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            error = ex.Message;
             try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+            DebugLog.Write("Metadata", $"Tag save failed for '{targetFilePath}': {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>Copies Unix mode bits from source to destination. No-op on Windows.</summary>
+    private static void TryCopyUnixFileMode(string source, string destination)
+    {
+        if (OperatingSystem.IsWindows()) return;
+        try { File.SetUnixFileMode(destination, File.GetUnixFileMode(source)); }
+        catch { /* filesystem may not support Unix modes */ }
     }
 
     // Both writers go through SaveTagsAtomically: an in-place file.Save() on
     // macOS/Linux corrupts the player's open read of the file being tagged
     // (the "audio silently stops on save" bug), and ratings/artwork are often
     // written for the currently-playing track.
+    /// <summary>
+    /// Writes the Advanced Details field set through the crash-safe atomic path instead
+    /// of AdvancedTagIO's own in-place <c>file.Save()</c>.
+    /// </summary>
+    bool IMetadataService.WriteAdvancedFields(string filePath, AdvancedTagIO.AdvancedFields fields,
+        AdvancedTagIO.AdvancedFields original)
+    {
+        return SaveTagsAtomically(filePath, file => AdvancedTagIO.ApplyAll(file, fields, original));
+    }
+
     public bool WriteRating(string filePath, int rating, bool isDisliked)
     {
         return SaveTagsAtomically(filePath, file =>

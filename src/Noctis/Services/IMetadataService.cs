@@ -52,6 +52,14 @@ public interface IMetadataService
     bool WriteRating(string filePath, int rating, bool isDisliked);
 
     /// <summary>
+    /// Writes the Advanced Details field set (sort names, people, identifiers, custom
+    /// tags) through the same crash-safe temp-copy + atomic-rename path as the standard
+    /// tags. Returns false when the file could not be written.
+    /// </summary>
+    internal bool WriteAdvancedFields(string filePath, AdvancedTagIO.AdvancedFields fields,
+        AdvancedTagIO.AdvancedFields original);
+
+    /// <summary>
     /// Reads detailed technical file information from an audio file.
     /// </summary>
     AudioFileInfo? ReadFileInfo(string filePath);
