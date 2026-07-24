@@ -72,6 +72,7 @@ public class SidebarFolderToggleTests
         public event EventHandler? LibraryUpdated { add { } remove { } }
         public event EventHandler<int>? ScanProgress { add { } remove { } }
         public event EventHandler? FavoritesChanged { add { } remove { } }
+        public event EventHandler<string[]>? ScanAborted { add { } remove { } }
         public Task ScanAsync(IEnumerable<string> folders, CancellationToken ct = default) => Task.CompletedTask;
         public Task PauseActiveScanForShutdownAsync(TimeSpan timeout) => Task.CompletedTask;
         public Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null) => Task.CompletedTask;

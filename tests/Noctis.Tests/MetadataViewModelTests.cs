@@ -330,6 +330,10 @@ public class MetadataViewModelTests
         public bool WriteTrackMetadata(Track track) => true;
         public bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null) => true;
         public bool WriteRating(string filePath, int rating, bool isDisliked) => true;
+
+        bool IMetadataService.WriteAdvancedFields(string filePath,
+            Noctis.Services.AdvancedTagIO.AdvancedFields fields,
+            Noctis.Services.AdvancedTagIO.AdvancedFields original) => true;
         public AudioFileInfo? ReadFileInfo(string filePath) => null;
 
         public bool WriteAlbumArt(string filePath, byte[]? imageData)
@@ -357,6 +361,7 @@ public class MetadataViewModelTests
         public event EventHandler? LibraryUpdated { add { } remove { } }
         public event EventHandler<int>? ScanProgress { add { } remove { } }
         public event EventHandler? FavoritesChanged { add { } remove { } }
+        public event EventHandler<string[]>? ScanAborted { add { } remove { } }
 
         public Task ScanAsync(IEnumerable<string> folders, CancellationToken ct = default) => Task.CompletedTask;
         public Task PauseActiveScanForShutdownAsync(TimeSpan timeout) => Task.CompletedTask;
