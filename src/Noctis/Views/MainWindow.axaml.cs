@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private EventHandler<string>? _themeChangedHandler;
     private EventHandler<string>? _accentChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _playerPropertyChangedHandler;
+    private System.ComponentModel.PropertyChangedEventHandler? _queuePopupStateHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _topBarPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _mainVmPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _currentTrackPropertyChangedHandler;
@@ -95,8 +96,45 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        // Initialize the application once the window is fully loaded
+        // Initialize the application once the window is fully loaded.
+        //
+        // The whole body is guarded. This is an async void handler running *inside*
+        // StartWithClassicDesktopLifetime, so Program.Main's try never sees anything it
+        // throws: a failure here (e.g. a corrupt or locked library.db surfacing as
+        // SqliteException out of LoadAsync) went straight to AppDomain.UnhandledException
+        // and killed the process behind an already-visible empty window, with no dialog
+        // and no recovery. A half-initialized window the user can still quit and report
+        // beats a silent death.
         Loaded += async (_, _) =>
+        {
+            try
+            {
+                await InitializeOnLoadedAsync();
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Startup", ex);
+                await ShowStartupFailureAsync(ex);
+            }
+        };
+
+        WireWindowLevelHandlers();
+    }
+
+    /// <summary>Shows a non-fatal "couldn't finish starting" notice. Never throws.</summary>
+    private static async Task ShowStartupFailureAsync(Exception ex)
+    {
+        try
+        {
+            await ConfirmationDialog.ShowAsync(
+                "Noctis couldn't finish starting, so some parts of the app may not work. " +
+                "Details were written to the debug log.\n\n" + ex.Message);
+        }
+        catch { /* the dialog itself is best effort */ }
+    }
+
+    private async Task InitializeOnLoadedAsync()
+    {
         {
             if (DataContext is MainWindowViewModel vm)
             {
@@ -292,6 +330,9 @@ public partial class MainWindow : Window
                 }
 
                 // Initialize taskbar thumbnail buttons (Previous / Play-Pause / Next)
+                // Must run before/independently of the taskbar wiring — see the comment
+                // on InitializeQueuePopupBinding.
+                InitializeQueuePopupBinding(vm);
                 InitializeTaskbarButtons(vm);
 
                 // System tray icon (minimize/close-to-tray + playback controls)
@@ -315,8 +356,11 @@ public partial class MainWindow : Window
                     Hide();
                 }
             }
-        };
+        }
+    }
 
+    private void WireWindowLevelHandlers()
+    {
         // Close queue popup on outside click (tunnel so it fires before button commands)
         AddHandler(PointerPressedEvent, OnGlobalPointerPressed, RoutingStrategies.Tunnel);
 
@@ -379,12 +423,52 @@ public partial class MainWindow : Window
 
         if (double.IsFinite(settings.WindowX) && double.IsFinite(settings.WindowY))
         {
-            Position = new PixelPoint((int)Math.Round(settings.WindowX), (int)Math.Round(settings.WindowY));
+            var restored = new PixelPoint(
+                (int)Math.Round(settings.WindowX), (int)Math.Round(settings.WindowY));
+
+            // Only restore a position that still lands on a connected screen. A window
+            // last closed on a secondary monitor persists negative or large-offset
+            // coordinates; with that monitor gone it was restored fully off-screen, and
+            // because close-to-tray keeps the process alive the user had no way back
+            // short of editing settings.json.
+            if (IsPositionOnAScreen(restored, width, height))
+                Position = restored;
+            else
+                WindowStartupLocation = WindowStartupLocation.CenterScreen;
         }
 
         if (Enum.TryParse<WindowState>(settings.MainWindowState, out var savedState))
         {
             WindowState = savedState == WindowState.Minimized ? WindowState.Normal : savedState;
+        }
+    }
+
+    /// <summary>
+    /// True when a meaningful part of the restored window — specifically its title-bar
+    /// strip, the part the user needs to drag it back — overlaps a connected screen.
+    /// </summary>
+    private bool IsPositionOnAScreen(PixelPoint position, double width, double height)
+    {
+        try
+        {
+            var all = Screens?.All;
+            if (all == null || all.Count == 0) return true; // can't tell — don't fight it
+
+            var w = (int)Math.Max(1, double.IsFinite(width) ? width : MinWidth);
+            var h = (int)Math.Max(1, double.IsFinite(height) ? height : MinHeight);
+            // Title-bar strip rather than the whole window: a window whose body spills
+            // off the edge is fine, one whose title bar is gone is not.
+            var titleBar = new PixelRect(position.X, position.Y, w, Math.Min(h, 48));
+
+            foreach (var screen in all)
+                if (screen.Bounds.Intersects(titleBar))
+                    return true;
+
+            return false;
+        }
+        catch
+        {
+            return true;
         }
     }
 
@@ -495,12 +579,22 @@ public partial class MainWindow : Window
             ? WindowState.Normal.ToString()
             : WindowState.ToString();
 
+        // Snapshot the UI-bound collections here, on the UI thread, before handing the
+        // save to a worker. SyncToSettings enumerates CustomThemes / MusicFolders /
+        // FolderRules / EqBands — all ObservableCollections mutated from the UI thread —
+        // so a concurrent add/remove during shutdown threw InvalidOperationException
+        // inside SaveAsync's catch and silently dropped the final write, including the
+        // window geometry this method exists to persist.
+        vm.Settings.SnapshotCollectionsForSave();
+
         // Persist geometry in the background so window close isn't blocked on disk I/O.
         // Closing is cooperative — this fires before the window tears down, and the
         // write is atomic (temp file + Move) so a crash during shutdown is safe.
+        // FlushPendingSaveAsync also cancels any in-flight debounce timer so the last
+        // slider drag or keystroke isn't lost to a save that never fires.
         _ = Task.Run(async () =>
         {
-            try { await vm.Settings.SaveAsync(); } catch { }
+            try { await vm.Settings.FlushPendingSaveAsync(); } catch { }
         });
     }
 
@@ -536,6 +630,9 @@ public partial class MainWindow : Window
             if (_playerPropertyChangedHandler != null)
                 vm.Player.PropertyChanged -= _playerPropertyChangedHandler;
 
+            if (_queuePopupStateHandler != null)
+                vm.Player.PropertyChanged -= _queuePopupStateHandler;
+
             if (_trackedFavoriteTrack != null && _currentTrackPropertyChangedHandler != null)
             {
                 _trackedFavoriteTrack.PropertyChanged -= _currentTrackPropertyChangedHandler;
@@ -548,6 +645,33 @@ public partial class MainWindow : Window
             if (_mainVmPropertyChangedHandler != null)
                 vm.PropertyChanged -= _mainVmPropertyChangedHandler;
         }
+    }
+
+    /// <summary>
+    /// Subscribes the player-state handling that the *window* needs, independent of the
+    /// Windows taskbar integration.
+    ///
+    /// This used to live entirely inside <see cref="InitializeTaskbarButtons"/>, which
+    /// returns early off Windows and swallows its own exceptions. The queue popup is
+    /// declared IsVisible="False" in XAML and is only ever shown from the
+    /// IsQueuePopupOpen branch below — so on macOS and Linux (and on Windows whenever
+    /// TryGetPlatformHandle returned null or the taskbar COM init threw) the Queue
+    /// button, the Songs-page Queue action and Escape-to-close all silently did nothing,
+    /// and the queue↔lyrics-panel mutual exclusion was dead too.
+    /// </summary>
+    private void InitializeQueuePopupBinding(MainWindowViewModel vm)
+    {
+        _queuePopupStateHandler = (_, e) =>
+        {
+            if (e.PropertyName != nameof(PlayerViewModel.IsQueuePopupOpen)) return;
+
+            // Queue popup and lyrics panel share the right edge — mutual exclusion.
+            if (vm.Player.IsQueuePopupOpen)
+                vm.IsLyricsPanelOpen = false;
+            AnimateSidePanel(_queuePopupPanel, vm.Player.IsQueuePopupOpen,
+                () => DataContext is MainWindowViewModel m && !m.Player.IsQueuePopupOpen);
+        };
+        vm.Player.PropertyChanged += _queuePopupStateHandler;
     }
 
     private void InitializeTaskbarButtons(MainWindowViewModel vm)
@@ -599,14 +723,8 @@ public partial class MainWindow : Window
                 {
                     _taskbar?.UpdatePlayPauseState(vm.Player.State == PlaybackState.Playing);
                 }
-                else if (e.PropertyName == nameof(PlayerViewModel.IsQueuePopupOpen))
-                {
-                    // Queue popup and lyrics panel share the right edge — mutual exclusion.
-                    if (vm.Player.IsQueuePopupOpen)
-                        vm.IsLyricsPanelOpen = false;
-                    AnimateSidePanel(_queuePopupPanel, vm.Player.IsQueuePopupOpen,
-                        () => DataContext is MainWindowViewModel m && !m.Player.IsQueuePopupOpen);
-                }
+                // IsQueuePopupOpen is handled by InitializeQueuePopupBinding, which runs
+                // on every platform — it must not depend on the taskbar being available.
                 else if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
                 {
                     RebindCurrentTrack();
@@ -794,17 +912,27 @@ public partial class MainWindow : Window
                 e.Handled = true;
                 break;
             case Key.Escape:
-                // Close queue popup if open, otherwise clear search
-                if (vm.Player.IsQueuePopupOpen)
+                // Close the topmost open surface, in z-order. Escape used to check only
+                // the queue popup and otherwise unconditionally clear the search box —
+                // so with the Settings modal or the lyrics side panel open it silently
+                // wiped the user's search while the modal stayed up.
+                if (vm.IsSettingsModalOpen)
+                {
+                    vm.CloseSettingsCommand.Execute(null);
+                }
+                else if (vm.IsLyricsPanelOpen)
+                {
+                    vm.IsLyricsPanelOpen = false;
+                }
+                else if (vm.Player.IsQueuePopupOpen)
                 {
                     vm.Player.IsQueuePopupOpen = false;
-                    e.Handled = true;
                 }
                 else
                 {
                     vm.TopBar.ClearSearchCommand.Execute(null);
-                    e.Handled = true;
                 }
+                e.Handled = true;
                 break;
             case Key.Space when e.KeyModifiers == KeyModifiers.None:
                 // Only toggle play/pause if the focused element is NOT a TextBox
@@ -1128,15 +1256,23 @@ public partial class MainWindow : Window
         if (DataContext is not MainWindowViewModel vm) return;
         var listBox = this.FindControl<ListBox>("QueuePopupListBox");
         if (listBox == null) return;
-        if (_queueDragSourceIndex < 0) return;
+        if (_queueDragTrack == null) return;
+
+        // Re-resolve the source index from the tracked object at drop time. The
+        // press-time index goes stale: a drag lasts long enough for a track transition
+        // (UpNext.RemoveAt(0)) or a queued radio refill to shift everything, and the
+        // trusted index then moved the wrong track — the bounds checks prevented a crash
+        // but not the wrong move.
+        var fromIndex = vm.Player.UpNext.IndexOf(_queueDragTrack);
+        if (fromIndex < 0) return;
 
         var posInListBox = e.GetPosition(listBox);
         var toIndex = GetQueueDropTargetIndex(listBox, posInListBox);
         if (toIndex < 0) toIndex = vm.Player.UpNext.Count - 1;
         if (toIndex >= vm.Player.UpNext.Count) toIndex = vm.Player.UpNext.Count - 1;
 
-        if (_queueDragSourceIndex != toIndex)
-            vm.Player.MoveInQueue(_queueDragSourceIndex, toIndex);
+        if (fromIndex != toIndex)
+            vm.Player.MoveInQueue(fromIndex, toIndex);
     }
 
     private void ResetQueueDragState()

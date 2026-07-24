@@ -46,7 +46,34 @@ public partial class CommandPaletteViewModel : ViewModelBase
         Refresh();
     }
 
-    partial void OnQueryChanged(string value) => Refresh();
+    // Debounced. Refresh() scans _library.Tracks, .Albums and .Artists in full,
+    // allocating a PaletteItem per match and then sorting — on the dispatcher thread,
+    // synchronously, once per character. On a 50k-track library that is ~50k string
+    // comparisons plus allocations per keystroke, so typing in Ctrl+K stuttered.
+    // 200ms matches the debounce every other search surface in the app already uses.
+    private const int QueryDebounceMs = 200;
+    private CancellationTokenSource? _queryDebounceCts;
+
+    partial void OnQueryChanged(string value)
+    {
+        _queryDebounceCts?.Cancel();
+        _queryDebounceCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _queryDebounceCts = cts;
+
+        _ = DebouncedRefreshAsync(cts.Token);
+    }
+
+    private async Task DebouncedRefreshAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(QueryDebounceMs, token);
+            if (token.IsCancellationRequested) return;
+            Refresh();
+        }
+        catch (OperationCanceledException) { /* superseded by a newer keystroke */ }
+    }
 
     private static object? Icon(string key) =>
         Application.Current?.TryFindResource(key, out var res) == true ? res : null;

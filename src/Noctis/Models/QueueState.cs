@@ -16,4 +16,22 @@ public class QueueState
 
     /// <summary>Recently played track IDs (most recent first).</summary>
     public List<Guid> HistoryIds { get; set; } = new();
+
+    // The queue itself was restored on launch but the transport modes were not, so
+    // repeat and shuffle silently reset to Off and the app un-muted on every restart.
+
+    /// <summary>Repeat mode in effect when the app closed.</summary>
+    public RepeatMode RepeatMode { get; set; } = RepeatMode.Off;
+
+    /// <summary>Whether shuffle was on when the app closed.</summary>
+    public bool IsShuffleEnabled { get; set; }
+
+    /// <summary>Whether output was muted when the app closed.</summary>
+    public bool IsMuted { get; set; }
+
+    /// <summary>
+    /// Full repeat-all cycle, uncapped. History is a display list capped at 50, so a
+    /// restored session could not wrap a longer queue correctly without this.
+    /// </summary>
+    public List<Guid> RepeatCycleIds { get; set; } = new();
 }
