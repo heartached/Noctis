@@ -350,11 +350,14 @@ public static class ShareCardRenderer
 
         // ── Artwork hero: soft drop shadow, rounded tile, hairline edge ──
         var artRect = new SKRect((w - artSize) / 2f, top, (w + artSize) / 2f, top + artSize);
+        // The filter gets its own `using`: SKPaint.Dispose does NOT dispose an assigned
+        // MaskFilter/ImageFilter/Shader, so these survived until finalization.
+        using var shadowBlur = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 26f);
         using (var shadow = new SKPaint
         {
             IsAntialias = true,
             Color = new SKColor(0, 0, 0, artworkBlur ? (byte)0x66 : (byte)0x52),
-            MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 26f),
+            MaskFilter = shadowBlur,
         })
             canvas.DrawRoundRect(new SKRect(artRect.Left + 6, artRect.Top + 16, artRect.Right - 6, artRect.Bottom + 16),
                 24, 24, shadow);
@@ -869,11 +872,12 @@ public static class ShareCardRenderer
         float dw = art.Width * scale;
         float dh = art.Height * scale;
         var dest = new SKRect((w - dw) / 2f, (h - dh) / 2f, (w + dw) / 2f, (h + dh) / 2f);
+        using var backdropBlur = SKImageFilter.CreateBlur(48f, 48f);
         using var paint = new SKPaint
         {
             IsAntialias = true,
             FilterQuality = SKFilterQuality.High,
-            ImageFilter = SKImageFilter.CreateBlur(48f, 48f),
+            ImageFilter = backdropBlur,
         };
         canvas.DrawBitmap(art, dest, paint);
     }
@@ -899,11 +903,11 @@ public static class ShareCardRenderer
         // Vertical gradient: darker tint of the artwork color at the top.
         bg.ToHsl(out var hue, out var sat, out var light);
         var bgTop = SKColor.FromHsl(hue, sat, Math.Max(6f, light * 0.45f));
-        using (var bgPaint = new SKPaint())
+        using (var bgShader = SKShader.CreateLinearGradient(
+                   new SKPoint(0, 0), new SKPoint(0, h),
+                   new[] { bgTop, bg }, null, SKShaderTileMode.Clamp))
+        using (var bgPaint = new SKPaint { Shader = bgShader })
         {
-            bgPaint.Shader = SKShader.CreateLinearGradient(
-                new SKPoint(0, 0), new SKPoint(0, h),
-                new[] { bgTop, bg }, null, SKShaderTileMode.Clamp);
             canvas.DrawRect(0, 0, w, h, bgPaint);
         }
 
@@ -1051,8 +1055,13 @@ public static class ShareCardRenderer
         canvas.DrawText("E", rect.MidX, baseline, letterPaint);
     }
 
-    private static SKBitmap? _logo;
-    private static bool _logoLoadAttempted;
+    // Both volatile: the fast path reads them outside the lock while the writer sets
+    // _logo then _logoLoadAttempted inside it. On a weak memory model (this ships arm64
+    // macOS) a concurrent render — RefreshPreview starts renders concurrently — could
+    // observe _logoLoadAttempted == true with _logo still null and silently fall back to
+    // the quarter-note glyph wordmark.
+    private static volatile SKBitmap? _logo;
+    private static volatile bool _logoLoadAttempted;
     private static readonly object _logoLock = new();
 
     /// <summary>Loads and caches the app logo from Avalonia resources. Null if unavailable.</summary>

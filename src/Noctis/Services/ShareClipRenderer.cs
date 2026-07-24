@@ -125,11 +125,21 @@ public static class ShareClipRenderer
             var stderrTask = p.StandardError.ReadToEndAsync();
             var stdoutTask = p.StandardOutput.ReadToEndAsync();
 
-            using (ct.Register(() => { try { if (!p.HasExited) p.Kill(true); } catch { } }))
-                await p.WaitForExitAsync(ct);
+            try
+            {
+                using (ct.Register(() => { try { if (!p.HasExited) p.Kill(true); } catch { } }))
+                    await p.WaitForExitAsync(ct);
+            }
+            finally
+            {
+                // Always drain the readers before `using var p` disposes the Process and
+                // its redirected pipes. On cancellation WaitForExitAsync throws, so these
+                // were left outstanding against streams that were about to be disposed —
+                // faulting unobserved.
+                try { await Task.WhenAll(stderrTask, stdoutTask); } catch { }
+            }
 
-            var stderr = await stderrTask;
-            await stdoutTask;
+            var stderr = stderrTask.IsCompletedSuccessfully ? stderrTask.Result : string.Empty;
 
             if (p.ExitCode == 0) return (true, string.Empty);
             var last = stderr.Split('\n').LastOrDefault(l => !string.IsNullOrWhiteSpace(l))?.Trim() ?? $"exit {p.ExitCode}";

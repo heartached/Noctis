@@ -88,18 +88,23 @@ public static class ArtworkCache
     /// </summary>
     public static void Invalidate(string path)
     {
-        // Exact path match after the "width|" prefix — a plain EndsWith over-matched
-        // any path that another path happened to be a suffix of.
-        foreach (var key in Cache.Keys)
+        // Targeted removal against the decode widths actually in use, instead of
+        // enumerating Cache.Keys — that materialised a fresh List of up to MaxCacheSize
+        // (2000) keys on every call, and saving metadata for a multi-track selection
+        // calls this once per track.
+        //
+        // The width set is observed at insert time rather than hardcoded, so a new
+        // DecodeWidth added in XAML can't silently escape invalidation.
+        foreach (var width in _observedWidths.Keys)
         {
-            var sep = key.IndexOf('|');
-            if (sep < 0 || !key.AsSpan(sep + 1).Equals(path.AsSpan(), StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (Cache.TryRemove(key, out var removed))
+            if (Cache.TryRemove(BuildKey(path, width), out var removed))
                 OnEntryRemoved(removed);
         }
         Invalidated?.Invoke(path);
     }
+
+    /// <summary>Normalized decode widths seen so far (used as a set; the value is unused).</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, byte> _observedWidths = new();
 
     /// <summary>
     /// Raised after a cached entry is removed, allowing live UI controls to reload.
@@ -226,7 +231,11 @@ public static class ArtworkCache
     }
 
     private static string BuildKey(string path, int decodeWidth)
-        => $"{NormalizeDecodeWidth(decodeWidth)}|{path}";
+    {
+        var width = NormalizeDecodeWidth(decodeWidth);
+        _observedWidths.TryAdd(width, 0);
+        return $"{width}|{path}";
+    }
 
     private static int NormalizeDecodeWidth(int decodeWidth)
         => decodeWidth <= 0 ? DecodeWidth : Math.Clamp(decodeWidth, 64, 1024);

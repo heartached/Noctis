@@ -860,15 +860,36 @@ public partial class LyricShareViewModel : ViewModelBase
             Directory.CreateDirectory(frameDir);
             try
             {
-                StatusText = "Saving";
-                await Task.Run(() => ShareCardRenderer.RenderKaraokeFrames(
-                    spec, karaoke, timing, KaraokeFps, frameDir));
+                // Progress + cancellation. Both were supported by the renderer and simply
+                // never passed: a 60s Story clip is 3600 frames at 1080x1920 — minutes of
+                // work behind a static "Saving" label, with no percentage and no way to
+                // abort (closing the dialog didn't stop it either).
+                _exportCts?.Dispose();
+                _exportCts = new CancellationTokenSource();
+                var token = _exportCts.Token;
 
-                StatusText = string.Empty;
+                StatusText = "Saving 0%";
+                var progress = new Progress<(int Done, int Total)>(p =>
+                {
+                    if (p.Total <= 0) return;
+                    var pct = (int)Math.Round(100.0 * p.Done / p.Total);
+                    Dispatcher.UIThread.Post(() => StatusText = $"Saving {pct}%");
+                });
+
+                await Task.Run(() => ShareCardRenderer.RenderKaraokeFrames(
+                    spec, karaoke, timing, KaraokeFps, frameDir,
+                    (done, total) => ((IProgress<(int, int)>)progress).Report((done, total)),
+                    token), token);
+
+                StatusText = "Encoding";
                 var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
                 var (ok, error) = await ShareClipRenderer.RenderFramesAsync(
-                    ffmpeg, pattern, KaraokeFps, _track.FilePath, outputPath, timing);
+                    ffmpeg, pattern, KaraokeFps, _track.FilePath, outputPath, timing, token);
                 return ok ? "Saved" : $"Clip failed: {error}";
+            }
+            catch (OperationCanceledException)
+            {
+                return "Cancelled";
             }
             finally
             {
@@ -881,10 +902,24 @@ public partial class LyricShareViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Cancels an in-flight clip export. Bound to the dialog's Cancel affordance.</summary>
+    public void CancelExport() => _exportCts?.Cancel();
+
+    /// <summary>True while a clip export is running and can be cancelled.</summary>
+    public bool CanCancelExport => IsRendering;
+
+    private CancellationTokenSource? _exportCts;
+
     /// <summary>Unsubscribes from the player so the dialog can be garbage-collected.</summary>
     public void Detach()
     {
         ++_renderGeneration;   // stale in-flight preview renders dispose instead of re-installing
+
+        // Stop a running export. Detach() previously tore down only the preview animator,
+        // so closing the dialog mid-export left thousands of frames still rendering.
+        try { _exportCts?.Cancel(); } catch { }
+        _previewDebounceCts?.Cancel();
+
         TeardownAnimator();
         if (_player != null)
             _player.PropertyChanged -= OnPlayerPropertyChanged;
