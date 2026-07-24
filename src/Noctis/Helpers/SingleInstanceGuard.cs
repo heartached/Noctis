@@ -52,9 +52,25 @@ public static class SingleInstanceGuard
             return true;
         }
 
-        _ = Task.Run(ListenForActivationAsync);
+        StartActivationListener();
         return true;
     }
+
+    /// <summary>
+    /// Starts the activation listener without owning the mutex. Used by the fall-through
+    /// launch: the mutex name is a bare, guessable, un-ACL'd string, so any other process
+    /// in the session can create it first and leave <see cref="TryAcquire"/> returning
+    /// false forever — an app that simply refuses to start, with no message. When the
+    /// mutex is held but nothing answers the activation pipe, there is no live instance to
+    /// surface and we launch anyway; this keeps the next launch able to reach us.
+    /// </summary>
+    public static void StartActivationListener()
+    {
+        if (Interlocked.Exchange(ref _listenerStarted, 1) != 0) return;
+        _ = Task.Run(ListenForActivationAsync);
+    }
+
+    private static int _listenerStarted;
 
     /// <summary>
     /// Asks the already-running instance to show its window, forwarding any

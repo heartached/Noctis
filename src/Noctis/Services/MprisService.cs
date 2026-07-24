@@ -68,6 +68,10 @@ public sealed class MprisService : IDisposable
         _ = Task.Run(InitializeAsync);
     }
 
+    /// <summary>Reply codes from org.freedesktop.DBus.RequestName.</summary>
+    private const uint RequestNamePrimaryOwner = 1;
+    private const uint RequestNameAlreadyOwner = 4;
+
     private async Task InitializeAsync()
     {
         try
@@ -86,7 +90,22 @@ public sealed class MprisService : IDisposable
 
             // MessageWriter is a ref struct, so the message is built in a
             // separate non-async method.
-            await connection.CallMethodAsync(CreateRequestNameMessage(connection));
+            //
+            // The reply code used to be discarded, so an outright failure to acquire
+            // org.mpris.MediaPlayer2.noctis was invisible: media keys and the desktop
+            // widget silently did nothing while the log said "Started".
+            var reply = await connection.CallMethodAsync(
+                CreateRequestNameMessage(connection),
+                static (Message msg, object? _) => msg.GetBodyReader().ReadUInt32(),
+                null);
+
+            if (reply is not (RequestNamePrimaryOwner or RequestNameAlreadyOwner))
+            {
+                DebugLogger.Error(DebugLogger.Category.Playback, "Mpris.NameRefused",
+                    $"RequestName({BusName}) returned {reply}; media keys unavailable");
+                connection.Dispose();
+                return;
+            }
 
             if (_disposed)
             {
@@ -99,12 +118,60 @@ public sealed class MprisService : IDisposable
 
             // The desktop may have missed state set before the name was acquired.
             EmitPropertiesChanged(statusChanged: true, metadataChanged: true, volumeChanged: true);
+
+            _ = WatchForDisconnectAsync(connection);
         }
         catch (Exception ex)
         {
             DebugLogger.Error(DebugLogger.Category.Playback, "Mpris.Init", ex.Message);
         }
     }
+
+    /// <summary>
+    /// Re-establishes MPRIS after a session-bus restart or transport error.
+    ///
+    /// Nothing watched the connection before: _connection stayed non-null,
+    /// TrySendMessage kept returning quietly false, and MPRIS simply vanished — media
+    /// keys stopped working and the GNOME/KDE widget went blank, with no log line and
+    /// no recovery short of restarting Noctis.
+    /// </summary>
+    private async Task WatchForDisconnectAsync(Connection connection)
+    {
+        try
+        {
+            var error = await connection.DisconnectedAsync();
+            if (_disposed) return;
+
+            DebugLogger.Warn(DebugLogger.Category.Playback, "Mpris.Disconnected",
+                error?.Message ?? "session bus closed the connection");
+
+            // Only clear the field if it still points at the connection that died —
+            // a reconnect may already have replaced it.
+            if (ReferenceEquals(_connection, connection))
+                _connection = null;
+            try { connection.Dispose(); } catch { }
+
+            // Bounded backoff: a bus that is coming back does so within seconds, and a
+            // bus that isn't must not turn into a permanent retry loop.
+            for (var attempt = 0; attempt < MprisReconnectAttempts && !_disposed; attempt++)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2 * (attempt + 1)));
+                if (_disposed) return;
+
+                await InitializeAsync();
+                if (_connection != null) return;
+            }
+
+            DebugLogger.Error(DebugLogger.Category.Playback, "Mpris.ReconnectGaveUp",
+                $"no session bus after {MprisReconnectAttempts} attempts");
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.Playback, "Mpris.Watch", ex.Message);
+        }
+    }
+
+    private const int MprisReconnectAttempts = 5;
 
     private static MessageBuffer CreateRequestNameMessage(Connection connection)
     {

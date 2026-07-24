@@ -100,10 +100,24 @@ public partial class App : Application
         {
             var mainVm = Services!.GetRequiredService<MainWindowViewModel>();
 
-            desktop.MainWindow = new MainWindow
+            var mainWindow = new MainWindow
             {
                 DataContext = mainVm
             };
+
+            // Decide "start minimized to tray" before the window is realized. Avalonia
+            // shows MainWindow before Loaded fires, and the Hide() that honours this
+            // setting used to be the last statement of that handler — after the settings
+            // load, the whole library JSON, the index rebuild, playlists and the queue
+            // restore. On a large library that was seconds of a fully painted window on
+            // screen at every login, which is exactly what the setting exists to prevent.
+            if (StartMinimizedAtLogin)
+            {
+                mainWindow.WindowState = Avalonia.Controls.WindowState.Minimized;
+                mainWindow.ShowInTaskbar = false;
+            }
+
+            desktop.MainWindow = mainWindow;
 
             // Background BPM/key analysis: kick a backfill pass after each library
             // update (initial scan, incremental rescans, imports), plus one now to
@@ -136,8 +150,22 @@ public partial class App : Application
                 e.Cancel = true;
                 // Await the backfill's unwind: TryWriteTags is a synchronous TagLib
                 // rewrite of a whole audio file, and exiting mid-Save() truncates it.
+                //
+                // Every step is deadline-bounded. Avalonia's Win32 backend raises this
+                // from WM_QUERYENDSESSION and reports a cancelled event back to Windows
+                // as a shutdown veto, and ShutdownRequestedEventArgs (11.3.18) exposes no
+                // way to tell an OS session-end from a normal quit. Unbounded, a slow save
+                // left the user staring at "This app is preventing you from shutting
+                // down" — or Windows force-terminated us and cut off the very save the
+                // cancel exists to protect. Bounded, the veto lasts at most a few seconds
+                // and we always exit under our own power.
                 try { await analysisCoordinator.StopAsync(TimeSpan.FromSeconds(3)); } catch { }
-                try { await mainVm.ShutdownAsync(); }
+                try { await mainVm.ShutdownAsync().WaitAsync(ShutdownSaveDeadline); }
+                catch (TimeoutException)
+                {
+                    DebugLogger.Error(DebugLogger.Category.Error, "ShutdownSave",
+                        $"did not finish within {ShutdownSaveDeadline.TotalSeconds:0}s — exiting anyway");
+                }
                 catch (Exception ex)
                 {
                     DebugLogger.Error(DebugLogger.Category.Error, "ShutdownSave", ex.Message);
@@ -148,6 +176,9 @@ public partial class App : Application
 
         base.OnFrameworkInitializationCompleted();
     }
+
+    /// <summary>How long the shutdown save may hold the exit before we quit regardless.</summary>
+    private static readonly TimeSpan ShutdownSaveDeadline = TimeSpan.FromSeconds(4);
 
     // Names used for persistence and for picking the runtime overlay.
     public const string ThemeGray = "Gray";

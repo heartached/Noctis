@@ -158,6 +158,39 @@ public partial class MainWindow : Window
                 await vm.Settings.LoadAsync();
                 RestoreWindowPlacement(vm.Settings.GetSettings());
 
+                // Control-surface wiring runs BEFORE the library load. None of it needs
+                // the library — only vm.Player and the window handle — and it used to sit
+                // after InitializeAsync(), so for the whole of a large library's load
+                // there was no tray icon, no Windows media-flyout entry, and dead
+                // hardware media keys (on Linux the MPRIS bus name wasn't even claimed,
+                // so playerctl reported no player at all). With queue-restore on, the
+                // user could see a track sitting in the playbar while the media keys
+                // did nothing.
+                _sidebarWrapper = this.FindControl<Border>("SidebarWrapper");
+                _lyricsPanelWrapper = this.FindControl<Border>("LyricsPanelWrapper");
+                _contentDockPanel = this.FindControl<DockPanel>("ContentDockPanel");
+                _rootPanel = this.FindControl<DockPanel>("RootPanel");
+                _settingsOverlay = this.FindControl<Border>("SettingsOverlay");
+                _settingsCard = this.FindControl<Border>("SettingsCard");
+                _queuePopupPanel = this.FindControl<Border>("QueuePopupPanel");
+
+                InitializeQueuePopupBinding(vm);
+                InitializeTaskbarButtons(vm);
+                InitializeTrayIcon(vm);
+                _smtc = new SmtcService(vm.Player, TryGetPlatformHandle()?.Handle ?? IntPtr.Zero);
+                _mpris = MprisService.TryStart(vm.Player);
+
+                // Launched at login with "start minimized to tray" on (encoded in the
+                // autostart args, so it needs no async settings load). App already
+                // minimized the window before it was realized; drop it out of the
+                // taskbar now that the tray icon exists to get it back. Guarded on
+                // _trayIcon != null so a platform where the tray failed to initialize
+                // never leaves the app running with no window AND no tray icon.
+                if (App.StartMinimizedAtLogin && _trayIcon != null)
+                {
+                    Hide();
+                }
+
                 await vm.InitializeAsync();
 
                 // Wire up albums view-mode toggle visuals
@@ -168,15 +201,6 @@ public partial class MainWindow : Window
                 };
                 vm.TopBar.PropertyChanged += _topBarPropertyChangedHandler;
                 UpdateViewModeToggleVisuals(vm.TopBar.IsCoverFlowMode, vm.TopBar.IsCollageMode);
-
-                // Wire lyrics panel + sidebar hover
-                _sidebarWrapper = this.FindControl<Border>("SidebarWrapper");
-                _lyricsPanelWrapper = this.FindControl<Border>("LyricsPanelWrapper");
-                _contentDockPanel = this.FindControl<DockPanel>("ContentDockPanel");
-                _rootPanel = this.FindControl<DockPanel>("RootPanel");
-                _settingsOverlay = this.FindControl<Border>("SettingsOverlay");
-                _settingsCard = this.FindControl<Border>("SettingsCard");
-                _queuePopupPanel = this.FindControl<Border>("QueuePopupPanel");
 
                 // Queue row position numbers: rows are virtualized and recycled, so
                 // there is no per-item index to bind — stamp the 1-based position when
@@ -329,32 +353,6 @@ public partial class MainWindow : Window
                     };
                 }
 
-                // Initialize taskbar thumbnail buttons (Previous / Play-Pause / Next)
-                // Must run before/independently of the taskbar wiring — see the comment
-                // on InitializeQueuePopupBinding.
-                InitializeQueuePopupBinding(vm);
-                InitializeTaskbarButtons(vm);
-
-                // System tray icon (minimize/close-to-tray + playback controls)
-                InitializeTrayIcon(vm);
-
-                // Windows media overlay (SMTC): now-playing card on the media-key
-                // flyout/lock screen + media-key control (no-op off Windows).
-                _smtc = new SmtcService(vm.Player, TryGetPlatformHandle()?.Handle ?? IntPtr.Zero);
-
-                // Linux media keys + GNOME/KDE media widgets (MPRIS over D-Bus).
-                // Null on other platforms; fail-soft without a session bus.
-                _mpris = MprisService.TryStart(vm.Player);
-
-                // Launched at login with "start minimized to tray" on (encoded in the
-                // autostart args, so it needs no async settings load) → hide to the tray
-                // instead of showing the window. Guarded on _trayIcon != null so a
-                // platform where the tray failed to initialize never leaves the app
-                // running with no window AND no tray icon (i.e. invisible).
-                if (App.StartMinimizedAtLogin && _trayIcon != null)
-                {
-                    Hide();
-                }
             }
         }
     }
@@ -437,7 +435,11 @@ public partial class MainWindow : Window
                 WindowStartupLocation = WindowStartupLocation.CenterScreen;
         }
 
-        if (Enum.TryParse<WindowState>(settings.MainWindowState, out var savedState))
+        // Don't undo the pre-realize minimize when the app was launched to start hidden:
+        // restoring the saved state here would flash the window open for the rest of
+        // startup, which is the thing that minimize was for.
+        if (!App.StartMinimizedAtLogin
+            && Enum.TryParse<WindowState>(settings.MainWindowState, out var savedState))
         {
             WindowState = savedState == WindowState.Minimized ? WindowState.Normal : savedState;
         }
@@ -576,6 +578,9 @@ public partial class MainWindow : Window
             catch { /* fall through and show the main window directly */ }
         }
 
+        // A login launch starts minimized with no taskbar button (see App); the first
+        // trip out of the tray is where it earns them back.
+        ShowInTaskbar = true;
         Show();
         if (WindowState == WindowState.Minimized)
             WindowState = WindowState.Normal;
