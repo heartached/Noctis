@@ -1043,10 +1043,22 @@ public partial class MainWindow : Window
         // Clicks elsewhere in the app (player controls, sidebar, content area) do not dismiss it.
     }
 
-    private void OnQueueClearClick(object? sender, RoutedEventArgs e)
+    private async void OnQueueClearClick(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is MainWindowViewModel vm)
-            vm.Player.ClearQueue();
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        // A queue curated over many sessions with Play Next / Add to Queue used to be
+        // destroyed by one click on a small ghost button — and PlayTrack overwrites
+        // queue.json immediately afterwards, so it couldn't be recovered from disk either.
+        var count = vm.Player.UpNext.Count;
+        if (count >= 5)
+        {
+            var confirmed = await Views.ConfirmationDialog.ShowAsync(
+                $"Clear all {count} tracks from the queue? This cannot be undone.");
+            if (!confirmed) return;
+        }
+
+        vm.Player.ClearQueue();
     }
 
     private void OnQueueItemDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)

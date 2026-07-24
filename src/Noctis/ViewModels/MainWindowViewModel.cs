@@ -1268,7 +1268,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Mirror of GoBack: stash current onto the back stack, then restore the
         // forward entry. Forward stack is intentionally left intact here.
-        _navigationHistory.Push(CaptureCurrentNavigationEntry());
+        // Via PushHistoryEntry, not a raw Push: the direct push skipped the
+        // MaxNavigationHistory trim, so a long back/forward run retained transient
+        // AlbumDetail/Playlist view-models past the intended window without disposing them.
+        PushHistoryEntry(CaptureCurrentNavigationEntry());
         RestoreNavigationEntry(_forwardHistory.Pop());
     }
 

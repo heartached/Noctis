@@ -1450,6 +1450,12 @@ public partial class PlayerViewModel : ViewModelBase
         // resumes from a sensible state. User skips bypass and clear the flag.
         if (StopAfterCurrentTrack && reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix)
         {
+            // TryAdvanceForAutoMix has already armed the crossfade and stashed the *next*
+            // track's planned entry offset in _pendingAutoMixNextStartMs. Returning without
+            // clearing it left that offset for the next PlayTrack to consume — pressing
+            // Play afterwards restarted the current track at the following track's entry
+            // point instead of from where it stopped.
+            CancelAutoMixTransition("stop after current track");
             StopAfterCurrentTrack = false;
             State = PlaybackState.Stopped;
             DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.StoppedAfterTrack",
