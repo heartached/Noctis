@@ -42,11 +42,12 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void OpenSettings()
     {
-        // Open immediately so the click feels instant. Library stats are an in-memory
-        // pass (cheap); storage info walks the artwork directory and is deferred to
-        // a background thread so it never blocks the click.
+        // Open immediately so the click feels instant. Everything the Statistics tab
+        // needs — the whole-library stats pass, the playlist count and the artwork
+        // directory walk — runs off the UI thread so none of it blocks the click.
         IsSettingsModalOpen = true;
-        Settings.RefreshLibraryStats();
+        _ = Settings.RefreshLibraryStatsAsync();
+        _ = Settings.RefreshPlaylistCountAsync();
         _ = Settings.RefreshStorageInfoAsync();
     }
 
@@ -2366,15 +2367,25 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Toggles the debug overlay panel and enables/disables logging.</summary>
     public void ToggleDebugPanel()
     {
-        if (_debugPanelVm == null)
+        if (IsDebugPanelVisible)
         {
-            _debugPanelVm = new DebugPanelViewModel(Player, this);
+            // The view-model was built once and never disposed, so a single Ctrl+Shift+D
+            // left a permanent subscription to Player.PropertyChanged posting
+            // RefreshLiveState to the UI thread on every Position tick — for the rest of
+            // the session, with the panel hidden.
+            IsDebugPanelVisible = false;
+            _debugPanelVm?.Dispose();
+            _debugPanelVm = null;
             OnPropertyChanged(nameof(DebugPanel));
+            DebugLogger.Info(DebugLogger.Category.UI, "DebugPanel closed");
+            return;
         }
 
-        IsDebugPanelVisible = !IsDebugPanelVisible;
+        _debugPanelVm = new DebugPanelViewModel(Player, this);
+        OnPropertyChanged(nameof(DebugPanel));
+        IsDebugPanelVisible = true;
         DebugLogger.IsEnabled = true; // keep logging even when panel closes
-        DebugLogger.Info(DebugLogger.Category.UI, IsDebugPanelVisible ? "DebugPanel opened" : "DebugPanel closed");
+        DebugLogger.Info(DebugLogger.Category.UI, "DebugPanel opened");
     }
 }
 

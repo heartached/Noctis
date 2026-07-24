@@ -16,6 +16,14 @@ public interface IPersistenceService
     Task<AppSettings> LoadSettingsAsync();
     Task SaveSettingsAsync(AppSettings settings);
 
+    /// <summary>
+    /// True when settings.json existed but could not be parsed on the last load attempt.
+    /// The damaged file was renamed aside and the values came from settings.json.bak, or
+    /// from defaults when no usable backup existed. Unlike the library, settings stay
+    /// writable — refusing to save would leave the app unable to persist anything.
+    /// </summary>
+    bool SettingsLoadFailed { get; }
+
     // --- Library ---
     Task<List<Track>?> LoadLibraryAsync();
     Task SaveLibraryAsync(List<Track> tracks);

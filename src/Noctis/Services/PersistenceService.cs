@@ -101,7 +101,29 @@ public class PersistenceService : IPersistenceService
 
     public async Task<AppSettings> LoadSettingsAsync()
     {
-        var settings = await LoadJsonAsync<AppSettings>(SettingsPath) ?? new AppSettings();
+        var (loaded, outcome) = await LoadJsonWithOutcomeAsync<AppSettings>(SettingsPath);
+
+        // A parse failure used to just log to Debug.WriteLine and hand back defaults — and
+        // the very next save (any settings change, or the unconditional save on window
+        // close) overwrote the damaged file, destroying the only copy of the user's music
+        // folders, themes, EQ and both scrobbler credentials. Move it aside first, then try
+        // the rolling backup before falling back to defaults.
+        if (outcome == LoadOutcome.Corrupt)
+        {
+            SettingsLoadFailed = true;
+            var quarantined = QuarantineCorruptFile(SettingsPath);
+            loaded = await TryParseAsync<AppSettings>(SettingsBackupPath);
+            DebugLog.Write("Persistence",
+                $"settings.json could not be parsed and was moved to " +
+                $"'{Path.GetFileName(quarantined) ?? "(rename failed)"}'. " +
+                (loaded is null
+                    ? "No usable backup — starting from defaults."
+                    : "Recovered the previous settings from settings.json.bak."));
+            DebugLogger.Error(DebugLogger.Category.Error, "settings.json corrupt", quarantined);
+        }
+
+        var settings = loaded ?? new AppSettings();
+        settings.ClampToValidRanges();
         // Decrypt at-rest-protected credentials (see SaveSettingsAsync).
         // Legacy plaintext values pass through unchanged.
         settings.LastFmSessionKey = UnprotectSecret(settings.LastFmSessionKey);
@@ -111,8 +133,32 @@ public class PersistenceService : IPersistenceService
         return settings;
     }
 
+    /// <inheritdoc />
+    public bool SettingsLoadFailed { get; private set; }
+
+    private string SettingsBackupPath => SettingsPath + ".bak";
+
     public async Task SaveSettingsAsync(AppSettings settings)
     {
+        // Roll the last known-good file aside before overwriting it. settings.json is
+        // small and saves are debounced, so the copy is cheap next to the write itself —
+        // and it is the difference between "the file got truncated" and "the user lost
+        // every setting they ever chose".
+        try
+        {
+            if (File.Exists(SettingsPath))
+            {
+                File.Copy(SettingsPath, SettingsBackupPath, overwrite: true);
+                // The backup holds the same credential fields as the original, which are
+                // plaintext everywhere DPAPI isn't available.
+                TryRestrictToOwner(SettingsBackupPath, isDirectory: false);
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Persistence", $"Could not refresh settings.json.bak: {ex.Message}");
+        }
+
         // Protect scrobbler credentials at rest (Windows DPAPI, current user).
         // Applied to the serialized tree, not the live object, so in-memory
         // settings keep the plaintext values the services use.

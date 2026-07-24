@@ -37,16 +37,19 @@ public sealed class WebRemoteServer : IDisposable
 
     public WebRemoteServer(PlayerViewModel player) => _player = player;
 
+    /// <summary>Binds the remote. Pass 0 to let the OS pick a free port; read
+    /// <see cref="Port"/> afterwards for what was actually bound — it is no longer the
+    /// requested value, because the requested one may have been in use.</summary>
     public void Start(int port)
     {
         Stop();
-        Port = port;
         Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant();
         _cts = new CancellationTokenSource();
         _listener = new TcpListener(IPAddress.Any, port);
         _listener.Start();
+        Port = ((IPEndPoint)_listener.LocalEndpoint).Port;
         _ = AcceptLoopAsync(_listener, _cts.Token);
-        DebugLogger.Info(DebugLogger.Category.State, "WebRemote.Start", $"port={port}");
+        DebugLogger.Info(DebugLogger.Category.State, "WebRemote.Start", $"port={Port}");
     }
 
     public void Stop()

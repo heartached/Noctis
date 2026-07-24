@@ -26,6 +26,13 @@ public interface ILibraryService
     event EventHandler? FavoritesChanged;
 
     /// <summary>
+    /// Fires when the library itself rewrote the configured music-folder list (a root that
+    /// no longer exists on disk and contributes no tracks is dropped). Carries the new
+    /// list, so Settings doesn't have to re-read settings.json to notice.
+    /// </summary>
+    event EventHandler<List<string>>? MusicFoldersChanged;
+
+    /// <summary>
     /// Fires when a scan was abandoned because configured music folders were unavailable
     /// (offline drive / unreachable share). Carries the missing root paths; the existing
     /// library is left untouched.

@@ -61,6 +61,7 @@ public class LibraryService : ILibraryService
     public event EventHandler? LibraryUpdated;
     public event EventHandler<int>? ScanProgress;
     public event EventHandler? FavoritesChanged;
+    public event EventHandler<List<string>>? MusicFoldersChanged;
 
     /// <summary>
     /// Raised when a scan was abandoned because one or more configured music folders were
@@ -936,7 +937,7 @@ public class LibraryService : ILibraryService
             .Select(p => p!)
             .ToArray();
 
-        settings.MusicFolders.RemoveAll(folder =>
+        var removedFolders = settings.MusicFolders.RemoveAll(folder =>
         {
             if (string.IsNullOrWhiteSpace(folder)) return true;
             var normalized = TryNormalizePath(folder);
@@ -951,6 +952,13 @@ public class LibraryService : ILibraryService
         });
 
         await _persistence.SaveSettingsAsync(settings);
+
+        // This is the only place the library rewrites the user's folder list. Announcing
+        // it directly means Settings no longer has to re-read and re-parse settings.json
+        // (plus a DPAPI unprotect) on every LibraryUpdated — an event that also fires on
+        // every scan, drop-import, removal and metadata write.
+        if (removedFolders > 0)
+            MusicFoldersChanged?.Invoke(this, settings.MusicFolders.ToList());
     }
 
     public async Task LoadAsync()

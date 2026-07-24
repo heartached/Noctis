@@ -116,4 +116,56 @@ public class PersistenceServiceTests : IDisposable
         Assert.Equal("plain-lastfm-session", loaded.LastFmSessionKey);
         Assert.Equal("plain-navidrome-pass", loaded.SourceConnections[0].TokenOrPassword);
     }
+
+    [Fact]
+    public async Task CorruptSettings_AreQuarantined_AndRecoveredFromBackup()
+    {
+        var svc = Create();
+        // Two saves: the second rolls the first (good) file into settings.json.bak.
+        await svc.SaveSettingsAsync(new AppSettings { Volume = 33, ProfileName = "before" });
+        await svc.SaveSettingsAsync(new AppSettings { Volume = 33, ProfileName = "before" });
+
+        var settingsPath = Path.Combine(_root, "settings.json");
+        await File.WriteAllTextAsync(settingsPath, "{ this is not json");
+
+        var loaded = await svc.LoadSettingsAsync();
+
+        Assert.True(svc.SettingsLoadFailed);
+        Assert.Equal("before", loaded.ProfileName);       // came back from the .bak
+        Assert.Equal(33, loaded.Volume);
+        Assert.NotEmpty(Directory.GetFiles(_root, "settings.json.corrupt-*"));
+        Assert.Contains("this is not json",
+            await File.ReadAllTextAsync(Directory.GetFiles(_root, "settings.json.corrupt-*")[0]));
+    }
+
+    [Fact]
+    public async Task CorruptSettings_WithNoBackup_FallBackToDefaultsWithoutDestroyingTheFile()
+    {
+        var svc = Create();
+        Directory.CreateDirectory(_root);
+        await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"), "<<<not json>>>");
+
+        var loaded = await svc.LoadSettingsAsync();
+
+        Assert.True(svc.SettingsLoadFailed);
+        Assert.Equal(new AppSettings().Volume, loaded.Volume);
+        Assert.Single(Directory.GetFiles(_root, "settings.json.corrupt-*"));
+    }
+
+    [Fact]
+    public async Task OutOfRangeNumbers_AreClampedOnLoad()
+    {
+        var svc = Create();
+        Directory.CreateDirectory(_root);
+        // Hand-edited settings.json: the bounds were previously enforced by the UI only.
+        await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"),
+            """{"volume":400,"webRemotePort":0,"replayGainPreampDb":99,"crossfadeDuration":900}""");
+
+        var loaded = await svc.LoadSettingsAsync();
+
+        Assert.Equal(100, loaded.Volume);
+        Assert.Equal(9420, loaded.WebRemotePort);
+        Assert.Equal(12, loaded.ReplayGainPreampDb);
+        Assert.Equal(12, loaded.CrossfadeDuration);
+    }
 }

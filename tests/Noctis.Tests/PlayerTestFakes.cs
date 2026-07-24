@@ -66,6 +66,7 @@ internal sealed class FakeLibraryService : ILibraryService
     public event EventHandler? LibraryUpdated;
     public event EventHandler<int>? ScanProgress;
     public event EventHandler? FavoritesChanged;
+    public event EventHandler<List<string>>? MusicFoldersChanged;
     public event EventHandler<string[]>? ScanAborted;
 
     public Task ScanAsync(IEnumerable<string> folders, CancellationToken ct = default) => Task.CompletedTask;
