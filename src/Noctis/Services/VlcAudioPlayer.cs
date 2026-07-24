@@ -144,7 +144,11 @@ public class VlcAudioPlayer : IAudioPlayer
     private long _standbyStartPositionMs = -1;
     private long _standbyPreparedTicksUtc;
     private bool _standbyPrepared;
-    private bool _disposed;
+    // volatile: Dispose writes this from the UI thread while the volume-ramp worker, the
+    // EQ queue, both fade loops and the seek worker read it in spin loops with no barrier.
+    // The other shutdown flags in this class (_positionTickActive, _seekWorkerActive) are
+    // already volatile; this one was the outlier.
+    private volatile bool _disposed;
 
     // ── VLC internal-log diagnostics (gated by env NOCTIS_VLC_LOG=1) ──
     // Off by default and zero-cost. When enabled, LibVLC's OWN log (decoder,
@@ -493,12 +497,14 @@ public class VlcAudioPlayer : IAudioPlayer
                     // and always delivers S16N — the sink's input chain matches.
                     _player.SetAudioCallbacks(_audioPlayCb, _audioPauseCb, _audioResumeCb, _audioFlushCb, _audioDrainCb);
                     _player.SetAudioFormat("S16N", (uint)wasapi.SampleRate, (uint)wasapi.Channels);
+                    _callbackChannels = wasapi.Channels;
                     _player.Volume = 100;
                     WasapiGainOutput.Diag($"VlcAudioPlayer wired callbacks: S16N {wasapi.SampleRate}Hz {wasapi.Channels}ch");
                 }
                 catch (Exception ex)
                 {
                     WasapiGainOutput.Diag($"VlcAudioPlayer wiring FAILED: {ex.GetType().Name}: {ex.Message}");
+                    _callbackChannels = 0;
                     try { wasapi.Dispose(); } catch { }
                     wasapi = null;
                     // The delegate fields are deliberately NOT nulled here.
@@ -1333,7 +1339,8 @@ public class VlcAudioPlayer : IAudioPlayer
             // (PrepareExclusiveOutputFor). This provisional value only covers
             // the window until the first Play.
             _player.SetAudioCallbacks(_audioPlayCb, _audioPauseCb, _audioResumeCb, _audioFlushCb, _audioDrainCb);
-            try { _player.SetAudioFormat("S16N", 44100, 2); } catch { }
+            try { _player.SetAudioFormat("S16N", 44100, 2); _callbackChannels = 2; }
+            catch { _callbackChannels = 0; }
             try { _player.Volume = 100; } catch { }
             // The silent keep-warm stream is pointless while we hold the endpoint
             // exclusively, and some drivers dislike the concurrent shared stream.
@@ -1468,7 +1475,34 @@ public class VlcAudioPlayer : IAudioPlayer
             // The format string is IGNORED by VLC 3.x's amem ("TODO: amem-format"
             // — it always outputs S16N); only the rate/channels vars are read.
             // "S16N" is passed so the call documents what actually flows.
-            _player.SetAudioFormat("S16N", (uint)sinkRate, (uint)sinkChannels);
+            //
+            // AudioPlay sizes its Marshal.Copy from the channel count VLC was told to
+            // deliver, not from whatever sink happens to be installed: the sink is
+            // assigned above, before this call, and this call is inside the method-wide
+            // try below. If it threw after a 1ch → 2ch sink swap, VLC would keep sending
+            // mono blocks while AudioPlay read twice the block length — the same
+            // over-read that produced the 0x80131506 exclusive-mode crash.
+            try
+            {
+                _player.SetAudioFormat("S16N", (uint)sinkRate, (uint)sinkChannels);
+                _callbackChannels = sinkChannels;
+            }
+            catch (Exception ex)
+            {
+                // The format was not pinned, so nothing can be said about the block
+                // layout VLC will deliver. Drop the sink: AudioPlay no-ops when
+                // ActiveCallbackSink is null, which is silence rather than an over-read
+                // on libvlc's aout thread.
+                DebugLogger.Error(DebugLogger.Category.Playback, "Exclusive.FormatFailed",
+                    $"{ex.GetType().Name}: {ex.Message}");
+                _callbackChannels = 0;
+                lock (_exclusiveSinkLock)
+                {
+                    try { _exclusiveOut?.Dispose(); } catch { }
+                    _exclusiveOut = null;
+                }
+                throw;
+            }
 
             if (notice != null)
             {
@@ -1481,6 +1515,12 @@ public class VlcAudioPlayer : IAudioPlayer
             DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.SetupFailed", ex.Message);
         }
     }
+
+    /// <summary>
+    /// Channel count last accepted by <c>SetAudioFormat</c>, i.e. what libvlc's amem is
+    /// actually delivering. 0 when no format is pinned. Read on libvlc's aout thread.
+    /// </summary>
+    private volatile int _callbackChannels;
 
     /// <summary>
     /// Raised on NAudio's thread when the exclusive endpoint goes away. Drops exclusive
@@ -2756,14 +2796,29 @@ public class VlcAudioPlayer : IAudioPlayer
     private long _audioPlayCallCount;
     private void AudioPlay(IntPtr data, IntPtr samples, uint count, long pts)
     {
-        var sink = ActiveCallbackSink;
-        if (sink == null) return;
-        var bytes = checked((int)count * sink.Channels * 2);
-        if (Interlocked.Increment(ref _audioPlayCallCount) <= 3)
-            WasapiGainOutput.Diag($"AudioPlay #{_audioPlayCallCount}: count(frames)={count} -> {bytes}B, pts={pts}");
-        var buf = System.Buffers.ArrayPool<byte>.Shared.Rent(bytes);
+        // Runs on libvlc's aout thread. Anything that escapes here kills the process,
+        // so the size arithmetic and the Rent are inside the try as well — they were
+        // outside it, and both can throw (checked overflow, OutOfMemory).
+        byte[]? buf = null;
+        var bytes = 0;
         try
         {
+            var sink = ActiveCallbackSink;
+            if (sink == null) return;
+
+            // Size from the channel count SetAudioFormat pinned, NOT from the sink's:
+            // the sink is installed before the format is pinned, so after a
+            // 1ch → 2ch swap whose SetAudioFormat failed, VLC is still delivering
+            // mono blocks while sink.Channels reads 2 — a 2× over-read off the end of
+            // libvlc's buffer, which is exactly the 0x80131506 exclusive-mode crash.
+            var channels = _callbackChannels;
+            if (channels <= 0) return;
+
+            bytes = checked((int)count * channels * 2);
+            if (Interlocked.Increment(ref _audioPlayCallCount) <= 3)
+                WasapiGainOutput.Diag($"AudioPlay #{_audioPlayCallCount}: count(frames)={count} -> {bytes}B, pts={pts}");
+
+            buf = System.Buffers.ArrayPool<byte>.Shared.Rent(bytes);
             System.Runtime.InteropServices.Marshal.Copy(samples, buf, 0, bytes);
             sink.Write(buf, bytes);
         }
@@ -2771,7 +2826,10 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             if (_audioPlayCallCount <= 5) WasapiGainOutput.Diag($"AudioPlay threw: {ex.GetType().Name}: {ex.Message}");
         }
-        finally { System.Buffers.ArrayPool<byte>.Shared.Return(buf); }
+        finally
+        {
+            if (buf != null) System.Buffers.ArrayPool<byte>.Shared.Return(buf);
+        }
     }
 
     private void AudioPause(IntPtr data, long pts) => ActiveCallbackSink?.Pause();

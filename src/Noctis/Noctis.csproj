@@ -27,8 +27,14 @@
     <!-- Avalonia requires this for XAML compilation -->
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 
-    <!-- Suppress build warnings -->
-    <NoWarn>CS8625;CS0067;MVVMTK0039;CA1416</NoWarn>
+    <!-- Suppress build warnings.
+         CS8625 was dropped: it was a project-wide nullability switch kept on for exactly
+         two warnings at one interop call, which now carries a scoped #pragma instead
+         (Controls/AnimatedCoverImage.axaml.cs).
+         CA1416 stays for now — it produces 0 warnings on the Windows TFM, and the
+         non-Windows TFM has never been built with it visible, so removing it here is a
+         change that has to be evaluated against a real linux-x64/osx build. -->
+    <NoWarn>CS0067;MVVMTK0039;CA1416</NoWarn>
   </PropertyGroup>
 
   <!-- Expose internal services (e.g. the Core Audio COM interop) to the test project. -->
