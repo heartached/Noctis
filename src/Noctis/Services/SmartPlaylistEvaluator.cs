@@ -26,7 +26,8 @@ public static class SmartPlaylistEvaluator
 
         if (playlist.LimitCount is > 0)
         {
-            var sorted = ApplySort(filtered, playlist.SortBy ?? SmartPlaylistSortBy.MostPlayed);
+            var sorted = ApplySort(filtered, playlist.SortBy ?? SmartPlaylistSortBy.MostPlayed,
+                seed: playlist.Id.GetHashCode());
             return sorted.Take(playlist.LimitCount.Value).ToList();
         }
 
@@ -49,8 +50,13 @@ public static class SmartPlaylistEvaluator
                 => [RuleOperator.Equals, RuleOperator.GreaterThan,
                     RuleOperator.LessThan, RuleOperator.Between],
 
+            // IsFalse maps to the null check EvaluateRule already implements for a null
+            // LastPlayed — it just wasn't offered here, so the branch was unreachable and
+            // "songs I've never played", the most common smart playlist there is, could
+            // not be expressed at all.
             RuleField.DateAdded or RuleField.LastPlayed
-                => [RuleOperator.Before, RuleOperator.After, RuleOperator.InLastNDays],
+                => [RuleOperator.Before, RuleOperator.After, RuleOperator.InLastNDays,
+                    RuleOperator.IsFalse],
 
             RuleField.IsFavorite or RuleField.IsLossless or RuleField.IsExplicit or RuleField.IsDisliked
                 => [RuleOperator.IsTrue, RuleOperator.IsFalse],
@@ -214,8 +220,22 @@ public static class SmartPlaylistEvaluator
         };
     }
 
-    private static IEnumerable<Track> ApplySort(IEnumerable<Track> tracks, SmartPlaylistSortBy sortBy)
+    /// <param name="seed">
+    /// Stable seed for <see cref="SmartPlaylistSortBy.Random"/>. Evaluate is called from
+    /// ApplyFilter, OnSortModeChanged and OnLibraryUpdated, so an unseeded shuffle
+    /// re-sampled the playlist on every reload — typing in the search box replaced the 25
+    /// songs the playlist contained, and clearing it replaced them again. Seeding per
+    /// playlist keeps the selection stable until its rules or the library change.
+    /// </param>
+    private static IEnumerable<Track> ApplySort(IEnumerable<Track> tracks, SmartPlaylistSortBy sortBy,
+        int seed = 0)
     {
+        if (sortBy == SmartPlaylistSortBy.Random)
+        {
+            var rng = new Random(seed);
+            return tracks.OrderBy(_ => rng.Next());
+        }
+
         return sortBy switch
         {
             SmartPlaylistSortBy.MostPlayed => tracks.OrderByDescending(t => t.PlayCount),
@@ -224,7 +244,6 @@ public static class SmartPlaylistEvaluator
             SmartPlaylistSortBy.RecentlyPlayed => tracks.OrderByDescending(t => t.LastPlayed ?? DateTime.MinValue),
             SmartPlaylistSortBy.Title => tracks.OrderBy(t => t.Title, StringComparer.OrdinalIgnoreCase),
             SmartPlaylistSortBy.Artist => tracks.OrderBy(t => t.Artist, StringComparer.OrdinalIgnoreCase),
-            SmartPlaylistSortBy.Random => tracks.OrderBy(_ => Random.Shared.Next()),
             _ => tracks
         };
     }

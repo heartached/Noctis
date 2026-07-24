@@ -285,13 +285,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             ? $"{(int)total.TotalHours}h {total.Minutes}m"
             : $"{(int)total.TotalMinutes} min";
 
-        // Compute total file size
+        // Compute total file size from the size the library already indexed.
+        //
+        // This used to do File.Exists + new FileInfo(...).Length per track, synchronously
+        // on the UI thread — and LoadTracks runs on every debounced search keystroke, sort
+        // change, library update and membership change. For a 3,000-track playlist on a
+        // NAS/SMB share that was 6,000 blocking filesystem round-trips per keystroke.
+        // Track.FileSize is populated by MetadataService during scan and kept current by
+        // the watcher, so the number is the same without touching the disk.
         long totalBytes = 0;
         foreach (var t in Tracks)
-        {
-            try { if (File.Exists(t.FilePath)) totalBytes += new FileInfo(t.FilePath).Length; }
-            catch { /* non-fatal */ }
-        }
+            totalBytes += t.FileSize;
         TotalSize = totalBytes switch
         {
             >= 1_073_741_824 => $"{totalBytes / 1_073_741_824.0:F1} GB",
