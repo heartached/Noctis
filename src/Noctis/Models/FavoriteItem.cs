@@ -14,8 +14,11 @@ public class FavoriteItem
     /// <summary>Display title: album name or track title.</summary>
     public string Title => IsAlbum ? Album!.Name : Track!.Title;
 
-    /// <summary>Display subtitle: album artist or track artist.</summary>
-    public string Subtitle => IsAlbum ? Album!.Artist : Track!.Artist;
+    /// <summary>Display subtitle: "Artist · Year" (artist alone when the year is
+    /// unknown), mirroring the Albums grid tile subtitle.</summary>
+    public string Subtitle => IsAlbum
+        ? Album!.TileSubtitle
+        : Track!.Year > 0 ? $"{Track.Artist} · {Track.Year}" : Track!.Artist;
 
     /// <summary>Artwork path for display.</summary>
     public string? ArtworkPath => IsAlbum ? Album!.ArtworkPath : Track!.AlbumArtworkPath;

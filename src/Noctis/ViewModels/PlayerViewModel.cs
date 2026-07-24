@@ -189,6 +189,12 @@ public partial class PlayerViewModel : ViewModelBase
         // Subscribe to library events
         _library.LibraryUpdated += OnLibraryUpdated;
 
+        // Favorites are toggled on the library's Track instances (albums grid,
+        // album detail, favorites page) while the queue may still hold pre-reload
+        // instances of the same tracks — mirror the state by id so hearts stay
+        // consistent everywhere.
+        _library.FavoritesChanged += (_, _) => SyncQueueFavoritesFromLibrary();
+
         // Subscribe to queue changes to update HasContent (skipped during batch updates)
         UpNext.CollectionChanged += (_, _) => { if (!_suppressHasContentNotify) OnPropertyChanged(nameof(HasContent)); };
         History.CollectionChanged += (_, _) => { if (!_suppressHasContentNotify) OnPropertyChanged(nameof(HasContent)); };
@@ -652,9 +658,35 @@ public partial class PlayerViewModel : ViewModelBase
     private async Task ToggleCurrentTrackFavorite()
     {
         if (CurrentTrack == null) return;
-        CurrentTrack.IsFavorite = !CurrentTrack.IsFavorite;
+        var newState = !CurrentTrack.IsFavorite;
+        CurrentTrack.IsFavorite = newState;
+        // The queue can hold pre-reload Track instances; write through to the
+        // library's instance so the change actually persists (SaveAsync saves
+        // library tracks only) and every library-bound view agrees.
+        var libraryTrack = _library.GetTrackById(CurrentTrack.Id);
+        if (libraryTrack != null && !ReferenceEquals(libraryTrack, CurrentTrack))
+            libraryTrack.IsFavorite = newState;
         await _library.SaveAsync();
         _library.NotifyFavoritesChanged();
+    }
+
+    /// <summary>Mirrors library favorite state onto queue/history Track instances
+    /// that are no longer the library's objects (left behind by a library reload),
+    /// so queue-driven UI (Cover Flow/Collage, player bar) matches the library.</summary>
+    private void SyncQueueFavoritesFromLibrary()
+    {
+        void Sync(Track? track)
+        {
+            if (track == null) return;
+            var libraryTrack = _library.GetTrackById(track.Id);
+            if (libraryTrack != null && !ReferenceEquals(libraryTrack, track) &&
+                track.IsFavorite != libraryTrack.IsFavorite)
+                track.IsFavorite = libraryTrack.IsFavorite;
+        }
+
+        Sync(CurrentTrack);
+        foreach (var track in UpNext) Sync(track);
+        foreach (var track in History) Sync(track);
     }
 
     [RelayCommand]
