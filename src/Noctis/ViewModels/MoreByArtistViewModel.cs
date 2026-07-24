@@ -23,7 +23,7 @@ public partial class MoreByArtistViewModel : ViewModelBase, ISearchable
 
     public ObservableCollection<Album> Albums { get; } = new();
 
-    private const double TileLabelHeight = 50;
+    private const double TileLabelHeight = 64;
 
     [ObservableProperty] private double _tileArtworkSize = 220;
 
