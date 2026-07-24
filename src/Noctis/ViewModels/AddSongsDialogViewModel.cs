@@ -17,6 +17,13 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     private readonly IReadOnlyList<Track> _library;
     private readonly HashSet<Guid> _alreadyInPlaylist;
     private readonly HashSet<Guid> _selected = new();
+
+    /// <summary>
+    /// Tick order, so Add() appends in the order the user chose rather than in library
+    /// order — `_library.Where(t => _selected.Contains(t.Id))` yields library order, so
+    /// deliberately ticking five songs in sequence produced an unrelated one.
+    /// </summary>
+    private readonly List<Guid> _selectionOrder = new();
     private List<Track> _shuffledPicks = new();
 
     [ObservableProperty] private string _searchText = string.Empty;
@@ -45,7 +52,33 @@ public partial class AddSongsDialogViewModel : ViewModelBase
         RefreshResults();
     }
 
-    partial void OnSearchTextChanged(string value) => RefreshResults();
+    // Debounced. RefreshResults filters the whole library on the UI thread, and
+    // MatchesSearch normalizes title/artist/album per track — Take(MaxResults) only
+    // short-circuits once enough matches are found, so a narrow query scanned all 50,000
+    // tracks per keystroke while the user was still typing. Every other search surface
+    // in the app already debounces (Songs/Albums/Artists 250ms, top bar 300ms).
+    private const int SearchDebounceMs = 250;
+    private CancellationTokenSource? _searchDebounceCts;
+
+    partial void OnSearchTextChanged(string value)
+    {
+        _searchDebounceCts?.Cancel();
+        _searchDebounceCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _searchDebounceCts = cts;
+        _ = DebouncedRefreshAsync(cts.Token);
+    }
+
+    private async Task DebouncedRefreshAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(SearchDebounceMs, token);
+            if (token.IsCancellationRequested) return;
+            RefreshResults();
+        }
+        catch (OperationCanceledException) { /* superseded by a newer keystroke */ }
+    }
 
     /// <summary>Random library sample (tracks not already in the playlist), shown before any search.</summary>
     private void BuildShuffledPicks()
@@ -93,10 +126,14 @@ public partial class AddSongsDialogViewModel : ViewModelBase
         if (item == null || item.IsInPlaylist) return;
 
         if (_selected.Add(item.Track.Id))
+        {
+            _selectionOrder.Add(item.Track.Id);
             item.IsSelected = true;
+        }
         else
         {
             _selected.Remove(item.Track.Id);
+            _selectionOrder.Remove(item.Track.Id);
             item.IsSelected = false;
         }
 
@@ -110,7 +147,16 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     {
         if (_selected.Count > 0)
         {
-            var chosen = _library.Where(t => _selected.Contains(t.Id)).ToList();
+            // Projected in tick order (see _selectionOrder), not library order.
+            var byId = _library.Where(t => _selected.Contains(t.Id))
+                .GroupBy(t => t.Id)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var chosen = _selectionOrder
+                .Where(byId.ContainsKey)
+                .Select(id => byId[id])
+                .ToList();
+
             SongsChosen?.Invoke(this, chosen);
         }
         CloseRequested?.Invoke(this, EventArgs.Empty);

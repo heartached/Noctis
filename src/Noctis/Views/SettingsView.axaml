@@ -765,6 +765,13 @@
                                               IsChecked="{Binding LaunchAtStartup}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- The OS registration can fail (locked-down HKCU, read-only
+                         ~/.config/autostart, an unbundled macOS run). The toggle snaps
+                         back to what the OS reports and says so, rather than sitting ON
+                         with nothing registered. -->
+                    <TextBlock Text="{Binding LaunchAtStartupError}"
+                               IsVisible="{Binding LaunchAtStartupError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               FontSize="12" Foreground="#E74856" TextWrapping="Wrap"/>
                     <!-- Dependent on launch-at-startup: only meaningful for login launches. -->
                     <Grid ColumnDefinitions="*,Auto" Classes="dependent-setting" IsEnabled="{Binding LaunchAtStartup}">
                         <TextBlock Grid.Column="0" Text="Start minimized to tray" FontSize="13" VerticalAlignment="Center"/>
@@ -2652,6 +2659,8 @@
                         <StackPanel IsVisible="{Binding IsResetConfirmVisible}" Spacing="8">
                             <TextBlock Text="Are you sure? This action cannot be undone."
                                        FontSize="13" Foreground="#E74856"/>
+                            <TextBlock Text="{Binding ResetConfirmDetail}"
+                                       FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <Button Content="Cancel"
                                         Command="{Binding CancelResetCommand}"

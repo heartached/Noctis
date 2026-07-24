@@ -24,7 +24,8 @@ public sealed class NavidromeMediaSourceConnector : IMediaSourceConnector
 
         try
         {
-            var json = await _http.GetStringAsync(pingUrl, ct);
+            using var pingResponse = await _http.GetAsync(pingUrl, ct);
+            var json = await HttpSafety.ReadStringBoundedAsync(pingResponse.Content, ct: ct);
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement.GetProperty("subsonic-response");
             var status = root.TryGetProperty("status", out var s) ? s.GetString() : null;
@@ -76,7 +77,8 @@ public sealed class NavidromeMediaSourceConnector : IMediaSourceConnector
         var result = new List<(string, string, string)>();
         try
         {
-            var json = await _http.GetStringAsync(url, ct);
+            using var response = await _http.GetAsync(url, ct);
+            var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
             using var doc = JsonDocument.Parse(json);
             if (!doc.RootElement.TryGetProperty("subsonic-response", out var root)) return result;
             if (root.TryGetProperty("albumList2", out var list) &&
@@ -108,7 +110,8 @@ public sealed class NavidromeMediaSourceConnector : IMediaSourceConnector
 
         try
         {
-            var json = await _http.GetStringAsync(url, ct);
+            using var response = await _http.GetAsync(url, ct);
+            var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
             using var doc = JsonDocument.Parse(json);
             if (!doc.RootElement.TryGetProperty("subsonic-response", out var root)) return songs;
             if (root.TryGetProperty("album", out var album) &&
@@ -233,9 +236,27 @@ public sealed class NavidromeMediaSourceConnector : IMediaSourceConnector
         return true;
     }
 
+    /// <summary>
+    /// True when the connection's base URI is a scheme we will send credentials over.
+    /// Anything other than https is rejected: the salted Subsonic token is
+    /// MD5(password‖salt) with the salt right there on the wire, which is trivially
+    /// dictionary-attackable offline, and the username leaks outright.
+    /// </summary>
+    public static bool IsSecureEndpoint(SourceConnection connection)
+    {
+        if (string.IsNullOrWhiteSpace(connection.BaseUriOrPath)) return false;
+        if (!Uri.TryCreate(connection.BaseUriOrPath, UriKind.Absolute, out var uri)) return false;
+        if (uri.Scheme == Uri.UriSchemeHttps) return true;
+
+        // Loopback can't be sniffed off-box, so allow plain http there (a local
+        // Navidrome behind a reverse proxy is a normal setup).
+        return uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback;
+    }
+
     public static string? BuildSubsonicUrl(SourceConnection connection, string endpoint, params (string key, string value)[] extra)
     {
         if (string.IsNullOrWhiteSpace(connection.BaseUriOrPath)) return null;
+        if (!IsSecureEndpoint(connection)) return null;
         var baseUri = connection.BaseUriOrPath.TrimEnd('/');
 
         // Subsonic salted-token auth (API 1.13+, Navidrome-supported): the raw

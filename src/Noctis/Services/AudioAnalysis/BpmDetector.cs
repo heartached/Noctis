@@ -17,16 +17,23 @@ public static class BpmDetector
     /// <summary>Variant for reusable buffers: only the first <paramref name="count"/> samples are valid.</summary>
     public static (int Bpm, double Confidence) Detect(float[] mono, int sampleRate, int count)
     {
-        if (count < sampleRate) return (0, 0);
+        // Guard on the frame size as well as the sample rate. OnsetEnvelope's frame count
+        // relies on truncation-toward-zero, so for 513 <= count < 1024 it computed
+        // frames = 1 and then read mono[0..1023] — past `count`. The sample-rate check
+        // hides that for every realistic rate, but this method is public and that guard
+        // was the only thing standing between a caller and an IndexOutOfRangeException.
+        if (count < sampleRate || count < FrameSize) return (0, 0);
 
         var envelope = OnsetEnvelope(mono, count, sampleRate, out double envRate);
         if (envelope.Length < 4) return (0, 0);
 
         // Energy guard: near-silent input yields no usable peak.
+        // Non-finite input (NaN samples from a corrupt float WAV) fails `<= 1e-7`, so it
+        // is rejected explicitly rather than propagating into the autocorrelation.
         double mean = 0;
         for (int i = 0; i < envelope.Length; i++) mean += envelope[i];
         mean /= envelope.Length;
-        if (mean <= 1e-7) return (0, 0);
+        if (!double.IsFinite(mean) || mean <= 1e-7) return (0, 0);
 
         int minLag = (int)Math.Floor(envRate * 60.0 / 200.0); // 200 BPM
         int maxLag = (int)Math.Ceiling(envRate * 60.0 / 40.0); // 40 BPM

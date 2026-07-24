@@ -14,8 +14,21 @@ public static class AlbumTitle
         new(@"\s*[\(\[]\s*(feat\.?|ft\.?|featuring)\s+[^\)\]]+[\)\]]\s*",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // Only strips a trailing bracketed segment that actually reads as an EDITION marker.
+    //
+    // It used to strip ANY trailing parenthetical, so "Greatest Hits (Volume 1)" and
+    // "Greatest Hits (Volume 2)" normalized to the same base and — with Collapse Album
+    // Editions on — merged into one tile, making one of them vanish from the Albums grid
+    // entirely (reachable only via the other album's "Other Versions" section, which the
+    // user has no reason to open). Same for "(Disc 1)", "(Part 2)", "(Live at Wembley)".
+    private const string EditionMarkers =
+        @"deluxe|remaster(ed)?|reissue|anniversar(y|ies)|expanded|explicit|clean|" +
+        @"edition|version|single|ep|bonus|special|collector'?s|limited|" +
+        @"mono|stereo|remix(ed)?|instrumental|acoustic|demo";
+
     private static readonly Regex s_trailingParensRegex =
-        new(@"\s*[\(\[][^\)\]]*[\)\]]\s*$", RegexOptions.Compiled);
+        new($@"\s*[\(\[][^\)\]]*\b(?:{EditionMarkers})\b[^\)\]]*[\)\]]\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex s_trailingDashSuffixRegex =
         new(@"\s*-\s*(single|ep)\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);

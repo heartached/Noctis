@@ -133,7 +133,7 @@
             <!-- Artwork (or placeholder note) fills the window. 768 keeps the 336px
                  cover sharp on high-DPI displays and shares the album-grid / player
                  cache entry (the 512 default would decode the same cover again). -->
-            <controls:CachedImage SourcePath="{Binding CurrentArtPath}"
+            <controls:CachedImage SourcePath="{Binding CurrentArtPath}" ClearOnSourceChange="False"
                                   DecodeWidth="768"
                                   Stretch="UniformToFill"
                                   RenderOptions.BitmapInterpolationMode="HighQuality"
@@ -162,7 +162,7 @@
                         <GradientStop Offset="0.4" Color="#FFFFFFFF"/>
                     </LinearGradientBrush>
                 </Border.OpacityMask>
-                <controls:CachedImage SourcePath="{Binding CurrentArtPath}"
+                <controls:CachedImage SourcePath="{Binding CurrentArtPath}" ClearOnSourceChange="False"
                                       Width="338" Height="338"
                                       Stretch="UniformToFill"
                                       VerticalAlignment="Bottom">

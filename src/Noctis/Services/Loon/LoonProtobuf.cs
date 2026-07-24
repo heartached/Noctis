@@ -39,9 +39,30 @@ internal static class LoonProtobuf
         public int ReadInt32() => (int)ReadRawVarint();
         public bool ReadBool() => ReadRawVarint() != 0;
 
+        /// <summary>
+        /// Validates a server-supplied length before it is used to slice the buffer.
+        /// The raw varint is attacker-controlled: cast straight to int, a value above
+        /// int.MaxValue became negative and anything past the end overran, so a truncated
+        /// or hostile frame threw IndexOutOfRange/ArgumentOutOfRange out of the parser
+        /// instead of a single handled InvalidDataException.
+        /// </summary>
+        private int ReadLength()
+        {
+            var raw = ReadRawVarint();
+            if (raw > int.MaxValue)
+                throw new InvalidDataException($"Length-delimited field too large: {raw}");
+
+            var len = (int)raw;
+            if (len < 0 || len > _buf.Length - _pos)
+                throw new InvalidDataException(
+                    $"Length-delimited field ({len}) runs past the end of the message.");
+
+            return len;
+        }
+
         public string ReadString()
         {
-            var len = (int)ReadRawVarint();
+            var len = ReadLength();
             var s = Encoding.UTF8.GetString(_buf.Slice(_pos, len));
             _pos += len;
             return s;
@@ -49,7 +70,7 @@ internal static class LoonProtobuf
 
         public byte[] ReadBytes()
         {
-            var len = (int)ReadRawVarint();
+            var len = ReadLength();
             var b = _buf.Slice(_pos, len).ToArray();
             _pos += len;
             return b;
@@ -58,7 +79,7 @@ internal static class LoonProtobuf
         /// <summary>Reads a length-delimited sub-message and returns a reader for it.</summary>
         public ProtoReader ReadSubMessage()
         {
-            var len = (int)ReadRawVarint();
+            var len = ReadLength();
             var sub = new ProtoReader(_buf.Slice(_pos, len));
             _pos += len;
             return sub;
@@ -73,13 +94,14 @@ internal static class LoonProtobuf
                     ReadRawVarint();
                     break;
                 case 1: // 64-bit
+                    if (_buf.Length - _pos < 8) throw new InvalidDataException("Truncated 64-bit field.");
                     _pos += 8;
                     break;
                 case WireLengthDelimited:
-                    var len = (int)ReadRawVarint();
-                    _pos += len;
+                    _pos += ReadLength();
                     break;
                 case 5: // 32-bit
+                    if (_buf.Length - _pos < 4) throw new InvalidDataException("Truncated 32-bit field.");
                     _pos += 4;
                     break;
                 default:
@@ -93,6 +115,10 @@ internal static class LoonProtobuf
             int shift = 0;
             while (true)
             {
+                // Guarded: an unterminated varint at the end of a truncated frame walked
+                // straight off the end of the buffer.
+                if (_pos >= _buf.Length)
+                    throw new InvalidDataException("Truncated varint at end of message.");
                 byte b = _buf[_pos++];
                 result |= (ulong)(b & 0x7F) << shift;
                 if ((b & 0x80) == 0) return result;

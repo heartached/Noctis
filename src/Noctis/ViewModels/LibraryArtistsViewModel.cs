@@ -44,9 +44,14 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     {
         _library = library;
 
-        // Dispatch to UI thread since scan fires LibraryUpdated from a background thread
-        _library.LibraryUpdated += (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
+        // Dispatch to UI thread since scan fires LibraryUpdated from a background thread.
+        // Held in a field so Dispose can detach it — an anonymous lambda with no stored
+        // reference cannot be unsubscribed, matching LibrarySongsViewModel.
+        _libraryUpdatedHandler = (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
+        _library.LibraryUpdated += _libraryUpdatedHandler;
     }
+
+    private EventHandler? _libraryUpdatedHandler;
 
     public void SetArtistImageService(ArtistImageService service) => _artistImageService = service;
 
@@ -60,12 +65,13 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         _isDirty = false;
 
         _allArtists = _library.Artists.ToList();
-        foreach (var artist in _allArtists)
-        {
-            if (!string.IsNullOrWhiteSpace(artist.ImagePath) && !File.Exists(artist.ImagePath))
-                artist.ImagePath = null;
-        }
         ApplyFilter(_currentFilter);
+
+        // Clearing ImagePath for portraits whose file has gone missing used to be a
+        // blocking File.Exists per artist, inline, before the tab could paint — 4,000
+        // stats on a 4,000-artist library, on a NAS-backed cache that is 4,000 network
+        // round trips. The grid renders first; the sweep corrects it a moment later.
+        _ = SweepMissingArtistImagesAsync(_allArtists);
 
         // Trigger background artist image fetch
         if (_artistImageService != null && _allArtists.Count > 0)
@@ -89,6 +95,30 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
                     _imageRefreshDebounce.Start();
                 });
             });
+        }
+    }
+
+    private async Task SweepMissingArtistImagesAsync(List<Artist> artists)
+    {
+        try
+        {
+            var stale = await Task.Run(() => artists
+                .Where(a => !string.IsNullOrWhiteSpace(a.ImagePath) && !File.Exists(a.ImagePath))
+                .ToList()).ConfigureAwait(false);
+
+            if (stale.Count == 0) return;
+
+            // ImagePath is bound, so the write has to land on the UI thread.
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                foreach (var artist in stale)
+                    artist.ImagePath = null;
+                ApplyFilter(_currentFilter);
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Artists] Image sweep failed: {ex.Message}");
         }
     }
 
@@ -262,6 +292,11 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         {
             _imageRefreshDebounce.Stop();
             _imageRefreshDebounce = null;
+        }
+        if (_libraryUpdatedHandler != null)
+        {
+            _library.LibraryUpdated -= _libraryUpdatedHandler;
+            _libraryUpdatedHandler = null;
         }
     }
 

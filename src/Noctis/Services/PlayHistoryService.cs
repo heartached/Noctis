@@ -24,17 +24,49 @@ public sealed class PlayHistoryService : IPlayHistoryService
         _filePath = Path.Combine(AppPaths.DataRoot, "play_history.json");
     }
 
+    /// <summary>
+    /// Immutable snapshot of the event log, swapped on write rather than copied on read.
+    ///
+    /// The getter used to call EnsureLoaded (a synchronous ReadAllText + deserialize of
+    /// up to 10,000 events) and then allocate a fresh 10,000-element array via ToArray —
+    /// on every access. Every caller is a UI-thread path: HomeViewModel on each debounced
+    /// LibraryUpdated, StatisticsViewModel, SettingsViewModel and WrapViewModel. First
+    /// access blocked the UI on disk I/O and each later one allocated a full copy.
+    /// </summary>
+    private volatile IReadOnlyList<PlayHistoryEvent> _snapshot = Array.Empty<PlayHistoryEvent>();
+
     public IReadOnlyList<PlayHistoryEvent> Events
     {
         get
         {
+            // Fast path: already loaded, no lock, no copy.
+            if (_loaded) return _snapshot;
+
             lock (_lock)
             {
                 EnsureLoaded();
-                return _events!.ToArray();
+                return _snapshot;
             }
         }
     }
+
+    /// <summary>
+    /// Loads the log off the UI thread. Call once at startup so the first Events access
+    /// doesn't pay for the read.
+    /// </summary>
+    public Task PreloadAsync() => Task.Run(() =>
+    {
+        try
+        {
+            lock (_lock) { EnsureLoaded(); }
+        }
+        catch { /* a missing/corrupt log is handled by EnsureLoaded */ }
+    });
+
+    private volatile bool _loaded;
+
+    /// <summary>Rebuilds the published snapshot. Must be called under _lock after a mutation.</summary>
+    private void PublishSnapshot() => _snapshot = _events!.ToArray();
 
     public void RecordPlay(Track track)
     {
@@ -53,6 +85,7 @@ public sealed class PlayHistoryService : IPlayHistoryService
             if (_events.Count > MaxEvents)
                 _events.RemoveRange(0, _events.Count - MaxEvents);
 
+            PublishSnapshot();
             ScheduleSave();
         }
     }
@@ -70,6 +103,7 @@ public sealed class PlayHistoryService : IPlayHistoryService
                 if (_events[i].TrackId == track.Id)
                 {
                     _events[i].Skipped = true;
+                    PublishSnapshot();
                     ScheduleSave();
                     return;
                 }
@@ -98,6 +132,8 @@ public sealed class PlayHistoryService : IPlayHistoryService
             {
                 var json = File.ReadAllText(_filePath);
                 _events = JsonSerializer.Deserialize<List<PlayHistoryEvent>>(json) ?? new List<PlayHistoryEvent>();
+                PublishSnapshot();
+                _loaded = true;
                 return;
             }
         }
@@ -106,6 +142,8 @@ public sealed class PlayHistoryService : IPlayHistoryService
             DebugLogger.Error(DebugLogger.Category.Error, "PlayHistory.Load", ex.Message);
         }
         _events = new List<PlayHistoryEvent>();
+        PublishSnapshot();
+        _loaded = true;
     }
 
     private void ScheduleSave()

@@ -199,10 +199,13 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         FolderSummaryText = $"{items} · {size}";
     }
 
+    // Routed through the shared normalized matcher, like every other tab. Plain
+    // Contains meant Folders was the one place where "dont" didn't find "Don't Stop"
+    // and "beyonce" didn't find "Beyoncé".
     private static bool MatchesFilter(Track t, string q) =>
-        (t.Title?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
-        (t.Artist?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
-        (t.Album?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false);
+        Helpers.SearchText.Matches(t.Title, q) ||
+        Helpers.SearchText.Matches(t.Artist, q) ||
+        Helpers.SearchText.Matches(t.Album, q);
 
     private static void Collect(FolderNode node, List<Track> sink)
     {
@@ -377,7 +380,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         if (track == null) return;
         track.IsFavorite = !track.IsFavorite;
         await _library.SaveAsync();
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(new[] { track });
     }
 
     [RelayCommand]

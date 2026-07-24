@@ -27,18 +27,27 @@ jobs:
     steps:
       - name: Determine tag
         id: tag
+        env:
+          # Untrusted-ish inputs reach the script through the environment rather than by
+          # ${{ }} text substitution: expressions are pasted into the script *before* bash
+          # parses it, so a tag name or dispatch input containing shell metacharacters
+          # would execute in a workflow whose downstream jobs hold SCOOP_BUCKET_TOKEN and
+          # WINGET_PAT. This is the standard GitHub-documented injection sink.
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
-          elif [ -n "${{ inputs.tag }}" ]; then
-            TAG="${{ inputs.tag }}"
+          if [ "$EVENT_NAME" = "release" ]; then
+            TAG="$RELEASE_TAG"
+          elif [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
           else
-            TAG=$(gh release view --repo ${{ github.repository }} --json tagName -q .tagName)
+            TAG=$(gh release view --repo "$REPO" --json tagName -q .tagName)
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ github.token }}
 
       - name: Resolve URLs and checksums
         id: v
@@ -68,10 +77,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Noctis (for the manifest template)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Checkout scoop-bucket
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: heartached/scoop-bucket
           token: ${{ secrets.SCOOP_BUCKET_TOKEN }}
@@ -111,21 +120,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install komac
+        env:
+          KOMAC_VERSION: "2.16.0"
+          # This binary is executed in a job that holds WINGET_PAT, so a replaced upstream
+          # asset would be arbitrary code execution against a token that can push to the
+          # scoop bucket and open PRs on microsoft/winget-pkgs. Every other download in the
+          # release path (ffmpeg, appimagetool) is pinned AND hash-verified; this one is
+          # now too. Bumping KOMAC_VERSION means recomputing this:
+          #   curl -fsSL https://github.com/russellbanks/Komac/releases/download/v<ver>/komac-<ver>-x86_64-unknown-linux-gnu.tar.gz | sha256sum
+          KOMAC_SHA256: "7d2707fa6210f2789a3702de49fbd150b736dbf426ee0b9bc8e098736f9fd82d"
         run: |
           set -euo pipefail
-          KOMAC_VERSION="2.16.0"
           curl -fsSL -o komac.tar.gz "https://github.com/russellbanks/Komac/releases/download/v${KOMAC_VERSION}/komac-${KOMAC_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${KOMAC_SHA256}  komac.tar.gz" | sha256sum -c -
           tar -xzf komac.tar.gz
           sudo install -m755 komac /usr/local/bin/komac
           komac --version
 
       - name: Update or create heartached.Noctis
+        env:
+          # Passed through the environment, not interpolated into the script body.
+          # ${{ }} substitution happens before bash sees the text, so a tag name or
+          # dispatch input containing shell metacharacters would execute here — in a job
+          # holding WINGET_PAT. The token likewise moves out of the curl argument list,
+          # where it was visible in the runner's process table.
+          VERSION: ${{ needs.resolve.outputs.version }}
+          URL: ${{ needs.resolve.outputs.setup_url }}
+          GITHUB_TOKEN: ${{ secrets.WINGET_PAT }}
         run: |
           set -euo pipefail
-          VERSION="${{ needs.resolve.outputs.version }}"
-          URL="${{ needs.resolve.outputs.setup_url }}"
           if curl -fsSL -o /dev/null \
-              -H "Authorization: Bearer ${{ secrets.WINGET_PAT }}" \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
               "https://api.github.com/repos/microsoft/winget-pkgs/contents/manifests/h/heartached/Noctis"; then
             echo "heartached.Noctis already in winget-pkgs — updating."
             komac update heartached.Noctis --version "$VERSION" --urls "$URL" --submit
@@ -133,5 +158,3 @@ jobs:
             echo "heartached.Noctis not in winget-pkgs yet — submitting initial manifest."
             komac new heartached.Noctis --version "$VERSION" --urls "$URL" --submit
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.WINGET_PAT }}

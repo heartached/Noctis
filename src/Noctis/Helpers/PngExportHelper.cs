@@ -49,8 +49,22 @@ public static class PngExportHelper
 
             // Also put a temp .png file on the clipboard so chat apps and
             // file managers can paste it as an attachment.
-            var tempPath = Path.Combine(Path.GetTempPath(), fileName);
-            await File.WriteAllBytesAsync(tempPath, png);
+            //
+            // Written into a fresh per-invocation subdirectory with FileMode.CreateNew.
+            // The old code combined the caller's suggested name — "{Artist} - {Title}
+            // lyrics.png", fully predictable — directly with GetTempPath(), which on
+            // Linux/macOS is the world-writable /tmp: another local user could pre-create
+            // that path as a symlink and have this write clobber a file the victim owns.
+            // The file was also never cleaned up, so every Copy leaked a multi-MB PNG.
+            var tempDir = Path.Combine(Path.GetTempPath(), "noctis-share-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            var tempPath = Path.Combine(tempDir, Path.GetFileName(fileName));
+            await using (var fs = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write,
+                             FileShare.None))
+            {
+                await fs.WriteAsync(png);
+            }
+
             var tempFile = await topLevel.StorageProvider.TryGetFileFromPathAsync(tempPath);
             if (tempFile != null)
                 transfer.Add(DataTransferItem.CreateFile(tempFile));
@@ -62,5 +76,32 @@ public static class PngExportHelper
         {
             return $"Copy failed: {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// Deletes leftover share/clip temp directories older than a few hours. A crash or a
+    /// kill mid-export orphaned them, and nothing ever swept them — a karaoke clip export
+    /// alone writes up to 3600 JPEG frames.
+    /// </summary>
+    public static void SweepStaleTempDirs()
+    {
+        try
+        {
+            var root = Path.GetTempPath();
+            var cutoff = DateTime.UtcNow.AddHours(-6);
+            foreach (var prefix in new[] { "noctis-share-", "noctis-karaoke-", "noctis-clip-" })
+            {
+                foreach (var dir in Directory.EnumerateDirectories(root, prefix + "*"))
+                {
+                    try
+                    {
+                        if (Directory.GetCreationTimeUtc(dir) < cutoff)
+                            Directory.Delete(dir, recursive: true);
+                    }
+                    catch { /* in use or not ours — leave it */ }
+                }
+            }
+        }
+        catch { /* sweeping is best effort */ }
     }
 }

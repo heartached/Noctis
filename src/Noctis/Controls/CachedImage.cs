@@ -32,6 +32,23 @@ public class CachedImage : Image
         set => SetValue(DecodeWidthProperty, value);
     }
 
+    public static readonly StyledProperty<bool> ClearOnSourceChangeProperty =
+        AvaloniaProperty.Register<CachedImage, bool>(nameof(ClearOnSourceChange), defaultValue: true);
+
+    /// <summary>
+    /// Whether to blank the image while a new source is decoding (default true).
+    ///
+    /// True is correct in virtualized lists: a recycled container must not keep showing
+    /// the previous item's cover. Set it to false on single-item surfaces — the player
+    /// bar, the lyrics page — where holding the old cover across a track change avoids a
+    /// visible placeholder flash.
+    /// </summary>
+    public bool ClearOnSourceChange
+    {
+        get => GetValue(ClearOnSourceChangeProperty);
+        set => SetValue(ClearOnSourceChangeProperty, value);
+    }
+
     private int _loadGeneration;
     private readonly object _generationLock = new();
 
@@ -85,8 +102,15 @@ public class CachedImage : Image
         }
 
         // Slow path: load on background thread to avoid blocking UI.
-        // Keep the previous Source visible until the new bitmap is ready —
-        // clearing here causes a placeholder flash on every track switch.
+        //
+        // Keeping the previous Source visible avoids a placeholder flash on every track
+        // switch — correct for the player's single cover, wrong for a virtualized list,
+        // where a recycled container gets a new SourcePath and keeps rendering the
+        // PREVIOUS item's art until the decode lands. Scrolling a large grid past the
+        // cache budget therefore showed a trail of wrong covers.
+        if (ClearOnSourceChange)
+            Source = null;
+
         try
         {
             var bitmap = await Task.Run(() => ArtworkCache.LoadAndCache(path, decodeWidth));

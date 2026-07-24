@@ -144,7 +144,11 @@ public class VlcAudioPlayer : IAudioPlayer
     private long _standbyStartPositionMs = -1;
     private long _standbyPreparedTicksUtc;
     private bool _standbyPrepared;
-    private bool _disposed;
+    // volatile: Dispose writes this from the UI thread while the volume-ramp worker, the
+    // EQ queue, both fade loops and the seek worker read it in spin loops with no barrier.
+    // The other shutdown flags in this class (_positionTickActive, _seekWorkerActive) are
+    // already volatile; this one was the outlier.
+    private volatile bool _disposed;
 
     // ── VLC internal-log diagnostics (gated by env NOCTIS_VLC_LOG=1) ──
     // Off by default and zero-cost. When enabled, LibVLC's OWN log (decoder,
@@ -246,7 +250,20 @@ public class VlcAudioPlayer : IAudioPlayer
     private bool _normalizationEnabled;
 
     // Crossfade state
+    /// <summary>Whether Song Transitions is switched on in Settings. Configuration only.</summary>
     private bool _crossfadeEnabled;
+
+    /// <summary>
+    /// True only while a transition fade is actually ramping the volume. The volume
+    /// setters park on this so a user slider move can't fight the ramp.
+    ///
+    /// This used to be <see cref="_crossfadeEnabled"/>, which conflated "the feature is
+    /// configured" with "a fade is running": ApplyAudioSettings arms _crossfadeEnabled
+    /// from ~9 settings handlers, so simply switching Song Transitions on while a track
+    /// was loaded latched the guard true and every subsequent volume write was silently
+    /// swallowed until the next PlayInternal — the slider moved and nothing happened.
+    /// </summary>
+    private volatile bool _transitionInFlight;
     private int _crossfadeDurationMs = 6000;
     private AutoMixFadeCurve _crossfadeFadeCurve = AutoMixFadeCurve.SmoothEase;
     // When false (AutoMix's no-silence handoff), the outgoing track is NOT faded out
@@ -480,16 +497,23 @@ public class VlcAudioPlayer : IAudioPlayer
                     // and always delivers S16N — the sink's input chain matches.
                     _player.SetAudioCallbacks(_audioPlayCb, _audioPauseCb, _audioResumeCb, _audioFlushCb, _audioDrainCb);
                     _player.SetAudioFormat("S16N", (uint)wasapi.SampleRate, (uint)wasapi.Channels);
+                    _callbackChannels = wasapi.Channels;
                     _player.Volume = 100;
                     WasapiGainOutput.Diag($"VlcAudioPlayer wired callbacks: S16N {wasapi.SampleRate}Hz {wasapi.Channels}ch");
                 }
                 catch (Exception ex)
                 {
                     WasapiGainOutput.Diag($"VlcAudioPlayer wiring FAILED: {ex.GetType().Name}: {ex.Message}");
+                    _callbackChannels = 0;
                     try { wasapi.Dispose(); } catch { }
                     wasapi = null;
-                    _audioPlayCb = null; _audioPauseCb = null; _audioResumeCb = null;
-                    _audioFlushCb = null; _audioDrainCb = null;
+                    // The delegate fields are deliberately NOT nulled here.
+                    // SetAudioCallbacks has already handed libvlc the native thunks for
+                    // this MediaPlayer, and LibVLCSharp does not root them (see the class
+                    // comment above). Dropping our only references would make them
+                    // collectable while libvlc still holds the function pointers, so the
+                    // next amem callback would call freed memory. Dropping the sink is
+                    // enough — AudioPlay no-ops when ActiveCallbackSink is null.
                 }
             }
         }
@@ -596,7 +620,7 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             if (_disposed) return;
             _userVolume = Math.Clamp(value, 0, 100);
-            if (_crossfadeEnabled && _currentMedia != null)
+            if (_transitionInFlight && _currentMedia != null)
                 return;
 
             var target = ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100));
@@ -611,7 +635,7 @@ public class VlcAudioPlayer : IAudioPlayer
         set
         {
             _volumeAdjust = Math.Clamp(value, -100, 100);
-            if (_crossfadeEnabled && _currentMedia != null)
+            if (_transitionInFlight && _currentMedia != null)
                 return;
 
             // Re-apply volume with the new adjustment
@@ -644,7 +668,7 @@ public class VlcAudioPlayer : IAudioPlayer
     public void CommitVolume()
     {
         if (_disposed) return;
-        if (_crossfadeEnabled && _currentMedia != null)
+        if (_transitionInFlight && _currentMedia != null)
             return;
 
         // WASAPI sink path: the sink already tracks the live target per-sample, so
@@ -1270,7 +1294,7 @@ public class VlcAudioPlayer : IAudioPlayer
         }
 
         ResetEndReachedPending();
-        Interlocked.Exchange(ref _latestSeekMs, -1);
+        lock (_seekGate) { _latestSeekMs = -1; }
         _positionTimer.Stop();
         DrainPositionTimerCallback();
         DrainSeekWorker();
@@ -1315,7 +1339,8 @@ public class VlcAudioPlayer : IAudioPlayer
             // (PrepareExclusiveOutputFor). This provisional value only covers
             // the window until the first Play.
             _player.SetAudioCallbacks(_audioPlayCb, _audioPauseCb, _audioResumeCb, _audioFlushCb, _audioDrainCb);
-            try { _player.SetAudioFormat("S16N", 44100, 2); } catch { }
+            try { _player.SetAudioFormat("S16N", 44100, 2); _callbackChannels = 2; }
+            catch { _callbackChannels = 0; }
             try { _player.Volume = 100; } catch { }
             // The silent keep-warm stream is pointless while we hold the endpoint
             // exclusively, and some drivers dislike the concurrent shared stream.
@@ -1412,25 +1437,72 @@ public class VlcAudioPlayer : IAudioPlayer
 
                     if (sink == null)
                     {
-                        // No usable output at all; the play callback no-ops and VLC
-                        // reports the aout failure — same net result as before.
+                        // No usable output at all. amem *succeeded*, so VLC reports
+                        // nothing and AudioPlay silently drops every buffer: the clock
+                        // runs, the position bar and lyrics advance, and there is no
+                        // sound and no message. Turn exclusive mode off and rebuild on
+                        // LibVLC's own mmdevice output so the user gets audio back, and
+                        // say why.
                         DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.SetupFailed",
                             "no WASAPI output available");
+                        _exclusiveModeEnabled = false;
+                        RebuildOutputModeLocked(false);
+                        OutputModeChanged?.Invoke(this,
+                            "Exclusive mode unavailable — no audio output could be opened. " +
+                            "Switched back to shared output.");
                         return;
                     }
 
                     _exclusiveOut = sink;
                     sink.SetGainTarget(WasapiGainLevel());
+
+                    // A device that disappears mid-track (USB DAC unplugged, Bluetooth
+                    // drop, default device switched) otherwise leaves this sink wedged
+                    // forever. Fall back to shared output instead of going silent.
+                    sink.Faulted += OnExclusiveSinkFaulted;
                 }
 
                 sinkRate = _exclusiveOut.SampleRate;
                 sinkChannels = _exclusiveOut.Channels;
+
+                // RebuildOutputModeLocked parks the silent keep-warm stream on the
+                // assumption the endpoint is held exclusively. When the exclusive open
+                // failed and we fell back to a shared sink, nothing un-parked it, so the
+                // cold-device protection stayed off for the rest of the session.
+                _keepAlive?.SetSuspended(_exclusiveOut.IsExclusive);
             }
 
             // The format string is IGNORED by VLC 3.x's amem ("TODO: amem-format"
             // — it always outputs S16N); only the rate/channels vars are read.
             // "S16N" is passed so the call documents what actually flows.
-            _player.SetAudioFormat("S16N", (uint)sinkRate, (uint)sinkChannels);
+            //
+            // AudioPlay sizes its Marshal.Copy from the channel count VLC was told to
+            // deliver, not from whatever sink happens to be installed: the sink is
+            // assigned above, before this call, and this call is inside the method-wide
+            // try below. If it threw after a 1ch → 2ch sink swap, VLC would keep sending
+            // mono blocks while AudioPlay read twice the block length — the same
+            // over-read that produced the 0x80131506 exclusive-mode crash.
+            try
+            {
+                _player.SetAudioFormat("S16N", (uint)sinkRate, (uint)sinkChannels);
+                _callbackChannels = sinkChannels;
+            }
+            catch (Exception ex)
+            {
+                // The format was not pinned, so nothing can be said about the block
+                // layout VLC will deliver. Drop the sink: AudioPlay no-ops when
+                // ActiveCallbackSink is null, which is silence rather than an over-read
+                // on libvlc's aout thread.
+                DebugLogger.Error(DebugLogger.Category.Playback, "Exclusive.FormatFailed",
+                    $"{ex.GetType().Name}: {ex.Message}");
+                _callbackChannels = 0;
+                lock (_exclusiveSinkLock)
+                {
+                    try { _exclusiveOut?.Dispose(); } catch { }
+                    _exclusiveOut = null;
+                }
+                throw;
+            }
 
             if (notice != null)
             {
@@ -1442,6 +1514,41 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.SetupFailed", ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Channel count last accepted by <c>SetAudioFormat</c>, i.e. what libvlc's amem is
+    /// actually delivering. 0 when no format is pinned. Read on libvlc's aout thread.
+    /// </summary>
+    private volatile int _callbackChannels;
+
+    /// <summary>
+    /// Raised on NAudio's thread when the exclusive endpoint goes away. Drops exclusive
+    /// mode and re-opens on the current default device; without this the sink's buffer
+    /// never drains again and every LibVLC audio callback stalls for two seconds.
+    /// </summary>
+    private void OnExclusiveSinkFaulted(WasapiGainOutput sink)
+    {
+        if (_disposed) return;
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try
+            {
+                if (_disposed || !ReferenceEquals(_exclusiveOut, sink)) return;
+                DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.DeviceLost",
+                    "output device disappeared; falling back to shared output");
+                _exclusiveModeEnabled = false;
+                if (!_playbackLock.Wait(2000)) return;
+                try { RebuildOutputModeLocked(false); }
+                finally { _playbackLock.Release(); }
+                OutputModeChanged?.Invoke(this,
+                    "Audio device disconnected — switched back to shared output.");
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.RecoverFailed", ex.Message);
+            }
+        });
     }
 
     public void ApplyReplayGain(string mode, double preampDb)
@@ -1469,7 +1576,7 @@ public class VlcAudioPlayer : IAudioPlayer
             return;
         }
 
-        var (track, album) = ReadReplayGainTags(_currentMediaPath);
+        var (track, album) = ReadReplayGainTagsCached(_currentMediaPath);
         double? gain = _rgMode.ToLowerInvariant() switch
         {
             "track" => track,
@@ -1496,7 +1603,7 @@ public class VlcAudioPlayer : IAudioPlayer
     /// audible sample reflects an updated <see cref="_replayGainScalar"/>.</summary>
     private void ReapplyVolume()
     {
-        if (_crossfadeEnabled && _currentMedia != null) return;
+        if (_transitionInFlight && _currentMedia != null) return;
         var target = ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100));
         target = ApplyReplayGainScalar(target);
         ScheduleVolumeWrite(target);
@@ -1507,6 +1614,33 @@ public class VlcAudioPlayer : IAudioPlayer
         if (Math.Abs(_replayGainScalar - 1.0) < 0.0001) return curvedVolume;
         var scaled = (int)Math.Round(curvedVolume * _replayGainScalar);
         return Math.Clamp(scaled, 0, 100);
+    }
+
+    // Cached ReplayGain tags for the currently loaded file. The values only change when
+    // the track changes, but ApplyReplayGain is called from ~9 settings handlers and,
+    // worse, once per tick while dragging the ReplayGain pre-amp slider — each call was
+    // a blocking TagLib open+parse of the playing file on the UI thread, which on a
+    // NAS/removable-drive library stalled the whole window.
+    private readonly object _rgCacheLock = new();
+    private string? _rgCachePath;
+    private (double? track, double? album) _rgCacheValue;
+
+    private (double? track, double? album) ReadReplayGainTagsCached(string filePath)
+    {
+        lock (_rgCacheLock)
+        {
+            if (string.Equals(_rgCachePath, filePath, StringComparison.OrdinalIgnoreCase))
+                return _rgCacheValue;
+        }
+
+        var parsed = ReadReplayGainTags(filePath);
+
+        lock (_rgCacheLock)
+        {
+            _rgCachePath = filePath;
+            _rgCacheValue = parsed;
+        }
+        return parsed;
     }
 
     /// <summary>Read REPLAYGAIN_TRACK_GAIN / REPLAYGAIN_ALBUM_GAIN from a file
@@ -1751,8 +1885,13 @@ public class VlcAudioPlayer : IAudioPlayer
             var cancel = _skipCts.Token;
 
             ResetEndReachedPending();
-            Interlocked.Exchange(ref _latestSeekMs, -1);
+            lock (_seekGate) { _latestSeekMs = -1; }
             Interlocked.Exchange(ref _lastKnownLengthMs, 0);
+
+            // Any transition belonging to the previous track is superseded by this one.
+            // Clearing here bounds a latched guard to a single track even if a fade
+            // worker faults or is cancelled before reaching its own clear.
+            _transitionInFlight = false;
 
             // Re-apply ReplayGain for the new track (tag read does file IO, so it
             // runs here on the worker, before the target volume is computed). If
@@ -1780,6 +1919,9 @@ public class VlcAudioPlayer : IAudioPlayer
                 // true overlap collides on it (the transition stutter). Use the click-free
                 // sequential fade instead. On the per-player path (non-Windows / OSVOL off)
                 // the two volumes are independent, so the dual-stream overlap works.
+                // The in-flight flag is armed here (the only place a transition actually
+                // begins) and cleared on every exit path below.
+                _transitionInFlight = true;
                 var crossfadeStarted = _sessionVolume != null
                     ? (_crossfadeOverlap
                         ? TryStartOverlapFade(filePath, sessionId, cancel)
@@ -1790,6 +1932,9 @@ public class VlcAudioPlayer : IAudioPlayer
                     Interlocked.Exchange(ref _pendingSeekMs, -1);
                     return;
                 }
+                // The transition didn't start — fall through to the normal open path,
+                // which must not run with the volume guard armed.
+                _transitionInFlight = false;
             }
 
             // Gapless: no crossfade, but the next track was prepared on the
@@ -1893,6 +2038,18 @@ public class VlcAudioPlayer : IAudioPlayer
                 SetPlayerVolumeGuarded(_player, 0);
                 FadePlayerVolumeBlocking(0, targetVolume, fadeInMs, cancel);
             }
+            else if (ActiveCallbackSink != null)
+            {
+                // Callback sink (Exclusive Mode / WASAPI gain path): the sink owns gain.
+                // _player.Volume must stay pinned at 100 so libVLC's software mixer does
+                // not scale the PCM before it reaches amem — GainSampleProvider then
+                // applies the user level once. This branch has to come *before* the
+                // _sessionVolume check: on Windows _sessionVolume is non-null by default,
+                // so the session branch below used to win and wrote the user's level here
+                // too, attenuating twice (~-5 dB extra at slider 30) and making the
+                // "bit-perfect" claim false at any level under 100.
+                SetPlayerVolumeGuarded(_player, 100);
+            }
             else if (_sessionVolume != null)
             {
                 // Windows mmdevice: _player.Volume IS the OS session, so setting it to
@@ -1908,7 +2065,7 @@ public class VlcAudioPlayer : IAudioPlayer
                         ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100))));
                 SetPlayerVolumeGuarded(_player, MilliToPlayerVolume(milli));
             }
-            else if (ActiveCallbackSink == null)
+            else
             {
                 // Native output (macOS/Linux): the audio device opens cold and drops the
                 // first buffers — the clipped track start. Fade in from silence across
@@ -1916,11 +2073,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 SetPlayerVolumeGuarded(_player, 0);
                 FadePlayerVolumeFadeIn(targetVolume, TrackStartFadeMs, _currentMedia);
             }
-            else
-            {
-                SetPlayerVolumeGuarded(_player, targetVolume);
-            }
-            _crossfadeEnabled = false;
+            _transitionInFlight = false;
 
             // SetEqualizer stays under the lock: the snapshot path can Dispose the
             // shared equalizer concurrently, so a reference captured then used
@@ -2099,7 +2252,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
             }
 
-            _crossfadeEnabled = false;
+            _transitionInFlight = false;
             _isPaused = false;
             _positionTimer.Start();
 
@@ -2272,7 +2425,7 @@ public class VlcAudioPlayer : IAudioPlayer
             //    no-silence handoff, from zero for plain Crossfade).
             FadeSessionLevelBlocking(fadeInFromMilli, userMilli, fadeInMs, cancel);
 
-            _crossfadeEnabled = false;
+            _transitionInFlight = false;
             lock (_volumeWriteLock)
             {
                 _lastWrittenVolume = ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
@@ -2418,7 +2571,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // 4. Rise the incoming back to the full user level.
             FadeSessionLevelBlocking(blendMilli, userMilli, riseMs, cancel);
 
-            _crossfadeEnabled = false;
+            _transitionInFlight = false;
             lock (_volumeWriteLock)
             {
                 _lastWrittenVolume = ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
@@ -2643,14 +2796,29 @@ public class VlcAudioPlayer : IAudioPlayer
     private long _audioPlayCallCount;
     private void AudioPlay(IntPtr data, IntPtr samples, uint count, long pts)
     {
-        var sink = ActiveCallbackSink;
-        if (sink == null) return;
-        var bytes = checked((int)count * sink.Channels * 2);
-        if (Interlocked.Increment(ref _audioPlayCallCount) <= 3)
-            WasapiGainOutput.Diag($"AudioPlay #{_audioPlayCallCount}: count(frames)={count} -> {bytes}B, pts={pts}");
-        var buf = System.Buffers.ArrayPool<byte>.Shared.Rent(bytes);
+        // Runs on libvlc's aout thread. Anything that escapes here kills the process,
+        // so the size arithmetic and the Rent are inside the try as well — they were
+        // outside it, and both can throw (checked overflow, OutOfMemory).
+        byte[]? buf = null;
+        var bytes = 0;
         try
         {
+            var sink = ActiveCallbackSink;
+            if (sink == null) return;
+
+            // Size from the channel count SetAudioFormat pinned, NOT from the sink's:
+            // the sink is installed before the format is pinned, so after a
+            // 1ch → 2ch swap whose SetAudioFormat failed, VLC is still delivering
+            // mono blocks while sink.Channels reads 2 — a 2× over-read off the end of
+            // libvlc's buffer, which is exactly the 0x80131506 exclusive-mode crash.
+            var channels = _callbackChannels;
+            if (channels <= 0) return;
+
+            bytes = checked((int)count * channels * 2);
+            if (Interlocked.Increment(ref _audioPlayCallCount) <= 3)
+                WasapiGainOutput.Diag($"AudioPlay #{_audioPlayCallCount}: count(frames)={count} -> {bytes}B, pts={pts}");
+
+            buf = System.Buffers.ArrayPool<byte>.Shared.Rent(bytes);
             System.Runtime.InteropServices.Marshal.Copy(samples, buf, 0, bytes);
             sink.Write(buf, bytes);
         }
@@ -2658,7 +2826,10 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             if (_audioPlayCallCount <= 5) WasapiGainOutput.Diag($"AudioPlay threw: {ex.GetType().Name}: {ex.Message}");
         }
-        finally { System.Buffers.ArrayPool<byte>.Shared.Return(buf); }
+        finally
+        {
+            if (buf != null) System.Buffers.ArrayPool<byte>.Shared.Return(buf);
+        }
     }
 
     private void AudioPause(IntPtr data, long pts) => ActiveCallbackSink?.Pause();
@@ -2722,7 +2893,11 @@ public class VlcAudioPlayer : IAudioPlayer
 
     private void ScheduleSessionVolumeReassert(long sessionId)
     {
-        if (_sessionVolume == null) return;
+        // Gated on the callback sink as well as the session handle. When exclusive mode
+        // falls back to the shared NAudio sink, _sessionVolume is still non-null, so this
+        // kept driving the process session on top of the sink's own gain — a third
+        // attenuation stacked on the two in PlayInternal.
+        if (_sessionVolume == null || ActiveCallbackSink != null) return;
         ThreadPool.QueueUserWorkItem(_ =>
         {
             // New output session on track start/swap — drop the previous track's
@@ -2760,32 +2935,35 @@ public class VlcAudioPlayer : IAudioPlayer
         if (_disposed || _currentMedia == null) return;
         _keepAlive?.NotifyActivity();
 
-        // Serialize with Play()/Stop() to prevent racing against a concurrent
-        // Play() call on the ThreadPool (e.g., track ending + user unpausing).
-        try
+        // Queued to the ThreadPool like every other playback entry point (Play, Stop,
+        // PrepareNext, SetExclusiveMode). This used to take _playbackLock inline, and
+        // PlayerViewModel.PlayPause is a [RelayCommand] — i.e. it ran on the UI thread.
+        // Lock holders include PrepareNext's non-cancellable parseTask.Wait(8000) and the
+        // native _player.Stop(), so unpausing while the next track was being prepared
+        // from a slow or network path froze the window for up to 8 seconds.
+        ThreadPool.QueueUserWorkItem(_ =>
         {
-            _playbackLock.Wait();
-        }
-        catch (ObjectDisposedException)
-        {
-            return; // Dispose() ran between the _disposed check and Wait()
-        }
+            try { _playbackLock.Wait(); }
+            catch (ObjectDisposedException) { return; }
 
-        try
-        {
-            if (_isPaused)
+            try
             {
-                ResetEndReachedPending();
-                // VLC's Pause() toggles between pause and play
-                _player.Pause();
-                _isPaused = false;
-                _positionTimer.Start();
+                if (_disposed || _currentMedia == null) return;
+                if (_isPaused)
+                {
+                    ResetEndReachedPending();
+                    // VLC's Pause() toggles between pause and play
+                    _player.Pause();
+                    _isPaused = false;
+                    _positionTimer.Start();
+                }
             }
-        }
-        finally
-        {
-            _playbackLock.Release();
-        }
+            catch (ObjectDisposedException) { /* disposed mid-resume */ }
+            finally
+            {
+                try { _playbackLock.Release(); } catch (ObjectDisposedException) { }
+            }
+        });
     }
 
     public void Stop()
@@ -2794,9 +2972,13 @@ public class VlcAudioPlayer : IAudioPlayer
 
         CancelSkipCts();
         ResetEndReachedPending();
-        Interlocked.Exchange(ref _latestSeekMs, -1);
+        // Written under _seekGate like every other mutation of this field; Stop() racing
+        // a Seek() could otherwise let the seek target survive the clear and be applied
+        // to the *next* track.
+        lock (_seekGate) { _latestSeekMs = -1; }
         _positionTimer.Stop();
         _isPaused = false;
+        _transitionInFlight = false;
 
         ThreadPool.QueueUserWorkItem(_ =>
         {
@@ -2907,8 +3089,24 @@ public class VlcAudioPlayer : IAudioPlayer
 
     // ── VLC event handlers (fired on VLC's internal thread) ─────
 
+    // VLC invokes these on its own native event thread. An exception unwinding out of a
+    // managed handler back into native code terminates the process — it cannot be caught
+    // upstream. Both handlers are therefore wrapped whole. (The concrete case: Dispose()
+    // frees _positionTimer while an EndReached is in flight, and the _positionTimer.Start()
+    // at the end of the handler — outside the old inner try — threw ObjectDisposedException.)
     private void OnEndReached(object? sender, EventArgs e)
     {
+        try { OnEndReachedCore(sender); }
+        catch (Exception ex)
+        {
+            try { DebugLogger.Warn(DebugLogger.Category.Playback, "VLC.EndReached.Threw", ex.Message); }
+            catch { }
+        }
+    }
+
+    private void OnEndReachedCore(object? sender)
+    {
+        if (_disposed) return;
         if (!ReferenceEquals(sender, _player))
         {
             DebugLogger.Info(DebugLogger.Category.Playback, "VLC.EndReached.IgnoredInactive");
@@ -2963,17 +3161,26 @@ public class VlcAudioPlayer : IAudioPlayer
 
     private void OnError(object? sender, EventArgs e)
     {
-        if (!ReferenceEquals(sender, _player))
+        try
         {
-            DebugLogger.Warn(DebugLogger.Category.Playback, "VLC.Error.IgnoredInactive");
-            return;
-        }
+            if (_disposed) return;
+            if (!ReferenceEquals(sender, _player))
+            {
+                DebugLogger.Warn(DebugLogger.Category.Playback, "VLC.Error.IgnoredInactive");
+                return;
+            }
 
-        DebugLogger.Error(DebugLogger.Category.Playback, "VLC.Error", "VLC encountered a playback error");
-        ResetEndReachedPending();
-        _positionTimer.Stop();
-        _isPaused = false;
-        PlaybackError?.Invoke(this, "VLC encountered a playback error.");
+            DebugLogger.Error(DebugLogger.Category.Playback, "VLC.Error", "VLC encountered a playback error");
+            ResetEndReachedPending();
+            _positionTimer.Stop();
+            _isPaused = false;
+            PlaybackError?.Invoke(this, "VLC encountered a playback error.");
+        }
+        catch (Exception ex)
+        {
+            try { DebugLogger.Warn(DebugLogger.Category.Playback, "VLC.Error.Threw", ex.Message); }
+            catch { }
+        }
     }
 
     // 1 while a position-timer callback is inside the body. Timer.Stop() does NOT
@@ -3186,6 +3393,15 @@ public class VlcAudioPlayer : IAudioPlayer
                     {
                         _player.Time = targetMs;
                     }
+                    else if (ActiveCallbackSink != null)
+                    {
+                        // Exclusive Mode / WASAPI gain path: the sink owns gain and
+                        // _player.Volume is pinned at 100. Touching the OS session here
+                        // (which the branch below would do, since _sessionVolume is
+                        // non-null by default on Windows) would duck the whole process
+                        // session on top of the sink's own level. Just seek.
+                        _player.Time = targetMs;
+                    }
                     else if (_sessionVolume is { } sv)
                     {
                         var savedMilli = Volatile.Read(ref _rampCurrentMilli);
@@ -3211,21 +3427,19 @@ public class VlcAudioPlayer : IAudioPlayer
                         }
                         Volatile.Write(ref _rampCurrentMilli, savedMilli);
                     }
-                    else if (ActiveCallbackSink == null)
+                    else
                     {
-                        // The seek still applies immediately (nothing slow runs BEFORE
-                        // it), so the worker's seek-vs-track-change timing is unchanged;
-                        // the fade-in bails if a Play() swaps the track so it never
-                        // fights PlayInternal's volume set for the new one.
+                        // Native integer volume (macOS/Linux). The callback-sink and
+                        // OS-session cases are both handled above, so this is the only
+                        // remaining path. The seek still applies immediately (nothing
+                        // slow runs BEFORE it), so the worker's seek-vs-track-change
+                        // timing is unchanged; the fade-in bails if a Play() swaps the
+                        // track so it never fights PlayInternal's volume set.
                         var mediaAtSeek = _currentMedia;
                         var restoreVol = _player.Volume;
                         SetPlayerVolumeGuarded(_player, 0);
                         _player.Time = targetMs;
                         FadePlayerVolumeFadeIn(restoreVol, SeekFadeMs, mediaAtSeek);
-                    }
-                    else
-                    {
-                        _player.Time = targetMs;
                     }
                     Interlocked.Exchange(ref _lastAppliedSeekTicksUtc, nowTicks);
 
@@ -3295,7 +3509,18 @@ public class VlcAudioPlayer : IAudioPlayer
         Volatile.Write(ref _rampTargetMilli, -1); // stop the volume ramp worker
 
         ResetEndReachedPending();
-        Interlocked.Exchange(ref _latestSeekMs, -1);
+        lock (_seekGate) { _latestSeekMs = -1; }
+
+        // Unsubscribe BEFORE disposing the timer. OnEndReached ends with
+        // _positionTimer.Start(), so an event landing between the Dispose and the
+        // unsubscribe threw ObjectDisposedException on VLC's native event thread and
+        // killed the process. (The handlers are also wrapped now, but ordering these
+        // correctly means the window doesn't exist in the first place.)
+        _player.EndReached -= OnEndReached;
+        _player.EncounteredError -= OnError;
+        _standbyPlayer.EndReached -= OnEndReached;
+        _standbyPlayer.EncounteredError -= OnError;
+
         _positionTimer.Stop();
         _positionTimer.Dispose();
         // Timer.Stop/Dispose don't wait for an in-flight callback; drain it (and
@@ -3303,11 +3528,6 @@ public class VlcAudioPlayer : IAudioPlayer
         // late callback is still using.
         DrainPositionTimerCallback();
         DrainSeekWorker();
-
-        _player.EndReached -= OnEndReached;
-        _player.EncounteredError -= OnError;
-        _standbyPlayer.EndReached -= OnEndReached;
-        _standbyPlayer.EncounteredError -= OnError;
 
         CancelSkipCts();
         _skipCts.Dispose();

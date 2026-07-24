@@ -76,7 +76,12 @@ public static class PlaylistImportParser
             }
             if (line.StartsWith('#')) continue;
 
-            var path = line.Replace('\\', '/');
+            // Decode file:// URIs and percent-encoding BEFORE any path handling.
+            // Matching them raw against library paths produced zero hits, and for entries
+            // without #EXTINF the fallback title became e.g. "Song%20Name", which the
+            // filename index couldn't match either. The decoder already existed in
+            // PlaylistInteropService — it just wasn't on the path the import dialog uses.
+            var path = PlaylistInteropService.DecodeM3uEntryPublic(line).Replace('\\', '/');
             try
             {
                 if (!Path.IsPathRooted(path) && baseDir.Length > 0)

@@ -108,6 +108,16 @@ public partial class PlaybackBarView : UserControl
     {
         if (e.Property == CompactWhenLyricsPageActiveProperty)
             UpdateIslandWidth();
+
+        // The main-window bar stays mounted and IsVisible while the fullscreen lyrics page
+        // is up — only its Opacity goes to 0 — so the 16 ms marquee timer went on mutating
+        // TranslateTransform.X 60 times a second on a fully transparent control, for the
+        // whole time the (already GPU-heavy) lyrics page was displayed.
+        if (e.Property == OpacityProperty)
+        {
+            if (Opacity <= 0) StopTrackTitleMarqueeTimer();
+            else ScheduleTrackTitleMarqueeUpdate();
+        }
     }
 
     private void OnPlaybackBarAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
@@ -262,7 +272,10 @@ public partial class PlaybackBarView : UserControl
 
     private void StartTrackTitleMarqueeTimer()
     {
-        if (_trackTitleMarqueeTimer.IsEnabled || VisualRoot == null)
+        // Opacity 0 means the bar is mounted but hidden behind the lyrics page; nothing
+        // it animates can be seen, so a track change or a play/pause there must not
+        // restart the timer either.
+        if (_trackTitleMarqueeTimer.IsEnabled || VisualRoot == null || Opacity <= 0)
             return;
 
         _trackTitleMarqueeClock.Restart();

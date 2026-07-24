@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using Avalonia.Media;
@@ -74,16 +74,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _isAlbumDescriptionEditing;
     [ObservableProperty] private string _albumDescriptionEditorText = string.Empty;
 
-    /// <summary>Whether this album is a single (1 track only).</summary>
-    public bool IsSingle => Album?.TrackCount == 1;
-
     /// <summary>Whether all tracks in the album are favorited (for metadata row heart).</summary>
     public bool IsAlbumFavorited => Album?.IsAllTracksFavorite ?? false;
-
-    /// <summary>Whether to show hearts on individual track rows (hidden for singles,
-    /// where the header heart already represents the only track). Fully-favorited
-    /// albums keep their row hearts alongside the header heart.</summary>
-    public bool ShowTrackRowHearts => !IsSingle;
 
     public bool HasAlbumDescription => !string.IsNullOrWhiteSpace(AlbumDescription);
     public bool HasAlbumDescriptionOverflow =>
@@ -210,8 +202,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _favoritesChangedHandler = (_, _) => Dispatcher.UIThread.Post(() =>
         {
             OnPropertyChanged(nameof(IsAlbumFavorited));
-            OnPropertyChanged(nameof(ShowTrackRowHearts));
-        });
+            });
         _library.FavoritesChanged += _favoritesChangedHandler;
 
         // Live-toggle the cover-art tint when the user flips the setting.
@@ -684,7 +675,6 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _library.NotifyFavoritesChanged();
         // Refresh hearts visibility
         OnPropertyChanged(nameof(IsAlbumFavorited));
-        OnPropertyChanged(nameof(ShowTrackRowHearts));
     }
 
     [RelayCommand]
@@ -700,7 +690,6 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _library.NotifyFavoritesChanged();
         // Refresh hearts visibility
         OnPropertyChanged(nameof(IsAlbumFavorited));
-        OnPropertyChanged(nameof(ShowTrackRowHearts));
     }
 
     [RelayCommand]
@@ -714,22 +703,6 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     {
         if (Tracks.Count == 0) return;
         await _sidebar.CreatePlaylistWithTracksAsync(InAlbumOrder(Tracks));
-    }
-
-    [RelayCommand]
-    private async Task AddToExistingPlaylist(object[] parameters)
-    {
-        if (parameters == null || parameters.Length != 2) return;
-        if (parameters[0] is not Track track || parameters[1] is not Playlist playlist) return;
-
-        await _sidebar.AddTracksToPlaylist(playlist.Id, new[] { track });
-    }
-
-    [RelayCommand]
-    private async Task AddAlbumToExistingPlaylist(Playlist playlist)
-    {
-        if (playlist == null || Tracks.Count == 0) return;
-        await _sidebar.AddTracksToPlaylist(playlist.Id, InAlbumOrder(Tracks));
     }
 
     [RelayCommand]

@@ -22,6 +22,13 @@ public sealed class AudioAnalysisCoordinator
     private const int TagWriteMaxAttempts = 3;
     private const int TagWriteRetryDelayMs = 150;
 
+    // Minimum detector confidence before a value is applied to the track (and possibly
+    // written into the user's file). Below these thresholds the result is still cached,
+    // so the file is not re-analyzed, but it is treated as "not detected" rather than
+    // stamping e.g. "C major @ 128 BPM" onto an ambient or spoken-word recording.
+    private const double MinBpmConfidence = 0.30;
+    private const double MinKeyConfidence = 0.15;
+
     private CancellationTokenSource? _cts;
     private Task? _run;
     private readonly object _startLock = new();
@@ -64,6 +71,22 @@ public sealed class AudioAnalysisCoordinator
         try { _cts?.Cancel(); } catch { }
     }
 
+    /// <summary>
+    /// Cancels the backfill and waits for it to unwind, bounded by <paramref name="timeout"/>.
+    /// Shutdown must use this: Stop() alone only signalled the token, and TryWriteTags is a
+    /// synchronous TagLib rewrite that observes no token — so the process could exit midway
+    /// through rewriting a large file and leave the user with a truncated track.
+    /// </summary>
+    public async Task StopAsync(TimeSpan timeout)
+    {
+        Stop();
+        var run = _run;
+        if (run is null) return;
+        try { await run.WaitAsync(timeout).ConfigureAwait(false); }
+        catch (TimeoutException) { /* give up waiting; the tag write guards on the token */ }
+        catch { /* the run task's own failures are already handled inside RunAsync */ }
+    }
+
     private async Task RunAsync(CancellationToken ct)
     {
         // Snapshot so library mutations during the pass don't break enumeration.
@@ -96,38 +119,93 @@ public sealed class AudioAnalysisCoordinator
 
                 var cached = await _store.GetAsync(track.FilePath, ct);
                 AudioAnalysisResult result;
+                var didDecode = false;
                 if (cached != null && cached.FileSize == info.Length && cached.LastModifiedUtc == sig)
                     result = new AudioAnalysisResult(cached.Bpm, cached.BpmConfidence, cached.MusicalKey, cached.KeyConfidence);
                 else
                 {
+                    didDecode = true;
                     result = await _analysis.AnalyzeAsync(track.FilePath, ct);
-                    if (result.Failed) continue;
+
+                    // Record failures too. Skipping the upsert left NeedsAnalysis true
+                    // forever, so every DRM'd / corrupt / unsupported file was re-decoded
+                    // (a fresh ffmpeg process, up to the full decode timeout) on every
+                    // launch and every library update, indefinitely. A zero-result record
+                    // against the same size+mtime signature means "already attempted".
                     await _store.UpsertAsync(new TrackAnalysisRecord(
-                        track.FilePath, info.Length, sig, result.Bpm, result.BpmConfidence,
-                        result.MusicalKey, result.KeyConfidence, DateTime.UtcNow.ToString("O")), ct);
+                        track.FilePath, info.Length, sig,
+                        result.Failed ? 0 : result.Bpm,
+                        result.Failed ? 0 : result.BpmConfidence,
+                        result.Failed ? string.Empty : result.MusicalKey,
+                        result.Failed ? 0 : result.KeyConfidence,
+                        DateTime.UtcNow.ToString("O")), ct);
+
+                    if (result.Failed)
+                    {
+                        await Task.Delay(PerFileThrottleMs, ct);
+                        continue;
+                    }
                 }
 
+                // Confidence was computed and stored but never consulted, so a detector
+                // guess on ambient/spoken/noise material was written to the library — and,
+                // with tag writing on, into the user's file — as fact. A bad BPM also
+                // drives AutoMixKeyTempo into picking a beat-matched transition for tracks
+                // that do not beat-match. Cache the low-confidence result (so it isn't
+                // recomputed) but don't apply it.
                 bool changed = false;
-                if (track.Bpm <= 0 && result.Bpm > 0) { track.Bpm = result.Bpm; changed = true; }
-                if (string.IsNullOrWhiteSpace(track.MusicalKey) && !string.IsNullOrWhiteSpace(result.MusicalKey))
+                if (track.Bpm <= 0 && result.Bpm > 0 && result.BpmConfidence >= MinBpmConfidence)
+                { track.Bpm = result.Bpm; changed = true; }
+                if (string.IsNullOrWhiteSpace(track.MusicalKey) && !string.IsNullOrWhiteSpace(result.MusicalKey)
+                    && result.KeyConfidence >= MinKeyConfidence)
                 { track.MusicalKey = result.MusicalKey; changed = true; }
 
                 if (changed)
                 {
                     anyWritten = true;
-                    if (_settings().WriteAnalysisToTags) TryWriteTags(track);
+                    if (_settings().WriteAnalysisToTags && !ct.IsCancellationRequested)
+                    {
+                        if (TryWriteTags(track))
+                        {
+                            // Re-stamp the cache with the file's post-write size/mtime.
+                            // The record above was written before the tag write, so the
+                            // signature check on the next pass always missed and forced a
+                            // full re-decode — one half of the rewrite loop.
+                            try
+                            {
+                                var after = new System.IO.FileInfo(track.FilePath);
+                                await _store.UpsertAsync(new TrackAnalysisRecord(
+                                    track.FilePath, after.Length, after.LastWriteTimeUtc.ToString("O"),
+                                    result.Bpm, result.BpmConfidence, result.MusicalKey,
+                                    result.KeyConfidence, DateTime.UtcNow.ToString("O")), ct);
+                            }
+                            catch { /* cache refresh is best effort */ }
+                        }
+                    }
                 }
 
                 // Throttle: yield CPU between files so playback/UI stay responsive.
-                await Task.Delay(PerFileThrottleMs, ct);
+                // Only after real work — applying it to cache hits cost 150ms per already
+                // known track on every pass.
+                if (didDecode)
+                    await Task.Delay(PerFileThrottleMs, ct);
             }
             catch (OperationCanceledException) { break; }
             catch { /* per-file failure: continue */ }
         }
 
+        // The pass is over — hand back the ~21 MB of LOH decode buffers rather than
+        // pinning them for the rest of the session.
+        try { _analysis.ReleaseBuffers(); } catch { }
+
         if (anyWritten)
         {
             try { await _library.SaveAsync(); } catch { }
+            // SaveAsync does not raise LibraryUpdated, so nothing told the views that
+            // Bpm/MusicalKey had been filled in — the Songs BPM column stayed blank
+            // until an unrelated library change or a restart, and the feature read as
+            // broken. NotifyMetadataChanged also refreshes the SQLite index.
+            try { _library.NotifyMetadataChanged(); } catch { }
         }
     }
 
@@ -136,7 +214,11 @@ public sealed class AudioAnalysisCoordinator
             .Where(t => t.SourceType == SourceType.Local && NeedsAnalysis(t))
             .ToList();
 
-    private static void TryWriteTags(Track track)
+    /// <summary>
+    /// Writes the detected tempo/key into the file's tags. Returns true when the file
+    /// was actually rewritten.
+    /// </summary>
+    private static bool TryWriteTags(Track track)
     {
         for (int attempt = 0; attempt < TagWriteMaxAttempts; attempt++)
         {
@@ -145,12 +227,22 @@ public sealed class AudioAnalysisCoordinator
                 using var file = TagLib.File.Create(track.FilePath);
                 if (track.Bpm > 0) file.Tag.BeatsPerMinute = (uint)track.Bpm;
                 if (!string.IsNullOrWhiteSpace(track.MusicalKey))
-                    AdvancedTagIO.WriteCustomField(file, "TKEY", track.MusicalKey);
+                {
+                    // "INITIALKEY", not "TKEY". WriteCustomField emits a TXXX frame whose
+                    // *description* is the key argument — and MetadataService.ReadMusicalKey
+                    // only accepts descriptions INITIALKEY / KEY / MUSICALKEY (the bare
+                    // "TKEY" it does read is the standard text frame, which this never
+                    // wrote). So the value could not be read back by Noctis or by
+                    // foobar/Serato/Mixed In Key, the re-import dropped it, and the
+                    // backfill re-analyzed and rewrote the file forever.
+                    AdvancedTagIO.WriteCustomField(file, "INITIALKEY", track.MusicalKey);
+                }
                 file.Save();
-                return;
+                return true;
             }
             catch (System.IO.IOException) { System.Threading.Thread.Sleep(TagWriteRetryDelayMs); }
-            catch { return; }
+            catch { return false; }
         }
+        return false;
     }
 }

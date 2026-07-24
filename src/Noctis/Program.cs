@@ -39,8 +39,21 @@ internal class Program
             // starting a second player.
             if (!SingleInstanceGuard.TryAcquire())
             {
-                SingleInstanceGuard.SignalFirstInstance(filesToOpen);
-                return;
+                if (SingleInstanceGuard.SignalFirstInstance(filesToOpen))
+                    return;
+
+                // Nobody answered the activation pipe, so there is no live instance to
+                // surface — only something holding the mutex. That is either a hung
+                // Noctis or an unrelated process that got there first: the mutex name is
+                // a bare, guessable, un-ACL'd string, so any process in the session can
+                // claim it and permanently stop Noctis from launching. Exiting here meant
+                // the user double-clicked Noctis, waited two seconds, and nothing happened
+                // at all — no window, no error, no tray flash. Launch anyway.
+                LogCrash("SingleInstance",
+                    new InvalidOperationException(
+                        "Single-instance mutex is held but the activation pipe did not " +
+                        "answer — starting anyway."));
+                SingleInstanceGuard.StartActivationListener();
             }
 
             App.PendingOpenFiles = filesToOpen;
@@ -219,6 +232,9 @@ internal class Program
         services.AddSingleton<ILrcLibService, LrcLibService>();
         services.AddSingleton<INetEaseService, NetEaseService>();
         services.AddSingleton<IPlayHistoryService, PlayHistoryService>();
+        // Singleton so the startup archive pass and the Wrap dialog share one instance
+        // (and one lock over wrap_archive.json).
+        services.AddSingleton<IWrapArchiveService, WrapArchiveService>();
         services.AddSingleton<DeezerMetadataService>();
         services.AddSingleton<IAlbumArtworkSearch>(sp => sp.GetRequiredService<ITunesArtworkService>());
         services.AddSingleton<AutoMatchCoordinator>(sp =>
@@ -273,6 +289,19 @@ internal class Program
             var crashDir = AppPaths.DataRoot;
             Directory.CreateDirectory(crashDir);
             var crashPath = Path.Combine(crashDir, "crash.log");
+
+            // Roll at ~1 MB. Every crash appends a full stack trace, and a crash loop
+            // (e.g. the libvlc-missing case, which fires on every launch) grew this file
+            // without bound.
+            const long MaxCrashLogBytes = 1024 * 1024;
+            try
+            {
+                var info = new FileInfo(crashPath);
+                if (info.Exists && info.Length > MaxCrashLogBytes)
+                    File.Move(crashPath, crashPath + ".1", overwrite: true);
+            }
+            catch { /* rotation is best effort */ }
+
             var entry = $"[{DateTime.UtcNow:O}] {source}: {ex}\n---\n";
             File.AppendAllText(crashPath, entry);
         }

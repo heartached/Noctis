@@ -14,6 +14,13 @@ public class ArtistImageService
     private readonly SemaphoreSlim _fetchGate = new(1, 1);
     private readonly Dictionary<string, DateTime> _failedArtistCooldownUntil = new(StringComparer.OrdinalIgnoreCase);
     private static readonly TimeSpan FailedArtistCooldown = TimeSpan.FromMinutes(15);
+
+    /// <summary>
+    /// Delay before each artist's network work. Deezer allows 50 requests per 5 seconds
+    /// and every artist costs up to two (search + image), so 120ms keeps a full-library
+    /// sweep comfortably inside the budget.
+    /// </summary>
+    private const int RequestPacingMs = 120;
     private static readonly Regex ArtistSplitRegex = new(@"\s*(?:,|;|/|&|\bfeat\.?\b|\bft\.?\b|\bfeaturing\b|\band\b|\bwith\b|\bx\b)\s*",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
@@ -115,7 +122,17 @@ public class ArtistImageService
     /// </summary>
     public async Task FetchAndCacheAsync(IReadOnlyList<Artist> artists, Action<Artist, string>? onImageReady = null)
     {
-        await _fetchGate.WaitAsync();
+        // Get off the caller's thread before doing anything.
+        //
+        // The Artists tab calls this fire-and-forget from Refresh(). With an uncontended
+        // semaphore the WaitAsync below completes synchronously, and with no
+        // ConfigureAwait(false) the continuation stayed on the UI thread — so for every
+        // already-cached artist the loop never hit a real await and just ran two blocking
+        // File.Exists calls inline. On a 4,000-artist library that was thousands of stats
+        // on the UI thread before the tab could paint.
+        await Task.Yield();
+
+        await _fetchGate.WaitAsync().ConfigureAwait(false);
 
         try
         {
@@ -161,15 +178,31 @@ public class ArtistImageService
                     continue;
                 }
 
+                // Rate limit: Deezer allows 50 requests per 5 seconds. Paced BEFORE the
+                // request, so it applies to every network call. It used to sit at the
+                // very bottom of the loop, after the `continue`s for both success and
+                // fallback — i.e. only on outright failure. On a first scan each
+                // *successful* artist costs at least two requests (search + image) with
+                // zero pacing, so a few hundred artists burst far past the limit, Deezer
+                // started 429-ing, and that poisoned the whole sweep into the 15-minute
+                // cooldown.
+                await Task.Delay(RequestPacingMs).ConfigureAwait(false);
+
                 try
                 {
-                    if (await TryDownloadAndSaveAsync(artistName, cachedPath))
+                    if (await TryDownloadAndSaveAsync(artistName, cachedPath).ConfigureAwait(false))
                     {
                         artist.ImagePath = cachedPath;
                         onImageReady?.Invoke(artist, cachedPath);
                         _failedArtistCooldownUntil.Remove(artistName);
                         continue;
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    // Download watchdog fired (or shutdown) — don't burn the cooldown.
+                    Debug.WriteLine($"[ArtistImage] Timed out for '{artist.Name}'");
+                    continue;
                 }
                 catch (Exception ex)
                 {
@@ -183,9 +216,6 @@ public class ArtistImageService
                 }
 
                 _failedArtistCooldownUntil[artistName] = DateTime.UtcNow.Add(FailedArtistCooldown);
-
-                // Rate limit: Deezer allows 50 requests per 5 seconds.
-                await Task.Delay(120);
             }
         }
         finally
@@ -236,24 +266,47 @@ public class ArtistImageService
     /// Resolves the artist's Deezer photo and writes it to <paramref name="cachedPath"/>.
     /// Returns true if an image was downloaded and saved.
     /// </summary>
-    private async Task<bool> TryDownloadAndSaveAsync(string artistName, string cachedPath)
+    /// <summary>Hard ceiling for a single artist-image download, headers plus body.</summary>
+    private static readonly TimeSpan DownloadTimeout = TimeSpan.FromSeconds(30);
+
+    private async Task<bool> TryDownloadAndSaveAsync(string artistName, string cachedPath,
+        CancellationToken ct = default)
     {
-        var imageUrl = await GetDeezerArtistImageUrlAsync(artistName);
+        // HttpClient.Timeout only covers up to the response headers when
+        // ResponseHeadersRead is used, and no token was threaded through the body read —
+        // so a stalled/half-open connection to the CDN blocked ReadBytesBoundedAsync with
+        // nothing able to cancel it. Because FetchAndCacheAsync holds _fetchGate for the
+        // whole sweep, one stalled socket blocked every later artist-image fetch for the
+        // rest of the process lifetime, and shutdown couldn't cancel it either.
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(DownloadTimeout);
+        var token = timeoutCts.Token;
+
+        var imageUrl = await GetDeezerArtistImageUrlAsync(artistName, token).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(imageUrl))
             return false;
 
         using var request = new HttpRequestMessage(HttpMethod.Get, imageUrl);
-        using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+        using var response = await _http
+            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode ||
             response.Content.Headers.ContentType?.MediaType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) != true)
             return false;
 
-        var imageData = await HttpSafety.ReadBytesBoundedAsync(response.Content, HttpSafety.MaxImageBytes);
+        var imageData = await HttpSafety
+            .ReadBytesBoundedAsync(response.Content, HttpSafety.MaxImageBytes, token).ConfigureAwait(false);
         // Magic-byte check: an error/HTML page must never be cached as artwork.
         if (imageData.Length == 0 || !HttpSafety.LooksLikeImage(imageData))
             return false;
 
-        await File.WriteAllBytesAsync(cachedPath, imageData);
+        // The cache subdirectory is created once in the constructor, so a "Clear Artwork
+        // Cache" (which deletes the whole artwork tree) left every later write throwing
+        // DirectoryNotFoundException into a swallowing catch — artist photos silently
+        // stopped caching until the next app restart.
+        var dir = Path.GetDirectoryName(cachedPath);
+        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+
+        await File.WriteAllBytesAsync(cachedPath, imageData, token).ConfigureAwait(false);
         return true;
     }
 
@@ -261,16 +314,17 @@ public class ArtistImageService
     /// Searches Deezer for the artist and returns a 500x500 image URL.
     /// Tries the full artist name first, then the primary artist for collaborations.
     /// </summary>
-    private async Task<string?> GetDeezerArtistImageUrlAsync(string artistName)
+    private async Task<string?> GetDeezerArtistImageUrlAsync(string artistName, CancellationToken ct = default)
     {
         foreach (var candidate in BuildArtistCandidates(artistName))
         {
+            ct.ThrowIfCancellationRequested();
             var url = $"{DeezerSearchUrl}?q={Uri.EscapeDataString(candidate)}&limit={DeezerSearchLimit}";
-            using var response = await _http.GetAsync(url);
+            using var response = await _http.GetAsync(url, ct).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 continue;
 
-            var json = await HttpSafety.ReadStringBoundedAsync(response.Content);
+            var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct).ConfigureAwait(false);
             using var doc = JsonDocument.Parse(json);
 
             if (!doc.RootElement.TryGetProperty("data", out var data) ||

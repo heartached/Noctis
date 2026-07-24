@@ -151,6 +151,12 @@ public partial class LyricShareViewModel : ViewModelBase
     /// <summary>Preview renders at half card resolution — crisp at dialog size, cheap per frame.</summary>
     private const float PreviewAnimatorScale = 0.5f;
 
+    /// <summary>Skia scale for the on-screen preview render (export uses CardExportScale).</summary>
+    private const float PreviewRenderScale = 1f;
+
+    /// <summary>Decode width for the preview bitmap — it fills a ~320px box.</summary>
+    private const int PreviewDecodeWidth = 480;
+
     /// <summary>Same small lead as the lyrics page so the sweep matches the vocal.</summary>
     private const double PreviewWordLookaheadSeconds = 0.08;
 
@@ -519,7 +525,38 @@ public partial class LyricShareViewModel : ViewModelBase
         RefreshPreview();          // re-render even if the value is unchanged
     }
 
+    // Trailing-edge debounce for the preview.
+    //
+    // The editable lyric line is a TwoWay TextBox binding with no UpdateSourceTrigger, so
+    // Avalonia pushes to the source on every keystroke — and each push started a fresh
+    // Task.Run rendering a 2160x2160 (or 2160x3840) Skia surface, PNG-encoded at quality
+    // 100 and re-decoded. Nothing serialized them: typing ten characters kicked off ten
+    // concurrent ~33 MB-surface renders and threw away nine.
+    private const int PreviewDebounceMs = 200;
+    private CancellationTokenSource? _previewDebounceCts;
+
     private void RefreshPreview()
+    {
+        _previewDebounceCts?.Cancel();
+        _previewDebounceCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _previewDebounceCts = cts;
+
+        _ = DebouncedRefreshAsync(cts.Token);
+    }
+
+    private async Task DebouncedRefreshAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(PreviewDebounceMs, token);
+            if (token.IsCancellationRequested) return;
+            RefreshPreviewCore();
+        }
+        catch (OperationCanceledException) { /* superseded by a newer edit */ }
+    }
+
+    private void RefreshPreviewCore()
     {
         var generation = ++_renderGeneration;
         var selectedLines = Lines.Where(l => l.IsSelected && !string.IsNullOrWhiteSpace(l.Text)).ToList();
@@ -541,12 +578,16 @@ public partial class LyricShareViewModel : ViewModelBase
         {
             try
             {
-                var png = ShareCardRenderer.RenderLyricCardStyled(spec, ShareCardRenderer.CardExportScale);
+                // Render the on-screen preview at 1x. It is displayed in a ~320x480 box,
+                // but was rendered at CardExportScale and the decoded 2160x2160 (18.7 MB)
+                // or 2160x3840 (33.2 MB) bitmap was then held for the dialog's lifetime.
+                // The export path (Save/Copy) still renders at full scale on demand.
+                var png = ShareCardRenderer.RenderLyricCardStyled(spec, PreviewRenderScale);
                 var animator = karaoke != null
                     ? new ShareCardRenderer.KaraokeCardAnimator(spec, karaoke, PreviewAnimatorScale)
                     : null;
                 using var ms = new MemoryStream(png);
-                var bitmap = new Bitmap(ms);
+                var bitmap = Bitmap.DecodeToWidth(ms, PreviewDecodeWidth);
                 Dispatcher.UIThread.Post(() =>
                 {
                     if (generation != _renderGeneration)
@@ -558,7 +599,10 @@ public partial class LyricShareViewModel : ViewModelBase
                     var old = Preview;
                     CurrentPng = png;
                     Preview = bitmap;
-                    old?.Dispose();
+                    // Deferred: the previous bitmap can still be referenced by the last
+                    // committed render frame in this same UI turn. AnimatedCoverImage
+                    // defers every bitmap disposal for exactly this reason.
+                    if (old != null) Dispatcher.UIThread.Post(old.Dispose);
                     SwapAnimator(animator);
                 });
             }
@@ -601,7 +645,13 @@ public partial class LyricShareViewModel : ViewModelBase
         if (_animTimer == null)
         {
             // ~60 Hz: matches typical display refresh so the sweep never visibly steps.
-            _animTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+            // 30 Hz, not 60. Each tick re-renders the whole Skia card and copies the
+            // surface back (1.17 MB Square / 2.07 MB Story) on the UI thread, and
+            // DrawKaraokeRows re-measures every row through SplitFallbackRuns — which
+            // probes ContainsGlyph once per character, natively. At 16ms that was
+            // 60–120k glyph probes a second competing with layout and input while
+            // playback ran. The sweep is smooth at 30fps and the cost halves.
+            _animTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
             _animTimer.Tick += (_, _) => OnAnimTick();
         }
         _animTimer.Start();
@@ -746,6 +796,33 @@ public partial class LyricShareViewModel : ViewModelBase
     /// Returns a status string for the dialog (never throws). ffmpeg is resolved from the
     /// app's audio-converter service; absence is reported, not fatal.
     /// </summary>
+    /// <summary>
+    /// Renders the card at full export resolution, on demand.
+    ///
+    /// <see cref="CurrentPng"/> is now the preview-resolution image (it fills a ~320px
+    /// box and used to be held at up to 33 MB for the dialog's lifetime), so the Save and
+    /// Copy paths must re-render rather than reuse it.
+    /// </summary>
+    public async Task<byte[]?> RenderExportPngAsync()
+    {
+        var selected = Lines.Where(l => l.IsSelected && !string.IsNullOrWhiteSpace(l.Text))
+            .Select(l => l.Text).ToList();
+        if (selected.Count == 0) return null;
+
+        var spec = BuildSpec(selected);
+        try
+        {
+            return await Task.Run(() =>
+                ShareCardRenderer.RenderLyricCardStyled(spec, ShareCardRenderer.CardExportScale));
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Error,
+                "Share card export render failed", ex.Message);
+            return null;
+        }
+    }
+
     public async Task<string> ExportClipAsync(string outputPath)
     {
         if (CurrentPng is null)
@@ -783,15 +860,36 @@ public partial class LyricShareViewModel : ViewModelBase
             Directory.CreateDirectory(frameDir);
             try
             {
-                StatusText = "Saving";
-                await Task.Run(() => ShareCardRenderer.RenderKaraokeFrames(
-                    spec, karaoke, timing, KaraokeFps, frameDir));
+                // Progress + cancellation. Both were supported by the renderer and simply
+                // never passed: a 60s Story clip is 3600 frames at 1080x1920 — minutes of
+                // work behind a static "Saving" label, with no percentage and no way to
+                // abort (closing the dialog didn't stop it either).
+                _exportCts?.Dispose();
+                _exportCts = new CancellationTokenSource();
+                var token = _exportCts.Token;
 
-                StatusText = string.Empty;
+                StatusText = "Saving 0%";
+                var progress = new Progress<(int Done, int Total)>(p =>
+                {
+                    if (p.Total <= 0) return;
+                    var pct = (int)Math.Round(100.0 * p.Done / p.Total);
+                    Dispatcher.UIThread.Post(() => StatusText = $"Saving {pct}%");
+                });
+
+                await Task.Run(() => ShareCardRenderer.RenderKaraokeFrames(
+                    spec, karaoke, timing, KaraokeFps, frameDir,
+                    (done, total) => ((IProgress<(int, int)>)progress).Report((done, total)),
+                    token), token);
+
+                StatusText = "Encoding";
                 var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
                 var (ok, error) = await ShareClipRenderer.RenderFramesAsync(
-                    ffmpeg, pattern, KaraokeFps, _track.FilePath, outputPath, timing);
+                    ffmpeg, pattern, KaraokeFps, _track.FilePath, outputPath, timing, token);
                 return ok ? "Saved" : $"Clip failed: {error}";
+            }
+            catch (OperationCanceledException)
+            {
+                return "Cancelled";
             }
             finally
             {
@@ -804,10 +902,24 @@ public partial class LyricShareViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Cancels an in-flight clip export. Bound to the dialog's Cancel affordance.</summary>
+    public void CancelExport() => _exportCts?.Cancel();
+
+    /// <summary>True while a clip export is running and can be cancelled.</summary>
+    public bool CanCancelExport => IsRendering;
+
+    private CancellationTokenSource? _exportCts;
+
     /// <summary>Unsubscribes from the player so the dialog can be garbage-collected.</summary>
     public void Detach()
     {
         ++_renderGeneration;   // stale in-flight preview renders dispose instead of re-installing
+
+        // Stop a running export. Detach() previously tore down only the preview animator,
+        // so closing the dialog mid-export left thousands of frames still rendering.
+        try { _exportCts?.Cancel(); } catch { }
+        _previewDebounceCts?.Cancel();
+
         TeardownAnimator();
         if (_player != null)
             _player.PropertyChanged -= OnPlayerPropertyChanged;

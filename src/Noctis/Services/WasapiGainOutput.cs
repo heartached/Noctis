@@ -68,6 +68,34 @@ internal sealed class WasapiGainOutput : IDisposable
     private long _bytesWritten;
     private int _writeCount;
 
+    /// <summary>
+    /// Set when the render thread stops unexpectedly (endpoint removed, device switched,
+    /// driver fault). Once faulted the sink drops writes instead of spinning, and
+    /// <see cref="Faulted"/> lets the player tear it down and fall back.
+    /// </summary>
+    private volatile bool _faulted;
+
+    /// <summary>True once the output device has gone away. The sink is unusable.</summary>
+    public bool IsFaulted => _faulted;
+
+    /// <summary>
+    /// Raised on NAudio's thread when playback stops for any reason other than a normal
+    /// Dispose — i.e. the endpoint is gone. The player uses this to drop exclusive mode
+    /// and re-open on the current default device instead of going permanently silent.
+    /// </summary>
+    public event Action<WasapiGainOutput>? Faulted;
+
+    private void HookPlaybackStopped()
+    {
+        _out.PlaybackStopped += (_, e) =>
+        {
+            if (_disposed) return;
+            _faulted = true;
+            Diag($"PlaybackStopped (device lost?): {e.Exception?.Message ?? "no exception"}");
+            try { Faulted?.Invoke(this); } catch { /* never throw on NAudio's thread */ }
+        };
+    }
+
     public static WasapiGainOutput? TryCreate()
     {
         if (!OperatingSystem.IsWindows()) return null;
@@ -130,6 +158,7 @@ internal sealed class WasapiGainOutput : IDisposable
         (_buffer, _gain) = CreateInputChain(SampleRate, Channels);
         _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 50);
         _out.Init(_gain);
+        HookPlaybackStopped();
         _out.Play();
         Diag($"input S16N {SampleRate}Hz {Channels}ch | WasapiOut state={_out.PlaybackState}");
     }
@@ -162,8 +191,9 @@ internal sealed class WasapiGainOutput : IDisposable
             try
             {
                 attempt.Init(rendered);
-                attempt.Play();
                 _out = attempt;
+                HookPlaybackStopped();
+                attempt.Play();
                 BitsPerSample = bits;
                 Diag($"exclusive open OK: {bits}-bit {SampleRate}Hz {Channels}ch | state={attempt.PlaybackState}");
                 return;
@@ -212,19 +242,26 @@ internal sealed class WasapiGainOutput : IDisposable
     /// </summary>
     public void Write(byte[] data, int count)
     {
-        if (_disposed) return;
+        if (_disposed || _faulted) return;
 
         // Backpressure: wait for the render thread to drain space instead of
         // throwing on overflow. Capped so teardown can't deadlock the audio thread.
+        //
+        // The fault check matters: if the endpoint goes away (USB DAC unplugged,
+        // Bluetooth disconnect, default device switched) NAudio's render thread stops
+        // and the buffer never drains again. Without it, every LibVLC audio callback
+        // then paid the full 2s spin — permanent silence with the transport still
+        // running, and _player.Stop() (which joins the aout thread) blocked behind the
+        // stalled callback while holding _playbackLock.
         var deadline = Environment.TickCount64 + 2000;
-        while (!_disposed &&
+        while (!_disposed && !_faulted &&
                _buffer.BufferLength - _buffer.BufferedBytes < count &&
                Environment.TickCount64 < deadline)
         {
             Thread.Sleep(2);
         }
 
-        if (_disposed) return;
+        if (_disposed || _faulted) return;
         try
         {
             _buffer.AddSamples(data, 0, count);
@@ -232,7 +269,7 @@ internal sealed class WasapiGainOutput : IDisposable
             // Log the first few writes and then periodically, so we can confirm
             // PCM is actually flowing and WasapiOut is rendering it.
             var n = ++_writeCount;
-            if (n <= 3 || n % 200 == 0)
+            if (DiagEnabled && (n <= 3 || n % 200 == 0))
                 Diag($"write #{n}: {count}B | buffered={_buffer.BufferedBytes}B | state={_out.PlaybackState} | total={_bytesWritten}B");
         }
         catch (Exception ex)
@@ -278,11 +315,23 @@ internal sealed class WasapiGainOutput : IDisposable
     // ── Diagnostics ─────────────────────────────────────────────────
     // Appends to noctis_wasapi.log on the Desktop (or user profile) so the silent-
     // path failure can be read directly. Best-effort; never throws.
+    //
+    // OPT-IN ONLY (NOCTIS_WASAPI_LOG=1), matching NOCTIS_VLC_LOG. This used to be
+    // unconditional and was called from GainSampleProvider.Read — the WASAPI render
+    // callback — and from LibVLC's audio thread, so every user who enabled Exclusive
+    // Mode got an unbounded log dropped on their Desktop, and any disk stall (AV scan,
+    // OneDrive-redirected Desktop, spinning disk) blocked the render thread inside its
+    // buffer-fill deadline. That underrun is exactly what Exclusive Mode exists to avoid.
     private static readonly object _diagGate = new();
     private static string? _diagPath;
 
+    /// <summary>True when NOCTIS_WASAPI_LOG=1. Lets hot paths skip building the message.</summary>
+    internal static bool DiagEnabled { get; } =
+        Environment.GetEnvironmentVariable("NOCTIS_WASAPI_LOG") == "1";
+
     internal static void Diag(string msg)
     {
+        if (!DiagEnabled) return;
         try
         {
             if (_diagPath == null)
@@ -357,7 +406,9 @@ internal sealed class WasapiGainOutput : IDisposable
             }
 
             _current = cur;
-            if (++_readCount % 400 == 1)
+            // Diag() is a no-op unless NOCTIS_WASAPI_LOG=1, but keep the interpolation
+            // itself off the render thread's hot path when logging is off.
+            if (DiagEnabled && ++_readCount % 400 == 1)
                 Diag($"Read #{_readCount}: frames={read / _channels} srcPeak={peak:F4} gain={cur:F4} target={target:F4}");
             return read;
         }

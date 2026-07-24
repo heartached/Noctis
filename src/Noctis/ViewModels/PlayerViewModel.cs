@@ -144,6 +144,14 @@ public partial class PlayerViewModel : ViewModelBase
     private volatile bool _positionUpdateQueued; // coalesces rapid VLC position dispatches
     private TimeSpan _latestVlcPosition; // latest position from VLC timer (written from timer thread)
     private List<Track> _originalQueue = new(); // stored when shuffle is enabled
+
+    // The full set of tracks in the current playback cycle, in order, uncapped.
+    //
+    // Repeat All used to rebuild the queue from History, but TrimHistory caps History at
+    // 50 entries — so cycling a 120-track playlist restarted at track 71 and permanently
+    // dropped tracks 1-70, with no UI indication. History is a *display* list with a
+    // display-sized cap; the repeat cycle needs the real queue.
+    private List<Track> _repeatCycleTracks = new();
     private Action<string>? _navigateAction; // injected navigation action
     private Action<Track>? _viewAlbumAction; // injected from MainWindowViewModel
     private Action<Track>? _searchLyricsAction; // injected for search lyrics navigation
@@ -233,10 +241,14 @@ public partial class PlayerViewModel : ViewModelBase
                 }
                 else if (_library.Tracks.Count > 0)
                 {
-                    // No track loaded — shuffle entire library
+                    // No track loaded — shuffle entire library.
                     var allTracks = Helpers.ShuffleHelper.WeightedShuffle(_library.Tracks, recentlyPlayed: _recentlyPlayed);
-                    IsShuffleEnabled = true;
                     ReplaceQueueAndPlay(allTracks, 0);
+                    // Set AFTER the call: ReplaceQueueAndPlay clears the flag (a new queue
+                    // isn't shuffled by definition), so setting it first left the queue
+                    // shuffled while every shuffle indicator — the mini player, the
+                    // command palette, the MPRIS Shuffle property — reported Off.
+                    IsShuffleEnabled = true;
                 }
                 break;
         }
@@ -247,7 +259,14 @@ public partial class PlayerViewModel : ViewModelBase
     {
         DebugLogger.Info(DebugLogger.Category.Playback, "Next", $"queueLen={UpNext.Count}");
         CancelAutoMixTransition("user skipped");
-        if (UpNext.Count == 0) return;
+
+        // The repeat-all wrap lives inside AdvanceQueueCore, so returning here on an
+        // empty UpNext made it unreachable from a user skip: with Repeat All on and the
+        // last track playing, Next / Ctrl+Right / the tray item / SMTC-MPRIS next were
+        // all silent no-ops, and only a natural track end wrapped.
+        var canWrap = RepeatMode == RepeatMode.All &&
+                      (_repeatCycleTracks.Count > 0 || History.Count > 0);
+        if (UpNext.Count == 0 && !canWrap) return;
 
         // A user skip before the halfway point counts as a skip in the play log.
         if (CurrentTrack != null && PositionFraction < 0.5)
@@ -418,9 +437,12 @@ public partial class PlayerViewModel : ViewModelBase
                 var restored = new List<Track>(UpNext.Count);
                 foreach (var t in _originalQueue)
                 {
-                    // SkipWhenShuffling tracks were filtered out of the shuffled
-                    // queue (not played) — always bring them back.
-                    if (t.SkipWhenShuffling)
+                    // Tracks the shuffle FILTERED OUT (rather than consumed) must always
+                    // come back: they were never played, they're just absent from UpNext.
+                    // SkipWhenShuffling was handled; snoozed tracks were not — WeightedShuffle
+                    // drops those too, so they satisfied neither branch and a shuffle
+                    // on/off round trip silently deleted them from the queue.
+                    if (t.SkipWhenShuffling || t.IsSnoozed)
                     {
                         restored.Add(t);
                         continue;
@@ -667,7 +689,7 @@ public partial class PlayerViewModel : ViewModelBase
         if (libraryTrack != null && !ReferenceEquals(libraryTrack, CurrentTrack))
             libraryTrack.IsFavorite = newState;
         await _library.SaveAsync();
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(new[] { CurrentTrack });
     }
 
     /// <summary>Mirrors library favorite state onto queue/history Track instances
@@ -784,6 +806,10 @@ public partial class PlayerViewModel : ViewModelBase
         // Clear stale shuffle state — a new queue replaces whatever was shuffled.
         _originalQueue.Clear();
         IsShuffleEnabled = false;
+
+        // Record the full cycle for Repeat All, starting at the track being played so a
+        // wrap replays the queue in the order the user actually started it.
+        _repeatCycleTracks = tracks.Skip(startIndex).Concat(tracks.Take(startIndex)).ToList();
 
         // Clear and rebuild the queue
         var upNextTracks = new List<Track>(tracks.Count - startIndex - 1);
@@ -939,7 +965,11 @@ public partial class PlayerViewModel : ViewModelBase
             CurrentTrackId = CurrentTrack?.Id,
             PositionSeconds = Position.TotalSeconds,
             UpNextIds = UpNext.Select(t => t.Id).ToList(),
-            HistoryIds = History.Select(t => t.Id).ToList()
+            HistoryIds = History.Select(t => t.Id).ToList(),
+            RepeatMode = RepeatMode,
+            IsShuffleEnabled = IsShuffleEnabled,
+            IsMuted = IsMuted,
+            RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList()
         };
         await _persistence.SaveQueueStateAsync(state);
     }
@@ -968,7 +998,11 @@ public partial class PlayerViewModel : ViewModelBase
                 CurrentTrackId = CurrentTrack?.Id,
                 PositionSeconds = Position.TotalSeconds,
                 UpNextIds = UpNext.Select(t => t.Id).ToList(),
-                HistoryIds = History.Select(t => t.Id).ToList()
+                HistoryIds = History.Select(t => t.Id).ToList(),
+                RepeatMode = RepeatMode,
+                IsShuffleEnabled = IsShuffleEnabled,
+                IsMuted = IsMuted,
+                RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList()
             };
         }
         catch
@@ -1015,6 +1049,20 @@ public partial class PlayerViewModel : ViewModelBase
             if (track != null) restoredUpNext.Add(track);
         }
         UpNext.AddRange(restoredUpNext);
+
+        // Restore the transport modes. These were never persisted, so repeat and shuffle
+        // silently reset to Off and the app un-muted on every restart.
+        RepeatMode = state.RepeatMode;
+        IsShuffleEnabled = state.IsShuffleEnabled;
+        IsMuted = state.IsMuted;
+
+        var restoredCycle = new List<Track>(state.RepeatCycleIds.Count);
+        foreach (var id in state.RepeatCycleIds)
+        {
+            var track = _library.GetTrackById(id);
+            if (track != null) restoredCycle.Add(track);
+        }
+        _repeatCycleTracks = restoredCycle;
 
         // Restore current track (paused, not auto-playing)
         if (state.CurrentTrackId.HasValue)
@@ -1402,6 +1450,12 @@ public partial class PlayerViewModel : ViewModelBase
         // resumes from a sensible state. User skips bypass and clear the flag.
         if (StopAfterCurrentTrack && reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix)
         {
+            // TryAdvanceForAutoMix has already armed the crossfade and stashed the *next*
+            // track's planned entry offset in _pendingAutoMixNextStartMs. Returning without
+            // clearing it left that offset for the next PlayTrack to consume — pressing
+            // Play afterwards restarted the current track at the following track's entry
+            // point instead of from where it stopped.
+            CancelAutoMixTransition("stop after current track");
             StopAfterCurrentTrack = false;
             State = PlaybackState.Stopped;
             DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.StoppedAfterTrack",
@@ -1443,17 +1497,22 @@ public partial class PlayerViewModel : ViewModelBase
             PlayTrack(next);
             RefillRadioIfNeeded();
         }
-        else if (RepeatMode == RepeatMode.All && History.Count > 0)
+        else if (RepeatMode == RepeatMode.All && (_repeatCycleTracks.Count > 0 || History.Count > 0))
         {
-            // Repeat all: move all history back to queue and restart
-            var allTracks = History.Reverse().ToList();
+            // Repeat all: restart the full cycle. Prefer the uncapped cycle list; fall
+            // back to History only when there isn't one (e.g. a queue restored from a
+            // previous session, where the cycle was never recorded).
+            var allTracks = _repeatCycleTracks.Count > 0
+                ? new List<Track>(_repeatCycleTracks)
+                : History.Reverse().ToList();
+
             History.Clear();
             _originalQueue.Clear(); // clear stale shuffle state to prevent wrong restore
-            foreach (var track in allTracks.Skip(1))
-                UpNext.Add(track);
 
-            if (allTracks.Count > 0)
-                PlayTrack(allTracks[0]);
+            if (allTracks.Count == 0) { StopAndClear(); return; }
+
+            UpNext.ReplaceAll(allTracks.Skip(1).ToList());
+            PlayTrack(allTracks[0]);
         }
         else
         {

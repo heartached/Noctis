@@ -39,6 +39,9 @@ public sealed class MprisService : IDisposable
     private string? _artist;
     private string? _album;
     private string? _artUrl;
+
+    /// <summary>Last artwork path we ran File.Exists against; see SnapshotState.</summary>
+    private string? _lastArtPathChecked = string.Empty;
     private string _trackId = "/org/mpris/MediaPlayer2/TrackList/NoTrack";
     private long _lengthUs;
 
@@ -65,6 +68,10 @@ public sealed class MprisService : IDisposable
         _ = Task.Run(InitializeAsync);
     }
 
+    /// <summary>Reply codes from org.freedesktop.DBus.RequestName.</summary>
+    private const uint RequestNamePrimaryOwner = 1;
+    private const uint RequestNameAlreadyOwner = 4;
+
     private async Task InitializeAsync()
     {
         try
@@ -83,7 +90,22 @@ public sealed class MprisService : IDisposable
 
             // MessageWriter is a ref struct, so the message is built in a
             // separate non-async method.
-            await connection.CallMethodAsync(CreateRequestNameMessage(connection));
+            //
+            // The reply code used to be discarded, so an outright failure to acquire
+            // org.mpris.MediaPlayer2.noctis was invisible: media keys and the desktop
+            // widget silently did nothing while the log said "Started".
+            var reply = await connection.CallMethodAsync(
+                CreateRequestNameMessage(connection),
+                static (Message msg, object? _) => msg.GetBodyReader().ReadUInt32(),
+                null);
+
+            if (reply is not (RequestNamePrimaryOwner or RequestNameAlreadyOwner))
+            {
+                DebugLogger.Error(DebugLogger.Category.Playback, "Mpris.NameRefused",
+                    $"RequestName({BusName}) returned {reply}; media keys unavailable");
+                connection.Dispose();
+                return;
+            }
 
             if (_disposed)
             {
@@ -96,12 +118,60 @@ public sealed class MprisService : IDisposable
 
             // The desktop may have missed state set before the name was acquired.
             EmitPropertiesChanged(statusChanged: true, metadataChanged: true, volumeChanged: true);
+
+            _ = WatchForDisconnectAsync(connection);
         }
         catch (Exception ex)
         {
             DebugLogger.Error(DebugLogger.Category.Playback, "Mpris.Init", ex.Message);
         }
     }
+
+    /// <summary>
+    /// Re-establishes MPRIS after a session-bus restart or transport error.
+    ///
+    /// Nothing watched the connection before: _connection stayed non-null,
+    /// TrySendMessage kept returning quietly false, and MPRIS simply vanished — media
+    /// keys stopped working and the GNOME/KDE widget went blank, with no log line and
+    /// no recovery short of restarting Noctis.
+    /// </summary>
+    private async Task WatchForDisconnectAsync(Connection connection)
+    {
+        try
+        {
+            var error = await connection.DisconnectedAsync();
+            if (_disposed) return;
+
+            DebugLogger.Warn(DebugLogger.Category.Playback, "Mpris.Disconnected",
+                error?.Message ?? "session bus closed the connection");
+
+            // Only clear the field if it still points at the connection that died —
+            // a reconnect may already have replaced it.
+            if (ReferenceEquals(_connection, connection))
+                _connection = null;
+            try { connection.Dispose(); } catch { }
+
+            // Bounded backoff: a bus that is coming back does so within seconds, and a
+            // bus that isn't must not turn into a permanent retry loop.
+            for (var attempt = 0; attempt < MprisReconnectAttempts && !_disposed; attempt++)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2 * (attempt + 1)));
+                if (_disposed) return;
+
+                await InitializeAsync();
+                if (_connection != null) return;
+            }
+
+            DebugLogger.Error(DebugLogger.Category.Playback, "Mpris.ReconnectGaveUp",
+                $"no session bus after {MprisReconnectAttempts} attempts");
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.Playback, "Mpris.Watch", ex.Message);
+        }
+    }
+
+    private const int MprisReconnectAttempts = 5;
 
     private static MessageBuffer CreateRequestNameMessage(Connection connection)
     {
@@ -161,11 +231,24 @@ public sealed class MprisService : IDisposable
             _trackId = track == null
                 ? "/org/mpris/MediaPlayer2/TrackList/NoTrack"
                 : "/com/heartached/noctis/track/" + track.Id.ToString("N");
-            _artUrl = null;
-            if (!string.IsNullOrEmpty(artPath) && File.Exists(artPath))
+            // Skip the existence check when the path hasn't changed. SnapshotState runs
+            // from OnPlayerPropertyChanged on the UI thread for State, CurrentTrack and
+            // CurrentArtPath — i.e. on every pause and resume — and on a network/SMB
+            // artwork path a stat can block for hundreds of milliseconds. A dangling
+            // mpris:artUrl simply shows no art, so this is worth not blocking for.
+            if (string.Equals(artPath, _lastArtPathChecked, StringComparison.Ordinal))
             {
-                try { _artUrl = new Uri(artPath).AbsoluteUri; }
-                catch { /* unmappable path — art just won't show */ }
+                // _artUrl already reflects this path.
+            }
+            else
+            {
+                _lastArtPathChecked = artPath;
+                _artUrl = null;
+                if (!string.IsNullOrEmpty(artPath) && File.Exists(artPath))
+                {
+                    try { _artUrl = new Uri(artPath).AbsoluteUri; }
+                    catch { /* unmappable path — art just won't show */ }
+                }
             }
         }
     }
@@ -479,7 +562,18 @@ public sealed class MprisService : IDisposable
                     var iface = reader.ReadString();
                     var writer = context.CreateReplyWriter("a{sv}");
                     var dict = writer.WriteDictionaryStart();
-                    foreach (var prop in iface == IfaceRoot ? RootProps : PlayerProps)
+
+                    // Any interface that is neither Root nor Player gets an EMPTY dict,
+                    // as the spec requires. The old ternary treated every non-root name
+                    // as the Player interface, so a probe for org.freedesktop.DBus.Peer —
+                    // or any typo'd/foreign name a desktop shell asks about — came back
+                    // with a full Player property set.
+                    string[] props =
+                        iface == IfaceRoot ? RootProps :
+                        iface == IfacePlayer ? PlayerProps :
+                        Array.Empty<string>();
+
+                    foreach (var prop in props)
                     {
                         writer.WriteDictionaryEntryStart();
                         writer.WriteString(prop);

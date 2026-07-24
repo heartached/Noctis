@@ -15,6 +15,10 @@ internal sealed class TestPersistenceService : IPersistenceService, IDisposable
         Directory.CreateDirectory(_root);
     }
 
+    public bool LibraryLoadFailed => false;
+    public string? LastCorruptFilePath => null;
+    public bool SettingsLoadFailed => false;
+
     public Task<AppSettings> LoadSettingsAsync() => Task.FromResult(new AppSettings());
     public Task SaveSettingsAsync(AppSettings settings) => Task.CompletedTask;
     public Task<List<Track>?> LoadLibraryAsync() => Task.FromResult<List<Track>?>(new List<Track>());

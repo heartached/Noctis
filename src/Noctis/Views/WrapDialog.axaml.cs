@@ -75,6 +75,9 @@ public partial class WrapDialog : Window
     public static async Task ShowAsync(WrapViewModel vm)
     {
         var dialog = new WrapDialog(vm);
+        // The view-model is built fresh per open and holds a full-size share-card bitmap
+        // plus its PNG bytes; nothing released them when the dialog went away.
+        dialog.Closed += (_, _) => vm.Dispose();
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             && desktop.MainWindow is Window owner)

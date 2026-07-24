@@ -92,6 +92,40 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
     private static bool IsAudio(string path)
         => MetadataService.SupportedExtensions.Contains(Path.GetExtension(path));
 
+    // Paths the app itself is about to move, mapped to the UTC tick at which the
+    // suppression expires. See ILibraryWatcherService.SuppressPaths.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> _suppressed =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <inheritdoc />
+    public void SuppressPaths(IEnumerable<string> paths, TimeSpan window)
+    {
+        var until = DateTime.UtcNow.Add(window).Ticks;
+        foreach (var p in paths)
+        {
+            if (string.IsNullOrWhiteSpace(p)) continue;
+            _suppressed[p] = until;
+        }
+
+        // Opportunistic prune so a long session can't accumulate expired entries.
+        if (_suppressed.Count > 4096)
+        {
+            var now = DateTime.UtcNow.Ticks;
+            foreach (var kv in _suppressed)
+                if (kv.Value < now) _suppressed.TryRemove(kv.Key, out _);
+        }
+    }
+
+    /// <summary>True while the app's own pending move covers this path.</summary>
+    private bool IsSuppressed(string path)
+    {
+        if (_suppressed.IsEmpty) return false;
+        if (!_suppressed.TryGetValue(path, out var until)) return false;
+        if (DateTime.UtcNow.Ticks <= until) return true;
+        _suppressed.TryRemove(path, out _);
+        return false;
+    }
+
     private void OnChanged(object sender, FileSystemEventArgs e)
     {
         if (!IsAudio(e.FullPath)) return;
@@ -113,6 +147,12 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
 
     private void OnDeleted(object sender, FileSystemEventArgs e)
     {
+        // The app's own file moves surface here as a delete of the old path. Recording
+        // it would make ApplyBatchAsync call RemoveTracksAsync, which permanently
+        // blacklists the path in ExcludedFilePaths — before the organizer has had a
+        // chance to relocate the track.
+        if (IsSuppressed(e.FullPath)) return;
+
         if (IsAudio(e.FullPath))
         {
             Record(() => _debouncer.Record(e.FullPath, FileChangeKind.Deleted));
@@ -134,6 +174,10 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
             RecordDirectoryContents(e.FullPath);
             return;
         }
+        // Same-volume File.Move by the organizer arrives as a rename; suppressing the
+        // old side stops the debouncer recording it as a deletion.
+        if (IsSuppressed(e.OldFullPath)) return;
+
         // Either side may carry a non-audio name (e.g. a download's ".part" → ".mp3").
         var oldAudio = IsAudio(e.OldFullPath);
         var newAudio = IsAudio(e.FullPath);
@@ -175,12 +219,57 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
 
     private void OnError(object sender, ErrorEventArgs e)
     {
-        // Buffer overflow or the watched tree became inaccessible — rebuild the
-        // watcher set. Any events lost in the overflow are reconciled by the next
-        // explicit/startup scan.
+        var ex = e.GetException();
         DebugLogger.Error(DebugLogger.Category.Error, "LibraryWatcher",
-            $"watcher error: {e.GetException()?.Message}");
+            $"watcher error: {ex?.Message}");
+
+        // Rebuild the watcher set.
         Refresh();
+
+        // A buffer overflow means events were DROPPED, and rebuilding the watcher does
+        // not recover them. The old comment claimed the next "explicit/startup scan"
+        // reconciles, but nothing scheduled one — the library just stayed silently out of
+        // sync until the user restarted or pressed Scan. Copying a large album folder
+        // into a watched root is precisely the workload that overflows the 64 KB buffer
+        // (already at the maximum), so this is not a rare path.
+        if (ex is InternalBufferOverflowException)
+        {
+            DebugLog.Write("LibraryWatcher",
+                "Watcher buffer overflowed — events were lost; queueing a reconciling scan.");
+            QueueReconcilingScan();
+        }
+    }
+
+    // Coalesces overflow-triggered rescans: an overflow often fires several times in a
+    // burst, and a full scan per event would be far worse than the lost events.
+    private const int ReconcileDelayMs = 5000;
+    private Timer? _reconcileTimer;
+
+    private void QueueReconcilingScan()
+    {
+        lock (_gate)
+        {
+            if (_disposed) return;
+            _reconcileTimer ??= new Timer(_ => RunReconcilingScan(), null, Timeout.Infinite, Timeout.Infinite);
+            _reconcileTimer.Change(ReconcileDelayMs, Timeout.Infinite);
+        }
+    }
+
+    private void RunReconcilingScan()
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var settings = _settingsAccessor();
+                if (settings.MusicFolders.Count == 0) return;
+                await _library.ScanAsync(settings.MusicFolders);
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("LibraryWatcher", $"Reconciling scan failed: {ex.Message}");
+            }
+        });
     }
 
     private void Record(Action record)
@@ -253,12 +342,31 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
         try
         {
             if (!File.Exists(path)) return true;
-            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None);
-            return fs.Length > 0;
+
+            // FileShare.Read, not None. An exclusive open fails for any *reader* holding
+            // the file — another media player, a tag editor, the Windows Search indexer,
+            // an AV scanner — not just a writer mid-copy. A file some other app kept open
+            // therefore took the full 30 retries (30 seconds) to appear in the library.
+            // A writer still holding it for writing is what we actually care about, and
+            // that still fails this open.
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var length = fs.Length;
+            if (length <= 0) return false;
+
+            // "Still growing" is detected by comparing two size samples rather than by
+            // lock ownership, which covers writers that opened with FileShare.Read.
+            if (_lastSeenSize.TryGetValue(path, out var previous) && previous != length)
+            {
+                _lastSeenSize[path] = length;
+                return false;
+            }
+
+            _lastSeenSize[path] = length;
+            return true;
         }
         catch (IOException)
         {
-            // Still locked by the writer (or briefly by an indexer/AV) — retry later.
+            // Still locked by a writer — retry later.
             return false;
         }
         catch
@@ -267,6 +375,10 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
             return true;
         }
     }
+
+    /// <summary>Last observed size per pending path, for the growth check in IsFileReady.</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> _lastSeenSize =
+        new(StringComparer.OrdinalIgnoreCase);
 
     private bool NextAttemptReachesCap(string path)
     {
@@ -346,6 +458,8 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
             _importAttempts.Clear();
             _flushTimer?.Dispose();
             _flushTimer = null;
+            _reconcileTimer?.Dispose();
+            _reconcileTimer = null;
         }
     }
 }

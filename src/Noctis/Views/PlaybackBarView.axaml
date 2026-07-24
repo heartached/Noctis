@@ -489,7 +489,7 @@
                                  cover is shown on the album, lyrics and cover-flow pages only.
                                  CachedImage keeps the previous bitmap visible during async
                                  cache-miss decode so there's no flash on track switch. -->
-                            <controls:CachedImage SourcePath="{Binding CurrentArtPath}"
+                            <controls:CachedImage SourcePath="{Binding CurrentArtPath}" ClearOnSourceChange="False"
                                                   Stretch="UniformToFill"
                                                   RenderOptions.BitmapInterpolationMode="HighQuality"
                                                   IsVisible="{Binding CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />

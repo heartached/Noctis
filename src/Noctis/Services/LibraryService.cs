@@ -47,6 +47,13 @@ public class LibraryService : ILibraryService
     private TaskCompletionSource? _scanFinished;
     private volatile bool _checkpointRequested;
 
+    // Serializes scans. Two overlapping scans both drive _tracks, both Clear+Upsert the
+    // SQLite index, and the second clobbers the first's _activeScanCts — so shutdown could
+    // only cancel one of them. The startup auto-scan runs on a detached Task.Run, so
+    // overlap with a user-triggered scan was reachable even though the settings VM
+    // serializes its own calls.
+    private readonly SemaphoreSlim _scanGate = new(1, 1);
+
     public IReadOnlyList<Track> Tracks => _tracks;
     public IReadOnlyList<Album> Albums => _albums;
     public IReadOnlyList<Artist> Artists => _artists;
@@ -54,6 +61,14 @@ public class LibraryService : ILibraryService
     public event EventHandler? LibraryUpdated;
     public event EventHandler<int>? ScanProgress;
     public event EventHandler? FavoritesChanged;
+    public event EventHandler<List<string>>? MusicFoldersChanged;
+
+    /// <summary>
+    /// Raised when a scan was abandoned because one or more configured music folders were
+    /// unavailable (offline drive / unreachable share). Carries the missing root paths.
+    /// The existing library is left untouched.
+    /// </summary>
+    public event EventHandler<string[]>? ScanAborted;
 
     public LibraryService(
         IMetadataService metadata,
@@ -72,6 +87,7 @@ public class LibraryService : ILibraryService
         // Register this scan so a graceful shutdown can cancel it and flush a
         // checkpoint (see PauseActiveScanForShutdownAsync). The linked source lets
         // shutdown cancel independently of the caller's own token.
+        await _scanGate.WaitAsync(ct).ConfigureAwait(false);
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _checkpointRequested = false;
@@ -89,6 +105,7 @@ public class LibraryService : ILibraryService
                 _scanFinished = null;
                 _activeScanCts = null;
             }
+            _scanGate.Release();
         }
     }
 
@@ -114,6 +131,10 @@ public class LibraryService : ILibraryService
             StringComparer.OrdinalIgnoreCase);
 
         var newTracks = new ConcurrentBag<Track>();
+        // Roots that were configured but not present on disk this pass (unplugged external
+        // drive, unreachable NAS, changed drive letter). Collected so the publish below can
+        // refuse to treat "root is gone" as "root is empty" — see the guard after the scan.
+        var unavailableRoots = new List<string>();
         // Tracks which albums have already had a cover cached during this scan, so we
         // save each album's art exactly once (first track wins).
         var albumArtClaimed = new ConcurrentDictionary<Guid, bool>();
@@ -211,7 +232,11 @@ public class LibraryService : ILibraryService
 
             foreach (var folder in includeRoots)
             {
-                if (!Directory.Exists(folder)) continue;
+                if (!Directory.Exists(folder))
+                {
+                    unavailableRoots.Add(folder);
+                    continue;
+                }
 
                 // Enumerate recursively with folder rules, excluding removed files.
                 // Stream files into processing as they're discovered (no up-front
@@ -318,6 +343,68 @@ public class LibraryService : ILibraryService
             return;
         }
 
+        // A configured root that isn't on disk right now is "unavailable", not "empty".
+        // Without this guard the scan happily produced zero tracks for that root and the
+        // publish below replaced the library with the remainder, then SaveAsync() wrote it
+        // through — destroying every rating, favorite, play count and DateAdded for the
+        // tracks that lived there. Unplugging an external drive was enough to trigger it,
+        // and ScanOnStartup made it automatic. There is no backup to recover from, so the
+        // only safe response is to abort the scan and keep what we already have.
+        if (unavailableRoots.Count > 0)
+        {
+            var normalizedMissing = unavailableRoots
+                .Select(TryNormalizePath)
+                .Where(p => !string.IsNullOrEmpty(p))
+                .Select(p => p!)
+                .ToArray();
+
+            var strandedTracks = normalizedMissing.Length == 0
+                ? 0
+                : originalTracks.Count(t =>
+                {
+                    var normalized = TryNormalizePath(t.FilePath);
+                    return normalized != null &&
+                           normalizedMissing.Any(root => IsUnderRoot(normalized, root));
+                });
+
+            if (strandedTracks > 0)
+            {
+                RestoreOriginalLibrary();
+                var rootList = string.Join(", ", unavailableRoots);
+                DebugLog.Write("Library",
+                    $"Scan aborted: {unavailableRoots.Count} music folder(s) unavailable ({rootList}); " +
+                    $"{strandedTracks} track(s) live there. Keeping the existing library rather than " +
+                    "publishing a partial one.");
+                await _auditTrail.AppendAsync(new AuditEvent
+                {
+                    EventType = "scan.aborted",
+                    EntityType = "library",
+                    EntityId = "local",
+                    Reason = "One or more music folders were unavailable",
+                    Details = new Dictionary<string, string>
+                    {
+                        ["unavailableRoots"] = rootList,
+                        ["tracksUnderUnavailableRoots"] = strandedTracks.ToString(),
+                        ["existingTrackCount"] = originalTrackCount.ToString()
+                    }
+                }, ct);
+                ScanAborted?.Invoke(this, unavailableRoots.ToArray());
+                return;
+            }
+        }
+
+        // Belt-and-braces: never let a scan replace a populated library with nothing.
+        // Any path that gets here with zero results and a non-empty library is a bug in
+        // enumeration, not a user deleting their entire collection mid-scan.
+        if (newTracks.IsEmpty && originalTrackCount > 0)
+        {
+            RestoreOriginalLibrary();
+            DebugLog.Write("Library",
+                $"Scan produced no tracks while {originalTrackCount} are already in the library — " +
+                "keeping the existing library.");
+            return;
+        }
+
         // Fast path: every existing track was found and unchanged, and no new or
         // modified files were detected. Skip the destructive rebuild/persist path —
         // previously we always wiped the SQLite index and rewrote library.json on
@@ -375,8 +462,7 @@ public class LibraryService : ILibraryService
 
         // Persist to disk
         await SaveAsync();
-        await _sqliteIndex.ClearAsync(ct);
-        await _sqliteIndex.UpsertTracksAsync(_tracks, ct);
+        await _sqliteIndex.ReplaceAllAsync(_tracks, ct);
 
         await _auditTrail.AppendAsync(new AuditEvent
         {
@@ -402,8 +488,18 @@ public class LibraryService : ILibraryService
     /// partial progress, so quitting mid-scan doesn't waste the work (or, for a
     /// first scan of a new folder, lose all of it) — the next scan resumes.
     /// </summary>
+    /// <summary>
+    /// Cancelled when the app is shutting down. The startup metadata backfills take no
+    /// token at all, so they kept hammering the disk (re-opening essentially every
+    /// AAC/ALAC file with Parallel.ForEach) after the user had asked the app to quit.
+    /// </summary>
+    private readonly CancellationTokenSource _shutdownCts = new();
+
     public async Task PauseActiveScanForShutdownAsync(TimeSpan timeout)
     {
+        // Stop the background backfills too, not just the scan.
+        try { _shutdownCts.Cancel(); } catch { }
+
         var cts = _activeScanCts;
         var finished = _scanFinished;
         if (cts == null || finished == null) return;
@@ -431,8 +527,7 @@ public class LibraryService : ILibraryService
         await SaveAsync();
         try
         {
-            await _sqliteIndex.ClearAsync();
-            await _sqliteIndex.UpsertTracksAsync(_tracks);
+            await _sqliteIndex.ReplaceAllAsync(_tracks);
         }
         catch (Exception ex)
         {
@@ -667,7 +762,9 @@ public class LibraryService : ILibraryService
 
         await RebuildIndexesAsync();
         await SaveAsync();
-        await _sqliteIndex.UpsertTracksAsync(_tracks, ct);
+        // Only the imported rows, not the whole library. This ran on every watcher batch,
+        // so a single file appearing in a watched folder rewrote all ~100k rows.
+        await _sqliteIndex.UpsertTracksAsync(imported, ct);
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
 
@@ -787,8 +884,7 @@ public class LibraryService : ILibraryService
 
         await RebuildIndexesAsync();
         await SaveAsync();
-        await _sqliteIndex.ClearAsync(ct);
-        await _sqliteIndex.UpsertTracksAsync(_tracks, ct);
+        await _sqliteIndex.ReplaceAllAsync(_tracks, ct);
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
         return remap;
     }
@@ -808,19 +904,61 @@ public class LibraryService : ILibraryService
             if (!string.IsNullOrWhiteSpace(path))
                 excluded.Add(path);
         }
-        settings.ExcludedFilePaths = excluded.ToList();
 
-        // Auto-remove folder locations that have zero remaining library tracks
-        var remainingPaths = new HashSet<string>(_tracks.Select(t => t.FilePath), StringComparer.OrdinalIgnoreCase);
-        settings.MusicFolders.RemoveAll(folder =>
+        // Prune stale exclusions. Nothing ever cleaned this list, so removing a large
+        // folder left tens of thousands of absolute paths in settings.json permanently —
+        // re-read and re-hashed on every scan and every subsequent removal. An entry is
+        // only meaningful while its file exists and still sits under a configured root;
+        // otherwise a plain rescan would never have re-imported it anyway.
+        var configuredRoots = settings.MusicFolders
+            .Select(TryNormalizePath)
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p!)
+            .ToArray();
+
+        static bool UnderAnyRoot(string path, string[] roots)
+        {
+            var normalized = TryNormalizePath(path);
+            return normalized != null && roots.Any(r => IsUnderRoot(normalized, r));
+        }
+
+        settings.ExcludedFilePaths = excluded
+            .Where(p => UnderAnyRoot(p, configuredRoots) && File.Exists(p))
+            .ToList();
+
+        // Auto-remove folder locations that have zero remaining library tracks.
+        // Normalize each remaining track path exactly once instead of calling
+        // Path.GetFullPath per track per folder — that was 300k syscall-backed
+        // normalizations for a 100k library with three roots, on every removal
+        // (including every watcher batch that deletes a file).
+        var normalizedRemaining = _tracks
+            .Select(t => TryNormalizePath(t.FilePath))
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p!)
+            .ToArray();
+
+        var removedFolders = settings.MusicFolders.RemoveAll(folder =>
         {
             if (string.IsNullOrWhiteSpace(folder)) return true;
             var normalized = TryNormalizePath(folder);
             if (string.IsNullOrWhiteSpace(normalized)) return true;
-            return !remainingPaths.Any(fp => IsUnderRoot(NormalizePath(fp), normalized!));
+
+            // Only drop a root the user configured if it is genuinely gone from disk.
+            // Removing the last tracks under a still-present folder used to silently
+            // delete it from Settings and stop the watcher for it, with no message.
+            if (Directory.Exists(normalized)) return false;
+
+            return !normalizedRemaining.Any(fp => IsUnderRoot(fp, normalized!));
         });
 
         await _persistence.SaveSettingsAsync(settings);
+
+        // This is the only place the library rewrites the user's folder list. Announcing
+        // it directly means Settings no longer has to re-read and re-parse settings.json
+        // (plus a DPAPI unprotect) on every LibraryUpdated — an event that also fires on
+        // every scan, drop-import, removal and metadata write.
+        if (removedFolders > 0)
+            MusicFoldersChanged?.Invoke(this, settings.MusicFolders.ToList());
     }
 
     public async Task LoadAsync()
@@ -863,7 +1001,20 @@ public class LibraryService : ILibraryService
         }
         else
         {
-            await _sqliteIndex.InitializeAsync();
+            // Unguarded, this was the one await on the startup critical path that could
+            // throw straight out of MainWindow's async-void Loaded handler: a corrupt or
+            // locked library.db (a WAL left by a killed process, a read-only profile)
+            // raised SqliteException and killed the process behind an already-visible
+            // empty window. The index is a rebuildable cache — never fatal.
+            try
+            {
+                await _sqliteIndex.InitializeAsync();
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Library", $"SQLite index init failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[LibraryService] SQLite index init failed: {ex.Message}");
+            }
         }
     }
 
@@ -881,13 +1032,33 @@ public class LibraryService : ILibraryService
         }
     }
 
-    public void NotifyFavoritesChanged()
+    public void NotifyFavoritesChanged() => NotifyFavoritesChanged(null);
+
+    /// <summary>
+    /// Re-raises album favorite state for the albums containing <paramref name="changed"/>,
+    /// or for every album when null.
+    ///
+    /// Album favorite state (heart overlay, context-menu items) is computed from tracks,
+    /// so the owning albums must re-raise their derived properties. Doing it for *every*
+    /// album meant two PropertyChanged raises per album on a single heart click — 20,000
+    /// on a 10,000-album library, each causing realized tiles to re-evaluate
+    /// Tracks.Any(t => t.IsFavorite).
+    /// </summary>
+    public void NotifyFavoritesChanged(IReadOnlyCollection<Track>? changed)
     {
-        // Album favorite state (heart overlay, context-menu Favorites items) is
-        // computed from tracks, so each album must re-raise its derived properties
-        // for bound tiles to update in real time.
-        foreach (var album in _albums)
-            album.NotifyFavoriteStateChanged();
+        if (changed is { Count: > 0 })
+        {
+            var albumIds = new HashSet<Guid>(changed.Select(t => t.AlbumId));
+            foreach (var album in _albums)
+                if (albumIds.Contains(album.Id))
+                    album.NotifyFavoriteStateChanged();
+        }
+        else
+        {
+            foreach (var album in _albums)
+                album.NotifyFavoriteStateChanged();
+        }
+
         FavoritesChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -973,8 +1144,7 @@ public class LibraryService : ILibraryService
         _tracks = persisted ?? new List<Track>();
         await RebuildIndexesAsync();
 
-        await _sqliteIndex.ClearAsync(ct);
-        await _sqliteIndex.UpsertTracksAsync(_tracks, ct);
+        await _sqliteIndex.ReplaceAllAsync(_tracks, ct);
 
         await _auditTrail.AppendAsync(new AuditEvent
         {
@@ -995,7 +1165,29 @@ public class LibraryService : ILibraryService
     /// Rebuilds album, artist, and track-ID indexes from the current track list.
     /// Heavy work (grouping, sorting, File.Exists) runs on a background thread.
     /// </summary>
+    // Serializes index rebuilds. The four index fields are published as separate
+    // assignments, and rebuilds are triggered concurrently from unrelated paths — the
+    // scan's progressive publisher, the artwork publisher, and NotifyMetadataChanged's
+    // unawaited Task.Run. Two overlapping runs that observed different _tracks could
+    // interleave so _albums came from one and _albumIndex from the other, leaving
+    // GetAlbumById returning an Album that is not in Albums. SaveIndexCacheAsync had the
+    // same problem, and its output survives restarts because the cache validates.
+    private readonly SemaphoreSlim _rebuildGate = new(1, 1);
+
     private async Task RebuildIndexesAsync(bool persistCache = true)
+    {
+        await _rebuildGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await RebuildIndexesCoreAsync(persistCache).ConfigureAwait(false);
+        }
+        finally
+        {
+            _rebuildGate.Release();
+        }
+    }
+
+    private async Task RebuildIndexesCoreAsync(bool persistCache)
     {
         var tracks = _tracks;
         var persistence = _persistence;
@@ -1118,8 +1310,14 @@ public class LibraryService : ILibraryService
         // Persist the computed indexes so next startup can skip this rebuild.
         // Skipped during progressive scan publishes to avoid rewriting the cache
         // on every partial update; the final rebuild persists the authoritative set.
+        //
+        // Built from the snapshot this rebuild just produced rather than re-reading the
+        // fields: re-reading let it persist an indexes.json whose track hash validated
+        // against one track set while its album grouping came from another, and the
+        // stale grouping then survived restarts because TryRestoreFromCacheAsync
+        // accepted it.
         if (persistCache)
-            _ = SaveIndexCacheAsync();
+            _ = SaveIndexCacheAsync(tracks, albums, artists);
     }
 
     /// <summary>
@@ -1145,6 +1343,18 @@ public class LibraryService : ILibraryService
         target.EqPreset = source.EqPreset;
         target.SavedPositionMs = source.SavedPositionMs;
         target.DateAdded = source.DateAdded;
+
+        // Analysis results are expensive to produce (a full ffmpeg decode per track) and
+        // are not always round-trippable through file tags, so carry them across a
+        // re-import rather than dropping them. Without this, writing the detected key back
+        // to the file changed its mtime, the watcher re-imported it, the fresh tag read
+        // returned nothing, and the backfill re-analyzed and rewrote the same file — for
+        // every track, forever. Only inherit when the freshly-read tags didn't supply a
+        // value, so a real tag edit still wins.
+        if (target.Bpm <= 0 && source.Bpm > 0)
+            target.Bpm = source.Bpm;
+        if (string.IsNullOrWhiteSpace(target.MusicalKey) && !string.IsNullOrWhiteSpace(source.MusicalKey))
+            target.MusicalKey = source.MusicalKey;
     }
 
     private static IEnumerable<string> BuildIncludeRoots(IEnumerable<string> folders, AppSettings settings)
@@ -1183,6 +1393,11 @@ public class LibraryService : ILibraryService
         if (settings.MetadataSchemaVersion >= CurrentMetadataSchemaVersion)
             return false;
 
+        // The backfills below re-open a large fraction of the library. Report progress
+        // through the existing channel so a multi-minute pass on a big library isn't a
+        // silent stall with no explanation.
+        ScanProgress?.Invoke(this, 0);
+
         var didBackfillMetadata = false;
         if (settings.MetadataSchemaVersion < 2)
             didBackfillMetadata = await BackfillTrackMetadataAsync(_tracks);
@@ -1206,6 +1421,12 @@ public class LibraryService : ILibraryService
         // advisory flag in Apple Music downloads for a star rating.
         if (settings.MetadataSchemaVersion < 7)
             didBackfillMetadata |= await BackfillAdvisoryMisreadRatingsAsync(_tracks);
+
+        // Only advance the recorded schema version when the pass actually completed.
+        // Cancelling at shutdown mid-backfill and still stamping it done would leave the
+        // remaining tracks permanently un-backfilled.
+        if (_shutdownCts.IsCancellationRequested)
+            return didBackfillMetadata;
 
         settings.MetadataSchemaVersion = CurrentMetadataSchemaVersion;
 
@@ -1256,7 +1477,9 @@ public class LibraryService : ILibraryService
                 candidates,
                 new ParallelOptions
                 {
-                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                    // Stop on shutdown instead of hammering the disk after the user quit.
+                    CancellationToken = _shutdownCts.Token
                 },
                 track =>
                 {
@@ -1371,7 +1594,9 @@ public class LibraryService : ILibraryService
                 candidates,
                 new ParallelOptions
                 {
-                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                    // Stop on shutdown instead of hammering the disk after the user quit.
+                    CancellationToken = _shutdownCts.Token
                 },
                 track =>
                 {
@@ -1418,7 +1643,9 @@ public class LibraryService : ILibraryService
                 candidates,
                 new ParallelOptions
                 {
-                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                    // Stop on shutdown instead of hammering the disk after the user quit.
+                    CancellationToken = _shutdownCts.Token
                 },
                 track =>
                 {
@@ -1460,7 +1687,9 @@ public class LibraryService : ILibraryService
                 candidates,
                 new ParallelOptions
                 {
-                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                    // Stop on shutdown instead of hammering the disk after the user quit.
+                    CancellationToken = _shutdownCts.Token
                 },
                 track =>
                 {
@@ -1765,19 +1994,24 @@ public class LibraryService : ILibraryService
     /// <summary>
     /// Saves the current album/artist indexes to cache for fast restore on next startup.
     /// </summary>
-    private async Task SaveIndexCacheAsync()
+    /// <summary>
+    /// Persists a coherent index snapshot. The three collections must come from the same
+    /// rebuild — see the note at the call site.
+    /// </summary>
+    private async Task SaveIndexCacheAsync(
+        List<Track> tracks, List<Album> albums, List<Artist> artists)
     {
         try
         {
             var cache = new LibraryIndexCache
             {
                 Version = CurrentIndexCacheVersion,
-                TrackCount = _tracks.Count,
-                TrackIdHash = ComputeTrackIdHash(_tracks),
-                Artists = _artists.ToList()
+                TrackCount = tracks.Count,
+                TrackIdHash = ComputeTrackIdHash(tracks),
+                Artists = artists.ToList()
             };
 
-            foreach (var album in _albums)
+            foreach (var album in albums)
             {
                 cache.Albums.Add(new CachedAlbumEntry
                 {

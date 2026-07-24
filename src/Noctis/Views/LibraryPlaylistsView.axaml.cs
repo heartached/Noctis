@@ -50,8 +50,21 @@ public partial class LibraryPlaylistsView : UserControl
             _pendingScrollRestore = (s, args) =>
             {
                 attempts++;
+
+                // The give-up check comes FIRST. It used to sit after `if (sv == null)
+                // return;`, so if FindDescendantOfType<ScrollViewer>() ever failed to
+                // resolve, opacity was never restored and the whole tab rendered blank
+                // with no way out.
                 var sv = this.FindDescendantOfType<ScrollViewer>();
-                if (sv == null) return;
+                if (sv == null)
+                {
+                    if (attempts >= 10)
+                    {
+                        Opacity = 1;
+                        CancelPendingScrollRestore();
+                    }
+                    return;
+                }
 
                 if (sv.Extent.Height < targetOffset && attempts < 10)
                     return;

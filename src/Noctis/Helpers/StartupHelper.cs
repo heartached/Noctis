@@ -14,8 +14,9 @@ namespace Noctis.Helpers;
 ///   • Linux   — a .desktop file in ~/.config/autostart.
 /// The OS entry itself is the source of truth, so a change made outside the app
 /// (Task Manager's Startup tab, macOS Login Items, deleting the file) stays in
-/// sync with the toggle. All calls are best-effort: failures are logged, never
-/// thrown, so a locked-down environment can't crash the Settings page.
+/// sync with the toggle. Nothing here throws, so a locked-down environment can't
+/// crash the Settings page — but <see cref="SetEnabled"/> reports failure so the
+/// caller can re-read the real state instead of showing a toggle that lies.
 /// </summary>
 public static class StartupHelper
 {
@@ -49,18 +50,25 @@ public static class StartupHelper
     /// <summary>Registers (or removes) the launch-at-login entry for this copy.
     /// <paramref name="startMinimized"/> adds a "--minimized" arg so the app can start
     /// hidden in the tray on login — encoded in the command (not read from async-loaded
-    /// settings) so the decision is available the instant the process starts.</summary>
-    public static void SetEnabled(bool enabled, bool startMinimized = false)
+    /// settings) so the decision is available the instant the process starts.
+    /// <para>Returns false when the entry could not be written or removed. Callers must
+    /// not assume success: a locked-down HKCU, a read-only ~/.config/autostart or a
+    /// macOS build running outside a .app bundle all fail here, and the toggle used to
+    /// stay visually ON while nothing had been registered — the user found out at the
+    /// next login.</para></summary>
+    public static bool SetEnabled(bool enabled, bool startMinimized = false)
     {
         try
         {
-            if (OperatingSystem.IsWindows()) WindowsSet(enabled, startMinimized);
-            else if (OperatingSystem.IsMacOS()) MacSet(enabled, startMinimized);
-            else if (OperatingSystem.IsLinux()) LinuxSet(enabled, startMinimized);
+            if (OperatingSystem.IsWindows()) return WindowsSet(enabled, startMinimized);
+            if (OperatingSystem.IsMacOS()) return MacSet(enabled, startMinimized);
+            if (OperatingSystem.IsLinux()) return LinuxSet(enabled, startMinimized);
+            return false;
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"[StartupHelper] SetEnabled({enabled},{startMinimized}) failed: {ex.Message}");
+            return false;
         }
     }
 
@@ -84,22 +92,23 @@ public static class StartupHelper
     }
 
     [SupportedOSPlatform("windows")]
-    private static void WindowsSet(bool enabled, bool startMinimized)
+    private static bool WindowsSet(bool enabled, bool startMinimized)
     {
         using var key = Registry.CurrentUser.OpenSubKey(WindowsRunKey, writable: true)
                         ?? Registry.CurrentUser.CreateSubKey(WindowsRunKey);
-        if (key is null) return;
+        if (key is null) return false;
 
         if (enabled)
         {
             var exe = Environment.ProcessPath;
-            if (!string.IsNullOrEmpty(exe))
-                key.SetValue(AppName, $"\"{exe}\" {LaunchArgs(startMinimized)}");
+            if (string.IsNullOrEmpty(exe)) return false;
+            key.SetValue(AppName, $"\"{exe}\" {LaunchArgs(startMinimized)}");
         }
         else
         {
             key.DeleteValue(AppName, throwOnMissingValue: false);
         }
+        return true;
     }
 
     // ── macOS: LaunchAgent plist ──
@@ -107,16 +116,18 @@ public static class StartupHelper
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
         "Library", "LaunchAgents", "com.heartached.noctis.plist");
 
-    private static void MacSet(bool enabled, bool startMinimized)
+    private static bool MacSet(bool enabled, bool startMinimized)
     {
         if (!enabled)
         {
             if (File.Exists(MacAgentPath)) File.Delete(MacAgentPath);
-            return;
+            return true;
         }
 
+        // `open <bundle>` is the only launch form a LaunchAgent can use here, so an
+        // unbundled run (dotnet run, a bare publish folder) genuinely cannot register.
         var appPath = MacAppBundlePath();
-        if (string.IsNullOrEmpty(appPath)) return;
+        if (string.IsNullOrEmpty(appPath)) return false;
 
         var minimizedArg = startMinimized ? $"    <string>{MinimizedArg}</string>\n" : string.Empty;
 
@@ -141,6 +152,7 @@ public static class StartupHelper
             "</dict>\n" +
             "</plist>\n";
         File.WriteAllText(MacAgentPath, plist);
+        return true;
     }
 
     /// <summary>Resolves the enclosing .app bundle from the running executable
@@ -162,16 +174,16 @@ public static class StartupHelper
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), // ~/.config
         "autostart", "noctis.desktop");
 
-    private static void LinuxSet(bool enabled, bool startMinimized)
+    private static bool LinuxSet(bool enabled, bool startMinimized)
     {
         if (!enabled)
         {
             if (File.Exists(LinuxDesktopPath)) File.Delete(LinuxDesktopPath);
-            return;
+            return true;
         }
 
         var exec = LaunchTargetPath;
-        if (string.IsNullOrEmpty(exec)) return;
+        if (string.IsNullOrEmpty(exec)) return false;
 
         Directory.CreateDirectory(Path.GetDirectoryName(LinuxDesktopPath)!);
         var desktop =
@@ -182,5 +194,6 @@ public static class StartupHelper
             "Terminal=false\n" +
             "X-GNOME-Autostart-enabled=true\n";
         File.WriteAllText(LinuxDesktopPath, desktop);
+        return true;
     }
 }

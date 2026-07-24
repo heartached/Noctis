@@ -44,6 +44,59 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
 
     public bool IsConnected => _client is { IsInitialized: true, IsDisposed: false };
 
+    // Background reconnect. Bounded so a permanently-absent Discord doesn't retry
+    // forever, and cancelled by Disconnect/Dispose.
+    private const int ReconnectDelaySeconds = 30;
+    private const int MaxReconnectAttempts = 20;   // ~10 minutes
+    private int _reconnectAttempts;
+    private CancellationTokenSource? _reconnectCts;
+
+    /// <summary>Set by the owner; reconnect stops when this returns false.</summary>
+    public Func<bool>? IsEnabled { get; set; }
+
+    private void ScheduleReconnect()
+    {
+        if (_reconnectAttempts >= MaxReconnectAttempts) return;
+        if (_reconnectCts != null) return;   // one in flight is enough
+
+        var cts = new CancellationTokenSource();
+        _reconnectCts = cts;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (!cts.IsCancellationRequested && _reconnectAttempts < MaxReconnectAttempts)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(ReconnectDelaySeconds), cts.Token);
+                    if (cts.IsCancellationRequested) return;
+                    if (IsEnabled?.Invoke() == false) return;
+                    if (IsConnected) return;
+
+                    _reconnectAttempts++;
+                    if (await ConnectAsync(cts.Token)) return;
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { Debug.WriteLine($"[Discord] Reconnect loop: {ex.Message}"); }
+            finally
+            {
+                if (ReferenceEquals(_reconnectCts, cts))
+                {
+                    _reconnectCts = null;
+                    cts.Dispose();
+                }
+            }
+        });
+    }
+
+    private void CancelReconnect()
+    {
+        var cts = _reconnectCts;
+        _reconnectCts = null;
+        try { cts?.Cancel(); cts?.Dispose(); } catch { }
+    }
+
     public async Task<bool> ConnectAsync(CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
@@ -70,6 +123,13 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             {
                 Debug.WriteLine("[Discord] Initialize returned false.");
                 client.Dispose();
+
+                // Retry in the background. ConnectAsync is called exactly once,
+                // fire-and-forget, from SettingsViewModel.LoadAsync — so if Discord
+                // wasn't running at that moment the user got no presence at all for the
+                // rest of the session (every publish site is gated on IsConnected) until
+                // they manually toggled the setting off and on.
+                ScheduleReconnect();
                 return false;
             }
 
@@ -90,6 +150,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
 
     public async Task DisconnectAsync()
     {
+        CancelReconnect();
         await _gate.WaitAsync();
         try
         {
@@ -194,6 +255,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
     public void Dispose()
     {
         // Best-effort synchronous teardown (called from DI container or shutdown path)
+        CancelReconnect();
         try
         {
             DisposeClient();

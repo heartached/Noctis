@@ -161,13 +161,52 @@ public class LastFmService : ILastFmService
             parameters["format"] = "json";
 
             var content = new FormUrlEncodedContent(parameters);
-            await _http.PostAsync(ApiBase, content);
+            using var response = await _http.PostAsync(ApiBase, content);
+
+            // The response used to be discarded entirely, so an expired session key, a
+            // 429, or being offline was a silent no-op: the play was lost forever while
+            // the UI still read "Connected as <user>".
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await HttpSafety.ReadStringBoundedAsync(response.Content);
+                DebugLog.Write("LastFm",
+                    $"Scrobble rejected ({(int)response.StatusCode}): {Truncate(body, 200)}");
+                ScrobbleFailed?.Invoke(this,
+                    $"Last.fm rejected the scrobble ({(int)response.StatusCode}).");
+                return;
+            }
+
+            // Last.fm reports application-level errors with HTTP 200 and an "error" code.
+            var okBody = await HttpSafety.ReadStringBoundedAsync(response.Content);
+            if (okBody.Contains("\"error\"", StringComparison.Ordinal))
+            {
+                DebugLog.Write("LastFm", $"Scrobble error: {Truncate(okBody, 200)}");
+                // Code 9 = invalid session key: the stored credential is dead.
+                if (okBody.Contains("\"error\":9", StringComparison.Ordinal))
+                {
+                    _sessionKey = null;
+                    Username = null;
+                    SessionExpired?.Invoke(this, EventArgs.Empty);
+                }
+                ScrobbleFailed?.Invoke(this, "Last.fm rejected the scrobble.");
+            }
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"[LastFm] Scrobble failed: {ex.Message}");
+            DebugLog.Write("LastFm", $"Scrobble failed: {ex.Message}");
+            ScrobbleFailed?.Invoke(this, "Couldn't reach Last.fm.");
         }
     }
+
+    /// <summary>Raised when a scrobble could not be delivered. Carries a display message.</summary>
+    public event EventHandler<string>? ScrobbleFailed;
+
+    /// <summary>Raised when Last.fm reports the stored session key is no longer valid.</summary>
+    public event EventHandler? SessionExpired;
+
+    private static string Truncate(string s, int max)
+        => string.IsNullOrEmpty(s) || s.Length <= max ? s : s[..max];
 
     public async Task UpdateNowPlayingAsync(Track track)
     {

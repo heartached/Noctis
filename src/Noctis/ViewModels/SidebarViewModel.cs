@@ -601,6 +601,16 @@ public partial class SidebarViewModel : ViewModelBase
 
             var ext = Path.GetExtension(dialogVm.PendingCoverArtFile);
             var destPath = Path.Combine(coversDir, $"{playlist.Id}{ext}");
+
+            // Drop a previous cover with a different extension: replacing a .png with a
+            // .jpg left the .png behind forever, since RemoveCoverArt only deletes the
+            // path currently recorded.
+            foreach (var stale in Directory.EnumerateFiles(coversDir, $"{playlist.Id}.*"))
+            {
+                if (!string.Equals(stale, destPath, StringComparison.OrdinalIgnoreCase))
+                    try { File.Delete(stale); } catch { }
+            }
+
             File.Copy(dialogVm.PendingCoverArtFile, destPath, overwrite: true);
             playlist.CoverArtPath = destPath;
         }

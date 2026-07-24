@@ -37,16 +37,19 @@ public sealed class WebRemoteServer : IDisposable
 
     public WebRemoteServer(PlayerViewModel player) => _player = player;
 
+    /// <summary>Binds the remote. Pass 0 to let the OS pick a free port; read
+    /// <see cref="Port"/> afterwards for what was actually bound — it is no longer the
+    /// requested value, because the requested one may have been in use.</summary>
     public void Start(int port)
     {
         Stop();
-        Port = port;
         Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant();
         _cts = new CancellationTokenSource();
         _listener = new TcpListener(IPAddress.Any, port);
         _listener.Start();
+        Port = ((IPEndPoint)_listener.LocalEndpoint).Port;
         _ = AcceptLoopAsync(_listener, _cts.Token);
-        DebugLogger.Info(DebugLogger.Category.State, "WebRemote.Start", $"port={port}");
+        DebugLogger.Info(DebugLogger.Category.State, "WebRemote.Start", $"port={Port}");
     }
 
     public void Stop()
@@ -57,6 +60,9 @@ public sealed class WebRemoteServer : IDisposable
             _listener?.Stop();
         }
         catch { /* shutdown is best-effort */ }
+        // Dispose, not just null out: the source's registrations leaked on every
+        // enable/disable toggle of the Web Remote setting.
+        try { _cts?.Dispose(); } catch { }
         _listener = null;
         _cts = null;
     }
@@ -145,16 +151,33 @@ public sealed class WebRemoteServer : IDisposable
                 client.SendTimeout = 5000;
                 var stream = client.GetStream();
 
+                // ReceiveTimeout only applies to *synchronous* socket reads — NetworkStream
+                // .ReadAsync ignores it entirely. A LAN host that connected and then sent
+                // nothing (or trickled header lines forever into the unbounded drain below)
+                // parked a handler indefinitely, and there are only MaxConcurrentClients of
+                // them: 16 idle sockets from any device on the network permanently killed
+                // the web remote, with no token needed because authorization happens after
+                // the whole request has been read.
+                using var readCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                readCts.CancelAfter(TimeSpan.FromSeconds(5));
+                var readCt = readCts.Token;
+
                 var reader = new LineReader(stream);
-                var requestLine = await reader.ReadLineAsync(ct);
+                var requestLine = await reader.ReadLineAsync(readCt);
                 if (requestLine == null) return;
                 var parts = requestLine.Split(' ');
                 if (parts.Length < 2) return;
                 var method = parts[0];
                 var target = parts[1];
 
-                // Drain headers (ignored; no bodies are accepted).
-                while (await reader.ReadLineAsync(ct) is { Length: > 0 }) { }
+                // Drain headers (ignored; no bodies are accepted). Bounded so a peer
+                // can't stream header lines forever inside the timeout window.
+                const int MaxHeaderLines = 64;
+                for (var i = 0; i < MaxHeaderLines; i++)
+                {
+                    if (await reader.ReadLineAsync(readCt) is not { Length: > 0 }) break;
+                    if (i == MaxHeaderLines - 1) return; // too many headers — drop
+                }
 
                 var (status, contentType, body) = await RouteAsync(method, target);
                 var payload = Encoding.UTF8.GetBytes(body);

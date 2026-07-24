@@ -107,8 +107,71 @@ public static class RecycleBin
         "-e", "end run",
         path);
 
-    // freedesktop trash spec; gio ships with glib2 on essentially every Linux desktop.
-    private static bool LinuxTrash(string path) => RunProcess("gio", "trash", "--", path);
+    // freedesktop trash spec; gio ships with glib2 on essentially every Linux desktop —
+    // but not on minimal/headless installs or some non-GNOME setups, where the shell-out
+    // just failed and the caller reported success anyway. Fall back to implementing the
+    // spec directly so "Move to Trash" doesn't silently do nothing.
+    private static bool LinuxTrash(string path)
+        => RunProcess("gio", "trash", "--", path) || FreedesktopTrash(path);
+
+    /// <summary>
+    /// Minimal freedesktop.org Trash implementation for hosts without `gio`: move the
+    /// file into ~/.local/share/Trash/files and write the matching .trashinfo record.
+    /// </summary>
+    private static bool FreedesktopTrash(string path)
+    {
+        try
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (string.IsNullOrEmpty(home)) return false;
+
+            var dataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+            if (string.IsNullOrWhiteSpace(dataHome))
+                dataHome = Path.Combine(home, ".local", "share");
+
+            var trashRoot = Path.Combine(dataHome, "Trash");
+            var filesDir = Path.Combine(trashRoot, "files");
+            var infoDir = Path.Combine(trashRoot, "info");
+            Directory.CreateDirectory(filesDir);
+            Directory.CreateDirectory(infoDir);
+
+            // Unique destination name (the spec requires the two stay in lockstep).
+            var baseName = Path.GetFileName(path);
+            var destName = baseName;
+            var stem = Path.GetFileNameWithoutExtension(baseName);
+            var ext = Path.GetExtension(baseName);
+            for (var i = 1; File.Exists(Path.Combine(filesDir, destName))
+                            || File.Exists(Path.Combine(infoDir, destName + ".trashinfo")); i++)
+            {
+                destName = $"{stem}.{i}{ext}";
+                if (i > 10_000) return false;
+            }
+
+            var infoPath = Path.Combine(infoDir, destName + ".trashinfo");
+            var info = "[Trash Info]\n" +
+                       $"Path={Uri.EscapeDataString(Path.GetFullPath(path)).Replace("%2F", "/")}\n" +
+                       $"DeletionDate={DateTime.Now:yyyy-MM-ddTHH:mm:ss}\n";
+            File.WriteAllText(infoPath, info);
+
+            try
+            {
+                File.Move(path, Path.Combine(filesDir, destName));
+            }
+            catch
+            {
+                // Cross-device move (trash is on a different filesystem) — the spec wants
+                // a per-volume .Trash-$uid there, which is more than this fallback covers.
+                try { File.Delete(infoPath); } catch { }
+                return false;
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     private static bool RunProcess(string fileName, params string[] args)
     {

@@ -67,4 +67,35 @@ public class LrcEditorTests
         Assert.Equal("00:05.07", LrcEditorViewModel.FormatTimestamp(TimeSpan.FromMilliseconds(5_070)));
         Assert.Equal("12:34.99", LrcEditorViewModel.FormatTimestamp(new TimeSpan(0, 0, 12, 34, 990)));
     }
+
+    [Fact]
+    public void BuildLrcPreservingUntimed_KeepsLinesTheUserHasNotStampedYet()
+    {
+        // Saving a half-finished sync used to write only the stamped lines over the
+        // existing sidecar, so the rest of the song vanished from the file.
+        var lines = new List<(TimeSpan?, string)>
+        {
+            (TimeSpan.FromSeconds(20), "second"),
+            (null, "not stamped yet"),
+            (TimeSpan.FromSeconds(10), "first"),
+            (null, "also not stamped"),
+        };
+
+        var lrc = LrcEditorViewModel.BuildLrcPreservingUntimed(lines).Replace("\r\n", "\n");
+
+        Assert.Equal(
+            "[00:10.00]first\n[00:20.00]second\nnot stamped yet\nalso not stamped\n",
+            lrc);
+    }
+
+    [Fact]
+    public void BuildLrcPreservingUntimed_RoundTripsThroughParseLrc()
+    {
+        var original = "[00:01.00]a\n[00:02.00]b\nuntimed\n";
+
+        var reparsed = LrcEditorViewModel.ParseLrc(original);
+        var rebuilt = LrcEditorViewModel.BuildLrcPreservingUntimed(reparsed).Replace("\r\n", "\n");
+
+        Assert.Equal(original, rebuilt);
+    }
 }

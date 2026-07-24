@@ -60,6 +60,15 @@
                         <Border Background="#10FFFFFF" CornerRadius="8" Padding="10" MaxHeight="380">
                             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding Jobs}">
+                                    <!-- Virtualized: Jobs holds one entry per selected track and is
+                                         populated eagerly, so a Ctrl+A selection from the Songs view
+                                         built thousands of Grid + 3 TextBlock trees on the UI thread
+                                         the moment the dialog opened. -->
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <VirtualizingStackPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:ReplayGainScannerViewModel+RgJobRow">
                                             <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">

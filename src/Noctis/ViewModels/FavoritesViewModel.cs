@@ -13,7 +13,7 @@ namespace Noctis.ViewModels;
 /// <summary>
 /// ViewModel for the Favorites tab — shows favorited tracks and fully-favorited albums.
 /// </summary>
-public partial class FavoritesViewModel : ViewModelBase, ISearchable
+public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposable
 {
     private readonly PlayerViewModel _player;
     private readonly ILibraryService _library;
@@ -59,9 +59,30 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable
         _persistence = persistence;
         _sidebar = sidebar;
 
-        // Dispatch to UI thread since scan fires LibraryUpdated from a background thread
-        _library.LibraryUpdated += (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
-        _library.FavoritesChanged += (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
+        // Dispatch to UI thread since scan fires LibraryUpdated from a background thread.
+        // Held in fields so Dispose can detach them; anonymous lambdas with no stored
+        // reference can never be unsubscribed (this view-model had no Dispose at all).
+        _libraryUpdatedHandler = (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
+        _favoritesChangedHandler = (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
+        _library.LibraryUpdated += _libraryUpdatedHandler;
+        _library.FavoritesChanged += _favoritesChangedHandler;
+    }
+
+    private EventHandler? _libraryUpdatedHandler;
+    private EventHandler? _favoritesChangedHandler;
+
+    public void Dispose()
+    {
+        if (_libraryUpdatedHandler != null)
+        {
+            _library.LibraryUpdated -= _libraryUpdatedHandler;
+            _libraryUpdatedHandler = null;
+        }
+        if (_favoritesChangedHandler != null)
+        {
+            _library.FavoritesChanged -= _favoritesChangedHandler;
+            _favoritesChangedHandler = null;
+        }
     }
 
     /// <summary>Forces the next Refresh() call to rebuild even if data hasn't changed.</summary>

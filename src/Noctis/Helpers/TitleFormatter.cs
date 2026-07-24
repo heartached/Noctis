@@ -57,19 +57,42 @@ public static class TitleFormatter
         return sb.ToString();
     }
 
-    /// <summary>Strip characters that are illegal in Windows/macOS/Linux filenames
-    /// from a single name segment (does not touch '/' so the pattern can express folders).</summary>
+    /// <summary>Public wrapper over the filename sanitizer for callers outside pattern expansion.</summary>
+    public static string SanitizeForFilename(string? value) => SanitizeFilenameSegment(value ?? string.Empty);
+
+    /// <summary>
+    /// Strip characters that are illegal in Windows/macOS/Linux filenames from a single
+    /// name segment.
+    ///
+    /// '/' is replaced rather than preserved. It used to be kept so a pattern could express
+    /// folders, but the substituted value is a *tag*, not part of the pattern: a Title of
+    /// "../../../../Documents/taxes" expanded to a path that escaped the output directory
+    /// entirely, and ffmpeg's -y then truncated whatever was there. Any pattern that needs
+    /// a directory separator can put one in the literal text between tokens, which is not
+    /// routed through here. Leading dots are stripped for the same reason ("." and ".."
+    /// are directory references, not names).
+    /// </summary>
     private static string SanitizeFilenameSegment(string s)
     {
         if (string.IsNullOrEmpty(s)) return s;
         var sb = new StringBuilder(s.Length);
         foreach (var c in s)
         {
-            if (c is '\\' or ':' or '*' or '?' or '"' or '<' or '>' or '|')
+            if (c is '\\' or '/' or ':' or '*' or '?' or '"' or '<' or '>' or '|')
                 sb.Append('-');
             else if (c < 32) continue;
             else sb.Append(c);
         }
-        return sb.ToString().Trim().TrimEnd('.');
+
+        var result = sb.ToString().Trim().TrimEnd('.').Trim();
+
+        // A segment of only dots ("." / "..") sanitizes to empty above only if it ends in
+        // a dot; guard explicitly, and drop a leading dot so the result can never be read
+        // as a relative path reference or a hidden file.
+        result = result.TrimStart('.').Trim();
+
+        // A leading '-' makes the value look like a command-line option to any tool the
+        // path is passed to positionally (ffmpeg reads "-y" as a flag, not an output path).
+        return result.TrimStart('-').Trim();
     }
 }

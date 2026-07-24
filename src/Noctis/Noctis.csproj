@@ -27,8 +27,14 @@
     <!-- Avalonia requires this for XAML compilation -->
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 
-    <!-- Suppress build warnings -->
-    <NoWarn>CS8625;CS0067;MVVMTK0039;CA1416</NoWarn>
+    <!-- Suppress build warnings.
+         CS8625 was dropped: it was a project-wide nullability switch kept on for exactly
+         two warnings at one interop call, which now carries a scoped #pragma instead
+         (Controls/AnimatedCoverImage.axaml.cs).
+         CA1416 stays for now — it produces 0 warnings on the Windows TFM, and the
+         non-Windows TFM has never been built with it visible, so removing it here is a
+         change that has to be evaluated against a real linux-x64/osx build. -->
+    <NoWarn>CS0067;MVVMTK0039;CA1416</NoWarn>
   </PropertyGroup>
 
   <!-- Expose internal services (e.g. the Core Audio COM interop) to the test project. -->
@@ -89,6 +95,12 @@
   <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <!-- Floats the native SQLite past CVE-2025-6965 / GHSA-2m69-gcr7-jv3q (High).
+         Microsoft.Data.Sqlite 8.0.11 pins SQLitePCLRaw.lib.e_sqlite3 2.1.6, which
+         bundles SQLite < 3.50.2 and shipped e_sqlite3.dll in every release. This
+         explicit reference wins over the transitive pin without moving off the 8.0.x
+         Microsoft.Data.Sqlite line. Verify with a vulnerable/transitive package audit. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
     <!-- Windows DPAPI: scrobbler tokens encrypted at rest in settings.json (runtime-guarded, no-op elsewhere) -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>

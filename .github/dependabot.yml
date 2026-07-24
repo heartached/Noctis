@@ -1,0 +1,27 @@
+version: 2
+
+# Nothing in CI watched dependencies, which is how a High-severity advisory on a native
+# binary shipped in every release went unnoticed (CVE-2025-6965 in the SQLite bundled by
+# Microsoft.Data.Sqlite 8.0.11). Both ecosystems are covered: NuGet for the app, and
+# github-actions so the workflow refs stay current once they are SHA-pinned.
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      avalonia:
+        patterns:
+          - "Avalonia*"
+      microsoft:
+        patterns:
+          - "Microsoft.Extensions.*"
+          - "Microsoft.Data.*"
+          - "System.*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

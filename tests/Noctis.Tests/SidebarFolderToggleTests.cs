@@ -72,6 +72,8 @@ public class SidebarFolderToggleTests
         public event EventHandler? LibraryUpdated { add { } remove { } }
         public event EventHandler<int>? ScanProgress { add { } remove { } }
         public event EventHandler? FavoritesChanged { add { } remove { } }
+        public event EventHandler<List<string>>? MusicFoldersChanged { add { } remove { } }
+        public event EventHandler<string[]>? ScanAborted { add { } remove { } }
         public Task ScanAsync(IEnumerable<string> folders, CancellationToken ct = default) => Task.CompletedTask;
         public Task PauseActiveScanForShutdownAsync(TimeSpan timeout) => Task.CompletedTask;
         public Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null) => Task.CompletedTask;
@@ -88,6 +90,7 @@ public class SidebarFolderToggleTests
         public Task ClearAsync() => Task.CompletedTask;
         public Task RebuildIndexAsync(CancellationToken ct = default) => Task.CompletedTask;
         public void NotifyFavoritesChanged() { }
+        public void NotifyFavoritesChanged(IReadOnlyCollection<Track>? changed) { }
         public Task SetTracksRatingAsync(IReadOnlyList<Track> tracks, int rating) => Task.CompletedTask;
         public Task SetTracksDislikedAsync(IReadOnlyList<Track> tracks, bool isDisliked) => Task.CompletedTask;
         public Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until) => Task.CompletedTask;

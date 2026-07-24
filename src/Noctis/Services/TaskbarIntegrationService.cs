@@ -430,5 +430,16 @@ public sealed class TaskbarIntegrationService : IDisposable
         DestroyIcons();
 
         _ready = false;
+
+        // Release what the subclass and the RCW were holding. Clearing _ready stops us
+        // using them, but the ITaskbarList3 reference and the pinned delegate outlived
+        // the window they were bound to.
+        if (_taskbar != null)
+        {
+            try { System.Runtime.InteropServices.Marshal.FinalReleaseComObject(_taskbar); }
+            catch { /* already released, or never marshalled */ }
+            _taskbar = null;
+        }
+        _wndProc = null;
     }
 }

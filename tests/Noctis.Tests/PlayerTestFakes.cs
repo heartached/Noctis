@@ -66,6 +66,8 @@ internal sealed class FakeLibraryService : ILibraryService
     public event EventHandler? LibraryUpdated;
     public event EventHandler<int>? ScanProgress;
     public event EventHandler? FavoritesChanged;
+    public event EventHandler<List<string>>? MusicFoldersChanged;
+    public event EventHandler<string[]>? ScanAborted;
 
     public Task ScanAsync(IEnumerable<string> folders, CancellationToken ct = default) => Task.CompletedTask;
     public Task PauseActiveScanForShutdownAsync(TimeSpan timeout) => Task.CompletedTask;
@@ -82,6 +84,7 @@ internal sealed class FakeLibraryService : ILibraryService
     public Task ClearAsync() => Task.CompletedTask;
     public Task RebuildIndexAsync(CancellationToken ct = default) => Task.CompletedTask;
     public void NotifyFavoritesChanged() { }
+    public void NotifyFavoritesChanged(IReadOnlyCollection<Track>? changed) { }
     public Task SetTracksRatingAsync(IReadOnlyList<Track> tracks, int rating) => Task.CompletedTask;
     public Task SetTracksDislikedAsync(IReadOnlyList<Track> tracks, bool isDisliked) => Task.CompletedTask;
     public Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until) => Task.CompletedTask;

@@ -14,6 +14,13 @@ namespace Noctis.Converters;
 /// </summary>
 public class BlurRadiusToEffectConverter : IValueConverter
 {
+    // Cached by quantised radius. Unlike the sweep-gradient converter, a BlurEffect here
+    // carries no per-line state — two lines at the same radius are interchangeable — so
+    // one shared instance per radius is safe even though the converter itself is an
+    // x:Key singleton. Scroll and track change re-evaluate this for every realized line,
+    // and it allocated a fresh effect each time.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, BlurEffect> _cache = new();
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         var radius = value switch
@@ -22,7 +29,11 @@ public class BlurRadiusToEffectConverter : IValueConverter
             float f => f,
             _ => 0.0,
         };
-        return radius <= 0 ? null : new BlurEffect { Radius = radius };
+        if (radius <= 0) return null;
+
+        // Tenths are far finer than the eye resolves on a blur, and bound the cache.
+        var key = (int)Math.Round(radius * 10);
+        return _cache.GetOrAdd(key, k => new BlurEffect { Radius = k / 10.0 });
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

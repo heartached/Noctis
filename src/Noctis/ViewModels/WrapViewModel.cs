@@ -10,7 +10,7 @@ namespace Noctis.ViewModels;
 /// Drives the Noctis Wrap dialog: yearly/monthly recap from the play log,
 /// random test data for previewing, and share-card export.
 /// </summary>
-public partial class WrapViewModel : ViewModelBase
+public partial class WrapViewModel : ViewModelBase, IDisposable
 {
     private readonly IPlayHistoryService _playHistory;
     private readonly ILibraryService _library;
@@ -206,4 +206,18 @@ public partial class WrapViewModel : ViewModelBase
     }
 
     public void ReportStatus(string message) => StatusText = message;
+
+    /// <summary>
+    /// Releases the rendered share card. A fresh WrapViewModel is created per OpenWrap and
+    /// nothing released the final Preview when the dialog closed, so every open/close cycle
+    /// leaked a full-size bitmap plus its PNG byte array until the finalizer ran.
+    /// </summary>
+    public void Dispose()
+    {
+        // Any in-flight render will see a bumped generation and drop its own bitmap.
+        _renderGeneration++;
+        Preview?.Dispose();
+        Preview = null;
+        CurrentPng = null;
+    }
 }

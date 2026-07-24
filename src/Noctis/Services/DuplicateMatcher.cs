@@ -79,7 +79,15 @@ public static class DuplicateMatcher
         var artist = Normalize(t.PrimaryArtist);
         var title = Normalize(t.Title);
         if (artist.Length == 0 || title.Length == 0) return string.Empty;
-        return artist + "" + title;
+        // Album is part of the key. Without it, a song that appears on its studio album
+        // AND on a greatest-hits / soundtrack / deluxe release matched on artist+title
+        // with an identical duration and landed in one group — where the dialog pre-ticks
+        // every non-keep row for deletion. Those are different releases, not duplicates.
+        //
+        // The edition suffix is normalized away first, so "Album" and
+        // "Album (Deluxe Edition)" still group together — that IS a genuine duplicate.
+        var album = Normalize(Helpers.AlbumTitle.NormalizeForEdition(t.Album));
+        return artist + "" + title + "" + album;
     }
 
     private static string Normalize(string? s)

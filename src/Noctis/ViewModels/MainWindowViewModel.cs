@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Input;
@@ -42,11 +42,12 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void OpenSettings()
     {
-        // Open immediately so the click feels instant. Library stats are an in-memory
-        // pass (cheap); storage info walks the artwork directory and is deferred to
-        // a background thread so it never blocks the click.
+        // Open immediately so the click feels instant. Everything the Statistics tab
+        // needs — the whole-library stats pass, the playlist count and the artwork
+        // directory walk — runs off the UI thread so none of it blocks the click.
         IsSettingsModalOpen = true;
-        Settings.RefreshLibraryStats();
+        _ = Settings.RefreshLibraryStatsAsync();
+        _ = Settings.RefreshPlaylistCountAsync();
         _ = Settings.RefreshStorageInfoAsync();
     }
 
@@ -258,6 +259,13 @@ public partial class MainWindowViewModel : ViewModelBase
         _artistsVm = new LibraryArtistsViewModel(library);
         _artistsVm.SetArtistImageService(artistImageService);
         _playlistsVm = new LibraryPlaylistsViewModel(Sidebar, Player, library, persistence);
+        // Same mirroring as the Albums sort chip: the label lives on the grid view-model,
+        // the control that shows it lives in the shared top bar.
+        _playlistsVm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LibraryPlaylistsViewModel.SortLabel))
+                TopBar.PlaylistSortLabel = _playlistsVm.SortLabel;
+        };
 
         _foldersVm = new LibraryFoldersViewModel(library, Player, persistence, Sidebar);
         _foldersVm.NavigateToSettingsRequested += (_, _) =>
@@ -422,6 +430,11 @@ public partial class MainWindowViewModel : ViewModelBase
         // Load settings
         await Settings.LoadAsync();
 
+        // Warm the play-history log off the UI thread. Every consumer (Home, Statistics,
+        // Settings, Wrap) reads it from the UI thread, and the first read otherwise
+        // blocked on a synchronous file read + deserialize of up to 10,000 events.
+        _ = _playHistory.PreloadAsync();
+
         // Load persisted library
         await _library.LoadAsync();
 
@@ -464,6 +477,25 @@ public partial class MainWindowViewModel : ViewModelBase
         // Begin continuous folder watching now that settings + library are loaded.
         try { App.Services?.GetService<ILibraryWatcherService>()?.Refresh(); }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Watcher start failed: {ex.Message}"); }
+
+        // Freeze finished years now rather than waiting for someone to open Wrap. The
+        // play log caps at 10,000 events; a user who opens Wrap for the first time months
+        // into the new year had last year's already-trimmed numbers written to the archive
+        // as the permanent record. Archiving every launch shrinks that window to one
+        // session's worth of plays.
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var archive = App.Services?.GetService<IWrapArchiveService>() ?? new WrapArchiveService();
+                var tracksById = _library.Tracks.ToDictionary(t => t.Id);
+                archive.EnsureArchived(_playHistory.Events, tracksById, DateTime.Now.Year);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainWindowVM] Wrap archive failed: {ex.Message}");
+            }
+        });
 
         // Silently check GitHub for a newer release so the About page can surface
         // a passive "Update available" badge without the user clicking anything.
@@ -552,22 +584,51 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public void OpenExternalFiles(IReadOnlyList<string> paths)
     {
-        var tracks = new List<Track>();
-        foreach (var path in paths)
+        _ = OpenExternalFilesAsync(paths);
+    }
+
+    /// <summary>
+    /// Resolves incoming file paths to tracks off the UI thread, then starts playback.
+    ///
+    /// This used to run inline on the dispatcher: a File.Exists, a linear scan of the
+    /// whole library, and a TagLib open/parse per unknown file. Selecting an album's
+    /// worth of files in Explorer and choosing "Open with Noctis" froze the window for
+    /// the duration, and the per-file library lookup was O(files x library size).
+    /// </summary>
+    private async Task OpenExternalFilesAsync(IReadOnlyList<string> paths)
+    {
+        try
         {
-            if (!File.Exists(path) ||
-                !MetadataService.SupportedExtensions.Contains(Path.GetExtension(path)))
-                continue;
+            // Snapshot the path index on the UI thread — _library.Tracks is mutated there.
+            var byPath = new Dictionary<string, Track>(StringComparer.OrdinalIgnoreCase);
+            foreach (var t in _library.Tracks)
+                byPath[t.FilePath] = t;
 
-            var existing = _library.Tracks.FirstOrDefault(t =>
-                string.Equals(t.FilePath, path, StringComparison.OrdinalIgnoreCase));
-            var track = existing ?? _metadata.ReadTrackMetadata(path);
-            if (track != null)
-                tracks.Add(track);
+            var tracks = await Task.Run(() =>
+            {
+                var resolved = new List<Track>(paths.Count);
+                foreach (var path in paths)
+                {
+                    if (!File.Exists(path) ||
+                        !MetadataService.SupportedExtensions.Contains(Path.GetExtension(path)))
+                        continue;
+
+                    if (!byPath.TryGetValue(path, out var track))
+                        track = _metadata.ReadTrackMetadata(path);
+
+                    if (track != null)
+                        resolved.Add(track);
+                }
+                return resolved;
+            });
+
+            if (tracks.Count == 0) return;
+            Player.ReplaceQueueAndPlay(tracks, 0);
         }
-
-        if (tracks.Count == 0) return;
-        Player.ReplaceQueueAndPlay(tracks, 0);
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[MainWindowVM] OpenExternalFiles failed: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -580,8 +641,11 @@ public partial class MainWindowViewModel : ViewModelBase
         try { await _library.PauseActiveScanForShutdownAsync(TimeSpan.FromSeconds(5)); }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Scan checkpoint failed: {ex.Message}"); }
 
-        // Scrobble the currently playing track before shutdown
+        // Scrobble the currently playing track before shutdown, and actually wait for it
+        // to leave the machine — the posts are started fire-and-forget, so without the
+        // flush below they were killed with the process every single time.
         TryScrobblePreviousTrack();
+        await FlushPendingScrobblesAsync();
 
         // Update volume in settings and save everything. Each step is guarded
         // so one failing save can't skip the later ones (the queue snapshot
@@ -600,9 +664,14 @@ public partial class MainWindowViewModel : ViewModelBase
         try { await Player.FlushPendingLibrarySaveAsync(); }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Library flush failed: {ex.Message}"); }
 
-        // Cleanup integrations
-        await _discord.ClearAsync();
-        _discord.Dispose();
+        // Cleanup integrations.
+        // DisconnectAsync clears, waits ClearFlushDelayMs, then disposes. ClearAsync
+        // followed by an immediate Dispose skipped that wait, and DiscordRPC.NET sends
+        // frames from an internal worker — so the clear never went out and quitting
+        // Noctis left the last track pinned on the user's Discord profile until Discord
+        // itself timed it out.
+        try { await _discord.DisconnectAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Discord disconnect failed: {ex.Message}"); }
         _loon.Dispose();
     }
 
@@ -947,6 +1016,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnCurrentViewChanged(ViewModelBase? oldValue, ViewModelBase newValue)
     {
+        // Cover Flow is long-lived and subscribes to queue changes in its constructor,
+        // so it rebuilt ~60 bound properties on every queue mutation even while the user
+        // was on Songs or Settings. Gate it on being the visible view.
+        _coverFlowVm.IsActive = ReferenceEquals(newValue, _coverFlowVm);
+
         var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
         var leavingLyrics = ReferenceEquals(oldValue, _lyricsVm) && !enteringLyrics;
 
@@ -1220,7 +1294,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Mirror of GoBack: stash current onto the back stack, then restore the
         // forward entry. Forward stack is intentionally left intact here.
-        _navigationHistory.Push(CaptureCurrentNavigationEntry());
+        // Via PushHistoryEntry, not a raw Push: the direct push skipped the
+        // MaxNavigationHistory trim, so a long back/forward run retained transient
+        // AlbumDetail/Playlist view-models past the intended window without disposing them.
+        PushHistoryEntry(CaptureCurrentNavigationEntry());
         RestoreNavigationEntry(_forwardHistory.Pop());
     }
 
@@ -1476,8 +1553,11 @@ public partial class MainWindowViewModel : ViewModelBase
             ClearForwardHistory();
         }
 
-        // Clear search when switching views. Queue popup stays open across navigation —
+        // Clear search when switching views — including the pill itself: a section
+        // switch is a fresh context, so an open (now empty) search box shouldn't
+        // follow the user to the new page. Queue popup stays open across navigation —
         // it's only dismissed by toggling the Queue button itself or by Escape.
+        TopBar.IsSearchOpen = false;
         TopBar.SearchText = string.Empty;
         // Assigning SearchText only dispatches ApplyFilter when the box value actually
         // changes (and via a debounce). If the box was already empty from a prior visit,
@@ -1511,7 +1591,8 @@ public partial class MainWindowViewModel : ViewModelBase
         if (key == "songs")
             SetupSongsTopBarActions();
         else if (key == "playlists")
-            TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand, _playlistsVm.ImportPlaylistCommand);
+            TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand,
+                _playlistsVm.ImportPlaylistCommand, _playlistsVm.SetSortCommand, _playlistsVm.SortLabel);
         else if (key == "favorites")
             TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
         else if (key == "folders")
@@ -1949,7 +2030,8 @@ public partial class MainWindowViewModel : ViewModelBase
         if (ReferenceEquals(view, _songsVm))
             SetupSongsTopBarActions();
         else if (ReferenceEquals(view, _playlistsVm))
-            TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand, _playlistsVm.ImportPlaylistCommand);
+            TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand,
+                _playlistsVm.ImportPlaylistCommand, _playlistsVm.SetSortCommand, _playlistsVm.SortLabel);
         else if (ReferenceEquals(view, _favoritesVm))
             TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
         else if (ReferenceEquals(view, _lyricsVm))
@@ -2283,13 +2365,32 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var track = _scrobbleTrack;
             var startedAt = _trackStartedAt;
+            var pending = new List<Task>(2);
             if (lastFmActive)
-                _ = _lastFm.ScrobbleAsync(track, startedAt);
+                pending.Add(_lastFm.ScrobbleAsync(track, startedAt));
             if (listenBrainzActive)
-                _ = _listenBrainz.ScrobbleAsync(track, startedAt);
+                pending.Add(_listenBrainz.ScrobbleAsync(track, startedAt));
+
+            // Exposed so shutdown can await it. Fire-and-forget here meant the outbound
+            // HTTP request was killed with the process — the last track of every session
+            // silently failed to scrobble, because App.OnFrameworkInitializationCompleted
+            // calls desktop.Shutdown() as soon as ShutdownAsync returns.
+            _pendingScrobbles = pending.Count > 0 ? Task.WhenAll(pending) : Task.CompletedTask;
         }
 
         _scrobbleTrack = null;
+    }
+
+    /// <summary>In-flight scrobble posts from the most recent track transition.</summary>
+    private Task _pendingScrobbles = Task.CompletedTask;
+
+    /// <summary>
+    /// Waits (briefly) for the final scrobble to reach the network. Never throws.
+    /// </summary>
+    private async Task FlushPendingScrobblesAsync()
+    {
+        try { await _pendingScrobbles.WaitAsync(TimeSpan.FromSeconds(3)); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Final scrobble flush: {ex.Message}"); }
     }
 
     // ── Debug panel ──────────────────────────────────────────
@@ -2297,15 +2398,25 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>Toggles the debug overlay panel and enables/disables logging.</summary>
     public void ToggleDebugPanel()
     {
-        if (_debugPanelVm == null)
+        if (IsDebugPanelVisible)
         {
-            _debugPanelVm = new DebugPanelViewModel(Player, this);
+            // The view-model was built once and never disposed, so a single Ctrl+Shift+D
+            // left a permanent subscription to Player.PropertyChanged posting
+            // RefreshLiveState to the UI thread on every Position tick — for the rest of
+            // the session, with the panel hidden.
+            IsDebugPanelVisible = false;
+            _debugPanelVm?.Dispose();
+            _debugPanelVm = null;
             OnPropertyChanged(nameof(DebugPanel));
+            DebugLogger.Info(DebugLogger.Category.UI, "DebugPanel closed");
+            return;
         }
 
-        IsDebugPanelVisible = !IsDebugPanelVisible;
+        _debugPanelVm = new DebugPanelViewModel(Player, this);
+        OnPropertyChanged(nameof(DebugPanel));
+        IsDebugPanelVisible = true;
         DebugLogger.IsEnabled = true; // keep logging even when panel closes
-        DebugLogger.Info(DebugLogger.Category.UI, IsDebugPanelVisible ? "DebugPanel opened" : "DebugPanel closed");
+        DebugLogger.Info(DebugLogger.Category.UI, "DebugPanel opened");
     }
 }
 

@@ -13,6 +13,12 @@ public sealed class AudioAnalysisService : IAudioAnalysisService
     private const int SampleRate = 22050;
     private const int MaxSeconds = 120;
     private const int MaxSamples = SampleRate * MaxSeconds;
+
+    /// <summary>
+    /// Hard ceiling for one file's decode. Generous relative to decoding 120s of audio,
+    /// but bounded — the gate is single-permit, so a hung ffmpeg blocks every other file.
+    /// </summary>
+    private static readonly TimeSpan DecodeTimeout = TimeSpan.FromSeconds(90);
     private const int MaxBytes = MaxSamples * 4;
 
     private readonly IAudioConverterService _converter;
@@ -29,6 +35,29 @@ public sealed class AudioAnalysisService : IAudioAnalysisService
 
     public bool IsAvailable => _converter.GetFfmpegPath() != null;
 
+    /// <summary>
+    /// Releases the reusable decode buffers.
+    ///
+    /// They are ~10.6 MB each on the large object heap and were never released, so a
+    /// single analysis at startup pinned ~21 MB for the rest of the session even after
+    /// the backfill had finished and would never run again. The coordinator calls this
+    /// when a pass completes; the next pass re-allocates on demand.
+    /// </summary>
+    public void ReleaseBuffers()
+    {
+        // Only when idle — the gate holder owns the buffers mid-decode.
+        if (!_decodeGate.Wait(0)) return;
+        try
+        {
+            _byteBuffer = null;
+            _sampleBuffer = null;
+        }
+        finally
+        {
+            _decodeGate.Release();
+        }
+    }
+
     public async Task<AudioAnalysisResult> AnalyzeAsync(string filePath, CancellationToken ct)
     {
         var ffmpeg = _converter.GetFfmpegPath();
@@ -37,12 +66,27 @@ public sealed class AudioAnalysisService : IAudioAnalysisService
         await _decodeGate.WaitAsync(ct);
         try
         {
+            // Per-file watchdog. The read loop, the drain and WaitForExitAsync were
+            // bounded only by the caller's token, which is cancelled at shutdown — and
+            // all of it runs while _decodeGate (one permit) is held, so a single ffmpeg
+            // that hung on a malformed input stalled the ENTIRE backfill until the app
+            // exited.
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(DecodeTimeout);
+
             int sampleCount;
             try
             {
-                sampleCount = await DecodeMonoAsync(ffmpeg, filePath, ct);
+                sampleCount = await DecodeMonoAsync(ffmpeg, filePath, timeoutCts.Token);
             }
-            catch (OperationCanceledException) { throw; }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;   // real shutdown — propagate
+            }
+            catch (OperationCanceledException)
+            {
+                return AudioAnalysisResult.Fail("decode timed out");
+            }
             catch (Exception ex) { return AudioAnalysisResult.Fail(ex.Message); }
 
             if (sampleCount < SampleRate) return AudioAnalysisResult.Fail("decoded audio too short");

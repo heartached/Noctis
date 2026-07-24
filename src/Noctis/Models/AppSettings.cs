@@ -292,4 +292,21 @@ public class AppSettings
 
     /// <summary>When true, computed BPM/key are also written to file tags (TBPM/TKEY). Off by default.</summary>
     public bool WriteAnalysisToTags { get; set; } = false;
+
+    /// <summary>
+    /// Clamps the numeric fields whose bounds were previously enforced only by the
+    /// Settings UI. A hand-edited (or partially corrupt) settings.json could otherwise
+    /// hand the app a volume of 400, a port of 0 — which throws inside the web-remote
+    /// start — or a pre-amp the slider can't even render. Called once on load, so every
+    /// reader sees an in-range value.
+    /// </summary>
+    public void ClampToValidRanges()
+    {
+        Volume = Math.Clamp(Volume, 0, 100);
+        // Below 1024 needs privileges on Unix; 65535 is the top of the port space.
+        WebRemotePort = WebRemotePort is >= 1024 and <= 65535 ? WebRemotePort : 9420;
+        ReplayGainPreampDb = Math.Clamp(ReplayGainPreampDb, -12, 12);
+        CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
+        PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+    }
 }

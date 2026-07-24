@@ -88,18 +88,23 @@ public static class ArtworkCache
     /// </summary>
     public static void Invalidate(string path)
     {
-        // Exact path match after the "width|" prefix — a plain EndsWith over-matched
-        // any path that another path happened to be a suffix of.
-        foreach (var key in Cache.Keys)
+        // Targeted removal against the decode widths actually in use, instead of
+        // enumerating Cache.Keys — that materialised a fresh List of up to MaxCacheSize
+        // (2000) keys on every call, and saving metadata for a multi-track selection
+        // calls this once per track.
+        //
+        // The width set is observed at insert time rather than hardcoded, so a new
+        // DecodeWidth added in XAML can't silently escape invalidation.
+        foreach (var width in _observedWidths.Keys)
         {
-            var sep = key.IndexOf('|');
-            if (sep < 0 || !key.AsSpan(sep + 1).Equals(path.AsSpan(), StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (Cache.TryRemove(key, out var removed))
+            if (Cache.TryRemove(BuildKey(path, width), out var removed))
                 OnEntryRemoved(removed);
         }
         Invalidated?.Invoke(path);
     }
+
+    /// <summary>Normalized decode widths seen so far (used as a set; the value is unused).</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, byte> _observedWidths = new();
 
     /// <summary>
     /// Raised after a cached entry is removed, allowing live UI controls to reload.
@@ -198,14 +203,39 @@ public static class ArtworkCache
     private static void OnEntryRemoved(CacheEntry removed)
     {
         Interlocked.Add(ref _totalBytes, -removed.Bytes);
-        // Mirror of the AddMemoryPressure on insert. The bitmap itself may outlive
-        // eviction (a control can still show it); its native memory is reclaimed by
-        // the finalizer once the last reference drops.
-        try { GC.RemoveMemoryPressure(removed.Bytes); } catch { /* mismatched pressure is non-fatal */ }
+
+        // The pressure is withdrawn LATER, not here.
+        //
+        // The bitmap deliberately outlives eviction (a control can still be showing it)
+        // and its native pixels are only reclaimed when the finalizer runs. Dropping the
+        // pressure at eviction time removed the very hint that makes the GC keep pace —
+        // exactly when the native memory was still resident — so during a fast grid
+        // scroll the real footprint could sit well above the cache's byte budget with
+        // nothing pushing collection. Deferring keeps the accounting aligned with what
+        // is actually allocated.
+        SchedulePressureRelease(removed.Bytes);
+    }
+
+    /// <summary>
+    /// Releases GC memory pressure for an evicted bitmap after a short delay, giving any
+    /// control still rendering it time to drop its reference first.
+    /// </summary>
+    private static void SchedulePressureRelease(long bytes)
+    {
+        if (bytes <= 0) return;
+        _ = Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(_ =>
+        {
+            try { GC.RemoveMemoryPressure(bytes); }
+            catch { /* mismatched pressure is non-fatal */ }
+        }, TaskScheduler.Default);
     }
 
     private static string BuildKey(string path, int decodeWidth)
-        => $"{NormalizeDecodeWidth(decodeWidth)}|{path}";
+    {
+        var width = NormalizeDecodeWidth(decodeWidth);
+        _observedWidths.TryAdd(width, 0);
+        return $"{width}|{path}";
+    }
 
     private static int NormalizeDecodeWidth(int decodeWidth)
         => decodeWidth <= 0 ? DecodeWidth : Math.Clamp(decodeWidth, 64, 1024);

@@ -353,7 +353,12 @@ public partial class AnimatedCoverImage : UserControl
                 // Stop() is synchronous — after it returns, no more callbacks fire,
                 // so the native buffer can be freed safely.
                 try { Player.Stop(); } catch { }
+                // Nulls are the documented way to detach LibVLCSharp's video callbacks;
+                // the parameters just aren't annotated nullable. This one call is the
+                // entire reason CS8625 used to be suppressed project-wide.
+#pragma warning disable CS8625
                 try { Player.SetVideoCallbacks(null, null, null); } catch { }
+#pragma warning restore CS8625
                 try { Player.Dispose(); } catch { }
                 Marshal.FreeHGlobal(_buffer);
                 if (!keepBitmap)

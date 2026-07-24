@@ -239,6 +239,17 @@ public static class MenuOpenAnimation
         timer.Start();
     }
 
+    /// <summary>
+    /// KNOWN LIMITATION: this returns the most-recently-attached presenter, not
+    /// necessarily the one belonging to the flyout being closed. With two flyouts open in
+    /// sequence, closing the earlier one can animate (and reset the transform of) the
+    /// wrong presenter, leaving a flyout at Opacity 0 or translated.
+    ///
+    /// Resolving it properly needs the flyout's own presenter, and Avalonia 11.3 exposes
+    /// no public route to it — PopupFlyoutBase.Popup is protected and MenuFlyout does not
+    /// surface the presenter as a logical child. Left as-is rather than reaching into
+    /// internals; the failure mode is cosmetic and needs two flyouts in one gesture.
+    /// </summary>
     private static bool TryGetLastMenuFlyoutPresenter(out MenuFlyoutPresenter presenter)
     {
         if (_lastMenuFlyoutPresenter?.TryGetTarget(out var target) == true &&

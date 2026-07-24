@@ -9,6 +9,21 @@ public sealed class ArchivedWrap
 {
     public int Year { get; set; }
     public WrapStats Stats { get; set; } = new();
+
+    /// <summary>
+    /// Earliest event in the log this snapshot was built from. The live log is capped at
+    /// 10,000 events, so a user whose first Wrap open came after last year had already
+    /// been partially trimmed used to have the incomplete numbers frozen as the permanent
+    /// record, with nothing recorded to say so. Null for snapshots written before this
+    /// field existed — those are treated as unknown coverage and never replaced silently.
+    /// </summary>
+    public DateTime? SourceLogStartUtc { get; set; }
+
+    /// <summary>
+    /// True when the source log reached back past the start of <see cref="Year"/>, i.e. the
+    /// snapshot covers the whole year. False means the recap is partial.
+    /// </summary>
+    public bool IsComplete { get; set; } = true;
 }
 
 public interface IWrapArchiveService
@@ -17,6 +32,13 @@ public interface IWrapArchiveService
     IReadOnlyList<int> ArchivedYears { get; }
 
     WrapStats? GetYear(int year);
+
+    /// <summary>
+    /// False when the snapshot for <paramref name="year"/> was built from a play log that
+    /// had already been trimmed past the start of that year, so the recap is incomplete.
+    /// True for unarchived and unknown-coverage years.
+    /// </summary>
+    bool IsYearComplete(int year);
 
     /// <summary>Freeze any completed past year that has play data but isn't archived yet,
     /// before the 10k-event play log trims those events away.</summary>
@@ -61,12 +83,28 @@ public sealed class WrapArchiveService : IWrapArchiveService
         }
     }
 
+    public bool IsYearComplete(int year)
+    {
+        lock (_lock)
+        {
+            EnsureLoaded();
+            return _entries!.FirstOrDefault(e => e.Year == year)?.IsComplete ?? true;
+        }
+    }
+
     public void EnsureArchived(IReadOnlyList<PlayHistoryEvent> events,
                                IReadOnlyDictionary<Guid, Track> tracksById, int currentYear)
     {
         lock (_lock)
         {
             EnsureLoaded();
+
+            if (events.Count == 0) return;
+
+            // How far back the live log still reaches. Everything before this was trimmed
+            // by the 10k cap, so a year whose January 1st is after this point can only be
+            // snapshotted partially.
+            var logStartUtc = events.Min(e => e.PlayedAtUtc);
 
             var pastYears = events
                 .Select(e => e.PlayedAtUtc.ToLocalTime().Year)
@@ -77,12 +115,36 @@ public sealed class WrapArchiveService : IWrapArchiveService
             var changed = false;
             foreach (var year in pastYears)
             {
-                if (_entries!.Any(e => e.Year == year)) continue; // already archived
+                var yearStartUtc = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Local).ToUniversalTime();
+                var isComplete = logStartUtc <= yearStartUtc;
+
+                var existing = _entries!.FirstOrDefault(e => e.Year == year);
+                if (existing != null)
+                {
+                    // Only replace a snapshot we know to be partial, and only with one that
+                    // genuinely covers more of the year (a restored play_history.json, say).
+                    // Anything else — including an unknown-coverage legacy entry — is left
+                    // alone: the archive is the long-term record and the live log only
+                    // shrinks.
+                    var improves = !existing.IsComplete
+                                   && existing.SourceLogStartUtc is { } prev
+                                   && logStartUtc < prev;
+                    if (!improves) continue;
+                }
 
                 var stats = WrapStatsBuilder.Build(events, tracksById, year);
                 if (stats.TotalPlays == 0) continue;
 
-                _entries!.Add(new ArchivedWrap { Year = year, Stats = stats });
+                var entry = new ArchivedWrap
+                {
+                    Year = year,
+                    Stats = stats,
+                    SourceLogStartUtc = logStartUtc,
+                    IsComplete = isComplete
+                };
+
+                if (existing != null) _entries!.Remove(existing);
+                _entries!.Add(entry);
                 changed = true;
             }
 

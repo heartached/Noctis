@@ -26,6 +26,14 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
 
     public ObservableCollection<RgJobRow> Jobs { get; } = new();
 
+    /// <summary>
+    /// Track -> row index for progress updates. The progress callback did
+    /// `Jobs.FirstOrDefault(j => j.Track == ...)` twice per track, which is O(n) each —
+    /// O(n²) across a scan, on the UI thread, for a selection that can be thousands of
+    /// tracks (Ctrl+A in the Songs view feeds straight through).
+    /// </summary>
+    private readonly Dictionary<Track, RgJobRow> _rowsByTrack = new();
+
     public event EventHandler? Closed;
 
     public ReplayGainScannerViewModel(IReadOnlyList<Track> tracks, IReplayGainScannerService service, ILibraryService library)
@@ -36,7 +44,11 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
 
         TitleText = $"Scan ReplayGain · {tracks.Count} track{(tracks.Count == 1 ? string.Empty : "s")}";
         foreach (var t in tracks)
-            Jobs.Add(new RgJobRow { Track = t, Status = "Pending" });
+        {
+            var row = new RgJobRow { Track = t, Status = "Pending" };
+            Jobs.Add(row);
+            _rowsByTrack[t] = row;
+        }
 
         if (!_service.IsAvailable)
             StatusMessage = "ffmpeg not found — set the path in Settings → Audio Tools.";
@@ -49,6 +61,23 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
     /// <summary>Reads each track's tags and labels rows that already have a
     /// REPLAYGAIN_TRACK_GAIN value as "Already scanned" (re-scanning still works).</summary>
     private async Task MarkAlreadyScannedAsync()
+    {
+        // Wrapped whole. This is started fire-and-forget, and Start() cancels _initCts —
+        // which made the pending `await Task.Run(..., ct)` throw TaskCanceledException out
+        // of here with nobody observing it, so pressing Start (a completely normal action)
+        // surfaced a logged error via TaskScheduler.UnobservedTaskException.
+        try
+        {
+            await MarkAlreadyScannedCoreAsync().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) { /* superseded by Start() or dialog close */ }
+        catch (Exception ex)
+        {
+            DebugLog.Write("ReplayGain", $"Pre-scan tag read failed: {ex.Message}");
+        }
+    }
+
+    private async Task MarkAlreadyScannedCoreAsync()
     {
         var ct = _initCts.Token;
         foreach (var t in _tracks)
@@ -65,7 +94,7 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
             if (!scanned || ct.IsCancellationRequested) continue;
             Dispatcher.UIThread.Post(() =>
             {
-                var row = Jobs.FirstOrDefault(j => j.Track == t);
+                _rowsByTrack.TryGetValue(t, out var row);
                 // Only relabel the idle "Pending" state — never overwrite an
                 // in-progress or finished scan from this session.
                 if (row is { Done: false, Status: "Pending" })
@@ -88,7 +117,7 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
         {
             Dispatcher.UIThread.Post(() =>
             {
-                var row = Jobs.FirstOrDefault(j => j.Track == p.Track);
+                _rowsByTrack.TryGetValue(p.Track, out var row);
                 if (row == null) return;
                 row.Status = p.Status;
                 row.Done = p.Done;
@@ -126,6 +155,19 @@ public partial class ReplayGainScannerViewModel : ViewModelBase
         if (IsScanning) { _cts?.Cancel(); return; }
         _initCts.Cancel(); // stop any background tag reads before the dialog closes
         Closed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Called by the window's Closing handler so a scan can't outlive the dialog.
+    /// Cancels both token sources and disposes them (neither was ever disposed).
+    /// </summary>
+    public void CancelForClose()
+    {
+        try { _cts?.Cancel(); } catch { }
+        try { _initCts.Cancel(); } catch { }
+        try { _cts?.Dispose(); } catch { }
+        try { _initCts.Dispose(); } catch { }
+        _cts = null;
     }
 
     public partial class RgJobRow : ObservableObject

@@ -68,8 +68,9 @@ public partial class LyricShareDialog : Window
         try
         {
             var vm = Vm;
-            if (vm?.CurrentPng is not { } png)
-                return;
+            if (vm?.CurrentPng is null) return;
+            // Re-render at export resolution — CurrentPng is the small preview image.
+            if (await vm.RenderExportPngAsync() is not { } png) return;
             var status = await PngExportHelper.SavePngAsync(this, png, vm.SuggestedFileName);
             if (status != null)
                 vm.ReportStatus(status);

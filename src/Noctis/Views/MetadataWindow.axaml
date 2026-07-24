@@ -430,7 +430,17 @@
             <Grid ColumnDefinitions="*,Auto,Auto">
                 <StackPanel Grid.Column="0"
                             Orientation="Horizontal"
-                            Spacing="8">
+                            Spacing="8"
+                            VerticalAlignment="Center">
+                    <!-- Save failures used to be swallowed: the dialog closed, the UI showed
+                         the new tags, and the next rescan reverted them. Surface it instead. -->
+                    <TextBlock Text="{Binding SaveErrorMessage}"
+                               Foreground="#E74856"
+                               FontSize="12"
+                               MaxWidth="520"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding HasSaveError}" />
                 </StackPanel>
                 <Button Grid.Column="1"
                         Content="Cancel"

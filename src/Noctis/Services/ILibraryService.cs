@@ -26,6 +26,20 @@ public interface ILibraryService
     event EventHandler? FavoritesChanged;
 
     /// <summary>
+    /// Fires when the library itself rewrote the configured music-folder list (a root that
+    /// no longer exists on disk and contributes no tracks is dropped). Carries the new
+    /// list, so Settings doesn't have to re-read settings.json to notice.
+    /// </summary>
+    event EventHandler<List<string>>? MusicFoldersChanged;
+
+    /// <summary>
+    /// Fires when a scan was abandoned because configured music folders were unavailable
+    /// (offline drive / unreachable share). Carries the missing root paths; the existing
+    /// library is left untouched.
+    /// </summary>
+    event EventHandler<string[]>? ScanAborted;
+
+    /// <summary>
     /// Scans configured music folders for audio files.
     /// Reads metadata, extracts artwork, and builds the library index.
     /// </summary>
@@ -85,6 +99,13 @@ public interface ILibraryService
 
     /// <summary>Raises the FavoritesChanged event to notify subscribers.</summary>
     void NotifyFavoritesChanged();
+
+    /// <summary>
+    /// Same as <see cref="NotifyFavoritesChanged()"/> but only re-raises album state for
+    /// the albums owning <paramref name="changed"/> — a full sweep is two PropertyChanged
+    /// raises per album in the library for a single heart click.
+    /// </summary>
+    void NotifyFavoritesChanged(IReadOnlyCollection<Track>? changed);
 
     /// <summary>Sets a 0-5 star rating on the given tracks, saves the library, and writes the file tags.</summary>
     Task SetTracksRatingAsync(IReadOnlyList<Track> tracks, int rating);

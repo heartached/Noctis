@@ -582,11 +582,10 @@ public partial class PlaylistView : UserControl
         var pointerInWrapper = e.GetPosition(wrapper);
         double? indicatorY = null;
 
-        for (int i = 0; i < TrackList.ItemCount; i++)
+        // Realized containers only — the list is virtualized, so iterating 0..ItemCount
+        // ran ItemCount lookups per pointer-move event for the ~20 rows that resolve.
+        foreach (var container in TrackList.GetRealizedContainers())
         {
-            var container = TrackList.ContainerFromIndex(i);
-            if (container == null) continue;
-
             var itemPos = container.TranslatePoint(new Point(0, 0), wrapper);
             if (itemPos == null) continue;
 
@@ -624,42 +623,58 @@ public partial class PlaylistView : UserControl
         if (_dragSourceIndex < 0) return;
 
         var posInList = e.GetPosition(TrackList);
-        var toIndex = GetPlaylistDropTargetIndex(posInList);
-        if (toIndex < 0) return; // no realized rows to target — treat as cancel
-        if (toIndex >= vm.Tracks.Count) toIndex = vm.Tracks.Count - 1;
+        var insertIndex = GetPlaylistDropInsertIndex(posInList);
+        if (insertIndex < 0) return; // no realized rows to target — treat as cancel
+
+        // Convert an insertion index into a Move destination: removing the source first
+        // shifts everything after it down by one.
+        var toIndex = insertIndex > _dragSourceIndex ? insertIndex - 1 : insertIndex;
+        toIndex = Math.Clamp(toIndex, 0, Math.Max(0, vm.Tracks.Count - 1));
 
         if (_dragSourceIndex != toIndex)
             await vm.MoveTrack(_dragSourceIndex, toIndex);
     }
 
-    private int GetPlaylistDropTargetIndex(Point posInList)
+    /// <summary>
+    /// Returns the INSERTION index the drop implies — i for the upper half of row i,
+    /// i+1 for the lower half — matching where UpdatePlaylistDropIndicator draws the line.
+    ///
+    /// It previously returned `i` for anywhere inside the row and that value was passed
+    /// straight to Move(), so the two disagreed on lower-half drops. With [A,B,C,D,E],
+    /// dragging E onto the lower half of B drew the line below B (implying position 2)
+    /// but performed Move(4,1), placing E *above* B. Downward drags happened to line up;
+    /// upward ones were always off by one.
+    /// </summary>
+    private int GetPlaylistDropInsertIndex(Point posInList)
     {
-        // Virtualized list: only realized containers are inspectable. If the
-        // pointer isn't over one (e.g. the padding gap below the last row),
-        // fall back to the vertically nearest realized row instead of the list
-        // end, so the committed move matches what the drop indicator implied.
+        // Virtualized list: only realized containers are inspectable, so iterate those
+        // rather than 0..ItemCount — the old loop ran ItemCount times per pointer-move
+        // event (10,000 lookups per move in a 10,000-track playlist) for the ~20 rows
+        // that actually resolve.
         int nearestIndex = -1;
         double nearestDistance = double.MaxValue;
 
-        for (int i = 0; i < TrackList.ItemCount; i++)
+        foreach (var container in TrackList.GetRealizedContainers())
         {
-            var container = TrackList.ContainerFromIndex(i);
-            if (container == null) continue;
+            var i = TrackList.IndexFromContainer(container);
+            if (i < 0) continue;
 
             var itemPos = container.TranslatePoint(new Point(0, 0), TrackList);
             if (itemPos == null) continue;
 
             var top = itemPos.Value.Y;
             var bottom = top + container.Bounds.Height;
+            var mid = (top + bottom) / 2;
 
             if (posInList.Y >= top && posInList.Y < bottom)
-                return i;
+                return posInList.Y < mid ? i : i + 1;
 
             var distance = posInList.Y < top ? top - posInList.Y : posInList.Y - bottom;
             if (distance < nearestDistance)
             {
                 nearestDistance = distance;
-                nearestIndex = i;
+                // Above the nearest row inserts before it; below inserts after.
+                nearestIndex = posInList.Y < top ? i : i + 1;
             }
         }
 

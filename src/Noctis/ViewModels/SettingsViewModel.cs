@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Sockets;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -13,7 +14,7 @@ using Noctis.Services.Loon;
 namespace Noctis.ViewModels;
 
 /// <summary>
-/// ViewModel for the unified Settings page (tabbed modal with search).
+/// ViewModel for the unified Settings page (tabbed modal).
 /// </summary>
 public partial class SettingsViewModel : ViewModelBase
 {
@@ -94,7 +95,13 @@ public partial class SettingsViewModel : ViewModelBase
 
         // Play counts change during the session without a LibraryUpdated event,
         // so recompute stats whenever the Statistics tab is opened.
-        if (value == TabStatistics) RefreshLibraryStats();
+        if (value == TabStatistics)
+        {
+            RefreshLibraryStats();
+            // TotalPlaylists has no other writer, so without this the Statistics tab
+            // reported "0 playlists" to every user who had any.
+            _ = RefreshPlaylistCountAsync();
+        }
     }
 
     [RelayCommand]
@@ -105,7 +112,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _profileUsername = string.Empty;
     [ObservableProperty] private string _profileAvatarPath = string.Empty;
 
-    partial void OnProfileNameChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnProfileNameChanged(string value) { if (_settingsLoaded) QueueSettingsSave(); }
     partial void OnProfileUsernameChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnProfileAvatarPathChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
 
@@ -233,9 +240,44 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnMinimizeToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnCloseToTrayChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnRestoreLastTrackOnStartupChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    /// <summary>Shown under the launch-at-login toggle when the OS refused the change.</summary>
+    [ObservableProperty] private string _launchAtStartupError = string.Empty;
+
     partial void OnLaunchAtStartupChanged(bool value)
     {
-        if (_settingsLoaded) Helpers.StartupHelper.SetEnabled(value, StartMinimizedToTray);
+        if (!_settingsLoaded || _suppressLaunchAtStartupHandler) return;
+        ApplyLaunchAtStartup(value, StartMinimizedToTray);
+    }
+
+    private bool _suppressLaunchAtStartupHandler;
+
+    /// <summary>
+    /// Writes the OS autostart entry and re-asserts the toggle from what the OS actually
+    /// reports. The result used to be discarded entirely, so under a locked-down HKCU, a
+    /// read-only ~/.config/autostart or an unbundled macOS run the switch stayed ON while
+    /// nothing had been registered.
+    /// </summary>
+    private void ApplyLaunchAtStartup(bool value, bool startMinimized)
+    {
+        var ok = Helpers.StartupHelper.SetEnabled(value, startMinimized);
+        var actual = Helpers.StartupHelper.IsEnabled();
+
+        if (ok && actual == value)
+        {
+            LaunchAtStartupError = string.Empty;
+            return;
+        }
+
+        LaunchAtStartupError = value
+            ? "Couldn't register Noctis to launch at login. Check the app has permission to write its startup entry."
+            : "Couldn't remove the launch-at-login entry.";
+
+        if (actual != value)
+        {
+            _suppressLaunchAtStartupHandler = true;
+            try { LaunchAtStartup = actual; }
+            finally { _suppressLaunchAtStartupHandler = false; }
+        }
     }
 
     partial void OnStartMinimizedToTrayChanged(bool value)
@@ -244,7 +286,7 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
         // Re-register so the autostart command's --minimized flag matches the new value
         // (only when autostart is actually on; the toggle is disabled in the UI otherwise).
-        if (LaunchAtStartup) Helpers.StartupHelper.SetEnabled(true, value);
+        if (LaunchAtStartup) ApplyLaunchAtStartup(true, value);
     }
 
     // ── Songs page optional columns ──
@@ -285,9 +327,22 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 _webRemote ??= new WebRemoteServer(_player);
                 if (!_webRemote.IsRunning)
-                    _webRemote.Start(_settings.WebRemotePort);
+                {
+                    try
+                    {
+                        _webRemote.Start(_settings.WebRemotePort);
+                    }
+                    catch (SocketException)
+                    {
+                        // The port was in use. This used to leave WebRemoteUrl reading
+                        // "Failed to start: …" for the rest of the session with nothing
+                        // the user could do about it — the port is settings.json-only.
+                        // Bind an ephemeral port instead and show the one actually bound.
+                        _webRemote.Start(0);
+                    }
+                }
                 var ip = WebRemoteServer.GetLocalAddress() ?? "<this-pc-ip>";
-                WebRemoteUrl = $"http://{ip}:{_settings.WebRemotePort}/?k={_webRemote.Token}";
+                WebRemoteUrl = $"http://{ip}:{_webRemote.Port}/?k={_webRemote.Token}";
             }
             catch (Exception ex)
             {
@@ -409,6 +464,13 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private string _organizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
     [ObservableProperty] private string _organizeTargetRoot = string.Empty;
+
+    // OrganizeFilesViewModel writes both of these back here when its dialog closes, but
+    // nothing persisted them — unlike every other setting they had no change handler, so
+    // they only reached disk if some unrelated save happened to run afterwards. Killing
+    // the process before that lost the user's organize template.
+    partial void OnOrganizePatternChanged(string value) { if (_settingsLoaded) QueueSettingsSave(); }
+    partial void OnOrganizeTargetRootChanged(string value) { if (_settingsLoaded) QueueSettingsSave(); }
 
     // ── Library overview stats ──
 
@@ -583,25 +645,23 @@ public partial class SettingsViewModel : ViewModelBase
             });
         };
 
-        _library.LibraryUpdated += (_, _) =>
+        // The library drops a configured root when it's gone from disk and contributes no
+        // tracks. It now says so directly: this used to hang off LibraryUpdated and do a
+        // full LoadSettingsAsync (file read + JSON parse + DPAPI unprotect) just to compare
+        // the folder set — on every scan, drop-import, removal and metadata write.
+        _library.MusicFoldersChanged += (_, folders) =>
         {
-            Dispatcher.UIThread.Post(async () =>
+            Dispatcher.UIThread.Post(() =>
             {
-                try
-                {
-                    var settings = await _persistence.LoadSettingsAsync();
-                    var currentFolders = new HashSet<string>(settings.MusicFolders, StringComparer.OrdinalIgnoreCase);
-                    var displayedFolders = new HashSet<string>(MusicFolders, StringComparer.OrdinalIgnoreCase);
-                    if (!currentFolders.SetEquals(displayedFolders))
-                    {
-                        MusicFolders.Clear();
-                        foreach (var folder in settings.MusicFolders)
-                            MusicFolders.Add(folder);
-                        _settings.MusicFolders = settings.MusicFolders;
-                        OnPropertyChanged(nameof(MediaFolderDisplay));
-                    }
-                }
-                catch { }
+                var updated = new HashSet<string>(folders, StringComparer.OrdinalIgnoreCase);
+                var displayed = new HashSet<string>(MusicFolders, StringComparer.OrdinalIgnoreCase);
+                if (updated.SetEquals(displayed)) return;
+
+                MusicFolders.Clear();
+                foreach (var folder in folders)
+                    MusicFolders.Add(folder);
+                _settings.MusicFolders = folders;
+                OnPropertyChanged(nameof(MediaFolderDisplay));
             });
         };
 
@@ -793,7 +853,9 @@ public partial class SettingsViewModel : ViewModelBase
             FfmpegPath = _settings.FfmpegPath;
             RefreshFfmpegStatus();
             ReplayGainMode = string.IsNullOrEmpty(_settings.ReplayGainMode) ? "Off" : _settings.ReplayGainMode;
-            ReplayGainPreampDb = _settings.ReplayGainPreampDb;
+            // The ±12 dB bounds were UI-only (SettingsView.axaml PreampSlider), so a
+            // hand-edited or corrupt settings.json rendered a nonsense value on the slider.
+            ReplayGainPreampDb = Math.Clamp(_settings.ReplayGainPreampDb, -12, 12);
             ReplayGainEnabled = !string.Equals(ReplayGainMode, "Off", StringComparison.OrdinalIgnoreCase);
             GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
             BpmKeyAnalysisEnabled = _settings.BpmKeyAnalysisEnabled;
@@ -859,6 +921,9 @@ public partial class SettingsViewModel : ViewModelBase
 
             if (_discord != null && DiscordRichPresenceEnabled)
             {
+                // Lets the service's background reconnect stop as soon as the user turns
+                // the setting off, instead of retrying against a disabled feature.
+                _discord.IsEnabled = () => DiscordRichPresenceEnabled;
                 _ = _discord.ConnectAsync();
                 // Loon exists solely to serve Discord cover art — it follows the
                 // presence lifecycle instead of connecting unconditionally at
@@ -892,6 +957,7 @@ public partial class SettingsViewModel : ViewModelBase
         await _saveLock.WaitAsync();
         try
         {
+            await MergeExternalSettingChangesAsync();
             SyncToSettings();
             await _persistence.SaveSettingsAsync(_settings);
         }
@@ -902,6 +968,46 @@ public partial class SettingsViewModel : ViewModelBase
         finally
         {
             _saveLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Re-bases <see cref="_settings"/> on what is currently on disk, then lets
+    /// <see cref="SyncToSettings"/> re-apply the fields this view-model owns.
+    ///
+    /// This view-model loads one AppSettings at startup and keeps it for the whole
+    /// session, but it is not the only writer: LibraryService writes ExcludedFilePaths
+    /// and MetadataSchemaVersion, LyricsViewModel writes the lyrics background fields —
+    /// each on its own instance, loaded and saved independently. SyncToSettings never
+    /// touches those, so every save here wrote the app-start values back over them.
+    /// Concretely: remove a track, close the window (which always saves), and the
+    /// exclusion was erased — the next startup scan re-imported the file. The same
+    /// mechanism reverted the lyrics background on every restart and made the
+    /// MetadataSchemaVersion backfill (a full-library tag re-read) re-run every launch.
+    ///
+    /// Copying every readable/writable property means a field added by another component
+    /// in future is preserved automatically, rather than silently reverting until someone
+    /// remembers to extend a hand-written list.
+    /// </summary>
+    private async Task MergeExternalSettingChangesAsync()
+    {
+        try
+        {
+            var onDisk = await _persistence.LoadSettingsAsync();
+            if (onDisk == null) return;
+
+            foreach (var prop in typeof(AppSettings).GetProperties(
+                         System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+            {
+                if (!prop.CanRead || !prop.CanWrite) continue;
+                prop.SetValue(_settings, prop.GetValue(onDisk));
+            }
+        }
+        catch (Exception ex)
+        {
+            // A failed merge must not block the save — worst case we write the
+            // in-memory view, which is the old behaviour.
+            Debug.WriteLine($"[SettingsViewModel] Settings merge failed: {ex.Message}");
         }
     }
 
@@ -936,8 +1042,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.WatchFoldersEnabled = WatchFoldersEnabled;
         _settings.OrganizePattern = OrganizePattern;
         _settings.OrganizeTargetRoot = OrganizeTargetRoot;
-        _settings.MusicFolders = MusicFolders.ToList();
-        _settings.FolderRules = FolderRules
+        _settings.MusicFolders = _collectionSnapshot?.MusicFolders ?? MusicFolders.ToList();
+        _settings.FolderRules = _collectionSnapshot?.FolderRules ?? FolderRules
             .Where(r => !string.IsNullOrWhiteSpace(r.Path))
             .Select(r => new FolderRule
             {
@@ -1163,6 +1269,76 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveEqualizerDebouncedAsync(cts.Token);
     }
 
+    // ── Debounced settings save ────────────────────────────────────────────
+    // Everything driven by a continuous control (sliders, the accent colour picker,
+    // text boxes) must persist on a trailing edge, not per input sample.
+    //
+    // Each SaveAsync is a full SyncToSettings + JsonSerializer.SerializeToNode + DPAPI
+    // encrypt on the *calling* (UI) thread before SaveJsonAsync's Task.Run, plus a
+    // temp-file write and rename. Sliders are driven straight off PointerMoved, so a
+    // single drag produced dozens of those; the accent picker additionally rebuilt and
+    // re-merged the whole accent ResourceDictionary per sample.
+    private const int SettingsSaveDebounceMs = 250;
+    private CancellationTokenSource? _settingsSaveDebounceCts;
+
+    /// <summary>Persists settings on a trailing edge. Safe to call per input sample.</summary>
+    private void QueueSettingsSave()
+    {
+        _settingsSaveDebounceCts?.Cancel();
+        _settingsSaveDebounceCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _settingsSaveDebounceCts = cts;
+        _ = SaveSettingsDebouncedAsync(cts.Token);
+    }
+
+    private async Task SaveSettingsDebouncedAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(SettingsSaveDebounceMs, token);
+            if (token.IsCancellationRequested) return;
+            await SaveAsync();
+        }
+        catch (OperationCanceledException) { /* superseded by a newer change */ }
+    }
+
+    /// <summary>
+    /// Flushes any pending debounced save immediately. Called on window close so the
+    /// last drag/keystroke can't be lost to a cancelled timer.
+    /// </summary>
+    public async Task FlushPendingSaveAsync()
+    {
+        _settingsSaveDebounceCts?.Cancel();
+        _eqSaveDebounceCts?.Cancel();
+        try { await SaveAsync(); }
+        finally { _collectionSnapshot = null; }
+    }
+
+    // UI-thread snapshot of the ObservableCollections SyncToSettings reads, taken before
+    // a save is handed to a worker thread. Null on every normal (UI-thread) save.
+    private sealed record CollectionSnapshot(List<string> MusicFolders, List<FolderRule> FolderRules);
+    private CollectionSnapshot? _collectionSnapshot;
+
+    /// <summary>
+    /// Captures the UI-bound collections so a background save can serialize them without
+    /// enumerating a collection the UI thread may be mutating. Call on the UI thread
+    /// immediately before an off-thread <see cref="FlushPendingSaveAsync"/>.
+    /// </summary>
+    public void SnapshotCollectionsForSave()
+    {
+        _collectionSnapshot = new CollectionSnapshot(
+            MusicFolders.ToList(),
+            FolderRules
+                .Where(r => !string.IsNullOrWhiteSpace(r.Path))
+                .Select(r => new FolderRule
+                {
+                    Path = r.Path.Trim(),
+                    Include = r.Include,
+                    Enabled = r.Enabled
+                })
+                .ToList());
+    }
+
     private async Task SaveEqualizerDebouncedAsync(CancellationToken token)
     {
         try
@@ -1383,14 +1559,25 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         AccentChanged?.Invoke(this, hex);
-        _ = SaveAsync();
+        // Debounced: the colour picker pushes a new hex on every pointer-move, and each
+        // save is a full serialize + DPAPI encrypt on the UI thread. The live accent
+        // (AccentChanged above) still applies immediately.
+        QueueSettingsSave();
     }
 
     private static string? NormalizeAccentHex(string? value)
     {
         var hex = (value ?? string.Empty).Trim();
         if (!hex.StartsWith('#')) hex = "#" + hex;
-        return hex.Length is 7 or 9 ? hex : null;
+
+        // 6 hex digits only. The old `Length is 7 or 9` accepted #AARRGGBB, so a pasted
+        // "#40E74856" produced a 25%-opaque accent across the entire app; and with no
+        // digit validation "#ZZZZZZ" passed here and failed later inside a swallowing try.
+        if (hex.Length != 7) return null;
+        for (var i = 1; i < hex.Length; i++)
+            if (!Uri.IsHexDigit(hex[i])) return null;
+
+        return hex;
     }
 
     private void ApplyTheme(string themeKey)
@@ -1517,7 +1704,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         ApplyAudioSettings();
-        _ = SaveAsync();
+        QueueSettingsSave();
     }
 
     partial void OnSoundCheckEnabledChanged(bool value)
@@ -1548,7 +1735,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         ApplyPlayerSettings();
-        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+        if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
     }
 
     partial void OnCollapseAlbumEditionsChanged(bool value)
@@ -1648,9 +1835,34 @@ public partial class SettingsViewModel : ViewModelBase
         // this the label lags one edit behind (stays "Not found" after a valid paste).
         // SaveAsync() re-syncs + persists below.
         _settings.FfmpegPath = value ?? string.Empty;
-        RefreshFfmpegStatus();
+        // The probe spawns `ffmpeg -version`, and TextBox.Text updates per keystroke —
+        // typing a path was one process launch per character. Trailing edge only; the
+        // Enter handler in the view still probes immediately.
+        QueueFfmpegProbe();
         if (_suspendSettingPersistence) return;
-        _ = SaveAsync();
+        QueueSettingsSave();
+    }
+
+    private CancellationTokenSource? _ffmpegProbeDebounceCts;
+
+    private void QueueFfmpegProbe()
+    {
+        _ffmpegProbeDebounceCts?.Cancel();
+        _ffmpegProbeDebounceCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _ffmpegProbeDebounceCts = cts;
+        _ = ProbeFfmpegDebouncedAsync(cts.Token);
+    }
+
+    private async Task ProbeFfmpegDebouncedAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(SettingsSaveDebounceMs, token);
+            if (token.IsCancellationRequested) return;
+            RefreshFfmpegStatus();
+        }
+        catch (OperationCanceledException) { /* superseded by a newer keystroke */ }
     }
 
     partial void OnReplayGainModeChanged(string value)
@@ -1698,7 +1910,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (_suspendSettingPersistence) return;
         _audioPlayer?.ApplyReplayGain(ReplayGainMode, value);
-        _ = SaveAsync();
+        QueueSettingsSave();
     }
 
     private int _ffmpegProbeGeneration;
@@ -2162,13 +2374,52 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Library overview + Storage ──
 
-    public void RefreshLibraryStats()
-    {
-        var tracks = _library.Tracks;
-        TotalSongs = tracks.Count;
-        TotalArtists = _library.Artists.Count;
-        TotalAlbums = _library.Albums.Count;
+    /// <summary>
+    /// Recomputes the Statistics tab. Fire-and-forget wrapper for the click paths that
+    /// can't await (settings reset, scan completion).
+    /// </summary>
+    public void RefreshLibraryStats() => _ = RefreshLibraryStatsAsync();
 
+    /// <summary>
+    /// Recomputes the Statistics tab off the UI thread.
+    ///
+    /// This was inline work on every Settings open and every click of the Statistics
+    /// tab, commented as "cheap": it builds a Dictionary of the entire library, folds
+    /// the whole play-history log over it, then runs two GroupBy+OrderBy+Sum passes for
+    /// the top-five lists. On a large library that is a visible stall on the click it is
+    /// reacting to. Only the snapshot and the property writes stay on the UI thread.
+    /// </summary>
+    public async Task RefreshLibraryStatsAsync()
+    {
+        // Snapshot on the caller's (UI) thread: the library collections are mutated by
+        // scans and watcher batches, so the background pass must not enumerate them live.
+        var tracks = _library.Tracks.ToArray();
+        var albums = _library.Albums.ToArray();
+        var artistCount = _library.Artists.Count;
+        var events = _playHistory.Events; // already an immutable published snapshot
+
+        var stats = await Task.Run(() => ComputeLibraryStats(tracks, albums, artistCount, events))
+            .ConfigureAwait(false);
+
+        await Dispatcher.UIThread.InvokeAsync(() => ApplyLibraryStats(stats));
+    }
+
+    /// <summary>Everything the Statistics tab shows, computed without touching the UI.</summary>
+    private sealed record LibraryStatsResult(
+        int TotalSongs, int TotalArtists, int TotalAlbums,
+        string TotalFileSize, string TotalListeningTime, string TotalPlays,
+        string TimeListened, string AvgTrackLength, int LikedTracks,
+        int LosslessCount, int LossyCount, int HiResCount,
+        double LosslessPercentage, string LosslessPercentageText,
+        string LossyPercentageText, string HiResPercentageText,
+        List<StatItem> TopArtists, List<StatItem> TopAlbums);
+
+    private static LibraryStatsResult ComputeLibraryStats(
+        IReadOnlyList<Track> tracks,
+        IReadOnlyList<Album> albums,
+        int artistCount,
+        IReadOnlyList<PlayHistoryEvent> events)
+    {
         // Single pass over Tracks: Sum(FileSize) + Sum(Duration) + Count(IsLossless)
         // + Count(IsHiResLossless) all in one iteration. Previously 4 LINQ passes
         // over the same collection plus a redundant tracks.Count subtraction.
@@ -2192,41 +2443,61 @@ public partial class SettingsViewModel : ViewModelBase
 
         // Listening time / average reflect what was actually played (skips excluded),
         // computed from the play log — see ListeningStatsCalculator.
-        var listening = ListeningStatsCalculator.Compute(_playHistory.Events, tracksById);
+        var listening = ListeningStatsCalculator.Compute(events, tracksById);
 
-        TotalFileSize = FormatLibrarySize(totalBytes);
-        TotalListeningTime = FormatDuration(TimeSpan.FromTicks(totalDurationTicks));
-        TotalPlays = FormatCount(totalPlays);
-        TimeListened = FormatDuration(TimeSpan.FromTicks(listening.TimeListenedTicks));
-        AvgTrackLength = listening.AvgListenedTrackLengthTicks > 0
-            ? TimeSpan.FromTicks(listening.AvgListenedTrackLengthTicks).ToString(@"m\:ss")
-            : tracks.Count > 0
-                ? TimeSpan.FromTicks(totalDurationTicks / tracks.Count).ToString(@"m\:ss")
-                : "0:00";
-        LikedTracks = likedCount;
-        RefreshTopPlayed(tracks);
-        LosslessCount = losslessCount;
-        LossyCount = tracks.Count - losslessCount;
-        HiResCount = hiResCount;
-        RefreshSnoozedTracks();
-        if (tracks.Count > 0)
-        {
-            var pct = (double)losslessCount / tracks.Count;
-            LosslessPercentage = pct;
-            LosslessPercentageText = $"{pct * 100:F0}%";
-            LossyPercentageText = $"{(1 - pct) * 100:F0}%";
-            HiResPercentageText = $"{(double)hiResCount / tracks.Count * 100:F0}%";
-        }
-        else
-        {
-            LosslessPercentage = 0;
-            LosslessPercentageText = "0%";
-            LossyPercentageText = "0%";
-            HiResPercentageText = "0%";
-        }
+        var (topArtists, topAlbums) = ComputeTopPlayed(tracks, albums);
+
+        var pct = tracks.Count > 0 ? (double)losslessCount / tracks.Count : 0;
+        return new LibraryStatsResult(
+            TotalSongs: tracks.Count,
+            TotalArtists: artistCount,
+            TotalAlbums: albums.Count,
+            TotalFileSize: FormatLibrarySize(totalBytes),
+            TotalListeningTime: FormatDuration(TimeSpan.FromTicks(totalDurationTicks)),
+            TotalPlays: FormatCount(totalPlays),
+            TimeListened: FormatDuration(TimeSpan.FromTicks(listening.TimeListenedTicks)),
+            AvgTrackLength: listening.AvgListenedTrackLengthTicks > 0
+                ? TimeSpan.FromTicks(listening.AvgListenedTrackLengthTicks).ToString(@"m\:ss")
+                : tracks.Count > 0
+                    ? TimeSpan.FromTicks(totalDurationTicks / tracks.Count).ToString(@"m\:ss")
+                    : "0:00",
+            LikedTracks: likedCount,
+            LosslessCount: losslessCount,
+            LossyCount: tracks.Count - losslessCount,
+            HiResCount: hiResCount,
+            LosslessPercentage: pct,
+            LosslessPercentageText: tracks.Count > 0 ? $"{pct * 100:F0}%" : "0%",
+            LossyPercentageText: tracks.Count > 0 ? $"{(1 - pct) * 100:F0}%" : "0%",
+            HiResPercentageText: tracks.Count > 0 ? $"{(double)hiResCount / tracks.Count * 100:F0}%" : "0%",
+            TopArtists: topArtists,
+            TopAlbums: topAlbums);
     }
 
-    private void RefreshTopPlayed(IReadOnlyList<Track> tracks)
+    private void ApplyLibraryStats(LibraryStatsResult s)
+    {
+        TotalSongs = s.TotalSongs;
+        TotalArtists = s.TotalArtists;
+        TotalAlbums = s.TotalAlbums;
+        TotalFileSize = s.TotalFileSize;
+        TotalListeningTime = s.TotalListeningTime;
+        TotalPlays = s.TotalPlays;
+        TimeListened = s.TimeListened;
+        AvgTrackLength = s.AvgTrackLength;
+        LikedTracks = s.LikedTracks;
+        TopArtists.ReplaceAll(s.TopArtists);
+        TopAlbums.ReplaceAll(s.TopAlbums);
+        LosslessCount = s.LosslessCount;
+        LossyCount = s.LossyCount;
+        HiResCount = s.HiResCount;
+        LosslessPercentage = s.LosslessPercentage;
+        LosslessPercentageText = s.LosslessPercentageText;
+        LossyPercentageText = s.LossyPercentageText;
+        HiResPercentageText = s.HiResPercentageText;
+        RefreshSnoozedTracks();
+    }
+
+    private static (List<StatItem> Artists, List<StatItem> Albums) ComputeTopPlayed(
+        IReadOnlyList<Track> tracks, IReadOnlyList<Album> allAlbums)
     {
         var artists = tracks
             .Where(t => !string.IsNullOrWhiteSpace(t.Artist))
@@ -2243,9 +2514,8 @@ public partial class SettingsViewModel : ViewModelBase
             .Take(5)
             .ToList();
         ApplyRanks(artists);
-        TopArtists.ReplaceAll(artists);
 
-        var albumsById = _library.Albums.ToDictionary(a => a.Id);
+        var albumsById = allAlbums.ToDictionary(a => a.Id);
         var albums = tracks
             .Where(t => !string.IsNullOrWhiteSpace(t.Album))
             .GroupBy(t => t.AlbumId)
@@ -2266,7 +2536,8 @@ public partial class SettingsViewModel : ViewModelBase
             .Take(5)
             .ToList();
         ApplyRanks(albums);
-        TopAlbums.ReplaceAll(albums);
+
+        return (artists, albums);
     }
 
     private static void ApplyRanks(List<StatItem> items)
@@ -2419,8 +2690,38 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Called from the View after the folder picker dialog returns a path.</summary>
     public async Task AddFolderPath(string path)
     {
-        if (string.IsNullOrWhiteSpace(path) || MusicFolders.Contains(path))
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        // The old guard was `MusicFolders.Contains(path)` — ordinal and case-sensitive.
+        // On Windows that accepted C:\Music and c:\music\ as two separate scan roots for
+        // the same tree, and nothing stopped adding a folder already inside an existing
+        // root, so the same files were scanned (and watched) twice.
+        path = NormalizeFolderPath(path);
+
+        if (!Directory.Exists(path))
+        {
+            SetScanStatus("That folder doesn't exist.", autoClear: true);
             return;
+        }
+
+        foreach (var existing in MusicFolders)
+        {
+            var norm = NormalizeFolderPath(existing);
+            if (string.Equals(norm, path, StringComparison.OrdinalIgnoreCase))
+                return; // already a root — silent, the user just re-picked it
+
+            if (IsUnder(path, norm))
+            {
+                SetScanStatus($"Already covered by \"{existing}\".", autoClear: true);
+                return;
+            }
+
+            if (IsUnder(norm, path))
+            {
+                SetScanStatus($"\"{existing}\" is inside that folder — remove it first.", autoClear: true);
+                return;
+            }
+        }
 
         MusicFolders.Add(path);
         _settings.MusicFolders = MusicFolders.ToList();
@@ -2433,6 +2734,23 @@ public partial class SettingsViewModel : ViewModelBase
         // runs. The unchanged-file fast path means only the new folder is read.
         _ = RunLibraryScanAsync();
     }
+
+    /// <summary>Absolute, separator-normalized, no trailing separator. Falls back to the
+    /// trimmed input when the path can't be resolved (a UNC host that's offline, say).</summary>
+    private static string NormalizeFolderPath(string path)
+    {
+        try { return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path.Trim())); }
+        catch { return path.Trim(); }
+    }
+
+    /// <summary>True when <paramref name="candidate"/> is a descendant of <paramref name="root"/>.
+    /// Both must already be normalized. The separator check stops "C:\MusicVideos" from
+    /// matching the root "C:\Music".</summary>
+    private static bool IsUnder(string candidate, string root)
+        => candidate.Length > root.Length
+           && candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+           && (candidate[root.Length] == Path.DirectorySeparatorChar
+               || candidate[root.Length] == Path.AltDirectorySeparatorChar);
 
     [RelayCommand]
     private async Task RemoveFolder(string folder)
@@ -2587,7 +2905,24 @@ public partial class SettingsViewModel : ViewModelBase
     // ── Reset / Clear commands ──
 
     [RelayCommand]
-    private void ShowResetConfirm() => IsResetConfirmVisible = true;
+    private async Task ShowResetConfirm()
+    {
+        // The card only said "Restore defaults and clear saved library data" and the
+        // confirm step only added "cannot be undone" — but the reset also wipes
+        // playlists.json, and playlists are hand-authored content that no rescan brings
+        // back. Name what actually gets destroyed, with the real playlist count.
+        await RefreshPlaylistCountAsync();
+        ResetConfirmDetail = TotalPlaylists switch
+        {
+            0 => "This clears your library, queue, playlist covers, cached lyrics and artwork, and restores every setting to its default.",
+            1 => "This permanently deletes 1 playlist, and clears your library, queue, playlist covers, cached lyrics and artwork. Every setting returns to its default.",
+            _ => $"This permanently deletes all {TotalPlaylists} playlists, and clears your library, queue, playlist covers, cached lyrics and artwork. Every setting returns to its default."
+        };
+        IsResetConfirmVisible = true;
+    }
+
+    /// <summary>Spelled-out consequences shown above the reset confirm buttons.</summary>
+    [ObservableProperty] private string _resetConfirmDetail = string.Empty;
 
     [RelayCommand]
     private void CancelReset() => IsResetConfirmVisible = false;
@@ -2743,7 +3078,12 @@ public partial class SettingsViewModel : ViewModelBase
         {
             _settings = defaultSettings;
 
-            // Theme — reset to default (Gray)
+            // Theme — reset to default (Gray).
+            // SetActiveThemeFlags alone left ActiveCustomThemeId and the CustomThemes
+            // collection intact, so ResolveActiveThemeKey() still returned "Custom:<id>"
+            // and SyncToSettings wrote it straight back — the reset visibly undid itself.
+            ActiveCustomThemeId = null;
+            CustomThemes.Clear();
             SetActiveThemeFlags("Gray");
 
             // Accent colour — reset to default (Crimson)
@@ -2766,6 +3106,28 @@ public partial class SettingsViewModel : ViewModelBase
             OrganizeTargetRoot = string.Empty;
             IncludePrereleaseUpdates = false;
             DeveloperMode = false;
+
+            // Everything below was previously left at its pre-reset value, and because
+            // SyncToSettings then wrote the stale VM state back over the freshly-defaulted
+            // file, none of it actually reset.
+            MinimizeToTray = defaultSettings.MinimizeToTray;
+            CloseToTray = defaultSettings.CloseToTray;
+            StartMinimizedToTray = defaultSettings.StartMinimizedToTray;
+            RestoreLastTrackOnStartup = defaultSettings.RestoreLastTrackOnStartup;
+            WebRemoteEnabled = defaultSettings.WebRemoteEnabled;
+            CollapseAlbumEditions = defaultSettings.CollapseAlbumEditions;
+            EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
+            FfmpegPath = defaultSettings.FfmpegPath;
+            ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
+            PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;
+            ProfileName = defaultSettings.ProfileName;
+            ProfileUsername = defaultSettings.ProfileUsername;
+            ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
+
+            // Launch-at-login is an OS-level registration, not a settings field — a reset
+            // that leaves it enabled means the app keeps starting itself after the user
+            // asked for defaults.
+            try { Helpers.StartupHelper.SetEnabled(false); } catch { }
 
             // Playback
             CrossfadeEnabled = false;
@@ -2819,6 +3181,10 @@ public partial class SettingsViewModel : ViewModelBase
             LastFmUsername = "";
             IsLastFmConnected = false;
             LastFmStatusText = "Not connected";
+            // Without this the session key survived in the service and SyncToSettings
+            // re-persisted it (`_settings.LastFmSessionKey = lfm.GetSessionKey()`), so the
+            // account stayed connected while the UI read "Not connected".
+            _lastFm?.Logout();
 
             ListenBrainzScrobblingEnabled = true;
             ListenBrainzToken = "";
@@ -2866,6 +3232,12 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 Directory.Delete(artworkDir, true);
                 Directory.CreateDirectory(artworkDir);
+                // ArtistImageService creates artwork/artists once, in its constructor, so
+                // recreating only the parent left every later artist-photo write throwing
+                // DirectoryNotFoundException into a swallowing catch — artist images
+                // silently stopped caching until the app was restarted. ConfirmResetLibrary
+                // already got this right.
+                Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
             }
             _dirSizeCache.TryRemove(artworkDir, out _);
             RefreshStorageInfo();
@@ -3249,7 +3621,11 @@ public partial class SettingsViewModel : ViewModelBase
                     DevStatusText = $"Downloading {item.TagName}... {p:F0}%";
                 }));
 
-            var installerPath = await _updateService.DownloadInstallerAsync(item.Info, progress, _devCts.Token);
+            // requireChecksums, same as the normal update path. This defaulted to false,
+            // so any listed release without a SHA256SUMS asset had a ~100 MB executable
+            // run *elevated* after only a Content-Length equality check.
+            var installerPath = await _updateService.DownloadInstallerAsync(
+                item.Info, progress, _devCts.Token, requireChecksums: true);
 
             DevStatusText = $"Installing {item.TagName}...";
             if (_updateService.LaunchInstaller(installerPath))
@@ -3304,8 +3680,19 @@ public partial class SettingsViewModel : ViewModelBase
             var downloads = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
             Directory.CreateDirectory(downloads);
-            var destination = Path.Combine(
-                downloads, item.Info.InstallerAssetName ?? $"Noctis-{item.TagName}-installer");
+            // The asset name comes from the GitHub API response, and the asset filter
+            // only checks a prefix and a suffix — so "Noctis-..\..\..\evil-Setup.exe"
+            // passes it and escapes Downloads (Path.Combine also discards the base
+            // entirely if the name is rooted). Reject anything that isn't a bare
+            // filename and fall back to a locally-derived name.
+            var assetName = item.Info.InstallerAssetName;
+            if (string.IsNullOrWhiteSpace(assetName) ||
+                !string.Equals(Path.GetFileName(assetName), assetName, StringComparison.Ordinal))
+            {
+                assetName = $"Noctis-{Helpers.TitleFormatter.SanitizeForFilename(item.TagName)}-installer";
+            }
+
+            var destination = Path.Combine(downloads, assetName);
 
             var progress = new Progress<double>(p =>
                 Dispatcher.UIThread.Post(() =>

@@ -86,10 +86,28 @@ public partial class LrcEditorViewModel : ViewModelBase
     public static List<(TimeSpan? Time, string Text)> ParseLrc(string text)
     {
         var result = new List<(TimeSpan?, string)>();
-        foreach (var raw in text.Split('\n'))
+
+        // Drop the empty elements Split produces for a trailing newline before iterating,
+        // so a file ending in "\n" doesn't gain phantom blank rows.
+        var rawLines = text.Split('\n');
+        var lastContent = rawLines.Length - 1;
+        while (lastContent >= 0 && string.IsNullOrWhiteSpace(rawLines[lastContent].TrimEnd('\r')))
+            lastContent--;
+
+        for (var idx = 0; idx <= lastContent; idx++)
         {
-            var line = raw.TrimEnd('\r');
-            if (string.IsNullOrWhiteSpace(line)) continue;
+            var line = rawLines[idx].TrimEnd('\r');
+
+            // INTERIOR blank lines are preserved as untimestamped empty entries rather
+            // than dropped. MetadataViewModel.RebuildSyncedLinesFromText feeds plain
+            // lyrics through here and RebuildSyncedTextFromLines writes the list straight
+            // back, so skipping them meant opening the Timestamp Lyrics tab and touching
+            // any row collapsed every verse/chorus break in the saved text.
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                result.Add((null, string.Empty));
+                continue;
+            }
 
             var match = TimestampPattern.Match(line);
             if (!match.Success)
@@ -126,6 +144,27 @@ public partial class LrcEditorViewModel : ViewModelBase
         var sb = new StringBuilder();
         foreach (var (time, text) in lines.OrderBy(l => l.Time))
             sb.Append('[').Append(FormatTimestamp(time)).Append(']').AppendLine(text);
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Serializes the editor's lines, keeping the ones the user hasn't stamped yet.
+    /// Save previously emitted only stamped lines, so leaving mid-session replaced a
+    /// complete sidecar with however many lines had been timed — the rest were gone from
+    /// the file entirely. Stamped lines come first in time order, then the untimed
+    /// remainder in their original order so a later pass can finish the job.
+    /// </summary>
+    public static string BuildLrcPreservingUntimed(IEnumerable<(TimeSpan? Time, string Text)> lines)
+    {
+        var all = lines.ToList();
+        var sb = new StringBuilder();
+
+        foreach (var (time, text) in all.Where(l => l.Time.HasValue).OrderBy(l => l.Time!.Value))
+            sb.Append('[').Append(FormatTimestamp(time!.Value)).Append(']').AppendLine(text);
+
+        foreach (var (_, text) in all.Where(l => !l.Time.HasValue))
+            sb.AppendLine(text);
+
         return sb.ToString();
     }
 
@@ -196,18 +235,18 @@ public partial class LrcEditorViewModel : ViewModelBase
     [RelayCommand]
     private void Save()
     {
-        var stamped = Lines
-            .Where(l => l.Timestamp.HasValue && !string.IsNullOrWhiteSpace(l.Text))
-            .Select(l => (l.Timestamp!.Value, l.Text))
+        var content = Lines
+            .Where(l => !string.IsNullOrWhiteSpace(l.Text))
+            .Select(l => (l.Timestamp, l.Text))
             .ToList();
 
-        if (stamped.Count == 0)
+        if (!content.Any(l => l.Timestamp.HasValue))
         {
             StatusText = "Nothing to save — stamp at least one line";
             return;
         }
 
-        var lrc = BuildLrc(stamped);
+        var lrc = BuildLrcPreservingUntimed(content);
         _track.SyncedLyrics = lrc;
 
         try
@@ -216,7 +255,23 @@ public partial class LrcEditorViewModel : ViewModelBase
             if (!string.IsNullOrWhiteSpace(_track.FilePath))
             {
                 var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
-                File.WriteAllText(lrcPath, lrc, new UTF8Encoding(false));
+
+                // Keep one generation of whatever was there. This overwrites the user's
+                // own hand-timed (possibly word-level) sidecar with a line-level file
+                // built from what the editor happened to be seeded with, and there was
+                // no backup and no confirmation.
+                try
+                {
+                    if (File.Exists(lrcPath))
+                        File.Copy(lrcPath, lrcPath + ".bak", overwrite: true);
+                }
+                catch { /* a missing backup must not block the save */ }
+
+                // Write via a temp file so a failure part-way through can't leave a
+                // truncated sidecar where a complete one used to be.
+                var tempPath = lrcPath + ".tmp";
+                File.WriteAllText(tempPath, lrc, new UTF8Encoding(false));
+                File.Move(tempPath, lrcPath, overwrite: true);
             }
 
             // Best-effort metadata write.
