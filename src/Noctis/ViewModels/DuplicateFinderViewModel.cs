@@ -67,6 +67,15 @@ public partial class DuplicateFinderViewModel : ViewModelBase
         var ids = Groups.SelectMany(g => g.Rows).Where(r => r.Delete).Select(r => r.TrackId).ToList();
         if (ids.Count == 0) return;
 
+        // Confirm before trashing. The rows arrive pre-ticked (every non-keep copy in
+        // every group), so the Delete button was the only gate between opening the dialog
+        // and deleting files across the whole library in one click.
+        var confirmed = await Views.ConfirmationDialog.ShowAsync(
+            $"Move {ids.Count} file{(ids.Count == 1 ? string.Empty : "s")} to the " +
+            $"{(OperatingSystem.IsWindows() ? "Recycle Bin" : "Trash")}?\n\n" +
+            "The copy marked \"Keep\" in each group stays where it is.");
+        if (!confirmed) return;
+
         IsBusy = true;
         StatusMessage = $"Deleting {ids.Count} file{(ids.Count == 1 ? string.Empty : "s")}…";
         var n = await _service.DeleteAsync(ids);

@@ -6,6 +6,12 @@ namespace Noctis.Services;
 public sealed record OrganizeResult(int Moved, int Skipped, int Failed, IReadOnlyList<string> Errors)
 {
     public static readonly OrganizeResult Empty = new(0, 0, 0, Array.Empty<string>());
+
+    /// <summary>
+    /// Source paths that were successfully moved in this run. Undo uses it to keep the
+    /// entries it could not reverse in the log instead of discarding the whole thing.
+    /// </summary>
+    public IReadOnlyList<string> RestoredPaths { get; init; } = Array.Empty<string>();
 }
 
 /// <summary>

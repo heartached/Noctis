@@ -218,7 +218,12 @@ public static class LibraryRemovalHelper
 
     /// <summary>Directories the folder cleanup must never trash: the configured music
     /// folders plus well-known user folders (Music, Downloads, Desktop, …).</summary>
-    private static async Task<HashSet<string>> GetProtectedRootsAsync()
+    /// <remarks>
+    /// Public so the file organizer can apply the same protection — its own empty-dir
+    /// cleanup had none, so organizing loose files out of a configured root deleted
+    /// the root itself.
+    /// </remarks>
+    public static async Task<HashSet<string>> GetProtectedRootsAsync()
     {
         var roots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         void Add(string? path)

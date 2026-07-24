@@ -37,6 +37,7 @@ public sealed class DuplicateFinderService : IDuplicateFinderService
         // in place but permanently excluded from future scans — a silent vanish.
         var trashed = 0;
         var removeIds = new List<Guid>(targets.Count);
+        var trashedPaths = new List<string>(targets.Count);
         await Task.Run(() =>
         {
             foreach (var (id, path) in targets)
@@ -46,12 +47,19 @@ public sealed class DuplicateFinderService : IDuplicateFinderService
                 {
                     trashed++;
                     removeIds.Add(id);
+                    trashedPaths.Add(path);
                 }
                 else if (!File.Exists(path))
                 {
                     removeIds.Add(id); // stale entry — nothing on disk to keep
                 }
             }
+
+            // Take each deleted copy's lyric sidecars with it. LibraryRemovalHelper has
+            // handled this for the normal removal path all along; the duplicate finder
+            // never called it, so every deleted duplicate left its .lrc/.ttml/.txt behind.
+            if (trashedPaths.Count > 0)
+                LibraryRemovalHelper.TrashSidecarFiles(trashedPaths, RecycleBin.TryMoveToTrash);
         }, ct);
 
         if (removeIds.Count > 0)

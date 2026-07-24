@@ -92,6 +92,40 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
     private static bool IsAudio(string path)
         => MetadataService.SupportedExtensions.Contains(Path.GetExtension(path));
 
+    // Paths the app itself is about to move, mapped to the UTC tick at which the
+    // suppression expires. See ILibraryWatcherService.SuppressPaths.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> _suppressed =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <inheritdoc />
+    public void SuppressPaths(IEnumerable<string> paths, TimeSpan window)
+    {
+        var until = DateTime.UtcNow.Add(window).Ticks;
+        foreach (var p in paths)
+        {
+            if (string.IsNullOrWhiteSpace(p)) continue;
+            _suppressed[p] = until;
+        }
+
+        // Opportunistic prune so a long session can't accumulate expired entries.
+        if (_suppressed.Count > 4096)
+        {
+            var now = DateTime.UtcNow.Ticks;
+            foreach (var kv in _suppressed)
+                if (kv.Value < now) _suppressed.TryRemove(kv.Key, out _);
+        }
+    }
+
+    /// <summary>True while the app's own pending move covers this path.</summary>
+    private bool IsSuppressed(string path)
+    {
+        if (_suppressed.IsEmpty) return false;
+        if (!_suppressed.TryGetValue(path, out var until)) return false;
+        if (DateTime.UtcNow.Ticks <= until) return true;
+        _suppressed.TryRemove(path, out _);
+        return false;
+    }
+
     private void OnChanged(object sender, FileSystemEventArgs e)
     {
         if (!IsAudio(e.FullPath)) return;
@@ -113,6 +147,12 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
 
     private void OnDeleted(object sender, FileSystemEventArgs e)
     {
+        // The app's own file moves surface here as a delete of the old path. Recording
+        // it would make ApplyBatchAsync call RemoveTracksAsync, which permanently
+        // blacklists the path in ExcludedFilePaths — before the organizer has had a
+        // chance to relocate the track.
+        if (IsSuppressed(e.FullPath)) return;
+
         if (IsAudio(e.FullPath))
         {
             Record(() => _debouncer.Record(e.FullPath, FileChangeKind.Deleted));
@@ -134,6 +174,10 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
             RecordDirectoryContents(e.FullPath);
             return;
         }
+        // Same-volume File.Move by the organizer arrives as a rename; suppressing the
+        // old side stops the debouncer recording it as a deletion.
+        if (IsSuppressed(e.OldFullPath)) return;
+
         // Either side may carry a non-audio name (e.g. a download's ".part" → ".mp3").
         var oldAudio = IsAudio(e.OldFullPath);
         var newAudio = IsAudio(e.FullPath);
