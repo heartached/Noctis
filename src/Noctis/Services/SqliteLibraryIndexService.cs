@@ -78,13 +78,30 @@ public sealed class SqliteLibraryIndexService : ISqliteLibraryIndexService
         await UpsertTracksAsync(tracks, ct);
     }
 
-    public async Task UpsertTracksAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
+    public Task UpsertTracksAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
+        => WriteTracksAsync(tracks, clearFirst: false, ct);
+
+    /// <inheritdoc />
+    public Task ReplaceAllAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
+        => WriteTracksAsync(tracks, clearFirst: true, ct);
+
+    private async Task WriteTracksAsync(IEnumerable<Track> tracks, bool clearFirst, CancellationToken ct)
     {
         await InitializeAsync(ct);
 
         await using var conn = new SqliteConnection(_connectionString);
         await conn.OpenAsync(ct);
         await using var tx = (SqliteTransaction)await conn.BeginTransactionAsync(ct);
+
+        // Inside the same transaction as the inserts, so an interrupted rebuild rolls
+        // back to the previous contents instead of leaving an empty table.
+        if (clearFirst)
+        {
+            await using var clearCmd = conn.CreateCommand();
+            clearCmd.CommandText = "DELETE FROM tracks;";
+            clearCmd.Transaction = tx;
+            await clearCmd.ExecuteNonQueryAsync(ct);
+        }
 
         const string upsertSql = """
             INSERT INTO tracks (

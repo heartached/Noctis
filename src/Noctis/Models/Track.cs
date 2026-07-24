@@ -101,11 +101,15 @@ public partial class Track : ObservableObject
     /// <summary>Total number of discs in the album.</summary>
     public int DiscCount { get; set; } = 1;
 
-    /// <summary>Beats per minute (TBPM tag). 0 = unset.</summary>
-    public int Bpm { get; set; }
+    /// <summary>Beats per minute (TBPM tag). 0 = unset. Observable so the background
+    /// tempo/key backfill lights up the Songs BPM column without a full library refresh.</summary>
+    [ObservableProperty]
+    private int _bpm;
 
-    /// <summary>Musical key tag value (TKEY / INITIALKEY / KEY). Empty = unset.</summary>
-    public string MusicalKey { get; set; } = string.Empty;
+    /// <summary>Musical key tag value (TKEY / INITIALKEY / KEY). Empty = unset. Observable
+    /// for the same reason as <see cref="Bpm"/>.</summary>
+    [ObservableProperty]
+    private string _musicalKey = string.Empty;
 
     /// <summary>Plain/unsynced lyrics text for the track.</summary>
     public string Lyrics { get; set; } = string.Empty;
@@ -304,19 +308,28 @@ public partial class Track : ObservableObject
     [JsonIgnore]
     public string PrimaryArtist => GetPrimaryArtist(Artist);
 
+    // Everything below this point is computed from the persisted fields above. All of it
+    // is [JsonIgnore]d: none of these have setters, so they can never round-trip, and
+    // serializing them roughly doubled the size of library.json (AudioQualityDescription
+    // alone emitted a 65-character English sentence per track).
+
     /// <summary>Formatted duration string (m:ss or h:mm:ss).</summary>
+    [JsonIgnore]
     public string DurationFormatted =>
         Duration.TotalHours >= 1
             ? Duration.ToString(@"h\:mm\:ss")
             : Duration.ToString(@"m\:ss");
 
     /// <summary>Formatted bitrate string.</summary>
+    [JsonIgnore]
     public string BitrateFormatted => Bitrate > 0 ? $"{Bitrate} kbps" : "N/A";
 
     /// <summary>Formatted sample rate string.</summary>
+    [JsonIgnore]
     public string SampleRateFormatted => SampleRate > 0 ? $"{SampleRate / 1000.0:#.###} kHz" : "N/A";
 
     /// <summary>Formatted bits per sample string.</summary>
+    [JsonIgnore]
     public string BitsPerSampleFormatted => BitsPerSample > 0 ? $"{BitsPerSample} bit" : "N/A";
 
     // ── Lossless detection ──
@@ -326,6 +339,7 @@ public partial class Track : ObservableObject
     /// Uses the actual codec string from TagLib# for M4A/MP4 containers
     /// (ALAC = lossless, AAC = lossy), with file extension as fallback.
     /// </summary>
+    [JsonIgnore]
     public bool IsLossless
     {
         get
@@ -354,6 +368,7 @@ public partial class Track : ObservableObject
     /// Hi-Res Lossless: 24-bit at sample rates above 48 kHz (88.2, 96, 176.4, 192 kHz).
     /// 24-bit/48 kHz and below is standard Lossless, not Hi-Res.
     /// </summary>
+    [JsonIgnore]
     public bool IsHiResLossless =>
         IsLossless &&
         BitsPerSample >= 24 &&
@@ -361,6 +376,7 @@ public partial class Track : ObservableObject
 
     /// <summary>Audio quality badge text: "Lossless", "Hi-Res Lossless",
     /// or the short codec name for lossy formats (e.g. "AAC", "MP3").</summary>
+    [JsonIgnore]
     public string AudioQualityBadge
     {
         get
@@ -372,6 +388,7 @@ public partial class Track : ObservableObject
     }
 
     /// <summary>Tooltip sentence explaining the badge kind; empty when no badge.</summary>
+    [JsonIgnore]
     public string AudioQualityDescription
     {
         get
@@ -388,6 +405,7 @@ public partial class Track : ObservableObject
         "Compressed audio that balances sound quality with smaller file size.";
 
     /// <summary>Short codec label for badge display (e.g. "FLAC", "ALAC", "AAC", "MP3").</summary>
+    [JsonIgnore]
     public string CodecShortName
     {
         get
@@ -429,6 +447,7 @@ public partial class Track : ObservableObject
     }
 
     /// <summary>Detailed audio quality info for tooltip (e.g. "16-bit/96 kHz ALAC").</summary>
+    [JsonIgnore]
     public string AudioQualityDetailedInfo => FormatQualityDetail().TrimStart();
 
     private string FormatQualityDetail()

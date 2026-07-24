@@ -26,6 +26,13 @@ public interface ILibraryService
     event EventHandler? FavoritesChanged;
 
     /// <summary>
+    /// Fires when a scan was abandoned because configured music folders were unavailable
+    /// (offline drive / unreachable share). Carries the missing root paths; the existing
+    /// library is left untouched.
+    /// </summary>
+    event EventHandler<string[]>? ScanAborted;
+
+    /// <summary>
     /// Scans configured music folders for audio files.
     /// Reads metadata, extracts artwork, and builds the library index.
     /// </summary>

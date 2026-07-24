@@ -12,6 +12,13 @@ public interface ISqliteLibraryIndexService
     Task UpsertTracksAsync(IEnumerable<Track> tracks, CancellationToken ct = default);
     Task DeleteTracksAsync(IEnumerable<Guid> trackIds, CancellationToken ct = default);
     Task ClearAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Replaces the entire index in a single transaction.
+    /// Callers used to do ClearAsync() then UpsertTracksAsync(), which are separate
+    /// transactions — a crash or cancellation between them left the index empty.
+    /// </summary>
+    Task ReplaceAllAsync(IEnumerable<Track> tracks, CancellationToken ct = default);
     Task<int> CountAsync(CancellationToken ct = default);
 }
 

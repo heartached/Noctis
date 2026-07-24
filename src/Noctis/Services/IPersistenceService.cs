@@ -20,6 +20,17 @@ public interface IPersistenceService
     Task<List<Track>?> LoadLibraryAsync();
     Task SaveLibraryAsync(List<Track> tracks);
 
+    /// <summary>
+    /// True when library.json existed but could not be parsed on the last load attempt.
+    /// The damaged file has been renamed aside (see <see cref="LastCorruptFilePath"/>) and
+    /// <see cref="SaveLibraryAsync"/> refuses to write for the rest of the session, so an
+    /// empty in-memory library can never overwrite recoverable user data.
+    /// </summary>
+    bool LibraryLoadFailed { get; }
+
+    /// <summary>Path the damaged file was renamed to, or null when nothing was quarantined.</summary>
+    string? LastCorruptFilePath { get; }
+
     // --- Playlists ---
     Task<List<Playlist>> LoadPlaylistsAsync();
     Task SavePlaylistsAsync(List<Playlist> playlists);
