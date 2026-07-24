@@ -150,15 +150,26 @@ public partial class StatisticsViewModel : ViewModelBase
 
     private void ComputeTopArtists(IReadOnlyList<Track> tracks)
     {
+        // Grouped by PrimaryArtist, matching HomeViewModel, the library's artist index
+        // and WrapStatsBuilder. Grouping by the full credit string made "Drake feat.
+        // Rihanna" its own artist row, splitting play counts and producing a Top Artists
+        // list that contradicted Home's and Wrap's for the same library.
         var items = tracks
-            .Where(t => !string.IsNullOrWhiteSpace(t.Artist))
-            .GroupBy(t => t.Artist.Trim(), StringComparer.OrdinalIgnoreCase)
-            .Select(g => new StatItem
+            .Where(t => !string.IsNullOrWhiteSpace(t.PrimaryArtist)
+                        && !string.Equals(t.PrimaryArtist, "Unknown Artist", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(t => t.PrimaryArtist.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(g =>
             {
-                Label = g.Key,
-                SubLabel = g.Count() == 1 ? "1 track" : $"{g.Count()} tracks",
-                Value = g.Sum(t => t.PlayCount),
-                ValueLabel = $"{g.Sum(t => t.PlayCount)} plays"
+                // Hoisted: this Sum ran twice per group.
+                var plays = g.Sum(t => t.PlayCount);
+                var count = g.Count();
+                return new StatItem
+                {
+                    Label = g.Key,
+                    SubLabel = count == 1 ? "1 track" : $"{count} tracks",
+                    Value = plays,
+                    ValueLabel = $"{plays} plays"
+                };
             })
             .Where(i => i.Value > 0)
             .OrderByDescending(i => i.Value)
@@ -270,17 +281,22 @@ public partial class StatisticsViewModel : ViewModelBase
 
     private void ComputePlayLog(IReadOnlyList<PlayHistoryEvent> events)
     {
-        var items = events
-            .Reverse()
-            .Take(100)
-            .Select(e => new PlayLogItem
+        // Walk backwards from the tail. Enumerable.Reverse buffers the ENTIRE event list
+        // into an array before taking 100 — up to 10,000 events copied to read the last
+        // hundred, every time the view is opened.
+        const int MaxEntries = 100;
+        var items = new List<PlayLogItem>(Math.Min(MaxEntries, events.Count));
+        for (var i = events.Count - 1; i >= 0 && items.Count < MaxEntries; i--)
+        {
+            var e = events[i];
+            items.Add(new PlayLogItem
             {
                 Title = e.Title,
                 Artist = e.Artist,
                 TimeLabel = FormatEventTime(e.PlayedAtUtc.ToLocalTime()),
                 Skipped = e.Skipped
-            })
-            .ToList();
+            });
+        }
 
         PlayLog.ReplaceAll(items);
     }

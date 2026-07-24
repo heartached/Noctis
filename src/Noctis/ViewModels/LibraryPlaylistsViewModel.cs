@@ -266,21 +266,44 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
 
         if (files.Count == 0) return;
 
-        // Copy to app data covers directory
-        var coversDir = Path.Combine(Helpers.AppPaths.DataRoot, "playlist_covers");
-        Directory.CreateDirectory(coversDir);
+        // Wrapped: this is an [RelayCommand] async Task, so the generated
+        // AsyncRelayCommand rethrows on the sync context — a locked or read-only
+        // destination, a full disk, or a source on a disconnected network share
+        // terminated the app. (The sibling ExportPlaylist already guards its IO.)
+        try
+        {
+            // Copy to app data covers directory
+            var coversDir = Path.Combine(Helpers.AppPaths.DataRoot, "playlist_covers");
+            Directory.CreateDirectory(coversDir);
 
-        var ext = Path.GetExtension(files[0].Name);
-        var destPath = Path.Combine(coversDir, $"{playlist.Id}{ext}");
+            var ext = Path.GetExtension(files[0].Name);
+            var destPath = Path.Combine(coversDir, $"{playlist.Id}{ext}");
 
-        await using var srcStream = await files[0].OpenReadAsync();
-        await using var destStream = File.Create(destPath);
-        await srcStream.CopyToAsync(destStream);
+            // Drop any previous cover with a different extension — replacing a .png with
+            // a .jpg wrote the new file and orphaned the old one forever, since
+            // RemoveCoverArt only deletes the path currently recorded.
+            foreach (var stale in Directory.EnumerateFiles(coversDir, $"{playlist.Id}.*"))
+            {
+                if (!string.Equals(stale, destPath, StringComparison.OrdinalIgnoreCase))
+                    try { File.Delete(stale); } catch { }
+            }
 
-        playlist.CoverArtPath = destPath;
-        playlist.ModifiedAt = DateTime.UtcNow;
-        await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
-        ApplyFilter(_currentFilter);
+            await using (var srcStream = await files[0].OpenReadAsync())
+            await using (var destStream = File.Create(destPath))
+            {
+                await srcStream.CopyToAsync(destStream);
+            }
+
+            playlist.CoverArtPath = destPath;
+            playlist.ModifiedAt = DateTime.UtcNow;
+            await _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
+            ApplyFilter(_currentFilter);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.UI, "Playlist.SetCoverArt", ex.Message);
+            DebugLog.Write("Playlists", $"Could not set cover art: {ex.Message}");
+        }
     }
 
     [RelayCommand]

@@ -79,7 +79,13 @@ public static class DragFileBehavior
             var items = new List<IStorageItem>();
             foreach (var p in paths)
             {
-                var file = await topLevel.StorageProvider.TryGetFileFromPathAsync(new Uri(p));
+                // String overload, not new Uri(path). Constructing a Uri from a raw
+                // filesystem path misparses common filenames: new Uri(@"C:\Music\Song
+                // #1.mp3") treats "#1.mp3" as a URI fragment (LocalPath becomes
+                // "C:\Music\Song "), and a literal "%20" is un-escaped to a space. Either
+                // way the lookup returned null and the drag silently did nothing — or
+                // exported the wrong file.
+                var file = await topLevel.StorageProvider.TryGetFileFromPathAsync(p);
                 if (file != null) items.Add(file);
             }
 

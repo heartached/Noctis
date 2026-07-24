@@ -148,8 +148,30 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Set by MainWindowViewModel when Cover Flow becomes (or stops being) the current
+    /// view. This view-model is long-lived and subscribes in its constructor, so without
+    /// the gate RefreshCarousel — which assigns ~60 [ObservableProperty] slots — ran on
+    /// every queue mutation while the user was on Songs or Settings. Per-track AddNext /
+    /// AddToQueue and playlist "Play Next All" each raise one event per track.
+    /// </summary>
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive == value) return;
+            _isActive = value;
+            // Catch up on anything missed while hidden.
+            if (value) RefreshCarousel();
+        }
+    }
+
+    private bool _isActive;
+
     private void OnQueueChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (!_isActive) return;
         Dispatcher.UIThread.Post(RefreshCarousel);
     }
 

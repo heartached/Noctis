@@ -989,6 +989,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnCurrentViewChanged(ViewModelBase? oldValue, ViewModelBase newValue)
     {
+        // Cover Flow is long-lived and subscribes to queue changes in its constructor,
+        // so it rebuilt ~60 bound properties on every queue mutation even while the user
+        // was on Songs or Settings. Gate it on being the visible view.
+        _coverFlowVm.IsActive = ReferenceEquals(newValue, _coverFlowVm);
+
         var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
         var leavingLyrics = ReferenceEquals(oldValue, _lyricsVm) && !enteringLyrics;
 
