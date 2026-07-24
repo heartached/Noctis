@@ -200,15 +200,44 @@ public partial class MainWindow : Window
                         {
                             if (mainVm2.IsSettingsModalOpen)
                             {
-                                // Backdrop fades in while the card scales up; the settle
-                                // happens on the next frame so the transitions animate it.
-                                _settingsOverlay.IsVisible = true;
-                                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                                if (mainVm2.SkipNextSettingsOpenAnimation)
                                 {
+                                    // Stats back-arrow reopen: the page underneath was just
+                                    // swapped back, so the dark backdrop must reach full
+                                    // strength in the same frame (a backdrop fade would flash
+                                    // the restored section undimmed). The card itself still
+                                    // plays the normal fade/scale entrance on top of it.
+                                    mainVm2.SkipNextSettingsOpenAnimation = false;
+                                    var overlayTransitions = _settingsOverlay.Transitions;
+                                    var cardTransitions = _settingsCard.Transitions;
+                                    _settingsOverlay.Transitions = null;
+                                    _settingsCard.Transitions = null;
                                     _settingsOverlay.Opacity = 1;
+                                    _settingsCard.Opacity = 0;
                                     _settingsCard.RenderTransform =
-                                        Avalonia.Media.Transformation.TransformOperations.Parse("scale(1)");
-                                }, Avalonia.Threading.DispatcherPriority.Render);
+                                        Avalonia.Media.Transformation.TransformOperations.Parse("scale(0.96)");
+                                    _settingsOverlay.IsVisible = true;
+                                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                                    {
+                                        _settingsOverlay.Transitions = overlayTransitions;
+                                        _settingsCard.Transitions = cardTransitions;
+                                        _settingsCard.Opacity = 1;
+                                        _settingsCard.RenderTransform =
+                                            Avalonia.Media.Transformation.TransformOperations.Parse("scale(1)");
+                                    }, Avalonia.Threading.DispatcherPriority.Render);
+                                }
+                                else
+                                {
+                                    // Backdrop fades in while the card scales up; the settle
+                                    // happens on the next frame so the transitions animate it.
+                                    _settingsOverlay.IsVisible = true;
+                                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                                    {
+                                        _settingsOverlay.Opacity = 1;
+                                        _settingsCard.RenderTransform =
+                                            Avalonia.Media.Transformation.TransformOperations.Parse("scale(1)");
+                                    }, Avalonia.Threading.DispatcherPriority.Render);
+                                }
                             }
                             else
                             {

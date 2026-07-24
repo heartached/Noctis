@@ -625,6 +625,27 @@
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
         </Style>
+
+        <!-- Tab switch: the incoming page fades in with a short upward glide.
+             Keyframe animations can't drive RenderTransform (no registered
+             animator — crashed at startup), so the hidden state pins
+             opacity 0 / translateY(10px) and releasing it on IsVisible=True
+             transitions both back to their natural values. -->
+        <Style Selector="StackPanel.tab-page">
+            <!-- Explicit resting transform: transitions interpolate between two
+                 TransformOperations values, never to an unset (null) transform. -->
+            <Setter Property="RenderTransform" Value="translateY(0px)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CubicEaseOut"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="StackPanel.tab-page[IsVisible=False]">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="RenderTransform" Value="translateY(10px)"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*">
@@ -660,11 +681,11 @@
                     Command="{Binding SelectSettingsTabCommand}" CommandParameter="About">
                 <StackPanel Orientation="Horizontal" Spacing="5">
                     <TextBlock Text="About" FontSize="13" FontWeight="SemiBold"/>
-                    <!-- Update-available dot, mirroring the sidebar settings-icon badge -->
+                    <!-- Update-available dot, vertically centered on the tab label -->
                     <Ellipse Width="8" Height="8"
                              Fill="{DynamicResource AccentColorBrush}"
-                             VerticalAlignment="Top"
-                             Margin="0,-1,-3,0"
+                             VerticalAlignment="Center"
+                             Margin="0,0,-3,0"
                              IsVisible="{Binding IsUpdateAvailable}"/>
                 </StackPanel>
             </Button>
@@ -681,7 +702,7 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- GENERAL                                             -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <StackPanel x:Name="GeneralTabPanel" IsVisible="{Binding IsGeneralTabVisible}" Spacing="4">
+            <StackPanel x:Name="GeneralTabPanel" Classes="tab-page" IsVisible="{Binding IsGeneralTabVisible}" Spacing="4">
 
             <!-- Profile -->
             <Border Classes="setting-card" Padding="18,16" Margin="0,0,0,16">
@@ -886,7 +907,7 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- ABOUT                                               -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <StackPanel x:Name="AboutTabPanel" IsVisible="{Binding IsAboutTabVisible}" Spacing="4">
+            <StackPanel x:Name="AboutTabPanel" Classes="tab-page" IsVisible="{Binding IsAboutTabVisible}" Spacing="4">
 
             <Border Classes="setting-card" Padding="18,16" Margin="0,0,0,16">
                 <StackPanel Spacing="10">
@@ -1257,7 +1278,7 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- APPEARANCE                                          -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <StackPanel x:Name="AppearanceTabPanel" IsVisible="{Binding IsAppearanceTabVisible}" Spacing="4">
+            <StackPanel x:Name="AppearanceTabPanel" Classes="tab-page" IsVisible="{Binding IsAppearanceTabVisible}" Spacing="4">
 
             <Border Classes="setting-card" Padding="22,12">
                 <StackPanel Spacing="12">
@@ -1601,7 +1622,7 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- AUDIO                                               -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <StackPanel x:Name="AudioTabPanel" IsVisible="{Binding IsAudioTabVisible}" Spacing="4">
+            <StackPanel x:Name="AudioTabPanel" Classes="tab-page" IsVisible="{Binding IsAudioTabVisible}" Spacing="4">
 
             <TextBlock Classes="section-title" Text="PLAYBACK" Margin="0,4,0,10"/>
 
@@ -1944,7 +1965,7 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- INTEGRATIONS                                        -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <StackPanel x:Name="IntegrationsTabPanel" IsVisible="{Binding IsIntegrationsTabVisible}" Spacing="4">
+            <StackPanel x:Name="IntegrationsTabPanel" Classes="tab-page" IsVisible="{Binding IsIntegrationsTabVisible}" Spacing="4">
 
             <TextBlock Classes="section-title" Text="REMOTE CONTROL" Margin="0,4,0,10"/>
 
@@ -2251,7 +2272,7 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- LIBRARY (folders, scan, startup preferences)        -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <StackPanel x:Name="LibraryTabPanel" IsVisible="{Binding IsLibraryTabVisible}" Spacing="4">
+            <StackPanel x:Name="LibraryTabPanel" Classes="tab-page" IsVisible="{Binding IsLibraryTabVisible}" Spacing="4">
 
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">
@@ -2284,7 +2305,7 @@
                         </ItemsControl.Styles>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="sys:String">
-                                <Border Padding="12,8" Margin="0,2" CornerRadius="6"
+                                <Border Padding="14,8" Margin="0,2" CornerRadius="12"
                                         Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <TextBlock Grid.Column="0"
@@ -2475,7 +2496,7 @@
                         </ItemsControl.Styles>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="models:Track">
-                                <Border Padding="12,8" Margin="0,2" CornerRadius="6"
+                                <Border Padding="14,8" Margin="0,2" CornerRadius="12"
                                         Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                                     <Grid ColumnDefinitions="*,Auto,Auto">
                                         <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
@@ -2683,7 +2704,7 @@
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- STATISTICS (listening statistics)                   -->
             <!-- ═══════════════════════════════════════════════════ -->
-            <StackPanel x:Name="StatisticsTabPanel" IsVisible="{Binding IsStatisticsTabVisible}" Spacing="4">
+            <StackPanel x:Name="StatisticsTabPanel" Classes="tab-page" IsVisible="{Binding IsStatisticsTabVisible}" Spacing="4">
 
             <!-- Library overview (moved from Library tab) -->
             <TextBlock Classes="section-title" Text="LIBRARY OVERVIEW" Margin="0,4,0,10"/>

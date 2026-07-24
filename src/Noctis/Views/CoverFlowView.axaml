@@ -91,7 +91,7 @@
                             <ctrl:AnimatedCoverImage
                                 Source="{Binding Player.CurrentAnimatedCoverPath}"
                                 IsActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}" />
-                            <PathIcon Data="{StaticResource HeartFillIcon}" Width="18" Height="18" Foreground="#E74856"
+                            <PathIcon Data="{StaticResource HeartFillIcon}" Classes="heart-pop" Width="18" Height="18" Foreground="#E74856"
                                       HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,9,9"
                                       IsVisible="{Binding CenterTrack.IsFavorite, FallbackValue=False}"/>
                         </Panel>

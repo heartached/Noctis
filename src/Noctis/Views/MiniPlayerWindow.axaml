@@ -355,6 +355,7 @@
                                       Foreground="#B8FFFFFF"
                                       IsVisible="{Binding !CurrentTrack.IsFavorite, FallbackValue=False}"/>
                             <PathIcon Data="{StaticResource HeartFillIcon}"
+                                      Classes="heart-pop"
                                       Width="17" Height="17"
                                       Foreground="#E74856"
                                       IsVisible="{Binding CurrentTrack.IsFavorite, FallbackValue=False}"/>

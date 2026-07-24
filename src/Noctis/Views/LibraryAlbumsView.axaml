@@ -202,8 +202,8 @@
                                                                      TextWrapping="Wrap"
                                                                      TextTrimming="CharacterEllipsis"
                                                                      MaxLines="2" />
-                                            <!-- Artist name -->
-                                            <ctrl:HighlightTextBlock DisplayText="{Binding Artist}"
+                                            <!-- Artist name · release year -->
+                                            <ctrl:HighlightTextBlock DisplayText="{Binding TileSubtitle}"
                                                                      HighlightText="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).SearchText}"
                                                                      FontSize="12"
                                                                      FontWeight="Bold"

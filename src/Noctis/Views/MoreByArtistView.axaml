@@ -125,7 +125,7 @@
                                 </ContextMenu>
                             </Button.ContextMenu>
 
-                            <Grid RowDefinitions="Auto,50"
+                            <Grid RowDefinitions="Auto,64"
                                   Height="{Binding $parent[UserControl].((vm:MoreByArtistViewModel)DataContext).TileHeight}"
                                   HorizontalAlignment="Stretch">
                                 <Border Width="{Binding $parent[UserControl].((vm:MoreByArtistViewModel)DataContext).TileArtworkSize}"
@@ -146,26 +146,35 @@
                                                           IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                     </Panel>
                                 </Border>
-                                <TextBlock Grid.Row="1"
-                                           Margin="0,5,0,0"
-                                           FontSize="13"
-                                           FontWeight="SemiBold"
-                                           TextWrapping="Wrap"
-                                           TextTrimming="CharacterEllipsis"
-                                           MaxLines="2">
-                                    <Run Text="{Binding Name}" />
-                                    <InlineUIContainer BaselineAlignment="Center">
-                                        <Border Classes="explicit-badge compact"
-                                                Margin="4,0,0,0"
-                                                IsVisible="{Binding IsExplicit}"
-                                                ToolTip.Tip="Explicit">
-                                            <TextBlock Text="E"
-                                                       Classes="explicit-badge-text compact"
-                                                       FontSize="9"
-                                                       Opacity="0.9" />
-                                        </Border>
-                                    </InlineUIContainer>
-                                </TextBlock>
+                                <StackPanel Grid.Row="1" Spacing="0">
+                                    <TextBlock Margin="0,5,0,0"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               TextWrapping="Wrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxLines="2">
+                                        <Run Text="{Binding Name}" />
+                                        <InlineUIContainer BaselineAlignment="Center">
+                                            <Border Classes="explicit-badge compact"
+                                                    Margin="4,0,0,0"
+                                                    IsVisible="{Binding IsExplicit}"
+                                                    ToolTip.Tip="Explicit">
+                                                <TextBlock Text="E"
+                                                           Classes="explicit-badge-text compact"
+                                                           FontSize="9"
+                                                           Opacity="0.9" />
+                                            </Border>
+                                        </InlineUIContainer>
+                                    </TextBlock>
+                                    <!-- Artist name · release year (mirrors the Albums grid subtitle) -->
+                                    <TextBlock Text="{Binding TileSubtitle}"
+                                               FontSize="12"
+                                               FontWeight="Bold"
+                                               Opacity="0.55"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxLines="1"
+                                               Margin="0,1,0,0" />
+                                </StackPanel>
                             </Grid>
                         </Button>
                     </DataTemplate>

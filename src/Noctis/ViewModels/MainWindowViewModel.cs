@@ -32,6 +32,12 @@ public partial class MainWindowViewModel : ViewModelBase
     // ── Settings modal ──
     [ObservableProperty] private bool _isSettingsModalOpen;
 
+    /// <summary>One-shot: the next settings-modal open skips the fade/scale entrance so the
+    /// backdrop appears fully formed in the same frame. Used by the stats back-arrow, which
+    /// swaps the underlying page in the same tick — a fade-in would show the restored page
+    /// undimmed for its first frames. Cleared by the MainWindow open handler.</summary>
+    public bool SkipNextSettingsOpenAnimation { get; set; }
+
     /// <summary>Opens the Settings modal popup. Replaces page-based navigation to Settings.</summary>
     [RelayCommand]
     private void OpenSettings()
@@ -277,20 +283,30 @@ public partial class MainWindowViewModel : ViewModelBase
         _statisticsVm = new StatisticsViewModel(library, playHistory);
         _statisticsVm.BackRequested += (_, _) =>
         {
-            // Return to whatever section the user was in before opening Settings →
-            // "View All Stats" (Statistics isn't toggle-eligible, so _currentSectionKey
-            // still holds that origin, e.g. "artists"), then reopen the Settings modal
-            // on the Statistics tab they launched "View All Stats" from.
-            Navigate(_currentSectionKey);
+            // Restore the pre-stats view from history, then reopen the Settings modal
+            // (on the Statistics tab "View All Stats" was launched from) in the SAME
+            // UI tick. The reopen must skip the fade/scale entrance: the backdrop
+            // starts transparent, so a fade-in shows the restored page fully undimmed
+            // for its first frames — a visible flash of "another section" before the
+            // dark backdrop covers it. History restore (not Navigate(_currentSectionKey))
+            // brings back non-section views too: from the lyrics page, Navigate landed
+            // on the underlying section instead.
+            if (_navigationHistory.Count > 0)
+                GoBackInHistory();
+            else
+                Navigate(_currentSectionKey);
+            SkipNextSettingsOpenAnimation = true;
             OpenSettings();
         };
         Settings.OpenStatisticsRequested += (_, _) =>
         {
-            CloseSettings();
+            // Swap the content to Statistics while the modal still covers it, then
+            // fade the modal out — closing first showed the old section mid-fade.
             Navigate("statistics");
             // Repurpose the sidebar Back arrow to return to Settings. Using the standard
             // back-button path also hides the redundant "Statistics" page title.
             TopBar.ShowBackButton("Back", _statisticsVm.GoBackCommand);
+            CloseSettings();
         };
         _coverFlowVm = new CoverFlowViewModel(Player);
 
@@ -496,6 +512,9 @@ public partial class MainWindowViewModel : ViewModelBase
             Dispatcher.UIThread.Post(() => App.CachedLocator?.Build(_songsVm), DispatcherPriority.Background);
             Dispatcher.UIThread.Post(() => App.CachedLocator?.Build(_albumsVm), DispatcherPriority.Background);
             Dispatcher.UIThread.Post(() => App.CachedLocator?.Build(Settings), DispatcherPriority.Background);
+            // Lyrics is one player-bar click away at any time; pre-building it makes
+            // that first click as instant as the cached reuse on later clicks.
+            Dispatcher.UIThread.Post(() => App.CachedLocator?.Build(_lyricsVm), DispatcherPriority.Background);
         });
 
         // Refresh non-visible content VMs so their data is ready when navigated to.

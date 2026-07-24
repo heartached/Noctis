@@ -1,10 +1,14 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace Noctis.Models;
 
 /// <summary>
 /// Represents an album, aggregated from tracks sharing the same AlbumId.
 /// Not persisted directly — rebuilt from track data on load.
+/// Observable so favorite-derived bindings (tile heart overlay, context-menu
+/// Favorites items) can be re-evaluated in real time when favorites change.
 /// </summary>
-public class Album
+public class Album : ObservableObject
 {
     /// <summary>Deterministic ID computed from AlbumArtist + Album name.</summary>
     public Guid Id { get; set; }
@@ -41,6 +45,18 @@ public class Album
 
     /// <summary>Whether at least one track in this album is marked as a favorite.</summary>
     public bool HasFavoriteTrack => Tracks?.Any(t => t.IsFavorite) == true;
+
+    /// <summary>Re-raises change notifications for the favorite-derived computed
+    /// properties. Called by LibraryService whenever favorites change so bound
+    /// album tiles update live instead of waiting for a view rebuild.</summary>
+    public void NotifyFavoriteStateChanged()
+    {
+        OnPropertyChanged(nameof(HasFavoriteTrack));
+        OnPropertyChanged(nameof(IsAllTracksFavorite));
+    }
+
+    /// <summary>Grid-tile subtitle: "Artist · Year"; artist alone when the year is unknown.</summary>
+    public string TileSubtitle => Year > 0 ? $"{Artist} · {Year}" : Artist;
 
     /// <summary>Formatted total duration.</summary>
     public string TotalDurationFormatted =>

@@ -80,8 +80,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Whether all tracks in the album are favorited (for metadata row heart).</summary>
     public bool IsAlbumFavorited => Album?.IsAllTracksFavorite ?? false;
 
-    /// <summary>Whether to show hearts on individual track rows (hide for singles and fully-favorited albums).</summary>
-    public bool ShowTrackRowHearts => !IsSingle && !IsAlbumFavorited;
+    /// <summary>Whether to show hearts on individual track rows (hidden for singles,
+    /// where the header heart already represents the only track). Fully-favorited
+    /// albums keep their row hearts alongside the header heart.</summary>
+    public bool ShowTrackRowHearts => !IsSingle;
 
     public bool HasAlbumDescription => !string.IsNullOrWhiteSpace(AlbumDescription);
     public bool HasAlbumDescriptionOverflow =>

@@ -883,6 +883,11 @@ public class LibraryService : ILibraryService
 
     public void NotifyFavoritesChanged()
     {
+        // Album favorite state (heart overlay, context-menu Favorites items) is
+        // computed from tracks, so each album must re-raise its derived properties
+        // for bound tiles to update in real time.
+        foreach (var album in _albums)
+            album.NotifyFavoriteStateChanged();
         FavoritesChanged?.Invoke(this, EventArgs.Empty);
     }
 

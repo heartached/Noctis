@@ -790,6 +790,36 @@
     </Style>
 
     <!-- Album grid tile styling -->
+    <!-- Favorite-heart fade-grow: hearts tagged with this class gently scale from
+         70% while fading in when they appear (favorite toggled) — smooth, no
+         bounce. While hidden the transform is pinned small so the release
+         animates; hiding stays instant. Not applied inside virtualized grids
+         (recycled containers would animate on scroll — same reason album tiles
+         opt out of the global hover scale). -->
+    <Style Selector="PathIcon.heart-pop">
+        <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+        <Setter Property="Opacity" Value="1"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25">
+                    <TransformOperationsTransition.Easing>
+                        <CubicEaseOut/>
+                    </TransformOperationsTransition.Easing>
+                </TransformOperationsTransition>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.2">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="PathIcon.heart-pop[IsVisible=False]">
+        <Setter Property="RenderTransform" Value="scale(0.7)"/>
+        <Setter Property="Opacity" Value="0"/>
+    </Style>
+
     <Style Selector="Button.album-tile">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />

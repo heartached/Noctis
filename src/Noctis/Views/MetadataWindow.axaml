@@ -473,10 +473,12 @@
         </Border>
 
         <!-- Tab control -->
-        <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}"
+        <TabControl x:Name="MetaTabControl"
+                    Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}"
                     Margin="0"
                     Padding="0"
-                    ClipToBounds="True">
+                    ClipToBounds="True"
+                    SelectionChanged="OnMetaTabSelectionChanged">
 
             <!-- ═══════════ DETAILS TAB ═══════════ -->
             <TabItem Header="Details" FontSize="14" FontWeight="SemiBold">
