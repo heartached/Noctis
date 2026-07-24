@@ -315,14 +315,15 @@
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
 
-                                    <!-- Intro dots -->
+                                    <!-- Intro dots. Left margin mirrors the lyrics page: first dot
+                                         sits over the first letter of the lyric (scaled to panel font). -->
                                     <StackPanel Orientation="Horizontal"
                                                 Spacing="5"
                                                 Classes="panel-intro-dots"
                                                 Classes.active="{Binding IsActive}"
                                                 HorizontalAlignment="Left"
                                                 VerticalAlignment="Center"
-                                                Margin="0,5"
+                                                Margin="6,5,0,5"
                                                 Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                 IsVisible="{Binding IsIntroPlaceholder}">
                                         <Ellipse Width="6" Height="6" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}"/>

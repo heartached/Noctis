@@ -1029,12 +1029,16 @@
                                                 </ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                         </ItemsControl>
-                                        <!-- Intro dots -->
+                                        <!-- Intro dots. Left margin centers the first dot over the
+                                             first letter of the lyric below. Each dot breathes on a
+                                             sine wave (Alternate keeps it continuous, no hold-and-snap);
+                                             FillMode=Backward holds the dim keyframe through the stagger
+                                             delay so dots 2/3 don't pop from full opacity. -->
                                         <StackPanel Orientation="Horizontal"
-                                                    Spacing="6"
+                                                    Spacing="8"
                                                     HorizontalAlignment="Left"
                                                     VerticalAlignment="Center"
-                                                    Margin="0,8"
+                                                    Margin="10,8,0,8"
                                                     Opacity="{Binding LineOpacity}"
                                                     IsVisible="{Binding IsIntroPlaceholder}"
                                                     Classes.active="{Binding IsActive}">
@@ -1043,15 +1047,13 @@
                                                     <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
                                                 </Transitions>
                                             </StackPanel.Transitions>
-                                            <Ellipse x:Name="IntroDot1" Width="8" Height="8" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}">
+                                            <Ellipse x:Name="IntroDot1" Width="12" Height="12" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}">
                                                 <Ellipse.Styles>
                                                     <Style Selector="StackPanel.active Ellipse#IntroDot1">
                                                         <Style.Animations>
-                                                            <Animation Duration="0:0:1.8" IterationCount="INFINITE">
-                                                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
-                                                                <KeyFrame Cue="16%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
-                                                                <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
-                                                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                            <Animation Duration="0:0:0.9" IterationCount="INFINITE" PlaybackDirection="Alternate" FillMode="Backward" Easing="SineEaseInOut">
+                                                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.35"/></KeyFrame>
+                                                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
                                                             </Animation>
                                                         </Style.Animations>
                                                     </Style>
@@ -1060,15 +1062,13 @@
                                                     </Style>
                                                 </Ellipse.Styles>
                                             </Ellipse>
-                                            <Ellipse x:Name="IntroDot2" Width="8" Height="8" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}">
+                                            <Ellipse x:Name="IntroDot2" Width="12" Height="12" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}">
                                                 <Ellipse.Styles>
                                                     <Style Selector="StackPanel.active Ellipse#IntroDot2">
                                                         <Style.Animations>
-                                                            <Animation Duration="0:0:1.8" IterationCount="INFINITE" Delay="0:0:0.3">
-                                                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
-                                                                <KeyFrame Cue="16%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
-                                                                <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
-                                                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                            <Animation Duration="0:0:0.9" IterationCount="INFINITE" PlaybackDirection="Alternate" FillMode="Backward" Easing="SineEaseInOut" Delay="0:0:0.3">
+                                                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.35"/></KeyFrame>
+                                                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
                                                             </Animation>
                                                         </Style.Animations>
                                                     </Style>
@@ -1077,15 +1077,13 @@
                                                     </Style>
                                                 </Ellipse.Styles>
                                             </Ellipse>
-                                            <Ellipse x:Name="IntroDot3" Width="8" Height="8" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}">
+                                            <Ellipse x:Name="IntroDot3" Width="12" Height="12" Fill="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsControlFill}">
                                                 <Ellipse.Styles>
                                                     <Style Selector="StackPanel.active Ellipse#IntroDot3">
                                                         <Style.Animations>
-                                                            <Animation Duration="0:0:1.8" IterationCount="INFINITE" Delay="0:0:0.6">
-                                                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
-                                                                <KeyFrame Cue="16%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
-                                                                <KeyFrame Cue="33%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
-                                                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.4"/></KeyFrame>
+                                                            <Animation Duration="0:0:0.9" IterationCount="INFINITE" PlaybackDirection="Alternate" FillMode="Backward" Easing="SineEaseInOut" Delay="0:0:0.6">
+                                                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.35"/></KeyFrame>
+                                                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
                                                             </Animation>
                                                         </Style.Animations>
                                                     </Style>
