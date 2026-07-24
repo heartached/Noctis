@@ -57,18 +57,21 @@ public partial class App : Application
         DataTemplates.Insert(0, cachedLocator);
         CachedLocator = cachedLocator;
 
-        // Global error capture — logs to DebugLogger when enabled
-        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
-        {
-            var ex = args.ExceptionObject as Exception;
-            DebugLogger.Error(DebugLogger.Category.Error, "UnhandledException",
-                $"terminating={args.IsTerminating}, msg={ex?.Message}");
-        };
+        // AppDomain.UnhandledException and TaskScheduler.UnobservedTaskException are
+        // registered once, in Program.Main — which writes both crash.log and DebugLog.
+        // Registering them here too logged every fault twice, to two different sinks,
+        // with no correlation between the entries.
 
-        TaskScheduler.UnobservedTaskException += (_, args) =>
+        // Dispatcher faults, however, had NO handler anywhere: an exception from a
+        // UI-thread async continuation went straight to AppDomain.UnhandledException and
+        // terminated the process. Log and mark handled — a fault in one continuation
+        // should not take the whole app down.
+        Avalonia.Threading.Dispatcher.UIThread.UnhandledException += (_, args) =>
         {
-            DebugLogger.Error(DebugLogger.Category.Error, "UnobservedTaskException",
-                $"msg={args.Exception?.InnerException?.Message ?? args.Exception?.Message}");
+            DebugLogger.Error(DebugLogger.Category.Error, "DispatcherUnhandledException",
+                args.Exception.Message);
+            Noctis.Services.DebugLog.Write("Dispatcher", args.Exception);
+            args.Handled = true;
         };
 
         // Temporary diagnostic (no-op unless NOCTIS_MEMTRACE=1): localize the
@@ -110,7 +113,15 @@ public partial class App : Application
             var analysisCoordinator = Services!.GetRequiredService<Noctis.Services.AudioAnalysis.AudioAnalysisCoordinator>();
             var library = Services!.GetRequiredService<ILibraryService>();
             library.LibraryUpdated += (_, _) => analysisCoordinator.StartBackfill();
-            analysisCoordinator.StartBackfill();
+
+            // Clear temp export directories orphaned by a previous crash/kill.
+            _ = Task.Run(Helpers.PngExportHelper.SweepStaleTempDirs);
+
+            // No eager StartBackfill here: this runs before MainWindow.Loaded has awaited
+            // Settings.LoadAsync(), so _settings() was still a default AppSettings and the
+            // first pass ignored the user's BpmKeyAnalysisEnabled choice. The
+            // LibraryUpdated subscription above covers it once the library is loaded, by
+            // which point settings are real.
 
             // Graceful shutdown: save state before exit. The handler must cancel the
             // request first — Avalonia proceeds with shutdown as soon as an async
@@ -123,7 +134,9 @@ public partial class App : Application
                 if (shutdownSaveDone) return;
                 shutdownSaveDone = true;
                 e.Cancel = true;
-                analysisCoordinator.Stop();
+                // Await the backfill's unwind: TryWriteTags is a synchronous TagLib
+                // rewrite of a whole audio file, and exiting mid-Save() truncates it.
+                try { await analysisCoordinator.StopAsync(TimeSpan.FromSeconds(3)); } catch { }
                 try { await mainVm.ShutdownAsync(); }
                 catch (Exception ex)
                 {

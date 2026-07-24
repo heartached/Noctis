@@ -60,11 +60,19 @@ public static class SingleInstanceGuard
     /// Asks the already-running instance to show its window, forwarding any
     /// file paths this launch was asked to open. Best effort.
     /// </summary>
-    public static void SignalFirstInstance(IReadOnlyList<string>? filesToOpen = null)
+    /// <returns>True when the running instance acknowledged the signal.</returns>
+    public static bool SignalFirstInstance(IReadOnlyList<string>? filesToOpen = null)
     {
         try
         {
-            using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
+            // CurrentUserOnly on both ends. On macOS/Linux .NET backs this with a Unix
+            // domain socket in $TMPDIR created with the default umask and never chmod'd —
+            // under a permissive umask any local account could connect and push a payload
+            // that ReadForwardedFilesAsync turns into an OpenExternalFiles call, driving
+            // the user's player into opening arbitrary files it can read. The flag also
+            // makes the client verify the server's owner.
+            using var client = new NamedPipeClientStream(
+                ".", PipeName, PipeDirection.Out, PipeOptions.CurrentUserOnly);
             client.Connect(2000);
             var payload = filesToOpen is { Count: > 0 }
                 ? string.Join('\n', filesToOpen.Select(Path.GetFullPath))
@@ -72,11 +80,16 @@ public static class SingleInstanceGuard
             var bytes = System.Text.Encoding.UTF8.GetBytes(payload);
             client.Write(bytes, 0, bytes.Length);
             client.Flush();
+            return true;
         }
-        catch
+        catch (Exception ex)
         {
-            // The running instance didn't answer; still exit so a stuck pipe
-            // can't spawn duplicate players.
+            // The running instance didn't answer — it may be hung, or its listener gave
+            // up after repeated pipe failures. Report it so the caller can tell the user
+            // instead of the app just vanishing on a double-click.
+            System.Diagnostics.Debug.WriteLine($"[SingleInstance] Signal failed: {ex.Message}");
+            Services.DebugLog.Write("SingleInstance", $"Signal failed: {ex.Message}");
+            return false;
         }
     }
 
@@ -154,8 +167,11 @@ public static class SingleInstanceGuard
                 inBufferSize: 0, outBufferSize: 0, security);
         }
 
+        // CurrentUserOnly is the non-Windows equivalent of the ACL above: it chmods the
+        // backing Unix domain socket to 0700. Without it the socket was created with the
+        // default umask in a world-writable $TMPDIR and never restricted.
         return new NamedPipeServerStream(
             PipeName, PipeDirection.In, maxNumberOfServerInstances: 1,
-            PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
     }
 }

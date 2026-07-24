@@ -39,7 +39,19 @@ internal class Program
             // starting a second player.
             if (!SingleInstanceGuard.TryAcquire())
             {
-                SingleInstanceGuard.SignalFirstInstance(filesToOpen);
+                // If the running instance doesn't answer — it's hung, or its listener
+                // gave up after repeated pipe failures — the old code still exited
+                // silently: the user double-clicked Noctis, waited two seconds, and
+                // nothing happened at all. No window, no error, no tray flash.
+                if (!SingleInstanceGuard.SignalFirstInstance(filesToOpen))
+                {
+                    LogCrash("SingleInstance",
+                        new InvalidOperationException(
+                            "Noctis is already running but is not responding to activation."));
+                    Console.Error.WriteLine(
+                        "Noctis is already running but isn't responding. " +
+                        "Close the existing process and try again.");
+                }
                 return;
             }
 
@@ -273,6 +285,19 @@ internal class Program
             var crashDir = AppPaths.DataRoot;
             Directory.CreateDirectory(crashDir);
             var crashPath = Path.Combine(crashDir, "crash.log");
+
+            // Roll at ~1 MB. Every crash appends a full stack trace, and a crash loop
+            // (e.g. the libvlc-missing case, which fires on every launch) grew this file
+            // without bound.
+            const long MaxCrashLogBytes = 1024 * 1024;
+            try
+            {
+                var info = new FileInfo(crashPath);
+                if (info.Exists && info.Length > MaxCrashLogBytes)
+                    File.Move(crashPath, crashPath + ".1", overwrite: true);
+            }
+            catch { /* rotation is best effort */ }
+
             var entry = $"[{DateTime.UtcNow:O}] {source}: {ex}\n---\n";
             File.AppendAllText(crashPath, entry);
         }
