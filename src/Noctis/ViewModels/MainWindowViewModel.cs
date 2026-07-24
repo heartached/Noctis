@@ -496,6 +496,9 @@ public partial class MainWindowViewModel : ViewModelBase
             Dispatcher.UIThread.Post(() => App.CachedLocator?.Build(_songsVm), DispatcherPriority.Background);
             Dispatcher.UIThread.Post(() => App.CachedLocator?.Build(_albumsVm), DispatcherPriority.Background);
             Dispatcher.UIThread.Post(() => App.CachedLocator?.Build(Settings), DispatcherPriority.Background);
+            // Lyrics is one player-bar click away at any time; pre-building it makes
+            // that first click as instant as the cached reuse on later clicks.
+            Dispatcher.UIThread.Post(() => App.CachedLocator?.Build(_lyricsVm), DispatcherPriority.Background);
         });
 
         // Refresh non-visible content VMs so their data is ready when navigated to.
