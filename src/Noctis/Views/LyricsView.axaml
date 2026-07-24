@@ -940,7 +940,8 @@
                  ClipToBounds=False so the active line's 1.07× scale doesn't get hard-clipped
                  on the right edge ("…GOA" → "…GOAT"). Vertical clipping still handled by the
                  ScrollViewer below; the OpacityMask handles the soft top/bottom fade. -->
-            <Border ClipToBounds="False"
+            <Border x:Name="LyricsContentHost"
+                    ClipToBounds="False"
                     VerticalAlignment="Stretch"
                     Margin="0,20,0,20">
                 <Border.OpacityMask>

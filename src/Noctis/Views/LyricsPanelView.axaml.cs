@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
@@ -64,11 +65,52 @@ public partial class LyricsPanelView : UserControl
     {
         if (ReferenceEquals(_vm, DataContext)) return;
         if (_vm != null)
+        {
             _vm.PropertyChanged -= OnVmPropertyChanged;
+            _vm.LyricsSwapPending -= OnLyricsSwapPending;
+            _vm.LyricsSwapped -= OnLyricsSwapped;
+        }
         _vm = DataContext as LyricsViewModel;
         if (_vm != null)
+        {
             _vm.PropertyChanged += OnVmPropertyChanged;
+            _vm.LyricsSwapPending += OnLyricsSwapPending;
+            _vm.LyricsSwapped += OnLyricsSwapped;
+        }
         _lastScrolledIndex = -1;
+    }
+
+    // ── Track-change lyric swap (mirrors the lyrics page): fade out, let the
+    // wholesale rebuild + re-anchor happen while hidden, fade back in. The
+    // re-anchor itself rides the existing ActiveLyricLines handler below.
+
+    private bool _lyricsSwapInProgress;
+
+    private void OnLyricsSwapPending(object? sender, EventArgs e)
+    {
+        _lyricsSwapInProgress = true;
+        FadeLyricsHost(0.0, LyricsViewModel.LyricsSwapFadeOutMs);
+    }
+
+    private void OnLyricsSwapped(object? sender, EventArgs e)
+    {
+        _lyricsSwapInProgress = false;
+        FadeLyricsHost(1.0, 240);
+    }
+
+    private void FadeLyricsHost(double to, int durationMs)
+    {
+        if (PanelLyricsHost is not { } host) return;
+        host.Transitions = new Transitions
+        {
+            new DoubleTransition
+            {
+                Property = OpacityProperty,
+                Duration = TimeSpan.FromMilliseconds(durationMs),
+                Easing = new Avalonia.Animation.Easings.CubicEaseInOut(),
+            },
+        };
+        host.Opacity = to;
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -79,6 +121,9 @@ public partial class LyricsPanelView : UserControl
 
         if (e.PropertyName == nameof(LyricsViewModel.ActiveLineIndex))
         {
+            // Mid-swap index churn must not start an animated glide — the
+            // ActiveLyricLines re-anchor below jumps once the swap lands.
+            if (_lyricsSwapInProgress) return;
             if (_followPaused || !_vm.IsSyncTabSelected) return;
             if (_vm.ActiveLineIndex >= 0)
                 ScrollToLine(_vm.ActiveLineIndex);

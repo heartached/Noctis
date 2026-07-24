@@ -1406,6 +1406,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         LyricLines.Clear();
         UnsyncedLines.Clear();
+        // If a swap was mid-fade when the queue ended, views are sitting at
+        // opacity 0 waiting for the apply that will never come — restore them.
+        LyricsSwapped?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnTrackStarted(object? sender, Track track)
@@ -1567,6 +1570,18 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>Raised on the UI thread when a lyric reload has its result ready and
+    /// is about to be applied; views fade their lyrics host out over
+    /// <see cref="LyricsSwapFadeOutMs"/> so the wholesale swap lands off-screen.</summary>
+    public event EventHandler? LyricsSwapPending;
+
+    /// <summary>Raised on the UI thread right after the lyric collections were
+    /// swapped (or cleared); views re-anchor their scroll and fade back in.</summary>
+    public event EventHandler? LyricsSwapped;
+
+    /// <summary>How long views get to fade out after <see cref="LyricsSwapPending"/>.</summary>
+    public const int LyricsSwapFadeOutMs = 130;
+
     private void LoadLyricsForTrack(Track track)
     {
         DebugLogger.Info(DebugLogger.Category.Lyrics, "LoadLyricsForTrack", $"title={track.Title}, id={track.Id}");
@@ -1588,8 +1603,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         AlternateLyricsLabel = string.Empty;
         var generation = ++_searchGeneration;
 
-        LyricLines.Clear();
-        UnsyncedLines.Clear();
+        // Deliberately NOT clearing LyricLines/UnsyncedLines here: the previous
+        // track's lines stay frozen on screen while the probe runs, and the apply
+        // swaps them wholesale behind the views' fade — the upfront clear was the
+        // blank flash in the track-change flicker. Every populated apply path uses
+        // ReplaceAll; the no-lyrics path clears explicitly.
         _currentActiveLine = null;
         _hasSyncedLyrics = false;
         IsSynced = false;
@@ -1621,13 +1639,26 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         if (generation != _searchGeneration) return;
 
+        // Give attached views one beat to fade the (still-visible) old lyrics
+        // out, so the swap below — a full ItemsControl rebuild plus a scroll
+        // snap — happens off-screen instead of as a visible flash+jump.
+        if (LyricsSwapPending != null)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() => LyricsSwapPending?.Invoke(this, EventArgs.Empty));
+            await Task.Delay(LyricsSwapFadeOutMs);
+            if (generation != _searchGeneration) return;
+        }
+
         var applied = new TaskCompletionSource();
         Dispatcher.UIThread.Post(() =>
         {
             try
             {
                 if (generation == _searchGeneration)
+                {
                     ApplyLocalLyricsResult(track, probe);
+                    LyricsSwapped?.Invoke(this, EventArgs.Empty);
+                }
             }
             finally
             {
@@ -1780,8 +1811,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        // No lyrics found — show search button only
+        // No lyrics found — the stale lines were left up during the probe
+        // (deferred clear), so empty the collections here, then show search only.
         DebugLogger.Warn(DebugLogger.Category.Lyrics, "NoLyricsFound", $"title={track.Title}, artist={track.Artist}");
+        LyricLines.Clear();
+        UnsyncedLines.Clear();
         ShowSearchButton = true;
         AutoSelectTab();
         RefreshActiveLyricPosition();
