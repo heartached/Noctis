@@ -689,7 +689,7 @@ public partial class PlayerViewModel : ViewModelBase
         if (libraryTrack != null && !ReferenceEquals(libraryTrack, CurrentTrack))
             libraryTrack.IsFavorite = newState;
         await _library.SaveAsync();
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(new[] { CurrentTrack });
     }
 
     /// <summary>Mirrors library favorite state onto queue/history Track instances

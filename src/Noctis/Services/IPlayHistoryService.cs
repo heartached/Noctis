@@ -11,6 +11,13 @@ public interface IPlayHistoryService
     /// <summary>Snapshot of all recorded events, oldest first.</summary>
     IReadOnlyList<PlayHistoryEvent> Events { get; }
 
+    /// <summary>
+    /// Loads the log off the calling thread. Call once during startup so the first
+    /// <see cref="Events"/> access — which happens on the UI thread — doesn't pay for
+    /// the file read.
+    /// </summary>
+    Task PreloadAsync();
+
     /// <summary>Records that playback of a track started.</summary>
     void RecordPlay(Track track);
 

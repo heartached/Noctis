@@ -380,7 +380,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         if (track == null) return;
         track.IsFavorite = !track.IsFavorite;
         await _library.SaveAsync();
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(new[] { track });
     }
 
     [RelayCommand]

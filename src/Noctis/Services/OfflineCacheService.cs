@@ -80,8 +80,21 @@ public sealed class OfflineCacheService : IOfflineCacheService
         {
             if (_index.TryGetValue(track.Id, out var entry))
             {
-                entry.Pinned = false;
-                _index[track.Id] = entry;
+                // Delete the cached file, don't just clear the flag. Unpinning left the
+                // file on disk, and because EnforceLimitsAsync only removes entries whose
+                // file is already *missing*, nothing would ever reclaim it — so unpinning
+                // freed exactly zero disk and the cache grew without bound.
+                try
+                {
+                    if (!string.IsNullOrEmpty(entry.Path) && File.Exists(entry.Path))
+                        File.Delete(entry.Path);
+                }
+                catch (Exception ex)
+                {
+                    DebugLog.Write("OfflineCache", $"Could not delete '{entry.Path}': {ex.Message}");
+                }
+
+                _index.Remove(track.Id);
                 await SaveIndexAsync(ct);
             }
         }
@@ -91,21 +104,73 @@ public sealed class OfflineCacheService : IOfflineCacheService
         }
     }
 
-    public async Task EnforceLimitsAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Prunes dead entries and evicts unpinned files, oldest-touched first, until the
+    /// cache fits <paramref name="limitMb"/>.
+    ///
+    /// This previously only dropped index entries whose file was already gone — it never
+    /// deleted anything and never applied a size cap, despite the name, so the cache
+    /// directory grew without bound.
+    /// </summary>
+    public async Task EnforceLimitsAsync(int limitMb = 0, CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
         try
         {
-            // Lightweight eviction policy: remove unpinned entries whose files are missing.
-            var toRemove = _index
-                .Where(kvp => !kvp.Value.Pinned && !File.Exists(kvp.Value.Path))
-                .Select(kvp => kvp.Key)
-                .ToList();
+            var changed = false;
 
-            foreach (var id in toRemove)
+            // 1. Drop entries whose file is gone.
+            foreach (var id in _index
+                         .Where(kvp => !File.Exists(kvp.Value.Path))
+                         .Select(kvp => kvp.Key)
+                         .ToList())
+            {
                 _index.Remove(id);
+                changed = true;
+            }
 
-            if (toRemove.Count > 0)
+            // 2. Evict unpinned entries, least-recently-updated first, until under budget.
+            if (limitMb > 0)
+            {
+                var budget = (long)limitMb * 1024 * 1024;
+
+                var sized = _index
+                    .Select(kvp =>
+                    {
+                        long bytes = 0;
+                        try { bytes = new FileInfo(kvp.Value.Path).Length; } catch { }
+                        return (Id: kvp.Key, Entry: kvp.Value, Bytes: bytes);
+                    })
+                    .ToList();
+
+                var total = sized.Sum(e => e.Bytes);
+
+                foreach (var candidate in sized
+                             .Where(e => !e.Entry.Pinned)
+                             .OrderBy(e => e.Entry.UpdatedUtc))
+                {
+                    if (total <= budget) break;
+                    ct.ThrowIfCancellationRequested();
+
+                    try
+                    {
+                        if (File.Exists(candidate.Entry.Path))
+                            File.Delete(candidate.Entry.Path);
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugLog.Write("OfflineCache",
+                            $"Could not evict '{candidate.Entry.Path}': {ex.Message}");
+                        continue;
+                    }
+
+                    _index.Remove(candidate.Id);
+                    total -= candidate.Bytes;
+                    changed = true;
+                }
+            }
+
+            if (changed)
                 await SaveIndexAsync(ct);
         }
         finally

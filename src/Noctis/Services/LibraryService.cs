@@ -487,8 +487,18 @@ public class LibraryService : ILibraryService
     /// partial progress, so quitting mid-scan doesn't waste the work (or, for a
     /// first scan of a new folder, lose all of it) — the next scan resumes.
     /// </summary>
+    /// <summary>
+    /// Cancelled when the app is shutting down. The startup metadata backfills take no
+    /// token at all, so they kept hammering the disk (re-opening essentially every
+    /// AAC/ALAC file with Parallel.ForEach) after the user had asked the app to quit.
+    /// </summary>
+    private readonly CancellationTokenSource _shutdownCts = new();
+
     public async Task PauseActiveScanForShutdownAsync(TimeSpan timeout)
     {
+        // Stop the background backfills too, not just the scan.
+        try { _shutdownCts.Cancel(); } catch { }
+
         var cts = _activeScanCts;
         var finished = _scanFinished;
         if (cts == null || finished == null) return;
@@ -1014,13 +1024,33 @@ public class LibraryService : ILibraryService
         }
     }
 
-    public void NotifyFavoritesChanged()
+    public void NotifyFavoritesChanged() => NotifyFavoritesChanged(null);
+
+    /// <summary>
+    /// Re-raises album favorite state for the albums containing <paramref name="changed"/>,
+    /// or for every album when null.
+    ///
+    /// Album favorite state (heart overlay, context-menu items) is computed from tracks,
+    /// so the owning albums must re-raise their derived properties. Doing it for *every*
+    /// album meant two PropertyChanged raises per album on a single heart click — 20,000
+    /// on a 10,000-album library, each causing realized tiles to re-evaluate
+    /// Tracks.Any(t => t.IsFavorite).
+    /// </summary>
+    public void NotifyFavoritesChanged(IReadOnlyCollection<Track>? changed)
     {
-        // Album favorite state (heart overlay, context-menu Favorites items) is
-        // computed from tracks, so each album must re-raise its derived properties
-        // for bound tiles to update in real time.
-        foreach (var album in _albums)
-            album.NotifyFavoriteStateChanged();
+        if (changed is { Count: > 0 })
+        {
+            var albumIds = new HashSet<Guid>(changed.Select(t => t.AlbumId));
+            foreach (var album in _albums)
+                if (albumIds.Contains(album.Id))
+                    album.NotifyFavoriteStateChanged();
+        }
+        else
+        {
+            foreach (var album in _albums)
+                album.NotifyFavoriteStateChanged();
+        }
+
         FavoritesChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -1127,7 +1157,29 @@ public class LibraryService : ILibraryService
     /// Rebuilds album, artist, and track-ID indexes from the current track list.
     /// Heavy work (grouping, sorting, File.Exists) runs on a background thread.
     /// </summary>
+    // Serializes index rebuilds. The four index fields are published as separate
+    // assignments, and rebuilds are triggered concurrently from unrelated paths — the
+    // scan's progressive publisher, the artwork publisher, and NotifyMetadataChanged's
+    // unawaited Task.Run. Two overlapping runs that observed different _tracks could
+    // interleave so _albums came from one and _albumIndex from the other, leaving
+    // GetAlbumById returning an Album that is not in Albums. SaveIndexCacheAsync had the
+    // same problem, and its output survives restarts because the cache validates.
+    private readonly SemaphoreSlim _rebuildGate = new(1, 1);
+
     private async Task RebuildIndexesAsync(bool persistCache = true)
+    {
+        await _rebuildGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await RebuildIndexesCoreAsync(persistCache).ConfigureAwait(false);
+        }
+        finally
+        {
+            _rebuildGate.Release();
+        }
+    }
+
+    private async Task RebuildIndexesCoreAsync(bool persistCache)
     {
         var tracks = _tracks;
         var persistence = _persistence;
@@ -1250,8 +1302,14 @@ public class LibraryService : ILibraryService
         // Persist the computed indexes so next startup can skip this rebuild.
         // Skipped during progressive scan publishes to avoid rewriting the cache
         // on every partial update; the final rebuild persists the authoritative set.
+        //
+        // Built from the snapshot this rebuild just produced rather than re-reading the
+        // fields: re-reading let it persist an indexes.json whose track hash validated
+        // against one track set while its album grouping came from another, and the
+        // stale grouping then survived restarts because TryRestoreFromCacheAsync
+        // accepted it.
         if (persistCache)
-            _ = SaveIndexCacheAsync();
+            _ = SaveIndexCacheAsync(tracks, albums, artists);
     }
 
     /// <summary>
@@ -1327,6 +1385,11 @@ public class LibraryService : ILibraryService
         if (settings.MetadataSchemaVersion >= CurrentMetadataSchemaVersion)
             return false;
 
+        // The backfills below re-open a large fraction of the library. Report progress
+        // through the existing channel so a multi-minute pass on a big library isn't a
+        // silent stall with no explanation.
+        ScanProgress?.Invoke(this, 0);
+
         var didBackfillMetadata = false;
         if (settings.MetadataSchemaVersion < 2)
             didBackfillMetadata = await BackfillTrackMetadataAsync(_tracks);
@@ -1350,6 +1413,12 @@ public class LibraryService : ILibraryService
         // advisory flag in Apple Music downloads for a star rating.
         if (settings.MetadataSchemaVersion < 7)
             didBackfillMetadata |= await BackfillAdvisoryMisreadRatingsAsync(_tracks);
+
+        // Only advance the recorded schema version when the pass actually completed.
+        // Cancelling at shutdown mid-backfill and still stamping it done would leave the
+        // remaining tracks permanently un-backfilled.
+        if (_shutdownCts.IsCancellationRequested)
+            return didBackfillMetadata;
 
         settings.MetadataSchemaVersion = CurrentMetadataSchemaVersion;
 
@@ -1400,7 +1469,9 @@ public class LibraryService : ILibraryService
                 candidates,
                 new ParallelOptions
                 {
-                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                    // Stop on shutdown instead of hammering the disk after the user quit.
+                    CancellationToken = _shutdownCts.Token
                 },
                 track =>
                 {
@@ -1515,7 +1586,9 @@ public class LibraryService : ILibraryService
                 candidates,
                 new ParallelOptions
                 {
-                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                    // Stop on shutdown instead of hammering the disk after the user quit.
+                    CancellationToken = _shutdownCts.Token
                 },
                 track =>
                 {
@@ -1562,7 +1635,9 @@ public class LibraryService : ILibraryService
                 candidates,
                 new ParallelOptions
                 {
-                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                    // Stop on shutdown instead of hammering the disk after the user quit.
+                    CancellationToken = _shutdownCts.Token
                 },
                 track =>
                 {
@@ -1604,7 +1679,9 @@ public class LibraryService : ILibraryService
                 candidates,
                 new ParallelOptions
                 {
-                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                    // Stop on shutdown instead of hammering the disk after the user quit.
+                    CancellationToken = _shutdownCts.Token
                 },
                 track =>
                 {
@@ -1909,19 +1986,24 @@ public class LibraryService : ILibraryService
     /// <summary>
     /// Saves the current album/artist indexes to cache for fast restore on next startup.
     /// </summary>
-    private async Task SaveIndexCacheAsync()
+    /// <summary>
+    /// Persists a coherent index snapshot. The three collections must come from the same
+    /// rebuild — see the note at the call site.
+    /// </summary>
+    private async Task SaveIndexCacheAsync(
+        List<Track> tracks, List<Album> albums, List<Artist> artists)
     {
         try
         {
             var cache = new LibraryIndexCache
             {
                 Version = CurrentIndexCacheVersion,
-                TrackCount = _tracks.Count,
-                TrackIdHash = ComputeTrackIdHash(_tracks),
-                Artists = _artists.ToList()
+                TrackCount = tracks.Count,
+                TrackIdHash = ComputeTrackIdHash(tracks),
+                Artists = artists.ToList()
             };
 
-            foreach (var album in _albums)
+            foreach (var album in albums)
             {
                 cache.Albums.Add(new CachedAlbumEntry
                 {

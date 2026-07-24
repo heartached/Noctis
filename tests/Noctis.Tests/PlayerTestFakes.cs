@@ -83,6 +83,7 @@ internal sealed class FakeLibraryService : ILibraryService
     public Task ClearAsync() => Task.CompletedTask;
     public Task RebuildIndexAsync(CancellationToken ct = default) => Task.CompletedTask;
     public void NotifyFavoritesChanged() { }
+    public void NotifyFavoritesChanged(IReadOnlyCollection<Track>? changed) { }
     public Task SetTracksRatingAsync(IReadOnlyList<Track> tracks, int rating) => Task.CompletedTask;
     public Task SetTracksDislikedAsync(IReadOnlyList<Track> tracks, bool isDisliked) => Task.CompletedTask;
     public Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until) => Task.CompletedTask;

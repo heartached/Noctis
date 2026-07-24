@@ -93,6 +93,13 @@ public interface ILibraryService
     /// <summary>Raises the FavoritesChanged event to notify subscribers.</summary>
     void NotifyFavoritesChanged();
 
+    /// <summary>
+    /// Same as <see cref="NotifyFavoritesChanged()"/> but only re-raises album state for
+    /// the albums owning <paramref name="changed"/> — a full sweep is two PropertyChanged
+    /// raises per album in the library for a single heart click.
+    /// </summary>
+    void NotifyFavoritesChanged(IReadOnlyCollection<Track>? changed);
+
     /// <summary>Sets a 0-5 star rating on the given tracks, saves the library, and writes the file tags.</summary>
     Task SetTracksRatingAsync(IReadOnlyList<Track> tracks, int rating);
 

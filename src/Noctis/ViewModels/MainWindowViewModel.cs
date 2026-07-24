@@ -422,6 +422,11 @@ public partial class MainWindowViewModel : ViewModelBase
         // Load settings
         await Settings.LoadAsync();
 
+        // Warm the play-history log off the UI thread. Every consumer (Home, Statistics,
+        // Settings, Wrap) reads it from the UI thread, and the first read otherwise
+        // blocked on a synchronous file read + deserialize of up to 10,000 events.
+        _ = _playHistory.PreloadAsync();
+
         // Load persisted library
         await _library.LoadAsync();
 

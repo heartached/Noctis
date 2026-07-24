@@ -599,7 +599,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         foreach (var t in tracks)
             t.IsFavorite = !t.IsFavorite;
         await _library.SaveAsync();
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(tracks);
         CtrlSelectedTracks.Clear();
     }
 
