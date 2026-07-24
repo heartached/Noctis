@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
@@ -50,7 +51,8 @@ public partial class StatisticsViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenWrap()
     {
-        var vm = new WrapViewModel(_playHistory, _library);
+        var vm = new WrapViewModel(_playHistory, _library,
+            App.Services?.GetService<IWrapArchiveService>());
         await Views.WrapDialog.ShowAsync(vm);
     }
 

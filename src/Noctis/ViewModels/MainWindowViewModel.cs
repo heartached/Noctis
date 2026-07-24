@@ -471,6 +471,25 @@ public partial class MainWindowViewModel : ViewModelBase
         try { App.Services?.GetService<ILibraryWatcherService>()?.Refresh(); }
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Watcher start failed: {ex.Message}"); }
 
+        // Freeze finished years now rather than waiting for someone to open Wrap. The
+        // play log caps at 10,000 events; a user who opens Wrap for the first time months
+        // into the new year had last year's already-trimmed numbers written to the archive
+        // as the permanent record. Archiving every launch shrinks that window to one
+        // session's worth of plays.
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var archive = App.Services?.GetService<IWrapArchiveService>() ?? new WrapArchiveService();
+                var tracksById = _library.Tracks.ToDictionary(t => t.Id);
+                archive.EnsureArchived(_playHistory.Events, tracksById, DateTime.Now.Year);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainWindowVM] Wrap archive failed: {ex.Message}");
+            }
+        });
+
         // Silently check GitHub for a newer release so the About page can surface
         // a passive "Update available" badge without the user clicking anything.
         // Deferred + fire-and-forget so it never blocks startup.

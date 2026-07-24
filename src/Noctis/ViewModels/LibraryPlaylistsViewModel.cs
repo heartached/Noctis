@@ -70,6 +70,32 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
         ApplyFilter(_currentFilter);
     }
 
+    // ── Sort ────────────────────────────────────────────────────────────────
+    // Playlist carries CreatedAt, ModifiedAt and TrackIds.Count, and every sibling grid
+    // has sorting, but this tab only ever showed whatever order the sidebar happened to
+    // build.
+
+    /// <summary>"default" (sidebar order), "name", "created", "modified" or "tracks".</summary>
+    [ObservableProperty] private string _sortMode = "default";
+
+    public string SortLabel => SortMode switch
+    {
+        "name" => "Name",
+        "created" => "Recently created",
+        "modified" => "Recently modified",
+        "tracks" => "Track count",
+        _ => "Default",
+    };
+
+    partial void OnSortModeChanged(string value)
+    {
+        OnPropertyChanged(nameof(SortLabel));
+        ApplyFilter(_currentFilter);
+    }
+
+    [RelayCommand]
+    private void SetSort(string mode) => SortMode = mode;
+
     public void ApplyFilter(string query)
     {
         if (SearchText != query)
@@ -85,6 +111,15 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
             filtered = filtered.Where(p =>
                 p.Label.Contains(query, StringComparison.OrdinalIgnoreCase));
         }
+
+        filtered = SortMode switch
+        {
+            "name" => filtered.OrderBy(p => p.Label, StringComparer.OrdinalIgnoreCase),
+            "created" => filtered.OrderByDescending(p => ResolvePlaylist(p)?.CreatedAt ?? DateTime.MinValue),
+            "modified" => filtered.OrderByDescending(p => ResolvePlaylist(p)?.ModifiedAt ?? DateTime.MinValue),
+            "tracks" => filtered.OrderByDescending(p => ResolvePlaylist(p)?.TrackIds.Count ?? 0),
+            _ => filtered,
+        };
 
         foreach (var item in filtered)
             FilteredPlaylists.Add(item);

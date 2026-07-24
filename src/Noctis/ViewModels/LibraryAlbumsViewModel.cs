@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
@@ -156,9 +156,6 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Fires when the user clicks the back button in artist filter mode.</summary>
     public event EventHandler? BackRequested;
 
-    /// <summary>Exposes the sidebar's playlists for the Add to Playlist submenu.</summary>
-    public ObservableCollection<Playlist> Playlists => _sidebar.Playlists;
-
     public LibraryAlbumsViewModel(ILibraryService library, PlayerViewModel player, SidebarViewModel sidebar, SettingsViewModel settings)
     {
         _library = library;
@@ -186,13 +183,20 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             new() { Filter = ReleaseType.Compilation, Label = "Other" },
         };
 
-        // Mark dirty when library changes — actual reload deferred to next Refresh() call
-        _library.LibraryUpdated += (_, _) =>
+        // Mark dirty when library changes — actual reload deferred to next Refresh() call.
+        // Held in a field so Dispose can detach it: an anonymous lambda with no stored
+        // reference can never be unsubscribed, and Dispose only detached the settings
+        // handler. Harmless only while MainWindowViewModel keeps this instance alive for
+        // the process lifetime — LibrarySongsViewModel already does it this way.
+        _libraryUpdatedHandler = (_, _) =>
         {
             _isDirty = true;
             Dispatcher.UIThread.Post(Refresh);
         };
+        _library.LibraryUpdated += _libraryUpdatedHandler;
     }
+
+    private EventHandler? _libraryUpdatedHandler;
 
     partial void OnReleaseTypeFilterChanged(ReleaseType? value)
     {
@@ -651,18 +655,6 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     }
 
     [RelayCommand]
-    private async Task AddToExistingPlaylist(object[] parameters)
-    {
-        if (parameters == null || parameters.Length != 2) return;
-        if (parameters[0] is not Album album || parameters[1] is not Playlist playlist) return;
-        var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : new List<Album> { album };
-        var tracks = albums.SelectMany(a => a.Tracks ?? new()).ToList();
-        if (tracks.Count == 0) return;
-        await _sidebar.AddTracksToPlaylist(playlist.Id, tracks);
-        CtrlSelectedAlbums.Clear();
-    }
-
-    [RelayCommand]
     private async Task ToggleAlbumFavorites(Album album)
     {
         var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
@@ -899,6 +891,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         {
             _searchDebounce.Stop();
             _searchDebounce = null;
+        }
+        if (_libraryUpdatedHandler != null)
+        {
+            _library.LibraryUpdated -= _libraryUpdatedHandler;
+            _libraryUpdatedHandler = null;
         }
     }
 

@@ -231,6 +231,9 @@ internal class Program
         services.AddSingleton<ILrcLibService, LrcLibService>();
         services.AddSingleton<INetEaseService, NetEaseService>();
         services.AddSingleton<IPlayHistoryService, PlayHistoryService>();
+        // Singleton so the startup archive pass and the Wrap dialog share one instance
+        // (and one lock over wrap_archive.json).
+        services.AddSingleton<IWrapArchiveService, WrapArchiveService>();
         services.AddSingleton<DeezerMetadataService>();
         services.AddSingleton<IAlbumArtworkSearch>(sp => sp.GetRequiredService<ITunesArtworkService>());
         services.AddSingleton<AutoMatchCoordinator>(sp =>

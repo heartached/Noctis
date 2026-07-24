@@ -17,6 +17,47 @@
         <!-- Right margin trimmed to 2 so the vertical scrollbar sits at the window edge. -->
         <DockPanel Grid.Row="0" Margin="16,8,2,16">
 
+        <!-- Sort row. Every sibling grid has sorting; this tab had none at all, so it
+             showed whatever order the sidebar happened to build. -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,0,14,10"
+                    IsVisible="{Binding !ShowNoPlaylists}">
+            <StackPanel.Styles>
+                <Style Selector="Button.release-chip">
+                    <Setter Property="Background" Value="{DynamicResource ChipBackground}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                    <Setter Property="CornerRadius" Value="999"/>
+                    <Setter Property="Padding" Value="14,6"/>
+                    <Setter Property="FontSize" Value="12"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                </Style>
+                <Style Selector="Button.release-chip:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
+                </Style>
+            </StackPanel.Styles>
+            <Button Classes="release-chip" VerticalAlignment="Center"
+                    ToolTip.Tip="Sort playlists">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Sort:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding SortLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
+                              RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                </StackPanel>
+                <Button.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                        <MenuItem Header="Default" Command="{Binding SetSortCommand}" CommandParameter="default"/>
+                        <MenuItem Header="Name" Command="{Binding SetSortCommand}" CommandParameter="name"/>
+                        <MenuItem Header="Recently created" Command="{Binding SetSortCommand}" CommandParameter="created"/>
+                        <MenuItem Header="Recently modified" Command="{Binding SetSortCommand}" CommandParameter="modified"/>
+                        <MenuItem Header="Track count" Command="{Binding SetSortCommand}" CommandParameter="tracks"/>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+        </StackPanel>
+
         <!-- Content area with overlay for empty state -->
         <Grid>
             <!-- Playlist grid (responsive wrap panel) -->

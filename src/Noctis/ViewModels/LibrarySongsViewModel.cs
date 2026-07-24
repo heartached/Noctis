@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -52,9 +52,6 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
     /// <summary>Currently selected tracks (for multi-select and drag).</summary>
     public ObservableCollection<Track> SelectedTracks { get; } = new();
-
-    /// <summary>Exposes the sidebar's playlists for the Add to Playlist submenu.</summary>
-    public ObservableCollection<Playlist> Playlists => _sidebar.Playlists;
 
     /// <summary>Fires when the user wants to view an album from a track.</summary>
     public event EventHandler<Track>? ViewAlbumRequested;
@@ -233,16 +230,6 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     {
         var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
         await _sidebar.CreatePlaylistWithTracksAsync(tracks);
-        CtrlSelectedTracks.Clear();
-    }
-
-    [RelayCommand]
-    private async Task AddToExistingPlaylist(object[] parameters)
-    {
-        if (parameters == null || parameters.Length != 2) return;
-        if (parameters[0] is not Track track || parameters[1] is not Playlist playlist) return;
-        var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
-        await _sidebar.AddTracksToPlaylist(playlist.Id, tracks);
         CtrlSelectedTracks.Clear();
     }
 

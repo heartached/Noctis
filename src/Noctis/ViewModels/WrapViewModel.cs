@@ -10,7 +10,7 @@ namespace Noctis.ViewModels;
 /// Drives the Noctis Wrap dialog: yearly/monthly recap from the play log,
 /// random test data for previewing, and share-card export.
 /// </summary>
-public partial class WrapViewModel : ViewModelBase
+public partial class WrapViewModel : ViewModelBase, IDisposable
 {
     private readonly IPlayHistoryService _playHistory;
     private readonly ILibraryService _library;
@@ -38,6 +38,10 @@ public partial class WrapViewModel : ViewModelBase
     [ObservableProperty] private string _hiResText = "0%";
     [ObservableProperty] private string _topGenreText = "—";
     [ObservableProperty] private bool _hasData;
+
+    /// <summary>True when the selected year's archived snapshot was built from an already
+    /// trimmed play log, so the numbers below are only part of that year.</summary>
+    [ObservableProperty] private bool _isPartialYear;
 
     [ObservableProperty] private List<WrapEntry> _topTracks = new();
     [ObservableProperty] private List<WrapEntry> _topArtists = new();
@@ -79,12 +83,16 @@ public partial class WrapViewModel : ViewModelBase
     {
         if (SelectedYear == _currentYear)
         {
+            IsPartialYear = false;
             var stats = WrapStatsBuilder.Build(
                 _playHistory.Events, _tracksById, _currentYear, IsMonthMode ? DateTime.Now.Month : null);
             Apply(stats);
         }
         else
         {
+            // A recap frozen from a partially trimmed log is not the year — say so rather
+            // than presenting incomplete numbers as the record.
+            IsPartialYear = !_archive.IsYearComplete(SelectedYear);
             var stats = _archive.GetYear(SelectedYear)
                         ?? new WrapStats { PeriodLabel = SelectedYear.ToString() };
             Apply(stats);
@@ -206,4 +214,18 @@ public partial class WrapViewModel : ViewModelBase
     }
 
     public void ReportStatus(string message) => StatusText = message;
+
+    /// <summary>
+    /// Releases the rendered share card. A fresh WrapViewModel is created per OpenWrap and
+    /// nothing released the final Preview when the dialog closed, so every open/close cycle
+    /// leaked a full-size bitmap plus its PNG byte array until the finalizer ran.
+    /// </summary>
+    public void Dispose()
+    {
+        // Any in-flight render will see a bumped generation and drop its own bitmap.
+        _renderGeneration++;
+        Preview?.Dispose();
+        Preview = null;
+        CurrentPng = null;
+    }
 }

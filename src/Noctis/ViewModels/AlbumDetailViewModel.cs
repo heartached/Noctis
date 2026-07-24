@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using Avalonia.Media;
@@ -714,22 +714,6 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     {
         if (Tracks.Count == 0) return;
         await _sidebar.CreatePlaylistWithTracksAsync(InAlbumOrder(Tracks));
-    }
-
-    [RelayCommand]
-    private async Task AddToExistingPlaylist(object[] parameters)
-    {
-        if (parameters == null || parameters.Length != 2) return;
-        if (parameters[0] is not Track track || parameters[1] is not Playlist playlist) return;
-
-        await _sidebar.AddTracksToPlaylist(playlist.Id, new[] { track });
-    }
-
-    [RelayCommand]
-    private async Task AddAlbumToExistingPlaylist(Playlist playlist)
-    {
-        if (playlist == null || Tracks.Count == 0) return;
-        await _sidebar.AddTracksToPlaylist(playlist.Id, InAlbumOrder(Tracks));
     }
 
     [RelayCommand]

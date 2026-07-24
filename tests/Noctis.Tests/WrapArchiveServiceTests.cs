@@ -77,4 +77,69 @@ public class WrapArchiveServiceTests : IDisposable
         Assert.Single(archive.ArchivedYears);
         Assert.Equal(1, archive.GetYear(2024)!.TotalPlays); // still the original snapshot
     }
+
+    [Fact]
+    public void EnsureArchived_MarksAYearPartial_WhenTheLogStartsInsideIt()
+    {
+        var t = MakeTrack("Song", "Artist", "Album", "Pop");
+        var byId = new Dictionary<Guid, Track> { [t.Id] = t };
+
+        // The 10k cap has already trimmed everything before May, so this snapshot can
+        // only ever cover part of 2024.
+        var trimmed = new List<PlayHistoryEvent>
+        {
+            Play(t, new DateTime(2024, 5, 1, 12, 0, 0, DateTimeKind.Local)),
+        };
+
+        var archive = new WrapArchiveService(_file);
+        archive.EnsureArchived(trimmed, byId, currentYear: 2026);
+
+        Assert.False(archive.IsYearComplete(2024));
+        Assert.True(archive.IsYearComplete(2023)); // unarchived years are not "partial"
+    }
+
+    [Fact]
+    public void EnsureArchived_MarksAYearComplete_WhenTheLogPredatesIt()
+    {
+        var t = MakeTrack("Song", "Artist", "Album", "Pop");
+        var byId = new Dictionary<Guid, Track> { [t.Id] = t };
+        var events = new List<PlayHistoryEvent>
+        {
+            Play(t, new DateTime(2023, 11, 1, 12, 0, 0, DateTimeKind.Local)),
+            Play(t, new DateTime(2024, 5, 1, 12, 0, 0, DateTimeKind.Local)),
+        };
+
+        var archive = new WrapArchiveService(_file);
+        archive.EnsureArchived(events, byId, currentYear: 2026);
+
+        Assert.True(archive.IsYearComplete(2024));
+    }
+
+    [Fact]
+    public void EnsureArchived_ReplacesAPartialSnapshot_WhenALaterLogReachesFurtherBack()
+    {
+        var t = MakeTrack("Song", "Artist", "Album", "Pop");
+        var byId = new Dictionary<Guid, Track> { [t.Id] = t };
+
+        var archive = new WrapArchiveService(_file);
+        archive.EnsureArchived(new List<PlayHistoryEvent>
+        {
+            Play(t, new DateTime(2024, 5, 1, 12, 0, 0, DateTimeKind.Local)),
+        }, byId, currentYear: 2026);
+
+        Assert.False(archive.IsYearComplete(2024));
+        Assert.Equal(1, archive.GetYear(2024)!.TotalPlays);
+
+        // A restored play_history.json reaches back past the start of the year.
+        archive.EnsureArchived(new List<PlayHistoryEvent>
+        {
+            Play(t, new DateTime(2023, 12, 1, 12, 0, 0, DateTimeKind.Local)),
+            Play(t, new DateTime(2024, 2, 1, 12, 0, 0, DateTimeKind.Local)),
+            Play(t, new DateTime(2024, 5, 1, 12, 0, 0, DateTimeKind.Local)),
+        }, byId, currentYear: 2026);
+
+        Assert.True(archive.IsYearComplete(2024));
+        Assert.Equal(2, archive.GetYear(2024)!.TotalPlays);
+        Assert.Single(archive.ArchivedYears, y => y == 2024);
+    }
 }
