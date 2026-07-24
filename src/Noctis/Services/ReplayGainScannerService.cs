@@ -246,9 +246,14 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
                 TruePeakDbtp = peak ?? 0.0,
             };
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            return new LoudnessResult { Failed = true, Error = "cancelled" };
+            // Rethrow so ScanAsync's own cancellation handler reports it as cancellation.
+            // Swallowing it into Failed = "cancelled" made the in-flight track show as a
+            // red "Failed: cancelled" row and increment the failure count, before the
+            // next iteration's ThrowIfCancellationRequested unwound — so the user saw a
+            // failure for a track they merely cancelled.
+            throw;
         }
         catch (System.Exception ex)
         {

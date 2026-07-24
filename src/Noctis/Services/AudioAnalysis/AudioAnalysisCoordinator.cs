@@ -194,6 +194,10 @@ public sealed class AudioAnalysisCoordinator
             catch { /* per-file failure: continue */ }
         }
 
+        // The pass is over — hand back the ~21 MB of LOH decode buffers rather than
+        // pinning them for the rest of the session.
+        try { _analysis.ReleaseBuffers(); } catch { }
+
         if (anyWritten)
         {
             try { await _library.SaveAsync(); } catch { }
