@@ -37,10 +37,15 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "publish\win-x64\Noctis.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "publish\win-x64\Noctis.pdb"; DestDir: "{app}"; Flags: ignoreversion
-Source: "publish\win-x64\*.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "publish\win-x64\libvlc\*"; DestDir: "{app}\libvlc"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Copy everything CI published rather than an allowlist of patterns. The old
+; hand-written list (Noctis.exe + *.dll + libvlc\*) silently omitted ffmpeg.exe, which
+; CI pins and SHA-256 verifies specifically so users don't need a system install — so
+; every winget / Chocolatey / Setup.exe user lost the Audio Converter, the ReplayGain
+; scanner and share-clip video export unless they happened to have ffmpeg on PATH.
+; A wildcard cannot drift from what CI actually produces.
+; *.pdb is excluded: it ships full source paths and internal symbol names to end users,
+; and nothing in the app consumes it.
+Source: "publish\win-x64\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
