@@ -38,10 +38,7 @@
             <Setter Property="Opacity" Value="0.32"/>
         </Style>
 
-        <!-- Recently Played: art lifts and a play button fades in on hover -->
-        <Style Selector="Button.album-tile:pointerover Border#RecentArt">
-            <Setter Property="RenderTransform" Value="scale(1.03)"/>
-        </Style>
+        <!-- Recently Played: a play button fades in on hover -->
         <Style Selector="Button.recent-play">
             <Setter Property="Transitions">
                 <Transitions>
@@ -149,6 +146,7 @@
                                             </TextBlock>
                                             <PathIcon Grid.Column="1"
                                                       Data="{StaticResource HeartFillIcon}"
+                                                      Classes="heart-pop"
                                                       Width="14" Height="14"
                                                       Foreground="#E74856"
                                                       Margin="6,0,0,0"
@@ -201,11 +199,10 @@
                                         CommandParameter="{Binding}">
                                     <Button.Styles>
                                         <Style Selector="Button:pointerover Border#ArtistAvatar">
-                                            <Setter Property="RenderTransform" Value="scale(1.04)" />
                                             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
                                         </Style>
                                         <!-- Keep the tile transparent on hover/press: only the
-                                             avatar scales, no gray square behind it. -->
+                                             avatar ring lights up, no gray square behind it. -->
                                         <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                                             <Setter Property="Background" Value="Transparent" />
                                         </Style>
@@ -214,34 +211,45 @@
                                         </Style>
                                     </Button.Styles>
                                     <StackPanel Spacing="10" HorizontalAlignment="Center">
-                                        <Border x:Name="ArtistAvatar"
-                                                Width="140" Height="140"
-                                                CornerRadius="70"
-                                                ClipToBounds="True"
-                                                BorderThickness="2"
-                                                BorderBrush="Transparent"
-                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-                                                RenderTransformOrigin="50%,50%">
-                                            <Border.Transitions>
-                                                <Transitions>
-                                                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15"/>
-                                                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
-                                                </Transitions>
-                                            </Border.Transitions>
-                                            <Panel>
-                                                <PathIcon Data="{StaticResource ArtistsIcon}"
-                                                          Width="58"
-                                                          Height="58"
-                                                          HorizontalAlignment="Center"
-                                                          VerticalAlignment="Center"
-                                                          Opacity="0.22" />
-                                                <controls:CachedImage SourcePath="{Binding ImagePath}"
-                                                                      DecodeWidth="320"
-                                                                      Stretch="UniformToFill"
-                                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                                      IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                            </Panel>
-                                        </Border>
+                                        <!-- Circular portrait: byte-faithful copy of the Artists-page
+                                             tile (LibraryArtistsView), which renders every artist as a
+                                             full uncut circle. The previous custom variant (extra
+                                             BorderThickness on the clipping border, HighQuality hint,
+                                             DecodeWidth, Viewbox) drew some photos cut off at the circle
+                                             edges. The hover accent ring lives on a separate overlay
+                                             border so it can't affect the clip or the image layout. -->
+                                        <Panel Width="140" Height="140" HorizontalAlignment="Center">
+                                            <Border Width="140" Height="140"
+                                                    CornerRadius="70"
+                                                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                                                    ClipToBounds="True">
+                                                <Panel>
+                                                    <PathIcon Data="{StaticResource ArtistsIcon}"
+                                                              Width="58"
+                                                              Height="58"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              Opacity="0.22" />
+                                                    <controls:CachedImage SourcePath="{Binding ImagePath}"
+                                                                          Stretch="UniformToFill"
+                                                                          Width="140"
+                                                                          Height="140"
+                                                                          IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                </Panel>
+                                            </Border>
+                                            <Border x:Name="ArtistAvatar"
+                                                    Width="140" Height="140"
+                                                    CornerRadius="70"
+                                                    BorderThickness="2"
+                                                    BorderBrush="Transparent"
+                                                    IsHitTestVisible="False">
+                                                <Border.Transitions>
+                                                    <Transitions>
+                                                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+                                                    </Transitions>
+                                                </Border.Transitions>
+                                            </Border>
+                                        </Panel>
                                         <TextBlock Text="{Binding Name}"
                                                    FontSize="13"
                                                    FontWeight="SemiBold"
@@ -284,13 +292,7 @@
                                         <Border x:Name="RecentArt"
                                                 CornerRadius="6"
                                                 ClipToBounds="True"
-                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-                                                RenderTransformOrigin="50%,50%">
-                                            <Border.Transitions>
-                                                <Transitions>
-                                                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15"/>
-                                                </Transitions>
-                                            </Border.Transitions>
+                                                Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                                             <Border.Styles>
                                                 <Style Selector="Border">
                                                     <Setter Property="Height" Value="{Binding $self.Bounds.Width}" />
@@ -309,6 +311,7 @@
                                                                        RenderOptions.BitmapInterpolationMode="HighQuality"
                                                                        IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                                  <PathIcon Data="{StaticResource HeartFillIcon}"
+                                                           Classes="heart-pop"
                                                            Width="18" Height="18"
                                                            Foreground="#E74856"
                                                            HorizontalAlignment="Right"
