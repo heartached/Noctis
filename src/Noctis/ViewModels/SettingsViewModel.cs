@@ -105,7 +105,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _profileUsername = string.Empty;
     [ObservableProperty] private string _profileAvatarPath = string.Empty;
 
-    partial void OnProfileNameChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnProfileNameChanged(string value) { if (_settingsLoaded) QueueSettingsSave(); }
     partial void OnProfileUsernameChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnProfileAvatarPathChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
 
@@ -892,6 +892,7 @@ public partial class SettingsViewModel : ViewModelBase
         await _saveLock.WaitAsync();
         try
         {
+            await MergeExternalSettingChangesAsync();
             SyncToSettings();
             await _persistence.SaveSettingsAsync(_settings);
         }
@@ -902,6 +903,46 @@ public partial class SettingsViewModel : ViewModelBase
         finally
         {
             _saveLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Re-bases <see cref="_settings"/> on what is currently on disk, then lets
+    /// <see cref="SyncToSettings"/> re-apply the fields this view-model owns.
+    ///
+    /// This view-model loads one AppSettings at startup and keeps it for the whole
+    /// session, but it is not the only writer: LibraryService writes ExcludedFilePaths
+    /// and MetadataSchemaVersion, LyricsViewModel writes the lyrics background fields —
+    /// each on its own instance, loaded and saved independently. SyncToSettings never
+    /// touches those, so every save here wrote the app-start values back over them.
+    /// Concretely: remove a track, close the window (which always saves), and the
+    /// exclusion was erased — the next startup scan re-imported the file. The same
+    /// mechanism reverted the lyrics background on every restart and made the
+    /// MetadataSchemaVersion backfill (a full-library tag re-read) re-run every launch.
+    ///
+    /// Copying every readable/writable property means a field added by another component
+    /// in future is preserved automatically, rather than silently reverting until someone
+    /// remembers to extend a hand-written list.
+    /// </summary>
+    private async Task MergeExternalSettingChangesAsync()
+    {
+        try
+        {
+            var onDisk = await _persistence.LoadSettingsAsync();
+            if (onDisk == null) return;
+
+            foreach (var prop in typeof(AppSettings).GetProperties(
+                         System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+            {
+                if (!prop.CanRead || !prop.CanWrite) continue;
+                prop.SetValue(_settings, prop.GetValue(onDisk));
+            }
+        }
+        catch (Exception ex)
+        {
+            // A failed merge must not block the save — worst case we write the
+            // in-memory view, which is the old behaviour.
+            Debug.WriteLine($"[SettingsViewModel] Settings merge failed: {ex.Message}");
         }
     }
 
@@ -936,8 +977,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.WatchFoldersEnabled = WatchFoldersEnabled;
         _settings.OrganizePattern = OrganizePattern;
         _settings.OrganizeTargetRoot = OrganizeTargetRoot;
-        _settings.MusicFolders = MusicFolders.ToList();
-        _settings.FolderRules = FolderRules
+        _settings.MusicFolders = _collectionSnapshot?.MusicFolders ?? MusicFolders.ToList();
+        _settings.FolderRules = _collectionSnapshot?.FolderRules ?? FolderRules
             .Where(r => !string.IsNullOrWhiteSpace(r.Path))
             .Select(r => new FolderRule
             {
@@ -1163,6 +1204,76 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveEqualizerDebouncedAsync(cts.Token);
     }
 
+    // ── Debounced settings save ────────────────────────────────────────────
+    // Everything driven by a continuous control (sliders, the accent colour picker,
+    // text boxes) must persist on a trailing edge, not per input sample.
+    //
+    // Each SaveAsync is a full SyncToSettings + JsonSerializer.SerializeToNode + DPAPI
+    // encrypt on the *calling* (UI) thread before SaveJsonAsync's Task.Run, plus a
+    // temp-file write and rename. Sliders are driven straight off PointerMoved, so a
+    // single drag produced dozens of those; the accent picker additionally rebuilt and
+    // re-merged the whole accent ResourceDictionary per sample.
+    private const int SettingsSaveDebounceMs = 250;
+    private CancellationTokenSource? _settingsSaveDebounceCts;
+
+    /// <summary>Persists settings on a trailing edge. Safe to call per input sample.</summary>
+    private void QueueSettingsSave()
+    {
+        _settingsSaveDebounceCts?.Cancel();
+        _settingsSaveDebounceCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _settingsSaveDebounceCts = cts;
+        _ = SaveSettingsDebouncedAsync(cts.Token);
+    }
+
+    private async Task SaveSettingsDebouncedAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(SettingsSaveDebounceMs, token);
+            if (token.IsCancellationRequested) return;
+            await SaveAsync();
+        }
+        catch (OperationCanceledException) { /* superseded by a newer change */ }
+    }
+
+    /// <summary>
+    /// Flushes any pending debounced save immediately. Called on window close so the
+    /// last drag/keystroke can't be lost to a cancelled timer.
+    /// </summary>
+    public async Task FlushPendingSaveAsync()
+    {
+        _settingsSaveDebounceCts?.Cancel();
+        _eqSaveDebounceCts?.Cancel();
+        try { await SaveAsync(); }
+        finally { _collectionSnapshot = null; }
+    }
+
+    // UI-thread snapshot of the ObservableCollections SyncToSettings reads, taken before
+    // a save is handed to a worker thread. Null on every normal (UI-thread) save.
+    private sealed record CollectionSnapshot(List<string> MusicFolders, List<FolderRule> FolderRules);
+    private CollectionSnapshot? _collectionSnapshot;
+
+    /// <summary>
+    /// Captures the UI-bound collections so a background save can serialize them without
+    /// enumerating a collection the UI thread may be mutating. Call on the UI thread
+    /// immediately before an off-thread <see cref="FlushPendingSaveAsync"/>.
+    /// </summary>
+    public void SnapshotCollectionsForSave()
+    {
+        _collectionSnapshot = new CollectionSnapshot(
+            MusicFolders.ToList(),
+            FolderRules
+                .Where(r => !string.IsNullOrWhiteSpace(r.Path))
+                .Select(r => new FolderRule
+                {
+                    Path = r.Path.Trim(),
+                    Include = r.Include,
+                    Enabled = r.Enabled
+                })
+                .ToList());
+    }
+
     private async Task SaveEqualizerDebouncedAsync(CancellationToken token)
     {
         try
@@ -1383,14 +1494,25 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         AccentChanged?.Invoke(this, hex);
-        _ = SaveAsync();
+        // Debounced: the colour picker pushes a new hex on every pointer-move, and each
+        // save is a full serialize + DPAPI encrypt on the UI thread. The live accent
+        // (AccentChanged above) still applies immediately.
+        QueueSettingsSave();
     }
 
     private static string? NormalizeAccentHex(string? value)
     {
         var hex = (value ?? string.Empty).Trim();
         if (!hex.StartsWith('#')) hex = "#" + hex;
-        return hex.Length is 7 or 9 ? hex : null;
+
+        // 6 hex digits only. The old `Length is 7 or 9` accepted #AARRGGBB, so a pasted
+        // "#40E74856" produced a 25%-opaque accent across the entire app; and with no
+        // digit validation "#ZZZZZZ" passed here and failed later inside a swallowing try.
+        if (hex.Length != 7) return null;
+        for (var i = 1; i < hex.Length; i++)
+            if (!Uri.IsHexDigit(hex[i])) return null;
+
+        return hex;
     }
 
     private void ApplyTheme(string themeKey)
@@ -1517,7 +1639,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         ApplyAudioSettings();
-        _ = SaveAsync();
+        QueueSettingsSave();
     }
 
     partial void OnSoundCheckEnabledChanged(bool value)
@@ -1548,7 +1670,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         ApplyPlayerSettings();
-        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+        if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
     }
 
     partial void OnCollapseAlbumEditionsChanged(bool value)
@@ -1650,7 +1772,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.FfmpegPath = value ?? string.Empty;
         RefreshFfmpegStatus();
         if (_suspendSettingPersistence) return;
-        _ = SaveAsync();
+        QueueSettingsSave();
     }
 
     partial void OnReplayGainModeChanged(string value)
@@ -1698,7 +1820,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (_suspendSettingPersistence) return;
         _audioPlayer?.ApplyReplayGain(ReplayGainMode, value);
-        _ = SaveAsync();
+        QueueSettingsSave();
     }
 
     private int _ffmpegProbeGeneration;
@@ -2743,7 +2865,12 @@ public partial class SettingsViewModel : ViewModelBase
         {
             _settings = defaultSettings;
 
-            // Theme — reset to default (Gray)
+            // Theme — reset to default (Gray).
+            // SetActiveThemeFlags alone left ActiveCustomThemeId and the CustomThemes
+            // collection intact, so ResolveActiveThemeKey() still returned "Custom:<id>"
+            // and SyncToSettings wrote it straight back — the reset visibly undid itself.
+            ActiveCustomThemeId = null;
+            CustomThemes.Clear();
             SetActiveThemeFlags("Gray");
 
             // Accent colour — reset to default (Crimson)
@@ -2766,6 +2893,28 @@ public partial class SettingsViewModel : ViewModelBase
             OrganizeTargetRoot = string.Empty;
             IncludePrereleaseUpdates = false;
             DeveloperMode = false;
+
+            // Everything below was previously left at its pre-reset value, and because
+            // SyncToSettings then wrote the stale VM state back over the freshly-defaulted
+            // file, none of it actually reset.
+            MinimizeToTray = defaultSettings.MinimizeToTray;
+            CloseToTray = defaultSettings.CloseToTray;
+            StartMinimizedToTray = defaultSettings.StartMinimizedToTray;
+            RestoreLastTrackOnStartup = defaultSettings.RestoreLastTrackOnStartup;
+            WebRemoteEnabled = defaultSettings.WebRemoteEnabled;
+            CollapseAlbumEditions = defaultSettings.CollapseAlbumEditions;
+            EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
+            FfmpegPath = defaultSettings.FfmpegPath;
+            ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
+            PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;
+            ProfileName = defaultSettings.ProfileName;
+            ProfileUsername = defaultSettings.ProfileUsername;
+            ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
+
+            // Launch-at-login is an OS-level registration, not a settings field — a reset
+            // that leaves it enabled means the app keeps starting itself after the user
+            // asked for defaults.
+            try { Helpers.StartupHelper.SetEnabled(false); } catch { }
 
             // Playback
             CrossfadeEnabled = false;
@@ -2819,6 +2968,10 @@ public partial class SettingsViewModel : ViewModelBase
             LastFmUsername = "";
             IsLastFmConnected = false;
             LastFmStatusText = "Not connected";
+            // Without this the session key survived in the service and SyncToSettings
+            // re-persisted it (`_settings.LastFmSessionKey = lfm.GetSessionKey()`), so the
+            // account stayed connected while the UI read "Not connected".
+            _lastFm?.Logout();
 
             ListenBrainzScrobblingEnabled = true;
             ListenBrainzToken = "";
@@ -3249,7 +3402,11 @@ public partial class SettingsViewModel : ViewModelBase
                     DevStatusText = $"Downloading {item.TagName}... {p:F0}%";
                 }));
 
-            var installerPath = await _updateService.DownloadInstallerAsync(item.Info, progress, _devCts.Token);
+            // requireChecksums, same as the normal update path. This defaulted to false,
+            // so any listed release without a SHA256SUMS asset had a ~100 MB executable
+            // run *elevated* after only a Content-Length equality check.
+            var installerPath = await _updateService.DownloadInstallerAsync(
+                item.Info, progress, _devCts.Token, requireChecksums: true);
 
             DevStatusText = $"Installing {item.TagName}...";
             if (_updateService.LaunchInstaller(installerPath))
@@ -3304,8 +3461,19 @@ public partial class SettingsViewModel : ViewModelBase
             var downloads = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
             Directory.CreateDirectory(downloads);
-            var destination = Path.Combine(
-                downloads, item.Info.InstallerAssetName ?? $"Noctis-{item.TagName}-installer");
+            // The asset name comes from the GitHub API response, and the asset filter
+            // only checks a prefix and a suffix — so "Noctis-..\..\..\evil-Setup.exe"
+            // passes it and escapes Downloads (Path.Combine also discards the base
+            // entirely if the name is rooted). Reject anything that isn't a bare
+            // filename and fall back to a locally-derived name.
+            var assetName = item.Info.InstallerAssetName;
+            if (string.IsNullOrWhiteSpace(assetName) ||
+                !string.Equals(Path.GetFileName(assetName), assetName, StringComparison.Ordinal))
+            {
+                assetName = $"Noctis-{Helpers.TitleFormatter.SanitizeForFilename(item.TagName)}-installer";
+            }
+
+            var destination = Path.Combine(downloads, assetName);
 
             var progress = new Progress<double>(p =>
                 Dispatcher.UIThread.Post(() =>
