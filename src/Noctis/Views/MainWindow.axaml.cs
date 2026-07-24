@@ -523,6 +523,33 @@ public partial class MainWindow : Window
             };
             _trayIcon.Clicked += (_, _) => ShowFromTray();
             TrayIcon.SetIcons(Application.Current!, new TrayIcons { _trayIcon });
+
+            // Keep the tooltip and the play/pause label current. Both were set once and
+            // never updated, so hovering the tray icon of a player deliberately running
+            // headless told the user nothing about what was playing, and the menu item
+            // never showed which action it would perform.
+            _trayStateHandler = (_, e) =>
+            {
+                if (e.PropertyName is not (nameof(PlayerViewModel.CurrentTrack)
+                    or nameof(PlayerViewModel.State))) return;
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try
+                    {
+                        var track = vm.Player.CurrentTrack;
+                        if (_trayIcon != null)
+                        {
+                            _trayIcon.ToolTipText = track == null
+                                ? "Noctis"
+                                : Truncate($"{track.Title} — {track.Artist}", 120);
+                        }
+                        playPause.Header = vm.Player.State == PlaybackState.Playing ? "Pause" : "Play";
+                    }
+                    catch { /* tray backends vary; never let this bubble */ }
+                });
+            };
+            vm.Player.PropertyChanged += _trayStateHandler;
         }
         catch (Exception ex)
         {
@@ -531,8 +558,24 @@ public partial class MainWindow : Window
         }
     }
 
+    private System.ComponentModel.PropertyChangedEventHandler? _trayStateHandler;
+
+    private static string Truncate(string s, int max)
+        => string.IsNullOrEmpty(s) || s.Length <= max ? s : s[..max];
+
     private void ShowFromTray()
     {
+        // Close the mini player first. ToggleMiniPlayer hides the main window when the
+        // mini player opens, so surfacing the main window without closing it left the
+        // user with both on screen — with a Topmost mini player floating over the app.
+        // Its Closed handler restores and activates the main window, so returning here
+        // is correct.
+        if (_miniPlayer != null)
+        {
+            try { _miniPlayer.Close(); return; }
+            catch { /* fall through and show the main window directly */ }
+        }
+
         Show();
         if (WindowState == WindowState.Minimized)
             WindowState = WindowState.Normal;
@@ -632,6 +675,9 @@ public partial class MainWindow : Window
 
             if (_queuePopupStateHandler != null)
                 vm.Player.PropertyChanged -= _queuePopupStateHandler;
+
+            if (_trayStateHandler != null)
+                vm.Player.PropertyChanged -= _trayStateHandler;
 
             if (_trackedFavoriteTrack != null && _currentTrackPropertyChangedHandler != null)
             {

@@ -859,6 +859,9 @@ public partial class SettingsViewModel : ViewModelBase
 
             if (_discord != null && DiscordRichPresenceEnabled)
             {
+                // Lets the service's background reconnect stop as soon as the user turns
+                // the setting off, instead of retrying against a disabled feature.
+                _discord.IsEnabled = () => DiscordRichPresenceEnabled;
                 _ = _discord.ConnectAsync();
                 // Loon exists solely to serve Discord cover art — it follows the
                 // presence lifecycle instead of connecting unconditionally at

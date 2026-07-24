@@ -12,6 +12,12 @@ public interface IDiscordPresenceService : IDisposable
     bool IsConnected { get; }
 
     /// <summary>Initializes and connects the Discord RPC client.</summary>
+    /// <summary>
+    /// Predicate the background reconnect consults; when it returns false the retry loop
+    /// stops. Set by the owner so retries end as soon as the user disables the feature.
+    /// </summary>
+    Func<bool>? IsEnabled { get; set; }
+
     Task<bool> ConnectAsync(CancellationToken ct = default);
 
     /// <summary>Disconnects and tears down the Discord RPC client.</summary>

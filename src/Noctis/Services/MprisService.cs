@@ -39,6 +39,9 @@ public sealed class MprisService : IDisposable
     private string? _artist;
     private string? _album;
     private string? _artUrl;
+
+    /// <summary>Last artwork path we ran File.Exists against; see SnapshotState.</summary>
+    private string? _lastArtPathChecked = string.Empty;
     private string _trackId = "/org/mpris/MediaPlayer2/TrackList/NoTrack";
     private long _lengthUs;
 
@@ -161,11 +164,24 @@ public sealed class MprisService : IDisposable
             _trackId = track == null
                 ? "/org/mpris/MediaPlayer2/TrackList/NoTrack"
                 : "/com/heartached/noctis/track/" + track.Id.ToString("N");
-            _artUrl = null;
-            if (!string.IsNullOrEmpty(artPath) && File.Exists(artPath))
+            // Skip the existence check when the path hasn't changed. SnapshotState runs
+            // from OnPlayerPropertyChanged on the UI thread for State, CurrentTrack and
+            // CurrentArtPath — i.e. on every pause and resume — and on a network/SMB
+            // artwork path a stat can block for hundreds of milliseconds. A dangling
+            // mpris:artUrl simply shows no art, so this is worth not blocking for.
+            if (string.Equals(artPath, _lastArtPathChecked, StringComparison.Ordinal))
             {
-                try { _artUrl = new Uri(artPath).AbsoluteUri; }
-                catch { /* unmappable path — art just won't show */ }
+                // _artUrl already reflects this path.
+            }
+            else
+            {
+                _lastArtPathChecked = artPath;
+                _artUrl = null;
+                if (!string.IsNullOrEmpty(artPath) && File.Exists(artPath))
+                {
+                    try { _artUrl = new Uri(artPath).AbsoluteUri; }
+                    catch { /* unmappable path — art just won't show */ }
+                }
             }
         }
     }
@@ -479,7 +495,18 @@ public sealed class MprisService : IDisposable
                     var iface = reader.ReadString();
                     var writer = context.CreateReplyWriter("a{sv}");
                     var dict = writer.WriteDictionaryStart();
-                    foreach (var prop in iface == IfaceRoot ? RootProps : PlayerProps)
+
+                    // Any interface that is neither Root nor Player gets an EMPTY dict,
+                    // as the spec requires. The old ternary treated every non-root name
+                    // as the Player interface, so a probe for org.freedesktop.DBus.Peer —
+                    // or any typo'd/foreign name a desktop shell asks about — came back
+                    // with a full Player property set.
+                    string[] props =
+                        iface == IfaceRoot ? RootProps :
+                        iface == IfacePlayer ? PlayerProps :
+                        Array.Empty<string>();
+
+                    foreach (var prop in props)
                     {
                         writer.WriteDictionaryEntryStart();
                         writer.WriteString(prop);
