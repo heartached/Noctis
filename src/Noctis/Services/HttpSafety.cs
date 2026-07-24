@@ -24,6 +24,13 @@ public static class HttpSafety
         return System.Text.Encoding.UTF8.GetString(bytes);
     }
 
+    /// <summary>
+    /// Initial MemoryStream capacity when a Content-Length is advertised. The header is
+    /// server-controlled, so allocating it verbatim let a response *declaring* 24 MB
+    /// force that allocation immediately even if the body turned out to be one byte.
+    /// </summary>
+    private const int MaxPreallocateBytes = 1024 * 1024;
+
     /// <summary>Reads the response body as bytes, failing once <paramref name="maxBytes"/> is exceeded.</summary>
     public static async Task<byte[]> ReadBytesBoundedAsync(HttpContent content, long maxBytes, CancellationToken ct = default)
     {
@@ -34,7 +41,12 @@ public static class HttpSafety
             throw new HttpRequestException($"Response body ({declared.Value} bytes) exceeds the {maxBytes}-byte limit.");
 
         await using var stream = await content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-        using var buffer = new MemoryStream(declared.HasValue ? (int)declared.Value : 0);
+        // Clamped: trust the declared length only as a sizing hint, and let the stream
+        // grow past it if the body really is that big.
+        var capacity = declared.HasValue
+            ? (int)Math.Min(declared.Value, MaxPreallocateBytes)
+            : 0;
+        using var buffer = new MemoryStream(capacity);
         var chunk = new byte[81920];
         int read;
         while ((read = await stream.ReadAsync(chunk, ct).ConfigureAwait(false)) > 0)

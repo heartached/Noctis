@@ -166,7 +166,21 @@ public sealed class LoonClient : IDisposable
                     switch (msg.Type)
                     {
                         case ServerMessageType.Request:
-                            _ = Task.Run(() => HandleRequestAsync(msg.Request!, ct), ct);
+                            // Bounded. Each handler reads a file and does a full Skia
+                            // decode/resize into memory, so an unthrottled Task.Run per
+                            // inbound frame let a compromised or misbehaving relay drive
+                            // unbounded parallel I/O and heap growth inside the music
+                            // player. MaxInboundMessageBytes caps one message, not the rate.
+                            _ = Task.Run(async () =>
+                            {
+                                if (!await _requestGate.WaitAsync(0, ct).ConfigureAwait(false))
+                                {
+                                    Debug.WriteLine("[Loon] Dropping request — too many in flight");
+                                    return;
+                                }
+                                try { await HandleRequestAsync(msg.Request!, ct).ConfigureAwait(false); }
+                                finally { _requestGate.Release(); }
+                            }, ct);
                             break;
                         case ServerMessageType.Success:
                             Debug.WriteLine($"[Loon] Success for request {msg.Success!.RequestId}");
@@ -356,10 +370,33 @@ public sealed class LoonClient : IDisposable
         }
     }
 
+    // ClientWebSocket allows exactly one outstanding SendAsync. Inbound requests are
+    // dispatched as independent Task.Runs and each handler sends a long series of chunks,
+    // so two overlapping artwork requests (Discord retrying, or two viewers resolving the
+    // same presence) raced here and threw
+    // InvalidOperationException("There is already one outstanding 'SendAsync' call…"),
+    // which was swallowed — leaving the viewer with a truncated image.
+    private readonly SemaphoreSlim _sendGate = new(1, 1);
+
+    /// <summary>Caps concurrent inbound request handlers (each does file I/O + a Skia decode).</summary>
+    private readonly SemaphoreSlim _requestGate = new(3, 3);
+
     private async Task SendAsync(byte[] data, CancellationToken ct)
     {
         if (_ws == null || _ws.State != WebSocketState.Open) return;
-        await _ws.SendAsync(data, WebSocketMessageType.Binary, true, ct);
+
+        await _sendGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            // Re-check under the gate: the socket can close while queued behind another
+            // sender.
+            if (_ws is not { State: WebSocketState.Open }) return;
+            await _ws.SendAsync(data, WebSocketMessageType.Binary, true, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _sendGate.Release();
+        }
     }
 
     // ── Image resizing ──
