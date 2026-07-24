@@ -200,7 +200,7 @@
                         <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
                     </Image.RenderTransform>
                 </Image>
-                <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}" ClearOnSourceChange="False"
                                       DecodeWidth="500"
                                       Stretch="UniformToFill"
                                       RenderOptions.BitmapInterpolationMode="HighQuality">

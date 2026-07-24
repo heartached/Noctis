@@ -475,7 +475,7 @@
                                Stretch="UniformToFill"
                                RenderOptions.BitmapInterpolationMode="HighQuality"
                                IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
+                        <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}" ClearOnSourceChange="False"
                                               DecodeWidth="1280"
                                               Stretch="UniformToFill"
                                               RenderOptions.BitmapInterpolationMode="HighQuality"

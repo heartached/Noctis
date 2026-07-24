@@ -41,6 +41,9 @@ public partial class LyricsPanelView : UserControl
     private const int CascadeMaxLines = 8;
     private List<(Control Control, double DelayMs)>? _cascadeLines;
 
+    /// <summary>True while this panel is counted in the VM's visible-surface tally.</summary>
+    private bool _countedAsVisible;
+
     public LyricsPanelView()
     {
         InitializeComponent();
@@ -49,6 +52,15 @@ public partial class LyricsPanelView : UserControl
         AttachedToVisualTree += (_, _) =>
         {
             HookViewModel();
+
+            // Count this panel as a visible lyrics surface so the VM's sync timer and
+            // per-frame word clock run only while something can display them.
+            if (!_countedAsVisible && _vm != null)
+            {
+                _vm.SetLyricsSurfaceVisible(true);
+                _countedAsVisible = true;
+            }
+
             if (_vm is { ActiveLineIndex: >= 0 } vm)
                 JumpToLineWhenReady(vm.ActiveLineIndex);
         };
@@ -56,6 +68,12 @@ public partial class LyricsPanelView : UserControl
         {
             CancelScrollAnimation();
             CancelFollowResumeTimer();
+
+            if (_countedAsVisible)
+            {
+                _countedAsVisible = false;
+                _vm?.SetLyricsSurfaceVisible(false);
+            }
         };
 
         PanelScrollViewer.PointerWheelChanged += OnUserScroll;

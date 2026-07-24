@@ -42,8 +42,11 @@ public static class TtmlParser
             // they are the word boundaries (spans with none between are syllables).
             doc = XDocument.Parse(content, LoadOptions.PreserveWhitespace);
         }
-        catch (XmlException)
+        catch (Exception)
         {
+            // Catch-all, not just XmlException: this is untrusted input sitting next to
+            // the user's music, and anything that escapes here reaches a caller whose
+            // blanket catch turns it into a silent "no lyrics".
             return (null, null);
         }
 
@@ -148,12 +151,24 @@ public static class TtmlParser
     /// Spans marked ttm:role="x-bg" (Apple background vocals) collect into the
     /// background text/word buffers instead of the main line.
     /// </summary>
+    /// <summary>
+    /// Nesting limit for the recursive content walk. XDocument.Parse builds the tree
+    /// iteratively, so a sidecar with thousands of nested &lt;span&gt; elements parsed
+    /// fine and then blew the 1 MB stack here — and StackOverflowException cannot be
+    /// caught, so the blanket try/catch around the lyrics probe did not help and the
+    /// process died. Real Apple TTML nests two or three levels.
+    /// </summary>
+    private const int MaxNestingDepth = 64;
+
     private static void CollectContent(
         XElement parent,
         StringBuilder text, List<WordTiming> words,
         StringBuilder bgText, List<WordTiming> bgWords,
-        bool inBackground)
+        bool inBackground,
+        int depth = 0)
     {
+        if (depth > MaxNestingDepth) return;
+
         var targetText = inBackground ? bgText : text;
         var targetWords = inBackground ? bgWords : words;
 
@@ -193,7 +208,7 @@ public static class TtmlParser
                     {
                         // Untimed or wrapper span — recurse (background wrappers route
                         // their timed descendants into the background buffers).
-                        CollectContent(el, text, words, bgText, bgWords, isBg);
+                        CollectContent(el, text, words, bgText, bgWords, isBg, depth + 1);
                     }
                     break;
             }
@@ -272,8 +287,17 @@ public static class TtmlParser
                 if (!double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out seconds)) return null;
             }
 
+            // Since .NET Core 3.0 double.TryParse returns true for "NaN" and for
+            // overflowing literals (as +/-Infinity), and TimeSpan.FromHours then throws
+            // OverflowException/ArgumentException — out of a method whose only caller
+            // wraps it in a blanket catch, so one bad attribute silently turned the whole
+            // file into "no lyrics" and triggered an online search that overwrote the
+            // neighbouring sidecars.
+            if (!IsSaneComponent(hours) || !IsSaneComponent(minutes) || !IsSaneComponent(seconds))
+                return null;
+
             var total = TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes) + TimeSpan.FromSeconds(seconds);
-            return total >= TimeSpan.Zero ? total : null;
+            return total >= TimeSpan.Zero && total <= MaxTime ? total : null;
         }
 
         // Offset-time: number + optional metric suffix.
@@ -312,7 +336,18 @@ public static class TtmlParser
         }
 
         if (!double.TryParse(numberPart, NumberStyles.Float, CultureInfo.InvariantCulture, out var n)) return null;
-        var result = TimeSpan.FromMilliseconds(n * multiplierMs);
+
+        var ms = n * multiplierMs;
+        if (!double.IsFinite(ms) || ms < 0 || ms > MaxTime.TotalMilliseconds) return null;
+
+        var result = TimeSpan.FromMilliseconds(ms);
         return result >= TimeSpan.Zero ? result : null;
     }
+
+    /// <summary>Upper bound for any parsed timestamp. No song is 24 hours long.</summary>
+    private static readonly TimeSpan MaxTime = TimeSpan.FromHours(24);
+
+    /// <summary>Finite and within a range TimeSpan can represent for this use.</summary>
+    private static bool IsSaneComponent(double v)
+        => double.IsFinite(v) && v >= 0 && v < 100_000;
 }

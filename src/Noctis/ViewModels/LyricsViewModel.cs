@@ -1151,24 +1151,39 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (string.IsNullOrWhiteSpace(trackPath)) return;
 
         // Sidecar writes run off the UI thread and are best-effort.
+        //
+        // Never overwrite a file that is already there. This used to write both sidecars
+        // unconditionally on every successful online fetch, so a user's own hand-timed
+        // .lrc — or, worse, an unrelated Song.txt of liner notes, a file this app never
+        // even reads as a lyrics source — was destroyed with no consent, no prompt and no
+        // setting to turn it off. A .lrc that merely failed to parse was enough to reach
+        // this path. The .txt is no longer written at all: nothing reads it back.
         _ = Task.Run(() =>
         {
             try
             {
-                if (!string.IsNullOrWhiteSpace(synced))
+                if (string.IsNullOrWhiteSpace(synced)) return;
+
+                var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
+                if (File.Exists(lrcPath))
                 {
-                    var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
-                    File.WriteAllText(lrcPath, NormalizeLyricsForLrc(synced), new UTF8Encoding(false));
+                    DebugLogger.Info(DebugLogger.Category.Lyrics, "Sidecar.SkipExisting", lrcPath);
+                    return;
                 }
-                if (!string.IsNullOrWhiteSpace(plain))
-                {
-                    var txtPath = Path.ChangeExtension(trackPath, ".txt");
-                    File.WriteAllText(txtPath, NormalizeLyricsForLrc(plain), new UTF8Encoding(false));
-                }
+
+                File.WriteAllText(lrcPath, NormalizeLyricsForLrc(synced), new UTF8Encoding(false));
+                lock (_appWrittenSidecarLock)
+                    _appWrittenSidecars.Add(lrcPath);
             }
             catch { /* best effort — sidecar write is non-fatal */ }
         });
     }
+
+    // Sidecars this view-model created itself. RemoveLyrics deletes only these, so a
+    // user's own sidecar is never removed on their behalf.
+    private static readonly object _appWrittenSidecarLock = new();
+    private static readonly HashSet<string> _appWrittenSidecars =
+        new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Removes the currently displayed online lyrics: clears the cached file,
@@ -1179,14 +1194,42 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         if (_currentTrack == null) return;
 
-        // Remove cached lyrics file
+        // Remove every artifact this view-model created for the track.
+        //
+        // Deleting only {Id}.lrc left the {Id}.lyricsfile cache and any sidecar written
+        // next to the track — both of which the probe reads at *higher* priority — so the
+        // removed lyrics came straight back on the next play. A user's own sidecar is left
+        // alone: only paths recorded in _appWrittenSidecars are eligible.
         try
         {
-            var cachePath = Path.Combine(LyricsCacheDir, $"{_currentTrack.Id}.lrc");
-            if (File.Exists(cachePath))
-                File.Delete(cachePath);
+            foreach (var ext in new[] { ".lrc", ".lyricsfile" })
+            {
+                var cachePath = Path.Combine(LyricsCacheDir, $"{_currentTrack.Id}{ext}");
+                if (File.Exists(cachePath))
+                    File.Delete(cachePath);
+            }
         }
         catch { }
+
+        try
+        {
+            var trackPath = _currentTrack.FilePath;
+            if (!string.IsNullOrWhiteSpace(trackPath))
+            {
+                var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
+                bool ours;
+                lock (_appWrittenSidecarLock)
+                    ours = _appWrittenSidecars.Remove(lrcPath);
+                if (ours && File.Exists(lrcPath))
+                    Helpers.RecycleBin.TryMoveToTrash(lrcPath);
+            }
+        }
+        catch { }
+
+        // Clear the in-memory copies too, otherwise the next probe finds them on the
+        // Track and re-displays what was just removed.
+        _currentTrack.Lyrics = string.Empty;
+        _currentTrack.SyncedLyrics = string.Empty;
 
         // Reset state
         _currentOnlineResult = null;
@@ -1890,7 +1933,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             var path = Path.Combine(dir, nameWithoutExt + ext);
             if (File.Exists(path))
-                return File.ReadAllText(path);
+                return ReadTextDetectingEncoding(path);
         }
         return null;
     }
@@ -1901,10 +1944,55 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             var path = Path.Combine(LyricsCacheDir, trackId + extension);
             if (File.Exists(path))
-                return File.ReadAllText(path);
+                return ReadTextDetectingEncoding(path);
         }
         catch { }
         return null;
+    }
+
+    /// <summary>
+    /// Reads a lyrics file, falling back off UTF-8 when the bytes aren't valid UTF-8.
+    ///
+    /// File.ReadAllText assumes UTF-8 (with BOM sniffing). Shift-JIS / GB18030 / CP1251
+    /// .lrc files are extremely common in the wild, and their bytes decode to U+FFFD —
+    /// which CleanDisplayText then strips, so instead of mojibake the user got
+    /// timestamped but completely empty lines, with no error anywhere.
+    /// </summary>
+    private static string ReadTextDetectingEncoding(string path)
+    {
+        var bytes = File.ReadAllBytes(path);
+
+        // A BOM is authoritative — let the framework handle it.
+        if (bytes.Length >= 2 &&
+            ((bytes[0] == 0xFF && bytes[1] == 0xFE) ||
+             (bytes[0] == 0xFE && bytes[1] == 0xFF) ||
+             (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)))
+        {
+            return File.ReadAllText(path);
+        }
+
+        // Strict UTF-8 first: throwOnInvalidBytes turns "not UTF-8" into a signal rather
+        // than a string full of replacement characters.
+        try
+        {
+            return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
+                .GetString(bytes);
+        }
+        catch (DecoderFallbackException)
+        {
+            // Not UTF-8. Use the OS default ANSI code page, which is the right guess for
+            // a file authored on the user's own machine; Latin1 elsewhere so every byte
+            // maps to something rather than being dropped.
+            try
+            {
+                var ansi = System.Text.Encoding.GetEncoding(0);
+                return ansi.GetString(bytes);
+            }
+            catch
+            {
+                return System.Text.Encoding.Latin1.GetString(bytes);
+            }
+        }
     }
 
     private void PopulateUnsyncedLines(List<LyricLine> sourceLyrics)
@@ -2500,8 +2588,28 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         topLevel.RequestAnimationFrame(OnWordClockFrame);
     }
 
+    // Number of lyrics surfaces currently attached (the full page and/or the side panel).
+    // The word clock re-registers RequestAnimationFrame every frame, which keeps the
+    // compositor's frame loop hot — doing that for output nobody can see (playing a
+    // word-timed track while sitting on Home with the panel closed) burned CPU and
+    // battery indefinitely, because nothing stopped the timer on navigation away.
+    private int _visibleLyricsSurfaces;
+
+    /// <summary>Called by LyricsView / LyricsPanelView on attach and detach.</summary>
+    public void SetLyricsSurfaceVisible(bool visible)
+    {
+        _visibleLyricsSurfaces = Math.Max(0, _visibleLyricsSurfaces + (visible ? 1 : -1));
+        if (_visibleLyricsSurfaces == 0)
+            _lyricsSyncTimer.Stop();
+        else if (_hasSyncedLyrics && _player.State == Models.PlaybackState.Playing)
+            _lyricsSyncTimer.Start();
+    }
+
+    private bool IsAnyLyricsSurfaceVisible => _visibleLyricsSurfaces > 0;
+
     private bool WantsWordClock =>
         _hasSyncedLyrics
+        && IsAnyLyricsSurfaceVisible
         && _player.State == Models.PlaybackState.Playing
         && _lyricsSyncTimer.IsEnabled
         && (_currentActiveLine?.HasWords == true || _currentActiveLine?.HasBackgroundWords == true);

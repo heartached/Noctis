@@ -26,6 +26,9 @@ public partial class LyricsView : UserControl
     private List<(Control Control, double DelayMs)>? _cascadeLines;
     private DispatcherTimer? _autoFollowResumeTimer;
     private LyricsViewModel? _subscribedVm;
+
+    /// <summary>True while this view is counted in the VM's visible-surface tally.</summary>
+    private bool _countedAsVisible;
     private bool _swatchScrollersWired;
     private DispatcherTimer? _colorPickerDismissTimer;
     private const double ColorPickerAutoDismissSeconds = 3;
@@ -171,6 +174,14 @@ public partial class LyricsView : UserControl
         // Reset scroll guard so re-entering the page always scrolls to the active line
         _lastScrolledIndex = -1;
 
+        // Tell the VM a lyrics surface is on screen, so the 100ms sync timer and the
+        // per-frame word clock only run while something can actually display them.
+        if (DataContext is LyricsViewModel attachVm)
+        {
+            attachVm.SetLyricsSurfaceVisible(true);
+            _countedAsVisible = true;
+        }
+
         // Watch window min/maximize/restore so we can re-anchor the active line cleanly.
         if (e.Root is Window window)
         {
@@ -230,6 +241,12 @@ public partial class LyricsView : UserControl
             _hostWindow.PropertyChanged -= OnHostWindowPropertyChanged;
             _hostWindow.Activated -= OnHostWindowActivated;
             _hostWindow = null;
+        }
+
+        if (_countedAsVisible)
+        {
+            _countedAsVisible = false;
+            (DataContext as LyricsViewModel)?.SetLyricsSurfaceVisible(false);
         }
 
         base.OnDetachedFromVisualTree(e);
