@@ -48,6 +48,14 @@ public class ProgressToSweepForegroundConverter : IMultiValueConverter
         var lo = raw - feather;
         var hi = raw + feather;
 
+        // NOTE: this allocates a brush per evaluation, and the lyrics timer rewrites each
+        // active word's Progress continuously — so this is a real per-frame allocation
+        // during karaoke playback. It is NOT safe to cache a brush on the converter: the
+        // converter is declared with x:Key in LyricsView/LyricsPanelView, i.e. a single
+        // shared instance across every word cell, so a cached brush would be handed to
+        // all of them and every word would render the last-written word's offsets.
+        // Fixing it properly means moving the gradient onto the word cell itself (bind
+        // GradientStop.Offset directly) rather than producing the brush here.
         return new LinearGradientBrush
         {
             StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative),

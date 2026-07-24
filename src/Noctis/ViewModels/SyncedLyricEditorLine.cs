@@ -92,7 +92,9 @@ public partial class SyncedLyricEditorLine : ObservableObject
 
     public void ClearTimestamp() => Timestamp = null;
 
-    private static TimeSpan? ParseTimestamp(string? raw)
+    /// <summary>Parses "m:ss.fff" / "mm:ss" into a TimeSpan; null when malformed.</summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static TimeSpan? ParseTimestamp(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return null;
 
@@ -114,8 +116,16 @@ public partial class SyncedLyricEditorLine : ObservableObject
             var frac = rest[(dot + 1)..];
             if (frac.Length > 0)
             {
-                if (!int.TryParse(frac, out var f) || f < 0) return null;
-                ms = frac.Length switch { 1 => f * 100, 2 => f * 10, _ => f };
+                // Digits only, and truncated to milliseconds.
+                //
+                // The old `_ => f` branch fed any longer fraction through unscaled, so
+                // "1:23.4567" produced 4567 ms and silently turned a 1:23.45 line into
+                // 1:27.567 rather than rejecting or truncating the extra digits.
+                foreach (var c in frac)
+                    if (!char.IsAsciiDigit(c)) return null;
+
+                var millisDigits = frac.Length <= 3 ? frac.PadRight(3, '0') : frac[..3];
+                if (!int.TryParse(millisDigits, out ms) || ms < 0) return null;
             }
         }
 

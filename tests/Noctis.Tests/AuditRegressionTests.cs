@@ -2,6 +2,7 @@ using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.AudioAnalysis;
+using Noctis.ViewModels;
 using Xunit;
 
 namespace Noctis.Tests;
@@ -168,6 +169,46 @@ public class AuditRegressionTests
         var groups = DuplicateMatcher.FindDuplicates(new[] { standard, deluxe });
 
         Assert.Single(groups);
+    }
+
+    // ── LRC editor: verse spacing survives a round trip ─────────────────────
+
+    [Fact]
+    public void ParseLrc_PreservesInteriorBlankLines()
+    {
+        // Blank lines were skipped, so opening the Timestamp Lyrics tab and touching any
+        // row collapsed every verse/chorus break in the saved text.
+        var lines = LrcEditorViewModel.ParseLrc("Verse one\n\nChorus\n");
+
+        Assert.Equal(3, lines.Count);
+        Assert.Equal("Verse one", lines[0].Text);
+        Assert.Equal(string.Empty, lines[1].Text);
+        Assert.Equal("Chorus", lines[2].Text);
+    }
+
+    [Fact]
+    public void ParseLrc_DoesNotAddPhantomTrailingBlanks()
+    {
+        var lines = LrcEditorViewModel.ParseLrc("Only line\n\n\n");
+        Assert.Single(lines);
+    }
+
+    // ── Timestamp editor: fraction parsing ──────────────────────────────────
+
+    [Fact]
+    public void SyncedLyricEditorLine_TruncatesSubMillisecondFractions()
+    {
+        // "1:23.4567" used to yield 4567 ms, silently turning 1:23.45 into 1:27.567.
+        var parsed = SyncedLyricEditorLine.ParseTimestamp("1:23.4567");
+
+        Assert.NotNull(parsed);
+        Assert.Equal(new TimeSpan(0, 0, 1, 23, 456), parsed!.Value);
+    }
+
+    [Fact]
+    public void SyncedLyricEditorLine_RejectsNonDigitFraction()
+    {
+        Assert.Null(SyncedLyricEditorLine.ParseTimestamp("1:23.4x"));
     }
 
     // ── AlbumTitle: only edition markers collapse ───────────────────────────

@@ -940,6 +940,18 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 tasks.Add(FetchNetEaseAsync());
             }
 
+            // With both providers switched off, Task.WhenAll on an empty list completed
+            // instantly and the user got "No Lyrics found." — indistinguishable from a
+            // genuine miss, with no hint that the providers are disabled in Settings.
+            if (tasks.Count == 0)
+            {
+                LyricLines.Clear();
+                UnsyncedLines.Clear();
+                SearchFailedMessage = "Lyrics providers are turned off in Settings.";
+                ShowSearchButton = false;
+                return;
+            }
+
             await Task.WhenAll(tasks);
 
             async Task FetchLrcLibAsync()
@@ -1018,7 +1030,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            IsSearching = false;
+            // Only the newest search owns this flag. A superseded search's continuation
+            // used to clear it unconditionally, so: search A in flight -> track changes
+            // -> auto-search B starts and sets IsSearching -> A lands and clears it, and
+            // B's "Searching for Lyrics" indicator vanished while B was still running.
+            if (generation == _searchGeneration)
+                IsSearching = false;
         }
     }
 

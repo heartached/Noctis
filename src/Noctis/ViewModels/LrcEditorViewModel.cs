@@ -86,10 +86,28 @@ public partial class LrcEditorViewModel : ViewModelBase
     public static List<(TimeSpan? Time, string Text)> ParseLrc(string text)
     {
         var result = new List<(TimeSpan?, string)>();
-        foreach (var raw in text.Split('\n'))
+
+        // Drop the empty elements Split produces for a trailing newline before iterating,
+        // so a file ending in "\n" doesn't gain phantom blank rows.
+        var rawLines = text.Split('\n');
+        var lastContent = rawLines.Length - 1;
+        while (lastContent >= 0 && string.IsNullOrWhiteSpace(rawLines[lastContent].TrimEnd('\r')))
+            lastContent--;
+
+        for (var idx = 0; idx <= lastContent; idx++)
         {
-            var line = raw.TrimEnd('\r');
-            if (string.IsNullOrWhiteSpace(line)) continue;
+            var line = rawLines[idx].TrimEnd('\r');
+
+            // INTERIOR blank lines are preserved as untimestamped empty entries rather
+            // than dropped. MetadataViewModel.RebuildSyncedLinesFromText feeds plain
+            // lyrics through here and RebuildSyncedTextFromLines writes the list straight
+            // back, so skipping them meant opening the Timestamp Lyrics tab and touching
+            // any row collapsed every verse/chorus break in the saved text.
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                result.Add((null, string.Empty));
+                continue;
+            }
 
             var match = TimestampPattern.Match(line);
             if (!match.Success)
