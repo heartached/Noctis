@@ -126,15 +126,13 @@ public class VlcAudioPlayer : IAudioPlayer
     private MediaPlayer.LibVLCAudioResumeCb? _audioResumeCb;
     private MediaPlayer.LibVLCAudioFlushCb? _audioFlushCb;
     private MediaPlayer.LibVLCAudioDrainCb? _audioDrainCb;
-    private MediaPlayer.LibVLCAudioSetupCb? _audioSetupCb;
-    private MediaPlayer.LibVLCAudioCleanupCb? _audioCleanupCb;
 
     // Settings-driven WASAPI exclusive output (Windows). When enabled, LibVLC's
     // decoded PCM is routed via the audio callbacks to an exclusive-mode sink
-    // opened at the SOURCE sample rate (see AudioSetup). Like the experimental
-    // _wasapiOut path this is single-stream: crossfade and standby-prepare are
-    // gated off while enabled. The sink is created lazily per format by the
-    // audio-setup callback and reused across tracks with the same rate; an
+    // opened at the SOURCE sample rate (see PrepareExclusiveOutputFor). Like the
+    // experimental _wasapiOut path this is single-stream: crossfade and
+    // standby-prepare are gated off while enabled. The sink is created lazily
+    // per track before Play and reused across tracks with the same rate; an
     // exclusive open failure falls back to a shared-mode sink + OutputModeChanged.
     private volatile bool _exclusiveModeEnabled;
     private volatile WasapiGainOutput? _exclusiveOut;
@@ -478,11 +476,12 @@ public class VlcAudioPlayer : IAudioPlayer
                 try
                 {
                     // Order matters: register the amem callbacks first, then pin the
-                    // output format to what our sink renders (FL32 at the device rate).
+                    // output rate/channels. VLC 3.x's amem ignores the format string
+                    // and always delivers S16N — the sink's input chain matches.
                     _player.SetAudioCallbacks(_audioPlayCb, _audioPauseCb, _audioResumeCb, _audioFlushCb, _audioDrainCb);
-                    _player.SetAudioFormat("FL32", (uint)wasapi.SampleRate, (uint)wasapi.Channels);
+                    _player.SetAudioFormat("S16N", (uint)wasapi.SampleRate, (uint)wasapi.Channels);
                     _player.Volume = 100;
-                    WasapiGainOutput.Diag($"VlcAudioPlayer wired callbacks: FL32 {wasapi.SampleRate}Hz {wasapi.Channels}ch");
+                    WasapiGainOutput.Diag($"VlcAudioPlayer wired callbacks: S16N {wasapi.SampleRate}Hz {wasapi.Channels}ch");
                 }
                 catch (Exception ex)
                 {
@@ -1302,16 +1301,21 @@ public class VlcAudioPlayer : IAudioPlayer
 
         if (exclusive)
         {
-            _audioSetupCb ??= AudioSetup;
-            _audioCleanupCb ??= AudioCleanup;
             _audioPlayCb ??= AudioPlay;
             _audioPauseCb ??= AudioPause;
             _audioResumeCb ??= AudioResume;
             _audioFlushCb ??= AudioFlush;
             _audioDrainCb ??= AudioDrain;
-            // Format callback first so each track negotiates its own source rate.
-            _player.SetAudioFormatCallback(_audioSetupCb, _audioCleanupCb);
+            // NOT SetAudioFormatCallback: VLC 3.x's amem module hard-rejects any
+            // format but "S16N" from the dynamic setup callback (strcmp in
+            // amem.c Start) — writing "FL32" there makes the aout fail entirely
+            // (dead silence). The fixed-format API works, but its format string
+            // is equally ignored (amem always outputs S16N); only the
+            // rate/channels vars matter, pinned per track before Play
+            // (PrepareExclusiveOutputFor). This provisional value only covers
+            // the window until the first Play.
             _player.SetAudioCallbacks(_audioPlayCb, _audioPauseCb, _audioResumeCb, _audioFlushCb, _audioDrainCb);
+            try { _player.SetAudioFormat("S16N", 44100, 2); } catch { }
             try { _player.Volume = 100; } catch { }
             // The silent keep-warm stream is pointless while we hold the endpoint
             // exclusively, and some drivers dislike the concurrent shared stream.
@@ -1346,18 +1350,38 @@ public class VlcAudioPlayer : IAudioPlayer
     }
 
     /// <summary>
-    /// LibVLC audio-setup callback (decoder thread): negotiate the output format
-    /// for the new track. Opens (or reuses) the exclusive sink at the source
-    /// sample rate; on failure falls back to a shared-mode sink so playback
-    /// continues, raising OutputModeChanged either way.
+    /// Exclusive mode, per track before Play: open (or reuse) the sink at the
+    /// track's source rate and pin LibVLC's output format to it. On an exclusive
+    /// open failure falls back to a shared-mode sink so playback continues,
+    /// raising OutputModeChanged either way.
+    ///
+    /// This deliberately does NOT use libvlc's dynamic format callback: VLC 3.x's
+    /// amem module hard-rejects any format but "S16N" from that callback
+    /// (strcmp in amem.c Start — "TODO: amem-format"). The fixed-format API is
+    /// used instead for its rate/channels vars, which ARE read at each aout
+    /// start; the sample format is always S16N regardless (16-bit sources stay
+    /// bit-perfect; >16-bit content is truncated upstream by VLC 3.x — a hard
+    /// LibVLC limitation). The track's rate comes from the already-parsed Media.
     /// </summary>
-    private int AudioSetup(ref IntPtr opaque, ref IntPtr format, ref uint rate, ref uint channels)
+    private void PrepareExclusiveOutputFor(Media media)
     {
         try
         {
-            var requestedRate = (int)Math.Clamp(rate, 8000, 384000);
-            var requestedChannels = (int)Math.Clamp(channels, 1, 2);
+            int rate = 44100, channels = 2;
+            foreach (var t in media.Tracks)
+            {
+                if (t.TrackType != TrackType.Audio) continue;
+                if (t.Data.Audio.Rate > 0) rate = (int)t.Data.Audio.Rate;
+                if (t.Data.Audio.Channels > 0) channels = (int)t.Data.Audio.Channels;
+                break;
+            }
+            // amem rejects rates above 384 kHz; the sink renders at most stereo
+            // (LibVLC downmixes to what we pin below).
+            rate = Math.Clamp(rate, 8000, 384000);
+            channels = Math.Clamp(channels, 1, 2);
+
             string? notice = null;
+            int sinkRate, sinkChannels;
 
             lock (_exclusiveSinkLock)
             {
@@ -1366,8 +1390,8 @@ public class VlcAudioPlayer : IAudioPlayer
                 // exclusive now that the device may be free).
                 if (_exclusiveOut != null &&
                     (!_exclusiveOut.IsExclusive ||
-                     _exclusiveOut.SampleRate != requestedRate ||
-                     _exclusiveOut.Channels != requestedChannels))
+                     _exclusiveOut.SampleRate != rate ||
+                     _exclusiveOut.Channels != channels))
                 {
                     _exclusiveOut.Dispose();
                     _exclusiveOut = null;
@@ -1375,7 +1399,7 @@ public class VlcAudioPlayer : IAudioPlayer
 
                 if (_exclusiveOut == null)
                 {
-                    var sink = WasapiGainOutput.TryCreateExclusive(requestedRate, requestedChannels, out var reason);
+                    var sink = WasapiGainOutput.TryCreateExclusive(rate, channels, out var reason);
                     if (sink != null)
                     {
                         notice = $"Exclusive output active — {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}";
@@ -1387,38 +1411,38 @@ public class VlcAudioPlayer : IAudioPlayer
                     }
 
                     if (sink == null)
-                        return -1; // no usable output at all; VLC skips audio
+                    {
+                        // No usable output at all; the play callback no-ops and VLC
+                        // reports the aout failure — same net result as before.
+                        DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.SetupFailed",
+                            "no WASAPI output available");
+                        return;
+                    }
 
                     _exclusiveOut = sink;
                     sink.SetGainTarget(WasapiGainLevel());
                 }
 
-                rate = (uint)_exclusiveOut.SampleRate;
-                channels = (uint)_exclusiveOut.Channels;
+                sinkRate = _exclusiveOut.SampleRate;
+                sinkChannels = _exclusiveOut.Channels;
             }
 
-            // "FL32" — LibVLC hands us float PCM; the sink converts to the
-            // negotiated device format at the output.
-            Marshal.Copy(new[] { (byte)'F', (byte)'L', (byte)'3', (byte)'2' }, 0, format, 4);
+            // The format string is IGNORED by VLC 3.x's amem ("TODO: amem-format"
+            // — it always outputs S16N); only the rate/channels vars are read.
+            // "S16N" is passed so the call documents what actually flows.
+            _player.SetAudioFormat("S16N", (uint)sinkRate, (uint)sinkChannels);
 
             if (notice != null)
             {
                 DebugLogger.Info(DebugLogger.Category.Playback, "Exclusive.Setup", notice);
                 OutputModeChanged?.Invoke(this, notice);
             }
-            return 0;
         }
         catch (Exception ex)
         {
             DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.SetupFailed", ex.Message);
-            return -1;
         }
     }
-
-    /// <summary>LibVLC audio-cleanup callback: the track's audio output is going
-    /// away. Keep the device stream open for the next track (same-rate tracks
-    /// reuse it gaplessly); just drop any queued PCM.</summary>
-    private void AudioCleanup(IntPtr opaque) => _exclusiveOut?.Flush();
 
     public void ApplyReplayGain(string mode, double preampDb)
     {
@@ -1850,6 +1874,11 @@ public class VlcAudioPlayer : IAudioPlayer
             // audible playback.
             if (startPaused)
                 _currentMedia.AddOption(":start-paused");
+
+            // Exclusive mode: open/reuse the device sink at this track's source
+            // rate and pin the output format before the aout starts.
+            if (_exclusiveModeEnabled && _wasapiOut == null && OperatingSystem.IsWindows())
+                PrepareExclusiveOutputFor(_currentMedia);
 
             // 5. Start playback
             Interlocked.Exchange(ref _lastPlayStartTicksUtc, DateTime.UtcNow.Ticks);
@@ -2604,15 +2633,19 @@ public class VlcAudioPlayer : IAudioPlayer
     private WasapiGainOutput? ActiveCallbackSink => _wasapiOut ?? _exclusiveOut;
 
     // ── WASAPI output callbacks (experimental gain path + exclusive mode) ──
-    // LibVLC delivers decoded FL32 PCM here (EQ already applied upstream); we
+    // LibVLC delivers decoded S16N PCM here (EQ already applied upstream); we
     // forward it to the sink, which applies the user's volume per-sample. These
     // run on LibVLC's audio thread — they must never throw.
+    // count is FRAMES of 16-bit samples (VLC 3.x amem outputs S16N only) —
+    // 2 bytes per sample. Reading ×4 here over-read past VLC's native block
+    // and killed the process with a fatal AV once the read crossed an
+    // unmapped page (the 0x80131506 exclusive-mode crash).
     private long _audioPlayCallCount;
     private void AudioPlay(IntPtr data, IntPtr samples, uint count, long pts)
     {
         var sink = ActiveCallbackSink;
         if (sink == null) return;
-        var bytes = checked((int)count * sink.Channels * 4);
+        var bytes = checked((int)count * sink.Channels * 2);
         if (Interlocked.Increment(ref _audioPlayCallCount) <= 3)
             WasapiGainOutput.Diag($"AudioPlay #{_audioPlayCallCount}: count(frames)={count} -> {bytes}B, pts={pts}");
         var buf = System.Buffers.ArrayPool<byte>.Shared.Rent(bytes);
@@ -2973,7 +3006,13 @@ public class VlcAudioPlayer : IAudioPlayer
         {
             var gapMs = (tickNowTicks - tickPrevTicks) / TimeSpan.TicksPerMillisecond;
             if (gapMs is > 750 and < 10_000)
+            {
                 DebugLogger.Info(DebugLogger.Category.Playback, "PositionTimer.Stall", $"gapMs={gapMs}");
+                // Also mirrored into the dev-mode session log: this marker next to
+                // VLC's "buffer too late … dropped" pair = app/system-wide freeze;
+                // the VLC pair alone = input/disk-side stall (see rare-dropout hunt).
+                DebugLog.Write("Playback", $"position-timer stall: gapMs={gapMs}");
+            }
         }
 
         try
