@@ -10,15 +10,26 @@ public static class AutoMixKeyTempo
         nextBpm > 0 &&
         GetNormalizedBpmDifference(currentBpm, nextBpm) <= 10;
 
+    /// <summary>Plausible tempo range for the octave candidates below.</summary>
+    private const double MinPlausibleBpm = 40;
+    private const double MaxPlausibleBpm = 240;
+
     public static double GetNormalizedBpmDifference(int currentBpm, int nextBpm)
     {
-        var current = Math.Clamp(currentBpm, 40, 240);
-        var candidates = new[]
-        {
-            Math.Clamp(nextBpm, 40, 240),
-            Math.Clamp(nextBpm * 2, 40, 240),
-            Math.Clamp(nextBpm / 2.0, 40, 240)
-        };
+        var current = Math.Clamp((double)currentBpm, MinPlausibleBpm, MaxPlausibleBpm);
+
+        // Octave candidates are computed UNCLAMPED and out-of-range ones are dropped,
+        // not saturated. Clamping them produced false matches at the boundary: for
+        // current=240, next=128 the doubled candidate 256 clamped back down to exactly
+        // 240, so the distance was 0 and IsTempoCompatible returned true — meaning every
+        // track at 120+ BPM was "compatible" with any 240 BPM track, and the planner
+        // picked a beat-matched crossfade on a genuine tempo mismatch.
+        var candidates = new[] { (double)nextBpm, nextBpm * 2.0, nextBpm / 2.0 }
+            .Where(c => c >= MinPlausibleBpm && c <= MaxPlausibleBpm)
+            .ToArray();
+
+        if (candidates.Length == 0)
+            return double.MaxValue; // nothing plausible — never "compatible"
 
         return candidates.Min(candidate => Math.Abs(current - candidate));
     }

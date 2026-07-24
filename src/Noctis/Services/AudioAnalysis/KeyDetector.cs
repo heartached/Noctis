@@ -55,11 +55,18 @@ public static class KeyDetector
 
         double sum = 0;
         for (int i = 0; i < 12; i++) sum += chroma[i];
-        if (sum <= 1e-9) return ("", 0);
+        // `sum <= 1e-9` is false for NaN, so a NaN chroma slipped past this guard —
+        // ffmpeg passes NaN straight through for a corrupt pcm_f32le WAV.
+        if (!double.IsFinite(sum) || sum <= 1e-9) return ("", 0);
         for (int i = 0; i < 12; i++) chroma[i] /= sum;
 
+        // bestKey starts at -1, not 0. Correlate returns NaN for a NaN chroma and exactly
+        // 0 for a zero-variance one (white noise / a flat chroma); NaN fails every `>`
+        // comparison below, so bestKey was never assigned and the method happily returned
+        // PitchNames[0] — "C major" — as a confident-looking result for undetectable
+        // input, which then got written to the library and into the user's file tags.
         double bestScore = double.NegativeInfinity, secondBest = double.NegativeInfinity;
-        int bestKey = 0; bool bestMinor = false;
+        int bestKey = -1; bool bestMinor = false;
         for (int rot = 0; rot < 12; rot++)
         {
             double maj = Correlate(chroma, MajorProfile, rot);
@@ -70,7 +77,10 @@ public static class KeyDetector
             else if (min > secondBest) secondBest = min;
         }
 
+        if (bestKey < 0 || !double.IsFinite(bestScore)) return ("", 0);
+
         double confidence = bestScore > 0 ? Math.Clamp((bestScore - secondBest) / bestScore, 0, 1) : 0;
+        if (!double.IsFinite(confidence)) confidence = 0;
         return ($"{PitchNames[bestKey]} {(bestMinor ? "minor" : "major")}", confidence);
     }
 

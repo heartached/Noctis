@@ -207,8 +207,11 @@ public static class AutoMixTransitionPlanner
 
     public static AudioSilenceProfile EstimateSilenceProfile(Track track)
     {
+        // StartTimeMs is a user-set trim point, not an estimate — it must not be capped.
+        // The 5s clamp made AutoMix start a track with a 20s trimmed intro at 5s, playing
+        // 15s of the intro the user removed, while the gapless path honoured it in full.
         var start = track.StartTimeMs > 0
-            ? TimeSpan.FromMilliseconds(Math.Min(track.StartTimeMs, 5000))
+            ? TimeSpan.FromMilliseconds(track.StartTimeMs)
             : TimeSpan.Zero;
 
         var end = TimeSpan.Zero;
@@ -249,7 +252,13 @@ public static class AutoMixTransitionPlanner
                 // Plain crossfade honours the full Settings range (1-12s) instead
                 // of the AutoMix strength cap; the 20%-of-track limit still applies.
                 options.Mode == AutoMixTransitionMode.Crossfade ? 12 : null);
-        var transitionEnd = GetTransitionEnd(current) - currentSilence.EndSilence;
+        // EndSilence is defined as the region *after* StopTimeMs, and GetTransitionEnd
+        // already returns StopTimeMs when one is set — so subtracting it there removed the
+        // same region twice and cut audio the user explicitly kept. (240s track with
+        // StopTimeMs=235s: EndSilence=5s and the transition anchored at 230s.)
+        var transitionEnd = current.StopTimeMs > 0
+            ? GetTransitionEnd(current)
+            : GetTransitionEnd(current) - currentSilence.EndSilence;
         if (transitionEnd < TimeSpan.Zero)
             transitionEnd = TimeSpan.Zero;
 

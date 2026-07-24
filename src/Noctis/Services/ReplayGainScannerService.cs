@@ -116,9 +116,30 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
         {
             foreach (var grp in tracks.Where(t => !measured[t].Failed).GroupBy(t => t.AlbumId))
             {
-                var avgLufs = grp.Average(t => measured[t].IntegratedLufs);
+                // Duration-weighted energy mean, not an arithmetic mean of LUFS values.
+                // LUFS is logarithmic, so averaging it directly gave every track equal
+                // weight regardless of length: an album of nine 4-minute tracks at
+                // -9 LUFS plus one 15-second interlude at -30 LUFS averaged to
+                // -11.1 LUFS (album gain -6.9 dB) where the correct answer is
+                // ~-9.1 LUFS (-8.9 dB) — a 2 dB error applied to the whole album.
+                double energySum = 0, durationSum = 0;
+                foreach (var t in grp)
+                {
+                    var seconds = t.Duration.TotalSeconds;
+                    if (seconds <= 0) seconds = 1; // unknown duration — weight as 1s
+                    var lufs = measured[t].IntegratedLufs;
+                    if (!double.IsFinite(lufs)) continue;
+
+                    energySum += seconds * Math.Pow(10.0, (lufs + 0.691) / 10.0);
+                    durationSum += seconds;
+                }
+
+                var albumLufs = durationSum > 0 && energySum > 0
+                    ? -0.691 + 10.0 * Math.Log10(energySum / durationSum)
+                    : grp.Average(t => measured[t].IntegratedLufs); // degenerate fallback
+
                 var peak = grp.Max(t => measured[t].TruePeakDbtp);
-                albumGain[grp.Key] = ReferenceLufs - avgLufs;
+                albumGain[grp.Key] = ReferenceLufs - albumLufs;
                 albumPeak[grp.Key] = peak;
             }
         }
@@ -130,13 +151,18 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
             var r = measured[t];
             if (r.Failed) continue;
 
-            var trackGainDb = ReferenceLufs - r.IntegratedLufs;
+            // Clamped before it is written into the user's file. The raw value is
+            // unbounded, so a quiet field recording measuring -58 LUFS produced
+            // REPLAYGAIN_TRACK_GAIN = "+40.00 dB" — permanent in the tag, and every other
+            // player honours it literally. (Noctis clamps at playback, but the tag is not
+            // only read by Noctis.)
+            var trackGainDb = ClampGain(ReferenceLufs - r.IntegratedLufs);
             var trackPeakLinear = DbToLinear(r.TruePeakDbtp);
             double? aGainDb = null;
             double? aPeakLinear = null;
             if (albumMode && albumGain.TryGetValue(t.AlbumId, out var ag))
             {
-                aGainDb = ag;
+                aGainDb = ClampGain(ag);
                 aPeakLinear = DbToLinear(albumPeak[t.AlbumId]);
             }
 
@@ -159,6 +185,13 @@ public sealed class ReplayGainScannerService : IReplayGainScannerService
     }
 
     private static double DbToLinear(double db) => System.Math.Pow(10.0, db / 20.0);
+
+    /// <summary>
+    /// Bounds a computed gain to a sane window before it is written into a file tag.
+    /// A non-finite measurement (corrupt/silent input) collapses to 0 dB — no adjustment.
+    /// </summary>
+    private static double ClampGain(double db)
+        => double.IsFinite(db) ? System.Math.Clamp(db, -30.0, 20.0) : 0.0;
 
     private static async Task<LoudnessResult> MeasureAsync(string ffmpeg, string source, CancellationToken ct)
     {
