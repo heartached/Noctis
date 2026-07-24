@@ -289,9 +289,10 @@ jobs:
           cp "$APPDIR/noctis.desktop" "$APPDIR/usr/share/applications/"
 
           # Fetch appimagetool — pinned release + SHA-256 (the "continuous" tag
-          # is rewritten on every upstream commit).
-          wget -q https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage -O appimagetool
-          echo "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5  appimagetool" | sha256sum -c -
+          # is rewritten on every upstream commit). Pinned to the successor repo
+          # AppImage/appimagetool: the old AppImageKit release assets were removed.
+          wget -q https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage -O appimagetool
+          echo "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  appimagetool" | sha256sum -c -
           chmod +x appimagetool
 
           mkdir -p packaged
