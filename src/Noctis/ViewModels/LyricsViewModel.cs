@@ -795,6 +795,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             var settings = await _persistence.LoadSettingsAsync();
 
+            _suppressSyncOffsetSave = true;
+            try { SyncOffsetMs = settings.LyricsSyncOffsetMs; }
+            finally { _suppressSyncOffsetSave = false; }
+
             // Restore the Artwork/Solid/Gradient mode preference.
             // The Solid/Gradient sub-mode is filled in below when a swatch was saved.
             IsColorModeArtwork = settings.LyricsShowArtworkBackground;
@@ -1401,7 +1405,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         else if (!string.IsNullOrWhiteSpace(result.PlainLyrics))
         {
             var rendered = new List<LyricLine>();
-            var lines = result.PlainLyrics.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+            var lines = SplitPlainLyrics(result.PlainLyrics);
             foreach (var line in lines)
             {
                 var wrapped = SoftWrapText(line);
@@ -1858,7 +1862,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (probe.Source == "Cache:Plain" && !string.IsNullOrWhiteSpace(probe.UnsyncedPlain))
         {
             DebugLogger.Info(DebugLogger.Category.Lyrics, "Source:CachePlain", $"trackId={track.Id}");
-            var split = probe.UnsyncedPlain.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+            var split = SplitPlainLyrics(probe.UnsyncedPlain);
             var rendered = new List<LyricLine>(split.Length);
             foreach (var line in split)
                 rendered.Add(new LyricLine { Text = SoftWrapText(line), IsActive = true });
@@ -1916,7 +1920,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         if (hasPlainField && !plainIsActuallyLrc)
         {
-            var split = track.Lyrics.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+            var split = SplitPlainLyrics(track.Lyrics);
             if (!hasSyncedField)
             {
                 var rendered = new List<LyricLine>(split.Length);
@@ -2027,7 +2031,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// <summary>Populates the Unsync tab from a Lyricsfile's `plain` block (preserves blank-line spacing).</summary>
     private void PopulateUnsyncedFromPlainText(string plain)
     {
-        var split = plain.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+        var split = SplitPlainLyrics(plain);
         var batch = new List<LyricLine>(split.Length);
         foreach (var line in split)
             batch.Add(new LyricLine { Text = SoftWrapText(line), IsActive = true });
@@ -2115,6 +2119,23 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// Supports: [mm:ss.xx] text, [mm:ss] text, multiple timestamps per line.
     /// Ignores metadata tags like [ar:], [ti:], [al:], etc.
     /// </summary>
+    /// <summary>
+    /// Upper bound on lines produced from one file. The lyrics list is not virtualized —
+    /// every line is realized, and a word-timed line is ~7 controls per word plus a
+    /// BlurEffect — so an oversized or hostile sidecar (a 1 MB .lrc, or one line carrying
+    /// thousands of stacked [mm:ss.xx] tags, since each tag emits its own LyricLine) would
+    /// build tens of thousands of controls in a single UI-thread pass. No real song comes
+    /// close to this.
+    /// </summary>
+    private const int MaxLyricLines = 3000;
+
+    /// <summary>Splits plain lyrics into display lines, bounded by <see cref="MaxLyricLines"/>.</summary>
+    private static string[] SplitPlainLyrics(string text)
+    {
+        var split = text.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+        return split.Length <= MaxLyricLines ? split : split[..MaxLyricLines];
+    }
+
     private static List<LyricLine> ParseLrcContent(string content)
     {
         var lines = new List<LyricLine>();
@@ -2123,6 +2144,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         foreach (var rawLine in rawLines)
         {
+            if (lines.Count >= MaxLyricLines) break;
+
             var trimmed = rawLine.Trim();
             if (string.IsNullOrEmpty(trimmed)) continue;
 
@@ -2159,6 +2182,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 // Create a LyricLine for each timestamp (handles multi-timestamp lines)
                 foreach (Match match in matches)
                 {
+                    if (lines.Count >= MaxLyricLines) break;
+
                     var timestamp = ParseLrcTimestamp(match.Value);
                     if (timestamp.HasValue)
                     {
@@ -2325,7 +2350,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         var track = _player.CurrentTrack;
         if (track == null) return;
 
-        var synced = !string.IsNullOrWhiteSpace(_loadedSyncedLyrics) ? _loadedSyncedLyrics : track.SyncedLyrics;
+        // Seed from what is actually on screen. _loadedSyncedLyrics and track.SyncedLyrics
+        // both come from the track's embedded tags, and the probe never writes a
+        // .lrc/.ttml/.lyricsfile sidecar back onto the Track — so for a sidecar-sourced
+        // track the editor opened with *unsynced* text, and its save then replaced a
+        // complete (possibly word-timed) sidecar with however many lines got stamped.
+        var synced = BuildSeedFromLoadedLines()
+                     ?? (!string.IsNullOrWhiteSpace(_loadedSyncedLyrics) ? _loadedSyncedLyrics : track.SyncedLyrics);
         var plain = !string.IsNullOrWhiteSpace(_loadedLyrics) ? _loadedLyrics : track.Lyrics;
         if (string.IsNullOrWhiteSpace(synced) && string.IsNullOrWhiteSpace(plain))
         {
@@ -2334,6 +2365,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
 
         var vm = new LrcEditorViewModel(track, _player, _metadata, synced, plain);
+
         vm.Saved += (_, _) => Dispatcher.UIThread.Post(() =>
         {
             if (_player.CurrentTrack == track)
@@ -2341,6 +2373,74 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         });
         await Views.LrcEditorDialog.ShowAsync(vm);
     }
+
+    /// <summary>
+    /// Serializes the currently displayed synced lines back to LRC so the editor can
+    /// retime them, whatever source they came from. Returns null when nothing synced is
+    /// loaded. Display text carries the soft-wrap newline SoftWrapText inserted, which is
+    /// unfolded back to the space it replaced.
+    /// </summary>
+    private string? BuildSeedFromLoadedLines()
+    {
+        if (!_hasSyncedLyrics || LyricLines.Count == 0) return null;
+
+        var lines = LyricLines
+            .Where(l => !string.IsNullOrWhiteSpace(l.Text) && l.Text != "...")
+            .Select(l => (l.Timestamp, Text: l.Text.Replace("\r\n", " ").Replace('\n', ' ').Trim()))
+            .ToList();
+
+        return lines.Any(l => l.Timestamp.HasValue)
+            ? LrcEditorViewModel.BuildLrcPreservingUntimed(lines)
+            : null;
+    }
+
+    // ── Lyric sync offset ───────────────────────────────────────────────────
+    // Timing was fixed by two hard-coded lookaheads plus whatever [offset:] tag the
+    // file carried. A downloaded .lrc that is consistently half a second early or late
+    // is the single most common lyrics complaint, and with the LRC editor unreachable
+    // the only recourse was hand-editing the file outside the app.
+
+    /// <summary>Global timing nudge in ms. Positive = lines appear earlier.</summary>
+    [ObservableProperty] private int _syncOffsetMs;
+
+    private bool _suppressSyncOffsetSave;
+
+    /// <summary>Label for the offset pill, e.g. "+250 ms".</summary>
+    public string SyncOffsetLabel => SyncOffsetMs == 0 ? "0 ms" : $"{SyncOffsetMs:+#;-#;0} ms";
+
+    partial void OnSyncOffsetMsChanged(int value)
+    {
+        OnPropertyChanged(nameof(SyncOffsetLabel));
+        // Re-evaluate immediately so the nudge is felt on the current line, not on the next.
+        RefreshActiveLyricPosition();
+        if (_suppressSyncOffsetSave) return;
+        _ = PersistSyncOffsetAsync(value);
+    }
+
+    private async Task PersistSyncOffsetAsync(int value)
+    {
+        try
+        {
+            var settings = await _persistence.LoadSettingsAsync();
+            settings.LyricsSyncOffsetMs = value;
+            await _persistence.SaveSettingsAsync(settings);
+        }
+        catch { }
+    }
+
+    private const int SyncOffsetStepMs = 100;
+    private const int SyncOffsetLimitMs = 5000;
+
+    [RelayCommand]
+    private void NudgeSyncOffsetEarlier()
+        => SyncOffsetMs = Math.Min(SyncOffsetLimitMs, SyncOffsetMs + SyncOffsetStepMs);
+
+    [RelayCommand]
+    private void NudgeSyncOffsetLater()
+        => SyncOffsetMs = Math.Max(-SyncOffsetLimitMs, SyncOffsetMs - SyncOffsetStepMs);
+
+    [RelayCommand]
+    private void ResetSyncOffset() => SyncOffsetMs = 0;
 
     /// <summary>
     /// Seeks playback to the timestamp of a clicked lyric line.
@@ -2554,7 +2654,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     private TimeSpan GetPlaybackPosition()
     {
-        var raw = _player.Position;
+        var raw = _player.Position + TimeSpan.FromMilliseconds(SyncOffsetMs);
         if (_player.State != Models.PlaybackState.Playing)
         {
             // Not advancing — drop the anchor so resume re-anchors fresh (an anchor

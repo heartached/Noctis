@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Animation;
@@ -51,6 +51,7 @@ public partial class LyricsView : UserControl
         if (LyricsScrollViewer != null)
         {
             LyricsScrollViewer.PointerWheelChanged += OnLyricsPointerWheelChanged;
+            LyricsScrollViewer.PropertyChanged += OnLyricsScrollViewerPropertyChanged;
             LyricsScrollViewer.PropertyChanged += OnScrollViewerPropertyChanged;
         }
 
@@ -474,7 +475,7 @@ public partial class LyricsView : UserControl
             if (index >= 0)
                 JumpToActiveLineWhenReady(index);
             else if (LyricsScrollViewer != null)
-                LyricsScrollViewer.Offset = new Vector(0, 0);
+                ApplyScrollOffset(LyricsScrollViewer, 0);
         }
         FadeLyricsHost(1.0, 240);
     }
@@ -559,7 +560,7 @@ public partial class LyricsView : UserControl
                 if (targetIndex >= 0)
                     ScrollToActiveLine(targetIndex);
                 else if (LyricsScrollViewer != null)
-                    LyricsScrollViewer.Offset = new Avalonia.Vector(0, 0);
+                    ApplyScrollOffset(LyricsScrollViewer, 0);
             }
         }
         else if (sender is LyricsViewModel v)
@@ -688,6 +689,38 @@ public partial class LyricsView : UserControl
         _autoFollowResumeTimer = null;
     }
 
+    // Every scroll this view performs itself goes through ApplyScrollOffset, which records
+    // the value it wrote. Anything that lands in Offset without matching it came from the
+    // user — a scrollbar drag, a touch pan, PageDown — and pauses auto-follow. The pause
+    // used to hang off PointerWheelChanged alone, so those three did nothing and the next
+    // line change simply yanked the view back with no "Follow" button to explain it.
+    private double _lastAppliedScrollY = double.NaN;
+
+    private void ApplyScrollOffset(ScrollViewer scrollViewer, double y)
+    {
+        _lastAppliedScrollY = y;
+        scrollViewer.Offset = new Vector(0, y);
+    }
+
+    private void OnLyricsScrollViewerPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property != ScrollViewer.OffsetProperty) return;
+        if (_isProgrammaticScroll) return;
+        if (e.NewValue is not Vector v) return;
+
+        // Nothing has been scrolled by us yet — this is the first layout pass, not a user
+        // gesture. Adopt it as the baseline.
+        if (double.IsNaN(_lastAppliedScrollY))
+        {
+            _lastAppliedScrollY = v.Y;
+            return;
+        }
+
+        // 1px tolerance: layout can round the offset we asked for.
+        if (Math.Abs(v.Y - _lastAppliedScrollY) > 1.0)
+            PauseAutoFollow();
+    }
+
     private void OnLyricsPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
         if (!_isProgrammaticScroll)
@@ -794,7 +827,7 @@ public partial class LyricsView : UserControl
 
                 if (Math.Abs(diff) < 2)
                 {
-                    LyricsScrollViewer.Offset = new Vector(0, targetOffset);
+                    ApplyScrollOffset(LyricsScrollViewer, targetOffset);
                     return;
                 }
 
@@ -840,7 +873,7 @@ public partial class LyricsView : UserControl
 
                 var targetOffset = childTop - (viewportHeight * 0.22) + (childHeight / 2.0);
                 targetOffset = Math.Max(0, targetOffset);
-                LyricsScrollViewer.Offset = new Vector(0, targetOffset);
+                ApplyScrollOffset(LyricsScrollViewer, targetOffset);
             }
             catch { }
         }, DispatcherPriority.Loaded);
@@ -895,7 +928,7 @@ public partial class LyricsView : UserControl
             // Scroll easing: smootherstep glides without overshoot. Spring overshoot here
             // reads as "the lyrics jumped past, then snapped back" — opposite of smooth.
             var eased = Easing.SmootherStep(t);
-            scrollViewer.Offset = new Vector(0, from + delta * eased);
+            ApplyScrollOffset(scrollViewer, from + delta * eased);
 
             // Stagger: each cascade line is displaced by the gap between the base ease
             // and its own delayed ease — positive while catching up, zero when settled.
@@ -911,7 +944,7 @@ public partial class LyricsView : UserControl
 
             if (t >= 1.0 && elapsed >= totalMs + maxDelayMs)
             {
-                scrollViewer.Offset = new Vector(0, to);
+                ApplyScrollOffset(scrollViewer, to);
                 ClearCascadeTransforms();
                 _isProgrammaticScroll = false;
                 return;
@@ -934,7 +967,7 @@ public partial class LyricsView : UserControl
         }
         else
         {
-            scrollViewer.Offset = new Vector(0, to);
+            ApplyScrollOffset(scrollViewer, to);
             CancelScrollAnimation();
         }
     }
