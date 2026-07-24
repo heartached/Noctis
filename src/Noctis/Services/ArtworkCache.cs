@@ -198,10 +198,31 @@ public static class ArtworkCache
     private static void OnEntryRemoved(CacheEntry removed)
     {
         Interlocked.Add(ref _totalBytes, -removed.Bytes);
-        // Mirror of the AddMemoryPressure on insert. The bitmap itself may outlive
-        // eviction (a control can still show it); its native memory is reclaimed by
-        // the finalizer once the last reference drops.
-        try { GC.RemoveMemoryPressure(removed.Bytes); } catch { /* mismatched pressure is non-fatal */ }
+
+        // The pressure is withdrawn LATER, not here.
+        //
+        // The bitmap deliberately outlives eviction (a control can still be showing it)
+        // and its native pixels are only reclaimed when the finalizer runs. Dropping the
+        // pressure at eviction time removed the very hint that makes the GC keep pace —
+        // exactly when the native memory was still resident — so during a fast grid
+        // scroll the real footprint could sit well above the cache's byte budget with
+        // nothing pushing collection. Deferring keeps the accounting aligned with what
+        // is actually allocated.
+        SchedulePressureRelease(removed.Bytes);
+    }
+
+    /// <summary>
+    /// Releases GC memory pressure for an evicted bitmap after a short delay, giving any
+    /// control still rendering it time to drop its reference first.
+    /// </summary>
+    private static void SchedulePressureRelease(long bytes)
+    {
+        if (bytes <= 0) return;
+        _ = Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(_ =>
+        {
+            try { GC.RemoveMemoryPressure(bytes); }
+            catch { /* mismatched pressure is non-fatal */ }
+        }, TaskScheduler.Default);
     }
 
     private static string BuildKey(string path, int decodeWidth)

@@ -38,7 +38,21 @@ public class PreBlurredArtworkConverter : IValueConverter
     private static readonly ConditionalWeakTable<Bitmap, Bitmap> Cache = new();
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is Bitmap src ? Cache.GetValue(src, CreateBlurred) : null;
+    {
+        if (value is not Bitmap src) return null;
+        try
+        {
+            return Cache.GetValue(src, CreateBlurred);
+        }
+        catch (Exception ex)
+        {
+            // A throwing IValueConverter surfaces as a binding failure rather than a
+            // graceful fallback, and CopyPixels rejects some bitmap implementations
+            // outright (see the note in CreateBlurred). No backdrop beats a broken bind.
+            System.Diagnostics.Debug.WriteLine($"[PreBlurredArtwork] {ex.Message}");
+            return null;
+        }
+    }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();

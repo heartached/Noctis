@@ -194,6 +194,23 @@ public class MarqueeTextBlock : UserControl
         _timer.Tick += OnTick;
         AttachedToVisualTree += OnAttached;
         DetachedFromVisualTree += OnDetached;
+
+        // Overflow is computed from the viewport width, but nothing recomputed it when
+        // that width changed — only Text/FontSize/FontWeight/MaxDisplayWidth/InlineContent
+        // did. Resizing the window (the lyrics page and mini player size the marquee from
+        // the layout) left _overflow stale, so the text either scrolled past the wrong end
+        // or stopped scrolling despite now overflowing.
+        _viewport.GetObservable(BoundsProperty).Subscribe(new AnonymousObserver(_ => ResetAndRecalc()));
+    }
+
+    /// <summary>Minimal IObserver so the control can react to its own bounds changes.</summary>
+    private sealed class AnonymousObserver : IObserver<Rect>
+    {
+        private readonly Action<Rect> _onNext;
+        public AnonymousObserver(Action<Rect> onNext) => _onNext = onNext;
+        public void OnCompleted() { }
+        public void OnError(Exception error) { }
+        public void OnNext(Rect value) => _onNext(value);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

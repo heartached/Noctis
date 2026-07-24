@@ -789,11 +789,17 @@ public static class ShareCardRenderer
         var br = new double[Buckets]; var bg = new double[Buckets]; var bb = new double[Buckets];
         double ar = 0, ag = 0, ab = 0; long an = 0;   // plain average (grey-cover fallback)
 
+        // Walk the pixel span directly. GetPixel is a native P/Invoke per call, and at a
+        // stride of 6 over a 1024² bitmap that was ~29,000 interop transitions plus a
+        // ToHsl call each — per artwork, on the UI thread, at every track change.
+        var pixels = art.Pixels;
+        var width = art.Width;
         for (int y = 0; y < art.Height; y += 6)
         {
-            for (int x = 0; x < art.Width; x += 6)
+            var row = y * width;
+            for (int x = 0; x < width; x += 6)
             {
-                var px = art.GetPixel(x, y);
+                var px = pixels[row + x];
                 if (px.Alpha < 32) continue;
                 ar += px.Red; ag += px.Green; ab += px.Blue; an++;
 
@@ -805,8 +811,16 @@ public static class ShareCardRenderer
                 double chroma = max - min;
                 if (chroma < 0.05) continue;               // near-grey pixels don't vote a hue
 
-                px.ToHsl(out var hDeg, out _, out _);
-                int bucket = (int)(hDeg / 360f * Buckets) % Buckets;
+                // Hue inline from the RGB we already have, rather than a second native
+                // call per pixel (SKColor.ToHsl).
+                double hDeg;
+                if (chroma <= 0) hDeg = 0;
+                else if (max == r) hDeg = 60.0 * (((g - b) / chroma) % 6.0);
+                else if (max == g) hDeg = 60.0 * (((b - r) / chroma) + 2.0);
+                else hDeg = 60.0 * (((r - g) / chroma) + 4.0);
+                if (hDeg < 0) hDeg += 360.0;
+
+                int bucket = (int)(hDeg / 360.0 * Buckets) % Buckets;
                 double weight = chroma * chroma;
                 bw[bucket] += weight;
                 br[bucket] += px.Red * weight; bg[bucket] += px.Green * weight; bb[bucket] += px.Blue * weight;
@@ -1086,12 +1100,37 @@ public static class ShareCardRenderer
     /// 256-codepoint block. Whitespace sticks to the current run. Runs concatenate
     /// back to the input; codepoints nothing can draw stay on the primary face.
     /// </summary>
+    // Memoized results, keyed by (text, primary typeface).
+    //
+    // The karaoke animator calls this for every row on every rendered frame, and each
+    // call allocates a StringBuilder + List and makes one native ContainsGlyph P/Invoke
+    // per character. With ~8 wrapped rows that was ~40 calls and 1–2k native probes per
+    // frame — for text that does not change between frames.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<
+        (string Text, SKTypeface Face), List<(string Run, SKTypeface Face)>> _runCache = new();
+
+    private const int RunCacheMax = 512;
+
     public static List<(string Run, SKTypeface Face)> SplitFallbackRuns(string text, SKTypeface primary)
     {
-        var runs = new List<(string Run, SKTypeface Face)>();
         if (string.IsNullOrEmpty(text))
-            return runs;
+            return new List<(string Run, SKTypeface Face)>();
 
+        if (_runCache.TryGetValue((text, primary), out var cached))
+            return cached;
+
+        var computed = SplitFallbackRunsCore(text, primary);
+
+        // Cheap bound: the card text set is small and bursty, so a full clear on
+        // overflow is fine and avoids tracking recency.
+        if (_runCache.Count >= RunCacheMax) _runCache.Clear();
+        _runCache.TryAdd((text, primary), computed);
+        return computed;
+    }
+
+    private static List<(string Run, SKTypeface Face)> SplitFallbackRunsCore(string text, SKTypeface primary)
+    {
+        var runs = new List<(string Run, SKTypeface Face)>();
         var sb = new StringBuilder();
         SKTypeface currentFace = primary;
         for (int i = 0; i < text.Length;)
@@ -1320,13 +1359,35 @@ public static class ShareCardRenderer
         return SKTypeface.CreateDefault();
     }
 
+    /// <summary>Largest source dimension we will decode at full size (see LoadArtwork).</summary>
+    private const int MaxDecodeDimension = 8192;
+
     private static SKBitmap? LoadArtwork(string? path)
     {
         if (string.IsNullOrEmpty(path) || !File.Exists(path))
             return null;
         try
         {
-            using var raw = SKBitmap.Decode(path);
+            // Read the header first and subsample absurd images on the way in. A plain
+            // SKBitmap.Decode allocates the file's *native* resolution before the resize
+            // below ever runs, so a 20000×20000 cover next to a track — or embedded in a
+            // downloaded one — meant a ~1.6 GB allocation and an OOM kill, on a path that
+            // runs at every track change.
+            using var codec = SKCodec.Create(path);
+            if (codec == null) return null;
+
+            var info = codec.Info;
+            var longest = Math.Max(info.Width, info.Height);
+            var sample = 1;
+            while (longest / sample > MaxDecodeDimension) sample *= 2;
+
+            using var raw = sample > 1
+                ? SKBitmap.Decode(codec, new SKImageInfo(
+                    Math.Max(1, info.Width / sample),
+                    Math.Max(1, info.Height / sample),
+                    SKColorType.Bgra8888, SKAlphaType.Premul))
+                : SKBitmap.Decode(path);
+
             // Downscale once so the color passes and card drawing stay cheap. 1024px keeps
             // the artwork sharp on the 2× supersampled export (poster art draws at ~920px).
             return raw?.Resize(new SKImageInfo(1024, 1024), SKFilterQuality.High);
