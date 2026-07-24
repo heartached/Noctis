@@ -256,6 +256,7 @@
                                VerticalAlignment="Center"
                                IsVisible="{Binding IsAlbumFavorited}" />
                     <PathIcon Data="{StaticResource HeartFillIcon}"
+                               Classes="heart-pop"
                                Width="12" Height="12"
                                Foreground="#E74856"
                                Margin="0,2,0,0"
@@ -672,9 +673,10 @@
                                                   VerticalAlignment="Center"
                                                   IsVisible="{Binding !!Rating}" />
                             <!-- Col 1: heart — always 22px wide so duration never shifts -->
-                            <!-- Hidden for singles and fully-favorited albums (heart shown in metadata row instead) -->
+                            <!-- Hidden for singles (heart shown in metadata row instead) -->
                             <Panel Grid.Column="1" IsVisible="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShowTrackRowHearts}">
                                 <PathIcon Data="{StaticResource HeartFillIcon}"
+                                         Classes="heart-pop"
                                          Width="14" Height="14"
                                          Foreground="#E74856"
                                          HorizontalAlignment="Center"
