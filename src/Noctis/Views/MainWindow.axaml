@@ -1056,6 +1056,14 @@
                             <CubicEaseOut/>
                         </TransformOperationsTransition.Easing>
                     </TransformOperationsTransition>
+                    <!-- Card-only fade: used by the stats back-arrow reopen, where the
+                         backdrop appears instantly but the card still animates in.
+                         Normal open/close never changes the card's own Opacity. -->
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
                 </Transitions>
             </Border.Transitions>
             <Grid RowDefinitions="Auto,*,Auto">
