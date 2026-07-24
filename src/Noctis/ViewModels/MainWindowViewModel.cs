@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Input;
@@ -259,6 +259,13 @@ public partial class MainWindowViewModel : ViewModelBase
         _artistsVm = new LibraryArtistsViewModel(library);
         _artistsVm.SetArtistImageService(artistImageService);
         _playlistsVm = new LibraryPlaylistsViewModel(Sidebar, Player, library, persistence);
+        // Same mirroring as the Albums sort chip: the label lives on the grid view-model,
+        // the control that shows it lives in the shared top bar.
+        _playlistsVm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LibraryPlaylistsViewModel.SortLabel))
+                TopBar.PlaylistSortLabel = _playlistsVm.SortLabel;
+        };
 
         _foldersVm = new LibraryFoldersViewModel(library, Player, persistence, Sidebar);
         _foldersVm.NavigateToSettingsRequested += (_, _) =>
@@ -1584,7 +1591,8 @@ public partial class MainWindowViewModel : ViewModelBase
         if (key == "songs")
             SetupSongsTopBarActions();
         else if (key == "playlists")
-            TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand, _playlistsVm.ImportPlaylistCommand);
+            TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand,
+                _playlistsVm.ImportPlaylistCommand, _playlistsVm.SetSortCommand, _playlistsVm.SortLabel);
         else if (key == "favorites")
             TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
         else if (key == "folders")
@@ -2022,7 +2030,8 @@ public partial class MainWindowViewModel : ViewModelBase
         if (ReferenceEquals(view, _songsVm))
             SetupSongsTopBarActions();
         else if (ReferenceEquals(view, _playlistsVm))
-            TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand, _playlistsVm.ImportPlaylistCommand);
+            TopBar.ShowPlaylistActions(Sidebar.CreatePlaylistCommand, _playlistsVm.CreateSmartPlaylistCommand,
+                _playlistsVm.ImportPlaylistCommand, _playlistsVm.SetSortCommand, _playlistsVm.SortLabel);
         else if (ReferenceEquals(view, _favoritesVm))
             TopBar.ShowFavoritesActions(_favoritesVm.ShuffleAllCommand, _favoritesVm.PlayAllCommand);
         else if (ReferenceEquals(view, _lyricsVm))

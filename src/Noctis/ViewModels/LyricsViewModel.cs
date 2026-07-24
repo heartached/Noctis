@@ -795,10 +795,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             var settings = await _persistence.LoadSettingsAsync();
 
-            _suppressSyncOffsetSave = true;
-            try { SyncOffsetMs = settings.LyricsSyncOffsetMs; }
-            finally { _suppressSyncOffsetSave = false; }
-
             // Restore the Artwork/Solid/Gradient mode preference.
             // The Solid/Gradient sub-mode is filled in below when a swatch was saved.
             IsColorModeArtwork = settings.LyricsShowArtworkBackground;
@@ -2394,54 +2390,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             : null;
     }
 
-    // ── Lyric sync offset ───────────────────────────────────────────────────
-    // Timing was fixed by two hard-coded lookaheads plus whatever [offset:] tag the
-    // file carried. A downloaded .lrc that is consistently half a second early or late
-    // is the single most common lyrics complaint, and with the LRC editor unreachable
-    // the only recourse was hand-editing the file outside the app.
-
-    /// <summary>Global timing nudge in ms. Positive = lines appear earlier.</summary>
-    [ObservableProperty] private int _syncOffsetMs;
-
-    private bool _suppressSyncOffsetSave;
-
-    /// <summary>Label for the offset pill, e.g. "+250 ms".</summary>
-    public string SyncOffsetLabel => SyncOffsetMs == 0 ? "0 ms" : $"{SyncOffsetMs:+#;-#;0} ms";
-
-    partial void OnSyncOffsetMsChanged(int value)
-    {
-        OnPropertyChanged(nameof(SyncOffsetLabel));
-        // Re-evaluate immediately so the nudge is felt on the current line, not on the next.
-        RefreshActiveLyricPosition();
-        if (_suppressSyncOffsetSave) return;
-        _ = PersistSyncOffsetAsync(value);
-    }
-
-    private async Task PersistSyncOffsetAsync(int value)
-    {
-        try
-        {
-            var settings = await _persistence.LoadSettingsAsync();
-            settings.LyricsSyncOffsetMs = value;
-            await _persistence.SaveSettingsAsync(settings);
-        }
-        catch { }
-    }
-
-    private const int SyncOffsetStepMs = 100;
-    private const int SyncOffsetLimitMs = 5000;
-
-    [RelayCommand]
-    private void NudgeSyncOffsetEarlier()
-        => SyncOffsetMs = Math.Min(SyncOffsetLimitMs, SyncOffsetMs + SyncOffsetStepMs);
-
-    [RelayCommand]
-    private void NudgeSyncOffsetLater()
-        => SyncOffsetMs = Math.Max(-SyncOffsetLimitMs, SyncOffsetMs - SyncOffsetStepMs);
-
-    [RelayCommand]
-    private void ResetSyncOffset() => SyncOffsetMs = 0;
-
     /// <summary>
     /// Seeks playback to the timestamp of a clicked lyric line.
     /// </summary>
@@ -2654,7 +2602,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     private TimeSpan GetPlaybackPosition()
     {
-        var raw = _player.Position + TimeSpan.FromMilliseconds(SyncOffsetMs);
+        var raw = _player.Position;
         if (_player.State != Models.PlaybackState.Playing)
         {
             // Not advancing — drop the anchor so resume re-anchors fresh (an anchor

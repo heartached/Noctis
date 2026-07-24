@@ -313,27 +313,10 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Display URL for the running remote, or empty when off.</summary>
     [ObservableProperty] private string _webRemoteUrl = string.Empty;
 
-    /// <summary>Preferred TCP port for the web remote. Was hand-edit-only.</summary>
-    [ObservableProperty] private int _webRemotePort = 9420;
-
     partial void OnWebRemoteEnabledChanged(bool value)
     {
         if (_settingsLoaded) _ = SaveAsync();
         UpdateWebRemoteState();
-    }
-
-    partial void OnWebRemotePortChanged(int value)
-    {
-        if (!_settingsLoaded || _suspendSettingPersistence) return;
-        if (value is < 1024 or > 65535) return; // mid-edit value; wait for a valid one
-
-        _settings.WebRemotePort = value;
-        QueueSettingsSave();
-        if (WebRemoteEnabled)
-        {
-            _webRemote?.Stop();
-            UpdateWebRemoteState();
-        }
     }
 
     private void UpdateWebRemoteState()
@@ -352,9 +335,9 @@ public partial class SettingsViewModel : ViewModelBase
                     catch (SocketException)
                     {
                         // The port was in use. This used to leave WebRemoteUrl reading
-                        // "Failed to start: …" permanently — the port isn't in the UI, so
-                        // there was nothing the user could do about it. Bind an ephemeral
-                        // port instead and show the one actually bound.
+                        // "Failed to start: …" for the rest of the session with nothing
+                        // the user could do about it — the port is settings.json-only.
+                        // Bind an ephemeral port instead and show the one actually bound.
                         _webRemote.Start(0);
                     }
                 }
@@ -851,7 +834,6 @@ public partial class SettingsViewModel : ViewModelBase
             LaunchAtStartup = Helpers.StartupHelper.IsEnabled();
             StartMinimizedToTray = _settings.StartMinimizedToTray;
             RestoreLastTrackOnStartup = _settings.RestoreLastTrackOnStartup;
-            WebRemotePort = _settings.WebRemotePort;
             WebRemoteEnabled = _settings.WebRemoteEnabled;
             ShowGenreColumn = _settings.ShowGenreColumn;
             ShowRatingColumn = _settings.ShowRatingColumn;
@@ -1093,7 +1075,6 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.StartMinimizedToTray = StartMinimizedToTray;
         _settings.RestoreLastTrackOnStartup = RestoreLastTrackOnStartup;
         _settings.WebRemoteEnabled = WebRemoteEnabled;
-        if (WebRemotePort is >= 1024 and <= 65535) _settings.WebRemotePort = WebRemotePort;
         _settings.ShowGenreColumn = ShowGenreColumn;
         _settings.ShowRatingColumn = ShowRatingColumn;
         _settings.ShowBpmColumn = ShowBpmColumn;
@@ -3133,7 +3114,6 @@ public partial class SettingsViewModel : ViewModelBase
             CloseToTray = defaultSettings.CloseToTray;
             StartMinimizedToTray = defaultSettings.StartMinimizedToTray;
             RestoreLastTrackOnStartup = defaultSettings.RestoreLastTrackOnStartup;
-            WebRemotePort = defaultSettings.WebRemotePort;
             WebRemoteEnabled = defaultSettings.WebRemoteEnabled;
             CollapseAlbumEditions = defaultSettings.CollapseAlbumEditions;
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;

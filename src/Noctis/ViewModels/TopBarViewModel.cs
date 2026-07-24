@@ -164,6 +164,12 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _pageCreateSmartPlaylistCommand;
     [ObservableProperty] private ICommand? _pageImportPlaylistCommand;
 
+    // Playlists grid sort, mirrored here for top-bar placement — same pattern as the
+    // Albums sort chip above. Rides HasPlaylistActions so it appears and disappears with
+    // the New button rather than needing its own visibility flag.
+    [ObservableProperty] private string _playlistSortLabel = "Default";
+    [ObservableProperty] private ICommand? _playlistSortCommand;
+
     // Global view mode toggle (Library / Cover Flow) — shown on Home, Songs, Albums, Artists, Folders, Playlists, Favorites
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasBarContent))]
@@ -260,11 +266,14 @@ public partial class TopBarViewModel : ViewModelBase
         PageSortCommand = null;
     }
 
-    public void ShowPlaylistActions(ICommand createPlaylistCommand, ICommand createSmartPlaylistCommand, ICommand importPlaylistCommand)
+    public void ShowPlaylistActions(ICommand createPlaylistCommand, ICommand createSmartPlaylistCommand,
+        ICommand importPlaylistCommand, ICommand sortCommand, string sortLabel)
     {
         PageCreatePlaylistCommand = createPlaylistCommand;
         PageCreateSmartPlaylistCommand = createSmartPlaylistCommand;
         PageImportPlaylistCommand = importPlaylistCommand;
+        PlaylistSortCommand = sortCommand;
+        PlaylistSortLabel = sortLabel;
         HasPlaylistActions = true;
     }
 
@@ -274,6 +283,7 @@ public partial class TopBarViewModel : ViewModelBase
         PageCreatePlaylistCommand = null;
         PageCreateSmartPlaylistCommand = null;
         PageImportPlaylistCommand = null;
+        PlaylistSortCommand = null;
     }
 
     public void ShowArtistActions(ICommand shuffleCommand, ICommand playCommand)

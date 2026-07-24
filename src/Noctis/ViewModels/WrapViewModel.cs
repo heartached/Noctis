@@ -39,10 +39,6 @@ public partial class WrapViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private string _topGenreText = "—";
     [ObservableProperty] private bool _hasData;
 
-    /// <summary>True when the selected year's archived snapshot was built from an already
-    /// trimmed play log, so the numbers below are only part of that year.</summary>
-    [ObservableProperty] private bool _isPartialYear;
-
     [ObservableProperty] private List<WrapEntry> _topTracks = new();
     [ObservableProperty] private List<WrapEntry> _topArtists = new();
     [ObservableProperty] private List<WrapEntry> _topAlbums = new();
@@ -83,16 +79,12 @@ public partial class WrapViewModel : ViewModelBase, IDisposable
     {
         if (SelectedYear == _currentYear)
         {
-            IsPartialYear = false;
             var stats = WrapStatsBuilder.Build(
                 _playHistory.Events, _tracksById, _currentYear, IsMonthMode ? DateTime.Now.Month : null);
             Apply(stats);
         }
         else
         {
-            // A recap frozen from a partially trimmed log is not the year — say so rather
-            // than presenting incomplete numbers as the record.
-            IsPartialYear = !_archive.IsYearComplete(SelectedYear);
             var stats = _archive.GetYear(SelectedYear)
                         ?? new WrapStats { PeriodLabel = SelectedYear.ToString() };
             Apply(stats);

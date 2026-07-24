@@ -255,10 +255,6 @@ public class AppSettings
     /// When false, the chosen solid/gradient color shows through instead.</summary>
     public bool LyricsShowArtworkBackground { get; set; } = true;
 
-    /// <summary>Global lyric timing nudge in milliseconds. Positive makes lines appear
-    /// earlier (the file runs late); negative makes them appear later. Clamped to ±5000.</summary>
-    public int LyricsSyncOffsetMs { get; set; }
-
     // ── Lyrics providers ──
 
     /// <summary>Whether LRCLIB online lyrics search is enabled.</summary>
@@ -310,7 +306,6 @@ public class AppSettings
         // Below 1024 needs privileges on Unix; 65535 is the top of the port space.
         WebRemotePort = WebRemotePort is >= 1024 and <= 65535 ? WebRemotePort : 9420;
         ReplayGainPreampDb = Math.Clamp(ReplayGainPreampDb, -12, 12);
-        LyricsSyncOffsetMs = Math.Clamp(LyricsSyncOffsetMs, -5000, 5000);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
     }

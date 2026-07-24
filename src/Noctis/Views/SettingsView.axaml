@@ -1785,14 +1785,6 @@
                                            FontSize="12" Opacity="0.5"/>
                             </StackPanel>
                         </StackPanel>
-                        <!-- EqualizerEnabled was persisted and read (OnEqualizerEnabledChanged
-                             drives ApplyEqualizer) but had no control anywhere, so the EQ
-                             could never actually be switched off. -->
-                        <controls:LottieToggle Grid.Column="1"
-                                               IsChecked="{Binding EqualizerEnabled}"
-                                               HorizontalAlignment="Right"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,14,0"/>
                         <ComboBox Grid.Column="2"
                                   x:Name="EqPresetCombo"
                                   Classes="pill-combo stable-popup"
@@ -1996,23 +1988,6 @@
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding WebRemoteEnabled}"
                                               VerticalAlignment="Center"/>
-                    </Grid>
-                    <!-- The port was persisted but hand-edit-only: if 9420 was taken the
-                         remote reported "Failed to start" forever with nothing the user
-                         could change. -->
-                    <Grid ColumnDefinitions="*,Auto" Classes="dependent-setting" IsEnabled="{Binding WebRemoteEnabled}">
-                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                            <TextBlock Text="Port" FontSize="13"/>
-                            <TextBlock Text="Falls back to a free port automatically if this one is in use."
-                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <NumericUpDown Grid.Column="1"
-                                       Value="{Binding WebRemotePort}"
-                                       Minimum="1024" Maximum="65535"
-                                       Increment="1"
-                                       FormatString="0"
-                                       Width="140"
-                                       VerticalAlignment="Center"/>
                     </Grid>
                     <Border Background="#18000000" CornerRadius="8" Padding="12,8"
                             IsVisible="{Binding WebRemoteUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">

@@ -352,6 +352,26 @@
 
                     <!-- Playlist action buttons -->
                     <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasPlaylistActions}">
+                        <!-- Playlists grid sort. Every sibling grid had one; this tab had
+                             none at all and showed whatever order the sidebar built. -->
+                        <Button Classes="release-chip" VerticalAlignment="Center"
+                                ToolTip.Tip="Sort playlists">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Sort:" Opacity="0.6" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding PlaylistSortLabel}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <PathIcon Data="{StaticResource ChevronRightIcon}" Width="9" Height="9"
+                                          RenderTransform="rotate(90deg)" Opacity="0.6" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuItem Header="Default" Command="{Binding PlaylistSortCommand}" CommandParameter="default"/>
+                                    <MenuItem Header="Name" Command="{Binding PlaylistSortCommand}" CommandParameter="name"/>
+                                    <MenuItem Header="Recently created" Command="{Binding PlaylistSortCommand}" CommandParameter="created"/>
+                                    <MenuItem Header="Recently modified" Command="{Binding PlaylistSortCommand}" CommandParameter="modified"/>
+                                    <MenuItem Header="Track count" Command="{Binding PlaylistSortCommand}" CommandParameter="tracks"/>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
                         <Button Classes="accent-btn" Background="{DynamicResource AccentColorBrush}"
                                 Padding="14,8" CornerRadius="999" Cursor="Hand"
                                 ToolTip.Tip="New Playlist" VerticalAlignment="Center">
@@ -653,12 +673,9 @@
                                 <Setter Property="Background" Value="#33FFFFFF"/>
                             </Style>
                         </DockPanel.Styles>
-                        <!-- Compact header: "Queue • N" + Shuffle / Save / Clear ghost actions.
-                             Shuffle and "Save as Playlist" had no entry point anywhere in the
-                             main window — ToggleShuffleCommand was reachable only from the mini
-                             player and Ctrl+K, and SaveQueueAsPlaylistCommand from nowhere at all. -->
+                        <!-- Compact header: "Queue • N" + Clear ghost action -->
                         <Grid DockPanel.Dock="Top" Margin="20,16,12,6"
-                              ColumnDefinitions="*,Auto,Auto,Auto">
+                              ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7"
                                         VerticalAlignment="Center">
                                 <TextBlock Text="Queue"
@@ -675,43 +692,6 @@
                                            IsVisible="{Binding !!Player.UpNext.Count}" />
                             </StackPanel>
                             <Button Grid.Column="1"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Padding="9,5"
-                                    CornerRadius="999"
-                                    Cursor="Hand"
-                                    ToolTip.Tip="Shuffle"
-                                    Command="{Binding Player.ToggleShuffleCommand}"
-                                    VerticalAlignment="Center">
-                                <Panel Width="14" Height="14">
-                                    <PathIcon Data="{StaticResource ShuffleIcon}"
-                                              Width="14" Height="14"
-                                              Foreground="White" Opacity="0.65"
-                                              IsVisible="{Binding !Player.IsShuffleEnabled}" />
-                                    <PathIcon Data="{StaticResource ShuffleIcon}"
-                                              Width="14" Height="14"
-                                              Foreground="{DynamicResource AccentColorBrush}"
-                                              IsVisible="{Binding Player.IsShuffleEnabled}" />
-                                </Panel>
-                            </Button>
-                            <Button Grid.Column="2"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    Padding="9,5"
-                                    CornerRadius="999"
-                                    Cursor="Hand"
-                                    ToolTip.Tip="Save the queue as a playlist"
-                                    Command="{Binding Player.SaveQueueAsPlaylistCommand}"
-                                    IsVisible="{Binding !!Player.UpNext.Count}"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="Save"
-                                           FontSize="12"
-                                           FontWeight="SemiBold"
-                                           Foreground="White"
-                                           Opacity="0.8"
-                                           VerticalAlignment="Center" />
-                            </Button>
-                            <Button Grid.Column="3"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Padding="9,5"

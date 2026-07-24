@@ -807,63 +807,11 @@
                     </Button.Flyout>
                 </Button>
 
-                <!-- Bottom action row: Sync offset + Edit Sync + Save + Alternate source +
-                     save status (Share moved into player-bar ⋯ menu).
-                     Edit Sync and Save had no entry point anywhere in the app —
-                     OpenLrcEditorCommand, SaveLyricsToFileCommand and the whole
-                     LrcEditorDialog feature were unreachable, and CanSaveToFile was being
-                     maintained for a button that had been removed. -->
+                <!-- Bottom action row: Alternate source + save status (Share moved into player-bar ⋯ menu) -->
                 <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Center"
                             Spacing="8"
                             Margin="0,24,0,0">
-                    <!-- Sync offset nudge: a downloaded .lrc that runs consistently early
-                         or late had no in-app remedy at all. -->
-                    <Border Background="#18000000" CornerRadius="999" Padding="2"
-                            IsVisible="{Binding IsSynced}"
-                            VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" Spacing="0">
-                            <Button Classes="pill-btn" Width="26" Height="26" MinHeight="26" Padding="0"
-                                    ToolTip.Tip="Show lyrics 100 ms later"
-                                    Command="{Binding NudgeSyncOffsetLaterCommand}">
-                                <TextBlock Text="&#x2212;" FontSize="13" Foreground="{Binding LyricsPrimaryFg}"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Button>
-                            <Button Classes="pill-btn" Height="26" MinHeight="26" Padding="8,0"
-                                    ToolTip.Tip="Lyric sync offset — click to reset"
-                                    Command="{Binding ResetSyncOffsetCommand}">
-                                <TextBlock Text="{Binding SyncOffsetLabel}" FontSize="11"
-                                           Foreground="{Binding LyricsPrimaryFg}" VerticalAlignment="Center"/>
-                            </Button>
-                            <Button Classes="pill-btn" Width="26" Height="26" MinHeight="26" Padding="0"
-                                    ToolTip.Tip="Show lyrics 100 ms earlier"
-                                    Command="{Binding NudgeSyncOffsetEarlierCommand}">
-                                <TextBlock Text="+" FontSize="13" Foreground="{Binding LyricsPrimaryFg}"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Button>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Open the LRC sync editor (tap-to-sync + per-line nudge) -->
-                    <Button Classes="pill-btn"
-                            Padding="10,5"
-                            Height="30" MinHeight="30"
-                            IsVisible="{Binding !ShowSearchButton}"
-                            Command="{Binding OpenLrcEditorCommand}">
-                        <TextBlock Text="Edit Sync" FontSize="11" Foreground="{Binding LyricsPrimaryFg}"
-                                   VerticalAlignment="Center"/>
-                    </Button>
-
-                    <!-- Write the loaded lyrics to a sidecar next to the track -->
-                    <Button Classes="pill-btn"
-                            Padding="10,5"
-                            Height="30" MinHeight="30"
-                            IsVisible="{Binding CanSaveToFile}"
-                            Command="{Binding SaveLyricsToFileCommand}">
-                        <TextBlock Text="Save to File" FontSize="11" Foreground="{Binding LyricsPrimaryFg}"
-                                   VerticalAlignment="Center"/>
-                    </Button>
-
                     <!-- Switch to alternate lyrics source -->
                     <Button Classes="pill-btn"
                             Padding="10,5"
