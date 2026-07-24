@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
@@ -408,6 +409,8 @@ public partial class LyricsView : UserControl
         {
             _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
             _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
+            _subscribedVm.LyricsSwapPending -= OnLyricsSwapPending;
+            _subscribedVm.LyricsSwapped -= OnLyricsSwapped;
             _subscribedVm = null;
         }
 
@@ -420,8 +423,58 @@ public partial class LyricsView : UserControl
         {
             vm.PropertyChanged += OnViewModelPropertyChanged;
             vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
+            vm.LyricsSwapPending += OnLyricsSwapPending;
+            vm.LyricsSwapped += OnLyricsSwapped;
             _subscribedVm = vm;
         }
+    }
+
+    // ── Track-change lyric swap: fade out, swap while hidden, fade back ──
+    // The swap rebuilds every line control in one frame; doing it behind the
+    // fade is what makes a track change read as a transition, not a flicker.
+
+    private bool _lyricsSwapInProgress;
+
+    private void OnLyricsSwapPending(object? sender, EventArgs e)
+    {
+        _lyricsSwapInProgress = true;
+        FadeLyricsHost(0.0, LyricsViewModel.LyricsSwapFadeOutMs);
+    }
+
+    private void OnLyricsSwapped(object? sender, EventArgs e)
+    {
+        _lyricsSwapInProgress = false;
+        // Re-anchor from scratch while still invisible: a glide from the old
+        // track's offset is meaningless on new content, so jump.
+        if (DataContext is LyricsViewModel vm)
+        {
+            _lastScrolledIndex = -1;
+            CancelScrollAnimation();
+            CancelAutoFollowResumeTimer();
+            vm.IsAutoFollowPaused = false;
+
+            var index = vm.IsSyncTabSelected ? vm.ActiveLineIndex : -1;
+            if (index >= 0)
+                JumpToActiveLineWhenReady(index);
+            else if (LyricsScrollViewer != null)
+                LyricsScrollViewer.Offset = new Vector(0, 0);
+        }
+        FadeLyricsHost(1.0, 240);
+    }
+
+    private void FadeLyricsHost(double to, int durationMs)
+    {
+        if (LyricsContentHost is not { } host) return;
+        host.Transitions = new Transitions
+        {
+            new DoubleTransition
+            {
+                Property = OpacityProperty,
+                Duration = TimeSpan.FromMilliseconds(durationMs),
+                Easing = new Avalonia.Animation.Easings.CubicEaseInOut(),
+            },
+        };
+        host.Opacity = to;
     }
 
     private void OnOpenBackgroundColorRequested()
@@ -439,6 +492,11 @@ public partial class LyricsView : UserControl
             if (sender is LyricsViewModel vm)
             {
                 if (_isJumpingOnAttach)
+                    return;
+
+                // Mid-swap index churn must not start an animated glide — the
+                // OnLyricsSwapped jump anchors the new track while hidden.
+                if (_lyricsSwapInProgress)
                     return;
 
                 // Plain mode: no active-line tracking — keep the list still.
@@ -462,6 +520,11 @@ public partial class LyricsView : UserControl
         }
         else if (e.PropertyName == nameof(LyricsViewModel.IsSyncTabSelected))
         {
+            // Mid-swap tab flips (AutoSelectTab inside the apply) are anchored by
+            // the OnLyricsSwapped jump — don't start an animated glide here.
+            if (_lyricsSwapInProgress)
+                return;
+
             // Switching modes: keep the visible position aligned with the current playback
             // line on both directions, so Plain doesn't restart at the top and Sync doesn't
             // show a blank window (LyricLines outside ±9 of active have opacity 0).

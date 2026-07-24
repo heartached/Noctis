@@ -30,9 +30,15 @@ namespace Noctis.Services;
 ///     when an exclusive open fails (device busy / format unsupported).
 ///   - <see cref="TryCreateExclusive"/> — WASAPI exclusive mode at the SOURCE
 ///     sample rate for bit-perfect output (Settings > Audio > Exclusive Mode).
-///     Negotiates the device's native bit depth (24 → 16 → float32); LibVLC's
-///     FL32 PCM is converted at the output, which is lossless for integer
-///     sources at the same rate as long as no DSP is active.
+///     Negotiates the device's native bit depth (24 → 16 → float32).
+///
+/// Input is S16N PCM: VLC 3.x's amem output delivers ONLY 16-bit native-endian
+/// samples — the dynamic setup callback hard-rejects other formats (strcmp in
+/// amem.c) and the fixed-format API's format string is ignored (the
+/// "/* TODO: amem-format */" branch reads only the rate/channels vars). At
+/// unity gain the int16→float→int16/24 path is bit-exact, so 16-bit sources
+/// stay bit-perfect at the source rate; >16-bit content is truncated to
+/// 16-bit upstream by VLC — a hard LibVLC 3.x limitation.
 ///
 /// Both return null on non-Windows or device-init failure so the caller can
 /// fall back to another output path.
@@ -40,15 +46,15 @@ namespace Noctis.Services;
 [SupportedOSPlatform("windows")]
 internal sealed class WasapiGainOutput : IDisposable
 {
-    private const int BytesPerSample = 4; // FL32
+    private const int BytesPerSample = 2; // S16N from LibVLC's amem output
 
     // AUDCLNT_E_DEVICE_IN_USE: another client holds the endpoint exclusively.
     private const int HrDeviceInUse = unchecked((int)0x8889000A);
 
     // Render format. Shared mode matches the default device's mix format (sample
     // rate) so WASAPI accepts it without a format-unsupported failure; exclusive
-    // mode uses the source rate handed in by the audio-setup callback. LibVLC is
-    // told this exact rate/channels and downmixes/resamples to it if needed.
+    // mode uses the source rate of the track being started. LibVLC is told this
+    // exact rate/channels and downmixes/resamples to it if needed.
     public int SampleRate { get; }
     public int Channels { get; }
     public bool IsExclusive { get; }
@@ -125,7 +131,7 @@ internal sealed class WasapiGainOutput : IDisposable
         _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 50);
         _out.Init(_gain);
         _out.Play();
-        Diag($"render format: FL32 {SampleRate}Hz {Channels}ch | WasapiOut state={_out.PlaybackState}");
+        Diag($"input S16N {SampleRate}Hz {Channels}ch | WasapiOut state={_out.PlaybackState}");
     }
 
     private WasapiGainOutput(int sampleRate, int channels)
@@ -138,10 +144,10 @@ internal sealed class WasapiGainOutput : IDisposable
 
         (_buffer, _gain) = CreateInputChain(SampleRate, Channels);
 
-        // Exclusive mode requires a device-native format. Prefer 24-bit (covers
-        // hi-res sources), then 16-bit, then float32; first Init that the driver
-        // accepts wins. The gain stage stays in float upstream — at unity gain a
-        // float multiply by 1.0 is bit-exact, so integer sources stay bit-perfect.
+        // Exclusive mode requires a device-native format. Prefer 24-bit, then
+        // 16-bit, then float32; first Init that the driver accepts wins. The
+        // gain stage stays in float upstream — at unity gain the S16 input maps
+        // bit-exactly onto the 16/24-bit device formats.
         Exception? lastError = null;
         foreach (var bits in new[] { 24, 16, 32 })
         {
@@ -178,7 +184,8 @@ internal sealed class WasapiGainOutput : IDisposable
 
     private static (BufferedWaveProvider buffer, GainSampleProvider gain) CreateInputChain(int sampleRate, int channels)
     {
-        var format = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, channels);
+        // 16-bit PCM in: everything LibVLC 3.x's amem hands us is S16N.
+        var format = new WaveFormat(sampleRate, 16, channels);
         var buffer = new BufferedWaveProvider(format)
         {
             // Bounded queue between LibVLC's decode thread and the WASAPI render
@@ -200,7 +207,7 @@ internal sealed class WasapiGainOutput : IDisposable
     public void SetGainTarget(float target) => _gain.SetTarget(target);
 
     /// <summary>
-    /// Enqueue interleaved FL32 PCM from LibVLC's audio play callback. Blocks
+    /// Enqueue interleaved S16N PCM from LibVLC's audio play callback. Blocks
     /// briefly when the buffer is full to pace LibVLC's decoder and bound latency.
     /// </summary>
     public void Write(byte[] data, int count)
