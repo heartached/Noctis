@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -43,6 +44,62 @@ public partial class MetadataWindow : Window
         VolumeAdjustSlider.PropertyChanged += OnVolumeAdjustSliderPropertyChanged;
         VolumeAdjustSlider.SizeChanged += (_, _) => UpdateVolumeAdjustVisual();
         DispatcherTimer.RunOnce(UpdateVolumeAdjustVisual, TimeSpan.FromMilliseconds(10));
+
+        // Animate only user-driven tab switches — the initial SelectedIndex
+        // binding settles before the window opens (the dialog has its own
+        // entrance animation).
+        Opened += (_, _) => _tabSwitchAnimationReady = true;
+    }
+
+    // ── Tab-switch entrance animation (mirrors the Settings modal tab glide) ──
+
+    private ContentPresenter? _tabContentHost;
+    private bool _tabSwitchAnimationReady;
+    private static readonly Avalonia.Media.Transformation.TransformOperations TabPageOffsetTransform =
+        Avalonia.Media.Transformation.TransformOperations.Parse("translateY(10px)");
+    private static readonly Avalonia.Media.Transformation.TransformOperations TabPageRestTransform =
+        Avalonia.Media.Transformation.TransformOperations.Parse("translateY(0px)");
+    private readonly Avalonia.Animation.Transitions _tabPageTransitions = new()
+    {
+        new Avalonia.Animation.DoubleTransition
+        {
+            Property = OpacityProperty,
+            Duration = TimeSpan.FromMilliseconds(250),
+            Easing = new Avalonia.Animation.Easings.CubicEaseOut(),
+        },
+        new Avalonia.Animation.TransformOperationsTransition
+        {
+            Property = RenderTransformProperty,
+            Duration = TimeSpan.FromMilliseconds(250),
+            Easing = new Avalonia.Animation.Easings.CubicEaseOut(),
+        },
+    };
+
+    /// <summary>Fades/glides the incoming tab page in. The pin happens with
+    /// transitions detached so it's instant; re-attaching them next frame
+    /// animates both properties back to rest. Keyframe animations can't drive
+    /// RenderTransform (startup crash) — transitions are the supported path.</summary>
+    private void OnMetaTabSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        // SelectionChanged bubbles up from ListBoxes/ComboBoxes inside tab pages.
+        if (e.Source is not TabControl || !_tabSwitchAnimationReady)
+            return;
+
+        _tabContentHost ??= MetaTabControl.GetVisualDescendants()
+            .OfType<ContentPresenter>()
+            .FirstOrDefault(p => p.Name == "PART_SelectedContentHost");
+        if (_tabContentHost is not { } host)
+            return;
+
+        host.Transitions = null;
+        host.Opacity = 0;
+        host.RenderTransform = TabPageOffsetTransform;
+        Dispatcher.UIThread.Post(() =>
+        {
+            host.Transitions = _tabPageTransitions;
+            host.Opacity = 1;
+            host.RenderTransform = TabPageRestTransform;
+        }, DispatcherPriority.Render);
     }
 
     public MetadataWindow(MetadataViewModel viewModel) : this()
