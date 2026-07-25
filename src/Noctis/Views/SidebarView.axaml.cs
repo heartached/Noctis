@@ -204,6 +204,25 @@ public partial class SidebarView : UserControl
 
     private void OnSearchPopupOpened(object? sender, EventArgs e)
     {
+        // Win32 creates every popup window WS_EX_TOPMOST, so the pill floats
+        // over OTHER APPS whenever Noctis is merely in the background.
+        // PopupRoot.Topmost cannot fix this: in Avalonia 11.3.x it is wired to
+        // nothing (only the WindowBase(impl) ctor registers the SetTopmost
+        // platform binding; PopupRoot chains the two-arg ctor — verified in
+        // source and by live style-bit repro). Clear the style bit directly;
+        // the popup stays an owned window, so it still sits above Noctis but
+        // sinks behind whichever app is in the foreground. A new native window
+        // is created on every open, so this must run per Opened.
+        // Windows-only: mac (child-window levels) and X11 (override-redirect)
+        // stack popups differently and are not part of the reported bug.
+        if (OperatingSystem.IsWindows()
+            && SearchPopup.Host is PopupRoot popupRoot
+            && popupRoot.TryGetPlatformHandle() is { } popupHandle)
+        {
+            SetWindowPos(popupHandle.Handle, HwndNoTopmost, 0, 0, 0, 0,
+                SwpNoMove | SwpNoSize | SwpNoActivate);
+        }
+
         // Slide in from the search icon: start hidden + nudged left, settle into
         // place on the next frame so the transitions animate the change.
         var target = SearchPopupContent;
@@ -265,4 +284,13 @@ public partial class SidebarView : UserControl
             _vm.PropertyChanged -= OnViewModelPropertyChanged;
         AttachTopBar(null);
     }
+
+    // De-topmost for the search pill's native popup window (see
+    // OnSearchPopupOpened); PopupRoot.Topmost doesn't reach the OS in
+    // Avalonia 11.3.x, so the WS_EX_TOPMOST bit is cleared directly.
+    private static readonly IntPtr HwndNoTopmost = new(-2);
+    private const uint SwpNoSize = 0x0001, SwpNoMove = 0x0002, SwpNoActivate = 0x0010;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 }
