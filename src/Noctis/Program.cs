@@ -18,6 +18,7 @@ internal class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        Services.StartupTrace.Begin();
         try
         {
             // Explicit STA setup required for Windows OLE drag-and-drop from external apps

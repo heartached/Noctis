@@ -1109,10 +1109,16 @@
                     </Button>
                 </Grid>
 
-                <!-- Settings content (existing SettingsView, scrollable) -->
-                <views:SettingsView Grid.Row="1"
-                                    DataContext="{Binding Settings}"
-                                    Background="Transparent"/>
+                <!-- Settings content, built on first open rather than at window
+                     construction. SettingsView is ~3,000 lines of XAML for a modal that
+                     is closed at startup, and instantiating it inline made it part of
+                     MainWindow's InitializeComponent — the single largest block of the
+                     launch path. Code-behind fills this host the first time the modal
+                     opens (EnsureSettingsViewLoaded). -->
+                <ContentControl Grid.Row="1"
+                                Name="SettingsViewHost"
+                                DataContext="{Binding Settings}"
+                                Background="Transparent"/>
 
                 <!-- Footer with Close button -->
                 <Border Grid.Row="2"

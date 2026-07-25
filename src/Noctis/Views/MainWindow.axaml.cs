@@ -95,6 +95,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Services.StartupTrace.Mark("mainwindow-xaml-initialized");
 
         // Initialize the application once the window is fully loaded.
         //
@@ -263,6 +264,9 @@ public partial class MainWindow : Window
                     }
                     if (e.PropertyName == nameof(MainWindowViewModel.IsSettingsModalOpen))
                     {
+                        if (mainVm2.IsSettingsModalOpen)
+                            EnsureSettingsViewLoaded();
+
                         if (_settingsOverlay != null && _settingsCard != null)
                         {
                             if (mainVm2.IsSettingsModalOpen)
@@ -360,6 +364,21 @@ public partial class MainWindow : Window
 
             }
         }
+    }
+
+    /// <summary>
+    /// Builds the Settings page the first time the modal opens. It is ~3,000 lines of
+    /// XAML and used to be instantiated inline in MainWindow.axaml, which put all of that
+    /// inside MainWindow's InitializeComponent — measured as the largest single block of
+    /// the launch path, paid on every start whether or not the user opens Settings.
+    /// Idempotent; cheap enough to call on every open.
+    /// </summary>
+    private void EnsureSettingsViewLoaded()
+    {
+        var host = this.FindControl<ContentControl>("SettingsViewHost");
+        if (host is null || host.Content is not null) return;
+
+        host.Content = new SettingsView { Background = Avalonia.Media.Brushes.Transparent };
     }
 
     private void WireWindowLevelHandlers()

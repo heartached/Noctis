@@ -19,6 +19,31 @@ public static class StartupTrace
     private static readonly object Lock = new();
     private static readonly List<(string Name, double Ms)> Marks = new();
     private static bool _flushed;
+    private static double _preMainMs;
+
+    /// <summary>
+    /// Anchors the trace and records everything that ran before it — CLR startup, JIT of
+    /// the entry path, assembly loads. Call as the first statement of Program.Main.
+    ///
+    /// Without this the static <see cref="Origin"/> initialized on first touch, i.e. on
+    /// whichever Mark happened to run first, so that mark reported ~0 ms and every cost
+    /// before it was invisible. The first trace read "di-container-built (+-0)" for
+    /// exactly that reason.
+    /// </summary>
+    public static void Begin()
+    {
+        _ = Origin; // force the static initializer here, not at the first Mark
+        try
+        {
+            using var proc = Process.GetCurrentProcess();
+            _preMainMs = (DateTime.Now - proc.StartTime).TotalMilliseconds;
+        }
+        catch
+        {
+            // Process.StartTime can be denied under some policies; the rest still works.
+            _preMainMs = 0;
+        }
+    }
 
     /// <summary>Milliseconds since the process reached Program.Main.</summary>
     public static double ElapsedMs =>
@@ -51,7 +76,9 @@ public static class StartupTrace
         }
 
         var sb = new StringBuilder();
-        sb.AppendLine("startup timings (ms from process start):");
+        sb.AppendLine("startup timings (ms from Program.Main):");
+        if (_preMainMs > 0)
+            sb.AppendLine($"  {0,8:F0}  (+{_preMainMs,7:F0})  clr-startup-before-main");
 
         var previous = 0.0;
         (string Name, double Delta) slowest = ("", 0);
