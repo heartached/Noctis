@@ -1,3 +1,4 @@
+using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Noctis.Converters;
 using Xunit;
@@ -19,7 +20,9 @@ public class ProgressToSweepForegroundConverterTests
         Assert.Same(Brushes.Transparent, Convert(-0.1));
     }
 
-    [Fact]
+    // These build brushes, and every AvaloniaObject ctor calls
+    // Dispatcher.VerifyAccess — so they have to run on the UI thread.
+    [AvaloniaFact]
     public void FullProgress_ReturnsTheForegroundBrush()
     {
         // A dimmed right edge on sung words means this regressed. Returning the
@@ -29,7 +32,7 @@ public class ProgressToSweepForegroundConverterTests
         Assert.Same(fg, Convert(1.1, fg));
     }
 
-    [Theory]
+    [AvaloniaTheory]
     [InlineData(0.02)]
     [InlineData(0.25)]
     [InlineData(0.50)]
@@ -47,7 +50,7 @@ public class ProgressToSweepForegroundConverterTests
         Assert.Equal(progress, centre, precision: 10);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void FeatherShrinksAtBoundaries_SoBandNeverLeavesTheWord()
     {
         // Near the start the band must not extend below 0 (sliver) …
@@ -59,7 +62,7 @@ public class ProgressToSweepForegroundConverterTests
         Assert.True(endBrush.GradientStops[1].Offset <= 1.0);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void MidSweep_UsesTheForegroundColour_WithTransparentTail()
     {
         // The wipe must be painted in the user's lyric colour (dark text on light
