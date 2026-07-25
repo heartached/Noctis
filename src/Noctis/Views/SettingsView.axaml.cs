@@ -87,13 +87,13 @@ public partial class SettingsView : UserControl
     private void OnEqPresetDropDownOpened(object? sender, EventArgs e)
     {
         if (SettingsScrollViewer is not null)
-            MomentumScrollBehavior.SetIsEnabled(SettingsScrollViewer, false);
+            SmoothScrollBehavior.SetIsEnabled(SettingsScrollViewer, false);
     }
 
     private void OnEqPresetDropDownClosed(object? sender, EventArgs e)
     {
         if (SettingsScrollViewer is not null)
-            MomentumScrollBehavior.SetIsEnabled(SettingsScrollViewer, true);
+            SmoothScrollBehavior.SetIsEnabled(SettingsScrollViewer, true);
     }
 
     private void OnSettingsPointerPressed(object? sender, PointerPressedEventArgs e)
