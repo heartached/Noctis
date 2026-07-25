@@ -2125,7 +2125,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
             var alreadyConfigured = normalizedRoots.Contains(normalizedTarget, StringComparer.OrdinalIgnoreCase);
             if (!alreadyConfigured)
-                await Settings.AddFolderPath(normalizedTarget);
+            {
+                // autoScan: false — AddFolderPath's fire-and-forget scan enumerated this
+                // root while it was still empty and then replaced the whole track list,
+                // wiping the tracks ImportFilesAsync published moments later. The drop
+                // silently vanished on any machine with no usable configured folder yet
+                // (fresh install), while machines that already had one never reached this
+                // branch at all. The caller imports the dropped files itself below.
+                await Settings.AddFolderPath(normalizedTarget, autoScan: false);
+            }
 
             ct.ThrowIfCancellationRequested();
             return normalizedTarget;

@@ -2694,7 +2694,13 @@ public partial class SettingsViewModel : ViewModelBase
     // ── Files / folder commands ──
 
     /// <summary>Called from the View after the folder picker dialog returns a path.</summary>
-    public async Task AddFolderPath(string path)
+    /// <param name="autoScan">
+    /// When false the root is registered without kicking off a library scan. The
+    /// drag-and-drop import needs this: it imports the dropped files itself right after,
+    /// and a scan running in parallel republishes its own authoritative track list, which
+    /// overwrote the freshly imported tracks.
+    /// </param>
+    public async Task AddFolderPath(string path, bool autoScan = true)
     {
         if (string.IsNullOrWhiteSpace(path)) return;
 
@@ -2738,7 +2744,8 @@ public partial class SettingsViewModel : ViewModelBase
         // Auto-scan so the user doesn't have to press "Scan". Routed through the
         // shared flow so the spinner shows and the Scan button disables while it
         // runs. The unchanged-file fast path means only the new folder is read.
-        _ = RunLibraryScanAsync();
+        if (autoScan)
+            _ = RunLibraryScanAsync();
     }
 
     /// <summary>Absolute, separator-normalized, no trailing separator. Falls back to the
