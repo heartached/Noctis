@@ -134,7 +134,7 @@ public partial class ColorPickerFlyout : UserControl
         else
         {
             // Snap the textbox back to the canonical value.
-            HexInput.Text = Hex;
+            SetHexText(Hex);
         }
     }
 
@@ -165,8 +165,22 @@ public partial class ColorPickerFlyout : UserControl
         _suppressHexEcho = true;
         try { SetCurrentValue(HexProperty, hex); }
         finally { _suppressHexEcho = false; }
-        HexInput.Text = hex;
+        SetHexText(hex);
         UpdateVisuals();
+    }
+
+    /// <summary>
+    /// Writes the hex box and parks the caret at the end of the text.
+    ///
+    /// Assigning TextBox.Text resets CaretIndex to 0, and this runs on every pointer
+    /// sample while dragging the spectrum — so the caret snapped to the far left, wedged
+    /// against the '#', and flickered there for the whole drag.
+    /// </summary>
+    private void SetHexText(string hex)
+    {
+        if (HexInput is null) return;
+        HexInput.Text = hex;
+        HexInput.CaretIndex = hex?.Length ?? 0;
     }
 
     private void SyncFromHex(string? hex)
@@ -178,7 +192,7 @@ public partial class ColorPickerFlyout : UserControl
         if (saturation > 0.001) _hue = hue;
         _saturation = saturation;
         _value = value;
-        if (HexInput != null) HexInput.Text = hex;
+        if (hex != null) SetHexText(hex);
     }
 
     private void UpdateVisuals()

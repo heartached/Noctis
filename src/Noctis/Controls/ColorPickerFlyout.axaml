@@ -65,23 +65,27 @@
                     <StackPanel Spacing="14">
 
                         <!-- Saturation/Value spectrum -->
+                        <!-- Exactly one rounding mechanism: the explicit rounded Clip.
+                             This used to also carry CornerRadius and a 1px border, and the
+                             gradient layers used Margin="-1" to bleed back out from under
+                             that border's content inset. Three antialiased edges that have
+                             to land on the same subpixel never do — the mismatch showed as
+                             pale fringes in the corners and a hue-coloured seam along the
+                             bottom, where the value gradient's black end was pushed 1px
+                             below the clip. No border thickness means no inset, which means
+                             no negative margins; the hairline is drawn as an overlay on top
+                             of the content so its own edge covers the clip's. -->
                         <Border x:Name="Spectrum"
                                 Width="360" Height="142"
-                                CornerRadius="8"
                                 ClipToBounds="True"
-                                BorderThickness="1"
-                                BorderBrush="#1FFFFFFF"
                                 PointerPressed="OnSpectrumPointerPressed"
                                 PointerMoved="OnSpectrumPointerMoved">
-                            <!-- ClipToBounds clips to the rectangle, not the rounded corners,
-                                 so the square gradient layers poke out at the corners without
-                                 an explicit rounded clip geometry. -->
                             <Border.Clip>
                                 <RectangleGeometry Rect="0,0,360,142" RadiusX="8" RadiusY="8"/>
                             </Border.Clip>
                             <Grid>
-                                <Rectangle x:Name="HueWash" Margin="-1"/>
-                                <Border Margin="-1">
+                                <Rectangle x:Name="HueWash"/>
+                                <Border>
                                     <Border.Background>
                                         <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
                                             <GradientStop Offset="0" Color="#00FFFFFF"/>
@@ -89,6 +93,10 @@
                                         </LinearGradientBrush>
                                     </Border.Background>
                                 </Border>
+                                <Border BorderThickness="1"
+                                        BorderBrush="#1FFFFFFF"
+                                        CornerRadius="8"
+                                        IsHitTestVisible="False"/>
                                 <Canvas IsHitTestVisible="False">
                                     <Ellipse x:Name="SpectrumThumb"
                                              Width="20" Height="20"
@@ -110,7 +118,10 @@
                                 <RectangleGeometry Rect="0,0,360,20" RadiusX="10" RadiusY="10"/>
                             </Border.Clip>
                             <Grid>
-                                <Border CornerRadius="10">
+                                <!-- No CornerRadius here: the outer Clip already rounds this
+                                     to the same radius, and two roundings that must agree to
+                                     the subpixel are what fringed the ends of the track. -->
+                                <Border>
                                     <Border.Background>
                                         <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
                                             <GradientStop Offset="0.00" Color="#FFFF0000"/>
