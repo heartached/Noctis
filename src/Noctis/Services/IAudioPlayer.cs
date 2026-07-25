@@ -65,6 +65,10 @@ public interface IAudioPlayer : IDisposable
     /// <summary>True while audio is actually flowing through an exclusive-mode device stream.</summary>
     bool ExclusiveModeActive { get; }
 
+    /// <summary>True only when the equalizer actually alters the signal. An enabled
+    /// equalizer sitting on a flat curve is bypassed, so it does not count.</summary>
+    bool EqualizerActive { get; }
+
     /// <summary>Short description of the active output path for the signal-path
     /// display, e.g. "WASAPI Exclusive — 44.1 kHz / 24-bit".</summary>
     string OutputDescription { get; }

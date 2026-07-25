@@ -1735,7 +1735,7 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="Exclusive Mode" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Bit-perfect output at the track's sample rate. Song transitions (AutoMix &amp; Crossfade) are unavailable while active."
+                        <TextBlock Text="Sends audio straight to your output device at the track's own sample rate, bypassing the Windows mixer. Noctis takes sole control of the device, so other apps can't play sound and song transitions (AutoMix &amp; Crossfade) are unavailable while it's active. If another app already holds the device, Noctis falls back to normal shared output."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         <TextBlock Text="{Binding ExclusiveAudioStatus}"
                                    IsVisible="{Binding ExclusiveAudioStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

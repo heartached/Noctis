@@ -1114,6 +1114,33 @@ public class VlcAudioPlayer : IAudioPlayer
         }
     }
 
+    /// <summary>
+    /// A curve that leaves the signal untouched: every band and the preamp at 0 dB
+    /// (within the 0.05 dB the UI can express). Such a curve is bypassed entirely
+    /// rather than routed through VLC's equalizer — see the apply path below.
+    /// </summary>
+    private static bool IsFlatCurve(float[] bands, float preamp)
+    {
+        if (Math.Abs(preamp) >= 0.05f) return false;
+        for (var i = 0; i < bands.Length; i++)
+            if (Math.Abs(bands[i]) >= 0.05f) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// True only when the equalizer actually alters the signal. The master toggle
+    /// alone is not enough: the default "Flat" preset is applied as a true bypass,
+    /// so an enabled-but-flat EQ changes nothing and must not count as DSP.
+    /// </summary>
+    public bool EqualizerActive
+    {
+        get
+        {
+            lock (_equalizerLock)
+                return _advancedEqEnabled && !IsFlatCurve(_advancedEqBands, _advancedEqPreamp);
+        }
+    }
+
     private void ApplyAdvancedEqualizerSnapshot(long capturedVersion = long.MinValue)
     {
         bool enabled;
@@ -1136,12 +1163,7 @@ public class VlcAudioPlayer : IAudioPlayer
         // reports); bypassing keeps Flat at unity. Non-flat curves carry
         // ParametricEqMath.VlcEqUnityPreampDb (or the preset's own preamp) as
         // the make-up instead.
-        var isFlat = Math.Abs(preamp) < 0.05f;
-        if (isFlat)
-        {
-            for (var i = 0; i < bands.Length; i++)
-                if (Math.Abs(bands[i]) >= 0.05f) { isFlat = false; break; }
-        }
+        var isFlat = IsFlatCurve(bands, preamp);
 
         if (enabled && !isFlat)
         {
@@ -1432,7 +1454,11 @@ public class VlcAudioPlayer : IAudioPlayer
                     else
                     {
                         sink = WasapiGainOutput.TryCreate();
-                        notice = $"Exclusive mode unavailable ({reason}) — using shared output";
+                        // Read as an error before: it said what failed but not that
+                        // playback is fine, nor that the next track retries exclusive
+                        // (the reuse check above drops a shared fallback sink).
+                        notice = $"Playing through the shared system mixer — {reason}. " +
+                                 "Audio is unaffected; exclusive output is retried when the next track starts.";
                     }
 
                     if (sink == null)
@@ -1448,8 +1474,8 @@ public class VlcAudioPlayer : IAudioPlayer
                         _exclusiveModeEnabled = false;
                         RebuildOutputModeLocked(false);
                         OutputModeChanged?.Invoke(this,
-                            "Exclusive mode unavailable — no audio output could be opened. " +
-                            "Switched back to shared output.");
+                            "No audio output could be opened in exclusive mode — " +
+                            "Exclusive Mode was turned off and playback moved back to the shared system mixer.");
                         return;
                     }
 
