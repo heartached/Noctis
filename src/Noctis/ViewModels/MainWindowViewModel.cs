@@ -419,6 +419,10 @@ public partial class MainWindowViewModel : ViewModelBase
         // is currently holding, so re-publish the presence with a fresh, valid URL.
         _loon.Reconnected += OnLoonReconnected;
 
+        // And on the way down, drop the cached key: it belongs to a clientId that is gone,
+        // so re-publishing it would point Discord at a URL that now 404s.
+        _loon.Disconnected += OnLoonDisconnected;
+
     }
 
     /// <summary>
@@ -617,7 +621,27 @@ public partial class MainWindowViewModel : ViewModelBase
                         continue;
 
                     if (!byPath.TryGetValue(path, out var track))
+                    {
                         track = _metadata.ReadTrackMetadata(path);
+
+                        // External tracks never pass through a library index rebuild, so
+                        // nothing populates their artwork. Extract it here the way the
+                        // scanner does (embedded tag, else cover file beside the track) —
+                        // otherwise the playback bar shows the placeholder and the Discord
+                        // relay has no cover to serve (GetArtworkUrl(null) → no image).
+                        if (track != null)
+                        {
+                            var artPath = _persistence.GetArtworkPath(track.AlbumId);
+                            if (!File.Exists(artPath))
+                            {
+                                var artBytes = _metadata.ExtractAlbumArt(path);
+                                if (artBytes is { Length: > 0 })
+                                    _persistence.SaveArtwork(track.AlbumId, artBytes);
+                            }
+                            if (File.Exists(artPath))
+                                track.AlbumArtworkPath = artPath;
+                        }
+                    }
 
                     if (track != null)
                         resolved.Add(track);
@@ -2312,15 +2336,22 @@ public partial class MainWindowViewModel : ViewModelBase
         _ = UpdateDiscordPresenceAsync(Player.CurrentTrack, newPosition, Player.State == PlaybackState.Playing);
     }
 
+    private void OnLoonDisconnected() => _discord.InvalidateArtworkCache();
+
     private void OnLoonReconnected()
     {
         // Refresh the presence so Discord re-fetches the cover through the new clientId.
         if (!_discord.IsConnected) return;
 
+        // Any state except Stopped has a published presence whose artwork URL just became
+        // invalid (or has been missing since the relay was still connecting). This used to
+        // require Playing, so a relay reconnect while paused — and the relay's very first
+        // connect, which also raises this — left the presence pinned to an unreachable URL
+        // for the rest of the track with no other path back to the real cover.
         var track = Player.CurrentTrack;
-        if (track == null || Player.State != PlaybackState.Playing) return;
+        if (track == null || Player.State == PlaybackState.Stopped) return;
 
-        _ = UpdateDiscordPresenceAsync(track, Player.Position, true);
+        _ = UpdateDiscordPresenceAsync(track, Player.Position, Player.State == PlaybackState.Playing);
     }
 
     private async Task UpdateDiscordPresenceAsync(Track track, TimeSpan position, bool isPlaying)
@@ -2333,7 +2364,6 @@ public partial class MainWindowViewModel : ViewModelBase
                 track.Title ?? "Unknown",
                 track.Artist ?? "Unknown Artist",
                 track.Album,
-                track.Duration,
                 artworkUrl);
             await _discord.UpdateAsync(dto, position, track.Duration, isPlaying);
         }

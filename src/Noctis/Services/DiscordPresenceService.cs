@@ -14,7 +14,6 @@ namespace Noctis.Services;
 public sealed class DiscordPresenceService : IDiscordPresenceService
 {
     private const string ApplicationId = "1470224696976085096";
-    private const string DefaultIconKey = "noctis_icon";
 
     /// <summary>
     /// Grace period between clearing the presence and tearing down the pipe.
@@ -134,6 +133,10 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             }
 
             _client = client;
+            // Reset the retry budget on success. Without this the count only ever grew, so
+            // once a session had spent all 20 attempts (Discord closed for a while) no later
+            // drop could ever be recovered from — ScheduleReconnect became a permanent no-op.
+            _reconnectAttempts = 0;
             Debug.WriteLine("[Discord] Connected.");
             return true;
         }
@@ -190,7 +193,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
 
             var identity = TrackIdentity(title, artist, album);
             var artworkKey = ResolveArtworkKey(track.ArtworkUrl, identity, _lastArtworkKey, _lastTrackIdentity);
-            if (!string.Equals(artworkKey, DefaultIconKey, StringComparison.Ordinal))
+            if (artworkKey != null)
             {
                 _lastArtworkKey = artworkKey;
                 _lastTrackIdentity = identity;
@@ -202,12 +205,20 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
                 StatusDisplay = StatusDisplayType.State,
                 Details = Truncate(title, 128),
                 State = Truncate(artist, 128),
+                // Only the artwork URL goes in here. Every asset *name* this used to send
+                // ("noctis_icon" large, "play"/"pause" small) has to exist in the Discord
+                // application's Art Assets, and it has none — GET /oauth2/applications/
+                // {id}/assets returns []. Discord answers SET_ACTIVITY by echoing the
+                // activity back with unknown asset names stripped, so those keys never
+                // rendered; they only replaced the cover with a broken-image placeholder
+                // whenever the relay URL was missing. A null key is omitted from the
+                // payload, which is what Discord did with them anyway.
                 Assets = new Assets
                 {
                     LargeImageKey = artworkKey,
-                    LargeImageText = Truncate(!string.IsNullOrWhiteSpace(album) ? album : artist, 128),
-                    SmallImageKey = isPlaying ? "play" : "pause",
-                    SmallImageText = isPlaying ? "Playing" : "Paused",
+                    LargeImageText = artworkKey == null
+                        ? null
+                        : Truncate(!string.IsNullOrWhiteSpace(album) ? album : artist, 128),
                 },
             };
 
@@ -252,6 +263,18 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
         }
     }
 
+    /// <summary>
+    /// Forgets the cached artwork key. Called when the artwork relay drops: a reconnect
+    /// rotates its clientId, so every URL handed out under the old one is dead. Without
+    /// this, position updates kept re-publishing that dead URL and Discord replaced the
+    /// cover with a broken-image placeholder instead of simply keeping the last good art.
+    /// </summary>
+    public void InvalidateArtworkCache()
+    {
+        _lastArtworkKey = null;
+        _lastTrackIdentity = null;
+    }
+
     public void Dispose()
     {
         // Best-effort synchronous teardown (called from DI container or shutdown path)
@@ -271,8 +294,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
     private void DisposeClient()
     {
         // Forget cached art so a later reconnect can't reuse a key from a prior session.
-        _lastArtworkKey = null;
-        _lastTrackIdentity = null;
+        InvalidateArtworkCache();
 
         if (_client == null) return;
         try
@@ -294,14 +316,16 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
     /// <summary>
     /// Chooses the Discord <c>LargeImageKey</c>. Prefers a fresh artwork URL; if none is
     /// available (relay transiently down) it reuses the last good key for the SAME track so
-    /// Discord keeps showing the already-cached cover instead of flipping to the app icon.
-    /// Falls back to the app icon only for a track we have no prior art for.
+    /// Discord keeps showing the already-cached cover instead of losing it. Returns null
+    /// for a track we have no art for at all, which omits the image from the payload —
+    /// the application has no uploaded art assets to fall back on, so naming one only
+    /// produced a broken-image placeholder.
     /// </summary>
-    public static string ResolveArtworkKey(string? incomingUrl, string identity, string? lastKey, string? lastIdentity)
+    public static string? ResolveArtworkKey(string? incomingUrl, string identity, string? lastKey, string? lastIdentity)
     {
         if (!string.IsNullOrWhiteSpace(incomingUrl)) return incomingUrl;
         if (lastKey != null && string.Equals(identity, lastIdentity, StringComparison.Ordinal)) return lastKey;
-        return DefaultIconKey;
+        return null;
     }
 
     /// <summary>

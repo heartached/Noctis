@@ -919,16 +919,23 @@ public partial class SettingsViewModel : ViewModelBase
                     ListenBrainzStatusText = $"Connected as {_settings.ListenBrainzUsername}";
             }
 
-            if (_discord != null && DiscordRichPresenceEnabled)
+            if (_discord != null)
             {
                 // Lets the service's background reconnect stop as soon as the user turns
-                // the setting off, instead of retrying against a disabled feature.
+                // the setting off, instead of retrying against a disabled feature. Wired
+                // unconditionally: setting it only when the feature was already on left it
+                // null for anyone who enabled Discord later in the session, and the retry
+                // loop then had no way to notice a subsequent toggle-off.
                 _discord.IsEnabled = () => DiscordRichPresenceEnabled;
-                _ = _discord.ConnectAsync();
-                // Loon exists solely to serve Discord cover art — it follows the
-                // presence lifecycle instead of connecting unconditionally at
-                // startup (an always-on remote channel nobody may be using).
-                _ = ConnectLoonAsync();
+
+                if (DiscordRichPresenceEnabled)
+                {
+                    _ = _discord.ConnectAsync();
+                    // Loon exists solely to serve Discord cover art — it follows the
+                    // presence lifecycle instead of connecting unconditionally at
+                    // startup (an always-on remote channel nobody may be using).
+                    _ = ConnectLoonAsync();
+                }
             }
 
             // Ensure player gets the persisted startup settings even if no toggle changed.
@@ -2072,7 +2079,6 @@ public partial class SettingsViewModel : ViewModelBase
             Title: track.Title ?? "Unknown",
             Artist: track.Artist ?? "Unknown Artist",
             Album: track.Album,
-            Duration: track.Duration,
             ArtworkUrl: artworkUrl);
 
         var isPlaying = _player.State == PlaybackState.Playing;
