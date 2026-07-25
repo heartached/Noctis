@@ -1776,7 +1776,18 @@ public partial class MainWindowViewModel : ViewModelBase
         _preCoverFlowView = null;
 
         var detail = new AlbumDetailViewModel(album, Player, _persistence, _library, Sidebar, _lastFm, Settings);
-        detail.BackRequested += (_, _) => GoBackInHistory();
+        // Only the page the user is actually looking at may navigate. Album-detail
+        // view-models kept for back-navigation are deliberately left undisposed
+        // (DisposeViewIfTransient skips anything still in history), so they stay
+        // subscribed to LibraryUpdated — and RefreshFromLibrary raises BackRequested
+        // when its album no longer exists. Removing a track anywhere therefore made an
+        // off-screen album page pop the history stack, yanking the user to whatever sat
+        // on top of it (usually the artist discography they had browsed through).
+        detail.BackRequested += (_, _) =>
+        {
+            if (ReferenceEquals(CurrentView, detail))
+                GoBackInHistory();
+        };
         detail.ViewAlbumRequested += OnViewAlbumFromTrack;
         detail.SetViewArtistAction(ViewArtistFromAlbumDetail);
         detail.SetSearchLyricsAction(SearchLyricsForTrack);
