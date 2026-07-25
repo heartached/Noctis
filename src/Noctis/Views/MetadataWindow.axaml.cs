@@ -278,19 +278,19 @@ public partial class MetadataWindow : Window
             return;
 
         // The genre combo lives inside the Details tab's ScrollViewer. That
-        // ScrollViewer's momentum-scroll behavior is a Tunnel handler that fires
+        // ScrollViewer's smooth-scroll behavior is a Tunnel handler that fires
         // first and consumes wheel events routed through it — including events over
         // the open dropdown, which is hosted within its subtree. Suspend it while
         // the dropdown is open so the wheel reaches the popup's own ScrollViewer.
         _genreFormScroller ??= cb.GetVisualAncestors().OfType<ScrollViewer>().FirstOrDefault();
         if (_genreFormScroller is not null)
-            MomentumScrollBehavior.SetIsEnabled(_genreFormScroller, false);
+            SmoothScrollBehavior.SetIsEnabled(_genreFormScroller, false);
     }
 
     private void OnGenreDropDownClosed(object? sender, EventArgs e)
     {
         if (_genreFormScroller is not null)
-            MomentumScrollBehavior.SetIsEnabled(_genreFormScroller, true);
+            SmoothScrollBehavior.SetIsEnabled(_genreFormScroller, true);
     }
 
     private void OnGenreComboWheel(object? sender, PointerWheelEventArgs e)

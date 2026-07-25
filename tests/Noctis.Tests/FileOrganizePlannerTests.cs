@@ -10,7 +10,7 @@ namespace Noctis.Tests;
 
 public class FileOrganizePlannerTests
 {
-    private const string Root = @"C:\Music";
+    private static readonly string Root = TestPaths.Primary("Music");
 
     private static Track T(string artist, string album, int trackNo, string title, string sourcePath)
         => new()
@@ -29,7 +29,7 @@ public class FileOrganizePlannerTests
     [Fact]
     public void DefaultPattern_BuildsTagDerivedPath()
     {
-        var move = Plan(new[] { T("Adele", "25", 1, "Hello", @"D:\in\x.mp3") }).Single();
+        var move = Plan(new[] { T("Adele", "25", 1, "Hello", TestPaths.Other("in", "x.mp3")) }).Single();
 
         Assert.Equal(OrganizeAction.Move, move.Action);
         Assert.Equal(Path.Combine(Root, "Adele", "25", "01 Hello.mp3"), move.TargetPath);
@@ -38,14 +38,14 @@ public class FileOrganizePlannerTests
     [Fact]
     public void TrackNumber_IsZeroPaddedToTwoDigits()
     {
-        var move = Plan(new[] { T("A", "B", 7, "Song", @"D:\in\s.flac") }).Single();
+        var move = Plan(new[] { T("A", "B", 7, "Song", TestPaths.Other("in", "s.flac")) }).Single();
         Assert.EndsWith(Path.Combine("A", "B", "07 Song.flac"), move.TargetPath);
     }
 
     [Fact]
     public void InvalidFilenameChars_AreSanitized()
     {
-        var move = Plan(new[] { T("A", "B", 1, "AC/DC: Live?", @"D:\in\s.mp3") }).Single();
+        var move = Plan(new[] { T("A", "B", 1, "AC/DC: Live?", TestPaths.Other("in", "s.mp3")) }).Single();
         Assert.Equal(Path.Combine(Root, "A", "B", "01 AC_DC_ Live_.mp3"), move.TargetPath);
     }
 
@@ -63,8 +63,8 @@ public class FileOrganizePlannerTests
     {
         var moves = Plan(new[]
         {
-            T("A", "B", 1, "Song", @"D:\in\one.mp3"),
-            T("A", "B", 1, "Song", @"D:\in\two.mp3")
+            T("A", "B", 1, "Song", TestPaths.Other("in", "one.mp3")),
+            T("A", "B", 1, "Song", TestPaths.Other("in", "two.mp3"))
         });
 
         Assert.Equal(Path.Combine(Root, "A", "B", "01 Song.mp3"), moves[0].TargetPath);
@@ -78,7 +78,7 @@ public class FileOrganizePlannerTests
     {
         var occupied = Path.Combine(Root, "A", "B", "01 Song.mp3");
         var move = Plan(
-            new[] { T("A", "B", 1, "Song", @"D:\in\one.mp3") },
+            new[] { T("A", "B", 1, "Song", TestPaths.Other("in", "one.mp3")) },
             exists: p => string.Equals(p, occupied, StringComparison.OrdinalIgnoreCase)).Single();
 
         Assert.Equal(OrganizeAction.Conflict, move.Action);
@@ -88,7 +88,7 @@ public class FileOrganizePlannerTests
     [Fact]
     public void BlankTags_FallBackToPlaceholders()
     {
-        var t = new Track { AlbumArtist = "", Album = "", Title = "", TrackNumber = 0, FilePath = @"D:\in\x.mp3" };
+        var t = new Track { AlbumArtist = "", Album = "", Title = "", TrackNumber = 0, FilePath = TestPaths.Other("in", "x.mp3") };
         var move = FileOrganizePlanner.Plan(new[] { t }, FileOrganizePlanner.DefaultPattern, Root, _ => false).Single();
         Assert.Equal(Path.Combine(Root, "Unknown Artist", "Unknown Album", "00 Untitled.mp3"), move.TargetPath);
     }

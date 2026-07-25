@@ -337,12 +337,12 @@
              the Albums page. Pages/menus that fit still show no bar. -->
         <Setter Property="AllowAutoHide" Value="False"/>
         <Setter Property="IsScrollInertiaEnabled" Value="True"/>
-        <Setter Property="helpers:MomentumScrollBehavior.IsEnabled" Value="True"/>
+        <!-- Wheel scrolling chases an eased target on the compositor frame clock.
+             Step = px per notch, SettleMs = how long a notch takes to land. -->
+        <Setter Property="helpers:SmoothScrollBehavior.IsEnabled" Value="True"/>
         <Setter Property="helpers:AutoScrollBehavior.IsEnabled" Value="True"/>
-        <Setter Property="helpers:MomentumScrollBehavior.Friction" Value="0.95"/>
-        <Setter Property="helpers:MomentumScrollBehavior.WheelVelocity" Value="13"/>
-        <Setter Property="helpers:MomentumScrollBehavior.FastWheelReferenceMs" Value="80"/>
-        <Setter Property="helpers:MomentumScrollBehavior.MaxWheelSpeedMultiplier" Value="2.4"/>
+        <Setter Property="helpers:SmoothScrollBehavior.Step" Value="220"/>
+        <Setter Property="helpers:SmoothScrollBehavior.SettleMs" Value="380"/>
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
     </Style>
