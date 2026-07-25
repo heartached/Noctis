@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -98,12 +98,20 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            Noctis.Services.StartupTrace.Mark("avalonia-initialized");
+
+            // This resolve builds the entire object graph, IAudioPlayer included — so it
+            // blocks on the same singleton lock the Program.Main warm task is holding
+            // while libvlc loads. The gap between the two marks is how much of that load
+            // the warm task failed to hide.
             var mainVm = Services!.GetRequiredService<MainWindowViewModel>();
+            Noctis.Services.StartupTrace.Mark("viewmodel-graph-resolved");
 
             var mainWindow = new MainWindow
             {
                 DataContext = mainVm
             };
+            Noctis.Services.StartupTrace.Mark("main-window-constructed");
 
             // Decide "start minimized to tray" before the window is realized. Avalonia
             // shows MainWindow before Loaded fires, and the Hide() that honours this

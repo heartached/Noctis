@@ -437,6 +437,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Load persisted library
         await _library.LoadAsync();
+        Services.StartupTrace.Mark("library-loaded");
 
         // Don't refresh every content ViewModel up front — Navigate() below
         // refreshes the destination page on its own, and the rest can warm
@@ -446,6 +447,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Load playlists into sidebar
         await Sidebar.LoadPlaylistsAsync();
+        Services.StartupTrace.Mark("playlists-loaded");
 
         // Apply saved volume
         Player.Volume = Settings.GetSettings().Volume;
@@ -520,6 +522,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Navigate to the user's preferred default page
         var defaultKey = Settings.GetDefaultPageKey();
         Navigate(defaultKey);
+        Services.StartupTrace.Mark("first-page-navigated");
 
         // Pre-warm cached views and the non-visible content VMs on background
         // priority. The visible page was already refreshed by Navigate(); this

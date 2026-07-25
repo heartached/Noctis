@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -155,7 +155,9 @@ public partial class MainWindow : Window
 
                 // Load settings first so window placement is restored before the
                 // rest of init runs (avoids a visible resize jump on startup).
+                Services.StartupTrace.Mark("window-loaded-handler");
                 await vm.Settings.LoadAsync();
+                Services.StartupTrace.Mark("settings-loaded");
                 RestoreWindowPlacement(vm.Settings.GetSettings());
 
                 // Control-surface wiring runs BEFORE the library load. None of it needs
@@ -179,6 +181,7 @@ public partial class MainWindow : Window
                 InitializeTrayIcon(vm);
                 _smtc = new SmtcService(vm.Player, TryGetPlatformHandle()?.Handle ?? IntPtr.Zero);
                 _mpris = MprisService.TryStart(vm.Player);
+                Services.StartupTrace.Mark("tray-smtc-mpris-ready");
 
                 // Launched at login with "start minimized to tray" on (encoded in the
                 // autostart args, so it needs no async settings load). App already
@@ -192,6 +195,8 @@ public partial class MainWindow : Window
                 }
 
                 await vm.InitializeAsync();
+                Services.StartupTrace.Mark("initialize-async-done");
+                Services.StartupTrace.Flush();
 
                 // Wire up albums view-mode toggle visuals
                 _topBarPropertyChangedHandler = (_, e) =>

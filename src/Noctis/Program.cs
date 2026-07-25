@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Headers;
 using System.Threading;
@@ -62,6 +62,7 @@ internal class Program
             var services = new ServiceCollection();
             ConfigureServices(services);
             var provider = services.BuildServiceProvider();
+            Services.StartupTrace.Mark("di-container-built");
 
             // Make services available to the Avalonia App
             App.Services = provider;
@@ -77,6 +78,7 @@ internal class Program
             {
                 try { provider.GetRequiredService<IAudioPlayer>(); }
                 catch { /* a broken libvlc install surfaces the same error on the UI-thread resolve */ }
+                Services.StartupTrace.Mark("libvlc-warm-done");
             });
 
             // Mark login-launched runs (the autostart entry passes "--startup", plus
