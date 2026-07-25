@@ -151,6 +151,11 @@ public partial class PlaybackBarView : UserControl
         if (_observedPlayerViewModel != null)
             _observedPlayerViewModel.PropertyChanged += OnObservedPlayerViewModelPropertyChanged;
 
+        // The width depends on the observed view model, so it can only be resolved once
+        // the DataContext lands. If that happens after attach the pill would otherwise sit
+        // at the base width until the next IsLyricsPageActive change — which, entering the
+        // lyrics page, has already fired.
+        UpdateIslandWidth();
         ScheduleTrackTitleMarqueeUpdate(resetAnimation: true);
         ScheduleArtistNameMarqueeUpdate(resetAnimation: true);
         DispatcherTimer.RunOnce(RefreshTrackInfoLayout, TimeSpan.FromMilliseconds(10));
@@ -900,6 +905,8 @@ public partial class PlaybackBarView : UserControl
         _volumeFlyoutCloseTimer = null;
     }
 
+    /// <summary>Sizes the pill for the page it is on. Always an instant write — see the
+    /// note on IslandBorder in the XAML for why the width must never animate.</summary>
     private void UpdateIslandWidth()
     {
         IslandBorder.Width = CompactWhenLyricsPageActive
