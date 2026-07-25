@@ -406,6 +406,22 @@ public partial class App : Application
             ["ToggleSwitchFillOnPressed"]          = new SolidColorBrush(dark1),
             ["ToggleSwitchFillOnDragging"]         = new SolidColorBrush(light1),
             ["IslandIconAccent"]                   = new SolidColorBrush(color),
+
+            // Fluent paints its accent-filled control states (checked ToggleButton,
+            // CheckBox tick, RadioButton dot) with a hardcoded white foreground. The
+            // fill above follows the accent, the foreground did not — so a white/very
+            // light accent rendered white-on-white (invisible "Raw" pill label, tick,
+            // radio dot). Re-point them at the same readable foreground the app's own
+            // accent pills use.
+            ["ToggleButtonForegroundChecked"]            = new SolidColorBrush(accentForeground),
+            ["ToggleButtonForegroundCheckedPointerOver"] = new SolidColorBrush(accentForeground),
+            ["ToggleButtonForegroundCheckedPressed"]     = new SolidColorBrush(accentForeground),
+            ["CheckBoxCheckGlyphForegroundChecked"]            = new SolidColorBrush(accentForeground),
+            ["CheckBoxCheckGlyphForegroundCheckedPointerOver"] = new SolidColorBrush(accentForeground),
+            ["CheckBoxCheckGlyphForegroundCheckedPressed"]     = new SolidColorBrush(accentForeground),
+            ["RadioButtonCheckGlyphFill"]            = new SolidColorBrush(accentForeground),
+            ["RadioButtonCheckGlyphFillPointerOver"] = new SolidColorBrush(accentForeground),
+            ["RadioButtonCheckGlyphFillPressed"]     = new SolidColorBrush(accentForeground),
             // Slider fill/thumb tracks the accent so every slider (seek, volume,
             // volume-adjust, pre-amp, island) is uniformly accent-coloured.
             ["IslandSliderFilled"]                 = new SolidColorBrush(color),
