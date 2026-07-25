@@ -669,7 +669,116 @@ public partial class LyricsView : UserControl
     {
         _scrollAnimationGeneration++;
         _isProgrammaticScroll = false;
+        _chaseRunning = false;
         ClearCascadeTransforms();
+    }
+
+    // ── Scrub chase ──
+    // Dragging the timeline delivers a new active line every frame or two. The eased
+    // glide below cannot follow that: each update cancelled the previous animation about
+    // two milliseconds in, and smootherstep opens at essentially zero velocity, so the
+    // list did not move at all until the drag stopped — in either direction. Restarting
+    // faster cannot fix it; the target has to be retargeted without restarting the curve.
+    // This is the same exponential chase SmoothScrollBehavior uses for the wheel: a new
+    // target only moves the goalpost, so the existing velocity carries straight over.
+    private const double ScrubWindowMs = 250;   // updates closer together than this = a drag
+    private const double ScrubSettleMs = 380;   // time to ~99% of a stationary target
+    private long _lastScrollRequestTicks;
+    private double _chaseTargetY;
+    private double _chaseY;
+    private bool _chaseRunning;
+    private long _chaseLastFrameTicks;
+
+    private void ChaseTo(ScrollViewer scrollViewer, double targetY)
+    {
+        _chaseTargetY = targetY;
+
+        if (!_chaseRunning)
+        {
+            // Pick the chase up from wherever the offset actually is, so a glide that was
+            // in flight hands over without a jump.
+            _chaseY = scrollViewer.Offset.Y;
+            _chaseLastFrameTicks = Stopwatch.GetTimestamp();
+            _chaseRunning = true;
+            _isProgrammaticScroll = true;
+            RequestChaseFrame();
+        }
+    }
+
+    private void RequestChaseFrame()
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null)
+        {
+            // No frame clock (detached mid-drag) — land on the target rather than strand
+            // the offset part-way.
+            if (LyricsScrollViewer != null)
+                ApplyScrollOffset(LyricsScrollViewer, _chaseTargetY);
+            _chaseRunning = false;
+            _isProgrammaticScroll = false;
+            return;
+        }
+        topLevel.RequestAnimationFrame(ChaseFrame);
+    }
+
+    private void ChaseFrame(TimeSpan _)
+    {
+        if (!_chaseRunning) return;
+
+        var scrollViewer = LyricsScrollViewer;
+        if (scrollViewer == null)
+        {
+            _chaseRunning = false;
+            _isProgrammaticScroll = false;
+            return;
+        }
+
+        var now = Stopwatch.GetTimestamp();
+        // Clamped so a stalled UI thread cannot produce one huge jump.
+        var dt = Math.Min((now - _chaseLastFrameTicks) / (double)Stopwatch.Frequency, 0.1);
+        _chaseLastFrameTicks = now;
+
+        // Extent grows as lines re-wrap, so re-clamp every frame.
+        var maxY = Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height);
+        var target = Math.Clamp(_chaseTargetY, 0, maxY);
+
+        _chaseY += (target - _chaseY) * (1 - Math.Exp(-dt / (ScrubSettleMs / 4600.0)));
+
+        if (Math.Abs(target - _chaseY) < 0.5)
+        {
+            _chaseY = target;
+            ApplyScrollOffset(scrollViewer, target);
+            _chaseRunning = false;
+            _isProgrammaticScroll = false;
+            return;
+        }
+
+        ApplyScrollOffset(scrollViewer, _chaseY);
+        RequestChaseFrame();
+    }
+
+    /// <summary>Anchor offset for a line, or null if the item containers are not laid out
+    /// yet. Shared by the eased glide and the scrub chase.</summary>
+    private double? TryComputeAnchorOffset(int index)
+    {
+        if (LyricsItemsControl == null || LyricsScrollViewer == null) return null;
+        if (index < 0 || index >= LyricsItemsControl.ItemCount) return null;
+
+        var presenter = LyricsItemsControl.GetVisualDescendants()
+            .OfType<ItemsPresenter>()
+            .FirstOrDefault();
+        if (presenter?.GetVisualChildren().FirstOrDefault() is not Panel panel) return null;
+        if (index >= panel.Children.Count) return null;
+
+        var targetChild = panel.Children[index];
+        var childBounds = targetChild.TransformToVisual(panel);
+        if (childBounds == null) return null;
+
+        var childTop = childBounds.Value.Transform(new Point(0, 0)).Y;
+        return Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
+            childTop, targetChild.Bounds.Height,
+            LyricsScrollViewer.Viewport.Height,
+            LyricsScrollViewer.Extent.Height);
     }
 
     private void ClearCascadeTransforms()
@@ -792,6 +901,28 @@ public partial class LyricsView : UserControl
         if (DataContext is LyricsViewModel vm && vm.IsAutoFollowPaused)
             return;
 
+        // Updates arriving on top of each other mean the position is being dragged, not
+        // advancing with playback. Those go to the chase, which retargets instead of
+        // restarting; a normal line advance is seconds apart and keeps the eased glide.
+        var now = Stopwatch.GetTimestamp();
+        var sinceLastMs = _lastScrollRequestTicks == 0
+            ? double.MaxValue
+            : (now - _lastScrollRequestTicks) * 1000.0 / Stopwatch.Frequency;
+        _lastScrollRequestTicks = now;
+
+        if (sinceLastMs < ScrubWindowMs && LyricsScrollViewer != null)
+        {
+            // No settle delay here: a scrub only changes WHICH line is active, so the
+            // item layout the offset is measured against has not moved.
+            if (TryComputeAnchorOffset(index) is { } scrubTarget)
+            {
+                _scrollAnimationGeneration++;   // supersede the eased glide, keep the chase
+                ClearCascadeTransforms();
+                ChaseTo(LyricsScrollViewer, scrubTarget);
+                return;
+            }
+        }
+
         CancelScrollAnimation();
 
         // Minimal delay — just enough for layout to settle after active line change
@@ -905,8 +1036,18 @@ public partial class LyricsView : UserControl
         _isProgrammaticScroll = true;
 
         var delta = to - from;
+
+        // The stagger is a SETTLING effect for line-to-line advance. Over a seek-sized
+        // jump it is not readable at all, and it is the one place the two scroll
+        // directions cost different amounts: membership is "every line below the active
+        // one", so a jump UP lands on a low index and drags several times as many lines —
+        // each carrying a blur effect that re-renders every frame — through the viewport
+        // as an equal jump DOWN. That is why seeking backwards ran visibly heavier than
+        // seeking forwards. Past a viewport and a half, glide cleanly with no cascade.
+        var seekSized = Math.Abs(delta) > scrollViewer.Viewport.Height * 1.5;
+
         var cascade = new List<(Control Control, double DelayMs)>();
-        if (linesPanel != null && activeIndex >= 0 && Math.Abs(delta) > 8)
+        if (linesPanel != null && activeIndex >= 0 && Math.Abs(delta) > 8 && !seekSized)
         {
             // Every line below the active one takes part; only the DELAY is capped.
             // Cutting the list at CascadeMaxLines left the first excluded line static
@@ -944,6 +1085,20 @@ public partial class LyricsView : UserControl
             // Chained clamp: on large scroll deltas the raw stagger between neighbours
             // exceeds the inter-line gap, so bound each line's lag to its predecessor's
             // (the list is in top-to-bottom order) — lines can never cross.
+            // The lag chain must be walked in full — each line's clamp depends on the one
+            // above it — but only lines near the viewport need the transform WRITTEN.
+            // A write costs a visual invalidation plus a re-render of that line's blur
+            // effect, and "every line below the active one" means a backward seek (which
+            // lands on a low index) enrolled most of the song while an equally long
+            // forward seek enrolled a handful — several times the per-frame cost for the
+            // same travel, which is why scrolling up felt sluggish and scrolling down
+            // did not. Off-screen lines render identically at any lag, so skipping them
+            // changes nothing visible.
+            var viewportHeight = scrollViewer.Viewport.Height;
+            var scrollY = from + delta * eased;
+            var bandTop = scrollY - viewportHeight;
+            var bandBottom = scrollY + viewportHeight * 2;
+
             var prevLag = 0.0;
             foreach (var (control, delayMs) in cascade)
             {
@@ -951,10 +1106,22 @@ public partial class LyricsView : UserControl
                 var lag = delta * (eased - Easing.SmootherStep(tLine));
                 lag = Math.Clamp(lag, prevLag - MaxCascadeLagStepPx, prevLag + MaxCascadeLagStepPx);
                 prevLag = lag;
+
+                // Bounds is layout-only, so it is not disturbed by the transforms written
+                // here. The band is a viewport of slack either side of the visible area,
+                // so a line is already being driven well before it can be seen.
+                var top = control.Bounds.Top + lag;
+                var target = top + control.Bounds.Height >= bandTop && top <= bandBottom ? lag : 0.0;
+
                 if (control.RenderTransform is TranslateTransform tt)
-                    tt.Y = lag;
-                else
-                    control.RenderTransform = new TranslateTransform(0, lag);
+                {
+                    // ReSharper disable once CompareOfFloatsByEqualityOperator
+                    if (tt.Y != target) tt.Y = target;
+                }
+                else if (target != 0.0)
+                {
+                    control.RenderTransform = new TranslateTransform(0, target);
+                }
             }
 
             if (t >= 1.0 && elapsed >= totalMs + maxDelayMs)

@@ -130,6 +130,12 @@ public partial class PlayerViewModel : ViewModelBase
     public event EventHandler<TimeSpan>? Seeked;
 
     private bool _isSeeking; // prevents feedback loop during drag
+
+    /// <summary>True while the user is dragging the timeline. Position is then a target
+    /// being steered, not a clock that is running — the seek is only committed on release
+    /// — so anything extrapolating Position forward must stand down.</summary>
+    public bool IsSeeking => _isSeeking;
+
     private DateTime _lastSeekTime = DateTime.MinValue; // prevents stale position updates after seek
     private TimeSpan _pendingSeekTarget = TimeSpan.Zero; // latest seek target while dragging
     private bool _hasPendingSeekTarget; // whether a drag seek target is waiting to be committed

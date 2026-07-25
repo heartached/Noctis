@@ -2455,6 +2455,27 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 break;
         }
 
+        // Mirror walk backwards. The forward walk above has no threshold, but rewinding
+        // used to depend solely on the 750ms reset — and a timeline drag never produces
+        // a drop that large in one sample, because this runs every 100ms off the sync
+        // timer and every rendered frame off the word clock. The cursor stayed parked on
+        // a later line, no candidate matched, and the safety branch below held the stale
+        // line: dragging backwards froze the lyrics until release finally delivered a big
+        // enough discontinuity. Stepping back per sample makes both directions resolve on
+        // the same tick, and still costs nothing during normal forward playback.
+        var rewound = false;
+        while (_lineCursor > 0)
+        {
+            var current = LyricLines[_lineCursor];
+            if (current.Timestamp.HasValue && current.Timestamp.Value > AdjustedFor(current))
+            {
+                _lineCursor--;
+                rewound = true;
+            }
+            else
+                break;
+        }
+
         var candidate = LyricLines[_lineCursor];
         LyricLine? bestMatch = null;
         int bestIndex = -1;
@@ -2466,7 +2487,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         // Safety: if no match found but we're past the start and have a current line,
         // keep the current line active (prevents "all dimmed" state from transient glitches).
-        if (bestMatch == null && _currentActiveLine != null && position.TotalSeconds > 1)
+        // Skipped when the walk above rewound to the very first line and even that one is
+        // still ahead: the position genuinely sits before the first lyric, so holding the
+        // stale line there would re-freeze exactly what the backward walk exists to fix.
+        if (bestMatch == null && !rewound && _currentActiveLine != null && position.TotalSeconds > 1)
         {
             UpdateActiveWord(position);
             return;
@@ -2612,8 +2636,32 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             return raw;
         }
 
+        // While the timeline is being dragged, Position is a target the user is steering,
+        // not a clock that is running — VLC has not been told to seek yet, that happens on
+        // release. Extrapolating it forward actively fought a backward drag: hold the
+        // slider still and the estimate crept ahead by up to a second (the stall-guard
+        // cap), pulling the active line back down the list, then snapped up again when the
+        // drag resumed. A forward drag hid this completely because the creep pointed the
+        // same way the user was going. Re-anchor on the raw value so extrapolation resumes
+        // cleanly the moment the drag ends.
+        if (_player.IsSeeking)
+        {
+            _clockRawMs = (long)raw.TotalMilliseconds;
+            _clockAnchorMs = _clockRawMs;
+            _clockAnchorTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+            _clockLastMs = raw.TotalMilliseconds;
+            return raw;
+        }
+
         var rawMs = (long)raw.TotalMilliseconds;
         var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        // A raw value below the PREVIOUS raw value is the player itself moving backwards —
+        // a seek, or the timeline slider writing its target while the user drags. The
+        // monotonic guard below exists for VLC republishing a time behind our extrapolation,
+        // which never lowers the raw value, so the two cases are distinguishable. Without
+        // this, a slow drag backwards was smoothed away 300ms at a time and the position
+        // handed to UpdateActiveLine never actually moved back.
+        var rawMovedBack = _clockRawMs >= 0 && rawMs < _clockRawMs;
         if (rawMs != _clockRawMs)
         {
             _clockRawMs = rawMs;
@@ -2629,7 +2677,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         // Monotonic guard: a fresh raw value slightly behind our extrapolation would
         // step the sweep backwards — hold instead. Larger drops are real seeks.
-        if (estimate < _clockLastMs && _clockLastMs - estimate < 300)
+        if (!rawMovedBack && estimate < _clockLastMs && _clockLastMs - estimate < 300)
             estimate = _clockLastMs;
         _clockLastMs = estimate;
         return TimeSpan.FromMilliseconds(estimate);
