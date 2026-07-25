@@ -5,8 +5,6 @@ namespace Noctis.Tests;
 
 public class DiscordArtworkKeyTests
 {
-    private const string Icon = "noctis_icon";
-
     [Fact]
     public void PrefersFreshUrlWhenAvailable()
     {
@@ -26,19 +24,21 @@ public class DiscordArtworkKeyTests
     }
 
     [Fact]
-    public void FallsBackToIconWhenUrlMissingForDifferentTrack()
+    public void OmitsImageWhenUrlMissingForDifferentTrack()
     {
-        // New track with no art must not inherit the previous track's cover.
+        // New track with no art must not inherit the previous track's cover. It also must
+        // not name an asset the application doesn't have (it has none) — that rendered a
+        // broken-image placeholder instead of no image.
         var key = DiscordPresenceService.ResolveArtworkKey(
             incomingUrl: null, identity: "b", lastKey: "https://relay/old", lastIdentity: "a");
-        Assert.Equal(Icon, key);
+        Assert.Null(key);
     }
 
     [Fact]
-    public void FallsBackToIconWhenNoPriorArt()
+    public void OmitsImageWhenNoPriorArt()
     {
         var key = DiscordPresenceService.ResolveArtworkKey(
             incomingUrl: "   ", identity: "a", lastKey: null, lastIdentity: null);
-        Assert.Equal(Icon, key);
+        Assert.Null(key);
     }
 }

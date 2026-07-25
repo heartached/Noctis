@@ -345,15 +345,13 @@
             <Border.Background>
                 <SolidColorBrush Color="#202020" Opacity="{Binding IslandBackgroundOpacity}"/>
             </Border.Background>
-            <Border.Transitions>
-                <Transitions>
-                    <DoubleTransition Property="Width" Duration="0:0:0.2">
-                        <DoubleTransition.Easing>
-                            <CubicEaseOut/>
-                        </DoubleTransition.Easing>
-                    </DoubleTransition>
-                </Transitions>
-            </Border.Transitions>
+            <!-- No Width transition: the compact (lyrics-page) and base widths belong to
+                 two different bar instances, so there is never a width change worth
+                 animating — the pill is simply born at whichever width its page needs.
+                 A transition here only ever caught navigation churn: ToggleLyrics drives
+                 IsLyricsPageActive true→false→true in one pass while the lyrics page's
+                 bar is already attached, which played as a visible shrink/settle every
+                 time the page opened. -->
 
             <Grid HorizontalAlignment="Center">
                 <Grid.ColumnDefinitions>

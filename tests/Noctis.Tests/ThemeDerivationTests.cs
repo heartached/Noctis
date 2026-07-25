@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Noctis.Services;
 using Xunit;
@@ -88,7 +89,9 @@ public class ThemeDerivationTests
         "SystemControlHighlightAccentBrush", "SystemControlHighlightAccentBrush2",
     };
 
-    [Fact]
+    // Derive builds SolidColorBrushes, and every AvaloniaObject ctor calls
+    // Dispatcher.VerifyAccess — so these have to run on the UI thread.
+    [AvaloniaFact]
     public void Derive_EmitsAllRequiredKeys_DarkBase()
     {
         var def = new Noctis.Models.CustomThemeDefinition
@@ -103,7 +106,7 @@ public class ThemeDerivationTests
             Assert.True(dict.ContainsKey(key), $"missing key: {key}");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Derive_EmitsAllRequiredKeys_LightBase()
     {
         var def = new Noctis.Models.CustomThemeDefinition
@@ -128,7 +131,7 @@ public class ThemeDerivationTests
         yield return new object[] { "Dark", "#202020", "#181818", "#A0A0A0" };       // monochrome
     }
 
-    [Theory]
+    [AvaloniaTheory]
     [MemberData(nameof(ReadabilityPalettes))]
     public void Derive_PrimaryTextContrastIsReadable(string mode, string mainBg, string sidebarBg, string accent)
     {

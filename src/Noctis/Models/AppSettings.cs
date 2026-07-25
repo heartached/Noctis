@@ -165,8 +165,9 @@ public class AppSettings
     public double PlaybackBarBackgroundOpacity { get; set; } = 0.4;
 
     /// <summary>Whether the sidebar expands on hover (with its slide animation). When false the
-    /// sidebar stays in the icon-only rail and never expands.</summary>
-    public bool SidebarHoverExpand { get; set; } = true;
+    /// sidebar stays in the icon-only rail and never expands. Off by default: the rail should
+    /// not move unless the user asks it to.</summary>
+    public bool SidebarHoverExpand { get; set; } = false;
 
     /// <summary>When true, the album grids collapse multiple editions/issues of the same release
     /// (same album-artist + normalized base title) into a single representative tile. Hidden
@@ -211,8 +212,10 @@ public class AppSettings
     /// <summary>Loon server URL for Discord cover art (e.g. "wss://loon.example.com").</summary>
     public string LoonServerUrl { get; set; } = "https://noctis-loon.duckdns.org";
 
-    /// <summary>Whether Last.fm scrobbling is enabled.</summary>
-    public bool LastFmScrobblingEnabled { get; set; } = true;
+    /// <summary>Whether Last.fm scrobbling is enabled. Off until an account is connected —
+    /// scrobbling is gated on IsAuthenticated anyway, so defaulting it on only produced a
+    /// toggle that read "active" while nothing was ever sent. Connecting turns it on.</summary>
+    public bool LastFmScrobblingEnabled { get; set; } = false;
 
     /// <summary>Last.fm session key for authenticated API calls.</summary>
     public string LastFmSessionKey { get; set; } = "";
@@ -220,8 +223,9 @@ public class AppSettings
     /// <summary>Last.fm username (populated after successful auth).</summary>
     public string LastFmUsername { get; set; } = "";
 
-    /// <summary>Whether ListenBrainz scrobbling is enabled (independent of Last.fm).</summary>
-    public bool ListenBrainzScrobblingEnabled { get; set; } = true;
+    /// <summary>Whether ListenBrainz scrobbling is enabled (independent of Last.fm).
+    /// Off until a token is validated, matching <see cref="LastFmScrobblingEnabled"/>.</summary>
+    public bool ListenBrainzScrobblingEnabled { get; set; } = false;
 
     /// <summary>ListenBrainz user token (single-string credential pasted by the user from listenbrainz.org/profile/).</summary>
     public string ListenBrainzToken { get; set; } = "";
@@ -279,16 +283,22 @@ public class AppSettings
     // ── ReplayGain ──
 
     /// <summary>"Off", "Track", "Album", or "Auto" (album when same-album sequence else track).
-    /// On by default ("Auto") for fresh installs; stored values are respected.</summary>
-    public string ReplayGainMode { get; set; } = "Auto";
+    /// Off on fresh installs: ReplayGain only does anything when the files carry
+    /// REPLAYGAIN_* tags, which most libraries lack until the scanner is run — so defaulting
+    /// it on produced a toggle that read "active" while bypassing every track. Stored
+    /// values are respected, and switching the toggle back on restores "Auto".</summary>
+    public string ReplayGainMode { get; set; } = "Off";
 
     /// <summary>Pre-amp in dB applied on top of the RG tag value.</summary>
     public double ReplayGainPreampDb { get; set; } = 0.0;
 
     // ── Audio analysis (BPM / key) ──
 
-    /// <summary>Whether background BPM + musical-key analysis runs (scan-time + backfill).</summary>
-    public bool BpmKeyAnalysisEnabled { get; set; } = true;
+    /// <summary>Whether background BPM + musical-key analysis runs (scan-time + backfill).
+    /// Off on fresh installs: it is real CPU across the whole library on the first scan,
+    /// and the features that consume it (AutoMix beat-matching, Track Radio) are themselves
+    /// off by default.</summary>
+    public bool BpmKeyAnalysisEnabled { get; set; } = false;
 
     /// <summary>When true, computed BPM/key are also written to file tags (TBPM/TKEY). Off by default.</summary>
     public bool WriteAnalysisToTags { get; set; } = false;

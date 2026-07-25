@@ -130,6 +130,12 @@ public partial class PlayerViewModel : ViewModelBase
     public event EventHandler<TimeSpan>? Seeked;
 
     private bool _isSeeking; // prevents feedback loop during drag
+
+    /// <summary>True while the user is dragging the timeline. Position is then a target
+    /// being steered, not a clock that is running — the seek is only committed on release
+    /// — so anything extrapolating Position forward must stand down.</summary>
+    public bool IsSeeking => _isSeeking;
+
     private DateTime _lastSeekTime = DateTime.MinValue; // prevents stale position updates after seek
     private TimeSpan _pendingSeekTarget = TimeSpan.Zero; // latest seek target while dragging
     private bool _hasPendingSeekTarget; // whether a drag seek target is waiting to be committed
@@ -1171,7 +1177,12 @@ public partial class PlayerViewModel : ViewModelBase
         var rgDb = _audioPlayer.ReplayGainAppliedDb;
         var rgMode = _settings?.ReplayGainMode ?? "Off";
         var rgOn = !string.Equals(rgMode, "Off", StringComparison.OrdinalIgnoreCase);
-        var eqOn = _settings?.EqualizerEnabled ?? false;
+        // Enabled-but-flat is a true bypass in the player, so the master toggle alone
+        // can't drive this: it made the stock "EQ on / Flat preset" install permanently
+        // "Enhanced", hiding Lossless and Bit-perfect. Mirrors how rgOn below only
+        // counts ReplayGain when it actually applies gain.
+        var eqEnabled = _settings?.EqualizerEnabled ?? false;
+        var eqOn = _audioPlayer.EqualizerActive;
         var soundCheckOn = _settings?.SoundCheckEnabled ?? false;
         var crossfadeOn = _settings?.CrossfadeEnabled ?? false;
         var exclusive = _audioPlayer.ExclusiveModeActive;
@@ -1194,9 +1205,11 @@ public partial class PlayerViewModel : ViewModelBase
                 ? $"{rgMode} — {rgDb:+0.0;-0.0} dB"
                 : $"{rgMode} — no tags (bypass)";
 
-        var eqDetail = eqOn
-            ? (_settings?.SelectedEqPresetIndex == 0 ? "Parametric (custom)" : _settings?.SelectedEqPresetName ?? "On")
-            : "Off";
+        var eqDetail = !eqEnabled
+            ? "Off"
+            : eqOn
+                ? (_settings?.SelectedEqPresetIndex == 0 ? "Parametric (custom)" : _settings?.SelectedEqPresetName ?? "On")
+                : "Flat — bypass";
 
         var crossfadeDetail = crossfadeOn
             ? $"{_settings?.CrossfadeDuration ?? 6:0.#} s"

@@ -2,12 +2,15 @@ namespace Noctis.Services.Loon;
 
 // ── Server → Client messages ──
 
+/// <summary>
+/// The subset of the relay's Constraints this client acts on. It also advertises
+/// accepted_content_types and cache_duration; both are skipped, because every response is
+/// re-encoded to JPEG (always in the accepted set) and the relay owns its own caching.
+/// </summary>
 internal sealed class Constraints
 {
     public ulong ChunkSize { get; init; }
     public ulong MaxContentSize { get; init; }
-    public List<string> AcceptedContentTypes { get; init; } = [];
-    public uint CacheDuration { get; init; }
 }
 
 internal sealed class HelloMessage
@@ -126,8 +129,6 @@ internal static class LoonMessageCodec
     private static Constraints DecodeConstraints(LoonProtobuf.ProtoReader r)
     {
         ulong chunkSize = 0, maxSize = 0;
-        uint cacheDuration = 0;
-        var types = new List<string>();
 
         while (r.HasMore)
         {
@@ -136,9 +137,7 @@ internal static class LoonMessageCodec
             {
                 case 1: chunkSize = r.ReadUInt64(); break;
                 case 2: maxSize = r.ReadUInt64(); break;
-                case 3: types.Add(r.ReadString()); break;
-                case 4: cacheDuration = r.ReadUInt32(); break;
-                default: r.Skip(w); break;
+                default: r.Skip(w); break;   // accepted_content_types, cache_duration
             }
         }
 
@@ -146,8 +145,6 @@ internal static class LoonMessageCodec
         {
             ChunkSize = chunkSize,
             MaxContentSize = maxSize,
-            AcceptedContentTypes = types,
-            CacheDuration = cacheDuration,
         };
     }
 

@@ -36,8 +36,6 @@ internal static class LoonProtobuf
 
         public ulong ReadUInt64() => ReadRawVarint();
         public uint ReadUInt32() => (uint)ReadRawVarint();
-        public int ReadInt32() => (int)ReadRawVarint();
-        public bool ReadBool() => ReadRawVarint() != 0;
 
         /// <summary>
         /// Validates a server-supplied length before it is used to slice the buffer.
@@ -98,7 +96,16 @@ internal static class LoonProtobuf
                     _pos += 8;
                     break;
                 case WireLengthDelimited:
-                    _pos += ReadLength();
+                    // Read the length into a local first. "_pos += ReadLength()" loads _pos
+                    // before the call and writes the sum back afterwards, discarding the
+                    // advance ReadLength() made over the length varint itself — so the skip
+                    // landed one byte early, inside the payload it was meant to jump. Every
+                    // Request carries a google.protobuf.Timestamp that goes through here, so
+                    // the reader then read a payload byte as a field tag and threw. That
+                    // exception killed the receive loop, dropped the WebSocket, and the relay
+                    // failed Discord's in-flight fetch with a 504 = broken-image placeholder.
+                    var skip = ReadLength();
+                    _pos += skip;
                     break;
                 case 5: // 32-bit
                     if (_buf.Length - _pos < 4) throw new InvalidDataException("Truncated 32-bit field.");
@@ -153,13 +160,6 @@ internal static class LoonProtobuf
         }
 
         public void WriteBytesField(int fieldNumber, byte[] value)
-        {
-            WriteTag(fieldNumber, WireLengthDelimited);
-            WriteRawVarint((ulong)value.Length);
-            _ms.Write(value);
-        }
-
-        public void WriteBytesField(int fieldNumber, ReadOnlySpan<byte> value)
         {
             WriteTag(fieldNumber, WireLengthDelimited);
             WriteRawVarint((ulong)value.Length);

@@ -919,16 +919,23 @@ public partial class SettingsViewModel : ViewModelBase
                     ListenBrainzStatusText = $"Connected as {_settings.ListenBrainzUsername}";
             }
 
-            if (_discord != null && DiscordRichPresenceEnabled)
+            if (_discord != null)
             {
                 // Lets the service's background reconnect stop as soon as the user turns
-                // the setting off, instead of retrying against a disabled feature.
+                // the setting off, instead of retrying against a disabled feature. Wired
+                // unconditionally: setting it only when the feature was already on left it
+                // null for anyone who enabled Discord later in the session, and the retry
+                // loop then had no way to notice a subsequent toggle-off.
                 _discord.IsEnabled = () => DiscordRichPresenceEnabled;
-                _ = _discord.ConnectAsync();
-                // Loon exists solely to serve Discord cover art — it follows the
-                // presence lifecycle instead of connecting unconditionally at
-                // startup (an always-on remote channel nobody may be using).
-                _ = ConnectLoonAsync();
+
+                if (DiscordRichPresenceEnabled)
+                {
+                    _ = _discord.ConnectAsync();
+                    // Loon exists solely to serve Discord cover art — it follows the
+                    // presence lifecycle instead of connecting unconditionally at
+                    // startup (an always-on remote channel nobody may be using).
+                    _ = ConnectLoonAsync();
+                }
             }
 
             // Ensure player gets the persisted startup settings even if no toggle changed.
@@ -2072,7 +2079,6 @@ public partial class SettingsViewModel : ViewModelBase
             Title: track.Title ?? "Unknown",
             Artist: track.Artist ?? "Unknown Artist",
             Album: track.Album,
-            Duration: track.Duration,
             ArtworkUrl: artworkUrl);
 
         var isPlaying = _player.State == PlaybackState.Playing;
@@ -2215,6 +2221,10 @@ public partial class SettingsViewModel : ViewModelBase
         {
             ListenBrainzUsername = username!;
             IsListenBrainzConnected = true;
+            // Mirrors the Last.fm auth path: connecting an account is the user asking to
+            // scrobble. Without this, the now-default-off toggle would leave a freshly
+            // connected account silently not scrobbling.
+            ListenBrainzScrobblingEnabled = true;
             ListenBrainzStatusText = $"Connected as {username}";
             await SaveAsync();
         }
@@ -2688,7 +2698,13 @@ public partial class SettingsViewModel : ViewModelBase
     // ── Files / folder commands ──
 
     /// <summary>Called from the View after the folder picker dialog returns a path.</summary>
-    public async Task AddFolderPath(string path)
+    /// <param name="autoScan">
+    /// When false the root is registered without kicking off a library scan. The
+    /// drag-and-drop import needs this: it imports the dropped files itself right after,
+    /// and a scan running in parallel republishes its own authoritative track list, which
+    /// overwrote the freshly imported tracks.
+    /// </param>
+    public async Task AddFolderPath(string path, bool autoScan = true)
     {
         if (string.IsNullOrWhiteSpace(path)) return;
 
@@ -2732,7 +2748,8 @@ public partial class SettingsViewModel : ViewModelBase
         // Auto-scan so the user doesn't have to press "Scan". Routed through the
         // shared flow so the spinner shows and the Scan button disables while it
         // runs. The unchanged-file fast path means only the new folder is read.
-        _ = RunLibraryScanAsync();
+        if (autoScan)
+            _ = RunLibraryScanAsync();
     }
 
     /// <summary>Absolute, separator-normalized, no trailing separator. Falls back to the
@@ -3139,9 +3156,11 @@ public partial class SettingsViewModel : ViewModelBase
             SoundCheckEnabled = false;
             ExclusiveAudioEnabled = false;
             GaplessPlaybackEnabled = true;
-            BpmKeyAnalysisEnabled = true;
-            WriteAnalysisToTags = false;
-            ReplayGainMode = "Auto";
+            // Read from defaultSettings, not literals: these drifted from AppSettings the
+            // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.
+            BpmKeyAnalysisEnabled = defaultSettings.BpmKeyAnalysisEnabled;
+            WriteAnalysisToTags = defaultSettings.WriteAnalysisToTags;
+            ReplayGainMode = defaultSettings.ReplayGainMode;
             TrackTitleMarqueeEnabled = true;
             ArtistMarqueeEnabled = true;
             CoverFlowMarqueeEnabled = true;
@@ -3151,7 +3170,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsArtistMarqueeEnabled = true;
             MiniPlayerTitleMarqueeEnabled = true;
             MiniPlayerAlbumMarqueeEnabled = true;
-            SidebarHoverExpand = true;
+            SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
 
             // Lyrics providers
             LrcLibEnabled = true;
@@ -3177,7 +3196,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Integrations
             DiscordRichPresenceEnabled = false;
-            LastFmScrobblingEnabled = true;
+            LastFmScrobblingEnabled = defaultSettings.LastFmScrobblingEnabled;
             LastFmUsername = "";
             IsLastFmConnected = false;
             LastFmStatusText = "Not connected";
@@ -3186,7 +3205,7 @@ public partial class SettingsViewModel : ViewModelBase
             // account stayed connected while the UI read "Not connected".
             _lastFm?.Logout();
 
-            ListenBrainzScrobblingEnabled = true;
+            ListenBrainzScrobblingEnabled = defaultSettings.ListenBrainzScrobblingEnabled;
             ListenBrainzToken = "";
             ListenBrainzUsername = "";
             IsListenBrainzConnected = false;

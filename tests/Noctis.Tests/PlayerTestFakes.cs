@@ -25,6 +25,7 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public long PendingSeekMs { get; set; } = -1;
     public bool IsMuted { get; set; }
     public bool ExclusiveModeActive => false;
+    public bool EqualizerActive { get; set; }
     public string OutputDescription => "test";
     public double ReplayGainAppliedDb => 0;
     public string? CurrentMediaPath { get; private set; }
