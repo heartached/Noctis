@@ -15,12 +15,12 @@ public class FolderTreeBuilderTests
     {
         var tracks = new List<Track>
         {
-            T(@"C:\Music\Rock\song1.mp3"),
-            T(@"C:\Music\Rock\song2.mp3"),
-            T(@"C:\Music\Metal\song3.mp3"),
-            T(@"C:\Music\Metal\sub\song4.mp3"),
+            T(TestPaths.Primary("Music", "Rock", "song1.mp3")),
+            T(TestPaths.Primary("Music", "Rock", "song2.mp3")),
+            T(TestPaths.Primary("Music", "Metal", "song3.mp3")),
+            T(TestPaths.Primary("Music", "Metal", "sub", "song4.mp3")),
         };
-        var roots = new[] { @"C:\Music" };
+        var roots = new[] { TestPaths.Primary("Music") };
 
         var forest = FolderTreeBuilder.Build(tracks, roots);
 
@@ -45,8 +45,8 @@ public class FolderTreeBuilderTests
     [Fact]
     public void Build_TracksOutsideAnyRoot_AreIgnored()
     {
-        var tracks = new List<Track> { T(@"D:\Other\song.mp3") };
-        var roots = new[] { @"C:\Music" };
+        var tracks = new List<Track> { T(TestPaths.Other("Other", "song.mp3")) };
+        var roots = new[] { TestPaths.Primary("Music") };
 
         var forest = FolderTreeBuilder.Build(tracks, roots);
 
@@ -59,11 +59,11 @@ public class FolderTreeBuilderTests
     {
         var tracks = new List<Track>
         {
-            T(@"C:\Music\Zeta\a.mp3"),
-            T(@"C:\Music\Alpha\a.mp3"),
-            T(@"C:\Music\Mu\a.mp3"),
+            T(TestPaths.Primary("Music", "Zeta", "a.mp3")),
+            T(TestPaths.Primary("Music", "Alpha", "a.mp3")),
+            T(TestPaths.Primary("Music", "Mu", "a.mp3")),
         };
-        var roots = new[] { @"C:\Music" };
+        var roots = new[] { TestPaths.Primary("Music") };
 
         var forest = FolderTreeBuilder.Build(tracks, roots);
 
