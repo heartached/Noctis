@@ -817,10 +817,11 @@ public partial class LyricsView : UserControl
 
                 var childTop = childBounds.Value.Transform(new Point(0, 0)).Y;
                 var childHeight = targetChild.Bounds.Height;
-                var viewportHeight = LyricsScrollViewer.Viewport.Height;
 
-                var targetOffset = childTop - (viewportHeight * 0.22) + (childHeight / 2.0);
-                targetOffset = Math.Max(0, targetOffset);
+                var targetOffset = Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
+                    childTop, childHeight,
+                    LyricsScrollViewer.Viewport.Height,
+                    LyricsScrollViewer.Extent.Height);
 
                 var currentOffset = LyricsScrollViewer.Offset.Y;
                 var diff = targetOffset - currentOffset;
@@ -869,10 +870,11 @@ public partial class LyricsView : UserControl
 
                 var childTop = childBounds.Value.Transform(new Point(0, 0)).Y;
                 var childHeight = targetChild.Bounds.Height;
-                var viewportHeight = LyricsScrollViewer.Viewport.Height;
 
-                var targetOffset = childTop - (viewportHeight * 0.22) + (childHeight / 2.0);
-                targetOffset = Math.Max(0, targetOffset);
+                var targetOffset = Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
+                    childTop, childHeight,
+                    LyricsScrollViewer.Viewport.Height,
+                    LyricsScrollViewer.Extent.Height);
                 ApplyScrollOffset(LyricsScrollViewer, targetOffset);
             }
             catch { }
@@ -880,9 +882,12 @@ public partial class LyricsView : UserControl
     }
 
     // Cascade tuning: each line below the active one starts its glide this much later,
-    // up to this many lines deep — the Apple Music "settle top-down" feel.
+    // with the stagger depth capped — the Apple Music "settle top-down" feel.
     private const double CascadeDelayPerLineMs = 35;
     private const int CascadeMaxLines = 8;
+    // A line's lag may exceed the line above's by at most this much — see the lyrics
+    // panel's constant of the same name (uncapped stagger made lines overlap mid-glide).
+    private const double MaxCascadeLagStepPx = 16;
 
     /// <summary>
     /// Frame-clock scroll animation: each step is scheduled via TopLevel.RequestAnimationFrame,
@@ -903,11 +908,15 @@ public partial class LyricsView : UserControl
         var cascade = new List<(Control Control, double DelayMs)>();
         if (linesPanel != null && activeIndex >= 0 && Math.Abs(delta) > 8)
         {
-            for (int i = activeIndex + 1;
-                 i < linesPanel.Children.Count && i - activeIndex <= CascadeMaxLines;
-                 i++)
+            // Every line below the active one takes part; only the DELAY is capped.
+            // Cutting the list at CascadeMaxLines left the first excluded line static
+            // while the last included one lagged a full line height onto it — lyrics
+            // overlapped mid-glide wherever that boundary was on screen (worst in the
+            // side panel; see LyricsPanelView.AnimateScroll).
+            for (int i = activeIndex + 1; i < linesPanel.Children.Count; i++)
             {
-                cascade.Add((linesPanel.Children[i], (i - activeIndex) * CascadeDelayPerLineMs));
+                cascade.Add((linesPanel.Children[i],
+                    Math.Min(i - activeIndex, CascadeMaxLines) * CascadeDelayPerLineMs));
             }
         }
         _cascadeLines = cascade.Count > 0 ? cascade : null;
@@ -932,10 +941,16 @@ public partial class LyricsView : UserControl
 
             // Stagger: each cascade line is displaced by the gap between the base ease
             // and its own delayed ease — positive while catching up, zero when settled.
+            // Chained clamp: on large scroll deltas the raw stagger between neighbours
+            // exceeds the inter-line gap, so bound each line's lag to its predecessor's
+            // (the list is in top-to-bottom order) — lines can never cross.
+            var prevLag = 0.0;
             foreach (var (control, delayMs) in cascade)
             {
                 var tLine = Math.Clamp((elapsed - delayMs) / totalMs, 0.0, 1.0);
                 var lag = delta * (eased - Easing.SmootherStep(tLine));
+                lag = Math.Clamp(lag, prevLag - MaxCascadeLagStepPx, prevLag + MaxCascadeLagStepPx);
+                prevLag = lag;
                 if (control.RenderTransform is TranslateTransform tt)
                     tt.Y = lag;
                 else
