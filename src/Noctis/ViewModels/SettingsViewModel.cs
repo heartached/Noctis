@@ -2221,6 +2221,10 @@ public partial class SettingsViewModel : ViewModelBase
         {
             ListenBrainzUsername = username!;
             IsListenBrainzConnected = true;
+            // Mirrors the Last.fm auth path: connecting an account is the user asking to
+            // scrobble. Without this, the now-default-off toggle would leave a freshly
+            // connected account silently not scrobbling.
+            ListenBrainzScrobblingEnabled = true;
             ListenBrainzStatusText = $"Connected as {username}";
             await SaveAsync();
         }
@@ -3152,9 +3156,11 @@ public partial class SettingsViewModel : ViewModelBase
             SoundCheckEnabled = false;
             ExclusiveAudioEnabled = false;
             GaplessPlaybackEnabled = true;
-            BpmKeyAnalysisEnabled = true;
-            WriteAnalysisToTags = false;
-            ReplayGainMode = "Auto";
+            // Read from defaultSettings, not literals: these drifted from AppSettings the
+            // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.
+            BpmKeyAnalysisEnabled = defaultSettings.BpmKeyAnalysisEnabled;
+            WriteAnalysisToTags = defaultSettings.WriteAnalysisToTags;
+            ReplayGainMode = defaultSettings.ReplayGainMode;
             TrackTitleMarqueeEnabled = true;
             ArtistMarqueeEnabled = true;
             CoverFlowMarqueeEnabled = true;
@@ -3164,7 +3170,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsArtistMarqueeEnabled = true;
             MiniPlayerTitleMarqueeEnabled = true;
             MiniPlayerAlbumMarqueeEnabled = true;
-            SidebarHoverExpand = true;
+            SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
 
             // Lyrics providers
             LrcLibEnabled = true;
@@ -3190,7 +3196,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Integrations
             DiscordRichPresenceEnabled = false;
-            LastFmScrobblingEnabled = true;
+            LastFmScrobblingEnabled = defaultSettings.LastFmScrobblingEnabled;
             LastFmUsername = "";
             IsLastFmConnected = false;
             LastFmStatusText = "Not connected";
@@ -3199,7 +3205,7 @@ public partial class SettingsViewModel : ViewModelBase
             // account stayed connected while the UI read "Not connected".
             _lastFm?.Logout();
 
-            ListenBrainzScrobblingEnabled = true;
+            ListenBrainzScrobblingEnabled = defaultSettings.ListenBrainzScrobblingEnabled;
             ListenBrainzToken = "";
             ListenBrainzUsername = "";
             IsListenBrainzConnected = false;
