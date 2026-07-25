@@ -199,13 +199,10 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             ReplaceTopArtistsIfChanged(topArtists);
 
             // Kick a background image-fetch for any artist that doesn't have a cached
-            // picture yet. Updates flow back through Artist.ImagePath, which the row's
-            // CachedImage binding watches.
+            // picture yet, then re-materialize the row so the portraits are actually read.
             if (_artistImages != null && topArtists.Count > 0)
-                _ = _artistImages.FetchAndCacheAsync(topArtists, (artist, _) =>
-                {
-                    Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(TopArtists)));
-                });
+                _ = _artistImages.FetchAndCacheAsync(topArtists, (_, _) =>
+                    Dispatcher.UIThread.Post(ScheduleTopArtistImageRefresh));
 
             await RefreshTimeAwareRowsAsync();
         }
@@ -286,6 +283,38 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             >= 17 and < 21 => "Good evening",
             _ => "Good night"
         };
+    }
+
+    private DispatcherTimer? _topArtistImageDebounce;
+
+    /// <summary>
+    /// Rebuilds the Top Artists items once portrait fetches land.
+    ///
+    /// The fetch callback used to raise PropertyChanged for the TopArtists *property*,
+    /// which does nothing useful: it is the same collection instance and carries no
+    /// CollectionChanged, so the item containers are never rebuilt — and Artist.ImagePath
+    /// is a plain property that raises nothing of its own, so no binding ever re-read it.
+    /// The row kept its placeholder silhouettes for the entire session even with every
+    /// portrait already sitting in the cache. ReplaceAll fires Reset, which re-materializes
+    /// the items and re-reads the path, exactly as the Artists tab already does.
+    ///
+    /// Debounced because the fetch reports once per artist.
+    /// </summary>
+    private void ScheduleTopArtistImageRefresh()
+    {
+        if (_topArtistImageDebounce == null)
+        {
+            _topArtistImageDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+            _topArtistImageDebounce.Tick += (_, _) =>
+            {
+                _topArtistImageDebounce!.Stop();
+                if (TopArtists.Count > 0)
+                    TopArtists.ReplaceAll(TopArtists.ToList());
+            };
+        }
+
+        _topArtistImageDebounce.Stop();
+        _topArtistImageDebounce.Start();
     }
 
     private void ReplaceTopArtistsIfChanged(IReadOnlyList<Artist> artists)
@@ -582,6 +611,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _refreshDebounce.Stop();
+        _topArtistImageDebounce?.Stop();
         _player.TrackStarted -= OnTrackStarted;
         _library.LibraryUpdated -= _libraryUpdatedHandler;
         _library.FavoritesChanged -= _favoritesChangedHandler;

@@ -9,6 +9,14 @@ public class Artist
     public string Name { get; set; } = "Unknown Artist";
     public int AlbumCount { get; set; }
     public int TrackCount { get; set; }
+
+    /// <summary>
+    /// Cached portrait path. Deliberately NOT an observable property: ArtistImageService
+    /// assigns it from a worker thread at seven sites with no dispatching, and raising
+    /// PropertyChanged there would push binding updates onto a non-UI thread, which
+    /// Avalonia rejects. Views that show it must re-materialize their items once the
+    /// fetch reports in — see LibraryArtistsViewModel and HomeViewModel.
+    /// </summary>
     public string? ImagePath { get; set; }
 
     public override string ToString() => Name;
