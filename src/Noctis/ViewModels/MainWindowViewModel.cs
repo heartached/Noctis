@@ -705,7 +705,7 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>
     /// Imports files/folders dropped onto the app window.
     /// Folders are added to configured library roots and rescanned;
-    /// standalone files are copied into the managed library folder, then imported.
+    /// standalone files are moved into the managed library folder, then imported.
     /// </summary>
     public async Task ImportDroppedMediaAsync(IEnumerable<string> droppedPaths, CancellationToken ct = default)
     {
@@ -839,7 +839,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 foreach (var file in files)
                 {
                     ct.ThrowIfCancellationRequested();
-                    DropImportStatus = $"Copying files {++copyProcessed} of {files.Count}";
+                    DropImportStatus = $"Importing files {++copyProcessed} of {files.Count}";
 
                     // Files already inside configured library roots can be imported as-is.
                     if (libraryRoots.Any(root => IsPathUnderRoot(file, root)))
@@ -850,13 +850,13 @@ public partial class MainWindowViewModel : ViewModelBase
                         continue;
                     }
 
-                    // Managed import: copy external drops into library storage first
-                    // (File.Copy is blocking I/O — keep it off the UI thread).
+                    // Managed import: relocate external drops into library storage first
+                    // (blocking file I/O — keep it off the UI thread).
                     var copiedPath = string.IsNullOrWhiteSpace(managedRoot)
                         ? file
-                        : await Task.Run(() => CopyFileIntoManagedRoot(file, managedRoot), ct);
+                        : await Task.Run(() => MoveFileIntoManagedRoot(file, managedRoot), ct);
 
-                    System.Diagnostics.Debug.WriteLine($"[DropImport]   {file} → copied to: {copiedPath}");
+                    System.Diagnostics.Debug.WriteLine($"[DropImport]   {file} → moved to: {copiedPath}");
                     if (!string.IsNullOrWhiteSpace(copiedPath))
                     {
                         importTargets.Add(copiedPath);
@@ -919,6 +919,23 @@ public partial class MainWindowViewModel : ViewModelBase
             Settings.RefreshLibraryStats();
             Settings.RefreshStorageInfo();
 
+            // The relocation into the managed root is otherwise invisible — the
+            // dropped file just vanishes from its source folder — so say where it
+            // went before the pill hides. Only counts real moves (source gone), not
+            // re-drops that reused an existing import.
+            var moved = originalToFinal
+                .Where(kv => !string.Equals(kv.Key, kv.Value, StringComparison.OrdinalIgnoreCase)
+                             && !File.Exists(kv.Key))
+                .ToList();
+            if (moved.Count > 0)
+            {
+                var destFolder = Path.GetFileName(Path.GetDirectoryName(moved[0].Value));
+                DropImportStatus = moved.Count == 1
+                    ? $"Moved 1 file to {destFolder}"
+                    : $"Moved {moved.Count} files to {destFolder}";
+                try { await Task.Delay(2500, ct); } catch (OperationCanceledException) { }
+            }
+
             // Hide the progress pill before the playlist-offer dialog can appear.
             IsDropImporting = false;
 
@@ -933,9 +950,11 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Extracts album art from the source location of copied drops. Only albums whose
+    /// Extracts album art from the source location of relocated drops. Only albums whose
     /// artwork is still missing after import are considered, so embedded art (already
-    /// extracted from the copy) always wins over a source-folder image.
+    /// extracted during import) always wins over a source-folder image.
+    /// Reads the source <em>folder</em>, not the source file: the file has been moved
+    /// into the managed root by now, but the cover image it sat next to has not.
     /// Returns true when at least one artwork file was written.
     /// </summary>
     private async Task<bool> BackfillDroppedFolderArtAsync(
@@ -966,7 +985,12 @@ public partial class MainWindowViewModel : ViewModelBase
                 try
                 {
                     if (File.Exists(_persistence.GetArtworkPath(track.AlbumId))) continue;
-                    var artBytes = _metadata.ExtractAlbumArt(original);
+                    // A track without a real album name belongs to the library-wide
+                    // "Unknown Album" bucket shared by every such file, so a folder
+                    // cover can't be attributed to it — see MetadataService.ExtractAlbumArt.
+                    if (!Track.IsRealAlbumName(track.Album))
+                        continue;
+                    var artBytes = MetadataService.TryReadFolderArt(Path.GetDirectoryName(original));
                     if (artBytes != null)
                     {
                         _persistence.SaveArtwork(track.AlbumId, artBytes);
@@ -2094,6 +2118,29 @@ public partial class MainWindowViewModel : ViewModelBase
         return "home";
     }
 
+    /// <summary>Leaf name of the app-managed folder loose drops are relocated into.</summary>
+    internal const string ManagedImportFolderName = "Noctis Imports";
+
+    /// <summary>
+    /// Picks the configured root that IS a managed-imports folder (leaf name match),
+    /// or null when none is configured.
+    /// <para>
+    /// This used to be "first configured folder that exists on disk" — but any
+    /// configured root can be a real album folder (added via the Settings picker or
+    /// promoted to first place after the original managed root was scrubbed from the
+    /// list), and loose drops were then MOVED flat into that album folder. Sitting
+    /// next to its cover art, an untagged drop even wore that album's cover. Only a
+    /// folder we manage may receive relocated drops.
+    /// </para>
+    /// </summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static string? SelectManagedImportRoot(IEnumerable<string> configuredRoots) =>
+        configuredRoots.FirstOrDefault(r =>
+            string.Equals(
+                Path.GetFileName(Path.TrimEndingDirectorySeparator(r)),
+                ManagedImportFolderName,
+                StringComparison.OrdinalIgnoreCase));
+
     private async Task<string?> EnsureManagedImportRootAsync(CancellationToken ct)
     {
         try
@@ -2106,19 +2153,15 @@ public partial class MainWindowViewModel : ViewModelBase
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            // Prefer an existing configured folder that already exists on disk.
-            var existingRoot = normalizedRoots.FirstOrDefault(Directory.Exists);
-            if (!string.IsNullOrWhiteSpace(existingRoot))
-                return existingRoot;
-
-            // If configured roots exist but don't exist on disk yet, use the first one.
-            var configuredRoot = normalizedRoots.FirstOrDefault();
+            // Only an app-managed imports folder may receive drops (see
+            // SelectManagedImportRoot); otherwise create the default one.
+            var managedRoot = SelectManagedImportRoot(normalizedRoots);
             var musicFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
             if (string.IsNullOrEmpty(musicFolder))
                 musicFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Music");
-            var fallbackRoot = Path.Combine(musicFolder, "Noctis Imports");
+            var fallbackRoot = Path.Combine(musicFolder, ManagedImportFolderName);
 
-            var targetRoot = configuredRoot ?? fallbackRoot;
+            var targetRoot = managedRoot ?? fallbackRoot;
             var normalizedTarget = TryNormalizePath(targetRoot) ?? targetRoot;
 
             Directory.CreateDirectory(normalizedTarget);
@@ -2145,7 +2188,20 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private static string? CopyFileIntoManagedRoot(string sourceFile, string managedRoot)
+    /// <summary>
+    /// Relocates an external drop into the managed library root and returns its new path.
+    /// <para>
+    /// This used to copy, which left the dropped file behind as a hidden duplicate: the
+    /// library track pointed at the copy, so "Remove from library → Move to Recycle Bin"
+    /// trashed the copy and left the file the user had actually dropped sitting on disk,
+    /// reading as a Recycle Bin that did nothing. Moving keeps exactly one file, so
+    /// removing the track removes the file the user dropped.
+    /// </para>
+    /// Falls back to copying when the move can't be done (read-only source volume, the
+    /// file locked by another app) — a leftover original beats a failed import.
+    /// </summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static string? MoveFileIntoManagedRoot(string sourceFile, string managedRoot)
     {
         try
         {
@@ -2178,7 +2234,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 var sourceInfo = new FileInfo(sourcePath);
                 var destinationInfo = new FileInfo(destinationPath);
 
-                // Reuse existing copy if it appears to be the same file payload.
+                // Same payload already in the library — re-dropping a file that is
+                // already imported. Deliberately does NOT delete the source: size +
+                // timestamp is too weak an identity check to destroy a file over.
                 if (sourceInfo.Length == destinationInfo.Length &&
                     sourceInfo.LastWriteTimeUtc == destinationInfo.LastWriteTimeUtc)
                 {
@@ -2196,13 +2254,25 @@ public partial class MainWindowViewModel : ViewModelBase
                 } while (File.Exists(destinationPath));
             }
 
-            File.Copy(sourcePath, destinationPath, overwrite: false);
-            File.SetLastWriteTimeUtc(destinationPath, File.GetLastWriteTimeUtc(sourcePath));
+            var lastWriteUtc = File.GetLastWriteTimeUtc(sourcePath);
+            try
+            {
+                // Handles the cross-volume case too (MOVEFILE_COPY_ALLOWED on Windows,
+                // copy-then-delete on the EXDEV path elsewhere).
+                File.Move(sourcePath, destinationPath);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[DropImport] Move failed ({ex.Message}); copying instead: {sourcePath}");
+                File.Copy(sourcePath, destinationPath, overwrite: false);
+            }
+            File.SetLastWriteTimeUtc(destinationPath, lastWriteUtc);
             return destinationPath;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[MainWindowVM] Managed import copy failed: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[MainWindowVM] Managed import failed: {ex.Message}");
             return null;
         }
     }
