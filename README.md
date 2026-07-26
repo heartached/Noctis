@@ -80,8 +80,6 @@ Or download the installer / portable zip from the
 
 ## Features
 
-Everything ships in the box — no accounts, no upsells, no telemetry.
-
 ### Sound
 
 - [x] Plays everything — FLAC, ALAC, WAV, AIFF, APE, WavPack, MP3, AAC, OGG, Opus, WMA, M4A
