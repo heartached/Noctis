@@ -1959,9 +1959,12 @@ public partial class MetadataViewModel : ViewModelBase
         }
         else if (oldAlbumId != _track.AlbumId)
         {
-            // AlbumId changed (artist/album edit) — copy cached artwork to new key
+            // AlbumId changed (artist/album edit) — copy cached artwork to new key.
+            // Never onto the shared Unknown-Album bucket (blanking the Album field
+            // re-keys the track there, and art under that id shows on every
+            // untagged track in the library) — same rule as SaveArtwork.
             var oldPath = _persistence.GetArtworkPath(oldAlbumId);
-            if (File.Exists(oldPath))
+            if (File.Exists(oldPath) && _track.AlbumId != Track.UnknownAlbumBucketId)
             {
                 try { File.Copy(oldPath, _persistence.GetArtworkPath(_track.AlbumId), overwrite: true); }
                 catch { /* Non-fatal */ }

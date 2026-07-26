@@ -825,6 +825,7 @@ public class LibraryService : ILibraryService
         var updated = new List<Track>(_tracks);
         updated.Remove(track);
         _tracks = updated;
+        DeleteOrphanedArtwork(new[] { track });
         await ExcludeFilePathsAndCleanFoldersAsync(new[] { track.FilePath });
         await RebuildIndexesAsync();
         await SaveAsync();
@@ -841,11 +842,42 @@ public class LibraryService : ILibraryService
         if (removedTracks.Count == 0) return;
         _tracks = current.Where(t => !idSet.Contains(t.Id)).ToList();
 
+        DeleteOrphanedArtwork(removedTracks);
         await ExcludeFilePathsAndCleanFoldersAsync(removedTracks.Select(t => t.FilePath));
         await RebuildIndexesAsync();
         await SaveAsync();
         await _sqliteIndex.DeleteTracksAsync(idSet);
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Deletes cached covers for albums that no longer have any tracks after a
+    /// removal. Cached art is never overwritten (every writer short-circuits on
+    /// File.Exists) and was never invalidated either — so a wrong cover, once
+    /// stamped, survived remove + re-import forever. With the orphan gone, the next
+    /// import of that album re-extracts art from its actual files.
+    /// </summary>
+    private void DeleteOrphanedArtwork(IReadOnlyList<Track> removedTracks)
+    {
+        foreach (var albumId in SelectOrphanedAlbumIds(removedTracks, _tracks))
+        {
+            try
+            {
+                var artPath = _persistence.GetArtworkPath(albumId);
+                if (File.Exists(artPath)) File.Delete(artPath);
+            }
+            catch { /* cache only — worst case the stale cover lingers as before */ }
+        }
+    }
+
+    /// <summary>Album ids present in <paramref name="removedTracks"/> that no
+    /// remaining track references.</summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static IEnumerable<Guid> SelectOrphanedAlbumIds(
+        IReadOnlyList<Track> removedTracks, IReadOnlyList<Track> remainingTracks)
+    {
+        var live = new HashSet<Guid>(remainingTracks.Select(t => t.AlbumId));
+        return removedTracks.Select(t => t.AlbumId).Distinct().Where(id => !live.Contains(id));
     }
 
     public async Task<IReadOnlyDictionary<Guid, Guid>> RelocateTracksAsync(

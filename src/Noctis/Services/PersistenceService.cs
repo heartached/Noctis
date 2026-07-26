@@ -267,6 +267,13 @@ public class PersistenceService : IPersistenceService
 
     public void SaveArtwork(Guid albumId, byte[] imageData)
     {
+        // The "Unknown Artist::Unknown Album" bucket is one AlbumId shared by every
+        // track without a real album identity, and art cached under it shows on ALL
+        // of them at once — one file's embedded or folder cover would be stamped
+        // onto every untagged track in the library (and stick, since writers
+        // short-circuit on File.Exists). It is not an album; never cache art for it.
+        if (albumId == Track.UnknownAlbumBucketId) return;
+
         try
         {
             var path = GetArtworkPath(albumId);
