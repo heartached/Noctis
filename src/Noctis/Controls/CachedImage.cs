@@ -72,8 +72,14 @@ public class CachedImage : Image
 
     private void OnArtworkInvalidated(string path)
     {
-        if (string.Equals(SourcePath, path, StringComparison.Ordinal))
-            Dispatcher.UIThread.Post(OnSourcePathChanged);
+        // Invalidated can be raised from any thread; SourcePath is an
+        // AvaloniaProperty and may only be read on the UI thread, so the
+        // comparison has to happen inside the post, not before it.
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (string.Equals(SourcePath, path, StringComparison.Ordinal))
+                OnSourcePathChanged();
+        });
     }
 
     private async void OnSourcePathChanged()
