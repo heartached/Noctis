@@ -77,8 +77,8 @@ public class UnknownAlbumBucketTests : IDisposable
         // album folder became MusicFolders[0] and loose drops were moved into it.
         var roots = new[]
         {
-            @"B:\ALAC\Future\I NEVER LIKED YOU [E]",
-            @"B:\ALAC\Tory Lanez\I Told You (Deluxe Edition) [E]",
+            TestPaths.Other("ALAC", "Future", "I NEVER LIKED YOU [E]"),
+            TestPaths.Other("ALAC", "Tory Lanez", "I Told You (Deluxe Edition) [E]"),
         };
 
         Assert.Null(MainWindowViewModel.SelectManagedImportRoot(roots));
@@ -87,22 +87,22 @@ public class UnknownAlbumBucketTests : IDisposable
     [Fact]
     public void SelectManagedImportRoot_PrefersTheManagedFolder_RegardlessOfPosition()
     {
+        var managed = TestPaths.Primary("Users", "someone", "Music", "Noctis Imports");
         var roots = new[]
         {
-            @"B:\ALAC\Future\I NEVER LIKED YOU [E]",
-            @"C:\Users\someone\Music\Noctis Imports",
+            TestPaths.Other("ALAC", "Future", "I NEVER LIKED YOU [E]"),
+            managed,
         };
 
-        Assert.Equal(@"C:\Users\someone\Music\Noctis Imports",
-            MainWindowViewModel.SelectManagedImportRoot(roots));
+        Assert.Equal(managed, MainWindowViewModel.SelectManagedImportRoot(roots));
     }
 
     [Fact]
     public void SelectManagedImportRoot_MatchesLeafCaseInsensitively_AndTrailingSeparator()
     {
-        var roots = new[] { @"D:\music\NOCTIS IMPORTS\" };
+        var root = TestPaths.Other("music", "NOCTIS IMPORTS") + Path.DirectorySeparatorChar;
 
-        Assert.Equal(@"D:\music\NOCTIS IMPORTS\", MainWindowViewModel.SelectManagedImportRoot(roots));
+        Assert.Equal(root, MainWindowViewModel.SelectManagedImportRoot(new[] { root }));
     }
 
     // ── Orphaned artwork selection on removal ──
