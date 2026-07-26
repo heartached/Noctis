@@ -4,11 +4,13 @@
   <img src="src/Noctis/Assets/Icons/Noctis.ico" width="48" align="absmiddle" />&nbsp;Noctis
 </h1>
 
-A music player that respects what's yours. Zero tracking, total control.
+**A music player that respects what's yours. Zero tracking, total control.**
 
-[![Discord](https://img.shields.io/badge/DISCORD-JOIN%20SERVER-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=4F4F4F)](https://discord.gg/BNCDZQUVx7) &nbsp; [![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=yellowgreen&style=for-the-badge&cacheSeconds=600)](https://github.com/heartached/Noctis/releases)
+Bit-perfect lossless playback · word-by-word karaoke lyrics · your library on Windows, macOS & Linux
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-red.svg?style=for-the-badge)](LICENSE)
+[![Discord](https://img.shields.io/badge/DISCORD-JOIN%20SERVER-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=4F4F4F)](https://discord.gg/BNCDZQUVx7) &nbsp; [![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=E74856&style=for-the-badge&cacheSeconds=600)](https://github.com/heartached/Noctis/releases) &nbsp; [![Latest](https://img.shields.io/github/v/release/heartached/Noctis?color=E74856&style=for-the-badge&label=LATEST)](https://github.com/heartached/Noctis/releases/latest)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-E74856.svg?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg?style=for-the-badge)]()
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg?style=for-the-badge)]()
 [![Build](https://img.shields.io/github/actions/workflow/status/heartached/Noctis/dotnet.yml?label=build&style=for-the-badge)](https://github.com/heartached/Noctis/actions)
@@ -19,17 +21,38 @@ A music player that respects what's yours. Zero tracking, total control.
 
 ## Screenshots
 
+#### Word-by-word karaoke lyrics
+
+![Fullscreen lyrics](docs/images/lyrics.png)
+
+#### Home
+
 ![Home](docs/images/home.png)
+
+#### Cover Flow
 
 ![Cover Flow](docs/images/coverflow.png)
 
-![Cover collage](docs/images/covercollage.png)
+#### Album pages
 
-![Artists](docs/images/artists.png)
+![Album page](docs/images/album.png)
 
-![Lyrics](docs/images/lyrics.png)
+#### Themes & accent colors
 
 ![Themes](docs/images/themes.png)
+
+<details>
+<summary><b>More screenshots</b> — Hi-Res library, parametric EQ, lyrics panel, queue, artist pages</summary>
+<br>
+
+|  |  |
+|:---:|:---:|
+| ![Hi-Res library](docs/images/songs.png) | ![Parametric EQ](docs/images/eq.png) |
+| ![Lyrics panel](docs/images/lyrics-panel.png) | ![Queue](docs/images/queue.png) |
+
+![Artist pages](docs/images/artists.png)
+
+</details>
 
 ---
 
@@ -61,36 +84,56 @@ Or download the installer / portable zip from the
 
 Everything below ships in the box — no accounts, no upsells, no telemetry.
 
+### 🎧 Sound
+
 - [x] Lossless formats — FLAC, ALAC, WAV, AIFF, APE, WavPack (plus MP3, AAC, OGG, Opus, WMA, M4A)
-- [x] Gapless playback & crossfade
-- [x] Parametric equalizer with presets
 - [x] Bit-perfect WASAPI exclusive output with a live signal-path badge (Windows)
+- [x] Parametric equalizer with presets
+- [x] Gapless playback, crossfade & AutoMix transitions timed to each song's key and tempo
+- [x] BPM & key analysis — powers AutoMix and Track Radio
 - [x] ReplayGain & loudness normalization
 - [x] Audio converter — batch transcode to FLAC, MP3, AAC, and more (ffmpeg-backed)
-- [x] Floating mini player
+
+### 📚 Library
+
 - [x] Songs, Albums, Artists, Folders & Playlists views
 - [x] Release-type aware sections (Albums / Singles / EPs / Compilations) with filter chips
 - [x] Smart playlists, favorites & drag-to-reorder playlists
 - [x] Full metadata editor with artwork, lyrics & per-track options
-- [x] Drag-and-drop import and multi-select bulk actions in every view
+- [x] Drag-and-drop import, watched folders & multi-select bulk actions in every view
 - [x] Duplicate finder & file organizer (rename/move by metadata)
 - [x] Command palette for fast navigation
 - [x] Library statistics plus a "Wrap" year / month listening recap
+
+### 🎤 Lyrics
+
+- [x] Word-by-word karaoke lyrics on a dedicated fullscreen page (enhanced LRC & TTML)
 - [x] Synced lyrics via LRCLIB & NetEase with offline cache
-- [x] Plain + synced lyrics editor with `.lrc` sidecar export
 - [x] Side lyrics panel alongside any view
+- [x] Plain + synced lyrics editor with `.lrc` sidecar export
 - [x] Share lyrics as image cards or short video clips
+
+### ✨ Look & feel
+
 - [x] Cover Flow album browsing
 - [x] Animated cover art for the now-playing track
 - [x] Dynamic ambient backgrounds on lyrics & album pages
 - [x] Custom themes & accent colors with a built-in theme editor
+- [x] Floating mini player
+
+### 🌐 Connect
+
+<img src="docs/images/discord.png" width="290" align="right" />
+
+- [x] Discord Rich Presence
+- [x] Last.fm scrobbling + album descriptions
+- [x] ListenBrainz scrobbling
 - [x] Navidrome, SMB & WebDAV remote sources with offline cache
 - [x] Web remote — control playback from your phone's browser over your LAN
 - [x] Artist images & bios via MusicBrainz and Deezer; artwork lookup via iTunes
-- [x] Last.fm scrobbling + album descriptions
-- [x] ListenBrainz scrobbling
-- [x] Discord Rich Presence
 - [x] In-app self-update from GitHub releases
+
+<br clear="right"/>
 
 ---
 
