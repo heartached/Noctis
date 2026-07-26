@@ -23,15 +23,15 @@ Bit-perfect lossless playback · word-by-word karaoke lyrics · your library on 
 
 #### Word-by-word karaoke lyrics
 
-![Fullscreen lyrics](docs/images/lyrics.png)
+![Fullscreen lyrics](docs/images/lyrics-page.png)
 
 #### Home
 
-![Home](docs/images/home.png)
+![Home](docs/images/home-page.png)
 
 #### Cover Flow
 
-![Cover Flow](docs/images/coverflow.png)
+![Cover Flow](docs/images/cover-flow.png)
 
 #### Album pages
 
@@ -39,7 +39,7 @@ Bit-perfect lossless playback · word-by-word karaoke lyrics · your library on 
 
 #### Themes & accent colors
 
-![Themes](docs/images/themes.png)
+![Themes](docs/images/appearance.png)
 
 <details>
 <summary><b>More screenshots</b> — Hi-Res library, parametric EQ, lyrics panel, queue, artist pages</summary>
@@ -50,7 +50,7 @@ Bit-perfect lossless playback · word-by-word karaoke lyrics · your library on 
 | ![Hi-Res library](docs/images/songs.png) | ![Parametric EQ](docs/images/eq.png) |
 | ![Lyrics panel](docs/images/lyrics-panel.png) | ![Queue](docs/images/queue.png) |
 
-![Artist pages](docs/images/artists.png)
+![Artist pages](docs/images/artist-page.png)
 
 </details>
 
@@ -84,7 +84,7 @@ Or download the installer / portable zip from the
 
 Everything below ships in the box — no accounts, no upsells, no telemetry.
 
-### 🎧 Sound
+### Sound
 
 - [x] Lossless formats — FLAC, ALAC, WAV, AIFF, APE, WavPack (plus MP3, AAC, OGG, Opus, WMA, M4A)
 - [x] Bit-perfect WASAPI exclusive output with a live signal-path badge (Windows)
@@ -94,7 +94,7 @@ Everything below ships in the box — no accounts, no upsells, no telemetry.
 - [x] ReplayGain & loudness normalization
 - [x] Audio converter — batch transcode to FLAC, MP3, AAC, and more (ffmpeg-backed)
 
-### 📚 Library
+### Library
 
 - [x] Songs, Albums, Artists, Folders & Playlists views
 - [x] Release-type aware sections (Albums / Singles / EPs / Compilations) with filter chips
@@ -105,7 +105,7 @@ Everything below ships in the box — no accounts, no upsells, no telemetry.
 - [x] Command palette for fast navigation
 - [x] Library statistics plus a "Wrap" year / month listening recap
 
-### 🎤 Lyrics
+### Lyrics
 
 - [x] Word-by-word karaoke lyrics on a dedicated fullscreen page (enhanced LRC & TTML)
 - [x] Synced lyrics via LRCLIB & NetEase with offline cache
@@ -113,7 +113,7 @@ Everything below ships in the box — no accounts, no upsells, no telemetry.
 - [x] Plain + synced lyrics editor with `.lrc` sidecar export
 - [x] Share lyrics as image cards or short video clips
 
-### ✨ Look & feel
+### Look & feel
 
 - [x] Cover Flow album browsing
 - [x] Animated cover art for the now-playing track
@@ -121,9 +121,7 @@ Everything below ships in the box — no accounts, no upsells, no telemetry.
 - [x] Custom themes & accent colors with a built-in theme editor
 - [x] Floating mini player
 
-### 🌐 Connect
-
-<img src="docs/images/discord.png" width="290" align="right" />
+### Connect
 
 - [x] Discord Rich Presence
 - [x] Last.fm scrobbling + album descriptions
@@ -133,7 +131,9 @@ Everything below ships in the box — no accounts, no upsells, no telemetry.
 - [x] Artist images & bios via MusicBrainz and Deezer; artwork lookup via iTunes
 - [x] In-app self-update from GitHub releases
 
-<br clear="right"/>
+<p align="center">
+  <img src="docs/images/discord.png" width="320" alt="Discord Rich Presence" />
+</p>
 
 ---
 
