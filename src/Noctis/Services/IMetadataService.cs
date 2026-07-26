@@ -22,8 +22,11 @@ public interface IMetadataService
     Track? ReadTrackMetadata(string filePath, out byte[]? embeddedArt);
 
     /// <summary>
-    /// Extracts embedded album artwork from an audio file.
-    /// Returns the raw image bytes, or null if no artwork is embedded.
+    /// Extracts album artwork for an audio file: the embedded cover if there is one,
+    /// otherwise a cover image sitting next to it — the latter only when the file
+    /// names an album, since art for the shared "Unknown Album" bucket would be
+    /// applied to every untagged file in the library.
+    /// Returns the raw image bytes, or null when no artwork applies.
     /// </summary>
     byte[]? ExtractAlbumArt(string filePath);
 

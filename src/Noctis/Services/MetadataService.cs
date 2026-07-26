@@ -255,25 +255,52 @@ public class MetadataService : IMetadataService
     {
         // 1. Try embedded artwork first (most reliable).
         // Prefer FrontCover if present; within each bucket pick largest payload.
+        var namesAnAlbum = false;
         try
         {
             using var file = TagLib.File.Create(filePath);
             var bestEmbedded = SelectBestEmbeddedPicture(file.Tag.Pictures);
             if (bestEmbedded != null)
                 return bestEmbedded;
+            namesAnAlbum = Track.IsRealAlbumName(file.Tag.Album);
         }
         catch
         {
             // Fall through to folder-level search
         }
 
+        // A file without a real album name is filed under the library-wide "Unknown
+        // Album" bucket (Track.UnknownAlbumBucketId), which is shared by every such
+        // file from every folder — so a cover picked up below would be stamped on all
+        // of them and stick. That is how a loose file dropped from some album's folder
+        // ended up wearing that album's cover. Note IsRealAlbumName, not a null check:
+        // files tagged with a literal "Unknown Album" (other tools export exactly
+        // that) land in the same shared bucket as untagged ones.
+        // Folder art only identifies an album when the track actually claims one.
+        if (!namesAnAlbum)
+            return null;
+
         // 2. Fall back to artwork files in the same directory.
-        // Keep preferred names order, but choose the largest file among matches.
+        return TryReadFolderArt(Path.GetDirectoryName(filePath));
+    }
+
+    /// <summary>
+    /// Reads the best cover image sitting directly in <paramref name="directory"/>
+    /// (cover/folder/album/front/art/artwork.*), or null when there is none.
+    /// Keeps preferred names order, but chooses the largest file among matches.
+    /// <para>
+    /// Separate from <see cref="ExtractAlbumArt"/> so the drop import can still recover
+    /// a dropped album folder's cover after its audio has been relocated into the
+    /// managed library root — the source file is gone by then, its folder is not.
+    /// Callers own the attribution check: only pass a directory whose cover belongs to
+    /// the album being filled in.
+    /// </para>
+    /// </summary>
+    public static byte[]? TryReadFolderArt(string? directory)
+    {
+        if (string.IsNullOrWhiteSpace(directory)) return null;
         try
         {
-            var dir = Path.GetDirectoryName(filePath);
-            if (dir == null) return null;
-
             string[] artworkNames = { "cover", "folder", "album", "front", "art", "artwork" };
             string[] imageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".webp" };
 
@@ -282,7 +309,7 @@ public class MetadataService : IMetadataService
             {
                 foreach (var ext in imageExtensions)
                 {
-                    var artPath = Path.Combine(dir, name + ext);
+                    var artPath = Path.Combine(directory, name + ext);
                     if (File.Exists(artPath))
                         candidates.Add(new FileInfo(artPath));
                 }

@@ -304,6 +304,26 @@ public partial class Track : ObservableObject
         return new Guid(hash);
     }
 
+    /// <summary>
+    /// The degenerate album bucket every track without a real album identity falls
+    /// into. It is shared library-wide — anything keyed by AlbumId (cached artwork,
+    /// most notably) must never treat it as a real album, because data attached to
+    /// it surfaces on every untagged track at once. ComputeAlbumId lowercases, so
+    /// this one GUID covers any casing of the placeholder names.
+    /// </summary>
+    public static readonly Guid UnknownAlbumBucketId = ComputeAlbumId("Unknown Artist", "Unknown Album");
+
+    /// <summary>
+    /// True when <paramref name="album"/> is a real album name — not blank and not the
+    /// "Unknown Album" placeholder. The placeholder must be matched by VALUE, not just
+    /// emptiness: files exported by other tools arrive with a literal
+    /// <c>TALB=Unknown Album</c> tag (seen in the field), which lands in the same
+    /// shared bucket as a missing tag.
+    /// </summary>
+    public static bool IsRealAlbumName(string? album) =>
+        !string.IsNullOrWhiteSpace(album) &&
+        !album.Trim().Equals("Unknown Album", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Primary display artist derived from the first credited artist token.</summary>
     [JsonIgnore]
     public string PrimaryArtist => GetPrimaryArtist(Artist);
