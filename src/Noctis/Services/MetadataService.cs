@@ -46,13 +46,17 @@ public class MetadataService : IMetadataService
     /// <summary>
     /// Audio file extensions we consider valid.
     /// Includes lossless (FLAC, ALAC, AIFF, WAV, APE, WavPack),
-    /// lossy (MP3, AAC, OGG, Opus, WMA), and container formats (M4A).
+    /// lossy (MP3, AAC, OGG, Opus, WMA), and container formats (M4A, MP4, ASF).
     /// .m4a can contain either AAC (lossy) or ALAC (lossless) — both are supported.
     /// </summary>
     public static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".mp3", ".flac", ".ogg", ".m4a", ".wav", ".wma", ".aac",
+        ".mp3", ".flac", ".ogg", ".oga", ".m4a", ".wav", ".wma", ".aac",
         ".opus", ".aiff", ".aif", ".aifc", ".ape", ".wv", ".alac", ".mp4",
+        // ASF is the container behind .wma (TagLib reads/writes its tags natively;
+        // the bundled VLC ships an asf demuxer + WMA decoders in libavcodec).
+        // Like .mp4 above, a video-bearing .asf plays audio-only (--no-video).
+        ".asf",
         // DSD: .dsf is read by TagLib; .dff is read by DsdiffReader (TagLib ships no
         // DSDIFF parser). Both now surface in the library, but playback is not yet
         // supported — the bundled VLC 3.x has no DSD demuxer/decoder.
@@ -922,13 +926,13 @@ public class MetadataService : IMetadataService
         {
             ".mp3" => "MPEG Audio Layer 3",
             ".flac" => "FLAC",
-            ".ogg" => "Vorbis",
+            ".ogg" or ".oga" => "Vorbis",
             ".m4a" or ".mp4" or ".aac" => "AAC",
             ".alac" => "Apple Lossless (ALAC)",
             ".wav" => "PCM (WAV)",
             ".aiff" or ".aif" or ".aifc" => "PCM (AIFF)",
             ".opus" => "Opus",
-            ".wma" => "Windows Media Audio",
+            ".wma" or ".asf" => "Windows Media Audio",
             ".ape" => "Monkey's Audio",
             ".wv" => "WavPack",
             ".dsf" or ".dff" => "DSD",
@@ -1021,7 +1025,7 @@ public class MetadataService : IMetadataService
         {
             ".mp3" => "MP3",
             ".flac" => "FLAC",
-            ".ogg" => "OGG Vorbis",
+            ".ogg" or ".oga" => "OGG Vorbis",
             ".m4a" => "Apple Audio (M4A)",
             ".mp4" => "MPEG-4 Audio",
             ".aac" => "AAC",
@@ -1030,6 +1034,7 @@ public class MetadataService : IMetadataService
             ".aiff" or ".aif" or ".aifc" => "AIFF",
             ".opus" => "Opus",
             ".wma" => "Windows Media Audio",
+            ".asf" => "Windows Media Audio (ASF)",
             ".ape" => "Monkey's Audio",
             ".wv" => "WavPack",
             ".dsf" => "DSD (DSF)",

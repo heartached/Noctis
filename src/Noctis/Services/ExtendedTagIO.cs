@@ -15,6 +15,7 @@ namespace Noctis.Services;
 ///   - MP4 (Apple):    native atoms — cpil, ©wrk, ©mvn, ©mvi, ©mvc, shwm
 ///   - ID3v2 (MP3):    TCMP frame for compilation; TXXX custom frames for work/movement/show-flags
 ///   - Xiph (FLAC/Ogg): native IsCompilation; SetField for custom string fields
+///   - ASF (WMA):      content descriptors, same key names as Xiph
 /// </summary>
 internal static class ExtendedTagIO
 {
@@ -301,7 +302,7 @@ internal static class ExtendedTagIO
         _ => 0,
     };
 
-    // ── Rating (ID3v2 POPM / Vorbis+APE RATING / MP4 ----:com.apple.iTunes:RATING) ──
+    // ── Rating (ID3v2 POPM / Vorbis+APE RATING / MP4 ----:com.apple.iTunes:RATING / ASF WM/SharedUserRating) ──
     // POPM stores 0-255 (Windows convention: 1/64/128/196/255 for 1-5 stars); the text
     // containers store 0-100 (MediaMonkey/MusicBee convention, stars × 20). Reads only
     // accept the 0-100 scale: Apple Music downloads carry the iTunes advisory flag
@@ -312,6 +313,8 @@ internal static class ExtendedTagIO
     private const string DislikedKey = "NOCTIS_DISLIKED";
     private const string PopmOwner = "Noctis";
     private const string AppleItunesMean = "com.apple.iTunes";
+    // ASF: WMP's native rating attribute, 1-99 (1/25/50/75/99 for 1-5 stars).
+    private const string SharedUserRatingKey = "WM/SharedUserRating";
 
     public static int ReadRating(TagFile file)
     {
@@ -330,6 +333,19 @@ internal static class ExtendedTagIO
             if (double.TryParse(text, System.Globalization.NumberStyles.Float,
                     System.Globalization.CultureInfo.InvariantCulture, out var appleValue))
                 return NumericToStars(appleValue);
+        }
+
+        // ASF (WMA): WMP's native WM/SharedUserRating (1-99) wins over our RATING
+        // descriptor so files rated in Windows Media Player show their stars here.
+        // Enumerate descriptors rather than GetDescriptorString: WMP stores the
+        // value as a DWORD descriptor, which the string accessor skips.
+        if (file.GetTag(TagTypes.Asf, false) is TagLib.Asf.Tag asfTag)
+        {
+            foreach (var desc in asfTag.GetDescriptors(SharedUserRatingKey))
+            {
+                if (int.TryParse(desc?.ToString(), out var wmp) && wmp > 0)
+                    return WmpToStars(wmp);
+            }
         }
 
         var raw = ReadCustomString(file, RatingKey);
@@ -380,6 +396,24 @@ internal static class ExtendedTagIO
             if (text == null) ape.RemoveItem(RatingKey);
             else ape.SetValue(RatingKey, text);
         }
+
+        // ASF (WMA): mirror to WM/SharedUserRating (WMP's 1-99 scale) so other
+        // players' views stay in sync, alongside our 0-100 RATING descriptor.
+        if (file.GetTag(TagTypes.Asf, stars > 0) is TagLib.Asf.Tag asfTag)
+        {
+            if (text == null)
+            {
+                asfTag.RemoveDescriptors(SharedUserRatingKey);
+                asfTag.RemoveDescriptors(RatingKey);
+            }
+            else
+            {
+                asfTag.SetDescriptorString(
+                    StarsToWmp(stars).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    SharedUserRatingKey);
+                asfTag.SetDescriptorString(text, RatingKey);
+            }
+        }
     }
 
     public static bool ReadIsDisliked(TagFile file) => ReadCustomBool(file, DislikedKey);
@@ -414,7 +448,28 @@ internal static class ExtendedTagIO
         return System.Math.Clamp((int)System.Math.Round(value / 20.0), 1, 5);
     }
 
-    // ── Shared custom-field helpers (ID3v2 TXXX / Xiph SetField / APE item) ──
+    // WM/SharedUserRating bands (WMP writes 1/25/50/75/99; band edges follow foobar2000).
+    private static int WmpToStars(int value) => value switch
+    {
+        <= 0 => 0,
+        <= 12 => 1,
+        <= 37 => 2,
+        <= 62 => 3,
+        <= 87 => 4,
+        _ => 5
+    };
+
+    private static int StarsToWmp(int stars) => stars switch
+    {
+        <= 0 => 0,
+        1 => 1,
+        2 => 25,
+        3 => 50,
+        4 => 75,
+        _ => 99
+    };
+
+    // ── Shared custom-field helpers (ID3v2 TXXX / Xiph SetField / APE item / ASF descriptor) ──
 
     private static string ReadCustomString(TagFile file, string key)
     {
@@ -440,6 +495,12 @@ internal static class ExtendedTagIO
             var text = item?.ToString();
             if (!string.IsNullOrEmpty(text))
                 return text!;
+        }
+        if (file.GetTag(TagTypes.Asf, false) is TagLib.Asf.Tag asf)
+        {
+            var text = asf.GetDescriptorString(key);
+            if (!string.IsNullOrEmpty(text))
+                return text;
         }
         return string.Empty;
     }
@@ -472,6 +533,12 @@ internal static class ExtendedTagIO
         {
             if (clean == null) ape.RemoveItem(key);
             else ape.SetValue(key, clean);
+        }
+
+        if (file.GetTag(TagTypes.Asf, clean != null) is TagLib.Asf.Tag asf)
+        {
+            if (clean == null) asf.RemoveDescriptors(key);
+            else asf.SetDescriptorString(clean, key);
         }
     }
 

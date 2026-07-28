@@ -460,7 +460,7 @@ public partial class Track : ObservableObject
                 ".aac" => "AAC",
                 ".opus" => "OPUS",
                 ".ogg" or ".oga" => "OGG",
-                ".wma" => "WMA",
+                ".wma" or ".asf" => "WMA",
                 _ => ""
             };
         }
