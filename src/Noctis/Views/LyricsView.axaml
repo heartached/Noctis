@@ -423,6 +423,46 @@
                     <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
                 </Image.RenderTransform>
             </Image>
+            <!-- Flowing-light layer (issue #22): three large palette-tinted blobs drift
+                 slowly over the blurred cover, Apple-Music style. Soft edges come from
+                 radial gradients that fade to transparent — deliberately NO live blur
+                 effect (a per-frame fullscreen gaussian is what dropped this page to
+                 ~25fps, see the pre-blurred Image above). Stop colors are retinted in
+                 place from code-behind whenever the VM re-derives the artwork palette
+                 (MeshBlobColor1-3); positions/opacity are driven by a code-behind timer
+                 that only runs while this view is attached and artwork mode is active
+                 (a XAML KeyFrame animation on RenderTransform crashes at startup). -->
+            <Canvas x:Name="MeshBlobLayer"
+                    ClipToBounds="True"
+                    IsHitTestVisible="False">
+                <Ellipse x:Name="MeshBlob1">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#D83A1C71" Offset="0"/>
+                            <GradientStop Color="#603A1C71" Offset="0.6"/>
+                            <GradientStop Color="#003A1C71" Offset="1"/>
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <Ellipse x:Name="MeshBlob2">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#D8D76D77" Offset="0"/>
+                            <GradientStop Color="#60D76D77" Offset="0.6"/>
+                            <GradientStop Color="#00D76D77" Offset="1"/>
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <Ellipse x:Name="MeshBlob3">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#D8FFAF7B" Offset="0"/>
+                            <GradientStop Color="#60FFAF7B" Offset="0.6"/>
+                            <GradientStop Color="#00FFAF7B" Offset="1"/>
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+            </Canvas>
             <!-- Dark scrim: drops the cover's brightness so white lyrics stay readable.
                  Kept strong enough that bright/near-white covers don't bleed a light
                  halo around the title/artist/album text. -->
