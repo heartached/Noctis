@@ -5,7 +5,7 @@
         xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.MetadataWindow"
         x:DataType="vm:MetadataViewModel"
-        Title="Studio"
+        Title="Metadata"
         CanResize="False"
         SystemDecorations="None"
         Background="Transparent"
