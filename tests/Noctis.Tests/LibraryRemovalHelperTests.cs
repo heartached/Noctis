@@ -276,4 +276,88 @@ public class LibraryRemovalHelperTests
         }
         finally { Directory.Delete(root, true); }
     }
+
+    // ── Removed-tracks listing (Settings → Library restore surface) ──
+
+    [Fact]
+    public void SelectRemovedEntries_ListsOnlyFilesStillOnDisk()
+    {
+        // A kept file whose exclusion is still active is restorable; one deleted
+        // (or moved) since removal is not — it drops out of the list.
+        var kept = TestPaths.Primary("music", "kept.flac");
+        var gone = TestPaths.Primary("music", "gone.flac");
+
+        var entries = LibraryRemovalHelper.SelectRemovedEntries(
+            new[] { kept, gone },
+            p => p == kept);
+
+        var entry = Assert.Single(entries);
+        Assert.Equal(kept, entry.FilePath);
+    }
+
+    [Fact]
+    public void SelectRemovedEntries_SkipsBlankAndDuplicatePaths()
+    {
+        // ExcludedFilePaths is treated case-insensitively everywhere in
+        // LibraryService — the restore list must not show one file twice.
+        var path = TestPaths.Primary("music", "a.flac");
+
+        var entries = LibraryRemovalHelper.SelectRemovedEntries(
+            new[] { "", "   ", path, path.ToUpperInvariant() },
+            _ => true);
+
+        Assert.Single(entries);
+    }
+
+    [Fact]
+    public void SelectRemovedEntries_BuildsDisplayFieldsFromPath()
+    {
+        // The library entry (and its metadata) is gone, so the row shows the
+        // file name without extension plus the folder it lives in.
+        var path = TestPaths.Primary("music", "Artist", "Album", "01 song.flac");
+
+        var entries = LibraryRemovalHelper.SelectRemovedEntries(new[] { path }, _ => true);
+
+        var entry = Assert.Single(entries);
+        Assert.Equal("01 song", entry.Title);
+        Assert.Equal(TestPaths.Primary("music", "Artist", "Album"), entry.Folder);
+        Assert.Equal(path, entry.FilePath);
+    }
+
+    [Fact]
+    public void SelectRemovedEntries_SortsByTitle()
+    {
+        var entries = LibraryRemovalHelper.SelectRemovedEntries(
+            new[]
+            {
+                TestPaths.Primary("music", "b side.mp3"),
+                TestPaths.Primary("music", "Anthem.flac"),
+                TestPaths.Primary("music", "chorus.ogg"),
+            },
+            _ => true);
+
+        Assert.Equal(new[] { "Anthem", "b side", "chorus" }, entries.Select(e => e.Title));
+    }
+
+    [Fact]
+    public void SelectRemovedEntries_WithRealFiles_ListsExistingOnly()
+    {
+        // Round trip of the on-disk half of restore: removal kept the file and
+        // excluded its path — the list offers exactly that file back.
+        var dir = MakeTempDir();
+        try
+        {
+            var kept = Path.Combine(dir, "01 song.flac");
+            File.WriteAllText(kept, "audio");
+            var gone = Path.Combine(dir, "02 gone.flac");
+
+            var entries = LibraryRemovalHelper.SelectRemovedEntries(new[] { kept, gone }, File.Exists);
+
+            var entry = Assert.Single(entries);
+            Assert.Equal(kept, entry.FilePath);
+            Assert.Equal("01 song", entry.Title);
+            Assert.Equal(dir, entry.Folder);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
 }

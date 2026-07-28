@@ -2546,6 +2546,58 @@
                 </StackPanel>
             </Border>
 
+            <!-- Removed tracks (removed from the library with "Keep Files") -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Removed Tracks" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Removed from your library with their files kept on disk. Restore adds them back."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <TextBlock Text="No removed tracks."
+                               FontSize="13" Opacity="0.45"
+                               IsVisible="{Binding !HasRemovedTracks}"/>
+
+                    <ItemsControl ItemsSource="{Binding RemovedTracks}">
+                        <ItemsControl.Styles>
+                            <Style Selector="ItemsControl:empty">
+                                <Setter Property="IsVisible" Value="False"/>
+                            </Style>
+                        </ItemsControl.Styles>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:RemovedTrackEntry">
+                                <Border Padding="14,8" Margin="0,2" CornerRadius="12"
+                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontSize="13" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Folder}"
+                                                       FontSize="12" Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1"
+                                                Classes="pill-action"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RestoreRemovedTrackCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="12,6"
+                                                CornerRadius="14"
+                                                Cursor="Hand"
+                                                Margin="12,0,0,0"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="Restore" FontSize="12"
+                                                       VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
             <!-- ═══════════════════════════════════════════════════ -->
             <!-- STORAGE                                            -->
             <!-- ═══════════════════════════════════════════════════ -->

@@ -263,4 +263,31 @@ public static class LibraryRemovalHelper
             .Select(t => t.FilePath)
             .Distinct()
             .ToList();
+
+    /// <summary>
+    /// The removed-with-"Keep Files" entries that Settings → Library lists for
+    /// restore: <see cref="AppSettings.ExcludedFilePaths"/> whose file is still on
+    /// disk. Entries whose file has since been deleted or moved are omitted —
+    /// there is nothing left to restore, and the exclusion list itself is pruned
+    /// on the next removal (see LibraryService.ExcludeFilePathsAndCleanFoldersAsync).
+    /// </summary>
+    public static async Task<IReadOnlyList<RemovedTrackEntry>> GetRemovedEntriesAsync(IPersistenceService persistence)
+    {
+        var settings = await persistence.LoadSettingsAsync().ConfigureAwait(false);
+        var paths = settings.ExcludedFilePaths;
+        // One File.Exists per entry is disk I/O — keep it off the caller's (UI) thread.
+        return await Task.Run(() => SelectRemovedEntries(paths, File.Exists)).ConfigureAwait(false);
+    }
+
+    /// <summary>Pure core of <see cref="GetRemovedEntriesAsync"/>; internal for tests.</summary>
+    internal static List<RemovedTrackEntry> SelectRemovedEntries(
+        IEnumerable<string> excludedFilePaths, Func<string, bool> fileExists) =>
+        excludedFilePaths
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(fileExists)
+            .Select(p => new RemovedTrackEntry(p))
+            .OrderBy(e => e.Title, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(e => e.Folder, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 }

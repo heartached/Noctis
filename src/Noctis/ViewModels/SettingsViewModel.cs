@@ -2397,6 +2397,48 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshSnoozedTracks();
     }
 
+    // ── Removed tracks (removed from the library with "Keep Files") ──
+
+    /// <summary>Removed-but-kept-on-disk files, shown in a reversible Settings list.</summary>
+    public ObservableCollection<RemovedTrackEntry> RemovedTracks { get; } = new();
+
+    /// <summary>True when at least one removed file can be restored (drives the empty-state placeholder).</summary>
+    [ObservableProperty] private bool _hasRemovedTracks;
+
+    /// <summary>
+    /// Reloads the removed-tracks list from the settings on disk. LibraryService owns
+    /// ExcludedFilePaths and writes it on its own AppSettings instance, so the
+    /// session-long <see cref="_settings"/> copy here can be stale — always re-read.
+    /// </summary>
+    public async Task RefreshRemovedTracksAsync()
+    {
+        IReadOnlyList<RemovedTrackEntry> entries;
+        try
+        {
+            entries = await LibraryRemovalHelper.GetRemovedEntriesAsync(_persistence);
+        }
+        catch
+        {
+            // Settings unreadable — keep the current list rather than showing a
+            // false "No removed tracks" empty state.
+            return;
+        }
+        RemovedTracks.Clear();
+        foreach (var e in entries)
+            RemovedTracks.Add(e);
+        HasRemovedTracks = RemovedTracks.Count > 0;
+    }
+
+    [RelayCommand]
+    private async Task RestoreRemovedTrack(RemovedTrackEntry? entry)
+    {
+        if (entry == null) return;
+        // ImportFilesAsync drops the ExcludedFilePaths tombstone for explicitly
+        // re-imported paths and adds the track back to the library.
+        await _library.ImportFilesAsync(new[] { entry.FilePath });
+        await RefreshRemovedTracksAsync();
+    }
+
     // ── Library overview + Storage ──
 
     /// <summary>
@@ -2519,6 +2561,7 @@ public partial class SettingsViewModel : ViewModelBase
         LossyPercentageText = s.LossyPercentageText;
         HiResPercentageText = s.HiResPercentageText;
         RefreshSnoozedTracks();
+        _ = RefreshRemovedTracksAsync();
     }
 
     private static (List<StatItem> Artists, List<StatItem> Albums) ComputeTopPlayed(

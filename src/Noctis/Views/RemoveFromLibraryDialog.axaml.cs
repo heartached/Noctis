@@ -57,7 +57,7 @@ public partial class RemoveFromLibraryDialog : Window
 
         var noun = itemCount == 1 ? "track" : "tracks";
         MessageText.Text = $"Remove {itemCount} {noun} from your library?";
-        SubText.Text = $"“Keep Files” leaves the files on disk. “Move to {binName}” also sends the files to the {binName}.";
+        SubText.Text = $"“Keep Files” leaves the files on disk — you can restore them later from Settings → Library. “Move to {binName}” also sends the files to the {binName}.";
     }
 
     private void OnTrashClick(object? sender, RoutedEventArgs e)
