@@ -360,4 +360,257 @@ public class LibraryRemovalHelperTests
         }
         finally { Directory.Delete(dir, true); }
     }
+
+    // ── Whole-folder recycle (one restorable bin item per fully-removed album) ──
+
+    [Fact]
+    public void GroupByDirectory_GroupsFilesByParentFolder()
+    {
+        var album = TestPaths.Primary("music", "Album");
+        var grouped = LibraryRemovalHelper.GroupByDirectory(new[]
+        {
+            Path.Combine(album, "01.flac"),
+            Path.Combine(album, "02.flac"),
+            TestPaths.Primary("music", "Other", "03.flac"),
+        });
+
+        Assert.Equal(2, grouped.Count);
+        Assert.Equal(2, grouped[album].Count);
+        Assert.Single(grouped[TestPaths.Primary("music", "Other")]);
+    }
+
+    [Fact]
+    public void QualifiesForWholeFolderTrash_WhenAllAudioIsBeingRemoved()
+    {
+        // Removing the album's only audio: cover art and the track's own lyric
+        // sidecar ride along, so the folder can go to the bin as ONE item — a
+        // single Explorer "Restore" brings the whole album back.
+        var dir = MakeTempDir();
+        try
+        {
+            var audio = Path.Combine(dir, "01 song.m4a");
+            File.WriteAllText(audio, "audio");
+            File.WriteAllText(Path.Combine(dir, "cover.jpg"), "img");
+            File.WriteAllText(Path.Combine(dir, "01 song.lrc"), "lrc");
+
+            Assert.True(LibraryRemovalHelper.QualifiesForWholeFolderTrash(
+                dir, new[] { audio }, new HashSet<string>(StringComparer.OrdinalIgnoreCase)));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void QualifiesForWholeFolderTrash_NotWhenOtherAudioRemains()
+    {
+        var dir = MakeTempDir();
+        try
+        {
+            var removing = Path.Combine(dir, "01 song.m4a");
+            File.WriteAllText(removing, "audio");
+            File.WriteAllText(Path.Combine(dir, "02 staying.mp3"), "audio");
+
+            Assert.False(LibraryRemovalHelper.QualifiesForWholeFolderTrash(
+                dir, new[] { removing }, new HashSet<string>(StringComparer.OrdinalIgnoreCase)));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void QualifiesForWholeFolderTrash_NotWithSubdirectories()
+    {
+        var dir = MakeTempDir();
+        try
+        {
+            var removing = Path.Combine(dir, "01 song.m4a");
+            File.WriteAllText(removing, "audio");
+            Directory.CreateDirectory(Path.Combine(dir, "Disc 2"));
+
+            Assert.False(LibraryRemovalHelper.QualifiesForWholeFolderTrash(
+                dir, new[] { removing }, new HashSet<string>(StringComparer.OrdinalIgnoreCase)));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Theory]
+    [InlineData("playlist.m3u")]  // user-authored playlist
+    [InlineData("notes.txt")]     // .txt that is NOT the removed track's sidecar
+    public void QualifiesForWholeFolderTrash_NotWithUserAuthoredFiles(string keeper)
+    {
+        var dir = MakeTempDir();
+        try
+        {
+            var removing = Path.Combine(dir, "01 song.m4a");
+            File.WriteAllText(removing, "audio");
+            File.WriteAllText(Path.Combine(dir, keeper), "data");
+
+            Assert.False(LibraryRemovalHelper.QualifiesForWholeFolderTrash(
+                dir, new[] { removing }, new HashSet<string>(StringComparer.OrdinalIgnoreCase)));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void QualifiesForWholeFolderTrash_NotForProtectedDirs()
+    {
+        // A configured music root full of loose tracks must never be binned whole,
+        // even when every one of them is part of the removal.
+        var dir = MakeTempDir();
+        try
+        {
+            var removing = Path.Combine(dir, "01 song.m4a");
+            File.WriteAllText(removing, "audio");
+
+            Assert.False(LibraryRemovalHelper.QualifiesForWholeFolderTrash(
+                dir, new[] { removing },
+                new HashSet<string>(new[] { dir }, StringComparer.OrdinalIgnoreCase)));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public async Task TrashWholeDirectoryWithRetries_RetriesWhileHandleHeld()
+    {
+        // Same race as per-file trash: the player releases the removed track's
+        // handle asynchronously, and a directory move is blocked while any handle
+        // is open beneath it.
+        var dir = MakeTempDir();
+        try
+        {
+            var audio = Path.Combine(dir, "01 song.m4a");
+            File.WriteAllText(audio, "audio");
+
+            var attempts = 0;
+            var trashed = await LibraryRemovalHelper.TrashWholeDirectoryWithRetriesAsync(
+                dir, new[] { audio },
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                d =>
+                {
+                    if (++attempts < 3) return false; // handle still open
+                    Directory.Delete(d, true);
+                    return true;
+                },
+                new[] { 0, 1, 1, 1 });
+
+            Assert.True(trashed);
+            Assert.Equal(3, attempts);
+        }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public async Task TrashWholeDirectoryWithRetries_BailsOutWhenFolderDoesNotQualify()
+    {
+        var dir = MakeTempDir();
+        try
+        {
+            var removing = Path.Combine(dir, "01 song.m4a");
+            File.WriteAllText(removing, "audio");
+            File.WriteAllText(Path.Combine(dir, "02 staying.mp3"), "audio");
+
+            var attempts = 0;
+            var trashed = await LibraryRemovalHelper.TrashWholeDirectoryWithRetriesAsync(
+                dir, new[] { removing },
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                _ => { attempts++; return true; },
+                new[] { 0, 1 });
+
+            Assert.False(trashed);
+            Assert.Equal(0, attempts); // never even attempted — falls back to per-file
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public async Task TrashLocalFilesCore_RecyclesFullyRemovedAlbumAsOneItem()
+    {
+        // Both tracks of the album are being removed: the folder (audio + cover +
+        // sidecar inside) must land in the bin as ONE item, with no separate
+        // per-file trashes — restoring that single item restores everything.
+        var root = MakeTempDir();
+        try
+        {
+            var album = Path.Combine(root, "Album");
+            Directory.CreateDirectory(album);
+            var a1 = Path.Combine(album, "01.m4a");
+            var a2 = Path.Combine(album, "02.m4a");
+            File.WriteAllText(a1, "audio");
+            File.WriteAllText(a2, "audio");
+            File.WriteAllText(Path.Combine(album, "cover.jpg"), "img");
+            File.WriteAllText(Path.Combine(album, "01.lrc"), "lrc");
+
+            var fileTrashes = new List<string>();
+            var dirTrashes = new List<string>();
+            await LibraryRemovalHelper.TrashLocalFilesCoreAsync(
+                new[] { a1, a2 },
+                new HashSet<string>(new[] { root }, StringComparer.OrdinalIgnoreCase),
+                p => { fileTrashes.Add(p); File.Delete(p); return true; },
+                d => { dirTrashes.Add(d); Directory.Delete(d, true); return true; },
+                new[] { 0 }, new[] { 0 });
+
+            Assert.Empty(fileTrashes);
+            Assert.Equal(album, Assert.Single(dirTrashes));
+            Assert.False(Directory.Exists(album));
+            Assert.True(Directory.Exists(root)); // protected root untouched
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public async Task TrashLocalFilesCore_PartialAlbumRemovalStaysPerFile()
+    {
+        var root = MakeTempDir();
+        try
+        {
+            var album = Path.Combine(root, "Album");
+            Directory.CreateDirectory(album);
+            var removing = Path.Combine(album, "01.m4a");
+            File.WriteAllText(removing, "audio");
+            File.WriteAllText(Path.Combine(album, "02 staying.m4a"), "audio");
+            File.WriteAllText(Path.Combine(album, "cover.jpg"), "img");
+
+            var fileTrashes = new List<string>();
+            var dirTrashes = new List<string>();
+            await LibraryRemovalHelper.TrashLocalFilesCoreAsync(
+                new[] { removing },
+                new HashSet<string>(new[] { root }, StringComparer.OrdinalIgnoreCase),
+                p => { fileTrashes.Add(p); File.Delete(p); return true; },
+                d => { dirTrashes.Add(d); Directory.Delete(d, true); return true; },
+                new[] { 0 }, new[] { 0 });
+
+            Assert.Equal(new[] { removing }, fileTrashes);
+            Assert.Empty(dirTrashes);
+            Assert.True(Directory.Exists(album)); // still holds the other track
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public async Task TrashLocalFilesCore_FolderTrashFailureFallsBackToPerFile()
+    {
+        // The directory move can stay blocked past every retry (indexer holding the
+        // fresh cover, shell handles, …). The audio must then still be trashed
+        // per-file — a stuck folder must never turn the removal into a no-op.
+        var root = MakeTempDir();
+        try
+        {
+            var album = Path.Combine(root, "Album");
+            Directory.CreateDirectory(album);
+            var audio = Path.Combine(album, "01.m4a");
+            File.WriteAllText(audio, "audio");
+            File.WriteAllText(Path.Combine(album, "cover.jpg"), "img");
+
+            var fileTrashes = new List<string>();
+            await LibraryRemovalHelper.TrashLocalFilesCoreAsync(
+                new[] { audio },
+                new HashSet<string>(new[] { root }, StringComparer.OrdinalIgnoreCase),
+                p => { fileTrashes.Add(p); File.Delete(p); return true; },
+                _ => false, // directory move permanently blocked
+                new[] { 0 }, new[] { 0 });
+
+            Assert.Equal(new[] { audio }, fileTrashes);
+            Assert.False(File.Exists(audio));
+            Assert.True(Directory.Exists(album)); // folder stuck, but audio is gone
+        }
+        finally { Directory.Delete(root, true); }
+    }
 }

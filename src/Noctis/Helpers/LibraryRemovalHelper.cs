@@ -48,12 +48,18 @@ public static class LibraryRemovalHelper
     /// Moves the tracks' files to the OS trash off the UI thread. Network/remote
     /// sources (SMB, WebDAV, Navidrome, …) are skipped — only
     /// <see cref="SourceType.Local"/> tracks own a deletable local file.
-    /// Failed paths are retried on a short schedule: the player releases a removed
-    /// track's handle asynchronously (UI-thread post → worker stop), so the first
-    /// attempt can race the release and lose.
-    /// Once the audio is gone, its orphaned .lrc sidecar follows it, and folders left
-    /// holding nothing but leftovers (cover art, lyrics) are trashed too — otherwise
-    /// the album folder lingers in Explorer and reads as a failed removal.
+    /// When a removal empties a folder of audio entirely (only cover art, the
+    /// tracks' own lyric sidecars and OS detritus would remain), the folder is
+    /// recycled as ONE bin item with the audio still inside, so a single Explorer
+    /// "Restore" brings the whole album back — trashing file then folder separately
+    /// produced two sibling bin entries, and restoring just the folder looked like
+    /// the audio had been stripped out of it.
+    /// Everything else is trashed per file, with retries: the player releases a
+    /// removed track's handle asynchronously (UI-thread post → worker stop), so the
+    /// first attempt can race the release and lose — and the same open handle
+    /// blocks a whole-directory move, so the folder ladder waits it out too.
+    /// The per-file path then sweeps orphaned lyric sidecars and leftover-only
+    /// folders exactly as before.
     /// </summary>
     public static Task TrashLocalFilesAsync(IEnumerable<Track> tracks, ISet<string>? protectedRoots = null)
     {
@@ -61,18 +67,65 @@ public static class LibraryRemovalHelper
         if (paths.Count == 0) return Task.CompletedTask;
         return Task.Run(async () =>
         {
-            var done = await TrashWithRetriesAsync(
-                paths,
-                // "Done" = trashed, or nothing left on disk to trash.
-                p => !File.Exists(p) || RecycleBin.TryMoveToTrash(p),
-                TrashRetryDelaysMs).ConfigureAwait(false);
-
-            TrashSidecarFiles(done, RecycleBin.TryMoveToTrash);
-            await CleanupEmptiedFoldersAsync(
-                done.Select(Path.GetDirectoryName).OfType<string>(),
-                protectedRoots ?? await GetProtectedRootsAsync().ConfigureAwait(false),
-                RecycleBin.TryMoveDirectoryToTrash).ConfigureAwait(false);
+            var protectedDirs = protectedRoots ?? await GetProtectedRootsAsync().ConfigureAwait(false);
+            await TrashLocalFilesCoreAsync(
+                paths, protectedDirs,
+                RecycleBin.TryMoveToTrash, RecycleBin.TryMoveDirectoryToTrash,
+                TrashRetryDelaysMs, FolderTrashRetryDelaysMs).ConfigureAwait(false);
         });
+    }
+
+    /// <summary>Trash orchestration with injectable trash/delay seams; internal for tests.</summary>
+    internal static async Task TrashLocalFilesCoreAsync(
+        IReadOnlyList<string> paths, ISet<string> protectedDirs,
+        Func<string, bool> tryTrashFile, Func<string, bool> tryTrashDirectory,
+        IReadOnlyList<int> fileRetryDelaysMs, IReadOnlyList<int> folderRetryDelaysMs)
+    {
+        // Whole-folder pass first; anything that doesn't qualify (or whose folder
+        // move stays blocked past the ladder) falls back to the per-file path below.
+        var perFile = new List<string>();
+        var trashedWhole = new List<string>();
+        foreach (var (dir, dirPaths) in GroupByDirectory(paths))
+        {
+            if (dir.Length > 0 && await TrashWholeDirectoryWithRetriesAsync(
+                    dir, dirPaths, protectedDirs, tryTrashDirectory, folderRetryDelaysMs).ConfigureAwait(false))
+                trashedWhole.Add(dir);
+            else
+                perFile.AddRange(dirPaths);
+        }
+
+        var done = await TrashWithRetriesAsync(
+            perFile,
+            // "Done" = trashed, or nothing left on disk to trash.
+            p => !File.Exists(p) || tryTrashFile(p),
+            fileRetryDelaysMs).ConfigureAwait(false);
+
+        TrashSidecarFiles(done, tryTrashFile);
+        // Whole-trashed folders join the sweep already gone, so it cascades straight
+        // to their now-emptied parents (the artist folder above the binned album).
+        await CleanupEmptiedFoldersAsync(
+            trashedWhole.Concat(done.Select(Path.GetDirectoryName).OfType<string>()),
+            protectedDirs, tryTrashDirectory, folderRetryDelaysMs).ConfigureAwait(false);
+    }
+
+    /// <summary>Removal paths grouped by their normalized parent directory;
+    /// unparseable paths land in the <c>""</c> bucket, which is always per-file.</summary>
+    internal static Dictionary<string, List<string>> GroupByDirectory(IEnumerable<string> paths)
+    {
+        var groups = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in paths)
+        {
+            string dir;
+            try
+            {
+                var parent = Path.GetDirectoryName(Path.GetFullPath(path));
+                dir = string.IsNullOrEmpty(parent) ? string.Empty : Path.TrimEndingDirectorySeparator(parent);
+            }
+            catch { dir = string.Empty; }
+            if (!groups.TryGetValue(dir, out var list)) groups[dir] = list = new List<string>();
+            list.Add(path);
+        }
+        return groups;
     }
 
     /// <summary>Waits before each re-attempt; ~1.75s total worst case.</summary>
@@ -214,6 +267,70 @@ public static class LibraryRemovalHelper
         {
             return false; // fail closed
         }
+    }
+
+    /// <summary>
+    /// True when trashing <paramref name="removingPaths"/> would leave nothing
+    /// meaningful in <paramref name="dir"/>: no subfolders, and every other entry
+    /// is either one of the removed tracks' lyric sidecars or a disposable
+    /// leftover. Such a folder is recycled whole (audio still inside) instead of
+    /// file-by-file. Same protections as <see cref="QualifiesForTrash"/>; fail closed.
+    /// </summary>
+    internal static bool QualifiesForWholeFolderTrash(
+        string dir, IReadOnlyCollection<string> removingPaths, ISet<string> protectedDirs)
+    {
+        try
+        {
+            if (!Directory.Exists(dir)) return false;
+            if (protectedDirs.Contains(dir)) return false;
+            if (string.Equals(Path.GetPathRoot(dir), dir, StringComparison.OrdinalIgnoreCase)) return false;
+
+            // The removed audio and its same-basename lyric sidecars ride along
+            // inside the binned folder (and get restored with it).
+            var goes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var path in removingPaths)
+            {
+                string full;
+                try { full = Path.GetFullPath(path); }
+                catch { continue; }
+                goes.Add(full);
+                foreach (var ext in SidecarExtensions)
+                {
+                    try { goes.Add(Path.ChangeExtension(full, ext)); }
+                    catch { /* no sidecar variant for an unparseable path */ }
+                }
+            }
+
+            foreach (var entry in Directory.EnumerateFileSystemEntries(dir))
+            {
+                if (Directory.Exists(entry)) return false;                        // still holds subfolders
+                if (goes.Contains(Path.GetFullPath(entry))) continue;             // being removed anyway
+                if (!IsDisposableLeftover(Path.GetFileName(entry))) return false; // something worth keeping
+            }
+            return true;
+        }
+        catch
+        {
+            return false; // fail closed — the per-file path takes over
+        }
+    }
+
+    /// <summary>Whole-folder variant of the trash retry ladder. Re-checks
+    /// qualification every round (disk state can change while waiting out the
+    /// player's handle release) and counts "already gone" as success. Returns
+    /// false to hand the folder's files to the per-file fallback.</summary>
+    internal static async Task<bool> TrashWholeDirectoryWithRetriesAsync(
+        string dir, IReadOnlyCollection<string> removingPaths, ISet<string> protectedDirs,
+        Func<string, bool> tryTrashDirectory, IReadOnlyList<int> retryDelaysMs)
+    {
+        foreach (var delayMs in retryDelaysMs)
+        {
+            if (delayMs > 0) await Task.Delay(delayMs).ConfigureAwait(false);
+            if (!Directory.Exists(dir)) return true; // landed despite a failure report
+            if (!QualifiesForWholeFolderTrash(dir, removingPaths, protectedDirs)) return false;
+            if (tryTrashDirectory(dir)) return true;
+        }
+        return false;
     }
 
     /// <summary>Directories the folder cleanup must never trash: the configured music
