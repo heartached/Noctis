@@ -210,14 +210,16 @@
                     <!-- Right: live preview -->
                     <Border Grid.Column="1"
                             CornerRadius="14" ClipToBounds="True"
+                            Background="{Binding PreviewMain}"
                             BorderBrush="{Binding PreviewOutline}" BorderThickness="1">
                         <Grid ColumnDefinitions="110,*" RowDefinitions="*,Auto">
-                            <!-- Fake sidebar -->
+                            <!-- Fake sidebar: the real rail paints IslandBackground (≈ main bg);
+                                 the chosen sidebar color only tints the selected-nav pill. -->
                             <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
-                                    Background="{Binding PreviewSidebar}">
+                                    Background="{Binding PreviewIslandBg}">
                                 <StackPanel Margin="10,16" Spacing="6">
                                     <Border CornerRadius="8" Padding="10,7"
-                                            Background="{Binding PreviewSidebarHover}">
+                                            Background="{Binding PreviewSidebarSelected}">
                                         <TextBlock Text="Home" FontSize="12"
                                                    Foreground="{Binding PreviewPrimaryText}"/>
                                     </Border>

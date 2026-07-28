@@ -324,6 +324,13 @@ internal static class AdvancedTagIO
             if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
         }
 
+        // ASF content descriptor
+        if (file.GetTag(TagTypes.Asf, false) is TagLib.Asf.Tag asf)
+        {
+            var val = asf.GetDescriptorString(key);
+            if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
+        }
+
         return string.Empty;
     }
 
@@ -445,9 +452,10 @@ internal static class AdvancedTagIO
 
     /// <summary>
     /// Writes (or clears, when <paramref name="value"/> is empty) a custom key/value
-    /// across whichever tag formats the file carries: ID3v2 TXXX, Xiph comment, and
-    /// MP4 freeform atom. Public so other services (e.g. the ReplayGain scanner) can
-    /// write format-agnostic tags through one code path.
+    /// across whichever tag formats the file carries: ID3v2 TXXX, Xiph comment,
+    /// MP4 freeform atom, and ASF content descriptor. Public so other services
+    /// (e.g. the ReplayGain scanner) can write format-agnostic tags through one
+    /// code path.
     /// </summary>
     public static void WriteCustomField(TagFile file, string key, string? value)
     {
@@ -483,6 +491,12 @@ internal static class AdvancedTagIO
         {
             if (clean == null) apple.SetDashBox("com.apple.iTunes", key, (string?)null);
             else apple.SetDashBox("com.apple.iTunes", key, clean);
+        }
+
+        if (file.GetTag(TagTypes.Asf, clean != null) is TagLib.Asf.Tag asf)
+        {
+            if (clean == null) asf.RemoveDescriptors(key);
+            else asf.SetDescriptorString(clean, key);
         }
     }
 

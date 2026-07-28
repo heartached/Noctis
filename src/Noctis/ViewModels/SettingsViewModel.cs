@@ -1049,6 +1049,12 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.WatchFoldersEnabled = WatchFoldersEnabled;
         _settings.OrganizePattern = OrganizePattern;
         _settings.OrganizeTargetRoot = OrganizeTargetRoot;
+        // The change handlers write these straight into _settings, but SaveAsync
+        // re-bases _settings on the on-disk file first (MergeExternalSettingChangesAsync),
+        // so any VM-owned field not re-applied here is silently reverted on every save —
+        // both About-tab toggles turned back off on the next launch.
+        _settings.IncludePrereleaseUpdates = IncludePrereleaseUpdates;
+        _settings.DeveloperMode = DeveloperMode;
         _settings.MusicFolders = _collectionSnapshot?.MusicFolders ?? MusicFolders.ToList();
         _settings.FolderRules = _collectionSnapshot?.FolderRules ?? FolderRules
             .Where(r => !string.IsNullOrWhiteSpace(r.Path))
@@ -1117,13 +1123,22 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ListenBrainzScrobblingEnabled = ListenBrainzScrobblingEnabled;
         _settings.ListenBrainzToken = ListenBrainzToken ?? string.Empty;
         _settings.ListenBrainzUsername = ListenBrainzUsername ?? string.Empty;
+
+        // Volume rides the same save: the shutdown path calls SetVolume right before
+        // SaveAsync, and without this re-apply the on-disk merge above reverted it to
+        // the stale stored value — the session's volume never survived a restart.
+        if (_volume is int volume) _settings.Volume = volume;
     }
 
     /// <summary>Returns the loaded settings object.</summary>
     public AppSettings GetSettings() => _settings;
 
+    /// <summary>Last volume pushed via <see cref="SetVolume"/>; null until the shell
+    /// pushes one, so saves before that leave the stored value alone.</summary>
+    private int? _volume;
+
     /// <summary>Updates the volume setting in the internal settings object.</summary>
-    public void SetVolume(int volume) => _settings.Volume = volume;
+    public void SetVolume(int volume) => _volume = _settings.Volume = volume;
 
     private void ApplyAudioSettings()
     {
@@ -2382,6 +2397,48 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshSnoozedTracks();
     }
 
+    // ── Removed tracks (removed from the library with "Keep Files") ──
+
+    /// <summary>Removed-but-kept-on-disk files, shown in a reversible Settings list.</summary>
+    public ObservableCollection<RemovedTrackEntry> RemovedTracks { get; } = new();
+
+    /// <summary>True when at least one removed file can be restored (drives the empty-state placeholder).</summary>
+    [ObservableProperty] private bool _hasRemovedTracks;
+
+    /// <summary>
+    /// Reloads the removed-tracks list from the settings on disk. LibraryService owns
+    /// ExcludedFilePaths and writes it on its own AppSettings instance, so the
+    /// session-long <see cref="_settings"/> copy here can be stale — always re-read.
+    /// </summary>
+    public async Task RefreshRemovedTracksAsync()
+    {
+        IReadOnlyList<RemovedTrackEntry> entries;
+        try
+        {
+            entries = await LibraryRemovalHelper.GetRemovedEntriesAsync(_persistence);
+        }
+        catch
+        {
+            // Settings unreadable — keep the current list rather than showing a
+            // false "No removed tracks" empty state.
+            return;
+        }
+        RemovedTracks.Clear();
+        foreach (var e in entries)
+            RemovedTracks.Add(e);
+        HasRemovedTracks = RemovedTracks.Count > 0;
+    }
+
+    [RelayCommand]
+    private async Task RestoreRemovedTrack(RemovedTrackEntry? entry)
+    {
+        if (entry == null) return;
+        // ImportFilesAsync drops the ExcludedFilePaths tombstone for explicitly
+        // re-imported paths and adds the track back to the library.
+        await _library.ImportFilesAsync(new[] { entry.FilePath });
+        await RefreshRemovedTracksAsync();
+    }
+
     // ── Library overview + Storage ──
 
     /// <summary>
@@ -2504,6 +2561,7 @@ public partial class SettingsViewModel : ViewModelBase
         LossyPercentageText = s.LossyPercentageText;
         HiResPercentageText = s.HiResPercentageText;
         RefreshSnoozedTracks();
+        _ = RefreshRemovedTracksAsync();
     }
 
     private static (List<StatItem> Artists, List<StatItem> Albums) ComputeTopPlayed(

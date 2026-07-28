@@ -42,7 +42,7 @@ public partial class ThemeEditorViewModel : ObservableObject
 
     // ── Preview brushes consumed by the dialog ──
     [ObservableProperty] private IBrush? _previewMain;
-    [ObservableProperty] private IBrush? _previewSidebar;
+    [ObservableProperty] private IBrush? _previewSidebarSelected;
     [ObservableProperty] private IBrush? _previewAccent;
     [ObservableProperty] private IBrush? _previewPrimaryText;
     [ObservableProperty] private IBrush? _previewSecondaryText;
@@ -73,7 +73,9 @@ public partial class ThemeEditorViewModel : ObservableObject
         var def = ToDefinition();
         var dict = ThemeDerivation.Derive(def);
         PreviewMain               = (IBrush)dict["AppMainBackground"];
-        PreviewSidebar            = (IBrush)dict["AppSidebarBackground"];
+        // The real sidebar rail paints IslandBackground (see SidebarView); the sidebar
+        // color only shows on the selected-nav pill via SidebarSelectedBrush.
+        PreviewSidebarSelected    = (IBrush)dict["SidebarSelectedBrush"];
         PreviewAccent             = (IBrush)dict["AccentColorBrush"];
         PreviewPrimaryText        = (IBrush)dict["PrimaryTextBrush"];
         PreviewSecondaryText     = (IBrush)dict["SecondaryTextBrush"];

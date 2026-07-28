@@ -106,7 +106,7 @@ public sealed class TrackContextMenuBuilder
         };
         items.Add(Unfavorite);
 
-        Metadata = new MenuItem { Header = "Studio" };
+        Metadata = new MenuItem { Header = "Metadata" };
         Metadata.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
         items.Add(Metadata);
 

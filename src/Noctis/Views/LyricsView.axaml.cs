@@ -43,6 +43,16 @@ public partial class LyricsView : UserControl
     private const double NarrowBreakpoint = 900;
     private const double LyricsTimelineThumbSize = 16;
 
+    // ── Flowing-light mesh background (issue #22) ──
+    // The blobs are moved from code (timer-driven transforms); a XAML KeyFrame
+    // animation on RenderTransform crashes Avalonia at startup.
+    private DispatcherTimer? _meshTimer;
+    private readonly Stopwatch _meshClock = Stopwatch.StartNew();
+    private readonly TranslateTransform _meshBlob1Transform = new();
+    private readonly TranslateTransform _meshBlob2Transform = new();
+    private readonly TranslateTransform _meshBlob3Transform = new();
+    private const int MeshFrameMs = 33;
+
     public LyricsView()
     {
         InitializeComponent();
@@ -56,6 +66,10 @@ public partial class LyricsView : UserControl
         }
 
         LyricsTimelineThumb.RenderTransform = _lyricsTimelineThumbTransform;
+
+        MeshBlob1.RenderTransform = _meshBlob1Transform;
+        MeshBlob2.RenderTransform = _meshBlob2Transform;
+        MeshBlob3.RenderTransform = _meshBlob3Transform;
         LyricsTimelineSlider.AddHandler(InputElement.PointerPressedEvent, OnTimelineSeekStart, RoutingStrategies.Tunnel);
         LyricsTimelineSlider.AddHandler(InputElement.PointerMovedEvent, OnTimelineSeekMove, RoutingStrategies.Tunnel);
         LyricsTimelineSlider.AddHandler(InputElement.PointerReleasedEvent, OnTimelineSeekEnd, RoutingStrategies.Tunnel);
@@ -213,6 +227,11 @@ public partial class LyricsView : UserControl
                 _isJumpingOnAttach = false;
             }
             JumpToActiveLineWhenReady(vm.ActiveLineIndex);
+
+            // Retint the flowing-light blobs to the current artwork palette and start
+            // their drift if the artwork background mode is active.
+            ApplyMeshColors(vm);
+            UpdateMeshAnimationState(vm);
         }
 
     }
@@ -249,6 +268,9 @@ public partial class LyricsView : UserControl
             _countedAsVisible = false;
             (DataContext as LyricsViewModel)?.SetLyricsSurfaceVisible(false);
         }
+
+        // The flowing-light drift only makes sense while this page can be seen.
+        StopMeshAnimation();
 
         base.OnDetachedFromVisualTree(e);
     }
@@ -581,7 +603,107 @@ public partial class LyricsView : UserControl
                 SetResourceBrush("LyricsBtnBgHoverRes", vm.LyricsBtnBgHover);
                 SetResourceBrush("LyricsSecBtnBgHoverRes", vm.LyricsBtnBgHover);
                 break;
+            case nameof(LyricsViewModel.MeshBlobColor1):
+            case nameof(LyricsViewModel.MeshBlobColor2):
+            case nameof(LyricsViewModel.MeshBlobColor3):
+                ApplyMeshColors(vm);
+                break;
+            case nameof(LyricsViewModel.IsColorModeArtwork):
+                UpdateMeshAnimationState(vm);
+                break;
         }
+    }
+
+    // ── Flowing-light mesh background ──
+    // Apple-Music-style drifting color blobs behind the blurred artwork (issue #22).
+    // Three radial-gradient ellipses in the artwork's palette wander on slow sine
+    // paths whose frequencies share no common period, so the pattern never visibly
+    // loops. Driven by a ~30fps DispatcherTimer that only runs while this view is
+    // attached and the Artwork background mode is active — a handful of transform/
+    // opacity writes per tick, nowhere near the budget the pre-blurred backdrop
+    // bought back (issue #11).
+
+    private void UpdateMeshAnimationState(LyricsViewModel vm)
+    {
+        if (vm.IsColorModeArtwork)
+            StartMeshAnimation();
+        else
+            StopMeshAnimation();
+    }
+
+    private void StartMeshAnimation()
+    {
+        if (_meshTimer != null) return;
+        _meshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(MeshFrameMs) };
+        _meshTimer.Tick += OnMeshTick;
+        _meshTimer.Start();
+    }
+
+    private void StopMeshAnimation()
+    {
+        if (_meshTimer == null) return;
+        _meshTimer.Stop();
+        _meshTimer.Tick -= OnMeshTick;
+        _meshTimer = null;
+    }
+
+    private void OnMeshTick(object? sender, EventArgs e)
+    {
+        var size = Bounds.Size;
+        var w = size.Width;
+        var h = size.Height;
+        if (w <= 0 || h <= 0) return;
+
+        // Base geometry tracks the current bounds every tick — writes are no-ops
+        // unless the window was resized, and it saves a separate resize hook.
+        PlaceMeshBlob(MeshBlob1, w * 0.90, -w * 0.20, -h * 0.30);
+        PlaceMeshBlob(MeshBlob2, w * 0.75,  w * 0.45,  h * 0.40);
+        PlaceMeshBlob(MeshBlob3, w * 0.60,  w * 0.30, -h * 0.15);
+
+        var t = _meshClock.Elapsed.TotalSeconds;
+
+        // Drift amplitudes are fractions of the page so the motion scales with the
+        // window. Full cycles run about a minute — flowing light, not a screensaver.
+        _meshBlob1Transform.X = Math.Sin(t * 0.110) * w * 0.14;
+        _meshBlob1Transform.Y = Math.Cos(t * 0.083) * h * 0.12;
+        _meshBlob2Transform.X = Math.Sin(t * 0.071 + 2.1) * w * 0.16;
+        _meshBlob2Transform.Y = Math.Cos(t * 0.127 + 0.7) * h * 0.14;
+        _meshBlob3Transform.X = Math.Sin(t * 0.093 + 4.2) * w * 0.18;
+        _meshBlob3Transform.Y = Math.Cos(t * 0.059 + 1.3) * h * 0.16;
+
+        // Slow breathing so the light reads as evolving, not just sliding around.
+        MeshBlob1.Opacity = 0.68 + 0.22 * Math.Sin(t * 0.151);
+        MeshBlob2.Opacity = 0.66 + 0.24 * Math.Sin(t * 0.101 + 2.6);
+        MeshBlob3.Opacity = 0.62 + 0.26 * Math.Sin(t * 0.131 + 5.0);
+    }
+
+    private static void PlaceMeshBlob(Avalonia.Controls.Shapes.Ellipse blob, double diameter, double left, double top)
+    {
+        // Width starts as NaN (unset), and NaN comparisons are false — check explicitly.
+        if (double.IsNaN(blob.Width) || Math.Abs(blob.Width - diameter) > 0.5)
+        {
+            blob.Width = diameter;
+            blob.Height = diameter;
+        }
+        Canvas.SetLeft(blob, left);
+        Canvas.SetTop(blob, top);
+    }
+
+    /// <summary>Retints the three blob gradients in place (same mutate-in-place pattern
+    /// as SetResourceBrush) whenever the VM re-derives the artwork palette.</summary>
+    private void ApplyMeshColors(LyricsViewModel vm)
+    {
+        SetMeshBlobColor(MeshBlob1, vm.MeshBlobColor1);
+        SetMeshBlobColor(MeshBlob2, vm.MeshBlobColor2);
+        SetMeshBlobColor(MeshBlob3, vm.MeshBlobColor3);
+    }
+
+    private static void SetMeshBlobColor(Avalonia.Controls.Shapes.Ellipse blob, Color color)
+    {
+        if (blob.Fill is not RadialGradientBrush brush || brush.GradientStops.Count < 3) return;
+        brush.GradientStops[0].Color = Color.FromArgb(0xD8, color.R, color.G, color.B);
+        brush.GradientStops[1].Color = Color.FromArgb(0x60, color.R, color.G, color.B);
+        brush.GradientStops[2].Color = Color.FromArgb(0x00, color.R, color.G, color.B);
     }
 
     private void SetResourceBrush(string key, IBrush brush)

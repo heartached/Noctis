@@ -47,6 +47,7 @@ public class AudioQualityBadgeTests
     [InlineData("Opus Version 1 Audio", "song.opus", "OPUS")]
     [InlineData("Vorbis Version 0 Audio", "song.ogg", "OGG")]
     [InlineData("Microsoft WMA2 Audio", "song.wma", "WMA")]
+    [InlineData("Microsoft WMA2 Audio", "song.asf", "WMA")]
     public void LossyTrack_ShowsCodecBadge(string codec, string path, string expected)
     {
         var t = MakeTrack(codec: codec, filePath: path, bitrate: 256, sampleRate: 44100);
@@ -59,11 +60,22 @@ public class AudioQualityBadgeTests
     [InlineData("song.m4a", "AAC")] // no codec info: m4a defaults to AAC, not ALAC
     [InlineData("song.opus", "OPUS")]
     [InlineData("song.ogg", "OGG")]
+    [InlineData("song.oga", "OGG")]
     [InlineData("song.wma", "WMA")]
+    [InlineData("song.asf", "WMA")]
     public void LossyTrack_NoCodecString_FallsBackToExtension(string path, string expected)
     {
         var t = MakeTrack(filePath: path, bitrate: 192, sampleRate: 44100);
         Assert.Equal(expected, t.AudioQualityBadge);
+    }
+
+    [Fact]
+    public void WmaLosslessCodecString_ShowsLosslessBadge()
+    {
+        // WMA Lossless is identified by its codec string, not the extension.
+        var t = MakeTrack(codec: "Windows Media Audio 9.2 Lossless",
+            filePath: "song.wma", sampleRate: 44100, bitsPerSample: 16);
+        Assert.Equal("Lossless", t.AudioQualityBadge);
     }
 
     [Fact]

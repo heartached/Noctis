@@ -706,7 +706,9 @@ public partial class PlaybackBarView : UserControl
         vm.UnmuteForAdjust();
         vm.Volume = Math.Clamp(vm.Volume + step, 0, 100);
         vm.CommitVolume();
-        if (!VolumeFlyout.IsOpen) OpenVolumeFlyout();
+        // Also reopen while the exit fade is running (still IsOpen, but the exit timer
+        // is about to unmap it) — the user is actively adjusting the volume.
+        if (!VolumeFlyout.IsOpen || _volumeFlyoutExitTimer != null) OpenVolumeFlyout();
         e.Handled = true;
     }
 
@@ -714,6 +716,17 @@ public partial class PlaybackBarView : UserControl
     {
         if (sender is not Slider slider) return;
         if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed) return;
+
+        // Pressing the slider is an explicit "keep using this": cancel any pending
+        // hover-close and, if the popup is mid exit-fade, revive it in place —
+        // otherwise the exit timer unmaps it under the active drag.
+        CancelVolumeFlyoutClose();
+        if (_volumeFlyoutExitTimer != null)
+        {
+            CancelVolumeFlyoutExit();
+            VolumeFlyoutContent.Opacity = 1.0;
+            SetVolumeFlyoutOffset(0);
+        }
 
         _isVolumeDragging = true;
         (DataContext as PlayerViewModel)?.UnmuteForAdjust();
@@ -726,6 +739,19 @@ public partial class PlaybackBarView : UserControl
     private void OnVolumeSliderMoved(object? sender, PointerEventArgs e)
     {
         if (!_isVolumeDragging || sender is not Slider slider) return;
+
+        if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed)
+        {
+            // The release never reached us (missed Released/CaptureLost, e.g. the
+            // popup unmapped mid-drag). End the drag now — a latched-true
+            // _isVolumeDragging would make ScheduleVolumeFlyoutClose a no-op forever,
+            // leaving the flyout stuck open on this and every future open.
+            _isVolumeDragging = false;
+            ShowVolumeBubble(false);
+            (DataContext as PlayerViewModel)?.CommitVolume();
+            ReevaluateVolumeFlyoutHover(e);
+            return;
+        }
 
         slider.Value = GetVolumeFromPointer(slider, e.GetPosition(slider));
         e.Handled = true;
@@ -743,8 +769,11 @@ public partial class PlaybackBarView : UserControl
         ShowVolumeBubble(false);
         (DataContext as PlayerViewModel)?.CommitVolume();
         // The drag suppressed any hover-close; now that it's over, close if the
-        // cursor ended up away from the icon and popup.
-        ReevaluateVolumeFlyoutHover();
+        // cursor ended up away from the icon and popup. Pass the event so the
+        // check uses the actual release position — IsPointerOver is still pinned
+        // to the captured slider's ancestors at this point and would read a stale
+        // "over" even when the cursor ended up far away.
+        ReevaluateVolumeFlyoutHover(e);
     }
 
     private void OnVolumeSliderCaptureLost(object? sender, PointerCaptureLostEventArgs e)
@@ -754,7 +783,12 @@ public partial class PlaybackBarView : UserControl
         _isVolumeDragging = false;
         ShowVolumeBubble(false);
         (DataContext as PlayerViewModel)?.CommitVolume();
-        ReevaluateVolumeFlyoutHover();
+        // Abnormal end of drag: there is no reliable pointer position here and
+        // IsPointerOver may be stale (capture pinned it to the slider chain). If the
+        // cursor really is outside, the popup will never receive another pointer
+        // event to fire PointerExited — so always arm the close; re-entering the
+        // icon or popup within the grace period cancels it as usual.
+        ScheduleVolumeFlyoutClose();
     }
 
     private void UpdateVolumeSliderVisual()
@@ -825,6 +859,11 @@ public partial class PlaybackBarView : UserControl
             VolumeFlyoutContent.Opacity = 1.0;
             SetVolumeFlyoutOffset(0);
         }, DispatcherPriority.Render);
+        // The popup only ever closes off pointer-exit of the icon/popup (or the
+        // post-drag reevaluation). If it was opened without the cursor anywhere near
+        // — keyboard activation of the icon button fires Click too — no exit will
+        // ever come, so re-check once the open settles and arm the hover-close then.
+        Dispatcher.UIThread.Post(() => ReevaluateVolumeFlyoutHover(), DispatcherPriority.Input);
     }
 
     private void CloseVolumeFlyout()
@@ -891,12 +930,53 @@ public partial class PlaybackBarView : UserControl
 
     // After a drag ends, decide whether to keep the popup open: stay if the cursor is still
     // over the icon or popup, otherwise schedule the normal hover-close.
-    private void ReevaluateVolumeFlyoutHover()
+    // When the triggering pointer event is available, the check is geometric: while a
+    // pointer is captured, Avalonia pins pointer-over to the captured element's ancestor
+    // chain, so right after a captured drag VolumeFlyoutContent.IsPointerOver reads true
+    // no matter where the cursor actually is — and since the popup then gets no further
+    // pointer events, no PointerExited would ever fire and the flyout would stick open.
+    private void ReevaluateVolumeFlyoutHover(PointerEventArgs? e = null)
     {
         if (!VolumeFlyout.IsOpen) return;
-        if (VolumeButton.IsPointerOver || VolumeFlyoutContent.IsPointerOver) return;
+
+        if (e is null)
+        {
+            if (VolumeButton.IsPointerOver || VolumeFlyoutContent.IsPointerOver) return;
+        }
+        else if (IsPointerOverVolumeUi(e))
+        {
+            return;
+        }
 
         ScheduleVolumeFlyoutClose();
+    }
+
+    // Position-based hit check against the popup content and the icon button.
+    private bool IsPointerOverVolumeUi(PointerEventArgs e)
+    {
+        var contentPos = e.GetPosition(VolumeFlyoutContent);
+        if (contentPos.X >= 0 && contentPos.Y >= 0 &&
+            contentPos.X <= VolumeFlyoutContent.Bounds.Width &&
+            contentPos.Y <= VolumeFlyoutContent.Bounds.Height)
+            return true;
+
+        // The icon button lives in the main window while the event comes from the
+        // popup's root; GetPosition can't map across visual trees (it returns default
+        // for an unreachable visual, which would false-positive at the button's 0,0).
+        // Round-trip through screen coordinates instead.
+        if (TopLevel.GetTopLevel(VolumeFlyoutContent) is { } popupTop &&
+            TopLevel.GetTopLevel(VolumeButton) is { } mainTop)
+        {
+            var screenPoint = popupTop.PointToScreen(e.GetPosition(popupTop));
+            var clientPoint = mainTop.PointToClient(screenPoint);
+            if (mainTop.TranslatePoint(clientPoint, VolumeButton) is { } buttonPos &&
+                buttonPos.X >= 0 && buttonPos.Y >= 0 &&
+                buttonPos.X <= VolumeButton.Bounds.Width &&
+                buttonPos.Y <= VolumeButton.Bounds.Height)
+                return true;
+        }
+
+        return false;
     }
 
     private void CancelVolumeFlyoutClose()
