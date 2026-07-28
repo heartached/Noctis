@@ -166,6 +166,20 @@ public partial class MiniPlayerWindow : Window
     {
         if (!_isMiniVolumeDragging || sender is not Slider slider) return;
 
+        if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed)
+        {
+            // The release never reached us (missed Released/CaptureLost). Clear the
+            // drag now — a latched-true flag would suppress OnVolumeAreaExited
+            // forever and leave the popout stuck open.
+            _isMiniVolumeDragging = false;
+            (DataContext as PlayerViewModel)?.CommitVolume();
+            var p = e.GetPosition(VolumeArea);
+            if (_volumeOpen &&
+                (p.X < 0 || p.Y < 0 || p.X > VolumeArea.Bounds.Width || p.Y > VolumeArea.Bounds.Height))
+                CloseVolumePopout();
+            return;
+        }
+
         slider.Value = PillSliderVisualHelper.GetValueFromPointerVertical(slider, e.GetPosition(slider), MiniVolumeThumbSize);
         e.Handled = true;
     }
@@ -191,6 +205,13 @@ public partial class MiniPlayerWindow : Window
         if (!_isMiniVolumeDragging) return;
         _isMiniVolumeDragging = false;
         (DataContext as PlayerViewModel)?.CommitVolume();
+
+        // Abnormal end of drag (no Released, so no position to test): if the cursor
+        // ended up outside the window, VolumeArea never sees a PointerExited —
+        // pointer-over was pinned to the captured slider for the whole drag — and
+        // the popout would be stuck open. Close it; re-opening is one click away.
+        if (_volumeOpen)
+            CloseVolumePopout();
     }
 
     private void OnMiniVolumePropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
