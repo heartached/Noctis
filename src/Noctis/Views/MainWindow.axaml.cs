@@ -465,7 +465,9 @@ public partial class MainWindow : Window
         if (!App.StartMinimizedAtLogin
             && Enum.TryParse<WindowState>(settings.MainWindowState, out var savedState))
         {
-            WindowState = savedState == WindowState.Minimized ? WindowState.Normal : savedState;
+            WindowState = savedState is WindowState.Minimized or WindowState.FullScreen
+                ? WindowState.Normal
+                : savedState;
         }
     }
 
@@ -647,9 +649,14 @@ public partial class MainWindow : Window
             settings.WindowY = Position.Y;
         }
 
-        settings.MainWindowState = WindowState == WindowState.Minimized
-            ? WindowState.Normal.ToString()
-            : WindowState.ToString();
+        // Never restore into Minimized; fullscreen (F11) is a transient view state,
+        // so persist the state it would restore to instead.
+        settings.MainWindowState = WindowState switch
+        {
+            WindowState.Minimized => WindowState.Normal.ToString(),
+            WindowState.FullScreen => _preFullScreenState.ToString(),
+            _ => WindowState.ToString(),
+        };
 
         // Snapshot the UI-bound collections here, on the UI thread, before handing the
         // save to a worker. SyncToSettings enumerates CustomThemes / MusicFolders /
@@ -991,7 +998,13 @@ public partial class MainWindow : Window
                 // the queue popup and otherwise unconditionally clear the search box —
                 // so with the Settings modal or the lyrics side panel open it silently
                 // wiped the user's search while the modal stayed up.
-                if (vm.IsSettingsModalOpen)
+                if (WindowState == WindowState.FullScreen)
+                {
+                    // Fullscreen (F11) counts as the topmost surface — leave it first,
+                    // browser-style, before closing any in-app overlay.
+                    ToggleFullScreen();
+                }
+                else if (vm.IsSettingsModalOpen)
                 {
                     vm.CloseSettingsCommand.Execute(null);
                 }
@@ -1025,6 +1038,29 @@ public partial class MainWindow : Window
                 _ = vm.OpenCommandPaletteAsync();
                 e.Handled = true;
                 break;
+            case Key.F11:
+                ToggleFullScreen();
+                e.Handled = true;
+                break;
+        }
+    }
+
+    // ── Fullscreen toggle (issue #22) ──
+
+    /// <summary>State to restore when leaving fullscreen, so a Maximized window comes
+    /// back Maximized instead of Normal.</summary>
+    private WindowState _preFullScreenState = WindowState.Normal;
+
+    private void ToggleFullScreen()
+    {
+        if (WindowState == WindowState.FullScreen)
+        {
+            WindowState = _preFullScreenState;
+        }
+        else
+        {
+            _preFullScreenState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
+            WindowState = WindowState.FullScreen;
         }
     }
 
