@@ -718,18 +718,26 @@
                             ToolTip.Tip="Change avatar"
                             Click="OnPickAvatarClick">
                         <Border Width="64" Height="64" CornerRadius="32"
-                                ClipToBounds="True"
-                                Background="{DynamicResource AccentColorBrush}">
+                                ClipToBounds="True">
                             <Panel>
-                                <!-- Default initials/glyph when no avatar set -->
-                                <TextBlock Text="?"
-                                           FontSize="28" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AccentForegroundBrush}"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
-                                <!-- Picked avatar overlay -->
+                                <!-- Accent fallback (glyph on accent disc): only rendered while no
+                                     avatar is configured. The accent used to be the outer Border's
+                                     permanent background, so every async (re)decode of the photo
+                                     flashed accent-colored for a few frames. -->
+                                <Border CornerRadius="32"
+                                        Background="{DynamicResource AccentColorBrush}"
+                                        IsVisible="{Binding ProfileAvatarPath, Converter={x:Static StringConverters.IsNullOrEmpty}}">
+                                    <TextBlock Text="?"
+                                               FontSize="28" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AccentForegroundBrush}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                                <!-- Picked avatar overlay. Single-item surface: hold the current
+                                     photo while a reload decodes instead of blanking to the panel. -->
                                 <controls:CachedImage SourcePath="{Binding ProfileAvatarPath}"
                                                       Stretch="UniformToFill"
+                                                      ClearOnSourceChange="False"
                                                       IsVisible="{Binding ProfileAvatarPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                             </Panel>
                         </Border>
