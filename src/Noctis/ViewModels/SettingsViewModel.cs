@@ -1049,6 +1049,12 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.WatchFoldersEnabled = WatchFoldersEnabled;
         _settings.OrganizePattern = OrganizePattern;
         _settings.OrganizeTargetRoot = OrganizeTargetRoot;
+        // The change handlers write these straight into _settings, but SaveAsync
+        // re-bases _settings on the on-disk file first (MergeExternalSettingChangesAsync),
+        // so any VM-owned field not re-applied here is silently reverted on every save —
+        // both About-tab toggles turned back off on the next launch.
+        _settings.IncludePrereleaseUpdates = IncludePrereleaseUpdates;
+        _settings.DeveloperMode = DeveloperMode;
         _settings.MusicFolders = _collectionSnapshot?.MusicFolders ?? MusicFolders.ToList();
         _settings.FolderRules = _collectionSnapshot?.FolderRules ?? FolderRules
             .Where(r => !string.IsNullOrWhiteSpace(r.Path))
@@ -1117,13 +1123,22 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ListenBrainzScrobblingEnabled = ListenBrainzScrobblingEnabled;
         _settings.ListenBrainzToken = ListenBrainzToken ?? string.Empty;
         _settings.ListenBrainzUsername = ListenBrainzUsername ?? string.Empty;
+
+        // Volume rides the same save: the shutdown path calls SetVolume right before
+        // SaveAsync, and without this re-apply the on-disk merge above reverted it to
+        // the stale stored value — the session's volume never survived a restart.
+        if (_volume is int volume) _settings.Volume = volume;
     }
 
     /// <summary>Returns the loaded settings object.</summary>
     public AppSettings GetSettings() => _settings;
 
+    /// <summary>Last volume pushed via <see cref="SetVolume"/>; null until the shell
+    /// pushes one, so saves before that leave the stored value alone.</summary>
+    private int? _volume;
+
     /// <summary>Updates the volume setting in the internal settings object.</summary>
-    public void SetVolume(int volume) => _settings.Volume = volume;
+    public void SetVolume(int volume) => _volume = _settings.Volume = volume;
 
     private void ApplyAudioSettings()
     {
