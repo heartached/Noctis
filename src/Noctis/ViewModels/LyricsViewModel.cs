@@ -924,8 +924,18 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var title = track.Title ?? "";
             var duration = track.Duration.TotalSeconds;
 
+            // "Unknown Artist" is the library's placeholder default, not a name —
+            // sending it verbatim guarantees a /get miss and poisons /search relevance.
+            var hasKnownArtist = !LyricsSearchSelector.IsUnknownArtist(artist);
+
             LrcLibResult? lrcLibResult = null;
             LrcLibResult? netEaseResult = null;
+            var lrcLibInstrumental = false;
+            // Provider errors (network/timeout/5xx/bad response) are distinct from a
+            // definitive miss — the services throw LyricsProviderException for the
+            // former and return null/empty for the latter.
+            var lrcLibErrored = false;
+            var netEaseErrored = false;
 
             // Search enabled providers in parallel
             var tasks = new List<Task>();
@@ -958,19 +968,32 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             {
                 try
                 {
-                    var result = await _lrcLib.GetLyricsAsync(artist, title, duration);
+                    // /get needs an exact artist match — pointless with the placeholder.
+                    var result = hasKnownArtist
+                        ? await _lrcLib.GetLyricsAsync(artist, title, duration)
+                        : null;
+
+                    if (result != null && result.Instrumental)
+                    {
+                        // The exact match says this track is instrumental — that is an
+                        // answer, not a miss. Falling through to fuzzy /search would
+                        // surface a different song's lyrics.
+                        lrcLibInstrumental = true;
+                        return;
+                    }
+
                     if (result == null || !result.HasLyrics)
                     {
-                        var results = await _lrcLib.SearchLyricsAsync(artist, title);
-                        // Prefer word-level (lyricsfile) > synced > any
-                        result = results.FirstOrDefault(r => r.HasLyricsfile)
-                              ?? results.FirstOrDefault(r => r.HasSyncedLyrics)
-                              ?? results.FirstOrDefault(r => r.HasLyrics);
+                        // /search is fuzzy and relevance-ordered; validate candidates
+                        // against the local track before preferring richer formats.
+                        var results = await _lrcLib.SearchLyricsAsync(hasKnownArtist ? artist : "", title);
+                        result = LyricsSearchSelector.PickFromSearchResults(results, artist, title, duration);
                     }
                     lrcLibResult = result;
                 }
                 catch (Exception ex)
                 {
+                    lrcLibErrored = true;
                     DebugLogger.Warn(DebugLogger.Category.Lyrics, "LRCLIB:Error", ex.Message);
                 }
             }
@@ -983,6 +1006,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 }
                 catch (Exception ex)
                 {
+                    netEaseErrored = true;
                     DebugLogger.Warn(DebugLogger.Category.Lyrics, "NetEase:Error", ex.Message);
                 }
             }
@@ -1011,10 +1035,27 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             }
             else
             {
-                DebugLogger.Warn(DebugLogger.Category.Lyrics, "SearchLyrics:NotFound");
                 LyricLines.Clear();
                 UnsyncedLines.Clear();
-                SearchFailedMessage = "No Lyrics found.";
+                if (lrcLibInstrumental)
+                {
+                    // A definitive "instrumental" answer outranks any provider error.
+                    DebugLogger.Warn(DebugLogger.Category.Lyrics, "SearchLyrics:Instrumental");
+                    SearchFailedMessage = "This track is instrumental.";
+                }
+                else if (lrcLibErrored || netEaseErrored)
+                {
+                    // No provider produced results and at least one errored — an
+                    // offline user (or a provider outage serving 5xx) must not read
+                    // this as "this track has no lyrics".
+                    DebugLogger.Warn(DebugLogger.Category.Lyrics, "SearchLyrics:ProviderError");
+                    SearchFailedMessage = "Search failed — check your internet connection.";
+                }
+                else
+                {
+                    DebugLogger.Warn(DebugLogger.Category.Lyrics, "SearchLyrics:NotFound");
+                    SearchFailedMessage = "No Lyrics found.";
+                }
                 ShowSearchButton = true;
             }
         }
@@ -1081,7 +1122,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         var prevResult = _currentOnlineResult;
         var prevSource = LyricsSourceName;
 
-        DisplayOnlineLyrics(_alternateOnlineResult);
+        // userSwitchedSource: this is an explicit choice, so an app-written sidecar
+        // holding the previous source may be replaced — otherwise it out-prioritizes
+        // the cache on the next play and the switch silently reverts.
+        DisplayOnlineLyrics(_alternateOnlineResult, userSwitchedSource: true);
         LyricsSourceName = _alternateSource;
 
         _alternateOnlineResult = prevResult;
@@ -1091,10 +1135,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void SaveLyricsToFile()
+    private async Task SaveLyricsToFile()
     {
         if (_currentTrack == null || _currentOnlineResult == null) return;
 
+        var track = _currentTrack;
         var syncedToSave = _currentOnlineResult.SyncedLyrics;
         var plainToSave = !string.IsNullOrWhiteSpace(_currentOnlineResult.PlainLyrics)
             ? _currentOnlineResult.PlainLyrics
@@ -1103,34 +1148,46 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (string.IsNullOrWhiteSpace(syncedToSave) && string.IsNullOrWhiteSpace(plainToSave)) return;
 
         // Route plain text into Lyrics, synced text into SyncedLyrics — never mix them.
-        _currentTrack.Lyrics = plainToSave ?? string.Empty;
-        _currentTrack.SyncedLyrics = syncedToSave ?? string.Empty;
+        track.Lyrics = plainToSave ?? string.Empty;
+        track.SyncedLyrics = syncedToSave ?? string.Empty;
+
+        // Root cause fix: writing embedded tags can fail while the media file is in use.
+        // Save an LRC sidecar (synced) and a TXT sidecar (plain) next to the track.
+        var trackPath = track.FilePath;
+        if (string.IsNullOrWhiteSpace(trackPath))
+        {
+            ShowStatusText("Save failed", 5000);
+            return;
+        }
 
         try
         {
-            // Root cause fix: writing embedded tags can fail while the media file is in use.
-            // Save an LRC sidecar (synced) and a TXT sidecar (plain) next to the track.
-            var trackPath = _currentTrack.FilePath;
-            if (string.IsNullOrWhiteSpace(trackPath))
+            // File I/O runs off the UI thread, on the writer lane so it never races
+            // the auto-persist writer on the same .lrc path.
+            await EnqueueLyricsFileWork(() =>
             {
-                ShowStatusText("Save failed", 5000);
-                return;
-            }
+                if (!string.IsNullOrWhiteSpace(syncedToSave))
+                {
+                    var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
+                    File.WriteAllText(lrcPath, NormalizeLyricsForLrc(syncedToSave), new UTF8Encoding(false));
+                    // Register so RemoveLyrics can delete what this save created.
+                    SidecarRegistry.Add(lrcPath);
+                }
 
-            if (!string.IsNullOrWhiteSpace(syncedToSave))
-            {
-                var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
-                File.WriteAllText(lrcPath, NormalizeLyricsForLrc(syncedToSave), new UTF8Encoding(false));
-            }
+                if (!string.IsNullOrWhiteSpace(plainToSave))
+                {
+                    // Never overwrite an existing .txt — same rule as the auto-persist
+                    // path: Song.txt may be the user's own liner notes, a file this
+                    // view never reads as a lyrics source.
+                    var txtPath = Path.ChangeExtension(trackPath, ".txt");
+                    if (!File.Exists(txtPath))
+                        File.WriteAllText(txtPath, NormalizeLyricsForLrc(plainToSave), new UTF8Encoding(false));
+                }
+            });
 
-            if (!string.IsNullOrWhiteSpace(plainToSave))
-            {
-                var txtPath = Path.ChangeExtension(trackPath, ".txt");
-                File.WriteAllText(txtPath, NormalizeLyricsForLrc(plainToSave), new UTF8Encoding(false));
-            }
-
-            // Best-effort metadata write (non-blocking for save success).
-            try { _metadata.WriteTrackMetadata(_currentTrack); } catch { }
+            // Best-effort metadata write (non-blocking for save success, and the
+            // TagLib rewrite stays off the shared writer lane).
+            await Task.Run(() => { try { _metadata.WriteTrackMetadata(track); } catch { } });
 
             CanSaveToFile = false;
             ShowStatusText("Saved Lyrics");
@@ -1146,7 +1203,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// updates the in-memory track fields, so the Metadata editor's Plain/Synced
     /// tabs reflect them immediately and persistently. Best-effort; never throws.
     /// </summary>
-    private void PersistOnlineLyricsToSidecar(LrcLibResult result)
+    private void PersistOnlineLyricsToSidecar(LrcLibResult result, bool allowReplaceAppSidecar = false)
     {
         var track = _currentTrack;
         if (track == null) return;
@@ -1159,48 +1216,129 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (string.IsNullOrWhiteSpace(synced) && string.IsNullOrWhiteSpace(plain))
             return;
 
-        // Update the in-memory track first — the Metadata window reads these fields
-        // before falling back to sidecars, so an already-open editor reflects them.
-        track.Lyrics = plain ?? string.Empty;
-        track.SyncedLyrics = synced ?? string.Empty;
-
         var trackPath = track.FilePath;
-        if (string.IsNullOrWhiteSpace(trackPath)) return;
+        if (string.IsNullOrWhiteSpace(trackPath))
+        {
+            // No sidecar can exist without a track path — just reflect the lyrics
+            // into the in-memory track fields for the Metadata editor.
+            track.Lyrics = plain ?? string.Empty;
+            track.SyncedLyrics = synced ?? string.Empty;
+            return;
+        }
 
-        // Sidecar writes run off the UI thread and are best-effort.
+        var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
+        var canWriteSidecar = !string.IsNullOrWhiteSpace(synced);
+        var stamp = Volatile.Read(ref _lyricsRemovalStamp);
+
+        // Everything below runs on the FIFO writer lane, where File.Exists sees the
+        // settled state: any earlier queued sidecar write has already landed or been
+        // skipped. Deciding replace-vs-skip up front raced that queued write — a fast
+        // "Try alternate" computed replaceAppSidecar=false against a not-yet-written
+        // file, then its own queued write saw the file exist and skipped, so the
+        // explicit switch never reached disk.
         //
-        // Never overwrite a file that is already there. This used to write both sidecars
-        // unconditionally on every successful online fetch, so a user's own hand-timed
-        // .lrc — or, worse, an unrelated Song.txt of liner notes, a file this app never
-        // even reads as a lyrics source — was destroyed with no consent, no prompt and no
-        // setting to turn it off. A .lrc that merely failed to parse was enough to reach
-        // this path. The .txt is no longer written at all: nothing reads it back.
-        _ = Task.Run(() =>
+        // An explicit "Try alternate" may replace a sidecar this app wrote itself
+        // (allowReplaceAppSidecar + registered): without that, the primary result
+        // on disk out-prioritized the alternate in the cache on the next play and
+        // the user's choice silently reverted. A user's own sidecar is never
+        // replaced, even on an explicit switch. This used to write both sidecars
+        // unconditionally on every successful online fetch, so a user's own
+        // hand-timed .lrc — or, worse, an unrelated Song.txt of liner notes, a file
+        // this app never even reads as a lyrics source — was destroyed with no
+        // consent, no prompt and no setting to turn it off. A .lrc that merely
+        // failed to parse was enough to reach this path. The .txt is no longer
+        // written at all here: the lyrics probe never reads it back.
+        _ = EnqueueLyricsFileWork(() =>
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(synced)) return;
+                // A RemoveLyrics landed after this persist was queued — writing now
+                // would resurrect what the user just removed.
+                if (Volatile.Read(ref _lyricsRemovalStamp) != stamp) return;
 
-                var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
-                if (File.Exists(lrcPath))
+                var sidecarExists = File.Exists(lrcPath);
+                var replaceAppSidecar = canWriteSidecar && sidecarExists && allowReplaceAppSidecar
+                    && SidecarRegistry.Contains(lrcPath);
+                // On an explicit switch that leaves an existing sidecar standing
+                // (user-owned, or nothing synced to replace an app-written one with)
+                // the track fields stay untouched: they must not advertise lyrics
+                // that disk will override on the next play. The switched-to lyrics
+                // still display (and cache) for this session.
+                var blockedBySidecar = sidecarExists && allowReplaceAppSidecar && !replaceAppSidecar;
+
+                if (!blockedBySidecar)
+                {
+                    // The Metadata window reads these fields before falling back to
+                    // sidecars, so an already-open editor reflects them. Re-checking
+                    // the stamp on the UI thread keeps a queued update from putting
+                    // the fields back after RemoveLyrics cleared them.
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (Volatile.Read(ref _lyricsRemovalStamp) != stamp) return;
+                        track.Lyrics = plain ?? string.Empty;
+                        track.SyncedLyrics = synced ?? string.Empty;
+                    });
+                }
+
+                if (!canWriteSidecar) return;
+                if (sidecarExists && !replaceAppSidecar)
                 {
                     DebugLogger.Info(DebugLogger.Category.Lyrics, "Sidecar.SkipExisting", lrcPath);
                     return;
                 }
 
-                File.WriteAllText(lrcPath, NormalizeLyricsForLrc(synced), new UTF8Encoding(false));
-                lock (_appWrittenSidecarLock)
-                    _appWrittenSidecars.Add(lrcPath);
+                File.WriteAllText(lrcPath, NormalizeLyricsForLrc(synced!), new UTF8Encoding(false));
+                SidecarRegistry.Add(lrcPath);
             }
             catch { /* best effort — sidecar write is non-fatal */ }
         });
     }
 
-    // Sidecars this view-model created itself. RemoveLyrics deletes only these, so a
-    // user's own sidecar is never removed on their behalf.
-    private static readonly object _appWrittenSidecarLock = new();
-    private static readonly HashSet<string> _appWrittenSidecars =
-        new(StringComparer.OrdinalIgnoreCase);
+    // Sidecars this app created itself. RemoveLyrics deletes only these, so a user's
+    // own sidecar is never removed on their behalf. The registry is persisted (JSON
+    // under the data root): the old in-memory HashSet emptied on every restart, so the
+    // app's own auto-written sidecar looked user-owned, Remove skipped it, and the
+    // probe resurrected the removed lyrics on the next play.
+    private static AppWrittenSidecarRegistry SidecarRegistry => AppWrittenSidecarRegistry.Default;
+
+    // ── Lyric-file writer lane ──
+    //
+    // Every mutation of the lyric files this view-model owns — the track-side .lrc
+    // sidecar (auto-persist vs the manual Save command), the lyrics-cache files, and
+    // RemoveLyrics' deletes — runs through one FIFO lane. FIFO, not just mutual
+    // exclusion, matters twice over: a "Try alternate" persist queued after the
+    // primary's must also RUN after it, so its replace-vs-skip decision sees the
+    // primary's write settled (deciding from a pre-queue File.Exists snapshot was a
+    // TOCTOU that silently dropped the user's explicit switch), and a Remove issued
+    // after an in-flight write must delete what that write produced instead of racing
+    // it (an unawaited cache write could land after the delete and resurrect the
+    // removed lyrics on the next play). Every enqueue happens on the UI thread, so
+    // lane order is exactly user-visible order.
+    private static readonly object _lyricsWriteQueueLock = new();
+    private static Task _lyricsWriteQueue = Task.CompletedTask;
+
+    /// <summary>Appends work to the FIFO writer lane. Internal so tests can park the
+    /// lane (a blocking first item) to pin a deterministic interleaving.</summary>
+    internal static Task EnqueueLyricsFileWork(Action work)
+    {
+        lock (_lyricsWriteQueueLock)
+        {
+            var task = _lyricsWriteQueue.ContinueWith(
+                _ => work(), CancellationToken.None,
+                TaskContinuationOptions.DenyChildAttach, TaskScheduler.Default);
+            _lyricsWriteQueue = task;
+            return task;
+        }
+    }
+
+    // Bumped on the UI thread at the start of RemoveLyrics. Work queued before the
+    // bump re-checks it before writing files or applying track fields, so nothing
+    // already in flight when the user removed the lyrics can bring them back.
+    private static int _lyricsRemovalStamp;
+
+    // Trash-operation seam (same injection style as LibraryRemovalHelper's core);
+    // tests substitute a failing trash to pin the registry-retention contract.
+    internal Func<string, bool> TrashSidecarFile { get; set; } = Helpers.RecycleBin.TryMoveToTrash;
 
     /// <summary>
     /// Removes the currently displayed online lyrics: clears the cached file,
@@ -1216,32 +1354,47 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // Deleting only {Id}.lrc left the {Id}.lyricsfile cache and any sidecar written
         // next to the track — both of which the probe reads at *higher* priority — so the
         // removed lyrics came straight back on the next play. A user's own sidecar is left
-        // alone: only paths recorded in _appWrittenSidecars are eligible.
-        try
+        // alone: only paths recorded in the app-written sidecar registry are eligible.
+        //
+        // The stamp bump voids any cache/sidecar write still queued on the writer lane,
+        // and the deletes join the lane behind whatever is in flight, so an unawaited
+        // write can never land after the delete and resurrect the removed files.
+        Interlocked.Increment(ref _lyricsRemovalStamp);
+        var trackId = _currentTrack.Id;
+        var trackPath = _currentTrack.FilePath;
+        EnqueueLyricsFileWork(() =>
         {
-            foreach (var ext in new[] { ".lrc", ".lyricsfile" })
+            try
             {
-                var cachePath = Path.Combine(LyricsCacheDir, $"{_currentTrack.Id}{ext}");
-                if (File.Exists(cachePath))
-                    File.Delete(cachePath);
+                foreach (var ext in new[] { ".lrc", ".lyricsfile" })
+                {
+                    var cachePath = Path.Combine(LyricsCacheDir, $"{trackId}{ext}");
+                    if (File.Exists(cachePath))
+                        File.Delete(cachePath);
+                }
             }
-        }
-        catch { }
+            catch { }
 
-        try
-        {
-            var trackPath = _currentTrack.FilePath;
-            if (!string.IsNullOrWhiteSpace(trackPath))
+            try
             {
-                var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
-                bool ours;
-                lock (_appWrittenSidecarLock)
-                    ours = _appWrittenSidecars.Remove(lrcPath);
-                if (ours && File.Exists(lrcPath))
-                    Helpers.RecycleBin.TryMoveToTrash(lrcPath);
+                if (!string.IsNullOrWhiteSpace(trackPath))
+                {
+                    var lrcPath = Path.ChangeExtension(trackPath, ".lrc");
+                    // Unregister only once the file is actually gone: the trash move
+                    // can fail (file locked/in use), and dropping the registry entry
+                    // first left the app's own file on disk permanently looking
+                    // user-owned — Remove would then never touch it again.
+                    if (SidecarRegistry.Contains(lrcPath))
+                    {
+                        if (!File.Exists(lrcPath) || TrashSidecarFile(lrcPath))
+                            SidecarRegistry.Remove(lrcPath);
+                        else
+                            DebugLogger.Error(DebugLogger.Category.Error, "Lyrics.SidecarTrashFailed", lrcPath);
+                    }
+                }
             }
-        }
-        catch { }
+            catch { }
+        }).Wait();
 
         // Clear the in-memory copies too, otherwise the next probe finds them on the
         // Track and re-displays what was just removed.
@@ -1289,10 +1442,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     private static Task SaveLyricsToCacheAsync(Guid trackId, string lyrics)
     {
-        return Task.Run(() =>
+        var stamp = Volatile.Read(ref _lyricsRemovalStamp);
+        return EnqueueLyricsFileWork(() =>
         {
             try
             {
+                // Queued before a RemoveLyrics that has since landed — writing now
+                // would re-create the cache file the user just removed.
+                if (Volatile.Read(ref _lyricsRemovalStamp) != stamp) return;
                 Directory.CreateDirectory(LyricsCacheDir);
                 var path = Path.Combine(LyricsCacheDir, $"{trackId}.lrc");
                 File.WriteAllText(path, NormalizeLyricsForLrc(lyrics), new UTF8Encoding(false));
@@ -1303,10 +1460,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     private static Task SaveLyricsfileToCacheAsync(Guid trackId, string yamlContent)
     {
-        return Task.Run(() =>
+        var stamp = Volatile.Read(ref _lyricsRemovalStamp);
+        return EnqueueLyricsFileWork(() =>
         {
             try
             {
+                if (Volatile.Read(ref _lyricsRemovalStamp) != stamp) return;
                 Directory.CreateDirectory(LyricsCacheDir);
                 var path = Path.Combine(LyricsCacheDir, $"{trackId}.lyricsfile");
                 File.WriteAllText(path, yamlContent, new UTF8Encoding(false));
@@ -1349,7 +1508,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         });
     }
 
-    private void DisplayOnlineLyrics(LrcLibResult result)
+    private void DisplayOnlineLyrics(LrcLibResult result, bool userSwitchedSource = false)
     {
         _currentOnlineResult = result;
         LyricLines.Clear();
@@ -1431,8 +1590,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         // Persist to sidecars + the in-memory track so any found lyrics (manual or
         // auto search) show up and stay in the Metadata editor's Plain/Synced tabs
-        // without requiring a separate "Save to File" click.
-        PersistOnlineLyricsToSidecar(result);
+        // without requiring a separate "Save to File" click. An explicit source
+        // switch may replace an app-written sidecar so the choice sticks.
+        PersistOnlineLyricsToSidecar(result, allowReplaceAppSidecar: userSwitchedSource);
 
         // Start sync timer if synced lyrics and playing
         if (_hasSyncedLyrics && IsSyncTabSelected && _player.State == Models.PlaybackState.Playing)
