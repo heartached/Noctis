@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text.Json;
 using Noctis.Models;
@@ -24,9 +25,9 @@ public class LrcLibService : ILrcLibService
         _http = httpClient;
     }
 
-    public async Task<LrcLibResult?> GetLyricsAsync(string artist, string trackName, double durationSeconds)
+    public async Task<LrcLibResult?> GetLyricsAsync(string artist, string trackName, double durationSeconds, CancellationToken ct = default)
     {
-        var cacheKey = $"get:{artist}|{trackName}|{Math.Round(durationSeconds)}";
+        var cacheKey = CacheKey("get", artist, trackName, Math.Round(durationSeconds).ToString(CultureInfo.InvariantCulture));
         if (TryGetCached(cacheKey, out LrcLibResult? cached))
             return cached;
 
@@ -39,7 +40,7 @@ public class LrcLibService : ILrcLibService
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("User-Agent", "Noctis (https://github.com/heartached/Noctis)");
 
-            using var response = await _http.SendAsync(request);
+            using var response = await _http.SendAsync(request, ct);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 Store(cacheKey, (LrcLibResult?)null);
@@ -47,21 +48,30 @@ public class LrcLibService : ILrcLibService
             }
 
             response.EnsureSuccessStatusCode();
-            var json = await HttpSafety.ReadStringBoundedAsync(response.Content);
+            var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
             var result = JsonSerializer.Deserialize<LrcLibResult>(json);
 
             Store(cacheKey, result);
             return result;
         }
-        catch (HttpRequestException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            return null;
+            // Caller-initiated cancel (track skip) — propagate silently, never
+            // report it as a provider error and never poison the cache.
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            // Network failure, 5xx, timeout, or malformed body. A definitive miss
+            // is the cached-null 404 path above — this must stay distinguishable,
+            // and stays uncached so a later attempt can succeed.
+            throw new LyricsProviderException("LRCLIB", ex);
         }
     }
 
-    public async Task<List<LrcLibResult>> SearchLyricsAsync(string artist, string trackName)
+    public async Task<List<LrcLibResult>> SearchLyricsAsync(string artist, string trackName, CancellationToken ct = default)
     {
-        var cacheKey = $"search:{artist}|{trackName}";
+        var cacheKey = CacheKey("search", artist, trackName);
         if (TryGetCached(cacheKey, out List<LrcLibResult>? cached) && cached != null)
             return cached;
 
@@ -73,7 +83,7 @@ public class LrcLibService : ILrcLibService
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Add("User-Agent", "Noctis (https://github.com/heartached/Noctis)");
 
-            using var response = await _http.SendAsync(request);
+            using var response = await _http.SendAsync(request, ct);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 var empty = new List<LrcLibResult>();
@@ -82,17 +92,28 @@ public class LrcLibService : ILrcLibService
             }
 
             response.EnsureSuccessStatusCode();
-            var json = await HttpSafety.ReadStringBoundedAsync(response.Content);
+            var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
             var results = JsonSerializer.Deserialize<List<LrcLibResult>>(json) ?? new List<LrcLibResult>();
 
             Store(cacheKey, results);
             return results;
         }
-        catch (HttpRequestException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            return new List<LrcLibResult>();
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            throw new LyricsProviderException("LRCLIB", ex);
         }
     }
+
+    /// <summary>
+    /// Length-prefixed join makes the key injective: artist "A|B" + title "C"
+    /// can no longer collide with artist "A" + title "B|C".
+    /// </summary>
+    private static string CacheKey(string prefix, params string[] parts)
+        => prefix + string.Concat(parts.Select(p => $"|{p.Length}:{p}"));
 
     // ── Bounded LRU ──
 

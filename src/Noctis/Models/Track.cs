@@ -17,16 +17,49 @@ public partial class Track : ObservableObject
     public string FilePath { get; set; } = string.Empty;
 
     /// <summary>Track title from ID3/Vorbis tag. Falls back to filename if tag is missing.</summary>
-    public string Title { get; set; } = string.Empty;
+    public string Title
+    {
+        get => _title;
+        set { _title = value; _searchTitleKey = null; }
+    }
+    private string _title = string.Empty;
 
     /// <summary>Performing artist (TPE1 / ARTIST tag).</summary>
-    public string Artist { get; set; } = "Unknown Artist";
+    public string Artist
+    {
+        get => _artist;
+        set { _artist = value; _searchArtistKey = null; }
+    }
+    private string _artist = "Unknown Artist";
 
     /// <summary>Album artist (TPE2), used to group "Various Artists" compilations.</summary>
     public string AlbumArtist { get; set; } = "Unknown Artist";
 
     /// <summary>Album name (TALB tag).</summary>
-    public string Album { get; set; } = "Unknown Album";
+    public string Album
+    {
+        get => _album;
+        set { _album = value; _searchAlbumKey = null; }
+    }
+    private string _album = "Unknown Album";
+
+    private string? _searchTitleKey;
+    private string? _searchArtistKey;
+    private string? _searchAlbumKey;
+
+    /// <summary>
+    /// Lazily cached <see cref="Noctis.Helpers.SearchText.Normalize"/> key for Title.
+    /// Search used to re-normalize Title/Artist/Album twice per matching track per
+    /// keystroke — hundreds of thousands of throwaway strings at 100k tracks. Costs
+    /// three short strings per track; the setters above invalidate on metadata edits.
+    /// </summary>
+    [JsonIgnore] public string SearchTitleKey => _searchTitleKey ??= Helpers.SearchText.Normalize(_title);
+
+    /// <summary>Lazily cached normalized search key for Artist. See <see cref="SearchTitleKey"/>.</summary>
+    [JsonIgnore] public string SearchArtistKey => _searchArtistKey ??= Helpers.SearchText.Normalize(_artist);
+
+    /// <summary>Lazily cached normalized search key for Album. See <see cref="SearchTitleKey"/>.</summary>
+    [JsonIgnore] public string SearchAlbumKey => _searchAlbumKey ??= Helpers.SearchText.Normalize(_album);
 
     /// <summary>Genre tag value.</summary>
     public string Genre { get; set; } = string.Empty;
@@ -111,11 +144,130 @@ public partial class Track : ObservableObject
     [ObservableProperty]
     private string _musicalKey = string.Empty;
 
-    /// <summary>Plain/unsynced lyrics text for the track.</summary>
-    public string Lyrics { get; set; } = string.Empty;
+    // ── Lyrics (lazy, store-backed) ──
+    //
+    // These two strings used to be plain persisted properties, which made them
+    // 56% of a measured 46 MB library.json (5,891 tracks) and permanently
+    // resident in RAM for every track. They are now [JsonIgnore]d and backed by
+    // Services.LyricsStore (one small file per track id, bounded LRU): the
+    // getter reads through lazily, the setter records a pending value that
+    // PersistenceService flushes to the store on every library save (writes
+    // were already only persisted at the next library save, so the timing is
+    // unchanged). A track with no store attached (unit tests, freshly scanned
+    // tracks before their first save) behaves exactly like the old in-memory
+    // string properties via the pending-override fields.
 
-    /// <summary>Time-synced lyrics in LRC format.</summary>
-    public string SyncedLyrics { get; set; } = string.Empty;
+    private Services.LyricsStore? _lyricsStore;
+    private string? _lyricsOverride;          // set this session, pending commit
+    private string? _syncedLyricsOverride;
+    private string? _legacyLyrics;            // parsed from pre-store library.json
+    private string? _legacySyncedLyrics;
+    private bool _lyricsAssigned;
+
+    /// <summary>Plain/unsynced lyrics text for the track. Lazy: first read on a
+    /// store-attached track loads from disk (sync by design — the getter has too
+    /// many consumers to make async; hot paths read it off the UI thread).</summary>
+    [JsonIgnore]
+    public string Lyrics
+    {
+        get => _lyricsOverride ?? _legacyLyrics ?? ReadStoredLyrics().Plain;
+        set { _lyricsOverride = value ?? string.Empty; _lyricsAssigned = true; }
+    }
+
+    /// <summary>Time-synced lyrics in LRC format. See <see cref="Lyrics"/>.</summary>
+    [JsonIgnore]
+    public string SyncedLyrics
+    {
+        get => _syncedLyricsOverride ?? _legacySyncedLyrics ?? ReadStoredLyrics().Synced;
+        set { _syncedLyricsOverride = value ?? string.Empty; _lyricsAssigned = true; }
+    }
+
+    private Services.LyricsStore.LyricsPair ReadStoredLyrics()
+        => _lyricsStore?.Read(Id) ?? Services.LyricsStore.LyricsPair.Empty;
+
+    // Set-only shims keep old library.json (which still carries inline lyrics)
+    // deserializing: they capture the legacy values for the one-time migration
+    // below. Having no getter, they are never serialized, so every save emits
+    // lyric-free JSON.
+    [JsonPropertyName("lyrics")]
+    public string? LegacyLyricsFromJson { set => _legacyLyrics = value; }
+
+    [JsonPropertyName("syncedLyrics")]
+    public string? LegacySyncedLyricsFromJson { set => _legacySyncedLyrics = value; }
+
+    /// <summary>
+    /// One-time migration hook, called per track while the library streams in.
+    /// Moves inline lyrics from the old JSON into the store (write-if-absent —
+    /// an existing store entry is newer by construction and must win) and
+    /// releases the in-memory copies. Crash-safe: library.json keeps its inline
+    /// lyrics until the first save after a fully migrated load, so an
+    /// interrupted migration simply continues on the next launch.
+    /// </summary>
+    public void MigrateLegacyLyricsToStore(Services.LyricsStore store)
+    {
+        _lyricsStore = store;
+        var plain = _legacyLyrics ?? string.Empty;
+        var synced = _legacySyncedLyrics ?? string.Empty;
+        _legacyLyrics = null;
+        _legacySyncedLyrics = null;
+        if (plain.Length == 0 && synced.Length == 0) return;
+        try
+        {
+            store.WriteIfAbsent(Id, plain, synced);
+        }
+        catch
+        {
+            // Store write failed (disk full, permissions): keep the values as a
+            // pending edit so the commit on every library save retries — the
+            // lyrics must not be lost when the next save emits lyric-free JSON.
+            _lyricsOverride = plain;
+            _syncedLyricsOverride = synced;
+            _lyricsAssigned = true;
+        }
+    }
+
+    /// <summary>
+    /// Flushes a pending lyric edit to the store; called for every track on
+    /// every library save, before the (lyric-free) JSON hits disk. No-op unless
+    /// a setter ran since the last commit. An assigned all-empty pair deletes
+    /// the store entry (RemoveLyrics), matching the old field-clear semantics.
+    /// </summary>
+    public void CommitLyricsToStore(Services.LyricsStore store)
+    {
+        _lyricsStore ??= store;
+        if (!_lyricsAssigned) return;
+        try
+        {
+            var current = store.Read(Id);
+            var plain = _lyricsOverride ?? current.Plain;
+            var synced = _syncedLyricsOverride ?? current.Synced;
+            if (plain != current.Plain || synced != current.Synced)
+                store.Write(Id, plain, synced);
+            _lyricsOverride = null;
+            _syncedLyricsOverride = null;
+            _lyricsAssigned = false;
+        }
+        catch
+        {
+            // Keep the pending flags: the edit stays readable in memory and the
+            // next library save retries the flush.
+        }
+    }
+
+    /// <summary>
+    /// Call BEFORE reassigning <see cref="Id"/> (file relocation recomputes the
+    /// path-derived id). Lifts the currently stored lyrics into pending values
+    /// so the next commit re-files them under the new id.
+    /// </summary>
+    public void PrepareLyricsForIdChange()
+    {
+        if (_lyricsStore == null) return;
+        var current = _lyricsStore.Read(Id);
+        _lyricsOverride ??= _legacyLyrics ?? current.Plain;
+        _syncedLyricsOverride ??= _legacySyncedLyrics ?? current.Synced;
+        if (_lyricsOverride.Length > 0 || _syncedLyricsOverride.Length > 0)
+            _lyricsAssigned = true;
+    }
 
     /// <summary>Whether this track is part of a compilation album.</summary>
     public bool IsCompilation { get; set; }

@@ -368,7 +368,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private async Task ToggleTrackFavorite(Track track)
     {
         track.IsFavorite = !track.IsFavorite;
-        await _library.SaveAsync();
+        await _library.SaveTrackUserStateAsync(new[] { track });
         _library.NotifyFavoritesChanged();
     }
 
@@ -511,14 +511,18 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
         if (albums.Count == 0) return;
+        var changed = new List<Track>();
         foreach (var a in albums)
         {
             if (a.Tracks == null || a.Tracks.Count == 0) continue;
             var newState = !a.IsAllTracksFavorite;
             foreach (var track in a.Tracks)
+            {
                 track.IsFavorite = newState;
+                changed.Add(track);
+            }
         }
-        await _library.SaveAsync();
+        await _library.SaveTrackUserStateAsync(changed);
         _library.NotifyFavoritesChanged();
         CtrlSelectedAlbums.Clear();
     }

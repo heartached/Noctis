@@ -1455,8 +1455,11 @@ public partial class MetadataViewModel : ViewModelBase
             var result = await _lrcLib.GetLyricsAsync(Artist, Title, _track.Duration.TotalSeconds);
             if (result == null || !result.HasSyncedLyrics)
             {
+                // /search is fuzzy — validate against the edited tags and the track's
+                // duration so a different song's lyrics can't be picked up.
                 var alts = await _lrcLib.SearchLyricsAsync(Artist, Title);
-                result = alts.FirstOrDefault(r => r.HasSyncedLyrics);
+                result = LyricsSearchSelector.PickFromSearchResults(
+                    alts, Artist, Title, _track.Duration.TotalSeconds, requireSynced: true);
             }
 
             if (result?.SyncedLyrics is { Length: > 0 } synced)
@@ -1470,6 +1473,12 @@ public partial class MetadataViewModel : ViewModelBase
             {
                 SyncedLyricsSearchStatus = "No Lyrics found";
             }
+        }
+        catch (LyricsProviderException)
+        {
+            // Network failure / timeout / provider outage — not "no lyrics", and the
+            // raw exception text ("The request was canceled…") helps nobody.
+            SyncedLyricsSearchStatus = "Search failed — check your internet connection.";
         }
         catch (Exception ex)
         {
@@ -2039,6 +2048,16 @@ public partial class MetadataViewModel : ViewModelBase
 
         // Persist library changes and notify UI
         await _library.SaveAsync();
+
+        // The editor can also change journaled user state (rating, disliked,
+        // play-count reset). The journal wins over library.json on load, so those
+        // rows must be refreshed too or stale values would resurrect next launch.
+        var journalTracks = _albumTracks != null
+            ? _albumTracks.ToList()
+            : new List<Track> { _track };
+        if (!journalTracks.Contains(_track)) journalTracks.Add(_track);
+        await _library.SaveTrackUserStateAsync(journalTracks);
+
         _library.NotifyMetadataChanged();
 
         ChangesSaved?.Invoke(this, EventArgs.Empty);

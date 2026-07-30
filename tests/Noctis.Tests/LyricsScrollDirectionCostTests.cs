@@ -31,15 +31,15 @@ public class LyricsScrollDirectionCostTests
 
     private sealed class StubLrcLib : ILrcLibService
     {
-        public Task<LrcLibResult?> GetLyricsAsync(string artist, string trackName, double durationSeconds)
+        public Task<LrcLibResult?> GetLyricsAsync(string artist, string trackName, double durationSeconds, CancellationToken ct = default)
             => Task.FromResult<LrcLibResult?>(null);
-        public Task<List<LrcLibResult>> SearchLyricsAsync(string artist, string trackName)
+        public Task<List<LrcLibResult>> SearchLyricsAsync(string artist, string trackName, CancellationToken ct = default)
             => Task.FromResult(new List<LrcLibResult>());
     }
 
     private sealed class StubNetEase : INetEaseService
     {
-        public Task<LrcLibResult?> SearchLyricsAsync(string artist, string trackName, double durationSeconds)
+        public Task<LrcLibResult?> SearchLyricsAsync(string artist, string trackName, double durationSeconds, CancellationToken ct = default)
             => Task.FromResult<LrcLibResult?>(null);
     }
 

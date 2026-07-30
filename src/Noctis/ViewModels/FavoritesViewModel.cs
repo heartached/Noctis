@@ -386,18 +386,25 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private async Task RemoveItemFavorite(FavoriteItem item)
     {
         var items = CtrlSelectedItems.Count > 0 ? CtrlSelectedItems : new List<FavoriteItem> { item };
+        var changed = new List<Track>();
         foreach (var fi in items)
         {
             if (fi.IsAlbum && fi.Album?.Tracks != null)
             {
                 var newState = !fi.Album.IsAllTracksFavorite;
                 foreach (var track in fi.Album.Tracks)
+                {
                     track.IsFavorite = newState;
+                    changed.Add(track);
+                }
             }
             else if (fi.Track != null)
+            {
                 fi.Track.IsFavorite = !fi.Track.IsFavorite;
+                changed.Add(fi.Track);
+            }
         }
-        await _library.SaveAsync();
+        await _library.SaveTrackUserStateAsync(changed);
         _library.NotifyFavoritesChanged();
         Refresh();
         CtrlSelectedItems.Clear();

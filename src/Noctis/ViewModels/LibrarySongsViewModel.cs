@@ -63,14 +63,38 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         _sidebar = sidebar;
         _persistence = persistence;
 
-        // Mark dirty when library changes — actual reload deferred to next Refresh() call
+        // Mark dirty when library changes — actual reload deferred to next Refresh() call.
+        // Only rebuild immediately while this view is current: a scan fires LibraryUpdated
+        // every ~1.5 s, and rebuilding a 40k-100k row list for a hidden view burns CPU for
+        // nothing. Hidden views catch up once via the dirty flag when they become active.
         _libraryUpdatedHandler = (_, _) =>
         {
             _isDirty = true;
-            Dispatcher.UIThread.Post(Refresh);
+            if (_isActive)
+                Dispatcher.UIThread.Post(Refresh);
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }
+
+    /// <summary>
+    /// Set by MainWindowViewModel when Songs becomes (or stops being) the current view.
+    /// Mirrors CoverFlowViewModel.IsActive: gates LibraryUpdated-driven rebuilds while
+    /// hidden, and catches up on activation (no-op when nothing changed).
+    /// </summary>
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive == value) return;
+            _isActive = value;
+            // Catch up on anything missed while hidden — covers back-navigation paths
+            // that swap CurrentView without going through RefreshAndReturnSongs.
+            if (value) Refresh();
+        }
+    }
+
+    private bool _isActive;
 
     /// <summary>Forces the next Refresh() call to rebuild even if data hasn't changed.</summary>
     public void MarkDirty() => _isDirty = true;
@@ -83,14 +107,11 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
         _isDirty = false;
 
-        // Sync rebuild: navigation sets CurrentView immediately after this returns,
-        // so FilteredTracks must be current on first paint to avoid flashing the
-        // previous list for a frame.
-        Interlocked.Increment(ref _filterGeneration);
-        _allTracks = _library.Tracks.ToList();
-        var rebuilt = BuildFilteredAndSortedTracks(_allTracks, _currentFilter, SortColumn, SortAscending, ShowOnlyFavorites, QualityFilter);
-        FilteredTracks.ReplaceAll(rebuilt);
-        UpdateSummaryText();
+        // Off-UI-thread rebuild via the same generation-guarded path as keystroke
+        // filtering. The sync rebuild this replaces froze the UI thread 30-250 ms per
+        // navigation/scan event at 40k-100k tracks; the view keeps showing its previous
+        // rows for the few frames the fresh list takes to compute in the background.
+        ApplyFilterAndSort(refreshFromLibrary: true);
     }
 
     public void ApplyFilter(string query)
@@ -279,7 +300,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
         foreach (var t in tracks)
             t.IsFavorite = !t.IsFavorite;
-        await _library.SaveAsync();
+        await _library.SaveTrackUserStateAsync(tracks);
         _library.NotifyFavoritesChanged(tracks);
         CtrlSelectedTracks.Clear();
     }
@@ -338,8 +359,14 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
                 return BuildFilteredAndSortedTracks(tracks, filter, sortCol, sortAsc, favOnly, quality);
             });
 
-            // Discard stale results if a newer filter/sort has been requested
-            if (generation != _filterGeneration) return;
+            // Discard stale results if a newer filter/sort has been requested. A
+            // superseded library reload must re-mark dirty: the newer request may have
+            // captured the pre-reload _allTracks snapshot.
+            if (generation != _filterGeneration)
+            {
+                if (refreshFromLibrary) _isDirty = true;
+                return;
+            }
 
             // Save refreshed tracks list back (already on UI thread)
             if (refreshFromLibrary)
@@ -402,9 +429,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         if (hasQuery)
         {
             filtered = filtered.Where(t =>
-                MatchesSearch(t.Title, q, qNoSpaces) ||
-                MatchesSearch(t.Artist, q, qNoSpaces) ||
-                MatchesSearch(t.Album, q, qNoSpaces));
+                MatchesSearch(t.Title, t.SearchTitleKey, q, qNoSpaces) ||
+                MatchesSearch(t.Artist, t.SearchArtistKey, q, qNoSpaces) ||
+                MatchesSearch(t.Album, t.SearchAlbumKey, q, qNoSpaces));
         }
 
         var ranked = filtered
@@ -456,7 +483,11 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         }
     }
 
-    private static bool MatchesSearch(string? source, string query, string queryNoSpaces)
+    // sourceKey is the track's cached SearchText.Normalize key (Track.SearchTitleKey etc.).
+    // Match and rank used to re-normalize Title/Artist/Album per track per keystroke —
+    // up to six throwaway strings per matching track, hundreds of thousands of
+    // allocations per keystroke at 100k tracks. The cached key is allocation-free here.
+    private static bool MatchesSearch(string? source, string sourceKey, string query, string queryNoSpaces)
     {
         if (string.IsNullOrWhiteSpace(source))
             return false;
@@ -465,7 +496,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         if (source.Contains(query, StringComparison.OrdinalIgnoreCase))
             return true;
 
-        if (RemoveWhitespace(source).Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
+        if (sourceKey.Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
             return true;
 
         // Word-level match: every word in the query must appear somewhere in the source
@@ -488,33 +519,34 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
     private static int GetTrackSearchRank(Track track, string query, string queryNoSpaces)
     {
-        var titleRank = RankMatch(track.Title, query, queryNoSpaces);
-        var artistRank = RankMatch(track.Artist, query, queryNoSpaces);
-        var albumRank = RankMatch(track.Album, query, queryNoSpaces);
+        var titleRank = RankMatch(track.Title, track.SearchTitleKey, query, queryNoSpaces);
+        var artistRank = RankMatch(track.Artist, track.SearchArtistKey, query, queryNoSpaces);
+        var albumRank = RankMatch(track.Album, track.SearchAlbumKey, query, queryNoSpaces);
 
         return Math.Min(titleRank, Math.Min(artistRank + 20, albumRank + 40));
     }
 
-    private static int RankMatch(string? source, string query, string queryNoSpaces)
+    private static int RankMatch(string? source, string sourceKey, string query, string queryNoSpaces)
     {
         if (string.IsNullOrWhiteSpace(source))
             return 1000;
 
+        // Normalize strips whitespace, so the cached key equals the old
+        // RemoveWhitespace(source.Trim()) result without the per-call allocations.
         var normalized = source.Trim();
-        var normalizedNoSpaces = RemoveWhitespace(normalized);
 
         if (string.Equals(normalized, query, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(normalizedNoSpaces, queryNoSpaces, StringComparison.OrdinalIgnoreCase))
+            string.Equals(sourceKey, queryNoSpaces, StringComparison.OrdinalIgnoreCase))
             return 0;
 
         if (normalized.StartsWith(query, StringComparison.OrdinalIgnoreCase) ||
-            normalizedNoSpaces.StartsWith(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
+            sourceKey.StartsWith(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
             return 1;
 
         if (normalized.Contains(query, StringComparison.OrdinalIgnoreCase))
             return 2;
 
-        if (normalizedNoSpaces.Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
+        if (sourceKey.Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
             return 3;
 
         // Word-level match: all query words found in source

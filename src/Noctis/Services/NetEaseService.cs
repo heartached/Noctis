@@ -23,16 +23,16 @@ public class NetEaseService : INetEaseService
         _http = httpClient;
     }
 
-    public async Task<LrcLibResult?> SearchLyricsAsync(string artist, string trackName, double durationSeconds)
+    public async Task<LrcLibResult?> SearchLyricsAsync(string artist, string trackName, double durationSeconds, CancellationToken ct = default)
     {
-        var cacheKey = $"netease:{artist}|{trackName}";
+        var cacheKey = $"netease:{artist.Length}:{artist}|{trackName}";
         if (_cache.TryGetValue(cacheKey, out var cached))
             return cached;
 
         try
         {
             // Step 1: Search for the song
-            var songId = await FindSongIdAsync(artist, trackName, durationSeconds);
+            var songId = await FindSongIdAsync(artist, trackName, durationSeconds, ct);
             if (songId == null)
             {
                 _cache[cacheKey] = null;
@@ -40,18 +40,25 @@ public class NetEaseService : INetEaseService
             }
 
             // Step 2: Fetch lyrics for the song
-            var result = await FetchLyricsAsync(songId.Value, artist, trackName);
+            var result = await FetchLyricsAsync(songId.Value, artist, trackName, ct);
             _cache[cacheKey] = result;
             return result;
         }
-        catch (Exception)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // HttpRequestException, TaskCanceledException (timeout), JsonException, etc.
-            return null;
+            // Caller-initiated cancel (track skip) — propagate silently.
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            // Network failure, non-success status, timeout, or malformed body —
+            // distinct from a definitive miss (cached null above), and uncached
+            // so a later attempt can succeed.
+            throw new LyricsProviderException("NetEase", ex);
         }
     }
 
-    private async Task<long?> FindSongIdAsync(string artist, string trackName, double durationSeconds)
+    private async Task<long?> FindSongIdAsync(string artist, string trackName, double durationSeconds, CancellationToken ct)
     {
         var query = $"{trackName} {artist}";
 
@@ -66,10 +73,12 @@ public class NetEaseService : INetEaseService
             ["offset"] = "0"
         });
 
-        using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return null;
+        using var response = await _http.SendAsync(request, ct);
+        // A non-success status is a provider error, not a miss — a genuine
+        // "no results" from NetEase is a 200 with an empty songs list.
+        response.EnsureSuccessStatusCode();
 
-        var json = await HttpSafety.ReadStringBoundedAsync(response.Content);
+        var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
         var searchResult = JsonSerializer.Deserialize<NetEaseSearchResponse>(json);
 
         var songs = searchResult?.Result?.Songs;
@@ -98,7 +107,7 @@ public class NetEaseService : INetEaseService
             a.Name.Contains(targetArtist, StringComparison.OrdinalIgnoreCase));
     }
 
-    private async Task<LrcLibResult?> FetchLyricsAsync(long songId, string artist, string trackName)
+    private async Task<LrcLibResult?> FetchLyricsAsync(long songId, string artist, string trackName, CancellationToken ct)
     {
         var url = $"{LyricsUrl}?id={songId}&lv=1&kv=1&tv=-1";
 
@@ -106,10 +115,10 @@ public class NetEaseService : INetEaseService
         request.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
         request.Headers.Add("Referer", "https://music.163.com/");
 
-        using var response = await _http.SendAsync(request);
-        if (!response.IsSuccessStatusCode) return null;
+        using var response = await _http.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
 
-        var json = await HttpSafety.ReadStringBoundedAsync(response.Content);
+        var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
         var lyricsResponse = JsonSerializer.Deserialize<NetEaseLyricsResponse>(json);
 
         var syncedLyrics = lyricsResponse?.Lrc?.Lyric;

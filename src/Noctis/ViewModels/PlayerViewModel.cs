@@ -697,7 +697,7 @@ public partial class PlayerViewModel : ViewModelBase
         var libraryTrack = _library.GetTrackById(CurrentTrack.Id);
         if (libraryTrack != null && !ReferenceEquals(libraryTrack, CurrentTrack))
             libraryTrack.IsFavorite = newState;
-        await _library.SaveAsync();
+        await _library.SaveTrackUserStateAsync(new[] { libraryTrack ?? CurrentTrack });
         _library.NotifyFavoritesChanged(new[] { CurrentTrack });
     }
 
@@ -891,6 +891,7 @@ public partial class PlayerViewModel : ViewModelBase
         if (CurrentTrack?.RememberPlaybackPosition == true)
         {
             CurrentTrack.SavedPositionMs = (long)Position.TotalMilliseconds;
+            MarkPlayStateDirty(CurrentTrack);
         }
         _hasPendingSeekTarget = false;
         CancelAutoMixTransition("player stopped");
@@ -990,11 +991,16 @@ public partial class PlayerViewModel : ViewModelBase
     /// close-to-tray so a snapshot always exists.
     /// </summary>
     /// <summary>Flushes the debounced per-play library save immediately (call on shutdown).</summary>
-    public Task FlushPendingLibrarySaveAsync()
+    public async Task FlushPendingLibrarySaveAsync()
     {
         _librarySaveDebounce?.Dispose();
         _librarySaveDebounce = null;
-        return _library.SaveAsync();
+        // Journal first: the journal wins over library.json on load, so it must be
+        // at least as new as the full save below.
+        await FlushPendingPlayStateAsync();
+        // Shutdown still writes one full library.json so the JSON stays a complete,
+        // downgrade-safe snapshot (an older app version reads it as before).
+        await _library.SaveAsync();
     }
 
     public void SaveQueueStateInBackground()
@@ -1324,6 +1330,31 @@ public partial class PlayerViewModel : ViewModelBase
     private System.Threading.Timer? _librarySaveDebounce;
     private const int LibrarySaveDebounceMs = 5000;
 
+    // Tracks whose play state (play count / LastPlayed / saved position) changed
+    // since the last save. The debounce timer flushes them as journal rows in
+    // library.db instead of re-serializing the whole library.json per play.
+    private readonly HashSet<Track> _pendingPlayStateSaves = new();
+
+    private void MarkPlayStateDirty(Track? track)
+    {
+        if (track == null) return;
+        lock (_pendingPlayStateSaves)
+            _pendingPlayStateSaves.Add(track);
+    }
+
+    /// <summary>Writes the accumulated play-state changes as user-state journal rows.</summary>
+    private async Task FlushPendingPlayStateAsync()
+    {
+        List<Track> pending;
+        lock (_pendingPlayStateSaves)
+        {
+            if (_pendingPlayStateSaves.Count == 0) return;
+            pending = _pendingPlayStateSaves.ToList();
+            _pendingPlayStateSaves.Clear();
+        }
+        await _library.SaveTrackUserStateAsync(pending);
+    }
+
     private void PlayTrack(Track track)
     {
         DebugLogger.Info(DebugLogger.Category.Playback, "PlayTrack", $"title={track.Title}, id={track.Id}, duration={track.Duration}");
@@ -1340,6 +1371,7 @@ public partial class PlayerViewModel : ViewModelBase
         if (CurrentTrack?.RememberPlaybackPosition == true)
         {
             CurrentTrack.SavedPositionMs = (long)Position.TotalMilliseconds;
+            MarkPlayStateDirty(CurrentTrack);
         }
 
         CurrentTrack = track;
@@ -1361,6 +1393,7 @@ public partial class PlayerViewModel : ViewModelBase
         // Update play count and last played time
         track.PlayCount++;
         track.LastPlayed = DateTime.UtcNow;
+        MarkPlayStateDirty(track);
         _playHistory?.RecordPlay(track);
         MarkRecentlyPlayed(track);
 
@@ -1420,12 +1453,12 @@ public partial class PlayerViewModel : ViewModelBase
         // Fire event to notify that a new track started
         TrackStarted?.Invoke(this, track);
 
-        // Persist play count/LastPlayed with a debounce: rewriting the whole
-        // library JSON on every track change caused a per-play UI stall, and
-        // rapid skips coalesce into a single write this way.
+        // Persist play count/LastPlayed with a debounce: rapid skips coalesce
+        // into a single write. Only the changed tracks' journal rows are written
+        // (library.db) — not the whole library.json.
         _librarySaveDebounce?.Dispose();
         _librarySaveDebounce = new System.Threading.Timer(
-            _ => _ = _library.SaveAsync(), null, LibrarySaveDebounceMs, System.Threading.Timeout.Infinite);
+            _ => _ = FlushPendingPlayStateAsync(), null, LibrarySaveDebounceMs, System.Threading.Timeout.Infinite);
 
         // Keep the on-disk queue snapshot current so a non-graceful exit
         // (tray + OS shutdown, task kill) still restores this session.
@@ -1497,6 +1530,7 @@ public partial class PlayerViewModel : ViewModelBase
             if (CurrentTrack.RememberPlaybackPosition == true)
             {
                 CurrentTrack.SavedPositionMs = 0;
+                MarkPlayStateDirty(CurrentTrack);
             }
             History.Insert(0, CurrentTrack);
             TrimHistory();

@@ -169,7 +169,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             if (e.PropertyName == nameof(SettingsViewModel.CollapseAlbumEditions))
             {
                 _isDirty = true;
-                Dispatcher.UIThread.Post(RebuildFilteredRows);
+                Dispatcher.UIThread.Post(() => RebuildFilteredRows());
             }
         };
         _settings.PropertyChanged += _settingsPropertyChangedHandler;
@@ -191,12 +191,35 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         _libraryUpdatedHandler = (_, _) =>
         {
             _isDirty = true;
-            Dispatcher.UIThread.Post(Refresh);
+            // Only rebuild immediately while this view is current — a scan fires
+            // LibraryUpdated every ~1.5 s and hidden views catch up via the dirty
+            // flag when activated instead of rebuilding the grid each event.
+            if (_isActive)
+                Dispatcher.UIThread.Post(Refresh);
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }
 
     private EventHandler? _libraryUpdatedHandler;
+
+    /// <summary>
+    /// Set by MainWindowViewModel when Albums becomes (or stops being) the current view.
+    /// Mirrors CoverFlowViewModel.IsActive: gates LibraryUpdated-driven rebuilds while
+    /// hidden, and catches up on activation (no-op when nothing changed).
+    /// </summary>
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive == value) return;
+            _isActive = value;
+            // Covers back-navigation paths that swap CurrentView without a Refresh call.
+            if (value) Refresh();
+        }
+    }
+
+    private bool _isActive;
 
     partial void OnReleaseTypeFilterChanged(ReleaseType? value)
     {
@@ -230,15 +253,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
         _isDirty = false;
 
-        // Sync rebuild: this is invoked from the navigation path (e.g. sidebar
-        // "Albums" click) which sets CurrentView immediately after, so the bound
-        // FilteredAlbumRows must be current on first paint to avoid flashing the
-        // previous filter's content for a frame.
-        Interlocked.Increment(ref _rebuildGeneration);
-        var albums = _library.Albums.ToList();
-        var rows = BuildFilteredRows(albums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode);
-        _allAlbums = albums;
-        FilteredAlbumRows.ReplaceAll(rows);
+        // Off-UI-thread rebuild via the same generation-guarded path as filter changes.
+        // The sync rebuild this replaces froze the UI thread on every navigation/scan
+        // event at large library sizes; the grid keeps showing its previous rows for
+        // the few frames the fresh list takes to compute in the background.
+        RebuildFilteredRows(refreshFromLibrary: true);
     }
 
     /// <summary>Sets the artist filter for showing a specific artist's discography.</summary>
@@ -316,7 +335,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
-    private void RebuildFilteredRows()
+    private void RebuildFilteredRows(bool refreshFromLibrary = false)
     {
         // Capture state for the background task
         var generation = Interlocked.Increment(ref _rebuildGeneration);
@@ -327,18 +346,34 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var releaseTypeFilter = ReleaseTypeFilter;
         var qualityFilter = QualityFilter;
         var sortMode = AlbumSortMode;
+        var library = refreshFromLibrary ? _library : null;
 
         ThreadPool.QueueUserWorkItem(_ =>
         {
+            // Move the library snapshot off the UI thread when refreshing
+            if (library != null)
+                albums = library.Albums.ToList();
+
             var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter, qualityFilter, sortMode);
 
-            // Only apply if no newer rebuild was requested
+            // Only apply if no newer rebuild was requested. A superseded library
+            // reload must re-mark dirty: the newer request may have captured the
+            // pre-reload _allAlbums snapshot.
             if (Volatile.Read(ref _rebuildGeneration) == generation)
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (Volatile.Read(ref _rebuildGeneration) == generation)
-                        FilteredAlbumRows.ReplaceAll(rows);
+                    if (Volatile.Read(ref _rebuildGeneration) != generation)
+                    {
+                        if (library != null) _isDirty = true;
+                        return;
+                    }
+                    if (library != null) _allAlbums = albums;
+                    FilteredAlbumRows.ReplaceAll(rows);
                 });
+            else if (library != null)
+            {
+                _isDirty = true;
+            }
         });
     }
 
@@ -659,14 +694,18 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var albums = CtrlSelectedAlbums.Count > 0 ? CtrlSelectedAlbums : (album != null ? new List<Album> { album } : new List<Album>());
         if (albums.Count == 0) return;
+        var changed = new List<Track>();
         foreach (var a in albums)
         {
             if (a.Tracks == null || a.Tracks.Count == 0) continue;
             var newState = !a.IsAllTracksFavorite;
             foreach (var track in a.Tracks)
+            {
                 track.IsFavorite = newState;
+                changed.Add(track);
+            }
         }
-        await _library.SaveAsync();
+        await _library.SaveTrackUserStateAsync(changed);
         _library.NotifyFavoritesChanged();
         CtrlSelectedAlbums.Clear();
     }

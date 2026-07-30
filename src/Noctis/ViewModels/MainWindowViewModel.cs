@@ -1072,6 +1072,14 @@ public partial class MainWindowViewModel : ViewModelBase
         // was on Songs or Settings. Gate it on being the visible view.
         _coverFlowVm.IsActive = ReferenceEquals(newValue, _coverFlowVm);
 
+        // Same gating for the big library list VMs: each rebuilt its full contents on
+        // every LibraryUpdated (fired every ~1.5 s during a scan) even while hidden.
+        // Hidden VMs now just mark dirty and catch up once when they become current.
+        _songsVm.IsActive = ReferenceEquals(newValue, _songsVm);
+        _albumsVm.IsActive = ReferenceEquals(newValue, _albumsVm);
+        _artistsVm.IsActive = ReferenceEquals(newValue, _artistsVm);
+        _foldersVm.IsActive = ReferenceEquals(newValue, _foldersVm);
+
         var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
         var leavingLyrics = ReferenceEquals(oldValue, _lyricsVm) && !enteringLyrics;
 

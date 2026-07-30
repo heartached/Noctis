@@ -59,7 +59,8 @@ public static class AppPaths
 
             foreach (var dirName in new[]
             {
-                "artwork", "playlist_covers", "profile", "artist_bios", "lyrics_cache"
+                "artwork", "playlist_covers", "profile", "artist_bios", "lyrics_cache",
+                "lyrics_store"
             })
             {
                 var src = Path.Combine(releaseRoot, dirName);

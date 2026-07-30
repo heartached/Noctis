@@ -47,11 +47,37 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         // Dispatch to UI thread since scan fires LibraryUpdated from a background thread.
         // Held in a field so Dispose can detach it — an anonymous lambda with no stored
         // reference cannot be unsubscribed, matching LibrarySongsViewModel.
-        _libraryUpdatedHandler = (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
+        // Only rebuild immediately while this view is current — a scan fires LibraryUpdated
+        // every ~1.5 s and hidden views catch up via the dirty flag when activated.
+        _libraryUpdatedHandler = (_, _) =>
+        {
+            _isDirty = true;
+            if (_isActive)
+                Dispatcher.UIThread.Post(Refresh);
+        };
         _library.LibraryUpdated += _libraryUpdatedHandler;
     }
 
     private EventHandler? _libraryUpdatedHandler;
+
+    /// <summary>
+    /// Set by MainWindowViewModel when Artists becomes (or stops being) the current view.
+    /// Mirrors CoverFlowViewModel.IsActive: gates LibraryUpdated-driven rebuilds while
+    /// hidden, and catches up on activation (no-op when nothing changed).
+    /// </summary>
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive == value) return;
+            _isActive = value;
+            // Covers back-navigation paths that swap CurrentView without a Refresh call.
+            if (value) Refresh();
+        }
+    }
+
+    private bool _isActive;
 
     public void SetArtistImageService(ArtistImageService service) => _artistImageService = service;
 
