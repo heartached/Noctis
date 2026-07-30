@@ -1614,7 +1614,7 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="Flowing Lyrics Background" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Drift glowing album colors behind the lyrics page when the artwork background is active."
+                        <TextBlock Text="Drift glowing album colors behind the lyrics."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
