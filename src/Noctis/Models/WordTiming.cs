@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Noctis.Services;
 
 namespace Noctis.Models;
 
@@ -37,6 +38,13 @@ public partial class WordTiming : ObservableObject
     /// </summary>
     public bool IsEmphasis { get; set; }
 
+    /// <summary>
+    /// Resolved sung duration in milliseconds (same end resolution as the emphasis
+    /// gate). Set by <see cref="LyricLine"/> alongside <see cref="IsEmphasis"/>; the
+    /// held-note glow envelope scales its intensity from this.
+    /// </summary>
+    public double HeldDurationMs { get; set; }
+
     /// <summary>True once the playhead has advanced past this word.</summary>
     [ObservableProperty]
     private bool _isPast;
@@ -46,9 +54,11 @@ public partial class WordTiming : ObservableObject
     private bool _isCurrent;
 
     /// <summary>
-    /// Reveal progress in [0..1] — drives the AMLL-style left-to-right colour sweep
-    /// across the word as it is sung. Past = 1, future = 0, current = fraction of elapsed.
+    /// Reveal progress driving the AMLL-style left-to-right colour sweep. Runs
+    /// slightly past [0..1] on the words neighbouring the current one, so the
+    /// feathered edge can straddle token boundaries; words out of the band's reach
+    /// rest at <see cref="KaraokeSweep.InertFuture"/> / <see cref="KaraokeSweep.InertPast"/>.
     /// </summary>
     [ObservableProperty]
-    private double _progress;
+    private double _progress = KaraokeSweep.InertFuture;
 }

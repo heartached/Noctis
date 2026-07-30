@@ -37,6 +37,28 @@ public static class KaraokeSweep
         return Math.Clamp((tSeconds - startSeconds) / (endSeconds - startSeconds), 0, 1);
     }
 
+    /// <summary>Progress sentinel for words far ahead of the sweep — renders no band.</summary>
+    public const double InertFuture = -2;
+
+    /// <summary>Progress sentinel for words far behind the sweep — renders fully lit.</summary>
+    public const double InertPast = 3;
+
+    /// <summary>
+    /// Unclamped reveal progress for the live word layer: like <see cref="WordProgress"/>
+    /// but it keeps moving a little past both ends of the word, so the feathered edge can
+    /// straddle token boundaries — the trailing half of the band finishes crossing a word
+    /// while the leading half is already entering the next one (AMLL behaviour). Far
+    /// outside the word it snaps to the inert sentinels so distant words render nothing.
+    /// </summary>
+    public static double BandProgress(double startSeconds, double endSeconds, double tSeconds)
+    {
+        if (endSeconds <= startSeconds) return tSeconds < startSeconds ? InertFuture : InertPast;
+        var raw = (tSeconds - startSeconds) / (endSeconds - startSeconds);
+        if (raw <= -1) return InertFuture;
+        if (raw >= 2) return InertPast;
+        return raw;
+    }
+
     /// <summary>
     /// Sweep end for a line's final word when neither the word nor the line carries an
     /// explicit end time (start-tag-only enhanced LRC). Bounded by the next synced

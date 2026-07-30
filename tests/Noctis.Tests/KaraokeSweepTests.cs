@@ -94,4 +94,37 @@ public class KaraokeSweepTests
             TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(9));
         Assert.Equal(TimeSpan.FromSeconds(9), end);
     }
+
+    [Theory]
+    [InlineData(10.0, 12.0, 11.0, 0.5)]    // mid-word: same as WordProgress
+    [InlineData(10.0, 12.0, 12.1, 1.05)]   // keeps advancing past the end (trailing feather finishes)
+    [InlineData(10.0, 12.0, 9.9, -0.05)]   // pre-roll before the start (leading feather enters)
+    public void BandProgress_ExtendsLinearlyPastBothEnds(double start, double end, double t, double expected)
+    {
+        Assert.Equal(expected, KaraokeSweep.BandProgress(start, end, t), 6);
+    }
+
+    [Fact]
+    public void BandProgress_SnapsToInertSentinelsFarOutside()
+    {
+        Assert.Equal(KaraokeSweep.InertFuture, KaraokeSweep.BandProgress(10, 12, 7.9));  // raw ≤ -1
+        Assert.Equal(KaraokeSweep.InertPast, KaraokeSweep.BandProgress(10, 12, 16.1));   // raw ≥ 2
+    }
+
+    [Fact]
+    public void BandProgress_ZeroLengthWordSnapsToInertStates()
+    {
+        Assert.Equal(KaraokeSweep.InertFuture, KaraokeSweep.BandProgress(10, 10, 9.9));
+        Assert.Equal(KaraokeSweep.InertPast, KaraokeSweep.BandProgress(10, 10, 10.0));
+    }
+
+    [Fact]
+    public void InertSentinels_SitOutsideAnyFeatherReach()
+    {
+        // Contract with the sweep converter: the sentinels must clear the widest
+        // possible feather and the band's pass-through range (-1, 2), so a word at
+        // rest can never render a partial band.
+        Assert.True(KaraokeSweep.InertFuture <= -1);
+        Assert.True(KaraokeSweep.InertPast >= 2);
+    }
 }

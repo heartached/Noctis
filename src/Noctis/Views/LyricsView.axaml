@@ -16,6 +16,7 @@
         <conv:ArtworkPathConverter x:Key="ArtworkConverter"/>
         <conv:VolumeToIconConverter x:Key="VolumeToIcon"/>
         <conv:ProgressToSweepForegroundConverter x:Key="ProgressToSweepFg"/>
+        <conv:EmphasisGlowConverter x:Key="EmphasisGlow"/>
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
         <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect"/>
         <conv:PreBlurredArtworkConverter x:Key="PreBlurArt"/>
@@ -53,7 +54,18 @@
                                Canvas.Top="-40"
                                Padding="40"
                                FontWeight="Bold"
-                               Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"/>
+                               Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}">
+                        <!-- Bell envelope over the hold: rises, peaks mid-word, releases —
+                             peak scaled by hold length (a 1s hold barely glows, a 4s note
+                             blooms). Driven per-frame off Progress, replacing the old
+                             class transition that snapped to 0.5 and froze. -->
+                        <TextBlock.Opacity>
+                            <MultiBinding Converter="{StaticResource EmphasisGlow}">
+                                <Binding Path="Progress"/>
+                                <Binding Path="HeldDurationMs"/>
+                            </MultiBinding>
+                        </TextBlock.Opacity>
+                    </TextBlock>
                 </Canvas>
                 <!-- Base layer: full opacity while the line is inactive, dims to a
                      soft ghost under the sweep while active (word-base styles). -->
@@ -80,6 +92,10 @@
                         <MultiBinding Converter="{StaticResource ProgressToSweepFg}">
                             <Binding Path="Progress"/>
                             <Binding Path="$parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg"/>
+                            <!-- Layout width + font size → constant ~0.25em feather, so
+                                 narrow tokens (single CJK cells) get a soft edge too. -->
+                            <Binding Path="Bounds.Width" RelativeSource="{RelativeSource Self}"/>
+                            <Binding Path="FontSize" RelativeSource="{RelativeSource Self}"/>
                         </MultiBinding>
                     </TextBlock.Foreground>
                 </TextBlock>
@@ -288,17 +304,11 @@
                  so the spill must stay under the viewer's right padding or it clips. -->
             <Setter Property="RenderTransform" Value="translate(0px,-2px) scale(1.04)"/>
         </Style>
+        <!-- Glow opacity is bound per-frame in the template (EmphasisGlowConverter
+             bell over the hold). No Opacity setter or transition here: a transition
+             would low-pass the per-frame values and lag the vocal. -->
         <Style Selector="TextBlock.word-glow">
-            <Setter Property="Opacity" Value="0"/>
             <Setter Property="Effect" Value="blur(6)"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.45" Easing="CubicEaseInOut"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Panel.word-cell.emphasis.current TextBlock.word-glow">
-            <Setter Property="Opacity" Value="0.5"/>
         </Style>
 
         <!-- Word base layer: full brightness on inactive lines (matches plain line text),

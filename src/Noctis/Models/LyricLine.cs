@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Noctis.Services;
 
 namespace Noctis.Models;
 
@@ -75,20 +76,65 @@ public partial class LyricLine : ObservableObject
     /// <summary>End of the background vocal; bounds its last word's highlight. Set before <see cref="BackgroundWords"/>.</summary>
     public TimeSpan? BackgroundEndTimestamp { get; set; }
 
-    /// <summary>Words sung at least this long count as held notes and get the swell/glow emphasis.</summary>
-    private const double EmphasisMs = 1000;
+    /// <summary>AMLL's shouldEmphasize floor: a held note is at least 1s of vocal.</summary>
+    private const double EmphasisFloorMs = 1000;
+
+    /// <summary>Adaptive-threshold cap: a multi-second note is a hold no matter the cadence.</summary>
+    private const double EmphasisCapMs = 2500;
+
+    /// <summary>A held word must stand out from its line's own cadence by this factor.</summary>
+    private const double EmphasisCadenceFactor = 1.5;
 
     private static void ComputeWordEmphasis(IReadOnlyList<WordTiming>? words, TimeSpan? lineEnd)
     {
-        if (words == null) return;
+        if (words == null || words.Count == 0) return;
+
+        // Resolve effective durations first. ELRC word ends are the NEXT word's
+        // start, so every duration silently includes the rest that follows the
+        // word — a fixed 1s gate emphasized nearly every word of a slow song.
+        var durations = new double[words.Count];
         for (int i = 0; i < words.Count; i++)
         {
             var w = words[i];
             var end = w.End ?? (i + 1 < words.Count ? words[i + 1].Start : lineEnd);
-            w.IsEmphasis = end.HasValue
-                && (end.Value - w.Start).TotalMilliseconds >= EmphasisMs
-                && !string.IsNullOrWhiteSpace(w.Text);
+            durations[i] = end.HasValue ? (end.Value - w.Start).TotalMilliseconds : 0;
         }
+
+        // Adaptive gate: a held word must beat 1.5× the line's median word duration,
+        // floored at AMLL's 1s and capped at 2.5s (an unambiguous hold fires even in
+        // a uniformly slow line). This keeps ballads from glowing on every word.
+        var threshold = Math.Clamp(
+            EmphasisCadenceFactor * Median(durations), EmphasisFloorMs, EmphasisCapMs);
+
+        for (int i = 0; i < words.Count; i++)
+        {
+            var w = words[i];
+            w.HeldDurationMs = durations[i];
+            var text = w.Text.Trim();
+            // AMLL shouldEmphasize size rule: CJK cells (one character each, the
+            // parser never merges them) gate on duration alone; Latin words must be
+            // 2–7 characters — longer merged words span >1s at a normal pace, and a
+            // single letter reads wrong under a whole-word glow.
+            var sizeOk = text.Length > 0
+                && (IsCjkish(text) || (text.Length >= 2 && text.Length <= 7));
+            w.IsEmphasis = sizeOk && durations[i] >= threshold;
+        }
+    }
+
+    private static double Median(double[] values)
+    {
+        var sorted = (double[])values.Clone();
+        Array.Sort(sorted);
+        var mid = sorted.Length / 2;
+        return sorted.Length % 2 == 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2.0;
+    }
+
+    // Matches the ELRC parser's CJK boundary (chars from the CJK radicals block up).
+    private static bool IsCjkish(string text)
+    {
+        foreach (var c in text)
+            if (c >= '⺀') return true;
+        return false;
     }
 
     /// <summary>True when the line has word-level timing data.</summary>
@@ -140,8 +186,13 @@ public partial class LyricLine : ObservableObject
             if (w.IsCurrent != isCurrent) w.IsCurrent = isCurrent;
             if (w.IsPast != isPast) w.IsPast = isPast;
 
-            // Snap Progress for past/future words; the VM drives the current word per tick.
-            var snap = isPast ? 1.0 : (isCurrent ? w.Progress : 0.0);
+            // Snap Progress for words outside the band's reach; the VM drives the
+            // current word AND its immediate neighbours per tick (the feathered
+            // edge straddles token boundaries, so ±1 words carry live pre-roll /
+            // overshoot values — see KaraokeSweep.BandProgress).
+            var snap = isPast
+                ? KaraokeSweep.InertPast
+                : (isCurrent ? w.Progress : KaraokeSweep.InertFuture);
             if (w.Progress != snap) w.Progress = snap;
         }
     }
