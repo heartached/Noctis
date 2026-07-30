@@ -81,6 +81,7 @@ public class FreshInstallDefaultsTests
         Assert.Equal("Crimson", Fresh.AccentPresetName);
         Assert.Equal("#E74856", Fresh.AccentColorHex);
         Assert.True(Fresh.EnableAnimatedCovers);
+        Assert.True(Fresh.LyricsFlowingLightEnabled);
         Assert.Equal(0.4, Fresh.PlaybackBarBackgroundOpacity);
         Assert.True(Fresh.GaplessPlaybackEnabled);
     }

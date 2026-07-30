@@ -135,6 +135,10 @@ public class LibraryService : ILibraryService
         // drive, unreachable NAS, changed drive letter). Collected so the publish below can
         // refuse to treat "root is gone" as "root is empty" — see the guard after the scan.
         var unavailableRoots = new List<string>();
+        // Directories whose listing failed mid-walk (permissions, transient I/O, a cloud
+        // sync provider that isn't running yet). "Couldn't list" is not "empty": known
+        // tracks under these are carried forward after the scan instead of being dropped.
+        var failedDirs = new ConcurrentBag<string>();
         // Tracks which albums have already had a cover cached during this scan, so we
         // save each album's art exactly once (first track wins).
         var albumArtClaimed = new ConcurrentDictionary<Guid, bool>();
@@ -244,7 +248,7 @@ public class LibraryService : ILibraryService
                 // enumeration with metadata reads and starts reporting progress
                 // immediately instead of after a long silent listing phase.
                 // NoBuffering dispatches one file at a time so the count moves right away.
-                var files = EnumerateAudioFiles(folder, excludedRoots, ignoredNames)
+                var files = EnumerateAudioFiles(folder, excludedRoots, ignoredNames, failedDirs)
                     .Where(f => !excludedFiles.Contains(f));
                 var partitioner = Partitioner.Create(files, EnumerablePartitionerOptions.NoBuffering);
 
@@ -252,10 +256,12 @@ public class LibraryService : ILibraryService
                 {
                     if (ct.IsCancellationRequested) return;
 
+                    // Declared outside the try so the failure paths below can tell a
+                    // known-but-unreadable file apart from an unreadable new file.
+                    Track? existing = null;
+
                     try
                     {
-                        Track? existing = null;
-
                         // Skip files we already have that haven't changed
                         if (trackIndexSnapshot.TryGetValue(ComputeFileId(filePath), out existing))
                         {
@@ -297,6 +303,15 @@ public class LibraryService : ILibraryService
                         }
                         else
                         {
+                            // The file is on disk (it was just enumerated) but couldn't be
+                            // parsed — locked, corrupt, or a cloud placeholder whose
+                            // provider isn't running (ReadTrackMetadata swallows I/O errors
+                            // and returns null). Dropping a KNOWN track here removed it
+                            // from the library, and the save below made that permanent —
+                            // keep the existing entry and let a later scan that can read
+                            // the file refresh it.
+                            if (existing != null)
+                                newTracks.Add(existing);
                             Interlocked.Increment(ref skippedCount);
                         }
 
@@ -304,7 +319,10 @@ public class LibraryService : ILibraryService
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        // Skip files that can't be read (locked, permissions, I/O error)
+                        // Skip files that can't be read (locked, permissions, I/O error) —
+                        // but keep the existing entry for a known file (see above).
+                        if (existing != null)
+                            newTracks.Add(existing);
                         Interlocked.Increment(ref skippedCount);
                         ReportProgress(Interlocked.Increment(ref fileCount));
                     }
@@ -393,6 +411,43 @@ public class LibraryService : ILibraryService
             }
         }
 
+        // A directory that could not be LISTED is "unavailable", not "empty" — the same
+        // principle as the missing-roots guard above, one level down. Losing a listing
+        // (access denied, transient I/O, a cloud provider such as OneDrive that hasn't
+        // started yet when the startup scan runs) made every track under that subtree
+        // fall out of newTracks, and the publish + SaveAsync below removed those folders
+        // from the library permanently while the files were still on disk. Carry the
+        // known tracks under failed directories forward unchanged; a later scan that can
+        // list them again reconciles normally, and a genuinely deleted folder (parent
+        // listed fine, entry simply gone) still drops out exactly as before.
+        if (!failedDirs.IsEmpty)
+        {
+            var scannedIds = new HashSet<Guid>(newTracks.Select(t => t.Id));
+            var carried = SelectTracksUnderFailedDirectories(originalTracks, scannedIds, failedDirs);
+            if (carried.Count > 0)
+            {
+                foreach (var t in carried)
+                    newTracks.Add(t);
+
+                var dirList = string.Join(", ", failedDirs.Distinct(StringComparer.OrdinalIgnoreCase));
+                DebugLog.Write("Library",
+                    $"Scan could not list {failedDirs.Count} folder(s) ({dirList}); keeping " +
+                    $"{carried.Count} known track(s) under them rather than treating them as deleted.");
+                await _auditTrail.AppendAsync(new AuditEvent
+                {
+                    EventType = "scan.subtreeUnavailable",
+                    EntityType = "library",
+                    EntityId = "local",
+                    Reason = "One or more folders could not be enumerated; their tracks were kept",
+                    Details = new Dictionary<string, string>
+                    {
+                        ["unlistableDirectories"] = dirList,
+                        ["tracksCarriedForward"] = carried.Count.ToString()
+                    }
+                }, ct);
+            }
+        }
+
         // Belt-and-braces: never let a scan replace a populated library with nothing.
         // Any path that gets here with zero results and a non-empty library is a bug in
         // enumeration, not a user deleting their entire collection mid-scan.
@@ -411,6 +466,13 @@ public class LibraryService : ILibraryService
         // every launch, which the user saw as re-indexing even when nothing changed.
         if (changedCount == 0 && unchangedCount == originalTrackCount)
         {
+            // The progressive publisher may have left _tracks on a partial snapshot taken
+            // before the last files were verified. Every other early exit rolls that back;
+            // this one didn't — so the truncated set stayed live for the whole session, and
+            // any later SaveAsync (a rating change, the per-play debounce, the shutdown
+            // flush) wrote it through to library.json, silently deleting whichever folders
+            // happened to be walked last. No-op when nothing was partially published.
+            RestoreOriginalLibrary();
             await _auditTrail.AppendAsync(new AuditEvent
             {
                 EventType = "scan.noop",
@@ -1805,7 +1867,8 @@ public class LibraryService : ILibraryService
     private static IEnumerable<string> EnumerateAudioFiles(
         string root,
         IReadOnlyCollection<string> excludedRoots,
-        HashSet<string> ignoredNames)
+        HashSet<string> ignoredNames,
+        ConcurrentBag<string> failedDirs)
     {
         var stack = new Stack<string>();
         // Cycle guard keyed on the RESOLVED path: a junction/symlink pointing at
@@ -1821,15 +1884,22 @@ public class LibraryService : ILibraryService
             if (IsUnderAnyRoot(current, excludedRoots)) continue;
             if (!visited.Add(ResolveRealPath(current))) continue;
 
-            IEnumerable<string> directories;
-            IEnumerable<string> files;
+            List<string> directories;
+            List<string> files;
             try
             {
-                directories = Directory.EnumerateDirectories(current);
-                files = Directory.EnumerateFiles(current);
+                // Materialized inside the try: the enumerables are lazy, so an I/O error
+                // surfacing mid-listing (not just at open) would otherwise escape this
+                // catch and abort the entire scan pipeline.
+                directories = Directory.EnumerateDirectories(current).ToList();
+                files = Directory.EnumerateFiles(current).ToList();
             }
             catch
             {
+                // "Couldn't list" is not "doesn't exist". Silently skipping here made the
+                // scan treat the whole subtree as deleted; record it so ScanCoreAsync can
+                // keep the known tracks under it (see the failed-directories guard there).
+                failedDirs.Add(current);
                 continue;
             }
 
@@ -1848,6 +1918,36 @@ public class LibraryService : ILibraryService
                     yield return file;
             }
         }
+    }
+
+    /// <summary>
+    /// Existing tracks that live under a directory whose listing failed this scan and
+    /// that the scan did not see — i.e. tracks that would otherwise be dropped because
+    /// their parent folder was unreachable, not because their file is gone.
+    /// </summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static List<Track> SelectTracksUnderFailedDirectories(
+        IReadOnlyList<Track> existingTracks,
+        HashSet<Guid> scannedIds,
+        IEnumerable<string> failedDirectories)
+    {
+        var failedPrefixes = failedDirectories
+            .Select(TryNormalizePath)
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (failedPrefixes.Length == 0)
+            return new List<Track>();
+
+        return existingTracks
+            .Where(t =>
+            {
+                if (scannedIds.Contains(t.Id)) return false;
+                var normalized = TryNormalizePath(t.FilePath);
+                return normalized != null && failedPrefixes.Any(p => IsUnderRoot(normalized, p));
+            })
+            .ToList();
     }
 
     // Symlinked/junctioned directories are followed (symlinked music libraries are

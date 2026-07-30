@@ -213,6 +213,10 @@ public partial class LyricsView : UserControl
             {
                 vm.PropertyChanged += OnViewModelPropertyChanged;
                 vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
+                // The Settings toggle for the flowing light lives on the Player VM
+                // (same live channel as the marquee flags) — watch it so flipping the
+                // switch while this page is open starts/stops the drift immediately.
+                vm.Player.PropertyChanged += OnPlayerPropertyChanged;
                 _subscribedVm = vm;
             }
 
@@ -253,6 +257,7 @@ public partial class LyricsView : UserControl
         {
             _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
             _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
+            _subscribedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
             _subscribedVm = null;
         }
 
@@ -625,10 +630,18 @@ public partial class LyricsView : UserControl
 
     private void UpdateMeshAnimationState(LyricsViewModel vm)
     {
-        if (vm.IsColorModeArtwork)
+        if (vm.IsColorModeArtwork && vm.Player.LyricsFlowingLightEnabled)
             StartMeshAnimation();
         else
             StopMeshAnimation();
+    }
+
+    private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        // The layer's visibility is bound in XAML; this only parks/resumes the timer.
+        if (e.PropertyName == nameof(PlayerViewModel.LyricsFlowingLightEnabled) &&
+            DataContext is LyricsViewModel vm)
+            UpdateMeshAnimationState(vm);
     }
 
     private void StartMeshAnimation()

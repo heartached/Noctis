@@ -18,10 +18,11 @@ public sealed partial class FolderNode : ObservableObject
     /// <summary>True if this node is one of the user's configured music roots.</summary>
     public bool IsRoot { get; init; }
 
-    /// <summary>Child subfolders, alphabetically sorted.</summary>
+    /// <summary>Child subfolders, in natural (numeric-aware) name order.</summary>
     public ObservableCollection<FolderNode> Children { get; } = new();
 
-    /// <summary>Tracks that live directly in this folder (not in subfolders).</summary>
+    /// <summary>Tracks that live directly in this folder (not in subfolders),
+    /// sorted at build time by disc/track number then natural filename.</summary>
     public List<Track> DirectTracks { get; } = new();
 
     /// <summary>Total track count including all descendants (computed at build time).</summary>

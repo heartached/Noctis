@@ -259,6 +259,10 @@ public class AppSettings
     /// When false, the chosen solid/gradient color shows through instead.</summary>
     public bool LyricsShowArtworkBackground { get; set; } = true;
 
+    /// <summary>Whether the flowing-light color blobs drift over the artwork background
+    /// on the lyrics page (issue #22). Only applies while the artwork mode is active.</summary>
+    public bool LyricsFlowingLightEnabled { get; set; } = true;
+
     // ── Lyrics providers ──
 
     /// <summary>Whether LRCLIB online lyrics search is enabled.</summary>
