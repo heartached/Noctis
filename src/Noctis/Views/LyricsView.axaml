@@ -434,7 +434,8 @@
                  (a XAML KeyFrame animation on RenderTransform crashes at startup). -->
             <Canvas x:Name="MeshBlobLayer"
                     ClipToBounds="True"
-                    IsHitTestVisible="False">
+                    IsHitTestVisible="False"
+                    IsVisible="{Binding Player.LyricsFlowingLightEnabled}">
                 <Ellipse x:Name="MeshBlob1">
                     <Ellipse.Fill>
                         <RadialGradientBrush>

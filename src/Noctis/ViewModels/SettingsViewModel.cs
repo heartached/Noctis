@@ -218,6 +218,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _miniPlayerTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _miniPlayerAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
+    [ObservableProperty] private bool _lyricsFlowingLightEnabled = true;
 
     /// <summary>Minimize hides the main window to the system tray.</summary>
     [ObservableProperty] private bool _minimizeToTray;
@@ -827,6 +828,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerTitleMarqueeEnabled = _settings.MiniPlayerTitleMarqueeEnabled;
             MiniPlayerAlbumMarqueeEnabled = _settings.MiniPlayerAlbumMarqueeEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
+            LyricsFlowingLightEnabled = _settings.LyricsFlowingLightEnabled;
             MinimizeToTray = _settings.MinimizeToTray;
             CloseToTray = _settings.CloseToTray;
             // Reflect the real OS autostart state (not an AppSettings copy) so the
@@ -1083,6 +1085,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MiniPlayerTitleMarqueeEnabled = MiniPlayerTitleMarqueeEnabled;
         _settings.MiniPlayerAlbumMarqueeEnabled = MiniPlayerAlbumMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
+        _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
         _settings.MinimizeToTray = MinimizeToTray;
         _settings.CloseToTray = CloseToTray;
         _settings.StartMinimizedToTray = StartMinimizedToTray;
@@ -1177,6 +1180,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        _player.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowScrollEnabled = CoverFlowMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowArtistScrollEnabled = CoverFlowArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowAlbumScrollEnabled = CoverFlowAlbumMarqueeEnabled;
@@ -1822,6 +1826,12 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnEnableAnimatedCoversChanged(bool value)
     {
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsFlowingLightEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
 
@@ -3192,6 +3202,7 @@ public partial class SettingsViewModel : ViewModelBase
             WebRemoteEnabled = defaultSettings.WebRemoteEnabled;
             CollapseAlbumEditions = defaultSettings.CollapseAlbumEditions;
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
+            LyricsFlowingLightEnabled = defaultSettings.LyricsFlowingLightEnabled;
             FfmpegPath = defaultSettings.FfmpegPath;
             ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
             PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;

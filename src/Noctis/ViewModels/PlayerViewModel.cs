@@ -83,6 +83,9 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Opacity of the playback bar's glass fill (0–1). Driven by Settings; default
     /// 0.4 matches the original #66 alpha. Background only — controls/text stay opaque.</summary>
     [ObservableProperty] private double _islandBackgroundOpacity = 0.4;
+    /// <summary>Whether the lyrics page's flowing-light blobs are shown in artwork
+    /// background mode (issue #22). Driven by Settings like the marquee flags.</summary>
+    [ObservableProperty] private bool _lyricsFlowingLightEnabled = true;
 
     // ── Lyrics page integration (flags + pass-through commands set up by MainWindowViewModel) ──
 
