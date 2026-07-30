@@ -58,11 +58,16 @@ public class PersistenceService : IPersistenceService
     {
     }
 
+    // Per-track lyric text lives here, not in library.json — see LyricsStore.
+    private readonly LyricsStore _lyricsStore;
+    internal LyricsStore LyricsStore => _lyricsStore;
+
     // Test seam: points the service at an isolated data root so the real
     // save/load/protect logic is exercisable against a temp directory.
     internal PersistenceService(string dataRoot)
     {
         DataDirectory = dataRoot;
+        _lyricsStore = new LyricsStore(Path.Combine(DataDirectory, "lyrics_store"));
 
         // Ensure directories exist
         Directory.CreateDirectory(DataDirectory);
@@ -187,7 +192,7 @@ public class PersistenceService : IPersistenceService
 
     public async Task<List<Track>?> LoadLibraryAsync()
     {
-        var (tracks, outcome) = await LoadJsonWithOutcomeAsync<List<Track>>(LibraryPath);
+        var (tracks, outcome) = await LoadLibraryWithOutcomeAsync();
 
         // "File absent" (first run, or the user cleared their data) is normal and must
         // stay writable. "File present but unparseable" is not: returning null there used
@@ -208,6 +213,56 @@ public class PersistenceService : IPersistenceService
         return tracks;
     }
 
+    /// <summary>
+    /// Library-specific load: streams the track array element by element
+    /// (instead of materializing the whole list first) so the one-time lyric
+    /// migration below never holds more than one track's legacy lyric strings
+    /// in RAM — on a lyric-heavy 100k library the old inline fields were
+    /// hundreds of MB. Each streamed track immediately moves any inline lyrics
+    /// from the old JSON format into the per-track store and drops them.
+    /// Mirrors LoadJsonWithOutcomeAsync's temp-promotion and corrupt handling.
+    /// </summary>
+    private async Task<(List<Track>? Value, LoadOutcome Outcome)> LoadLibraryWithOutcomeAsync()
+    {
+        var path = LibraryPath;
+        var tempPath = path + ".tmp";
+        if (!File.Exists(path) && File.Exists(tempPath))
+        {
+            if (await TryParseAsync<List<Track>>(tempPath) is not null)
+            {
+                try { File.Move(tempPath, path); }
+                catch { /* fall through; we re-check File.Exists below */ }
+            }
+            else
+            {
+                try { File.Delete(tempPath); } catch { }
+            }
+        }
+
+        if (!File.Exists(path)) return (null, LoadOutcome.Missing);
+
+        try
+        {
+            var tracks = new List<Track>();
+            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.Read, bufferSize: 65536, useAsync: true);
+            await foreach (var track in JsonSerializer.DeserializeAsyncEnumerable<Track>(stream, JsonOptions))
+            {
+                if (track is null) continue;
+                track.MigrateLegacyLyricsToStore(_lyricsStore);
+                tracks.Add(track);
+            }
+            return (tracks, LoadOutcome.Ok);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[PersistenceService] Failed to load {Path.GetFileName(path)}: {ex.Message}");
+            DebugLog.Write("Persistence", $"Failed to load {Path.GetFileName(path)}: {ex.Message}");
+            return (null, LoadOutcome.Corrupt);
+        }
+    }
+
     public async Task SaveLibraryAsync(List<Track> tracks)
     {
         if (LibraryLoadFailed)
@@ -218,6 +273,17 @@ public class PersistenceService : IPersistenceService
                 "Refusing to save library.json — the existing file failed to load this session.");
             return;
         }
+
+        // Flush pending lyric edits to the per-track store BEFORE the lyric-free
+        // JSON reaches disk: a crash between the two leaves the lyrics safe in
+        // the store, never dropped. Runs on the pool — commits do comparison
+        // reads and small writes, and only tracks whose lyric setters ran since
+        // the last save do any I/O at all.
+        await Task.Run(() =>
+        {
+            for (var i = 0; i < tracks.Count; i++)
+                tracks[i].CommitLyricsToStore(_lyricsStore);
+        });
 
         await SaveJsonAsync(LibraryPath, tracks, CompactJsonOptions);
     }

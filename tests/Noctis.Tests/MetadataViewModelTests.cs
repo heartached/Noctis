@@ -377,6 +377,7 @@ public class MetadataViewModelTests
             => Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(new Dictionary<Guid, Guid>());
         public Task LoadAsync() => Task.CompletedTask;
         public Task SaveAsync() => Task.CompletedTask;
+        public Task SaveTrackUserStateAsync(IReadOnlyCollection<Track> tracks) => Task.CompletedTask;
         public Task ClearAsync() => Task.CompletedTask;
         public Task RebuildIndexAsync(CancellationToken ct = default) => Task.CompletedTask;
         public void NotifyFavoritesChanged() { }

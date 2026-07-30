@@ -66,6 +66,8 @@ internal sealed class FakeLibraryService : ILibraryService
 
     public event EventHandler? LibraryUpdated;
     public event EventHandler<int>? ScanProgress;
+
+    public void RaiseLibraryUpdated() => LibraryUpdated?.Invoke(this, EventArgs.Empty);
     public event EventHandler? FavoritesChanged;
     public event EventHandler<List<string>>? MusicFoldersChanged;
     public event EventHandler<string[]>? ScanAborted;
@@ -82,6 +84,7 @@ internal sealed class FakeLibraryService : ILibraryService
         => Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(new Dictionary<Guid, Guid>());
     public Task LoadAsync() => Task.CompletedTask;
     public Task SaveAsync() => Task.CompletedTask;
+    public Task SaveTrackUserStateAsync(IReadOnlyCollection<Track> tracks) => Task.CompletedTask;
     public Task ClearAsync() => Task.CompletedTask;
     public Task RebuildIndexAsync(CancellationToken ct = default) => Task.CompletedTask;
     public void NotifyFavoritesChanged() { }

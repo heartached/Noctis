@@ -969,6 +969,10 @@ public class LibraryService : ILibraryService
             catch { /* keep prior size/timestamp if the new file isn't readable yet */ }
 
             var newId = ComputeFileId(newPath);
+            // Store-backed lyrics are keyed by track id; lift them into pending
+            // values before the id changes so the save below re-files them
+            // under the new id instead of orphaning them under the old one.
+            track.PrepareLyricsForIdChange();
             track.Id = newId;
             if (oldId != newId) remap[oldId] = newId;
             changed = true;
@@ -1062,6 +1066,10 @@ public class LibraryService : ILibraryService
         {
             _tracks = tracks;
 
+            // Overlay journaled user state (ratings, favorites, play counts, ...)
+            // on top of the JSON values before anything publishes or saves them.
+            await OverlayUserStateFromJournalAsync();
+
             // Fast path: try restoring pre-computed indexes from cache
             var restored = await TryRestoreFromCacheAsync();
             if (!restored)
@@ -1126,6 +1134,90 @@ public class LibraryService : ILibraryService
         }
     }
 
+    // False once the user-state journal in library.db proved unusable this session
+    // (locked/corrupt file). Mutations then fall back to the pre-journal behavior —
+    // a full library.json save — so nothing the user changes is ever lost.
+    private bool _userStateJournalHealthy = true;
+
+    /// <inheritdoc />
+    public async Task SaveTrackUserStateAsync(IReadOnlyCollection<Track> tracks)
+    {
+        if (tracks.Count == 0) return;
+
+        if (_userStateJournalHealthy)
+        {
+            try
+            {
+                // Journal the library's own instance where one exists: queue/history
+                // can hold pre-reload Track objects whose *other* user-state fields
+                // are stale, and a full-row upsert from such an instance would
+                // silently revert them (SaveAsync has always persisted library
+                // instances only — same rule here).
+                var trackIndex = _trackIndex;
+                var resolved = tracks
+                    .Select(t => trackIndex.TryGetValue(t.Id, out var lib) ? lib : t);
+                await _sqliteIndex.UpsertUserStateAsync(resolved);
+                return;
+            }
+            catch (Exception ex)
+            {
+                _userStateJournalHealthy = false;
+                DebugLog.Write("Library",
+                    $"User-state journal write failed — falling back to full library saves: {ex.Message}");
+            }
+        }
+
+        await SaveAsync();
+    }
+
+    /// <summary>
+    /// Applies the library.db user-state journal on top of the JSON-loaded tracks
+    /// (journal wins when a row exists), seeding the journal from the JSON values
+    /// on first run. Journal rows whose Id is not currently in the library are
+    /// deliberately left in place: a removed track that returns with the same Id
+    /// gets its play counts and ratings back on the next load.
+    /// </summary>
+    private async Task OverlayUserStateFromJournalAsync()
+    {
+        try
+        {
+            await _sqliteIndex.InitializeAsync();
+            var state = await _sqliteIndex.LoadUserStateAsync();
+            if (state.Count == 0)
+            {
+                // First run after upgrade (or the user deleted library.db): the JSON
+                // values are authoritative — copy them in so later journal-only
+                // writes merge against a complete baseline.
+                await _sqliteIndex.SeedUserStateIfEmptyAsync(_tracks);
+                return;
+            }
+
+            foreach (var track in _tracks)
+            {
+                if (!state.TryGetValue(track.Id, out var s)) continue;
+                track.PlayCount = s.PlayCount;
+                track.LastPlayed = s.LastPlayed;
+                track.Rating = s.Rating;
+                track.IsDisliked = s.IsDisliked;
+                track.SnoozedUntil = s.SnoozedUntil;
+                track.SavedPositionMs = s.SavedPositionMs;
+                track.IsFavorite = s.IsFavorite;
+                // After IsFavorite: its setter stamps/clears FavoritedAt, and the
+                // journaled timestamp must win over a fresh stamp.
+                track.FavoritedAt = s.FavoritedAt;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Journal unusable (locked/corrupt library.db). The JSON values stay
+            // live and every user-state save falls back to a full library.json
+            // write for this session, so no rating or play count is ever lost.
+            _userStateJournalHealthy = false;
+            DebugLog.Write("Library",
+                $"User-state journal unavailable — using library.json values: {ex.Message}");
+        }
+    }
+
     public void NotifyFavoritesChanged() => NotifyFavoritesChanged(null);
 
     /// <summary>
@@ -1164,7 +1256,7 @@ public class LibraryService : ILibraryService
 
         foreach (var track in changed)
             track.Rating = rating;
-        await SaveAsync();
+        await SaveTrackUserStateAsync(changed);
         QueueRatingTagWrites(changed);
     }
 
@@ -1175,7 +1267,7 @@ public class LibraryService : ILibraryService
 
         foreach (var track in changed)
             track.IsDisliked = isDisliked;
-        await SaveAsync();
+        await SaveTrackUserStateAsync(changed);
         QueueRatingTagWrites(changed);
     }
 
@@ -1187,7 +1279,7 @@ public class LibraryService : ILibraryService
         foreach (var track in changed)
             track.SnoozedUntil = until;
         // Snooze is app-only state — no file tag write (unlike rating/dislike).
-        await SaveAsync();
+        await SaveTrackUserStateAsync(changed);
     }
 
     /// <summary>
@@ -1420,6 +1512,13 @@ public class LibraryService : ILibraryService
     private static void CopyMutableTrackState(Track source, Track target)
     {
         target.IsFavorite = source.IsFavorite;
+        // After IsFavorite: its setter stamps a fresh FavoritedAt, and the original
+        // timestamp must win — without this, a rescan of a changed file reset the
+        // favorite date (scattering the Favorites grid) and dropped any snooze, and
+        // the next user-state journal write then persisted those wrong values over
+        // the journal's correct ones.
+        target.FavoritedAt = source.FavoritedAt;
+        target.SnoozedUntil = source.SnoozedUntil;
         target.PlayCount = source.PlayCount;
         target.LastPlayed = source.LastPlayed;
         target.Rating = source.Rating;
@@ -1729,7 +1828,7 @@ public class LibraryService : ILibraryService
         if (candidates.Count == 0)
             return false;
 
-        var changedCount = 0;
+        var changedTracks = new ConcurrentBag<Track>();
 
         await Task.Run(() =>
         {
@@ -1750,7 +1849,7 @@ public class LibraryService : ILibraryService
                         if (refreshed.Rating != track.Rating)
                         {
                             track.Rating = refreshed.Rating;
-                            Interlocked.Increment(ref changedCount);
+                            changedTracks.Add(track);
                         }
                     }
                     catch
@@ -1760,7 +1859,13 @@ public class LibraryService : ILibraryService
                 });
         });
 
-        return changedCount > 0;
+        if (changedTracks.IsEmpty)
+            return false;
+
+        // Keep the user-state journal in step: it wins over library.json on load,
+        // so leaving the phantom ratings journaled would resurrect them every launch.
+        await SaveTrackUserStateAsync(changedTracks.ToList());
+        return true;
     }
 
     private async Task<bool> BackfillReleaseDateAndCopyrightAsync(List<Track> tracks)

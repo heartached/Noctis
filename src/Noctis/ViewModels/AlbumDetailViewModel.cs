@@ -671,7 +671,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private async Task ToggleFavorite(Track track)
     {
         track.IsFavorite = !track.IsFavorite;
-        await _library.SaveAsync();
+        await _library.SaveTrackUserStateAsync(new[] { track });
         _library.NotifyFavoritesChanged();
         // Refresh hearts visibility
         OnPropertyChanged(nameof(IsAlbumFavorited));
@@ -686,7 +686,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         foreach (var track in Tracks)
             track.IsFavorite = newState;
 
-        await _library.SaveAsync();
+        await _library.SaveTrackUserStateAsync(Tracks.ToList());
         _library.NotifyFavoritesChanged();
         // Refresh hearts visibility
         OnPropertyChanged(nameof(IsAlbumFavorited));
@@ -812,7 +812,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         var newState = !album.IsAllTracksFavorite;
         foreach (var track in album.Tracks)
             track.IsFavorite = newState;
-        await _library.SaveAsync();
+        await _library.SaveTrackUserStateAsync(album.Tracks.ToList());
         _library.NotifyFavoritesChanged();
     }
 

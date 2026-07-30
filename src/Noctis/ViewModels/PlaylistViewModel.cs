@@ -598,7 +598,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         var tracks = CtrlSelectedTracks.Count > 0 ? CtrlSelectedTracks : new List<Track> { track };
         foreach (var t in tracks)
             t.IsFavorite = !t.IsFavorite;
-        await _library.SaveAsync();
+        await _library.SaveTrackUserStateAsync(tracks);
         _library.NotifyFavoritesChanged(tracks);
         CtrlSelectedTracks.Clear();
     }
@@ -613,12 +613,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         if (track == null) return;
         track.IsFavorite = !track.IsFavorite;
-        _ = PersistFavoriteChangeAsync();
+        _ = PersistFavoriteChangeAsync(track);
     }
 
-    private async Task PersistFavoriteChangeAsync()
+    private async Task PersistFavoriteChangeAsync(Track track)
     {
-        await _library.SaveAsync();
+        await _library.SaveTrackUserStateAsync(new[] { track });
         _library.NotifyFavoritesChanged();
     }
 

@@ -91,6 +91,17 @@ public interface ILibraryService
     /// <summary>Saves the current library state to JSON.</summary>
     Task SaveAsync();
 
+    /// <summary>
+    /// Persists a pure user-state change (rating, favorite, play count, snooze,
+    /// saved position) for the given tracks as small journal rows in library.db
+    /// instead of re-serializing the entire library.json. The journal overlays the
+    /// JSON on load (journal wins), and the JSON catches up on the next structural
+    /// save (scan, metadata edit, shutdown flush). Falls back to a full JSON save
+    /// when the journal is unavailable so a broken library.db never loses a rating.
+    /// Call this — not <see cref="SaveAsync"/> — after mutating any of those fields.
+    /// </summary>
+    Task SaveTrackUserStateAsync(IReadOnlyCollection<Track> tracks);
+
     /// <summary>Clears all tracks, albums, and artists from the library and persists the empty state.</summary>
     Task ClearAsync();
 

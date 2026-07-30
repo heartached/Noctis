@@ -2048,6 +2048,16 @@ public partial class MetadataViewModel : ViewModelBase
 
         // Persist library changes and notify UI
         await _library.SaveAsync();
+
+        // The editor can also change journaled user state (rating, disliked,
+        // play-count reset). The journal wins over library.json on load, so those
+        // rows must be refreshed too or stale values would resurrect next launch.
+        var journalTracks = _albumTracks != null
+            ? _albumTracks.ToList()
+            : new List<Track> { _track };
+        if (!journalTracks.Contains(_track)) journalTracks.Add(_track);
+        await _library.SaveTrackUserStateAsync(journalTracks);
+
         _library.NotifyMetadataChanged();
 
         ChangesSaved?.Invoke(this, EventArgs.Empty);

@@ -1806,8 +1806,6 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         DebugLogger.Info(DebugLogger.Category.Lyrics, "LoadLyricsForTrack", $"title={track.Title}, id={track.Id}");
         _currentTrack = track;
-        _loadedLyrics = track.Lyrics;
-        _loadedSyncedLyrics = track.SyncedLyrics;
         _currentOnlineResult = null;
         _alternateOnlineResult = null;
         _alternateSource = null;
@@ -1855,7 +1853,16 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     private async Task LoadLocalLyricsAsync(Track track, int generation)
     {
-        var probe = await Task.Run(() => ProbeLocalLyricSources(track));
+        var probe = await Task.Run(() =>
+        {
+            // Track lyrics are store-backed and lazy: the first touch is a small
+            // disk read, so capture the change-detection baselines here, off the
+            // UI thread, instead of in LoadLyricsForTrack (this also warms the
+            // store's LRU for the UI-thread reads in ApplyLocalLyricsResult).
+            _loadedLyrics = track.Lyrics;
+            _loadedSyncedLyrics = track.SyncedLyrics;
+            return ProbeLocalLyricSources(track);
+        });
 
         if (generation != _searchGeneration) return;
 

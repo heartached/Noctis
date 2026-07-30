@@ -58,6 +58,17 @@ public sealed class SqliteLibraryIndexService : ISqliteLibraryIndexService
                 CREATE INDEX IF NOT EXISTS ix_tracks_album ON tracks(album);
                 CREATE INDEX IF NOT EXISTS ix_tracks_date_added ON tracks(date_added_utc);
                 CREATE INDEX IF NOT EXISTS ix_tracks_last_modified ON tracks(last_modified_utc);
+                CREATE TABLE IF NOT EXISTS track_user_state (
+                    id TEXT PRIMARY KEY,
+                    play_count INTEGER NOT NULL,
+                    last_played_utc TEXT NULL,
+                    rating INTEGER NOT NULL,
+                    is_disliked INTEGER NOT NULL,
+                    is_favorite INTEGER NOT NULL,
+                    favorited_at_utc TEXT NULL,
+                    snoozed_until_utc TEXT NULL,
+                    saved_position_ms INTEGER NOT NULL
+                );
                 """;
 
             await using var cmd = conn.CreateCommand();
@@ -230,5 +241,127 @@ public sealed class SqliteLibraryIndexService : ISqliteLibraryIndexService
         cmd.CommandText = "SELECT COUNT(*) FROM tracks;";
         var value = await cmd.ExecuteScalarAsync(ct);
         return Convert.ToInt32(value);
+    }
+
+    // ── Per-track user-state journal ─────────────────────────
+    // Kept strictly separate from the `tracks` mirror above: scans delete+reinsert
+    // that table wholesale, and the journal must survive them. Nothing in the
+    // journal methods touches `tracks` and nothing in the mirror methods touches
+    // `track_user_state`.
+
+    public async Task UpsertUserStateAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
+    {
+        await InitializeAsync(ct);
+
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync(ct);
+        await using var tx = (SqliteTransaction)await conn.BeginTransactionAsync(ct);
+
+        const string upsertSql = """
+            INSERT INTO track_user_state (
+                id,play_count,last_played_utc,rating,is_disliked,is_favorite,
+                favorited_at_utc,snoozed_until_utc,saved_position_ms
+            ) VALUES (
+                $id,$play_count,$last_played_utc,$rating,$is_disliked,$is_favorite,
+                $favorited_at_utc,$snoozed_until_utc,$saved_position_ms
+            )
+            ON CONFLICT(id) DO UPDATE SET
+                play_count=excluded.play_count,
+                last_played_utc=excluded.last_played_utc,
+                rating=excluded.rating,
+                is_disliked=excluded.is_disliked,
+                is_favorite=excluded.is_favorite,
+                favorited_at_utc=excluded.favorited_at_utc,
+                snoozed_until_utc=excluded.snoozed_until_utc,
+                saved_position_ms=excluded.saved_position_ms;
+            """;
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = upsertSql;
+        cmd.Transaction = tx;
+
+        var pId = cmd.Parameters.Add("$id", SqliteType.Text);
+        var pPlayCount = cmd.Parameters.Add("$play_count", SqliteType.Integer);
+        var pLastPlayed = cmd.Parameters.Add("$last_played_utc", SqliteType.Text);
+        var pRating = cmd.Parameters.Add("$rating", SqliteType.Integer);
+        var pIsDisliked = cmd.Parameters.Add("$is_disliked", SqliteType.Integer);
+        var pIsFavorite = cmd.Parameters.Add("$is_favorite", SqliteType.Integer);
+        var pFavoritedAt = cmd.Parameters.Add("$favorited_at_utc", SqliteType.Text);
+        var pSnoozedUntil = cmd.Parameters.Add("$snoozed_until_utc", SqliteType.Text);
+        var pSavedPosition = cmd.Parameters.Add("$saved_position_ms", SqliteType.Integer);
+
+        foreach (var track in tracks)
+        {
+            ct.ThrowIfCancellationRequested();
+            pId.Value = track.Id.ToString("N");
+            pPlayCount.Value = track.PlayCount;
+            pLastPlayed.Value = track.LastPlayed?.ToUniversalTime().ToString("O") ?? (object)DBNull.Value;
+            pRating.Value = Math.Clamp(track.Rating, 0, 5);
+            pIsDisliked.Value = track.IsDisliked ? 1 : 0;
+            pIsFavorite.Value = track.IsFavorite ? 1 : 0;
+            pFavoritedAt.Value = track.FavoritedAt?.ToUniversalTime().ToString("O") ?? (object)DBNull.Value;
+            pSnoozedUntil.Value = track.SnoozedUntil?.ToUniversalTime().ToString("O") ?? (object)DBNull.Value;
+            pSavedPosition.Value = track.SavedPositionMs;
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+
+        await tx.CommitAsync(ct);
+    }
+
+    public async Task<Dictionary<Guid, TrackUserState>> LoadUserStateAsync(CancellationToken ct = default)
+    {
+        await InitializeAsync(ct);
+
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT id,play_count,last_played_utc,rating,is_disliked,is_favorite,
+                   favorited_at_utc,snoozed_until_utc,saved_position_ms
+            FROM track_user_state;
+            """;
+
+        var result = new Dictionary<Guid, TrackUserState>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            // Skip unparseable rows instead of failing the whole load — one bad row
+            // must not cost the user every other rating.
+            if (!Guid.TryParse(reader.GetString(0), out var id)) continue;
+            result[id] = new TrackUserState(
+                PlayCount: reader.GetInt32(1),
+                LastPlayed: ReadUtc(reader, 2),
+                Rating: reader.GetInt32(3),
+                IsDisliked: reader.GetInt32(4) != 0,
+                IsFavorite: reader.GetInt32(5) != 0,
+                FavoritedAt: ReadUtc(reader, 6),
+                SnoozedUntil: ReadUtc(reader, 7),
+                SavedPositionMs: reader.GetInt64(8));
+        }
+        return result;
+
+        static DateTime? ReadUtc(SqliteDataReader reader, int ordinal)
+        {
+            if (reader.IsDBNull(ordinal)) return null;
+            return DateTime.TryParse(reader.GetString(ordinal), null,
+                System.Globalization.DateTimeStyles.RoundtripKind, out var value)
+                ? value
+                : null;
+        }
+    }
+
+    public async Task SeedUserStateIfEmptyAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
+    {
+        await InitializeAsync(ct);
+
+        await using (var conn = new SqliteConnection(_connectionString))
+        {
+            await conn.OpenAsync(ct);
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*) FROM track_user_state;";
+            if (Convert.ToInt32(await cmd.ExecuteScalarAsync(ct)) > 0) return;
+        }
+
+        await UpsertUserStateAsync(tracks, ct);
     }
 }
