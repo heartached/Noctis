@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Noctis.Helpers;
 using Noctis.Models;
 
 namespace Noctis.Services;
@@ -100,8 +101,25 @@ public static class FolderTreeBuilder
     private static int Finalize(FolderNode node)
     {
         var total = node.DirectTracks.Count;
+
+        // Deterministic, Explorer-like track order: disc/track tags when present
+        // (untagged files carry TrackNumber 0), natural filename order for ties —
+        // without this, untagged rips surface in library order, which is
+        // Artist/Album/Disc/Track with the tie broken by parallel-scan insertion
+        // order, i.e. arbitrary. Properly tagged folders stay in disc/track order.
+        var sortedTracks = node.DirectTracks
+            .OrderBy(t => t.DiscNumber <= 0 ? 1 : t.DiscNumber)
+            .ThenBy(t => t.TrackNumber)
+            .ThenBy(t => Path.GetFileName(t.FilePath), NaturalStringComparer.Instance)
+            .ThenBy(t => t.FilePath, StringComparer.Ordinal)
+            .ToList();
+        node.DirectTracks.Clear();
+        node.DirectTracks.AddRange(sortedTracks);
+
+        // Natural order for subfolders too ("Disc 2" before "Disc 10"), so numbered
+        // volume folders play and display in Explorer order when a parent is selected.
         var sortedChildren = node.Children
-            .OrderBy(c => c.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(c => c.DisplayName, NaturalStringComparer.Instance)
             .ToList();
         node.Children.Clear();
         foreach (var child in sortedChildren)
