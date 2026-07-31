@@ -27,8 +27,8 @@ public static class LyricsScrollAnchor
     /// <param name="childHeight">Height of the active line.</param>
     /// <param name="viewportHeight">Visible height of the scroll viewer.</param>
     /// <param name="extentHeight">Total content height of the scroll viewer.</param>
-    /// <param name="anchorRatio">Fraction of the viewport height to anchor at; the page
-    /// passes a deeper ratio while fullscreen focus dimming is on.</param>
+    /// <param name="anchorRatio">Fraction of the viewport height to anchor at; the panel
+    /// omits it, the page always passes its own extent-space ratios.</param>
     public static double ComputeAnchorOffset(
         double childTop, double childHeight, double viewportHeight, double extentHeight,
         double anchorRatio = AnchorRatio)
