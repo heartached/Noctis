@@ -377,6 +377,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Wire up Search Lyrics action on ViewModels with track context menus
         _homeVm.SetSearchLyricsAction(SearchLyricsForTrack);
+        _albumsVm.SetSearchLyricsAction(SearchLyricsForTrack);
         _songsVm.SetSearchLyricsAction(SearchLyricsForTrack);
         _foldersVm.SetSearchLyricsAction(SearchLyricsForTrack);
         Player.SetSearchLyricsAction(SearchLyricsForTrack);
@@ -1729,7 +1730,6 @@ public partial class MainWindowViewModel : ViewModelBase
         return Settings;
     }
 
-    /// <summary>Navigate to the Now Playing view (from clicking album art in playback bar).</summary>
     /// <summary>Opens the Ctrl+K command palette over the current window.</summary>
     public async Task OpenCommandPaletteAsync()
     {
@@ -1737,6 +1737,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await Views.CommandPaletteDialog.ShowAsync(vm);
     }
 
+    /// <summary>Navigate to the Now Playing view (from clicking album art in playback bar).</summary>
     [RelayCommand]
     private void OpenNowPlaying()
     {

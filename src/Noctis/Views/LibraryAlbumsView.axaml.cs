@@ -71,7 +71,7 @@ public partial class LibraryAlbumsView : UserControl
             return;
         }
 
-        var allAlbums = _vm?.FilteredAlbumRows.SelectMany(r => r.Albums) ?? Enumerable.Empty<Album>();
+        var allAlbums = _vm?.FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums) ?? Enumerable.Empty<Album>();
         MultiSelectHelper.HandleAlbumSelectAllByData(e, allAlbums, CollectAlbumTiles(), _selectedAlbums);
     }
 
@@ -92,6 +92,62 @@ public partial class LibraryAlbumsView : UserControl
         if (_selectedAlbums.Count > 0) return _selectedAlbums.ToList();
         if (fallback != null) return new List<Album> { fallback };
         return new List<Album>();
+    }
+
+    // ── Artist page Songs section: shared track context menu (same pattern as HomeView) ──
+
+    private TrackContextMenuBuilder? _trackMenuBuilder;
+    private Control? _menuOwner;
+
+    private void OnArtistSongContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (sender is not Control owner) return;
+        // Song pills wrap their Track in a TopSongRow for rank display.
+        if (owner.DataContext is not TopSongRow row) return;
+        if (DataContext is not LibraryAlbumsViewModel vm) return;
+
+        if (_trackMenuBuilder == null)
+        {
+            _trackMenuBuilder = new TrackContextMenuBuilder();
+            _trackMenuBuilder.Build("Remove from Library", null, this);
+        }
+
+        _trackMenuBuilder.Bind(
+            row.Track,
+            playCommand: vm.PlayArtistSongCommand,
+            shuffleCommand: vm.ShuffleArtistSongsCommand,
+            playNextCommand: vm.PlayNextTrackCommand,
+            addToQueueCommand: vm.AddTrackToQueueCommand,
+            addToPlaylistCommand: vm.AddTrackToNewPlaylistCommand,
+            toggleFavoriteCommand: vm.ToggleTrackFavoriteCommand,
+            openMetadataCommand: vm.OpenTrackMetadataCommand,
+            searchLyricsCommand: vm.SearchLyricsTrackCommand,
+            showInExplorerCommand: vm.ShowInExplorerTrackCommand,
+            removeCommand: vm.RemoveTrackFromLibraryCommand);
+
+        OpenMenu(_trackMenuBuilder.Menu, owner);
+        e.Handled = true;
+    }
+
+    private void OpenMenu(ContextMenu menu, Control owner)
+    {
+        // Close any menu still open from a previous rapid right-click so menus
+        // don't stack on top of each other.
+        ContextMenuCoordinator.NotifyOpening(menu);
+        if (menu.IsOpen)
+            menu.Close();
+
+        // Detach from the previous owner so Open() doesn't throw
+        // "Cannot show ContextMenu on a different control".
+        if (_menuOwner != null && !ReferenceEquals(_menuOwner, owner))
+            _menuOwner.ContextMenu = null;
+        if (menu.Parent is Control prev && !ReferenceEquals(prev, owner))
+            prev.ContextMenu = null;
+
+        _menuOwner = owner;
+        owner.ContextMenu = menu;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(owner);
     }
 
     private void OnAlbumContextMenuOpening(object? sender, CancelEventArgs e)

@@ -147,8 +147,12 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Albums currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<Album> CtrlSelectedAlbums { get; set; } = new();
 
-    /// <summary>Filtered albums grouped into rows for the virtualized grid.</summary>
-    public BulkObservableCollection<AlbumRow> FilteredAlbumRows { get; } = new();
+    /// <summary>
+    /// Filtered albums grouped into rows for the virtualized grid. Mixed row types:
+    /// <see cref="AlbumRow"/> for album tiles, plus <see cref="ArtistSectionHeader"/> and
+    /// <see cref="ArtistSongsRow"/> when an artist page interleaves its Songs section.
+    /// </summary>
+    public BulkObservableCollection<object> FilteredAlbumRows { get; } = new();
 
     /// <summary>Fires when the user wants to open an album's detail view.</summary>
     public event EventHandler<Album>? AlbumOpened;
@@ -377,7 +381,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         });
     }
 
-    private List<AlbumRow> BuildFilteredRows(
+    private List<object> BuildFilteredRows(
         List<Album> allAlbums, string artistFilter, string searchFilter, int columnsPerRow,
         ReleaseType? releaseTypeFilter = null, string qualityFilter = "", string sortMode = "default")
     {
@@ -460,7 +464,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             if (_settings.CollapseAlbumEditions)
                 sortedAlbums = CollapseEditions(sortedAlbums);
 
-            return GroupIntoRows(sortedAlbums, columnsPerRow);
+            // Sort modes only apply outside artist pages, so no songs section here.
+            return GroupIntoRows(sortedAlbums, columnsPerRow).Cast<object>().ToList();
         }
 
         // Float newly added albums to the top when not searching/filtering.
@@ -499,7 +504,80 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (_settings.CollapseAlbumEditions && string.IsNullOrWhiteSpace(searchFilter))
             ordered = CollapseEditions(ordered);
 
-        return GroupIntoRows(ordered, columnsPerRow);
+        var albumRows = GroupIntoRows(ordered, columnsPerRow);
+
+        // Artist pages interleave a Songs section above the discography so tracks whose
+        // albums are credited to someone else (compilation appearances, features, typo'd
+        // credits) are still reachable — without it an artist minted from track credits
+        // alone opens to a permanently empty page. Chip filters are album-level, so the
+        // section is omitted while one narrows the grid.
+        if (!string.IsNullOrEmpty(artistFilter) && !releaseTypeFilter.HasValue && qualityFilter.Length == 0)
+            return ComposeArtistRows(albumRows, allAlbums, artistFilter, searchFilter);
+
+        return albumRows.Cast<object>().ToList();
+    }
+
+    private const int SongsPerRow = 3;
+
+    /// <summary>
+    /// Ranked pills shown on an artist page with albums; artists with no matching
+    /// albums show their full song list instead (that page is otherwise empty).
+    /// </summary>
+    private const int MaxArtistSongs = 9;
+
+    /// <summary>
+    /// Prepends the artist's ranked Songs section (Home "Most Listened To" pill rows)
+    /// to the album grid rows, with section headers when both sections are present.
+    /// </summary>
+    private static List<object> ComposeArtistRows(
+        List<AlbumRow> albumRows, List<Album> allAlbums, string artistFilter, string searchFilter)
+    {
+        // Match on the full track credit (tokenised), so feature appearances count as
+        // "associated with" — but tokens compare exactly, keeping near-duplicate artist
+        // spellings (e.g. a quoted variant) on their own separate pages.
+        IEnumerable<Track> tracks = allAlbums
+            .SelectMany(a => a.Tracks)
+            .Where(t => ContainsArtistToken(t.Artist, artistFilter));
+
+        if (!string.IsNullOrWhiteSpace(searchFilter))
+        {
+            var q = searchFilter.Trim();
+            var qNoSpaces = RemoveWhitespace(q);
+            tracks = tracks.Where(t => MatchesSearch(t.Title, q, qNoSpaces));
+        }
+
+        var orderedSongs = tracks
+            .OrderByDescending(t => t.PlayCount)
+            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (orderedSongs.Count == 0)
+            return albumRows.Cast<object>().ToList();
+
+        var capped = albumRows.Count > 0 && orderedSongs.Count > MaxArtistSongs;
+        if (capped)
+            orderedSongs = orderedSongs.Take(MaxArtistSongs).ToList();
+
+        var rows = new List<object>
+        {
+            new ArtistSectionHeader { Title = capped ? "Top Songs" : "Songs" },
+        };
+
+        for (var i = 0; i < orderedSongs.Count; i += SongsPerRow)
+        {
+            rows.Add(new ArtistSongsRow
+            {
+                Songs = orderedSongs
+                    .Skip(i).Take(SongsPerRow)
+                    .Select((t, j) => new TopSongRow { Track = t, Rank = i + j + 1 })
+                    .ToList(),
+            });
+        }
+
+        if (albumRows.Count > 0)
+            rows.Add(new ArtistSectionHeader { Title = "Albums" });
+        rows.AddRange(albumRows);
+        return rows;
     }
 
     /// <summary>Groups albums into fixed-width rows for the virtualized grid.</summary>
@@ -640,20 +718,110 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
-    /// <summary>Collects all tracks from the currently displayed albums.</summary>
+    /// <summary>
+    /// Collects all tracks from the currently displayed rows: the Songs section first
+    /// (loose tracks an artist page surfaces), then album tracks, de-duplicated so a
+    /// song pill whose track also sits in a displayed album isn't queued twice.
+    /// </summary>
     private List<Track> GetAllFilteredTracks()
     {
         var tracks = new List<Track>();
+        var seen = new HashSet<Guid>();
         foreach (var row in FilteredAlbumRows)
         {
-            foreach (var album in row.Albums)
+            switch (row)
             {
-                if (album.Tracks != null)
-                    tracks.AddRange(album.Tracks);
+                case ArtistSongsRow songsRow:
+                    foreach (var song in songsRow.Songs)
+                        if (seen.Add(song.Track.Id))
+                            tracks.Add(song.Track);
+                    break;
+                case AlbumRow albumRow:
+                    foreach (var album in albumRow.Albums)
+                        foreach (var track in album.Tracks ?? new())
+                            if (seen.Add(track.Id))
+                                tracks.Add(track);
+                    break;
             }
         }
         return tracks;
     }
+
+    /// <summary>The artist page's Songs section in display (rank) order.</summary>
+    private List<Track> GetArtistSongsInOrder() => FilteredAlbumRows
+        .OfType<ArtistSongsRow>()
+        .SelectMany(r => r.Songs)
+        .Select(s => s.Track)
+        .ToList();
+
+    // ── Track-level commands for the artist page's Songs section ──
+
+    [RelayCommand]
+    private void PlayArtistSong(Track track)
+    {
+        var songs = GetArtistSongsInOrder();
+        if (songs.Count == 0) return;
+        var index = songs.IndexOf(track);
+        _player.ReplaceQueueAndPlay(songs, index < 0 ? 0 : index);
+    }
+
+    [RelayCommand]
+    private void ShuffleArtistSongs()
+    {
+        var songs = GetArtistSongsInOrder();
+        if (songs.Count == 0) return;
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(songs);
+        _player.ReplaceQueueAndPlay(shuffled, 0);
+    }
+
+    [RelayCommand]
+    private void PlayNextTrack(Track track) => _player.AddNext(track);
+
+    [RelayCommand]
+    private void AddTrackToQueue(Track track) => _player.AddToQueue(track);
+
+    [RelayCommand]
+    private async Task AddTrackToNewPlaylist(Track track)
+    {
+        await _sidebar.CreatePlaylistWithTrackAsync(track);
+    }
+
+    [RelayCommand]
+    private async Task ToggleTrackFavorite(Track track)
+    {
+        track.IsFavorite = !track.IsFavorite;
+        await _library.SaveTrackUserStateAsync(new[] { track });
+        _library.NotifyFavoritesChanged();
+    }
+
+    [RelayCommand]
+    private async Task OpenTrackMetadata(Track track)
+    {
+        await MetadataHelper.OpenMetadataWindow(track);
+    }
+
+    [RelayCommand]
+    private void SearchLyricsTrack(Track track)
+    {
+        _searchLyricsAction?.Invoke(track);
+    }
+
+    [RelayCommand]
+    private void ShowInExplorerTrack(Track track)
+    {
+        if (track == null || !File.Exists(track.FilePath)) return;
+        Helpers.PlatformHelper.ShowInFileManager(track.FilePath);
+    }
+
+    [RelayCommand]
+    private async Task RemoveTrackFromLibrary(Track track)
+    {
+        if (track == null) return;
+        await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, new List<Track> { track });
+    }
+
+    private Action<Track>? _searchLyricsAction;
+    public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
 
     [RelayCommand]
     private void PlayNext(Album album)
