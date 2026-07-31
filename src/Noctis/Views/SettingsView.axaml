@@ -917,6 +917,20 @@
                 </Grid>
             </Border>
 
+            <!-- Merge featured artists from titles -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Merge Featured Artists From Titles" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Add &quot;(feat. X)&quot; credits found in track titles or file names to the artist credit. Applies to newly scanned tracks; rescan to update existing ones."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding MergeFeaturedFromTitles}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════ -->

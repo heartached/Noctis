@@ -361,6 +361,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
     [ObservableProperty] private bool _collapseAlbumEditions;
+    [ObservableProperty] private bool _mergeFeaturedFromTitles = true;
 
     // ── Lyrics Providers ──
 
@@ -847,6 +848,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
+            MergeFeaturedFromTitles = _settings.MergeFeaturedFromTitles;
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
@@ -1102,6 +1104,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
+        _settings.MergeFeaturedFromTitles = MergeFeaturedFromTitles;
         _settings.LrcLibEnabled = LrcLibEnabled;
         _settings.DeezerEnabled = DeezerEnabled;
         _settings.MusicBrainzEnabled = MusicBrainzEnabled;
@@ -1770,6 +1773,15 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnCollapseAlbumEditionsChanged(bool value)
     {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnMergeFeaturedFromTitlesChanged(bool value)
+    {
+        // Keep the scanner's static mirror current even during settings load, so the
+        // first scan after startup honors a persisted "off" without a toggle flip.
+        Services.MetadataService.MergeFeaturedFromTitles = value;
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
@@ -3211,6 +3223,7 @@ public partial class SettingsViewModel : ViewModelBase
             RestoreLastTrackOnStartup = defaultSettings.RestoreLastTrackOnStartup;
             WebRemoteEnabled = defaultSettings.WebRemoteEnabled;
             CollapseAlbumEditions = defaultSettings.CollapseAlbumEditions;
+            MergeFeaturedFromTitles = defaultSettings.MergeFeaturedFromTitles;
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
             LyricsFlowingLightEnabled = defaultSettings.LyricsFlowingLightEnabled;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;

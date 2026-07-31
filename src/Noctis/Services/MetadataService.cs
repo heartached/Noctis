@@ -959,9 +959,17 @@ public class MetadataService : IMetadataService
     /// If the title contains "feat."/"ft." artists not already present in the artist field,
     /// merge them in so collaboration tracks always show the full artist credit.
     /// </summary>
+    /// <summary>
+    /// Mirrors <see cref="Models.AppSettings.MergeFeaturedFromTitles"/> so the static
+    /// enrichment path (scan, Navidrome sync, migrations) can honor the toggle without
+    /// threading settings through every call site. Set on startup by LibraryService and
+    /// kept current by SettingsViewModel when the user flips the switch.
+    /// </summary>
+    internal static volatile bool MergeFeaturedFromTitles = true;
+
     internal static string EnrichArtistFromTitle(string artist, string title)
     {
-        if (string.IsNullOrWhiteSpace(title))
+        if (!MergeFeaturedFromTitles || string.IsNullOrWhiteSpace(title))
             return artist;
 
         // Extract "feat. X" / "ft. X" / "featuring X" from parentheses or brackets

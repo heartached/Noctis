@@ -1583,6 +1583,10 @@ public class LibraryService : ILibraryService
             return false;
         }
 
+        // Runs once per startup before any scan or migration touches metadata, so the
+        // static enrichment toggle reflects the persisted setting from the first read.
+        MetadataService.MergeFeaturedFromTitles = settings.MergeFeaturedFromTitles;
+
         if (settings.MetadataSchemaVersion >= CurrentMetadataSchemaVersion)
             return false;
 
