@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Transformation;
@@ -18,69 +17,12 @@ public partial class SidebarView : UserControl
     private bool _isSyncingSelection;
     private SidebarViewModel? _vm;
     private TopBarViewModel? _topBarVm;
-    private Window? _hostWindow;
-    private bool _searchClosedByMinimize;
 
     public SidebarView()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
-        DetachedFromVisualTree += (_, _) =>
-        {
-            UnsubscribeFromViewModel();
-            DetachHostWindow();
-        };
-        AttachedToVisualTree += (_, _) => AttachHostWindow();
-    }
-
-    // ── Search pill vs window minimize/hide ──
-    // The pill is a native popup window; it is not automatically hidden with its
-    // owner, so without this it keeps floating over other apps while Noctis is
-    // gone. Minimize is only one of the ways the window disappears: close-to-tray
-    // and the mini player call Hide() with WindowState still Normal, so the pill
-    // must track window VISIBILITY as well as state. Close it whenever the window
-    // leaves the screen and restore it when the window comes back.
-
-    private void AttachHostWindow()
-    {
-        DetachHostWindow();
-        _hostWindow = TopLevel.GetTopLevel(this) as Window;
-        if (_hostWindow != null)
-            _hostWindow.PropertyChanged += OnHostWindowPropertyChanged;
-    }
-
-    private void DetachHostWindow()
-    {
-        if (_hostWindow != null)
-            _hostWindow.PropertyChanged -= OnHostWindowPropertyChanged;
-        _hostWindow = null;
-    }
-
-    private void OnHostWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
-    {
-        if (e.Property != Window.WindowStateProperty && e.Property != Visual.IsVisibleProperty)
-            return;
-        var topBar = _vm?.TopBar;
-        if (topBar == null || _hostWindow == null) return;
-
-        var windowGone = !_hostWindow.IsVisible ||
-                         _hostWindow.WindowState == WindowState.Minimized;
-        if (windowGone)
-        {
-            if (topBar.IsSearchOpen)
-            {
-                // Close instantly (no animation timer): the popup must not linger
-                // on screen after the window is gone. SearchText is untouched, so
-                // the filtered page state survives the round trip.
-                _searchClosedByMinimize = true;
-                topBar.IsSearchOpen = false;
-            }
-        }
-        else if (_searchClosedByMinimize)
-        {
-            _searchClosedByMinimize = false;
-            topBar.IsSearchOpen = true;
-        }
+        DetachedFromVisualTree += (_, _) => UnsubscribeFromViewModel();
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -204,25 +146,6 @@ public partial class SidebarView : UserControl
 
     private void OnSearchPopupOpened(object? sender, EventArgs e)
     {
-        // Win32 creates every popup window WS_EX_TOPMOST, so the pill floats
-        // over OTHER APPS whenever Noctis is merely in the background.
-        // PopupRoot.Topmost cannot fix this: in Avalonia 11.3.x it is wired to
-        // nothing (only the WindowBase(impl) ctor registers the SetTopmost
-        // platform binding; PopupRoot chains the two-arg ctor — verified in
-        // source and by live style-bit repro). Clear the style bit directly;
-        // the popup stays an owned window, so it still sits above Noctis but
-        // sinks behind whichever app is in the foreground. A new native window
-        // is created on every open, so this must run per Opened.
-        // Windows-only: mac (child-window levels) and X11 (override-redirect)
-        // stack popups differently and are not part of the reported bug.
-        if (OperatingSystem.IsWindows()
-            && SearchPopup.Host is PopupRoot popupRoot
-            && popupRoot.TryGetPlatformHandle() is { } popupHandle)
-        {
-            SetWindowPos(popupHandle.Handle, HwndNoTopmost, 0, 0, 0, 0,
-                SwpNoMove | SwpNoSize | SwpNoActivate);
-        }
-
         // Slide in from the search icon: start hidden + nudged left, settle into
         // place on the next frame so the transitions animate the change.
         var target = SearchPopupContent;
@@ -284,13 +207,4 @@ public partial class SidebarView : UserControl
             _vm.PropertyChanged -= OnViewModelPropertyChanged;
         AttachTopBar(null);
     }
-
-    // De-topmost for the search pill's native popup window (see
-    // OnSearchPopupOpened); PopupRoot.Topmost doesn't reach the OS in
-    // Avalonia 11.3.x, so the WS_EX_TOPMOST bit is cleared directly.
-    private static readonly IntPtr HwndNoTopmost = new(-2);
-    private const uint SwpNoSize = 0x0001, SwpNoMove = 0x0002, SwpNoActivate = 0x0010;
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 }

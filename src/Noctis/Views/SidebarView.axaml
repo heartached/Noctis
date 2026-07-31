@@ -83,7 +83,7 @@
                 <Button x:Name="SearchButton"
                         Classes="rail-action"
                         Classes.expanded="{Binding IsExpanded}"
-                        IsEnabled="{Binding TopBar.IsSearchVisible, FallbackValue=False}"
+                        IsEnabled="{Binding TopBar.IsSearchActionAvailable, FallbackValue=False}"
                         Click="OnSearchButtonClick"
                         ToolTip.Tip="Search (Ctrl+F)">
                     <StackPanel Orientation="Horizontal" Spacing="14">
@@ -109,12 +109,17 @@
                 <!-- Persistent search pill: a non-light-dismiss popup (unlike the old
                      flyout) so it stays open while the user browses the filtered page.
                      Closed explicitly via the Search button toggle or Esc; opened via
-                     the button or Ctrl+F. Open/close animation lives in code-behind. -->
+                     the button or Ctrl+F. Hosted in the window's overlay layer: a
+                     native popup window is WS_EX_TOPMOST on Win32 and override-redirect
+                     on X11, so it floats over OTHER applications and outlives minimize;
+                     the overlay layer keeps the pill inside the window on every
+                     platform. Open/close animation lives in code-behind. -->
                 <Popup x:Name="SearchPopup"
                        PlacementTarget="{Binding #SearchButton}"
                        Placement="Right"
                        HorizontalOffset="4"
                        IsLightDismissEnabled="False"
+                       ShouldUseOverlayLayer="True"
                        WindowManagerAddShadowHint="False"
                        IsOpen="{Binding TopBar.IsSearchOpen, Mode=TwoWay}"
                        Opened="OnSearchPopupOpened">

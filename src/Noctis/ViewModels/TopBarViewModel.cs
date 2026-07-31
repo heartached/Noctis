@@ -17,13 +17,21 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private bool _isSearchFocused;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageTitleDisplay))]
+    [NotifyPropertyChangedFor(nameof(IsSearchActionAvailable))]
     private string _currentTabName = "Library";
 
     /// <summary>Header title: reflects the Cover Flow / Collage view when active, otherwise the section name.
     /// Collage is a Cover Flow sub-mode, so its label only applies while Cover Flow is active.</summary>
     public string PageTitleDisplay => IsCoverFlowMode ? (IsCollageMode ? "Cover Collage" : "Cover Flow") : CurrentTabName;
     [ObservableProperty] private string _searchWatermark = "Search in Library";
-    [ObservableProperty] private bool _isSearchVisible = true;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSearchActionAvailable))]
+    private bool _isSearchVisible = true;
+
+    /// <summary>Enables the sidebar magnifier. Home itself is not searchable, but the
+    /// button stays clickable there because invoking search on Home redirects to the
+    /// Songs page (see <see cref="OpenSearch"/>).</summary>
+    public bool IsSearchActionAvailable => IsSearchVisible || CurrentTabName == "Home";
     // The search pill is a persistent (non-light-dismiss) popup: it stays open while
     // the user browses/filters and only closes explicitly (toggle, Esc, or navigating
     // to a page without search).
@@ -406,9 +414,17 @@ public partial class TopBarViewModel : ViewModelBase
     partial void OnCurrentTabNameChanged(string value)
     {
         IsSearchVisible = value is not ("Home" or "Settings" or "Lyrics");
-        if (!IsSearchVisible) IsSearchOpen = false;
         SearchWatermark = $"Search in {value}";
         UpdatePageTitleVisibility();
+    }
+
+    partial void OnIsSearchVisibleChanged(bool value)
+    {
+        // Search is disabled from several places (tab switches here, Cover Flow and
+        // Home directly from the shell). Whoever disables it, the pill must close
+        // with it — otherwise it sits orphaned on screen while the toggle button
+        // that could dismiss it is greyed out.
+        if (!value) IsSearchOpen = false;
     }
 
     partial void OnIsBackButtonVisibleChanged(bool value)
@@ -454,10 +470,21 @@ public partial class TopBarViewModel : ViewModelBase
     /// <summary>Raised when search should open/focus (Ctrl+F), even if already open.</summary>
     public event EventHandler? SearchOpenRequested;
 
+    /// <summary>Raised when search is invoked on Home, which has nothing to filter.
+    /// The shell answers by navigating to the Songs page and opening search there.</summary>
+    public event EventHandler? HomeSearchRedirectRequested;
+
     [RelayCommand]
     private void OpenSearch()
     {
-        if (!IsSearchVisible) return;
+        if (!IsSearchVisible)
+        {
+            // Home redirects to the searchable Songs page; Settings stays a silent
+            // no-op and Lyrics has its own in-page search.
+            if (CurrentTabName == "Home")
+                HomeSearchRedirectRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
         IsSearchOpen = true;
         SearchOpenRequested?.Invoke(this, EventArgs.Empty);
     }

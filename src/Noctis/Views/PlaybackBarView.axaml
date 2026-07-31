@@ -970,6 +970,9 @@
                             </Panel>
                         </Button>
 
+                        <!-- Overlay-layer hosted: a native popup window is always-on-top and
+                             would float over other apps; the overlay keeps the flyout inside
+                             the window on every platform. -->
                         <Popup x:Name="VolumeFlyout"
                                PlacementTarget="{Binding #VolumeButton}"
                                Placement="Top"
@@ -977,6 +980,7 @@
                                PlacementGravity="Top"
                                VerticalOffset="-4"
                                IsLightDismissEnabled="False"
+                               ShouldUseOverlayLayer="True"
                                WindowManagerAddShadowHint="False">
                             <StackPanel>
                             <!-- Floating % bubble above the pill; follows the thumb while dragging. -->
