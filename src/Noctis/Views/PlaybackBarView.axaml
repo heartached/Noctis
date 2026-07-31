@@ -464,14 +464,14 @@
                       ColumnDefinitions="Auto,*"
                       IsVisible="{Binding !IsLyricsPageActive}">
 
-                    <!-- Album art thumbnail (click toggles the mini player) -->
+                    <!-- Album art thumbnail (click opens the Now Playing view) -->
                     <Border Grid.Column="0"
                             Width="36" Height="36"
                             CornerRadius="7"
                             ClipToBounds="True"
                             Margin="0,0,12,0"
                             Cursor="Hand"
-                            ToolTip.Tip="Mini Player"
+                            ToolTip.Tip="Now Playing"
                             PointerPressed="OnAlbumArtPressed"
                             Background="{DynamicResource IslandAlbumArtPlaceholder}">
                         <Panel>
@@ -934,6 +934,19 @@
                                 <ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform" />
                             </Border.OpacityMask>
                         </Border>
+                    </Button>
+
+                    <!-- Mini player button -->
+                    <Button Classes="secondary-btn"
+                            Click="OnMiniPlayerButtonClick"
+                            ToolTip.Tip="Mini Player"
+                            Width="34" Height="34">
+                        <Viewbox Width="16" Height="16">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="{DynamicResource IslandIconFill}"
+                                      Data="{StaticResource MiniPlayerIcon}" />
+                            </Canvas>
+                        </Viewbox>
                     </Button>
 
                     <!-- Volume control: clicking the icon opens a small slider popup above it.

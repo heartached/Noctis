@@ -194,15 +194,15 @@
                 </Border.Background>
             </Border>
 
-            <!-- Close (returns to the main window) -->
+            <!-- Expand (returns to the main window) -->
             <Button Classes="mini-transport"
                     Width="32" Height="32"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Top"
                     Margin="10"
-                    ToolTip.Tip="Close Mini Player"
+                    ToolTip.Tip="Back to full view"
                     Click="OnCloseClick">
-                <PathIcon Data="{StaticResource DismissIcon}"
+                <PathIcon Data="{StaticResource ExpandIcon}"
                           Width="14" Height="14"
                           Foreground="White"/>
             </Button>

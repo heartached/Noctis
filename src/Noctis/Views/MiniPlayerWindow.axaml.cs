@@ -12,7 +12,7 @@ namespace Noctis.Views;
 
 /// <summary>
 /// Compact always-on-top player window (artwork, track info, transport, progress).
-/// Opened/closed by clicking the cover art in the bottom player bar; closing it
+/// Opened/closed by the mini player button in the bottom player bar; closing it
 /// restores the main window (handled by <see cref="MainWindow.ToggleMiniPlayer"/>).
 /// </summary>
 public partial class MiniPlayerWindow : Window
