@@ -71,8 +71,9 @@ public class LyricsScrollAnchorTests
     [Fact]
     public void CustomAnchorRatioPlacesTheLineCenterAtThatFraction()
     {
-        // Fullscreen focus anchors at dead center: line 10's center (600 + 30) must land
-        // 50% down the viewport (200px), so the offset is 630 - 200.
+        // The page passes its own ratios (fullscreen focus rides near center): with 0.50,
+        // line 10's center (600 + 30) must land 50% down the viewport (200px), so the
+        // offset is 630 - 200.
         var offset = LyricsScrollAnchor.ComputeAnchorOffset(600, LineHeight, Viewport, Extent, 0.50);
         Assert.Equal(600 - Viewport * 0.50 + 30, offset, 3);
     }

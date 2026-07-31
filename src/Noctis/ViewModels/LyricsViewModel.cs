@@ -235,8 +235,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     /// <summary>True while the opt-in fullscreen focus dimming is in effect (fullscreen
     /// lyrics page + Appearance toggle). The page view also anchors the active line
-    /// deeper (45%) while this is on, since the dimmed-away lines leave the lower
-    /// viewport empty at the default 22% anchor.</summary>
+    /// near center while this is on (FocusAnchorRatio), since the dimmed-away lines
+    /// leave the lower viewport empty at the page's default anchor.</summary>
     public bool IsLyricsFocusActive => IsFullScreenPageActive && Player.LyricsFullScreenFocusEnabled;
 
     /// <summary>Plain text lyrics without timestamps for the Unsync tab.</summary>

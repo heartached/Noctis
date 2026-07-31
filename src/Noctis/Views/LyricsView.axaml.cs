@@ -911,13 +911,14 @@ public partial class LyricsView : UserControl
     private const double PageAnchorRatio = 0.32;
 
     // Fullscreen focus dims everything but the active ±2 lines, so the active line sits
-    // at true center; the focus margins (50% top and bottom) keep the first and last
-    // lines scrollable all the way to that anchor.
-    private const double FocusAnchorRatio = 0.50;
+    // at the optical center: geometric 50% reads slightly low to the eye, so the anchor
+    // rides a touch above it (user-tuned). The focus margins (ratio-coupled below) keep
+    // the first and last lines scrollable all the way to that anchor.
+    private const double FocusAnchorRatio = 0.47;
 
-    /// <summary>Anchor ratio in effect: dead center while fullscreen focus dimming is
-    /// on, the page default otherwise. Every scroll target (glide, scrub chase, instant
-    /// jump) and the center padding follow this same ratio.</summary>
+    /// <summary>Anchor ratio in effect: optically centered while fullscreen focus
+    /// dimming is on, the page default otherwise. Every scroll target (glide, scrub
+    /// chase, instant jump) and the center padding follow this same ratio.</summary>
     private double ActiveAnchorRatio =>
         DataContext is LyricsViewModel { IsLyricsFocusActive: true }
             ? FocusAnchorRatio
@@ -1039,8 +1040,9 @@ public partial class LyricsView : UserControl
         // Normal: top margin = 10% so lyrics start near the top of the center zone,
         // bottom = 78% so the last lyric can still be scrolled to the page anchor.
         // Fullscreen focus: everything outside the active ±2 window is invisible, so
-        // both margins follow the centered anchor instead — 50% top lets the first
-        // line sit AT dead center and 50% bottom lets the last line scroll up to it.
+        // both margins follow the focus anchor instead — an anchor-sized top margin
+        // lets the first line sit AT the anchor and the complementary bottom margin
+        // lets the last line scroll up to it.
         var viewportHeight = LyricsScrollViewer.Viewport.Height;
         if (viewportHeight <= 0) return;
 
