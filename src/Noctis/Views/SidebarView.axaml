@@ -87,7 +87,7 @@
                         Click="OnSearchButtonClick"
                         ToolTip.Tip="Search (Ctrl+F)">
                     <StackPanel Orientation="Horizontal" Spacing="14">
-                        <Grid Width="28" Height="28">
+                        <Grid x:Name="SearchIconHost" Width="28" Height="28">
                             <PathIcon Data="{StaticResource SearchIcon}" Width="16" Height="16"
                                       Foreground="{DynamicResource IslandForeground}"/>
                             <!-- Active-filter dot: search text survives the pill closing,
@@ -113,39 +113,68 @@
                      native popup window is WS_EX_TOPMOST on Win32 and override-redirect
                      on X11, so it floats over OTHER applications and outlives minimize;
                      the overlay layer keeps the pill inside the window on every
-                     platform. Open/close animation lives in code-behind. -->
+                     platform. Anchored on the icon's 28x28 grid (not the button, whose
+                     width changes with the expanded label) at -2,-2 so the capsule's
+                     32px left cap lands exactly on the button's icon circle; the button
+                     hides while the popup is open and the capsule appears to morph out
+                     of it. Open/close animation lives in code-behind. -->
                 <Popup x:Name="SearchPopup"
-                       PlacementTarget="{Binding #SearchButton}"
-                       Placement="Right"
-                       HorizontalOffset="4"
+                       PlacementTarget="{Binding #SearchIconHost}"
+                       Placement="AnchorAndGravity"
+                       PlacementAnchor="TopLeft"
+                       PlacementGravity="BottomRight"
+                       HorizontalOffset="-2"
+                       VerticalOffset="-2"
                        IsLightDismissEnabled="False"
                        ShouldUseOverlayLayer="True"
                        WindowManagerAddShadowHint="False"
                        IsOpen="{Binding TopBar.IsSearchOpen, Mode=TwoWay}"
-                       Opened="OnSearchPopupOpened">
+                       Opened="OnSearchPopupOpened"
+                       Closed="OnSearchPopupClosed">
                     <Border x:Name="SearchPopupContent"
                             Background="{DynamicResource IslandBackground}"
                             BorderBrush="{DynamicResource IslandBorder}"
                             BorderThickness="1"
                             CornerRadius="999"
-                            Padding="12,5">
-                        <Grid ColumnDefinitions="*,Auto" Width="180">
-                            <TextBox x:Name="SearchBox"
-                                     Grid.Column="0"
-                                     Classes="search-box"
-                                     Text="{Binding TopBar.SearchText, Mode=TwoWay}"
-                                     Watermark="{Binding TopBar.SearchWatermark}"
-                                     KeyDown="OnSearchBoxKeyDown"
-                                     Background="Transparent" BorderThickness="0"
-                                     FontSize="12" Padding="4,2"
-                                     VerticalAlignment="Center"/>
-                            <Button Grid.Column="1"
-                                    Command="{Binding TopBar.ClearSearchCommand}"
-                                    IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"
+                            Width="32" Height="32"
+                            ClipToBounds="True">
+                        <Grid ColumnDefinitions="30,Auto" HorizontalAlignment="Left">
+                            <!-- Left cap: same 16px magnifier as the (hidden) rail button
+                                 beneath, doubling as the close toggle. -->
+                            <Button Grid.Column="0"
+                                    Click="OnSearchButtonClick"
                                     Background="Transparent" BorderThickness="0"
-                                    Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
-                                <TextBlock Text="&#x2715;" FontSize="11" Opacity="0.5"/>
+                                    Padding="0" Cursor="Hand" CornerRadius="999"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center">
+                                <Button.Styles>
+                                    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="#22FFFFFF"/>
+                                    </Style>
+                                </Button.Styles>
+                                <PathIcon Data="{StaticResource SearchIcon}" Width="16" Height="16"
+                                          Foreground="{DynamicResource IslandForeground}"/>
                             </Button>
+                            <Grid x:Name="SearchFieldArea"
+                                  Grid.Column="1"
+                                  ColumnDefinitions="*,Auto" Width="180" Margin="0,0,12,0">
+                                <TextBox x:Name="SearchBox"
+                                         Grid.Column="0"
+                                         Classes="search-box"
+                                         Text="{Binding TopBar.SearchText, Mode=TwoWay}"
+                                         Watermark="{Binding TopBar.SearchWatermark}"
+                                         KeyDown="OnSearchBoxKeyDown"
+                                         Background="Transparent" BorderThickness="0"
+                                         FontSize="12" Padding="4,2"
+                                         VerticalAlignment="Center"/>
+                                <Button Grid.Column="1"
+                                        Command="{Binding TopBar.ClearSearchCommand}"
+                                        IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
+                                    <TextBlock Text="&#x2715;" FontSize="11" Opacity="0.5"/>
+                                </Button>
+                            </Grid>
                         </Grid>
                     </Border>
                 </Popup>

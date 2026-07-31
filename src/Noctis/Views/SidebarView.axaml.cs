@@ -116,13 +116,19 @@ public partial class SidebarView : UserControl
 
     private ListBox[] GetNavLists() => new[] { NavList, FavoritesList, PlaylistList };
 
-    // ── Rail search pill open/close animation ──
+    // ── Rail search capsule morph animation ──
     // Same mechanism as MenuOpenAnimation (per-instance transitions, settle on the
     // next frame, animate-then-close); scoped here because that helper is
-    // specialized to ContextMenu/MenuFlyout. The pill is a non-light-dismiss Popup
-    // so it stays open while the user interacts with the filtered page beneath it.
+    // specialized to ContextMenu/MenuFlyout. The capsule is anchored pixel-exact
+    // over the search button's icon circle (see the Popup comment in XAML), so
+    // hiding the button while the popup is open and growing the capsule rightward
+    // from the bare 32px circle reads as the button morphing into the pill. The
+    // pill is a non-light-dismiss Popup so it stays open while the user interacts
+    // with the filtered page beneath it.
 
-    private const double SearchAnimMs = 150;
+    private const double SearchAnimMs = 250;
+    private const double SearchCapsuleClosedWidth = 32;  // matches the rail button circle
+    private const double SearchCapsuleOpenWidth = 224;   // borders + 30 icon cap + 180 field + 12 right pad
     private bool _searchCloseAnimating;
 
     private void OnSearchButtonClick(object? sender, RoutedEventArgs e)
@@ -146,17 +152,24 @@ public partial class SidebarView : UserControl
 
     private void OnSearchPopupOpened(object? sender, EventArgs e)
     {
-        // Slide in from the search icon: start hidden + nudged left, settle into
-        // place on the next frame so the transitions animate the change.
-        var target = SearchPopupContent;
+        // Morph out of the button: hide the real button (the capsule's left cap is
+        // a pixel-exact copy of its icon circle), snap to the bare circle without
+        // animating (transitions left over from a prior open would tween the reset
+        // itself), then grow rightward while the field fades/slides in on the next
+        // frame so the transitions animate the change.
         _searchCloseAnimating = false;
-        EnsureSearchTransitions(target, TimeSpan.FromMilliseconds(SearchAnimMs));
-        target.Opacity = 0;
-        target.RenderTransform = TransformOperations.Parse("translateX(-10px)");
+        SearchButton.Opacity = 0;
+        SearchPopupContent.Transitions = null;
+        SearchFieldArea.Transitions = null;
+        SearchPopupContent.Width = SearchCapsuleClosedWidth;
+        SearchFieldArea.Opacity = 0;
+        SearchFieldArea.RenderTransform = TransformOperations.Parse("translateX(-8px)");
+        EnsureSearchTransitions(TimeSpan.FromMilliseconds(SearchAnimMs));
         Dispatcher.UIThread.Post(() =>
         {
-            target.Opacity = 1;
-            target.RenderTransform = TransformOperations.Parse("translateX(0px)");
+            SearchPopupContent.Width = SearchCapsuleOpenWidth;
+            SearchFieldArea.Opacity = 1;
+            SearchFieldArea.RenderTransform = TransformOperations.Parse("translateX(0px)");
             SearchBox.Focus();
         }, DispatcherPriority.Render);
     }
@@ -165,12 +178,14 @@ public partial class SidebarView : UserControl
     {
         if (_searchCloseAnimating) return;
 
-        // Mirror of the open animation: same distance, duration and easing.
+        // Mirror of the open animation: collapse back to the icon circle, then
+        // close the popup (its Closed handler restores the real button, so the
+        // hand-off happens while both are pixel-identical circles).
         _searchCloseAnimating = true;
-        var target = SearchPopupContent;
-        EnsureSearchTransitions(target, TimeSpan.FromMilliseconds(SearchAnimMs));
-        target.Opacity = 0;
-        target.RenderTransform = TransformOperations.Parse("translateX(-10px)");
+        EnsureSearchTransitions(TimeSpan.FromMilliseconds(SearchAnimMs));
+        SearchPopupContent.Width = SearchCapsuleClosedWidth;
+        SearchFieldArea.Opacity = 0;
+        SearchFieldArea.RenderTransform = TransformOperations.Parse("translateX(-8px)");
 
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(SearchAnimMs) };
         timer.Tick += (_, _) =>
@@ -180,6 +195,15 @@ public partial class SidebarView : UserControl
             topBar.IsSearchOpen = false;
         };
         timer.Start();
+    }
+
+    private void OnSearchPopupClosed(object? sender, EventArgs e)
+    {
+        // Restore the real button whenever the popup actually closes — including
+        // orphan closes where a view model flips IsSearchOpen without the collapse
+        // animation running. Clear (not set) so the :disabled style opacity still
+        // applies.
+        SearchButton.ClearValue(OpacityProperty);
     }
 
     private void OnSearchOpenRequested(object? sender, EventArgs e)
@@ -192,12 +216,18 @@ public partial class SidebarView : UserControl
         }, DispatcherPriority.Render);
     }
 
-    private static void EnsureSearchTransitions(Control control, TimeSpan duration)
+    private void EnsureSearchTransitions(TimeSpan duration)
     {
-        control.Transitions = new Transitions
+        // ~cubic-bezier(.2,.8,.2,1): fast start, gentle settle.
+        var easing = new SplineEasing(0.2, 0.8, 0.2, 1);
+        SearchPopupContent.Transitions = new Transitions
         {
-            new DoubleTransition { Property = Visual.OpacityProperty, Duration = duration, Easing = new CubicEaseOut() },
-            new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = duration, Easing = new CubicEaseOut() },
+            new DoubleTransition { Property = WidthProperty, Duration = duration, Easing = easing },
+        };
+        SearchFieldArea.Transitions = new Transitions
+        {
+            new DoubleTransition { Property = Visual.OpacityProperty, Duration = duration, Easing = easing },
+            new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = duration, Easing = easing },
         };
     }
 
