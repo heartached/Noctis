@@ -9,9 +9,17 @@ namespace Noctis.Converters;
 
 /// <summary>
 /// Builds the karaoke sweep as a text <b>Foreground</b> brush from
-/// <c>[0]=Progress (0..1)</c> and <c>[1]=the lyrics foreground brush</c>: the word's
-/// accent overlay is painted fully left of <c>progress</c> and transparent to its
-/// right, with a small feathered edge.
+/// <c>[0]=Progress</c>, <c>[1]=the lyrics foreground brush</c>, and optionally
+/// <c>[2]=layout width</c> + <c>[3]=font size</c>: a CONSTANT-width feathered band
+/// slides left-to-right with progress; its stops clamp to the word box and carry the
+/// alpha the band would have at the clamped position, so the visible edges move at
+/// constant velocity and the band straddles token boundaries (progress runs a
+/// little past [0..1] on neighbouring words — see KaraokeSweep.BandProgress).
+///
+/// The previous collapsing feather (width = min(F, raw, 1-raw)) kept the stop
+/// midpoint linear but parked the solid edge at the start of every token and rushed
+/// it at 2× near the end — on multi-second held words that read as the sweep
+/// stalling at every letter boundary (worst on CJK, one cell per character).
 ///
 /// Painted as Foreground rather than OpacityMask on purpose: PushOpacityMask makes the
 /// compositor render through an intermediate layer, and the sibling held-note glow
@@ -21,7 +29,9 @@ namespace Noctis.Converters;
 /// </summary>
 public class ProgressToSweepForegroundConverter : IMultiValueConverter
 {
-    private const double Feather = 0.06;
+    /// <summary>Half-width of the band as a fraction of the token — fallback when
+    /// the view doesn't supply layout width + font size.</summary>
+    public const double Feather = 0.06;
 
     public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
     {
@@ -36,17 +46,31 @@ public class ProgressToSweepForegroundConverter : IMultiValueConverter
         var fg = values.Count > 1 ? values[1] as IBrush : null;
         var color = (fg as ISolidColorBrush)?.Color ?? Colors.White;
 
-        // Fully hidden / fully shown short-circuits (no sliver at 0, no dim edge at 1).
-        if (raw <= 0) return Brushes.Transparent;
-        if (raw >= 1) return fg ?? Brushes.White;
+        // AMLL's feather is a fixed ~0.5em, not a fraction of the word: with the
+        // width-relative fallback a narrow token (a single CJK character cell) gets
+        // a near hard edge. When the view passes its layout width and font size,
+        // use a 0.25em half-band instead, bounded so wide melisma words keep a
+        // visible soft edge and narrow cells stay inside the sentinel contract.
+        var feather = Feather;
+        if (values.Count > 3
+            && values[2] is double width && width > 0
+            && values[3] is double fontSize && fontSize > 0)
+        {
+            feather = Math.Clamp(0.25 * fontSize / width, 0.04, 0.45);
+        }
 
-        // The reveal edge sits exactly at `raw` and travels 0→1 linearly, so with
-        // contiguous word timings the sweep flows across word boundaries at constant
-        // velocity. The feather WIDTH shrinks to zero at the boundaries: soft
-        // mid-word, no bright sliver before the word starts, no pop on completion.
-        var feather = Math.Min(Feather, Math.Min(raw, 1.0 - raw));
-        var lo = raw - feather;
-        var hi = raw + feather;
+        // Band fully before / fully past the token (covers the inert sentinels).
+        if (raw <= -feather) return Brushes.Transparent;
+        if (raw >= 1 + feather) return fg ?? Brushes.White;
+
+        // The true band edges may hang past the word box; clamp the stops and give
+        // the clamped endpoint the alpha the ramp has at that position — a stop
+        // pinned at the boundary keeps *brightening* instead of parking the edge.
+        var loT = raw - feather;
+        var hiT = raw + feather;
+        var lo = Math.Max(loT, 0.0);
+        var hi = Math.Min(hiT, 1.0);
+        double AlphaAt(double x) => Math.Clamp((hiT - x) / (hiT - loT), 0.0, 1.0);
 
         // NOTE: this allocates a brush per evaluation, and the lyrics timer rewrites each
         // active word's Progress continuously — so this is a real per-frame allocation
@@ -62,10 +86,13 @@ public class ProgressToSweepForegroundConverter : IMultiValueConverter
             EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
             GradientStops = new GradientStops
             {
-                new GradientStop(color, lo),
-                // Same RGB at alpha 0 so the feather fades without darkening.
-                new GradientStop(Color.FromArgb(0x00, color.R, color.G, color.B), hi),
+                new GradientStop(WithAlpha(color, AlphaAt(lo)), lo),
+                // Same RGB throughout so the feather fades without darkening.
+                new GradientStop(WithAlpha(color, AlphaAt(hi)), hi),
             },
         };
     }
+
+    private static Color WithAlpha(Color color, double factor) =>
+        Color.FromArgb((byte)Math.Round(color.A * factor), color.R, color.G, color.B);
 }

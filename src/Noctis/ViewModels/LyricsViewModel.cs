@@ -2746,28 +2746,26 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (currentIndex != target)
             setIndex(target);
 
-        // Drive AMLL-style sweep on the currently-sung word (no-op for -1 / past layer end).
-        if (target >= 0 && target < words.Count)
+        // Drive the AMLL-style sweep on the current word AND its immediate
+        // neighbours, on the same lookahead-adjusted clock as the index above.
+        // BandProgress keeps moving a little past both ends of each word, so the
+        // feathered edge finishes crossing the previous token while it is already
+        // entering the next — clamping at [0,1] here is what used to park the band
+        // at every token boundary of a slow passage. Before the line starts
+        // (target -1) this pre-rolls word 0; past the layer end the last word
+        // settles at the inert-past sentinel (fully lit) until the line changes.
+        var first = Math.Max(0, target - 1);
+        var last = Math.Min(words.Count - 1, target + 1);
+        for (int i = first; i <= last; i++)
         {
-            var w = words[target];
-            // Last word of a start-tag-only layer has no end anywhere — bound it by the
-            // next line's start (capped) so it sweeps instead of snapping to lit.
-            var end = w.End ?? (target + 1 < words.Count
-                ? words[target + 1].Start
+            var w = words[i];
+            // Last word of a start-tag-only layer has no end anywhere — bound it by
+            // the next line's start (capped) so it sweeps instead of snapping to lit.
+            var end = w.End ?? (i + 1 < words.Count
+                ? words[i + 1].Start
                 : layerEnd ?? KaraokeSweep.ResolveOpenLastWordEnd(w.Start, NextSyncedLineStart()));
-            var span = (end - w.Start).TotalMilliseconds;
-            double progress;
-            if (span <= 0)
-                progress = 1.0;
-            else
-            {
-                // Use the same lookahead-adjusted time as the index above, so the sweep
-                // and the current-word cursor agree instead of the sweep trailing by 80ms.
-                var elapsed = (adjusted - w.Start).TotalMilliseconds;
-                progress = elapsed / span;
-                if (progress < 0) progress = 0;
-                else if (progress > 1) progress = 1;
-            }
+            var progress = KaraokeSweep.BandProgress(
+                w.Start.TotalSeconds, end.TotalSeconds, adjusted.TotalSeconds);
             if (w.Progress != progress)
                 w.Progress = progress;
         }
