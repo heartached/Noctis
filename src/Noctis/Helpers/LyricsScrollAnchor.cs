@@ -6,7 +6,7 @@ namespace Noctis.Helpers;
 /// </summary>
 public static class LyricsScrollAnchor
 {
-    /// <summary>Fraction of the viewport height the active line is anchored at.</summary>
+    /// <summary>Default fraction of the viewport height the active line is anchored at.</summary>
     public const double AnchorRatio = 0.22;
 
     /// <summary>
@@ -27,10 +27,13 @@ public static class LyricsScrollAnchor
     /// <param name="childHeight">Height of the active line.</param>
     /// <param name="viewportHeight">Visible height of the scroll viewer.</param>
     /// <param name="extentHeight">Total content height of the scroll viewer.</param>
+    /// <param name="anchorRatio">Fraction of the viewport height to anchor at; the page
+    /// passes a deeper ratio while fullscreen focus dimming is on.</param>
     public static double ComputeAnchorOffset(
-        double childTop, double childHeight, double viewportHeight, double extentHeight)
+        double childTop, double childHeight, double viewportHeight, double extentHeight,
+        double anchorRatio = AnchorRatio)
     {
-        var offset = childTop - (viewportHeight * AnchorRatio) + (childHeight / 2.0);
+        var offset = childTop - (viewportHeight * anchorRatio) + (childHeight / 2.0);
 
         // Only clamp once the viewport has been measured. During the first layout pass both
         // sizes read 0, and clamping against that would pin every target to 0 and strand

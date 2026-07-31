@@ -592,6 +592,15 @@ public partial class LyricsView : UserControl
                     ApplyScrollOffset(LyricsScrollViewer, 0);
             }
         }
+        else if (e.PropertyName == nameof(LyricsViewModel.IsLyricsFocusActive))
+        {
+            // Focus mode moves the anchor (22% ↔ 45%): re-pad now, then re-anchor on
+            // the layout pass the margin change triggers — same guarded path as a
+            // min/maximize/restore. If auto-follow is paused, only the padding moves.
+            UpdateLyricsCenterPadding();
+            if (DataContext is LyricsViewModel { IsSyncTabSelected: true, IsAutoFollowPaused: false, ActiveLineIndex: >= 0 })
+                _recenterOnNextLayout = true;
+        }
         else if (sender is LyricsViewModel v)
         {
             SyncAdaptiveResource(e.PropertyName, v);
@@ -894,6 +903,19 @@ public partial class LyricsView : UserControl
         RequestChaseFrame();
     }
 
+    // Fullscreen focus dims everything but the active ±2 lines, so the shared 22% anchor
+    // leaves the lower viewport empty. 45% is slightly above true center — the visible
+    // ±2 window reads cleanest with a touch more room below the active line.
+    private const double FocusAnchorRatio = 0.45;
+
+    /// <summary>Anchor ratio in effect: the deeper focus anchor while fullscreen focus
+    /// dimming is on, the shared default otherwise. Every scroll target (glide, scrub
+    /// chase, instant jump) and the center padding follow this same ratio.</summary>
+    private double ActiveAnchorRatio =>
+        DataContext is LyricsViewModel { IsLyricsFocusActive: true }
+            ? FocusAnchorRatio
+            : Helpers.LyricsScrollAnchor.AnchorRatio;
+
     /// <summary>Anchor offset for a line, or null if the item containers are not laid out
     /// yet. Shared by the eased glide and the scrub chase.</summary>
     private double? TryComputeAnchorOffset(int index)
@@ -915,7 +937,8 @@ public partial class LyricsView : UserControl
         return Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
             childTop, targetChild.Bounds.Height,
             LyricsScrollViewer.Viewport.Height,
-            LyricsScrollViewer.Extent.Height);
+            LyricsScrollViewer.Extent.Height,
+            ActiveAnchorRatio);
     }
 
     private void ClearCascadeTransforms()
@@ -1003,13 +1026,25 @@ public partial class LyricsView : UserControl
     {
         if (LyricsScrollViewer == null || LyricsItemsControl == null) return;
 
-        // Top margin = 10% so lyrics start near the top of the center zone
-        // Bottom margin = 78% so the last lyric can still be scrolled to the 22% target
+        // Normal: top margin = 10% so lyrics start near the top of the center zone,
+        // bottom = 78% so the last lyric can still be scrolled to the 22% target.
+        // Fullscreen focus: everything outside the active ±2 window is invisible, so
+        // both margins follow the deeper 45% anchor instead — the first line can sit
+        // AT the anchor and the last line can still be scrolled up to it.
         var viewportHeight = LyricsScrollViewer.Viewport.Height;
         if (viewportHeight <= 0) return;
 
-        var topPad = viewportHeight * 0.10;
-        var bottomPad = viewportHeight * 0.78;
+        double topPad, bottomPad;
+        if (DataContext is LyricsViewModel { IsLyricsFocusActive: true })
+        {
+            topPad = viewportHeight * FocusAnchorRatio;
+            bottomPad = viewportHeight * (1 - FocusAnchorRatio);
+        }
+        else
+        {
+            topPad = viewportHeight * 0.10;
+            bottomPad = viewportHeight * 0.78;
+        }
         // Right margin reserves an overflow zone for the active line's 1.07× scale
         // transform. Without it, scaled glyphs on long lines get clipped by the
         // ScrollViewer's internal viewport ("…GOA" instead of "…GOAT").
@@ -1089,7 +1124,8 @@ public partial class LyricsView : UserControl
                 var targetOffset = Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
                     childTop, childHeight,
                     LyricsScrollViewer.Viewport.Height,
-                    LyricsScrollViewer.Extent.Height);
+                    LyricsScrollViewer.Extent.Height,
+                    ActiveAnchorRatio);
 
                 var currentOffset = LyricsScrollViewer.Offset.Y;
                 var diff = targetOffset - currentOffset;
@@ -1142,7 +1178,8 @@ public partial class LyricsView : UserControl
                 var targetOffset = Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
                     childTop, childHeight,
                     LyricsScrollViewer.Viewport.Height,
-                    LyricsScrollViewer.Extent.Height);
+                    LyricsScrollViewer.Extent.Height,
+                    ActiveAnchorRatio);
                 ApplyScrollOffset(LyricsScrollViewer, targetOffset);
             }
             catch { }

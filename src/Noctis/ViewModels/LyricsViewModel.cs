@@ -227,7 +227,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _isFullScreenPageActive;
 
-    partial void OnIsFullScreenPageActiveChanged(bool value) => RefreshFocusDimming();
+    partial void OnIsFullScreenPageActiveChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsLyricsFocusActive));
+        RefreshFocusDimming();
+    }
+
+    /// <summary>True while the opt-in fullscreen focus dimming is in effect (fullscreen
+    /// lyrics page + Appearance toggle). The page view also anchors the active line
+    /// deeper (45%) while this is on, since the dimmed-away lines leave the lower
+    /// viewport empty at the default 22% anchor.</summary>
+    public bool IsLyricsFocusActive => IsFullScreenPageActive && Player.LyricsFullScreenFocusEnabled;
 
     /// <summary>Plain text lyrics without timestamps for the Unsync tab.</summary>
     public BulkObservableCollection<LyricLine> UnsyncedLines { get; } = new();
@@ -1798,6 +1808,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // Fullscreen-focus setting flipped while lyrics are showing — re-dim in place.
         else if (e.PropertyName == nameof(PlayerViewModel.LyricsFullScreenFocusEnabled))
         {
+            OnPropertyChanged(nameof(IsLyricsFocusActive));
             RefreshFocusDimming();
         }
     }
@@ -2951,7 +2962,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // while the lyrics page fills a fullscreen window. The side panel shares these
         // lines but can never be open with the page up, so the tight ramp never leaks
         // into it.
-        var focus = IsFullScreenPageActive && Player.LyricsFullScreenFocusEnabled;
+        var focus = IsLyricsFocusActive;
 
         for (int i = 0; i < LyricLines.Count; i++)
         {
