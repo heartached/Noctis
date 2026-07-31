@@ -108,7 +108,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // ── Sidebar visibility ──
 
-    /// <summary>Whether the sidebar is hidden (toggled from lyrics view).</summary>
+    /// <summary>Whether the sidebar is hidden. Driven by the shell: auto-hidden while
+    /// the lyrics page is up in fullscreen, restored when either condition ends.</summary>
     [ObservableProperty] private bool _isSidebarHidden;
 
     [RelayCommand]

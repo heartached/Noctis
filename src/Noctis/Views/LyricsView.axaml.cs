@@ -342,7 +342,7 @@ public partial class LyricsView : UserControl
                 Grid.SetColumnSpan(LeftPanel, 1);
                 Grid.SetRow(LeftPanel, 0);
                 Grid.SetRowSpan(LeftPanel, 2);
-                LeftPanel.Padding = new Thickness(40, 30);
+                LeftPanel.Padding = new Thickness(48, 42);
 
                 Grid.SetColumn(RightPanel, 1);
                 Grid.SetColumnSpan(RightPanel, 1);
@@ -383,9 +383,11 @@ public partial class LyricsView : UserControl
         else
         {
             // Left column is half the window minus panel padding; vertically
-            // reserve room for track info, timeline, and playback controls.
+            // reserve room for track info, timeline, and playback controls,
+            // plus enough slack that the block never presses against the
+            // screen edges in fullscreen.
             var maxByWidth = width / 2 - 90;
-            var maxByHeight = height - 330;
+            var maxByHeight = height - 370;
             var cover = Math.Clamp(Math.Min(maxByWidth, maxByHeight), 220, 780);
             AlbumArtBorder.Width = cover;
             AlbumArtBorder.Height = cover;

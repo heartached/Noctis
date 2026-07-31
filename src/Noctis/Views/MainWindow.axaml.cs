@@ -255,12 +255,9 @@ public partial class MainWindow : Window
                             Grid.SetRow(_contentDockPanel, lyricsActive ? 0 : 1);
                             Grid.SetRowSpan(_contentDockPanel, lyricsActive ? 2 : 1);
                         }
-                        // Restore sidebar when leaving lyrics view
-                        if (!mainVm2.IsLyricsViewActive && mainVm2.IsSidebarHidden)
-                        {
-                            mainVm2.IsSidebarHidden = false;
-                            if (_sidebarWrapper != null) _sidebarWrapper.Width = 60;
-                        }
+                        // Fullscreen lyrics hide the sidebar; leaving the page restores
+                        // it even windowed, since nothing else would bring it back.
+                        UpdateFullScreenLyricsSidebar();
                     }
                     if (e.PropertyName == nameof(MainWindowViewModel.IsSettingsModalOpen))
                     {
@@ -406,9 +403,15 @@ public partial class MainWindow : Window
         Helpers.SingleInstanceGuard.ActivationRequested += _singleInstanceActivationHandler;
 
         // Minimize-to-tray: hide the window when it minimizes and the setting is on.
+        // Every WindowState change also re-evaluates the fullscreen-lyrics sidebar
+        // rule here — F11, Escape and WM-initiated transitions all funnel through
+        // this one observer.
         PropertyChanged += (_, e) =>
         {
-            if (e.Property != WindowStateProperty || WindowState != WindowState.Minimized)
+            if (e.Property != WindowStateProperty)
+                return;
+            UpdateFullScreenLyricsSidebar();
+            if (WindowState != WindowState.Minimized)
                 return;
             if (_trayIcon != null
                 && DataContext is MainWindowViewModel trayVm
@@ -1062,6 +1065,21 @@ public partial class MainWindow : Window
             _preFullScreenState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
             WindowState = WindowState.FullScreen;
         }
+    }
+
+    /// <summary>
+    /// Fullscreen lyrics own the whole screen: the sidebar hides while the window is
+    /// FullScreen with the lyrics page up, and comes back the moment either condition
+    /// ends — leaving fullscreen, or navigating off the page (windowed included, since
+    /// nothing else would un-hide it). Runs off both the WindowState observer and the
+    /// IsLyricsViewActive handler so every path lands on the same answer.
+    /// </summary>
+    private void UpdateFullScreenLyricsSidebar()
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        var immersive = WindowState == WindowState.FullScreen && vm.IsLyricsViewActive;
+        if (vm.IsSidebarHidden != immersive)
+            vm.IsSidebarHidden = immersive;
     }
 
     // ── Albums toggle visuals ──

@@ -488,7 +488,7 @@
                 Grid.Column="0"
                 Grid.RowSpan="2"
                 Background="Transparent"
-                Padding="40,30">
+                Padding="48,42">
             <StackPanel x:Name="LeftContentStack" VerticalAlignment="Center"
                         HorizontalAlignment="Center"
                         ClipToBounds="False"
