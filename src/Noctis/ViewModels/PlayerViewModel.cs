@@ -86,6 +86,9 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Whether the lyrics page's flowing-light blobs are shown in artwork
     /// background mode (issue #22). Driven by Settings like the marquee flags.</summary>
     [ObservableProperty] private bool _lyricsFlowingLightEnabled = true;
+    /// <summary>Opt-in fullscreen lyrics focus — dims all but the active line and its
+    /// closest neighbors while the lyrics page is fullscreen. Driven by Settings.</summary>
+    [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
 
     // ── Lyrics page integration (flags + pass-through commands set up by MainWindowViewModel) ──
 

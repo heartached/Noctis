@@ -1623,6 +1623,20 @@
                 </Grid>
             </Border>
 
+            <!-- Fullscreen lyrics focus -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Fullscreen Lyrics Focus" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Dim all but the current line and its neighbors in fullscreen."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding LyricsFullScreenFocusEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Player bar opacity -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">

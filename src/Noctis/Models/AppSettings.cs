@@ -263,6 +263,10 @@ public class AppSettings
     /// on the lyrics page (issue #22). Only applies while the artwork mode is active.</summary>
     public bool LyricsFlowingLightEnabled { get; set; } = true;
 
+    /// <summary>Opt-in fullscreen focus — dims everything but the active line and its
+    /// closest neighbors while the lyrics page is fullscreen.</summary>
+    public bool LyricsFullScreenFocusEnabled { get; set; }
+
     // ── Lyrics providers ──
 
     /// <summary>Whether LRCLIB online lyrics search is enabled.</summary>

@@ -222,6 +222,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _hasSyncedLyricsAvailable;
 
+    /// <summary>Set by the shell — true only while the lyrics PAGE is up in a fullscreen
+    /// window; drives the focus dimming gate in <see cref="UpdateLineOpacities"/>.</summary>
+    [ObservableProperty]
+    private bool _isFullScreenPageActive;
+
+    partial void OnIsFullScreenPageActiveChanged(bool value) => RefreshFocusDimming();
+
     /// <summary>Plain text lyrics without timestamps for the Unsync tab.</summary>
     public BulkObservableCollection<LyricLine> UnsyncedLines { get; } = new();
 
@@ -1788,6 +1795,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             UpdateAdaptiveBackground(_player.AlbumArt);
         }
+        // Fullscreen-focus setting flipped while lyrics are showing — re-dim in place.
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsFullScreenFocusEnabled))
+        {
+            RefreshFocusDimming();
+        }
     }
 
     /// <summary>Raised on the UI thread when a lyric reload has its result ready and
@@ -2918,7 +2930,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Sets LineOpacity on each lyric line based on distance from the active line.
-    /// Active=1.0, adjacent lines fade gradually over ±9 lines, rest=0.0 (hidden).
+    /// Active=1.0, adjacent lines fade gradually over ±9 lines, rest=0.0 (hidden);
+    /// fullscreen focus (opt-in) tightens the ramp to the active line ±2.
     /// Pass activeIndex=-1 to restore all lines to full opacity (e.g. unsynced or reset).
     /// </summary>
     private void UpdateLineOpacities(int activeIndex)
@@ -2934,24 +2947,38 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        // Fullscreen focus (opt-in): only the active line and ±2 neighbours stay visible
+        // while the lyrics page fills a fullscreen window. The side panel shares these
+        // lines but can never be open with the page up, so the tight ramp never leaks
+        // into it.
+        var focus = IsFullScreenPageActive && Player.LyricsFullScreenFocusEnabled;
+
         for (int i = 0; i < LyricLines.Count; i++)
         {
             var dist = i - activeIndex;
             var absDist = Math.Abs(dist);
-            var opacity = absDist switch
-            {
-                 0 => 1.0,
-                 1 => 0.55,
-                 2 => 0.32,
-                 3 => 0.18,
-                 4 => 0.12,
-                 5 => 0.08,
-                 6 => 0.06,
-                 7 => 0.04,
-                 8 => 0.03,
-                 9 => 0.02,
-                 _ => 0.0
-            };
+            var opacity = focus
+                ? absDist switch
+                {
+                     0 => 1.0,
+                     1 => 0.5,
+                     2 => 0.22,
+                     _ => 0.0
+                }
+                : absDist switch
+                {
+                     0 => 1.0,
+                     1 => 0.55,
+                     2 => 0.32,
+                     3 => 0.18,
+                     4 => 0.12,
+                     5 => 0.08,
+                     6 => 0.06,
+                     7 => 0.04,
+                     8 => 0.03,
+                     9 => 0.02,
+                     _ => 0.0
+                };
             // Apple Music–style depth: active crisp, neighbours softly blurred.
             var blur = absDist switch
             {
@@ -2973,6 +3000,18 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             if (line.IsClickable != clickable)
                 line.IsClickable = clickable;
         }
+    }
+
+    // The focus gate flips mid-line (fullscreen entered/left, or the Settings toggle),
+    // so the ramp re-runs in place rather than waiting for the next line change. Mirrors
+    // RefreshActiveLyricPosition's guards: the synced tab re-dims around the active line,
+    // everything else restores full opacity.
+    private void RefreshFocusDimming()
+    {
+        if (_hasSyncedLyrics && IsSyncTabSelected && LyricLines.Count > 0)
+            UpdateLineOpacities(ActiveLineIndex);
+        else
+            UpdateLineOpacities(-1);
     }
 
     [GeneratedRegex(@"\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]")]

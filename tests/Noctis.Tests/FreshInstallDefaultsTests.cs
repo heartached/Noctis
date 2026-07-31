@@ -82,6 +82,8 @@ public class FreshInstallDefaultsTests
         Assert.Equal("#E74856", Fresh.AccentColorHex);
         Assert.True(Fresh.EnableAnimatedCovers);
         Assert.True(Fresh.LyricsFlowingLightEnabled);
+        // Fullscreen focus is opt-in — the default keeps the full ±9 depth-of-field ramp.
+        Assert.False(Fresh.LyricsFullScreenFocusEnabled);
         Assert.Equal(0.4, Fresh.PlaybackBarBackgroundOpacity);
         Assert.True(Fresh.GaplessPlaybackEnabled);
     }

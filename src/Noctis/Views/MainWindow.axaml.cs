@@ -257,7 +257,7 @@ public partial class MainWindow : Window
                         }
                         // Fullscreen lyrics hide the sidebar; leaving the page restores
                         // it even windowed, since nothing else would bring it back.
-                        UpdateFullScreenLyricsSidebar();
+                        UpdateImmersiveLyricsState();
                     }
                     if (e.PropertyName == nameof(MainWindowViewModel.IsSettingsModalOpen))
                     {
@@ -410,7 +410,7 @@ public partial class MainWindow : Window
         {
             if (e.Property != WindowStateProperty)
                 return;
-            UpdateFullScreenLyricsSidebar();
+            UpdateImmersiveLyricsState();
             if (WindowState != WindowState.Minimized)
                 return;
             if (_trayIcon != null
@@ -1071,15 +1071,19 @@ public partial class MainWindow : Window
     /// Fullscreen lyrics own the whole screen: the sidebar hides while the window is
     /// FullScreen with the lyrics page up, and comes back the moment either condition
     /// ends — leaving fullscreen, or navigating off the page (windowed included, since
-    /// nothing else would un-hide it). Runs off both the WindowState observer and the
-    /// IsLyricsViewActive handler so every path lands on the same answer.
+    /// nothing else would un-hide it). The same condition feeds the lyrics VM's
+    /// fullscreen flag, which gates the opt-in focus dimming. Runs off both the
+    /// WindowState observer and the IsLyricsViewActive handler so every path lands on
+    /// the same answer.
     /// </summary>
-    private void UpdateFullScreenLyricsSidebar()
+    private void UpdateImmersiveLyricsState()
     {
         if (DataContext is not MainWindowViewModel vm) return;
         var immersive = WindowState == WindowState.FullScreen && vm.IsLyricsViewActive;
         if (vm.IsSidebarHidden != immersive)
             vm.IsSidebarHidden = immersive;
+        if (vm.Lyrics.IsFullScreenPageActive != immersive)
+            vm.Lyrics.IsFullScreenPageActive = immersive;
     }
 
     // ── Albums toggle visuals ──
