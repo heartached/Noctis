@@ -10,6 +10,7 @@ using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Loon;
+using Noctis.Services.MediaServer;
 
 namespace Noctis.ViewModels;
 
@@ -28,6 +29,7 @@ public partial class SettingsViewModel : ViewModelBase
     private LoonClient? _loon;
     private ILastFmService? _lastFm;
     private IListenBrainzService? _listenBrainz;
+    private IMediaServerService? _mediaServer;
     private UpdateService? _updateService;
     private CancellationTokenSource? _updateCts;
     private string? _downloadedInstallerPath;
@@ -467,6 +469,26 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _listenBrainzStatusText = "Not connected";
     [ObservableProperty] private string _listenBrainzError = "";
 
+    // ── Media server ──
+    // The editable fields below are typing state; the authoritative connected
+    // state is _mediaServerConnection (token/user id inside), which is what
+    // SyncToSettings persists. Credentials follow the ListenBrainz idiom: no
+    // autosave, persisted only by the Connect/Disconnect commands.
+    public string[] MediaServerTypeOptions { get; } = { "Jellyfin", "Subsonic (Navidrome, Airsonic…)" };
+    [ObservableProperty] private string _mediaServerType = "Jellyfin";
+    [ObservableProperty] private string _mediaServerUrl = "";
+    [ObservableProperty] private string _mediaServerUsername = "";
+    [ObservableProperty] private string _mediaServerPassword = "";
+    [ObservableProperty] private bool _isMediaServerConnected;
+    [ObservableProperty] private bool _isMediaServerBusy;
+    [ObservableProperty] private string _mediaServerStatusText = "Not connected";
+
+    /// <summary>The persisted server connection while connected; null otherwise.</summary>
+    private SourceConnection? _mediaServerConnection;
+
+    /// <summary>Raised after Connect/Disconnect so the shell can show/hide the Server section.</summary>
+    public event EventHandler? MediaServerConnectionChanged;
+
     // ── Preferences ──
 
     [ObservableProperty] private bool _scanOnStartup = true;
@@ -644,11 +666,13 @@ public partial class SettingsViewModel : ViewModelBase
     /// from the Settings → Statistics tab. The shell closes the modal and navigates.</summary>
     public event EventHandler? OpenStatisticsRequested;
 
-    public SettingsViewModel(IPersistenceService persistence, ILibraryService library, IPlayHistoryService playHistory)
+    public SettingsViewModel(IPersistenceService persistence, ILibraryService library, IPlayHistoryService playHistory,
+        IMediaServerService? mediaServer = null)
     {
         _persistence = persistence;
         _library = library;
         _playHistory = playHistory;
+        _mediaServer = mediaServer;
         _settings = new AppSettings();
 
         _library.ScanProgress += (_, count) =>
@@ -939,6 +963,25 @@ public partial class SettingsViewModel : ViewModelBase
                     ListenBrainzStatusText = $"Connected as {_settings.ListenBrainzUsername}";
             }
 
+            // Media server (v1: a single Subsonic/Jellyfin connection)
+            var serverConnection = _settings.SourceConnections
+                .FirstOrDefault(c => c.Type is SourceType.Navidrome or SourceType.Jellyfin);
+            if (serverConnection != null)
+            {
+                _mediaServerConnection = serverConnection;
+                MediaServerType = serverConnection.Type == SourceType.Jellyfin
+                    ? MediaServerTypeOptions[0]
+                    : MediaServerTypeOptions[1];
+                MediaServerUrl = serverConnection.BaseUriOrPath;
+                MediaServerUsername = serverConnection.Username;
+                // The credential (Subsonic password / Jellyfin token) stays in the
+                // connection object only — never surfaced back into the password box.
+                IsMediaServerConnected = true;
+                MediaServerStatusText = $"Connected to {serverConnection.BaseUriOrPath}";
+                _mediaServer?.SetActiveConnection(serverConnection);
+                MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+            }
+
             if (_discord != null)
             {
                 // Lets the service's background reconnect stop as soon as the user turns
@@ -1153,6 +1196,17 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ListenBrainzScrobblingEnabled = ListenBrainzScrobblingEnabled;
         _settings.ListenBrainzToken = ListenBrainzToken ?? string.Empty;
         _settings.ListenBrainzUsername = ListenBrainzUsername ?? string.Empty;
+
+        // Media server: this VM owns the single Subsonic/Jellyfin connection, so the
+        // stored list is rebuilt from the connected state on every save (the on-disk
+        // merge above would otherwise revert a connect/disconnect). Connector types
+        // this UI doesn't manage (Local/Smb/WebDav) are passed through untouched.
+        var preservedConnections = _settings.SourceConnections
+            .Where(c => c.Type is not (SourceType.Navidrome or SourceType.Jellyfin))
+            .ToList();
+        if (_mediaServerConnection != null)
+            preservedConnections.Add(_mediaServerConnection);
+        _settings.SourceConnections = preservedConnections;
 
         // Volume rides the same save: the shutdown path calls SetVolume right before
         // SaveAsync, and without this re-apply the on-disk merge above reverted it to
@@ -2362,6 +2416,62 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    // ── Media server ──
+
+    /// <summary>Validates the typed server details and, on success, persists the connection.</summary>
+    [RelayCommand]
+    private async Task ConnectMediaServer()
+    {
+        if (_mediaServer == null || IsMediaServerBusy) return;
+
+        var type = MediaServerType != null && MediaServerType.StartsWith("Subsonic", StringComparison.Ordinal)
+            ? SourceType.Navidrome
+            : SourceType.Jellyfin;
+        if (string.IsNullOrWhiteSpace(MediaServerUsername) || string.IsNullOrWhiteSpace(MediaServerPassword))
+        {
+            MediaServerStatusText = "Enter the username and password.";
+            return;
+        }
+
+        IsMediaServerBusy = true;
+        MediaServerStatusText = "Connecting…";
+        try
+        {
+            var (result, connection) = await _mediaServer.ConnectAsync(
+                type, MediaServerUrl, MediaServerUsername, MediaServerPassword, _mediaServerConnection?.Id);
+            if (!result.Success)
+            {
+                MediaServerStatusText = result.Message;
+                return;
+            }
+
+            _mediaServerConnection = connection;
+            MediaServerUrl = connection.BaseUriOrPath; // normalized by the client
+            MediaServerPassword = string.Empty;        // never keep the password in a bound field
+            IsMediaServerConnected = true;
+            MediaServerStatusText = result.Message;
+            _mediaServer.SetActiveConnection(connection);
+            MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+            await SaveAsync();
+        }
+        finally
+        {
+            IsMediaServerBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DisconnectMediaServer()
+    {
+        _mediaServerConnection = null;
+        IsMediaServerConnected = false;
+        MediaServerPassword = string.Empty;
+        MediaServerStatusText = "Not connected";
+        _mediaServer?.SetActiveConnection(null);
+        MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+        await SaveAsync();
+    }
+
     // ── Equalizer handlers ──
 
     partial void OnEqualizerEnabledChanged(bool value)
@@ -3371,6 +3481,18 @@ public partial class SettingsViewModel : ViewModelBase
             IsListenBrainzConnected = false;
             ListenBrainzStatusText = "Not connected";
             _listenBrainz?.Logout();
+
+            // Media server — drop the connection (SyncToSettings would otherwise
+            // re-persist the stale one over the freshly defaulted file).
+            _mediaServerConnection = null;
+            MediaServerType = MediaServerTypeOptions[0];
+            MediaServerUrl = "";
+            MediaServerUsername = "";
+            MediaServerPassword = "";
+            IsMediaServerConnected = false;
+            MediaServerStatusText = "Not connected";
+            _mediaServer?.SetActiveConnection(null);
+            MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
 
             // Disconnect Discord if connected (Loon rides its lifecycle)
             if (_discord != null)

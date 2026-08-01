@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Loon;
+using Noctis.Services.MediaServer;
 
 namespace Noctis.ViewModels;
 
@@ -160,6 +161,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly LibraryPlaylistsViewModel _playlistsVm;
     private readonly FavoritesViewModel _favoritesVm;
     private readonly LibraryFoldersViewModel _foldersVm;
+    private readonly ServerViewModel _serverVm;
 
     private readonly QueueViewModel _queueVm;
     private readonly LyricsViewModel _lyricsVm;
@@ -194,7 +196,8 @@ public partial class MainWindowViewModel : ViewModelBase
         LoonClient loon,
         ILrcLibService lrcLib,
         INetEaseService netEase,
-        IPlayHistoryService playHistory)
+        IPlayHistoryService playHistory,
+        IMediaServerService mediaServer)
     {
         _library = library;
         _playHistory = playHistory;
@@ -212,7 +215,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Sidebar = new SidebarViewModel(persistence, library);
         TopBar = new TopBarViewModel();
         Sidebar.TopBar = TopBar;
-        Settings = new SettingsViewModel(persistence, library, playHistory);
+        Settings = new SettingsViewModel(persistence, library, playHistory, mediaServer);
         Settings.SetAudioPlayer(audioPlayer);
         Settings.SetPlayer(Player);
         Player.SetSettingsViewModel(Settings);
@@ -244,6 +247,16 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
         // Create content ViewModels
+        _serverVm = new ServerViewModel(mediaServer, Player);
+        // The Server entry only exists in the rail while a server is configured;
+        // hydration (Settings.LoadAsync), Connect and Disconnect all raise this.
+        Settings.MediaServerConnectionChanged += (_, _) =>
+        {
+            var configured = mediaServer.IsConfigured;
+            Sidebar.SetServerSectionVisible(configured);
+            if (!configured && ReferenceEquals(CurrentView, _serverVm))
+                Navigate("home");
+        };
         _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService, playHistory);
         _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence);
         _albumsVm = new LibraryAlbumsViewModel(library, Player, Sidebar, Settings);
@@ -1419,6 +1432,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return GetSectionBackButtonText("lyrics");
         if (ReferenceEquals(view, _statisticsVm))
             return GetSectionBackButtonText("statistics");
+        if (ReferenceEquals(view, _serverVm))
+            return GetSectionBackButtonText("server");
         if (ReferenceEquals(view, Settings))
             return GetSectionBackButtonText("settings");
         if (view is AlbumDetailViewModel)
@@ -1473,6 +1488,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return "lyrics";
         if (ReferenceEquals(view, _statisticsVm))
             return "statistics";
+        if (ReferenceEquals(view, _serverVm))
+            return "server";
         if (ReferenceEquals(view, Settings))
             return "settings";
 
@@ -1527,6 +1544,7 @@ public partial class MainWindowViewModel : ViewModelBase
                || ReferenceEquals(view, _lyricsVm)
                || ReferenceEquals(view, _statisticsVm)
                || ReferenceEquals(view, _coverFlowVm)
+               || ReferenceEquals(view, _serverVm)
                || ReferenceEquals(view, Settings);
     }
 
@@ -1603,6 +1621,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 "statistics" => RefreshAndReturnStatistics(_statisticsVm),
                 "queue" => _queueVm,
                 "lyrics" => EnsureLyricsAndReturn(_lyricsVm),
+                "server" => RefreshAndReturnServer(_serverVm),
                 "settings" => RefreshAndReturnSettings(),
                 _ when key.StartsWith("playlist:") => CreatePlaylistView(key),
                 _ => _homeVm
@@ -1640,6 +1659,7 @@ public partial class MainWindowViewModel : ViewModelBase
             "statistics" => "Statistics",
             "queue" => "Queue",
             "lyrics" => "Lyrics",
+            "server" => "Server",
             "settings" => "Settings",
             _ when key.StartsWith("playlist:") => "Playlist",
             _ => "Library"
@@ -1695,6 +1715,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private LibraryFoldersViewModel RefreshAndReturnFolders(LibraryFoldersViewModel vm)
     {
         vm.Refresh();
+        return vm;
+    }
+
+    private ServerViewModel RefreshAndReturnServer(ServerViewModel vm)
+    {
+        vm.OnNavigatedTo();
         return vm;
     }
 
@@ -2128,6 +2154,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (CurrentView == _queueVm) return "queue";
         if (CurrentView == _lyricsVm) return "lyrics";
         if (CurrentView == _statisticsVm) return "statistics";
+        if (CurrentView == _serverVm) return "server";
         if (CurrentView == Settings) return "settings";
         return "home";
     }

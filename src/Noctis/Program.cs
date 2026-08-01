@@ -235,6 +235,8 @@ internal class Program
         services.AddSingleton<IMediaSourceConnector, SmbMediaSourceConnector>();
         services.AddSingleton<IMediaSourceConnector, WebDavMediaSourceConnector>();
         services.AddSingleton<IMediaSourceConnector, NavidromeMediaSourceConnector>();
+        // On-demand media-server browsing/streaming (the "Server" section).
+        services.AddSingleton<Services.MediaServer.IMediaServerService, Services.MediaServer.MediaServerService>();
         services.AddSingleton<LoonClient>(sp =>
         {
             var persistence = sp.GetRequiredService<IPersistenceService>();

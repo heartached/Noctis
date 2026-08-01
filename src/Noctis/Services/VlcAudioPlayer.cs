@@ -1863,17 +1863,29 @@ public class VlcAudioPlayer : IAudioPlayer
 
     // ── Playback control ────────────────────────────────────────
 
+    /// <summary>
+    /// True when the path is a remote http(s) stream (media-server track) rather
+    /// than a local file. Remote streams open with FromType.FromLocation and parse
+    /// over the network; they never use the standby/crossfade machinery (which is
+    /// built around normalized local paths and pre-parsed local media). Stream URLs
+    /// can embed auth tokens, so they must never be logged or shown verbatim.
+    /// </summary>
+    internal static bool IsRemoteStreamPath(string path) =>
+        path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
     public void Play(string filePath)
     {
         if (_disposed || string.IsNullOrWhiteSpace(filePath)) return;
 
-        if (!File.Exists(filePath))
+        if (!IsRemoteStreamPath(filePath) && !File.Exists(filePath))
         {
             PlaybackError?.Invoke(this, $"File not found: {filePath}");
             return;
         }
 
-        DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play", $"path={Path.GetFileName(filePath)}");
+        DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play",
+            $"path={(IsRemoteStreamPath(filePath) ? "<remote stream>" : Path.GetFileName(filePath))}");
         _keepAlive?.NotifyActivity();
         _currentMediaPath = filePath;
 
@@ -1944,10 +1956,14 @@ public class VlcAudioPlayer : IAudioPlayer
 
             var hadPreviousMedia = _currentMedia != null;
             var targetVolume = GetTargetVlcVolume();
+            // Remote streams take the plain open path: the standby/crossfade helpers
+            // compare Path.GetFullPath-normalized local paths and the standby player
+            // is never prepared for URLs (PrepareNext rejects them).
+            var isRemote = IsRemoteStreamPath(filePath);
             // Crossfade needs two simultaneous streams; the WASAPI callback sinks
             // are single-stream, so disable the transition fade on those paths.
             var canTransitionFade = _crossfadeEnabled && hadPreviousMedia && !_player.Mute &&
-                                    _wasapiOut == null && !_exclusiveModeEnabled && !startPaused;
+                                    _wasapiOut == null && !_exclusiveModeEnabled && !startPaused && !isRemote;
             var fadeOutMs = canTransitionFade && _player.IsPlaying
                 ? Math.Clamp(_crossfadeDurationMs / 2, 100, 6000)
                 : 0;
@@ -1982,7 +1998,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // Gapless: no crossfade, but the next track was prepared on the
             // standby player — hand off to it instantly at full volume instead
             // of the audible stop/parse/start path.
-            if (!canTransitionFade && !startPaused && _gaplessEnabled && _standbyPrepared && hadPreviousMedia &&
+            if (!canTransitionFade && !startPaused && !isRemote && _gaplessEnabled && _standbyPrepared && hadPreviousMedia &&
                 TryStartPreparedAutoMix(filePath, targetVolume, sessionId, cancel, instantHandoff: true))
             {
                 Interlocked.Exchange(ref _pendingSeekMs, -1);
@@ -1995,14 +2011,16 @@ public class VlcAudioPlayer : IAudioPlayer
             // 1. Create and parse the new media before fading/stopping the old one.
             // This keeps AutoMix transitions clean: the next track is already picked
             // and decoder-ready before the audible handoff starts.
-            var media = new Media(_libVlc, filePath, FromType.FromPath);
+            // Remote media-server streams are locations, not paths, and their
+            // headers must be parsed over the network.
+            var media = new Media(_libVlc, filePath, isRemote ? FromType.FromLocation : FromType.FromPath);
 
             // Parse the file header synchronously. This reads container
             // metadata (codec, sample rate, duration, channel layout).
             // Without this, M4A/ALAC/AAC can fail to decode.
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancel);
             cts.CancelAfter(8000);
-            var parseTask = media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
+            var parseTask = media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
             try
             {
                 parseTask.Wait(cts.Token);
@@ -2017,9 +2035,12 @@ public class VlcAudioPlayer : IAudioPlayer
             var parseResult = parseTask.Result;
             if (parseResult != MediaParsedStatus.Done)
             {
-                // Parsing failed or timed out — file may be corrupted
+                // Parsing failed or timed out — file may be corrupted. Stream URLs
+                // can embed auth tokens, so never echo them into the error surface.
                 media.Dispose();
-                PlaybackError?.Invoke(this, $"Could not parse: {filePath}");
+                PlaybackError?.Invoke(this, isRemote
+                    ? "Could not open the remote stream. Check the server connection."
+                    : $"Could not parse: {filePath}");
                 return;
             }
 

@@ -2285,6 +2285,95 @@
                 </StackPanel>
             </Border>
 
+            <TextBlock Classes="section-title" Text="MEDIA SERVER" Margin="0,20,0,10"/>
+
+            <Border Classes="setting-card">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                            <TextBlock Text="Music Server" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Stream your library from Jellyfin or a Subsonic-compatible server (Navidrome, Airsonic, Gonic…)."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
+                                       HorizontalAlignment="Left" Margin="-2,0,0,0"/>
+
+                            <!-- Connected summary -->
+                            <StackPanel IsVisible="{Binding IsMediaServerConnected}" Spacing="2" Margin="-2,4,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="SERVER" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding MediaServerUrl}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="ACCOUNT" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding MediaServerUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Connection form (hidden while connected) -->
+                            <StackPanel IsVisible="{Binding !IsMediaServerConnected}" Margin="-2,8,0,0" Spacing="6">
+                                <ComboBox Classes="pill-list"
+                                          ItemsSource="{Binding MediaServerTypeOptions}"
+                                          SelectedItem="{Binding MediaServerType}"
+                                          IsEnabled="{Binding !IsMediaServerBusy}"
+                                          Width="280" HorizontalAlignment="Left"
+                                          CornerRadius="999" Padding="14,8"/>
+                                <TextBox Classes="metadata-info-field"
+                                         Text="{Binding MediaServerUrl}"
+                                         Watermark="Server URL (https://music.example.com)"
+                                         IsEnabled="{Binding !IsMediaServerBusy}"
+                                         FontSize="12" Width="280" HorizontalAlignment="Left"/>
+                                <TextBox Classes="metadata-info-field"
+                                         Text="{Binding MediaServerUsername}"
+                                         Watermark="Username"
+                                         IsEnabled="{Binding !IsMediaServerBusy}"
+                                         FontSize="12" Width="280" HorizontalAlignment="Left"/>
+                                <TextBox Classes="metadata-info-field"
+                                         Text="{Binding MediaServerPassword}"
+                                         PasswordChar="•"
+                                         Watermark="Password"
+                                         IsEnabled="{Binding !IsMediaServerBusy}"
+                                         FontSize="12" Width="280" HorizontalAlignment="Left"/>
+                            </StackPanel>
+
+                            <!-- Status feedback ("Connecting…", "Wrong username or password.", …) -->
+                            <TextBlock Text="{Binding MediaServerStatusText}"
+                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap"
+                                       Margin="-2,6,0,0"/>
+                        </StackPanel>
+
+                        <!-- Connect (top-right, mirrors the account cards) -->
+                        <Button Grid.Column="1"
+                                IsVisible="{Binding !IsMediaServerConnected}"
+                                IsEnabled="{Binding !IsMediaServerBusy}"
+                                Content="Connect"
+                                Classes="pill-action"
+                                Command="{Binding ConnectMediaServerCommand}"
+                                Padding="14,8" CornerRadius="16" Cursor="Hand"
+                                VerticalAlignment="Top" Margin="0,4,0,0">
+                            <Button.Template>
+                                <ControlTemplate>
+                                    <ContentPresenter Background="{DynamicResource AccentColorBrush}"
+                                                      Foreground="{DynamicResource AccentForegroundBrush}"
+                                                      CornerRadius="16"
+                                                      Padding="14,8"
+                                                      FontSize="13"
+                                                      FontWeight="SemiBold"
+                                                      Content="{TemplateBinding Content}"/>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <Button Grid.Column="1"
+                                IsVisible="{Binding IsMediaServerConnected}"
+                                Command="{Binding DisconnectMediaServerCommand}"
+                                Classes="pill-action"
+                                Padding="14,8" CornerRadius="16" Cursor="Hand"
+                                VerticalAlignment="Top" Margin="0,4,0,0">
+                            <TextBlock Text="Disconnect" FontSize="13" VerticalAlignment="Center"/>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <TextBlock Classes="section-title" Text="LYRICS" Margin="0,20,0,10"/>
 
             <Border Classes="setting-card">

@@ -71,4 +71,46 @@ public class SettingsViewModelPersistenceTests : IDisposable
 
         Assert.Equal(37, reloaded.GetSettings().Volume);
     }
+
+    [AvaloniaFact]
+    public async Task MediaServerConnection_SurvivesUnrelatedSaves_AndDisconnectRemovesIt()
+    {
+        // Seed a stored server connection (what a successful Connect persists).
+        var seeded = new AppSettings();
+        seeded.SourceConnections.Add(new SourceConnection
+        {
+            Name = "Subsonic",
+            Type = SourceType.Navidrome,
+            BaseUriOrPath = "https://music.example.com",
+            Username = "demo",
+            TokenOrPassword = "sesame",
+            Enabled = true
+        });
+        await new PersistenceService(_root).SaveSettingsAsync(seeded);
+
+        var vm = CreateViewModel();
+        await vm.LoadAsync();
+        Assert.True(vm.IsMediaServerConnected);
+        Assert.Equal("https://music.example.com", vm.MediaServerUrl);
+        Assert.Equal("demo", vm.MediaServerUsername);
+        Assert.Equal(string.Empty, vm.MediaServerPassword); // secret never surfaces in the box
+
+        // The trap: an unrelated save merges from disk and must not drop the connection.
+        vm.IncludePrereleaseUpdates = true;
+        await vm.SaveAsync();
+
+        var reloaded = CreateViewModel();
+        await reloaded.LoadAsync();
+        Assert.True(reloaded.IsMediaServerConnected);
+        var stored = Assert.Single(reloaded.GetSettings().SourceConnections);
+        Assert.Equal(SourceType.Navidrome, stored.Type);
+        Assert.Equal("sesame", stored.TokenOrPassword); // DPAPI round-trip intact
+
+        // Disconnect must remove it from disk, surviving further saves.
+        await reloaded.DisconnectMediaServerCommand.ExecuteAsync(null);
+        var after = CreateViewModel();
+        await after.LoadAsync();
+        Assert.False(after.IsMediaServerConnected);
+        Assert.Empty(after.GetSettings().SourceConnections);
+    }
 }

@@ -73,6 +73,29 @@ public partial class SidebarViewModel : ViewModelBase
         _library.FavoritesChanged += (_, _) => RefreshFavoritesCount();
     }
 
+    /// <summary>
+    /// Shows or hides the "Server" entry (between Playlists and Settings). The item
+    /// is inserted/removed rather than IsVisible-toggled so the collapsed ListBoxItem
+    /// container doesn't leave a dead gap in the rail.
+    /// </summary>
+    public void SetServerSectionVisible(bool visible)
+    {
+        var existing = NavItems.FirstOrDefault(i => i.Key == "server");
+        if (visible == (existing != null)) return;
+
+        if (!visible)
+        {
+            NavItems.Remove(existing!);
+            return;
+        }
+
+        var settingsIndex = NavItems
+            .Select((item, index) => (item, index))
+            .FirstOrDefault(x => x.item.Key == "settings").index;
+        var insertAt = settingsIndex > 0 ? settingsIndex : NavItems.Count;
+        NavItems.Insert(insertAt, new NavItem { Key = "server", Label = "Server", IconGlyph = "ServerIcon" });
+    }
+
     private bool _suppressNavigationRequest;
 
     partial void OnSelectedNavItemChanged(NavItem? oldValue, NavItem? newValue)
