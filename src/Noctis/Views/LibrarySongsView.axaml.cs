@@ -246,21 +246,30 @@ public partial class LibrarySongsView : UserControl
         if (title == null)
             return;
 
-        var explicitBadge = titleCell.Children.OfType<Border>().FirstOrDefault();
-        var reservedBadgeWidth = 0.0;
+        // Select by class: the cell holds two Borders (leading artwork thumb, trailing
+        // explicit badge) and each reserves its own width from the title's budget.
+        var explicitBadge = titleCell.Children.OfType<Border>()
+            .FirstOrDefault(b => b.Classes.Contains("explicit-badge"));
+        var artThumb = titleCell.Children.OfType<Border>()
+            .FirstOrDefault(b => b.Classes.Contains("row-art"));
+        var reservedWidth = 0.0;
 
         if (explicitBadge?.IsVisible == true)
-        {
-            var badgeMargin = explicitBadge.Margin;
-            var badgeWidth = explicitBadge.Bounds.Width > 0
-                ? explicitBadge.Bounds.Width
-                : explicitBadge.DesiredSize.Width;
-            reservedBadgeWidth = badgeWidth + badgeMargin.Left + badgeMargin.Right;
-        }
+            reservedWidth += ReservedWidth(explicitBadge);
+        if (artThumb?.IsVisible == true)
+            reservedWidth += ReservedWidth(artThumb);
 
-        var maxTitleWidth = Math.Max(0, titleCell.Bounds.Width - reservedBadgeWidth);
+        var maxTitleWidth = Math.Max(0, titleCell.Bounds.Width - reservedWidth);
         if (Math.Abs(title.MaxWidth - maxTitleWidth) > 0.5)
             title.MaxWidth = maxTitleWidth;
+
+        static double ReservedWidth(Border element)
+        {
+            var width = element.Bounds.Width > 0
+                ? element.Bounds.Width
+                : element.DesiredSize.Width;
+            return width + element.Margin.Left + element.Margin.Right;
+        }
     }
 
     private void OnQueueButtonClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

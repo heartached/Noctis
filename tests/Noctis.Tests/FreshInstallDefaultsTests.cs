@@ -86,6 +86,9 @@ public class FreshInstallDefaultsTests
         Assert.False(Fresh.LyricsFullScreenFocusEnabled);
         Assert.Equal(0.4, Fresh.PlaybackBarBackgroundOpacity);
         Assert.True(Fresh.GaplessPlaybackEnabled);
+        // Songs rows ship with album art thumbnails (issue #23); the column chooser
+        // can switch them off for the compact text-only look.
+        Assert.True(Fresh.ShowArtworkColumn);
     }
 
     [Fact]

@@ -254,6 +254,12 @@
                                     <MenuItem Header="Most played"
                                               Command="{Binding AlbumSortCommand}"
                                               CommandParameter="mostplayed"/>
+                                    <MenuItem Header="Album Artist"
+                                              Command="{Binding AlbumSortCommand}"
+                                              CommandParameter="albumartist"/>
+                                    <MenuItem Header="Year"
+                                              Command="{Binding AlbumSortCommand}"
+                                              CommandParameter="year"/>
                                 </MenuFlyout>
                             </Button.Flyout>
                         </Button>
@@ -332,6 +338,12 @@
                                               PointerEntered="OnPageSortByMenuItemPointerEntered">
                                         <!-- Only sorts without a clickable column header; everything
                                              else is sorted by clicking the column headers directly. -->
+                                        <MenuItem Header="Album Artist" Command="{Binding PageSortCommand}" CommandParameter="Album Artist">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                         IsVisible="{Binding PageSortByAlbumArtist}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
                                         <MenuItem Header="Year" Command="{Binding PageSortCommand}" CommandParameter="Year">
                                             <MenuItem.Icon>
                                                 <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"

@@ -153,6 +153,7 @@ public class AppSettings
     public int WebRemotePort { get; set; } = 9420;
 
     // ── Songs page optional columns ──
+    public bool ShowArtworkColumn { get; set; } = true;
     public bool ShowGenreColumn { get; set; } = true;
     public bool ShowRatingColumn { get; set; } = true;
     public bool ShowBpmColumn { get; set; }

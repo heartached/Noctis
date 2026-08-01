@@ -56,7 +56,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Active quality filter: "" (off), "lossless", or "hires".</summary>
     [ObservableProperty] private string _qualityFilter = string.Empty;
 
-    /// <summary>Grid sort: "default" (artist/recent floats), "dateadded", or "mostplayed".</summary>
+    /// <summary>Grid sort: "default" (artist/recent floats), "dateadded", "mostplayed",
+    /// "albumartist", or "year".</summary>
     [ObservableProperty] private string _albumSortMode = "default";
 
     /// <summary>Label for the sort dropdown button.</summary>
@@ -64,6 +65,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         "dateadded" => "Recently added",
         "mostplayed" => "Most played",
+        "albumartist" => "Album Artist",
+        "year" => "Year",
         _ => "Default",
     };
 
@@ -451,14 +454,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // float) when no artist/search filter narrows the grid.
         if (sortMode != "default" && string.IsNullOrEmpty(artistFilter) && string.IsNullOrWhiteSpace(searchFilter))
         {
-            filtered = sortMode switch
-            {
-                "dateadded" => filtered.OrderByDescending(a =>
-                    a.Tracks.Count > 0 ? a.Tracks.Max(t => t.DateAdded) : DateTime.MinValue),
-                "mostplayed" => filtered.OrderByDescending(a => a.Tracks.Sum(t => (long)t.PlayCount))
-                    .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
-                _ => filtered,
-            };
+            filtered = ApplySortMode(filtered, sortMode);
 
             IEnumerable<Album> sortedAlbums = filtered;
             if (_settings.CollapseAlbumEditions)
@@ -516,6 +512,31 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
         return albumRows.Cast<object>().ToList();
     }
+
+    /// <summary>
+    /// Orders the grid for an explicit sort mode ("dateadded", "mostplayed",
+    /// "albumartist", "year"); any other mode returns the input unchanged.
+    /// </summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static IEnumerable<Album> ApplySortMode(IEnumerable<Album> albums, string sortMode) =>
+        sortMode switch
+        {
+            "dateadded" => albums.OrderByDescending(a =>
+                a.Tracks.Count > 0 ? a.Tracks.Max(t => t.DateAdded) : DateTime.MinValue),
+            "mostplayed" => albums.OrderByDescending(a => a.Tracks.Sum(t => (long)t.PlayCount))
+                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
+            // Album Artist/Year (Apple Music/MusicBee): artists A→Z, each artist's
+            // releases in chronological order. Album.Artist is the album artist.
+            "albumartist" => albums.OrderBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(a => a.Year)
+                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
+            // Newest releases first, like the sibling modes' descending defaults;
+            // unknown years (0) sink to the bottom.
+            "year" => albums.OrderByDescending(a => a.Year)
+                .ThenBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
+            _ => albums,
+        };
 
     private const int SongsPerRow = 3;
 

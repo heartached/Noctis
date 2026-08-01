@@ -75,6 +75,8 @@
                 <PathIcon Data="{StaticResource MoreDotsIcon}" Width="12" Height="12"/>
                 <Button.Flyout>
                     <MenuFlyout Placement="BottomEdgeAlignedRight">
+                        <MenuItem Header="Artwork" ToggleType="CheckBox" StaysOpenOnClick="True"
+                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtworkColumn, Mode=TwoWay}"/>
                         <MenuItem Header="Genre" ToggleType="CheckBox" StaysOpenOnClick="True"
                                   IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowGenreColumn, Mode=TwoWay}"/>
                         <MenuItem Header="Rating" ToggleType="CheckBox" StaysOpenOnClick="True"
@@ -115,13 +117,38 @@
                           helpers:DragFileBehavior.EnableFileDrag="True"
                           x:Name="TrackRow">
 
-                        <!-- Title + Explicit badge -->
+                        <!-- Artwork + Title + Explicit badge -->
                         <Grid Grid.Column="0"
-                              ColumnDefinitions="Auto,Auto"
+                              ColumnDefinitions="Auto,Auto,Auto"
                               ClipToBounds="True"
                               VerticalAlignment="Center"
                               LayoutUpdated="OnTitleCellLayoutUpdated">
-                            <controls:HighlightTextBlock Grid.Column="0"
+                            <!-- Album art thumbnail (Apple Music style); hideable via the
+                                 column chooser. Same lazy pipeline as playlist rows. -->
+                            <Border Grid.Column="0"
+                                    Classes="row-art"
+                                    Width="36" Height="36"
+                                    CornerRadius="5"
+                                    ClipToBounds="True"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    Background="#18FFFFFF"
+                                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtworkColumn, FallbackValue=True}">
+                                <Panel>
+                                    <PathIcon Data="{StaticResource SongsIcon}"
+                                              Width="14" Height="14"
+                                              Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsVisible="{Binding !HasAlbumArt}" />
+                                    <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                          DecodeWidth="256"
+                                                          Stretch="UniformToFill"
+                                                          RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                          IsVisible="{Binding HasAlbumArt}" />
+                                </Panel>
+                            </Border>
+                            <controls:HighlightTextBlock Grid.Column="1"
                                                          Classes="one-line-explicit-title"
                                                          DisplayText="{Binding TitleDisplay}"
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
@@ -130,7 +157,7 @@
                                                          TextWrapping="NoWrap"
                                                          MaxLines="1"
                                                          TextTrimming="CharacterEllipsis" />
-                            <Border Grid.Column="1"
+                            <Border Grid.Column="2"
                                     Classes="explicit-badge compact"
                                     Margin="6,0,4,0"
                                     IsVisible="{Binding IsExplicit}"

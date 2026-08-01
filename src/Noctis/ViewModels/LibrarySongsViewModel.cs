@@ -404,7 +404,8 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         SummaryText = $"{count:N0} {songs} · {time}";
     }
 
-    private static List<Track> BuildFilteredAndSortedTracks(
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static List<Track> BuildFilteredAndSortedTracks(
         List<Track> tracks, string filter, string sortCol, bool sortAsc, bool favOnly, string qualityFilter)
     {
         var filtered = tracks.AsEnumerable();
@@ -447,6 +448,11 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             "Title" => sortAsc ? ordered.ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Title),
             "Time" => sortAsc ? ordered.ThenBy(x => x.Track.Duration) : ordered.ThenByDescending(x => x.Track.Duration),
             "Artist" => sortAsc ? ordered.ThenBy(x => x.Track.Artist).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Artist).ThenBy(x => x.Track.Title),
+            // Album Artist/Year ordering (Apple Music/MusicBee): albums grouped under
+            // their album artist, chronological within the artist, tracks in album order.
+            "Album Artist" => sortAsc
+                ? ordered.ThenBy(x => AlbumArtistSortKey(x.Track)).ThenBy(x => x.Track.Year).ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber)
+                : ordered.ThenByDescending(x => AlbumArtistSortKey(x.Track)).ThenBy(x => x.Track.Year).ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber),
             "Album" => sortAsc ? ordered.ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber) : ordered.ThenByDescending(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber),
             "Genre" => sortAsc ? ordered.ThenBy(x => x.Track.Genre).ThenBy(x => x.Track.Title) : ordered.ThenByDescending(x => x.Track.Genre).ThenBy(x => x.Track.Title),
             "Year" => sortAsc ? ordered.ThenBy(x => x.Track.Year).ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber) : ordered.ThenByDescending(x => x.Track.Year).ThenBy(x => x.Track.Album).ThenBy(x => x.Track.TrackNumber),
@@ -465,6 +471,16 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
         return ordered.Select(x => x.Track).ToList();
     }
+
+    /// <summary>
+    /// Album-artist sort key. The scanner already resolves an empty album-artist tag
+    /// to the performer (see Track.ResolveAlbumArtist), but tracks from older caches
+    /// or other construction paths may miss that step — fall back to the track artist
+    /// so they still group under someone, matching Apple Music/MusicBee.
+    /// </summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static string AlbumArtistSortKey(Track track) =>
+        string.IsNullOrWhiteSpace(track.AlbumArtist) ? track.Artist : track.AlbumArtist;
 
     public void Dispose()
     {

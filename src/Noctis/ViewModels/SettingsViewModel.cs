@@ -293,12 +293,14 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Songs page optional columns ──
 
+    [ObservableProperty] private bool _showArtworkColumn = true;
     [ObservableProperty] private bool _showGenreColumn = true;
     [ObservableProperty] private bool _showRatingColumn = true;
     [ObservableProperty] private bool _showBpmColumn;
     [ObservableProperty] private bool _showBitrateColumn;
     [ObservableProperty] private bool _showSampleRateColumn;
 
+    partial void OnShowArtworkColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowGenreColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowRatingColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBpmColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -845,6 +847,7 @@ public partial class SettingsViewModel : ViewModelBase
             StartMinimizedToTray = _settings.StartMinimizedToTray;
             RestoreLastTrackOnStartup = _settings.RestoreLastTrackOnStartup;
             WebRemoteEnabled = _settings.WebRemoteEnabled;
+            ShowArtworkColumn = _settings.ShowArtworkColumn;
             ShowGenreColumn = _settings.ShowGenreColumn;
             ShowRatingColumn = _settings.ShowRatingColumn;
             ShowBpmColumn = _settings.ShowBpmColumn;
@@ -1107,6 +1110,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.StartMinimizedToTray = StartMinimizedToTray;
         _settings.RestoreLastTrackOnStartup = RestoreLastTrackOnStartup;
         _settings.WebRemoteEnabled = WebRemoteEnabled;
+        _settings.ShowArtworkColumn = ShowArtworkColumn;
         _settings.ShowGenreColumn = ShowGenreColumn;
         _settings.ShowRatingColumn = ShowRatingColumn;
         _settings.ShowBpmColumn = ShowBpmColumn;

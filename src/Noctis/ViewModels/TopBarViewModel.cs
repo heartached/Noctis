@@ -232,6 +232,7 @@ public partial class TopBarViewModel : ViewModelBase
     // Per-field active-sort flags used to render checkmarks in the Sort By submenu.
     // Only sorts without a clickable column header live in the menu; the rest are
     // sorted directly from the Songs page column headers.
+    public bool PageSortByAlbumArtist => string.Equals(PageSortColumn, "Album Artist", StringComparison.OrdinalIgnoreCase);
     public bool PageSortByYear      => string.Equals(PageSortColumn, "Year",       StringComparison.OrdinalIgnoreCase);
     public bool PageSortByDateAdded => string.Equals(PageSortColumn, "Date Added", StringComparison.OrdinalIgnoreCase);
 
@@ -239,6 +240,7 @@ public partial class TopBarViewModel : ViewModelBase
     partial void OnPageSortAscendingChanged(bool value) => OnPropertyChanged(nameof(PageSortDescending));
     partial void OnPageSortColumnChanged(string value)
     {
+        OnPropertyChanged(nameof(PageSortByAlbumArtist));
         OnPropertyChanged(nameof(PageSortByYear));
         OnPropertyChanged(nameof(PageSortByDateAdded));
     }
