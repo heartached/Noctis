@@ -15,6 +15,7 @@
         <conv:HexColorToBrushConverter x:Key="HexColorToBrush" />
         <conv:BoolToHorizontalAlignmentConverter x:Key="BoolToAlignment" />
         <conv:BoolToThicknessConverter x:Key="BoolToThickness" />
+        <conv:CountLabelConverter x:Key="CountLabel" />
     </UserControl.Resources>
 
     <Border CornerRadius="20">
@@ -296,13 +297,8 @@
                                         <TextBlock Text="{Binding Label}"
                                                    FontSize="13" />
                                         <TextBlock FontSize="11"
-                                                   Opacity="0.5">
-                                            <TextBlock.Text>
-                                                <MultiBinding StringFormat="{}{0} songs">
-                                                    <Binding Path="$parent[UserControl].((vm:SidebarViewModel)DataContext).FavoritesCount" />
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
+                                                   Opacity="0.5"
+                                                   Text="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).FavoritesCount, Converter={StaticResource CountLabel}, ConverterParameter=song}" />
                                     </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
@@ -370,13 +366,8 @@
                                                    TextTrimming="CharacterEllipsis"
                                                    MaxWidth="120" />
                                         <TextBlock FontSize="11"
-                                                   Opacity="0.5">
-                                            <TextBlock.Text>
-                                                <MultiBinding StringFormat="{}{0} playlists">
-                                                    <Binding Path="TrackCount" />
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
+                                                   Opacity="0.5"
+                                                   Text="{Binding TrackCount, Converter={StaticResource CountLabel}, ConverterParameter=playlist}" />
                                     </StackPanel>
                                 </StackPanel>
 
@@ -461,13 +452,8 @@
                                         </StackPanel>
                                         <TextBlock FontSize="11"
                                                    Opacity="0.5"
-                                                   TextTrimming="CharacterEllipsis">
-                                            <TextBlock.Text>
-                                                <MultiBinding StringFormat="{}{0} songs">
-                                                    <Binding Path="TrackCount" />
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Text="{Binding TrackCount, Converter={StaticResource CountLabel}, ConverterParameter=song}" />
                                     </StackPanel>
                                 </StackPanel>
 
