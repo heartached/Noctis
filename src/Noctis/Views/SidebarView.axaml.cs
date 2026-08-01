@@ -23,6 +23,10 @@ public partial class SidebarView : UserControl
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
         DetachedFromVisualTree += (_, _) => UnsubscribeFromViewModel();
+        // After first layout, so the very first open of the run is already pinned
+        // instead of spending a frame at the Popup's default 0,0 offsets.
+        AttachedToVisualTree += (_, _) =>
+            Dispatcher.UIThread.Post(EnsureSearchPopupPinned, DispatcherPriority.Loaded);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -49,9 +53,17 @@ public partial class SidebarView : UserControl
     private void AttachTopBar(TopBarViewModel? topBar)
     {
         if (ReferenceEquals(_topBarVm, topBar)) return;
-        if (_topBarVm != null) _topBarVm.SearchOpenRequested -= OnSearchOpenRequested;
+        if (_topBarVm != null)
+        {
+            _topBarVm.SearchOpenRequested -= OnSearchOpenRequested;
+            _topBarVm.SearchCloseRequested -= OnSearchCloseRequested;
+        }
         _topBarVm = topBar;
-        if (_topBarVm != null) _topBarVm.SearchOpenRequested += OnSearchOpenRequested;
+        if (_topBarVm != null)
+        {
+            _topBarVm.SearchOpenRequested += OnSearchOpenRequested;
+            _topBarVm.SearchCloseRequested += OnSearchCloseRequested;
+        }
     }
 
     private void OnNavListSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -127,8 +139,18 @@ public partial class SidebarView : UserControl
     // with the filtered page beneath it.
 
     private const double SearchAnimMs = 250;
-    private const double SearchCapsuleClosedWidth = 32;  // matches the rail button circle
-    private const double SearchCapsuleOpenWidth = 224;   // borders + 30 icon cap + 180 field + 12 right pad
+    // The capsule sits a lip's width left of the icon (Border Padding.Left in XAML),
+    // so the magnifier lands INSIDE the rounded cap instead of on its curve while
+    // staying exactly over the (hidden) rail button's glyph.
+    private const double SearchCapsuleLip = 8;
+    private const double SearchCapsuleClosedWidth = 32 + SearchCapsuleLip;   // rail circle + left lip
+    private const double SearchCapsuleOpenWidth = 224 + SearchCapsuleLip;    // + borders, 30 icon cap, 180 field, 12 right pad
+    // Both settled rail states put SearchIconHost at x=16 (expanded: 6 panel margin +
+    // 10 padding; collapsed: centered to the same spot — see the rail-action styles).
+    // X must be this CONSTANT, not a live measurement: the hover collapse animates the
+    // icon through ~80px, and an open landing inside that window used to pin the
+    // capsule wherever the slide happened to be. 16 − 2 circle overhang − lip.
+    private const double SearchCapsuleX = 16 - 2 - SearchCapsuleLip;
     private bool _searchCloseAnimating;
 
     private void OnSearchButtonClick(object? sender, RoutedEventArgs e)
@@ -152,6 +174,8 @@ public partial class SidebarView : UserControl
 
     private void OnSearchPopupOpened(object? sender, EventArgs e)
     {
+        EnsureSearchPopupPinned();
+
         // Morph out of the button: hide the real button (the capsule's left cap is
         // a pixel-exact copy of its icon circle), snap to the bare circle without
         // animating (transitions left over from a prior open would tween the reset
@@ -172,6 +196,21 @@ public partial class SidebarView : UserControl
             SearchFieldArea.RenderTransform = TransformOperations.Parse("translateX(0px)");
             SearchBox.Focus();
         }, DispatcherPriority.Render);
+    }
+
+    /// <summary>
+    /// Pins the capsule against the stationary sidebar root (the popup's anchor).
+    /// X is the settled-rail constant — see SearchCapsuleX. Y is measured live: the
+    /// vertical stack never animates, so that read cannot catch a transition
+    /// mid-slide (-2: the capsule overhangs the 28px icon grid by 2px per side).
+    /// Called at attach (so the FIRST open of the run doesn't spend a frame at the
+    /// Popup's default 0,0 offsets before Opened runs) and again on every open.
+    /// </summary>
+    private void EnsureSearchPopupPinned()
+    {
+        SearchPopup.HorizontalOffset = SearchCapsuleX;
+        if (SearchIconHost.TranslatePoint(new Point(0, -2), this) is { } capsuleOrigin)
+            SearchPopup.VerticalOffset = capsuleOrigin.Y;
     }
 
     private void CloseSearchPopup(TopBarViewModel topBar)
@@ -208,12 +247,19 @@ public partial class SidebarView : UserControl
 
     private void OnSearchOpenRequested(object? sender, EventArgs e)
     {
-        // Ctrl+F with the pill already open: re-focus the box (a fresh open is
-        // focused by OnSearchPopupOpened instead).
+        // An open request landing while the pill is already up re-focuses the
+        // box (a fresh open is focused by OnSearchPopupOpened instead).
         Dispatcher.UIThread.Post(() =>
         {
             if (SearchPopup.IsOpen) SearchBox.Focus();
         }, DispatcherPriority.Render);
+    }
+
+    private void OnSearchCloseRequested(object? sender, EventArgs e)
+    {
+        // Ctrl+F toggling an open pill shut: same collapse path as Esc.
+        var topBar = _vm?.TopBar;
+        if (topBar != null) CloseSearchPopup(topBar);
     }
 
     private void EnsureSearchTransitions(TimeSpan duration)

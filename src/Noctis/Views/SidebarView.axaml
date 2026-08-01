@@ -5,6 +5,7 @@
              xmlns:conv="using:Noctis.Converters"
              xmlns:ctrl="using:Noctis.Controls"
              x:Class="Noctis.Views.SidebarView"
+             x:Name="SidebarRoot"
              x:DataType="vm:SidebarViewModel"
              Background="{DynamicResource IslandBackground}"
              Foreground="{DynamicResource IslandForeground}">
@@ -24,7 +25,8 @@
 
             <!-- Back + contextual search, pinned above the scrolling nav.
                  State (can-go-back, search visibility/watermark/text) comes from TopBarViewModel. -->
-            <StackPanel DockPanel.Dock="Top"
+            <StackPanel x:Name="RailActions"
+                        DockPanel.Dock="Top"
                         Orientation="Vertical"
                         Spacing="10"
                         HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}"
@@ -99,7 +101,8 @@
                                      Margin="0,2,2,0"
                                      IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"/>
                         </Grid>
-                        <TextBlock Text="Search"
+                        <TextBlock x:Name="SearchLabel"
+                                   Text="Search"
                                    FontSize="15"
                                    VerticalAlignment="Center"
                                    IsVisible="{Binding IsExpanded}"/>
@@ -113,18 +116,26 @@
                      native popup window is WS_EX_TOPMOST on Win32 and override-redirect
                      on X11, so it floats over OTHER applications and outlives minimize;
                      the overlay layer keeps the pill inside the window on every
-                     platform. Anchored on the icon's 28x28 grid (not the button, whose
-                     width changes with the expanded label) at -2,-2 so the capsule's
-                     32px left cap lands exactly on the button's icon circle; the button
-                     hides while the popup is open and the capsule appears to morph out
-                     of it. Open/close animation lives in code-behind. -->
+                     platform. Anchored on the sidebar ROOT, not the icon's grid: the
+                     hover rail re-aligns and animates its width, and the overlay host
+                     re-resolves its anchor on every frame the capsule's own width
+                     transition resizes it, so a target inside the rail drags the
+                     capsule sideways mid-morph. The root's origin never moves; the
+                     horizontal offset is a CONSTANT (both settled rail states put the
+                     icon grid at the same x — measuring it live caught the collapse
+                     animation mid-slide and pinned the capsule askew), the vertical
+                     offset is measured per open in OnSearchPopupOpened (the vertical
+                     stack never animates, so that read is timing-safe). The Border's
+                     left padding is the lip that keeps the magnifier INSIDE the
+                     rounded cap instead of riding its curve; the capsule sits that
+                     much left of the icon so the glyph itself never moves. The button
+                     hides while the popup is open and the capsule appears to morph
+                     out of it. Open/close animation lives in code-behind. -->
                 <Popup x:Name="SearchPopup"
-                       PlacementTarget="{Binding #SearchIconHost}"
+                       PlacementTarget="{Binding #SidebarRoot}"
                        Placement="AnchorAndGravity"
                        PlacementAnchor="TopLeft"
                        PlacementGravity="BottomRight"
-                       HorizontalOffset="-2"
-                       VerticalOffset="-2"
                        IsLightDismissEnabled="False"
                        ShouldUseOverlayLayer="True"
                        WindowManagerAddShadowHint="False"
@@ -136,7 +147,8 @@
                             BorderBrush="{DynamicResource IslandBorder}"
                             BorderThickness="1"
                             CornerRadius="999"
-                            Width="32" Height="32"
+                            Width="40" Height="32"
+                            Padding="8,0,0,0"
                             ClipToBounds="True">
                         <Grid ColumnDefinitions="30,Auto" HorizontalAlignment="Left">
                             <!-- Left cap: same 16px magnifier as the (hidden) rail button
@@ -145,6 +157,8 @@
                                     Click="OnSearchButtonClick"
                                     Background="Transparent" BorderThickness="0"
                                     Padding="0" Cursor="Hand" CornerRadius="999"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"
                                     VerticalContentAlignment="Center">
                                 <Button.Styles>
