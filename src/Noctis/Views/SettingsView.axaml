@@ -922,7 +922,7 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="Merge Featured Artists From Titles" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Add &quot;(feat. X)&quot; credits found in track titles or file names to the artist credit. Applies to newly scanned tracks; rescan to update existing ones."
+                        <TextBlock Text="Turn &quot;(feat. X)&quot; in track titles into artist credits."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"

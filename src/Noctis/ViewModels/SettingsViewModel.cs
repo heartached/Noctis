@@ -1784,6 +1784,43 @@ public partial class SettingsViewModel : ViewModelBase
         Services.MetadataService.MergeFeaturedFromTitles = value;
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
+        _ = ApplyMergeFeaturedToLibraryAsync(value);
+    }
+
+    // Guards the status line against a superseded flip finishing after a newer one.
+    private int _mergeFeatApplyGeneration;
+
+    /// <summary>
+    /// Applies a merge-featured toggle flip to the indexed library right away — a rescan
+    /// reuses unchanged files, so it would never propagate this. Turning it off re-reads
+    /// tags in the background (the pre-merge artist only exists in the files), so that
+    /// direction announces itself in the scan status first.
+    /// </summary>
+    private async Task ApplyMergeFeaturedToLibraryAsync(bool value)
+    {
+        var generation = ++_mergeFeatApplyGeneration;
+        if (!value)
+            SetScanStatus("Restoring original artist credits…");
+
+        int changed;
+        try
+        {
+            changed = await _library.ApplyMergeFeaturedFromTitlesAsync(value);
+        }
+        catch (Exception)
+        {
+            if (generation == _mergeFeatApplyGeneration)
+                SetScanStatus("Couldn't update artist credits.", autoClear: true);
+            return;
+        }
+
+        if (generation != _mergeFeatApplyGeneration) return;
+        SetScanStatus(changed switch
+        {
+            0 => "Artist credits already up to date.",
+            1 => "Artist credits updated on 1 track.",
+            _ => $"Artist credits updated on {changed:N0} tracks."
+        }, autoClear: true);
     }
 
     partial void OnTrackTitleMarqueeEnabledChanged(bool value)

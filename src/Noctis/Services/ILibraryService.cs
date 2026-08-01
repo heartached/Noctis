@@ -129,4 +129,13 @@ public interface ILibraryService
 
     /// <summary>Rebuilds indexes and raises LibraryUpdated after a track's metadata has been edited.</summary>
     void NotifyMetadataChanged();
+
+    /// <summary>
+    /// Applies a "Merge Featured Artists From Titles" toggle flip to the already-indexed
+    /// library immediately — a rescan reuses unchanged files wholesale, so it would never
+    /// propagate the setting. On enable, merges in-memory; on disable, re-reads tags of
+    /// merged-looking local tracks in the background to restore the original credits.
+    /// A newer flip cancels an in-flight pass. Returns the number of tracks changed.
+    /// </summary>
+    Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default);
 }

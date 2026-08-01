@@ -557,6 +557,11 @@ public class LibraryService : ILibraryService
     /// </summary>
     private readonly CancellationTokenSource _shutdownCts = new();
 
+    // Serializes "Merge Featured Artists" toggle passes: a newer flip cancels the
+    // in-flight pass so rapid on/off flips can't interleave writes.
+    private readonly object _mergeFeatApplyLock = new();
+    private CancellationTokenSource? _mergeFeatApplyCts;
+
     public async Task PauseActiveScanForShutdownAsync(TimeSpan timeout)
     {
         // Stop the background backfills too, not just the scan.
@@ -1947,6 +1952,113 @@ public class LibraryService : ILibraryService
             }
         }
         return changedCount > 0;
+    }
+
+    /// <inheritdoc />
+    public async Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default)
+    {
+        CancellationTokenSource cts;
+        lock (_mergeFeatApplyLock)
+        {
+            _mergeFeatApplyCts?.Cancel();
+            cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+            _mergeFeatApplyCts = cts;
+        }
+
+        try
+        {
+            var token = cts.Token;
+            var snapshot = _tracks.ToList();
+            var changed = new List<Track>();
+
+            if (enabled)
+            {
+                // Merging is pure string work against the indexed titles — instant.
+                foreach (var track in snapshot)
+                {
+                    if (token.IsCancellationRequested) break;
+                    var enriched = MetadataService.EnrichArtistFromTitle(track.Artist, track.Title);
+                    if (!string.Equals(enriched, track.Artist, StringComparison.Ordinal))
+                    {
+                        track.Artist = enriched;
+                        changed.Add(track);
+                    }
+                }
+            }
+            else
+            {
+                // Un-merging needs the pre-merge artist, which only exists in the file
+                // tags — but only collaboration tracks whose artist actually echoes a
+                // featured name from the title can have been merged, so the re-read is
+                // bounded to those. Server-backed sources (Navidrome/WebDav/Plex) have
+                // no readable file; their tracks are rebuilt fresh on the next connector
+                // sync, which honors the flipped toggle.
+                var candidates = snapshot
+                    .Where(t => t.SourceType is SourceType.Local or SourceType.Smb &&
+                                MetadataService.MayHaveMergedFeaturedCredit(t.Artist, t.Title))
+                    .ToList();
+
+                if (candidates.Count > 0)
+                {
+                    await Task.Run(() =>
+                    {
+                        try
+                        {
+                            Parallel.ForEach(
+                                candidates,
+                                new ParallelOptions
+                                {
+                                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                                    CancellationToken = token
+                                },
+                                track =>
+                                {
+                                    try
+                                    {
+                                        var refreshed = _metadata.ReadTrackMetadata(track.FilePath);
+                                        if (refreshed == null) return;
+                                        if (!string.Equals(refreshed.Artist, track.Artist, StringComparison.Ordinal))
+                                        {
+                                            track.Artist = refreshed.Artist;
+                                            lock (changed) changed.Add(track);
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        // Non-fatal: keep the merged credit for unreadable files.
+                                    }
+                                });
+                        }
+                        catch (OperationCanceledException) { }
+                    }, CancellationToken.None);
+                }
+            }
+
+            if (changed.Count == 0)
+                return 0;
+
+            // Superseded or shutting down: skip persistence. A newer flip's pass will
+            // re-cover these tracks (both directions are idempotent over the library),
+            // and at shutdown the exit flush saves the JSON.
+            if (token.IsCancellationRequested)
+                return changed.Count;
+
+            await RebuildIndexesAsync();
+            await SaveAsync();
+            try { await _sqliteIndex.UpsertTracksAsync(changed); }
+            catch { /* JSON save above is authoritative; SQLite catches up on the next full sync */ }
+            LibraryUpdated?.Invoke(this, EventArgs.Empty);
+            return changed.Count;
+        }
+        finally
+        {
+            lock (_mergeFeatApplyLock)
+            {
+                if (_mergeFeatApplyCts == cts)
+                    _mergeFeatApplyCts = null;
+                cts.Dispose();
+            }
+        }
     }
 
     private static int EstimateBitrateKbps(long fileSizeBytes, TimeSpan duration)
