@@ -174,34 +174,76 @@ public class Album : ObservableObject
     public bool HasCopyright => !string.IsNullOrWhiteSpace(Copyright);
 
     /// <summary>
-    /// Formatted release date string. Prefers full date from RELEASETIME tag
-    /// (formatted as "Month Day, Year"), falls back to just year.
+    /// Record label extracted from the copyright notice: strips ℗/©/(P)/(C) marks,
+    /// years, and joiners from the front, then cuts at the first clause break — so
+    /// "℗ 2014 Big Machine Records, LLC, under exclusive license…" yields
+    /// "Big Machine Records". Empty when nothing name-like remains, so callers can
+    /// hide the field instead of showing legalese.
     /// </summary>
-    public string ReleaseDateFormatted
+    public string LabelName
     {
         get
         {
-            // Try to get a full date from the first track that has a RELEASETIME value
-            var releaseDate = Tracks?.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.ReleaseDate))?.ReleaseDate;
-            if (!string.IsNullOrWhiteSpace(releaseDate))
+            var notice = Copyright;
+            if (string.IsNullOrWhiteSpace(notice))
+                return string.Empty;
+
+            var s = System.Text.RegularExpressions.Regex.Replace(
+                notice.Trim(),
+                @"^(\s*(℗|©|\(\s*[PpCc]\s*\)|(19|20)\d{2}|[&+,.\-–—:]))+\s*",
+                string.Empty);
+
+            var cut = s.Length;
+            foreach (var marker in new[]
             {
-                if (DateTime.TryParse(releaseDate, System.Globalization.CultureInfo.InvariantCulture,
-                    System.Globalization.DateTimeStyles.None, out var dt))
-                {
-                    return dt.ToString("MMMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture);
-                }
-                // Try parsing date-only formats like "2024/11/29" or "2024-11-29"
-                var cleaned = releaseDate.Replace('/', '-');
-                if (DateTime.TryParseExact(cleaned, new[] { "yyyy-MM-dd", "yyyy-M-d", "dd-MM-yyyy", "MM-dd-yyyy" },
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    System.Globalization.DateTimeStyles.None, out var dt2))
-                {
-                    return dt2.ToString("MMMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture);
-                }
+                ",", ";", " under ", " a division", " division of", " distributed",
+                " marketed", " manufactured", " all rights", " ℗", " ©", " (p)", " (c)"
+            })
+            {
+                var i = s.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+                if (i > 0 && i < cut) cut = i;
             }
-            // Fall back to year only
-            return Year > 0 ? Year.ToString() : string.Empty;
+
+            s = s.Substring(0, cut).Trim().TrimEnd('.', ',', ';');
+            return s.Length is > 1 and <= 48 ? s : string.Empty;
         }
+    }
+
+    /// <summary>Whether a clean label name could be derived from the copyright tag.</summary>
+    public bool HasLabelName => !string.IsNullOrEmpty(LabelName);
+
+    /// <summary>
+    /// Formatted release date string. Prefers full date from RELEASETIME tag
+    /// (formatted as "Month Day, Year"), falls back to just year.
+    /// </summary>
+    public string ReleaseDateFormatted => FormatReleaseDate("MMMM d, yyyy");
+
+    /// <summary>Compact variant ("Oct 27, 2014") for tight surfaces like the
+    /// description dialog's facts grid, where the full month name truncates.</summary>
+    public string ReleaseDateShortFormatted => FormatReleaseDate("MMM d, yyyy");
+
+    private string FormatReleaseDate(string format)
+    {
+        // Try to get a full date from the first track that has a RELEASETIME value
+        var releaseDate = Tracks?.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.ReleaseDate))?.ReleaseDate;
+        if (!string.IsNullOrWhiteSpace(releaseDate))
+        {
+            if (DateTime.TryParse(releaseDate, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var dt))
+            {
+                return dt.ToString(format, System.Globalization.CultureInfo.InvariantCulture);
+            }
+            // Try parsing date-only formats like "2024/11/29" or "2024-11-29"
+            var cleaned = releaseDate.Replace('/', '-');
+            if (DateTime.TryParseExact(cleaned, new[] { "yyyy-MM-dd", "yyyy-M-d", "dd-MM-yyyy", "MM-dd-yyyy" },
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var dt2))
+            {
+                return dt2.ToString(format, System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+        // Fall back to year only
+        return Year > 0 ? Year.ToString() : string.Empty;
     }
 
     /// <summary>Whether release date info is available.</summary>
