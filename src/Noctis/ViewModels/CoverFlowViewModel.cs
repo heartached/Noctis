@@ -308,19 +308,6 @@ public partial class CoverFlowViewModel : ViewModelBase, IDisposable
             _viewAlbumAction?.Invoke(CenterTrack);
     }
 
-    [RelayCommand]
-    private void GoNext()
-    {
-        if (_player.UpNext.Count > 0)
-            _player.NextCommand.Execute(null);
-    }
-
-    [RelayCommand]
-    private void GoPrevious()
-    {
-        _player.PreviousCommand.Execute(null);
-    }
-
     public void Dispose()
     {
         _player.TrackStarted -= OnTrackStarted;
