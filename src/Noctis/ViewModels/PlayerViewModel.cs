@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Threading;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Microsoft.Extensions.DependencyInjection;
 using Avalonia.Threading;
@@ -103,7 +104,7 @@ public partial class PlayerViewModel : ViewModelBase
     /// Used by surfaces that bind via <see cref="Controls.CachedImage"/> so the
     /// previous cover stays visible during async cache-miss decode — no flash on
     /// track switch. The Bitmap-based <see cref="AlbumArt"/> property is kept
-    /// for legacy bindings (NowPlaying, Lyrics) that haven't been migrated yet.
+    /// for legacy bindings (Lyrics) that haven't been migrated yet.
     /// </summary>
     [ObservableProperty] private string? _currentArtPath;
 
@@ -532,14 +533,6 @@ public partial class PlayerViewModel : ViewModelBase
 
     private Action<string>? _viewArtistAction;
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
-
-    [RelayCommand]
-    private void ViewCurrentArtist()
-    {
-        var artist = CurrentTrack?.Artist;
-        if (!string.IsNullOrWhiteSpace(artist))
-            _viewArtistAction?.Invoke(artist);
-    }
 
     [RelayCommand]
     private void ViewArtist(Track? track)
@@ -1666,6 +1659,7 @@ public partial class PlayerViewModel : ViewModelBase
         // flash. Set null when the file is missing so the placeholder renders.
         var hasArtFile = !string.IsNullOrEmpty(artPath) && File.Exists(artPath);
         CurrentArtPath = hasArtFile ? artPath : null;
+        UpdateNowPlayingRowColor(CurrentArtPath);
 
         // No artwork available for this track — clear immediately so we don't
         // keep showing the previous track's cover. GetArtworkPath always returns
@@ -1702,6 +1696,91 @@ public partial class PlayerViewModel : ViewModelBase
         }
 
         CurrentAnimatedCoverPath = _animatedCovers.Resolve(track);
+    }
+
+    /// <summary>Path key of the artwork the now-playing row box color was last computed
+    /// for (null = accent fallback applied). Guards re-extraction: the color updates at
+    /// most once per artwork change, and same-album track switches are free.</summary>
+    private string? _nowPlayingRowColorKey = "\0unset";
+
+    /// <summary>Bumped per <see cref="UpdateNowPlayingRowColor"/> call so a slow
+    /// background extraction that finishes after the art changed again is discarded.</summary>
+    private int _nowPlayingRowColorGeneration;
+
+    /// <summary>Shared row-box brush (App.axaml), resolved at most once and only on
+    /// the UI thread: Application.Resources lazily constructs its dictionary on first
+    /// touch and is UI-thread-affine, so off-thread resolution would throw. Stays null
+    /// in hosts without the resource (headless unit tests), which also keeps every
+    /// worker task and dispatcher post below out of the shared test dispatcher.</summary>
+    private SolidColorBrush? _nowPlayingRowBrush;
+    private bool _nowPlayingRowBrushResolveAttempted;
+
+    /// <summary>
+    /// Retints the shared NowPlayingRowBrush resource (App.axaml) that fills the
+    /// now-playing row box in the track lists (Songs/Albums/Playlists/Folders).
+    /// The color is the artwork's vibrant color — the same path-keyed cache the
+    /// lyrics page and share card already use, so a given cover is only ever
+    /// analyzed once per session — clamped so the white row text stays readable.
+    /// Tracks without artwork fall back to the current accent color.
+    /// </summary>
+    private void UpdateNowPlayingRowColor(string? artPath)
+    {
+        if (_nowPlayingRowBrush is null)
+        {
+            if (_nowPlayingRowBrushResolveAttempted || !Dispatcher.UIThread.CheckAccess())
+                return; // no consumers resolved (or wrong thread to try) — no work to spawn
+            _nowPlayingRowBrushResolveAttempted = true;
+            if (Avalonia.Application.Current?.Resources.TryGetResource("NowPlayingRowBrush", null, out var res) == true
+                && res is SolidColorBrush resolved)
+                _nowPlayingRowBrush = resolved;
+            if (_nowPlayingRowBrush is null)
+                return;
+        }
+        if (string.Equals(artPath, _nowPlayingRowColorKey, StringComparison.OrdinalIgnoreCase))
+            return;
+        _nowPlayingRowColorKey = artPath;
+        var generation = Interlocked.Increment(ref _nowPlayingRowColorGeneration);
+
+        if (string.IsNullOrEmpty(artPath))
+        {
+            ApplyNowPlayingRowColor(null, generation);
+            return;
+        }
+
+        // Vibrant extraction decodes the artwork on a cache miss — keep it off the
+        // UI thread (same reason LoadAlbumArt decodes on a worker).
+        _ = Task.Run(() =>
+        {
+            Color? color = null;
+            try { color = Color.Parse(ShareCardRenderer.GetVibrantColorHex(artPath)); }
+            catch { /* fall through to accent, resolved on the UI thread */ }
+            ApplyNowPlayingRowColor(color, generation);
+        });
+    }
+
+    private void ApplyNowPlayingRowColor(Color? color, int generation)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => ApplyNowPlayingRowColor(color, generation));
+            return;
+        }
+        if (generation != Volatile.Read(ref _nowPlayingRowColorGeneration))
+            return; // stale extraction — the artwork changed again meanwhile
+        // Accent fallback reads Application.Resources, so it must resolve here on the
+        // UI thread — never on the worker that ran the extraction.
+        // Mutate the shared brush in place: every Border.now-playing consumer
+        // (DynamicResource) repaints without swapping resource instances.
+        if (_nowPlayingRowBrush is SolidColorBrush brush)
+            brush.Color = DominantColorExtractor.ClampForWhiteText(color ?? GetAccentFallbackColor());
+    }
+
+    private static Color GetAccentFallbackColor()
+    {
+        if (Avalonia.Application.Current?.Resources.TryGetResource("AccentColorBrush", null, out var b) == true
+            && b is ISolidColorBrush accent)
+            return accent.Color;
+        return Color.Parse("#E74856"); // stock accent (matches App.SetAccent's parse fallback)
     }
 
     /// <summary>

@@ -38,6 +38,10 @@
             </ResourceDictionary.MergedDictionaries>
             <FontFamily x:Key="InterSemiBold">avares://Noctis/Assets/Fonts/Inter-SemiBold.ttf#Inter SemiBold</FontFamily>
             <FontFamily x:Key="InterExtraBold">avares://Noctis/Assets/Fonts/Inter-ExtraBold.ttf#Inter Extra Bold</FontFamily>
+            <!-- Now-playing row box (Apple-Music-style). Single shared brush; PlayerViewModel
+                 retints it in place from the current track's artwork (fallback: accent).
+                 Consumed via DynamicResource by the Border.now-playing styles. -->
+            <SolidColorBrush x:Key="NowPlayingRowBrush" Color="#E74856" />
         </ResourceDictionary>
     </Application.Resources>
 
@@ -81,9 +85,6 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:PlaylistFeaturedArtistsViewModel}">
             <views:PlaylistFeaturedArtistsView />
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:NowPlayingViewModel}">
-            <views:NowPlayingView />
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:LyricsViewModel}">
             <views:LyricsView />

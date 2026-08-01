@@ -153,11 +153,11 @@
                                 Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
                                 Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ViewArtistCommand}"
                                 CommandParameter="{Binding Artist}">
-                            <controls:HighlightTextBlock DisplayText="{Binding ArtistDisplay}"
+                            <controls:HighlightTextBlock Classes="accent-link"
+                                                         DisplayText="{Binding ArtistDisplay}"
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
                                                          FontSize="12"
                                                          FontWeight="SemiBold"
-                                                         Foreground="{DynamicResource AccentTextExactBrush}"
                                                          TextTrimming="CharacterEllipsis"
                                                          VerticalAlignment="Center" />
                         </Button>
@@ -166,21 +166,21 @@
                                 Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
                                 Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ViewAlbumCommand}"
                                 CommandParameter="{Binding}">
-                            <controls:HighlightTextBlock DisplayText="{Binding Album}"
+                            <controls:HighlightTextBlock Classes="accent-link"
+                                                         DisplayText="{Binding Album}"
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
                                                          FontSize="12"
                                                          FontWeight="SemiBold"
-                                                         Foreground="{DynamicResource AccentTextExactBrush}"
                                                          TextTrimming="CharacterEllipsis"
                                                          VerticalAlignment="Center" />
                         </Button>
                         <Border Grid.Column="4" Width="110"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowGenreColumn, FallbackValue=True}">
-                            <controls:HighlightTextBlock DisplayText="{Binding Genre}"
+                            <controls:HighlightTextBlock Classes="accent-link"
+                                                         DisplayText="{Binding Genre}"
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
                                                          FontSize="12"
                                                          FontWeight="SemiBold"
-                                                         Foreground="{DynamicResource AccentTextExactBrush}"
                                                          TextTrimming="CharacterEllipsis"
                                                          HorizontalAlignment="Left"
                                                          VerticalAlignment="Center" />
@@ -198,7 +198,6 @@
                                                   StarSize="11"
                                                   StarSpacing="2"
                                                   IsHitTestVisible="False"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                                   Opacity="0.7"
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
@@ -245,9 +244,9 @@
                                 Tag="{Binding}"
                                 ToolTip.Tip="Options"
                                 Click="OnOptionsButtonClick">
-                            <PathIcon Data="{StaticResource MoreDotsIcon}"
+                            <PathIcon Classes="row-dots-icon"
+                                     Data="{StaticResource MoreDotsIcon}"
                                      Width="14" Height="14"
-                                     Foreground="{DynamicResource AccentTextExactBrush}"
                                      HorizontalAlignment="Center"
                                      VerticalAlignment="Center" />
                         </Button>

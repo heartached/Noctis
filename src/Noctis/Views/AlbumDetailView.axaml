@@ -601,12 +601,14 @@
                                HorizontalAlignment="Right"
                                Margin="0,0,10,0"
                                VerticalAlignment="Center">
+                            <!-- Only visible on the now-playing row, which carries the tinted box —
+                                 so the dots are plain white like the rest of the row content. -->
                             <controls:EqVisualizer x:Name="RowEq"
                                                     Width="34" Height="22"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Center"
                                                     Margin="0,0,-10,0"
-                                                    Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                    Foreground="White"
                                                     IsPlaying="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).IsPlayerPlaying, Mode=OneWay}">
                                 <controls:EqVisualizer.IsVisible>
                                     <MultiBinding Converter="{StaticResource GuidEquals}" Mode="OneWay">
@@ -667,7 +669,6 @@
                                                   StarSize="11"
                                                   StarSpacing="2"
                                                   IsHitTestVisible="False"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                                   Opacity="0.7"
                                                   Margin="0,0,8,0"
                                                   VerticalAlignment="Center"
@@ -706,9 +707,9 @@
                                     Cursor="Hand"
                                     ToolTip.Tip="Options"
                                     Tag="{Binding}">
-                                <PathIcon Data="{StaticResource MoreDotsIcon}"
+                                <PathIcon Classes="row-dots-icon"
+                                          Data="{StaticResource MoreDotsIcon}"
                                           Width="14" Height="14"
-                                          Foreground="{DynamicResource AccentTextExactBrush}"
                                           HorizontalAlignment="Center"
                                           VerticalAlignment="Center" />
                                 <Button.Flyout>

@@ -27,6 +27,11 @@
         <Style Selector="ListBox.track-list ListBoxItem">
             <Setter Property="CornerRadius" Value="10" />
         </Style>
+        <!-- The now-playing box (Styles.axaml) defaults to the track-list's 4px
+             rounding; match this view's 10px pill rows instead. -->
+        <Style Selector="Border.now-playing">
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
     </UserControl.Styles>
 
     <!-- Right margin trimmed to 2 so the content list's vertical scrollbar sits at the window edge. -->
@@ -97,10 +102,12 @@
                                      figures so every digit has equal width and stays in line. -->
                                 <Panel Grid.Column="0"
                                        VerticalAlignment="Center">
+                                    <!-- Only visible on the now-playing row, which carries the tinted box —
+                                         so the dots are plain white like the rest of the row content. -->
                                     <controls:EqVisualizer Width="34" Height="22"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
-                                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                           Foreground="White"
                                                            IsVisible="{Binding IsNowPlaying}"
                                                            IsPlaying="{Binding $parent[UserControl].((vm:LibraryFoldersViewModel)DataContext).Player.IsPlaying, Mode=OneWay}" />
                                     <TextBlock Text="{Binding RowNumber}"
