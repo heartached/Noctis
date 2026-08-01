@@ -52,6 +52,20 @@
 
 
     <Panel Background="Transparent">
+    <!-- Liquid Glass backdrop (Appearance toggle). Hidden by default so rendering is
+         untouched while the setting is off. When active, code-behind (ApplyLiquidGlass)
+         shows it, sets the window's TransparencyLevelHint and re-tints the material to
+         the active theme's surface color; FallbackColor keeps the window solid on
+         platforms with no compositor/transparency. Sits under all content. -->
+    <ExperimentalAcrylicBorder x:Name="LiquidGlassAcrylic" IsVisible="False" IsHitTestVisible="False">
+        <ExperimentalAcrylicBorder.Material>
+            <ExperimentalAcrylicMaterial BackgroundSource="Digger"
+                                         TintColor="#252525"
+                                         TintOpacity="0.65"
+                                         MaterialOpacity="0.35"
+                                         FallbackColor="#2A2A2A" />
+        </ExperimentalAcrylicBorder.Material>
+    </ExperimentalAcrylicBorder>
     <DockPanel x:Name="RootPanel" Focusable="True" Background="Transparent" Margin="76,0,0,0">
         <DockPanel.RenderTransform>
             <TranslateTransform X="0">

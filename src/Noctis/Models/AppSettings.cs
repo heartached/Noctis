@@ -169,6 +169,13 @@ public class AppSettings
     /// not move unless the user asks it to.</summary>
     public bool SidebarHoverExpand { get; set; } = false;
 
+    /// <summary>Liquid Glass appearance: the main window renders on a translucent
+    /// acrylic/blur backdrop (Apple Music-style frosted glass) and the structural
+    /// surfaces (window background, sidebar, content panels) switch to translucent
+    /// tints so the blur shows through. Main window only — dialogs keep their opaque
+    /// surfaces. Off by default; when off, rendering is identical to before.</summary>
+    public bool LiquidGlassEnabled { get; set; } = false;
+
     /// <summary>When true, the album grids collapse multiple editions/issues of the same release
     /// (same album-artist + normalized base title) into a single representative tile. Hidden
     /// editions remain reachable via the album page's "Other Versions" section. Default off.</summary>

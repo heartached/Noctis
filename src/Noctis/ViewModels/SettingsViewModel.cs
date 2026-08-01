@@ -360,6 +360,7 @@ public partial class SettingsViewModel : ViewModelBase
     }
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
+    [ObservableProperty] private bool _liquidGlassEnabled;
     [ObservableProperty] private bool _collapseAlbumEditions;
     [ObservableProperty] private bool _mergeFeaturedFromTitles = true;
 
@@ -622,6 +623,10 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Fires when the theme changes so the App can update. Payload is the theme key.</summary>
     public event EventHandler<string>? ThemeChanged;
 
+    /// <summary>Fires when the Liquid Glass appearance toggle changes so the main window
+    /// can switch its transparency hint, acrylic backdrop and surface brushes.</summary>
+    public event EventHandler<bool>? LiquidGlassChanged;
+
     /// <summary>Fires after a full settings reset so the shell can reload playlists, etc.</summary>
     public event EventHandler? SettingsReset;
 
@@ -847,6 +852,7 @@ public partial class SettingsViewModel : ViewModelBase
             ShowSampleRateColumn = _settings.ShowSampleRateColumn;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
+            LiquidGlassEnabled = _settings.LiquidGlassEnabled;
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
             MergeFeaturedFromTitles = _settings.MergeFeaturedFromTitles;
 
@@ -952,6 +958,11 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Apply the persisted accent colour on startup
             AccentChanged?.Invoke(this, ActiveAccentHex);
+
+            // Apply the persisted Liquid Glass state on startup. The change handler
+            // already fired during the load when the stored value was true; this
+            // explicit (idempotent) invoke keeps the window consistent either way.
+            LiquidGlassChanged?.Invoke(this, LiquidGlassEnabled);
 
             _settingsLoaded = true;
         }
@@ -1103,6 +1114,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ShowSampleRateColumn = ShowSampleRateColumn;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
+        _settings.LiquidGlassEnabled = LiquidGlassEnabled;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
         _settings.MergeFeaturedFromTitles = MergeFeaturedFromTitles;
         _settings.LrcLibEnabled = LrcLibEnabled;
@@ -1756,6 +1768,14 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSidebarHoverExpandChanged(bool value)
     {
         _ = SaveAsync();
+    }
+
+    partial void OnLiquidGlassEnabledChanged(bool value)
+    {
+        // Raised even while settings are loading so a persisted "on" is applied as
+        // soon as the value lands; the save itself stays gated on a finished load.
+        LiquidGlassChanged?.Invoke(this, value);
+        if (_settingsLoaded) _ = SaveAsync();
     }
 
     partial void OnPlaybackBarBackgroundOpacityChanged(double value)
@@ -3301,6 +3321,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerTitleMarqueeEnabled = true;
             MiniPlayerAlbumMarqueeEnabled = true;
             SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
+            LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
 
             // Lyrics providers
             LrcLibEnabled = true;

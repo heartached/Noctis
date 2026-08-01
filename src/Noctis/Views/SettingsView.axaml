@@ -1609,6 +1609,20 @@
                 </StackPanel>
             </Border>
 
+            <!-- Liquid Glass (frosted translucent window, Apple Music-style) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Liquid Glass" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Frost the window with translucent, blurred glass surfaces."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding LiquidGlassEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Animated artwork -->
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">

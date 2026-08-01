@@ -24,6 +24,9 @@ public partial class MainWindow : Window
     private bool _exitRequestedFromTray;
     private EventHandler<string>? _themeChangedHandler;
     private EventHandler<string>? _accentChangedHandler;
+    private EventHandler<bool>? _liquidGlassChangedHandler;
+    private ResourceDictionary? _liquidGlassOverlay;
+    private bool _liquidGlassActive;
     private System.ComponentModel.PropertyChangedEventHandler? _playerPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _queuePopupStateHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _topBarPropertyChangedHandler;
@@ -134,6 +137,96 @@ public partial class MainWindow : Window
         catch { /* the dialog itself is best effort */ }
     }
 
+    /// <summary>
+    /// Applies or removes the Liquid Glass appearance (Settings → Appearance).
+    ///
+    /// On: the window asks the OS for blur-behind (AcrylicBlur, falling back to
+    /// Mica/Blur where unavailable), shows the ExperimentalAcrylicBorder backdrop
+    /// tinted with the active theme's surface color, and merges a window-scoped
+    /// resource overlay that swaps the structural surface brushes (window/content
+    /// background, sidebar) to translucent variants so the blur shows through.
+    /// The overlay lives in <b>this window's</b> resources, never the Application's,
+    /// so dialog windows and the mini player keep their opaque surfaces.
+    ///
+    /// Off: the overlay is removed (DynamicResource consumers snap back to the
+    /// theme's opaque brushes), the transparency hint is cleared back to its
+    /// default, and the backdrop is hidden — restoring the stock rendering.
+    ///
+    /// Fallback: if the platform grants no transparency (Linux without a
+    /// compositor, headless), the material's FallbackColor paints an opaque
+    /// theme-colored backdrop, so the translucent surfaces above it stay readable.
+    /// </summary>
+    private void ApplyLiquidGlass(bool on)
+    {
+        _liquidGlassActive = on;
+
+        if (_liquidGlassOverlay != null)
+        {
+            Resources.MergedDictionaries.Remove(_liquidGlassOverlay);
+            _liquidGlassOverlay = null;
+        }
+
+        var acrylic = this.FindControl<ExperimentalAcrylicBorder>("LiquidGlassAcrylic");
+
+        if (!on)
+        {
+            ClearValue(TransparencyLevelHintProperty);
+            if (acrylic != null) acrylic.IsVisible = false;
+            return;
+        }
+
+        // Resolve the active theme's surface colors from Application-level resources
+        // (the window-scoped glass overlay never shadows those), so every theme —
+        // built-in or custom — keeps its own tint behind the glass.
+        var main = ResolveThemeColor("AppMainBackground", Color.Parse("#252525"));
+        var sidebar = ResolveThemeColor("AppSidebarBackground", Color.Parse("#141414"));
+
+        TransparencyLevelHint = new[]
+        {
+            WindowTransparencyLevel.AcrylicBlur,
+            WindowTransparencyLevel.Mica,
+            WindowTransparencyLevel.Blur,
+            WindowTransparencyLevel.None,
+        };
+
+        if (acrylic != null)
+        {
+            // Fresh material instance: assigning the Material property is guaranteed
+            // to invalidate, and the tint follows the active theme's surface color.
+            acrylic.Material = new ExperimentalAcrylicMaterial
+            {
+                BackgroundSource = AcrylicBackgroundSource.Digger,
+                TintColor = main,
+                TintOpacity = 0.65,
+                MaterialOpacity = 0.35,
+                FallbackColor = main,
+            };
+            acrylic.IsVisible = true;
+        }
+
+        // Translucent surface variants. The acrylic tint underneath carries most of
+        // the readability: in the content area the window, content-grid and page
+        // layers stack (≈73% net), the sidebar pill lands at ≈71% — text always sits
+        // on a solid-enough frosted surface.
+        _liquidGlassOverlay = new ResourceDictionary
+        {
+            ["AppMainBackground"] = new SolidColorBrush(main, 0.35),
+            ["AppSidebarBackground"] = new SolidColorBrush(sidebar, 0.55),
+        };
+        Resources.MergedDictionaries.Add(_liquidGlassOverlay);
+    }
+
+    /// <summary>Reads a theme surface color from Application resources for the active
+    /// theme variant; theme overlays (built-in and custom) win over the base palette.</summary>
+    private static Color ResolveThemeColor(string key, Color fallback)
+    {
+        if (Avalonia.Application.Current is { } app
+            && app.TryGetResource(key, app.ActualThemeVariant, out var value)
+            && value is ISolidColorBrush brush)
+            return brush.Color;
+        return fallback;
+    }
+
     private async Task InitializeOnLoadedAsync()
     {
         {
@@ -144,6 +237,10 @@ public partial class MainWindow : Window
                 {
                     if (Avalonia.Application.Current is App app)
                         app.SetTheme(themeKey);
+                    // Liquid Glass derives its tints from the theme's surface colors,
+                    // so a theme switch while glass is on re-resolves them.
+                    if (_liquidGlassActive)
+                        ApplyLiquidGlass(true);
                 };
                 vm.Settings.ThemeChanged += _themeChangedHandler;
 
@@ -153,6 +250,9 @@ public partial class MainWindow : Window
                         app.SetAccent(hex);
                 };
                 vm.Settings.AccentChanged += _accentChangedHandler;
+
+                _liquidGlassChangedHandler = (_, on) => ApplyLiquidGlass(on);
+                vm.Settings.LiquidGlassChanged += _liquidGlassChangedHandler;
 
                 // Load settings first so window placement is restored before the
                 // rest of init runs (avoids a visible resize jump on startup).
@@ -708,6 +808,9 @@ public partial class MainWindow : Window
 
             if (_accentChangedHandler != null)
                 vm.Settings.AccentChanged -= _accentChangedHandler;
+
+            if (_liquidGlassChangedHandler != null)
+                vm.Settings.LiquidGlassChanged -= _liquidGlassChangedHandler;
 
             if (_playerPropertyChangedHandler != null)
                 vm.Player.PropertyChanged -= _playerPropertyChangedHandler;
