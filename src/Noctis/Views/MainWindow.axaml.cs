@@ -158,6 +158,15 @@ public partial class MainWindow : Window
     /// </summary>
     private void ApplyLiquidGlass(bool on)
     {
+        // Never applies on Linux: AcrylicBlur/Mica don't exist there, Blur is
+        // KDE-only, and Avalonia's X11 backend doesn't track compositor changes
+        // (AvaloniaUI/Avalonia#3300; #5333 "Transparency effect does not work on
+        // Fedora GNOME") — the hint list would degrade to a plain see-through
+        // window on most WMs, the exact "window turns transparent" artifact from
+        // issue #26. The toggle is hidden in Settings on Linux
+        // (IsLiquidGlassSupported); this gate also covers a settings file that
+        // already carries LiquidGlassEnabled=true.
+        if (OperatingSystem.IsLinux()) on = false;
         _liquidGlassActive = on;
 
         if (_liquidGlassOverlay != null)

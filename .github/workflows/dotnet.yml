@@ -286,9 +286,61 @@ jobs:
 
           # Assemble AppDir
           APPDIR=Noctis.AppDir
-          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/256x256/apps"
+          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/lib" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/256x256/apps"
           cp -R publish/${{ matrix.rid }}/. "$APPDIR/usr/bin/"
           chmod +x "$APPDIR/usr/bin/Noctis"
+
+          # ── Bundle libvlc + its plugins (issue #26) ─────────────────
+          # Through v1.3.8 the AppImage shipped NO libvlc and silently relied
+          # on the host's VLC install. On distros that split VLC's plugins
+          # into optional packages (Arch: avformat/avcodec live in
+          # vlc-plugin-ffmpeg, an optdepend of vlc) playback then failed on
+          # every file with "VLC is unable to open the MRL …". Bundle the
+          # core libs + Ubuntu's vlc-plugin-base set (filesystem access, all
+          # audio demux/codecs incl. avformat, pulse/alsa outputs) so the
+          # AppImage is self-contained. Note: bundling from ubuntu-latest
+          # sets the AppImage's glibc floor (currently 2.38); older distros
+          # keep the tarball + system VLC path.
+          sudo apt-get install -y --no-install-recommends libvlc5 libvlccore9 vlc-plugin-base vlc-data
+          LIBDIR=/usr/lib/x86_64-linux-gnu
+          cp -a "$LIBDIR"/libvlc.so.5* "$LIBDIR"/libvlccore.so.9* "$APPDIR/usr/lib/"
+          # Whole vlc/ dir: plugins/ plus the private helper libs beside it
+          # (libvlc_pulse.so.0 etc.) that plugins reference via an absolute
+          # RUNPATH on Debian/Ubuntu — AppRun adds usr/lib/vlc to
+          # LD_LIBRARY_PATH so they resolve from the bundle instead.
+          cp -a "$LIBDIR/vlc" "$APPDIR/usr/lib/vlc"
+          # The plugin cache records absolute build-host paths; drop it and
+          # let libvlc rescan the bundled directory at runtime.
+          find "$APPDIR/usr/lib/vlc" -name plugins.dat -delete
+          # .NET's DllImport("libvlc") probes the UNVERSIONED soname
+          # (libvlc.so), which distro packages only ship in -dev packages —
+          # provide the symlinks ourselves.
+          ln -sf libvlc.so.5 "$APPDIR/usr/lib/libvlc.so"
+          ln -sf libvlccore.so.9 "$APPDIR/usr/lib/libvlccore.so"
+
+          # linuxdeploy copies the ELF dependency closure of the bundled
+          # plugins/libs (libavformat, libavcodec & friends) into usr/lib,
+          # minus its denylist of assumed-system libraries, so the plugins
+          # load on distros with different library versions. Runs BEFORE the
+          # desktop file exists: with one in place its desktop-integration
+          # phase errors on the Exec entry (no executable was deployed via
+          # -e); without one it deploys dependencies and exits 0. Pinned
+          # release + SHA-256, same policy as appimagetool below. NO_STRIP:
+          # stripping has broken bundled libs before, and squashfs compresses
+          # the payload anyway.
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage -O linuxdeploy
+          echo "c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d  linuxdeploy" | sha256sum -c -
+          chmod +x linuxdeploy
+          NO_STRIP=1 ./linuxdeploy --appimage-extract-and-run --appdir "$APPDIR" \
+            --deploy-deps-only "$APPDIR/usr/lib/vlc/plugins" \
+            --deploy-deps-only "$APPDIR/usr/lib"
+
+          # Postconditions: fail the build if the payload regresses to the
+          # v1.3.8 "no VLC inside" state (the exact issue #26 failure mode).
+          test -e "$APPDIR/usr/lib/vlc/plugins/access/libfilesystem_plugin.so"
+          test -e "$APPDIR/usr/lib/vlc/plugins/demux/libavformat_plugin.so"
+          test -e "$APPDIR/usr/lib/vlc/plugins/audio_output/libpulse_plugin.so"
+          ls "$APPDIR"/usr/lib/libavformat.so.* > /dev/null
           # Use the canonical Windows .ico (extracted to PNG) so the Linux
           # icon matches the Windows app icon. Ubuntu ships ImageMagick 6, so
           # we use the legacy `convert`/`identify` binaries (the unified
@@ -303,7 +355,21 @@ jobs:
           convert "${SRC_ICO}[${LARGEST_IDX}]" -background none -resize 256x256 noctis.png
           cp noctis.png "$APPDIR/usr/share/icons/hicolor/256x256/apps/noctis.png"
           cp noctis.png "$APPDIR/noctis.png"
-          ln -sf usr/bin/Noctis "$APPDIR/AppRun"
+
+          # AppRun: a real script instead of the old bare symlink, so the
+          # loader and libvlc find the bundled payload. NOCTIS_BUNDLED_VLC=1
+          # tells the app the full plugin set is guaranteed — it then forces
+          # the avformat demuxer (O(1) MP3/M4A seek fix), which is unsafe to
+          # force against unknown system VLCs (see VlcAudioPlayer).
+          cat > "$APPDIR/AppRun" <<'APPRUN'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          export LD_LIBRARY_PATH="${HERE}/usr/lib:${HERE}/usr/lib/vlc${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          export VLC_PLUGIN_PATH="${HERE}/usr/lib/vlc/plugins"
+          export NOCTIS_BUNDLED_VLC=1
+          exec "${HERE}/usr/bin/Noctis" "$@"
+          APPRUN
+          chmod +x "$APPDIR/AppRun"
 
           cat > "$APPDIR/noctis.desktop" <<DESKTOP
           [Desktop Entry]

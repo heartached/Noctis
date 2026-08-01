@@ -175,6 +175,21 @@ internal class Program
                     new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Color Emoji") },
                 }
             });
+
+            // Escape hatch for GPU/driver rendering trouble on Linux (issue #26:
+            // heavy stutter + windows flashing transparent on Arch/X11).
+            // NOCTIS_SOFTWARE_RENDER=1 forces Avalonia's X11 software renderer —
+            // on a number of Linux setups the GL paths render far slower than
+            // software (AvaloniaUI/Avalonia discussion #18807), and a stalled GPU
+            // swapchain presents as see-through window content. Opt-in only; the
+            // default renderer selection is unchanged.
+            if (Environment.GetEnvironmentVariable("NOCTIS_SOFTWARE_RENDER") == "1")
+            {
+                builder = builder.With(new X11PlatformOptions
+                {
+                    RenderingMode = new[] { X11RenderingMode.Software }
+                });
+            }
         }
 
         return builder;

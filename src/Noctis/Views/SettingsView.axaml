@@ -1609,8 +1609,10 @@
                 </StackPanel>
             </Border>
 
-            <!-- Liquid Glass (frosted translucent window, Apple Music-style) -->
-            <Border Classes="setting-card">
+            <!-- Liquid Glass (frosted translucent window, Apple Music-style).
+                 Hidden on Linux: no Acrylic/Mica/blur-behind there, the hint would
+                 only make the window see-through (issue #26). -->
+            <Border Classes="setting-card" IsVisible="{Binding IsLiquidGlassSupported}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="Liquid Glass" FontSize="15" FontWeight="SemiBold"/>

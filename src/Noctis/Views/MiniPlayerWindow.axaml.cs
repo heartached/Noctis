@@ -34,6 +34,18 @@ public partial class MiniPlayerWindow : Window
     {
         InitializeComponent();
 
+        // The XAML asks for a fully transparent window (rounded-card look). On
+        // Linux/X11 per-pixel transparency depends on a running compositor and
+        // Avalonia doesn't track compositor changes (AvaloniaUI/Avalonia#3300),
+        // so the surface can render as garbage/see-through instead (issue #26).
+        // Request an opaque window there and paint the window in the card's own
+        // background color so the (now square) corners blend into the card.
+        if (OperatingSystem.IsLinux())
+        {
+            TransparencyLevelHint = new[] { WindowTransparencyLevel.None };
+            Background = new SolidColorBrush(Color.Parse("#FF141414")); // = RootBorder background
+        }
+
         // Seek commits follow the same BeginSeek/EndSeek protocol as the playback bar
         // so drags update the UI live and send a single debounced seek on release.
         SeekSlider.AddHandler(PointerPressedEvent, OnSeekPointerPressed, Avalonia.Interactivity.RoutingStrategies.Tunnel);

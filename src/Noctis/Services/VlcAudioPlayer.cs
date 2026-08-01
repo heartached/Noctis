@@ -351,6 +351,14 @@ public class VlcAudioPlayer : IAudioPlayer
         //                           Xing header and builds an O(1) seek table on open,
         //                           fixing per-song variation in seek quality. Also needed
         //                           for AAC/M4A Lossless seek smoothness.
+        //                           NOT forced on Linux system-libvlc installs: distros
+        //                           split VLC's plugins into packages (Arch ships avformat
+        //                           only in the optional vlc-plugin-ffmpeg package), and
+        //                           forcing a demux module that isn't installed makes EVERY
+        //                           media open fail with "VLC is unable to open the MRL"
+        //                           even though the file exists (issue #26). The AppImage
+        //                           bundles the full plugin set and re-enables the flag via
+        //                           NOCTIS_BUNDLED_VLC=1 (see ShouldForceAvformatDemux).
         //   --aout=mmdevice: WASAPI shared-mode output, VLC's modern Windows
         //   backend. Replaces the legacy --aout=directsound path, whose
         //   DirectSound emulation underran on high-latency endpoints
@@ -398,13 +406,21 @@ public class VlcAudioPlayer : IAudioPlayer
             "--no-osd",
             "--no-spu",
             "--input-repeat=0",
-            "--demux=avformat",
             "--no-audio-time-stretch",
             $"--file-caching={cachingMs}",
             $"--disc-caching={cachingMs}",
             $"--live-caching={cachingMs}",
             $"--network-caching={cachingMs}",
         };
+        // See the --demux=avformat note above: only forced where the avformat
+        // plugin is guaranteed to exist (Windows/macOS payloads bundle it; the
+        // Linux AppImage's AppRun sets NOCTIS_BUNDLED_VLC=1). Plain Linux
+        // system-libvlc installs keep VLC's native demuxers so a split plugin
+        // set still plays.
+        if (ShouldForceAvformatDemux(
+                OperatingSystem.IsLinux(),
+                Environment.GetEnvironmentVariable("NOCTIS_BUNDLED_VLC")))
+            vlcArgs.Add("--demux=avformat");
         // The speex resampler module + its quality flag are not always present
         // in third-party VLC builds (notably the macOS VLC.app distribution).
         // mmdevice is Windows-only.
@@ -3758,6 +3774,19 @@ public class VlcAudioPlayer : IAudioPlayer
         return null;
     }
 
+    /// <summary>
+    /// Whether to pass --demux=avformat (the VBR-MP3/M4A O(1)-seek fix). True
+    /// everywhere the avformat plugin is guaranteed to exist: Windows/macOS ship
+    /// VideoLAN's full plugin payload, and the Linux AppImage bundles it and
+    /// says so via NOCTIS_BUNDLED_VLC=1. Plain Linux system libvlc must NOT
+    /// force it: distros split the ffmpeg plugins into optional packages (Arch:
+    /// vlc-plugin-ffmpeg), and forcing an uninstalled demux module fails every
+    /// media open with "VLC is unable to open the MRL" (issue #26).
+    /// Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal static bool ShouldForceAvformatDemux(bool isLinux, string? bundledVlcEnv)
+        => !isLinux || bundledVlcEnv == "1";
+
     private static string BuildLibVlcMissingMessage()
     {
         if (OperatingSystem.IsLinux())
@@ -3765,7 +3794,9 @@ public class VlcAudioPlayer : IAudioPlayer
             return "libvlc is required but was not found. Install it with your package manager:\n" +
                    "  Debian/Ubuntu:  sudo apt install vlc\n" +
                    "  Fedora:         sudo dnf install vlc\n" +
-                   "  Arch:           sudo pacman -S vlc";
+                   "  Arch:           sudo pacman -S vlc\n" +
+                   "(On Arch, VLC's plugins are split into separate packages — if playback " +
+                   "errors persist after installing, add vlc-plugins-all.)";
         }
         if (OperatingSystem.IsMacOS())
         {

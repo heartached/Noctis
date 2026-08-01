@@ -362,6 +362,11 @@ public partial class SettingsViewModel : ViewModelBase
     }
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
+    /// <summary>Liquid Glass needs OS blur-behind (Acrylic/Mica/vibrancy). On Linux/X11
+    /// none of those exist and the hint would degrade to a plain see-through window
+    /// (issue #26), so the Settings card is hidden there (same pattern as
+    /// <see cref="IsExclusiveAudioSupported"/>) and MainWindow ignores the value.</summary>
+    public bool IsLiquidGlassSupported => !OperatingSystem.IsLinux();
     [ObservableProperty] private bool _liquidGlassEnabled;
     [ObservableProperty] private bool _collapseAlbumEditions;
     [ObservableProperty] private bool _mergeFeaturedFromTitles = true;
