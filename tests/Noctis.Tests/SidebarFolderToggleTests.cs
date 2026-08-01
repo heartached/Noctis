@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -62,6 +63,42 @@ public class SidebarFolderToggleTests
         vm.ToggleFolderExpansion("F1");
         Assert.Contains(vm.SidebarRows, r => r.Key == "p1");
         Assert.True(vm.SidebarRows.First(r => r.IsFolder).IsExpanded);
+    }
+
+    [Fact]
+    public void ToggleFolderExpansion_ReusesFolderHeaderInstance()
+    {
+        var vm = MakeViewModel();
+        var headerBefore = vm.SidebarRows.First(r => r.IsFolder);
+
+        vm.ToggleFolderExpansion("F1");
+
+        // The header row the pointer sits on must survive the rebuild: replacing
+        // it tears down its ListBox container, which drops the sidebar wrapper's
+        // IsPointerOver for a frame and snaps the hover-expanded rail shut.
+        var headerAfter = vm.SidebarRows.First(r => r.IsFolder);
+        Assert.Same(headerBefore, headerAfter);
+        Assert.False(headerAfter.IsExpanded);
+
+        vm.ToggleFolderExpansion("F1");
+        Assert.Same(headerBefore, vm.SidebarRows.First(r => r.IsFolder));
+        Assert.True(headerBefore.IsExpanded);
+        Assert.Equal(new[] { "folder:F1", "p1", "p2" }, vm.SidebarRows.Select(r => r.Key));
+    }
+
+    [Fact]
+    public void RebuildSidebarRows_SyncsInPlace_WithoutCollectionReset()
+    {
+        var vm = MakeViewModel();
+        var sawReset = false;
+        ((INotifyCollectionChanged)vm.SidebarRows).CollectionChanged +=
+            (_, e) => sawReset |= e.Action == NotifyCollectionChangedAction.Reset;
+
+        vm.ToggleFolderExpansion("F1");
+        vm.ToggleFolderExpansion("F1");
+        vm.RebuildSidebarRows();
+
+        Assert.False(sawReset);
     }
 
     private sealed class StubLibraryService : ILibraryService

@@ -385,8 +385,17 @@
                                             ToolTip.Tip="{Binding Label}"
                                             IsVisible="{Binding !IsFolder}"
                                             HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
-                                    <!-- Indent for playlists inside an expanded folder -->
-                                    <Border Width="14" IsVisible="{Binding IsInFolder}" />
+                                    <!-- Indent for playlists inside an expanded folder. Hidden in the
+                                         collapsed rail: with it, the row is 52px (14+10 spacing+28 art)
+                                         in a 28px slot, so the art rendered off-center and clipped. -->
+                                    <Border Width="14">
+                                        <Border.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                <Binding Path="IsInFolder" />
+                                                <Binding Path="$parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded" FallbackValue="False" />
+                                            </MultiBinding>
+                                        </Border.IsVisible>
+                                    </Border>
                                     <!-- Playlist artwork thumbnail -->
                                     <Border Width="28" Height="28"
                                             CornerRadius="14"
