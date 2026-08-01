@@ -467,8 +467,14 @@ public partial class TopBarViewModel : ViewModelBase
         IsSearchFocused = true;
     }
 
-    /// <summary>Raised when search should open/focus (Ctrl+F), even if already open.</summary>
+    /// <summary>Raised when search should open/focus, even if already open.</summary>
     public event EventHandler? SearchOpenRequested;
+
+    /// <summary>Raised when Ctrl+F toggles an open pill shut. The collapse
+    /// animation lives in the view, so closing routes through it instead of
+    /// flipping <see cref="IsSearchOpen"/> here (which would snap the popup
+    /// shut without the morph).</summary>
+    public event EventHandler? SearchCloseRequested;
 
     /// <summary>Raised when search is invoked on Home, which has nothing to filter.
     /// The shell answers by navigating to the Songs page and opening search there.</summary>
@@ -487,5 +493,14 @@ public partial class TopBarViewModel : ViewModelBase
         }
         IsSearchOpen = true;
         SearchOpenRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
+    private void ToggleSearch()
+    {
+        if (IsSearchOpen)
+            SearchCloseRequested?.Invoke(this, EventArgs.Empty);
+        else
+            OpenSearch();
     }
 }
