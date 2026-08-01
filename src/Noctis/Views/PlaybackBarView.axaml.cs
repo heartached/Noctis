@@ -658,19 +658,6 @@ public partial class PlaybackBarView : UserControl
         return PillSliderVisualHelper.GetValueFromPointer(slider, position, SeekThumbSize);
     }
 
-    // Clicking the album-art thumbnail opens the Now Playing view.
-    private void OnAlbumArtPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
-
-        var mainWindow = this.FindLogicalAncestorOfType<MainWindow>();
-        if (mainWindow?.DataContext is MainWindowViewModel mainVm)
-        {
-            mainVm.OpenNowPlayingCommand.Execute(null);
-            e.Handled = true;
-        }
-    }
-
     // The mini player button toggles the compact always-on-top player window.
     private void OnMiniPlayerButtonClick(object? sender, RoutedEventArgs e)
     {

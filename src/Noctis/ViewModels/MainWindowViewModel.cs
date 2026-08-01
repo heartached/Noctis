@@ -1737,17 +1737,6 @@ public partial class MainWindowViewModel : ViewModelBase
         await Views.CommandPaletteDialog.ShowAsync(vm);
     }
 
-    /// <summary>Navigate to the Now Playing view (from clicking album art in playback bar).</summary>
-    [RelayCommand]
-    private void OpenNowPlaying()
-    {
-        PushCurrentViewToHistory();
-
-        var nowPlaying = new NowPlayingViewModel(Player, Settings);
-        nowPlaying.BackRequested += (_, _) => GoBackInHistory();
-        CurrentView = nowPlaying;
-    }
-
     private void OnAlbumOpened(object? sender, Album album)
     {
         OpenAlbumDetail(album);
