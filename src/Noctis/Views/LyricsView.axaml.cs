@@ -1074,7 +1074,7 @@ public partial class LyricsView : UserControl
 
     private void UpdateLyricsCenterPadding()
     {
-        if (LyricsScrollViewer == null || LyricsItemsControl == null) return;
+        if (LyricsScrollViewer == null || LyricsItemsControl == null || LyricsScrollContent == null) return;
 
         // Normal: top margin = 10% so lyrics start near the top of the center zone,
         // bottom = 78% so the last lyric can still be scrolled to the page anchor.
@@ -1100,7 +1100,12 @@ public partial class LyricsView : UserControl
         // transform. Without it, scaled glyphs on long lines get clipped by the
         // ScrollViewer's internal viewport ("…GOA" instead of "…GOAT").
         const double activeLineScaleHeadroom = 64;
-        LyricsItemsControl.Margin = new Thickness(0, topPad, activeLineScaleHeadroom, bottomPad);
+        // Top/right pads stay on the ItemsControl — the anchor math reads Margin.Top —
+        // but the bottom run-out moved to the scroll-content wrapper so the Written-By
+        // footer (the wrapper's second child) sits just under the last line instead of
+        // a viewport below it. Total extent is unchanged while the footer is collapsed.
+        LyricsItemsControl.Margin = new Thickness(0, topPad, activeLineScaleHeadroom, 0);
+        LyricsScrollContent.Margin = new Thickness(0, 0, 0, bottomPad);
     }
 
     // Maps the current synced ActiveLineIndex to the corresponding row in UnsyncedLines.

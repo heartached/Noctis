@@ -494,6 +494,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private string _lyricsSourceName = string.Empty;
 
+    /// <summary>"Written By: …" credit shown after the last lyric line: the current track's
+    /// composer(s), comma-joined. Empty when the track has no composer tag or no lyrics are
+    /// displayed — the views collapse the footer then. Kept in lock-step with the line
+    /// collections (see <see cref="UpdateWrittenByCredit"/>), so it swaps behind the same
+    /// fade as the lyrics themselves.</summary>
+    [ObservableProperty]
+    private string _writtenByText = string.Empty;
+
     /// <summary>Whether an alternate lyrics source is available to switch to.</summary>
     [ObservableProperty]
     private bool _hasAlternateLyrics;
@@ -537,6 +545,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 UpdateActiveLine(GetPlaybackPosition());
             UpdateWordClockSubscription();
         };
+
+        // The Written-By credit must appear exactly when lyrics do: every load/clear
+        // path mutates these collections (Clear and ReplaceAll both raise
+        // CollectionChanged), so one hook covers local probes, online results,
+        // removals, search failures and the queue-end clear.
+        LyricLines.CollectionChanged += (_, _) => UpdateWrittenByCredit();
+        UnsyncedLines.CollectionChanged += (_, _) => UpdateWrittenByCredit();
 
         // Subscribe to track changes to update lyrics
         _player.TrackStarted += OnTrackStarted;
@@ -1656,6 +1671,26 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         LyricsSwapped?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>Recomputes <see cref="WrittenByText"/> from the current track's Composer
+    /// tag. Empty (footer collapsed) when there is no composer or no lyrics on screen.
+    /// Multi-writer tags arrive as one string — ID3v2.3-style "/" or ";" separated —
+    /// and are shown comma-joined, Apple Music style. Called from the collection-changed
+    /// hooks in the constructor, so it runs on the UI thread with every lyrics apply.</summary>
+    private void UpdateWrittenByCredit()
+    {
+        var composer = _currentTrack?.Composer;
+        if (string.IsNullOrWhiteSpace(composer) ||
+            (LyricLines.Count == 0 && UnsyncedLines.Count == 0))
+        {
+            WrittenByText = string.Empty;
+            return;
+        }
+
+        WrittenByText = string.Join(", ",
+            composer.Split(new[] { '/', ';' },
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+    }
+
     private void OnTrackStarted(object? sender, Track track)
     {
         Dispatcher.UIThread.Post(() =>
@@ -1703,6 +1738,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 else
                     _lyricsSyncTimer.Stop();
             }
+
+            // A metadata edit can change Composer without touching the lyrics text —
+            // the collection hooks never fire then, so refresh the credit directly.
+            UpdateWrittenByCredit();
         });
     }
 

@@ -256,6 +256,11 @@
                           VerticalScrollBarVisibility="Hidden"
                           HorizontalScrollBarVisibility="Disabled"
                           Padding="24,0,24,0">
+                <!-- Scroll content = lyric lines + the Written-By footer (mirrors the
+                     lyrics page). The ItemsControl must stay the FIRST child with
+                     nothing above it: the panel's anchor math uses item-panel
+                     coordinates directly as extent-space offsets. -->
+                <StackPanel ClipToBounds="False">
                 <!-- FontSize here is inherited by the line and karaoke TextBlocks.
                      MaxWidth bounds the wrap width explicitly (as the lyrics page
                      does) — the ScrollViewer's padding is not subtracted from the
@@ -369,6 +374,18 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <!-- "Written By" credit — local copy of the lyrics page's footer at
+                     panel scale. Collapses (no reserved space) when WrittenByText is
+                     empty; never part of the line collection, so line indices and
+                     the active-line anchor never see it. -->
+                <TextBlock FontSize="12"
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Left"
+                           MaxWidth="292"
+                           Margin="0,24,0,10"
+                           IsVisible="{Binding WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="Written By: " FontWeight="SemiBold" Foreground="{Binding LyricsSecondaryFg}"/><Run Text="{Binding WrittenByText}" Foreground="{Binding LyricsSubtleFg}"/></TextBlock>
+                </StackPanel>
             </ScrollViewer>
         </Border>
     </Grid>

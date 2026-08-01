@@ -1010,6 +1010,15 @@
                               VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled"
                               Padding="24,0,48,0">
+                    <!-- Scroll content = lyric lines + the Written-By footer, one extent.
+                         The ItemsControl stays this panel's FIRST child at Y=0 with no
+                         header above it: the anchor math (TryComputeAnchorOffset and the
+                         jump path) converts item-panel coordinates to extent space as
+                         panel Y + LyricsItemsControl.Margin.Top, which only holds while
+                         nothing precedes the ItemsControl. The run-out bottom pad lives
+                         on this wrapper (UpdateLyricsCenterPadding) so the footer sits
+                         just after the last line, before the empty run-out. -->
+                    <StackPanel x:Name="LyricsScrollContent" ClipToBounds="False">
                     <!-- FontSize set here (and adjusted from code-behind per window size)
                          is inherited by the lyric-line and karaoke TextBlocks below. -->
                     <!-- ClipToBounds=False here, on the word-layer ItemsControl and on the
@@ -1179,6 +1188,20 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!-- "Written By" credit (Apple Music style): scrolls into view after
+                         the final line. Collapses entirely — no reserved space — when the
+                         track has no composer or no lyrics (WrittenByText is empty then).
+                         Not a lyric line: it lives outside LyricsItemsControl, so line
+                         indices, active-line anchoring and opacity dimming never see it. -->
+                    <TextBlock x:Name="WrittenByFooter"
+                               FontSize="15"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Left"
+                               MaxWidth="{Binding #LyricsItemsControl.MaxWidth}"
+                               Margin="0,44,0,0"
+                               IsVisible="{Binding WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="Written By: " FontWeight="SemiBold" Foreground="{Binding LyricsSecondaryFg}"/><Run Text="{Binding WrittenByText}" Foreground="{Binding LyricsSubtleFg}"/></TextBlock>
+                    </StackPanel>
                 </ScrollViewer>
             </Border>
 
