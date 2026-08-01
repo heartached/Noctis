@@ -20,6 +20,14 @@
         <conv:OpacityFloorConverter x:Key="OpacityFloor"/>
         <conv:DoubleScaleConverter x:Key="FontScale"/>
 
+        <!-- Duet layout (ELRC v1:/v2:/v3: voice markers) — panel copy of the lyrics
+             page keys; keep in sync. -->
+        <conv:LyricVoiceToAlignmentConverter x:Key="VoiceAlign"/>
+        <conv:LyricVoiceToTextAlignmentConverter x:Key="VoiceTextAlign"/>
+        <conv:LyricVoiceToItemsAlignmentConverter x:Key="VoiceItemsAlign"/>
+        <conv:LyricVoiceToTransformOriginConverter x:Key="VoiceOrigin"/>
+        <conv:DuetMinWidthConverter x:Key="DuetMinWidth"/>
+
         <!-- Shared karaoke word cell (glow / dimmed base / gradient sweep), used by the
              main word layer and the background-vocal (adlib) layer below it. Panel copy
              of the lyrics page template (smaller glow headroom). -->
@@ -275,6 +283,14 @@
                               MaxWidth="292"
                               ClipToBounds="False"
                               HorizontalAlignment="Left">
+                    <!-- Duet files pin the column to full MaxWidth so voice-2 lines
+                         right-align against a stable edge (mirrors the lyrics page). -->
+                    <ItemsControl.MinWidth>
+                        <MultiBinding Converter="{StaticResource DuetMinWidth}">
+                            <Binding Path="HasDuetLines"/>
+                            <Binding Path="$self.MaxWidth"/>
+                        </MultiBinding>
+                    </ItemsControl.MinWidth>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="m:LyricLine">
                             <Button Background="Transparent"
@@ -284,7 +300,8 @@
                                     Padding="0"
                                     Margin="0,14"
                                     MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
-                                    HorizontalAlignment="Left"
+                                    HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                    RenderTransformOrigin="{Binding Voice, Converter={StaticResource VoiceOrigin}}"
                                     HorizontalContentAlignment="Left"
                                     Cursor="Hand"
                                     IsHitTestVisible="{Binding IsClickable}"
@@ -293,13 +310,14 @@
                                     Effect="{Binding BlurRadius, Converter={StaticResource BlurToEffect}}">
                                 <StackPanel HorizontalAlignment="Left"
                                             MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
-                                <Panel HorizontalAlignment="Left">
+                                <Panel HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}">
                                     <!-- Plain text layer (lines without word timings) -->
                                     <TextBlock Text="{Binding Text}"
                                                Classes="panel-lyric-line"
                                                FontWeight="Bold"
                                                Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
                                                HorizontalAlignment="Left"
+                                               TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
                                                MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                IsVisible="{Binding ShowLineText}"
@@ -323,7 +341,7 @@
                                         </ItemsControl.Transitions>
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <WrapPanel Orientation="Horizontal"/>
+                                                <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
@@ -352,7 +370,7 @@
                                               Classes.active="{Binding IsActive}"
                                               IsVisible="{Binding ShowBackgroundWords}"
                                               Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
-                                              HorizontalAlignment="Left"
+                                              HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
                                               ClipToBounds="False"
                                               Margin="0,4,0,0"
                                               FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
@@ -365,7 +383,7 @@
                                     </ItemsControl.Transitions>
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <WrapPanel Orientation="Horizontal"/>
+                                            <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                 </ItemsControl>

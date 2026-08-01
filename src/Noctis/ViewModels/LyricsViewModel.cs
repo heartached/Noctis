@@ -242,6 +242,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// <summary>Plain text lyrics without timestamps for the Unsync tab.</summary>
     public BulkObservableCollection<LyricLine> UnsyncedLines { get; } = new();
 
+    /// <summary>
+    /// True when the loaded lyrics carry duet voice markers (any non-default
+    /// <see cref="LyricLine.Voice"/>). The page and panel bind this to force the
+    /// lyric column to full width so voice-2 lines have a stable right edge.
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasDuetLines;
+
     /// <summary>Lines bound to the lyrics page — synced or plain depending on the toggle.</summary>
     public IEnumerable<LyricLine> ActiveLyricLines =>
         IsSyncTabSelected ? (IEnumerable<LyricLine>)LyricLines : UnsyncedLines;
@@ -552,6 +560,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // removals, search failures and the queue-end clear.
         LyricLines.CollectionChanged += (_, _) => UpdateWrittenByCredit();
         UnsyncedLines.CollectionChanged += (_, _) => UpdateWrittenByCredit();
+
+        // Duet files force the lyric column to its full MaxWidth (view-side MinWidth
+        // binding) so voice-2 lines right-align against a stable edge; single-voice
+        // files keep today's content-hugging layout untouched.
+        LyricLines.CollectionChanged += (_, _) =>
+            HasDuetLines = LyricLines.Any(l => l.Voice != LyricVoice.Default);
 
         // Subscribe to track changes to update lyrics
         _player.TrackStarted += OnTrackStarted;
@@ -2369,7 +2383,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         return split.Length <= MaxLyricLines ? split : split[..MaxLyricLines];
     }
 
-    private static List<LyricLine> ParseLrcContent(string content)
+    // Internal for tests (InternalsVisibleTo Noctis.Tests).
+    internal static List<LyricLine> ParseLrcContent(string content)
     {
         var lines = new List<LyricLine>();
         var rawLines = content.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
@@ -2399,7 +2414,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 // per-word karaoke timings and strip from the displayed text.
                 var lastMatch = matches[^1];
                 var body = trimmed[(lastMatch.Index + lastMatch.Length)..];
-                var (text, words) = EnhancedLrcParser.ParseLine(body);
+
+                // Duet voice marker ("v1:"/"v2:"/"v3:", Gramophone syntax) sits between
+                // the timestamp block and any word tags; strip it before word parsing
+                // so it never reaches display text.
+                var (unvoiced, voice) = EnhancedLrcParser.StripVoiceMarker(body);
+                var (text, words) = EnhancedLrcParser.ParseLine(unvoiced);
 
                 // Skip empty timestamp lines — LRC files often end with
                 // [03:24.00] (no text) as an end marker. If parsed, this empty
@@ -2427,7 +2447,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                         var line = new LyricLine
                         {
                             Timestamp = adjusted,
-                            Text = SoftWrapText(text)
+                            Text = SoftWrapText(text),
+                            Voice = voice
                         };
 
                         if (lineWords != null)

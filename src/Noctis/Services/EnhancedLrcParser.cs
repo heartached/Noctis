@@ -22,6 +22,34 @@ public static partial class EnhancedLrcParser
         !string.IsNullOrEmpty(body) && WordTagRegex().IsMatch(body);
 
     /// <summary>
+    /// Strips an iTunes/Gramophone duet voice marker from a line body — the text directly
+    /// after the <c>[mm:ss.xx]</c> timestamp block. Matches Gramophone's accepted syntax
+    /// exactly: <c>v1:</c>, <c>v2:</c> or <c>v3:</c>, lowercase only, at most one leading
+    /// space, and before any inline word tag. Anything else (uppercase, "v4:", extra
+    /// spaces, mid-line) is plain lyric text. "v1:" maps to <see cref="LyricVoice.Default"/>:
+    /// voice 1 is the normal left-aligned layout either way.
+    /// </summary>
+    public static (string Body, LyricVoice Voice) StripVoiceMarker(string? body)
+    {
+        if (string.IsNullOrEmpty(body)) return (string.Empty, LyricVoice.Default);
+
+        var i = body[0] == ' ' ? 1 : 0;
+        if (i + 2 < body.Length && body[i] == 'v' && body[i + 2] == ':'
+            && body[i + 1] is >= '1' and <= '3')
+        {
+            var voice = body[i + 1] switch
+            {
+                '2' => LyricVoice.Voice2,
+                '3' => LyricVoice.Group,
+                _ => LyricVoice.Default,
+            };
+            return (body[(i + 3)..], voice);
+        }
+
+        return (body, LyricVoice.Default);
+    }
+
+    /// <summary>
     /// Splits an enhanced-LRC line body into display text and per-word timings.
     /// Returns (plainText, null) when the body carries no inline word tags.
     /// </summary>

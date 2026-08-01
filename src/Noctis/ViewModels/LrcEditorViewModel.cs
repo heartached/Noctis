@@ -15,6 +15,8 @@ public partial class LrcEditorLine : ObservableObject
     {
         _timestamp = timestamp;
         Text = text;
+        var (body, _) = EnhancedLrcParser.StripVoiceMarker(text);
+        DisplayText = Regex.Replace(EnhancedLrcParser.StripWordTags(body), @"\s{2,}", " ").Trim();
     }
 
     [ObservableProperty]
@@ -23,6 +25,12 @@ public partial class LrcEditorLine : ObservableObject
     private TimeSpan? _timestamp;
 
     public string Text { get; }
+
+    /// <summary>
+    /// Row display: duet voice markers ("v1:"/"v2:") and inline enhanced-LRC word
+    /// tags stripped. Save round-trips the raw Text, so neither is lost by viewing.
+    /// </summary>
+    public string DisplayText { get; }
 
     public bool HasTimestamp => Timestamp.HasValue;
 

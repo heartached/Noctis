@@ -1,6 +1,7 @@
 using System;
 using System.Text.RegularExpressions;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Noctis.Services;
 
 namespace Noctis.ViewModels;
 
@@ -21,8 +22,12 @@ public partial class SyncedLyricEditorLine : ObservableObject
     {
         _timestamp = timestamp;
         Text = text;
-        DisplayText = StripWordTags(text);
-        HasWordTiming = DisplayText != text;
+        // Duet voice markers ("v1:"/"v2:"/"v3:") are layout syntax, not lyric text —
+        // strip them for display like the word tags; Save round-trips the raw Text.
+        var (body, _) = EnhancedLrcParser.StripVoiceMarker(text);
+        var untagged = StripWordTags(body);
+        HasWordTiming = untagged != body;
+        DisplayText = untagged.TrimStart();
     }
 
     public string Text { get; }
