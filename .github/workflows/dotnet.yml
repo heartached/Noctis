@@ -318,6 +318,14 @@ jobs:
           ln -sf libvlc.so.5 "$APPDIR/usr/lib/libvlc.so"
           ln -sf libvlccore.so.9 "$APPDIR/usr/lib/libvlccore.so"
 
+          # CoreCLR's optional LTTng tracepoint provider hard-links
+          # liblttng-ust.so.0, a soname modern distros/runners no longer ship
+          # (24.04 carries .so.1), and linuxdeploy's AppDir scan hard-fails on
+          # the unresolvable dependency. The runtime dlopen-probes the provider
+          # and runs fine without it — drop it from the AppImage payload only
+          # (the tarball keeps it).
+          rm -f "$APPDIR/usr/bin/libcoreclrtraceptprovider.so"
+
           # linuxdeploy copies the ELF dependency closure of the bundled
           # plugins/libs (libavformat, libavcodec & friends) into usr/lib,
           # minus its denylist of assumed-system libraries, so the plugins
