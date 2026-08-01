@@ -547,6 +547,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // Subscribe to state changes to start/stop the sync timer
         _player.PropertyChanged += OnPlayerPropertyChanged;
 
+        // A committed seek — timeline release, Previous-restart, any surface — is an
+        // explicit "go here", the same intent as clicking a lyric line (see SeekToLine):
+        // browsing is over, so resume following the new position. Without this, a seek
+        // during the wheel-scroll pause window left the view parked while every visible
+        // line dimmed to opacity 0 (outside the ±9 window around the new active line).
+        // The views re-anchor on the resulting IsAutoFollowPaused change.
+        _player.Seeked += (_, _) => IsAutoFollowPaused = false;
+
         // React to accent colour changes so the artist/album text recolours live.
         _accentHandler = (_, _) => Dispatcher.UIThread.Post(RefreshAccentForegrounds);
         App.AccentApplied += _accentHandler;

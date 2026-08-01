@@ -217,6 +217,7 @@ public partial class LyricsView : UserControl
                 // (same live channel as the marquee flags) — watch it so flipping the
                 // switch while this page is open starts/stops the drift immediately.
                 vm.Player.PropertyChanged += OnPlayerPropertyChanged;
+                vm.Player.Seeked += OnPlayerSeeked;
                 _subscribedVm = vm;
             }
 
@@ -258,6 +259,7 @@ public partial class LyricsView : UserControl
             _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
             _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
             _subscribedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
+            _subscribedVm.Player.Seeked -= OnPlayerSeeked;
             _subscribedVm = null;
         }
 
@@ -458,6 +460,7 @@ public partial class LyricsView : UserControl
             _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
             _subscribedVm.LyricsSwapPending -= OnLyricsSwapPending;
             _subscribedVm.LyricsSwapped -= OnLyricsSwapped;
+            _subscribedVm.Player.Seeked -= OnPlayerSeeked;
             _subscribedVm = null;
         }
 
@@ -472,6 +475,7 @@ public partial class LyricsView : UserControl
             vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
             vm.LyricsSwapPending += OnLyricsSwapPending;
             vm.LyricsSwapped += OnLyricsSwapped;
+            vm.Player.Seeked += OnPlayerSeeked;
             _subscribedVm = vm;
         }
     }
@@ -490,7 +494,6 @@ public partial class LyricsView : UserControl
 
     private void OnLyricsSwapped(object? sender, EventArgs e)
     {
-        _lyricsSwapInProgress = false;
         // Re-anchor from scratch while still invisible: a glide from the old
         // track's offset is meaningless on new content, so jump.
         if (DataContext is LyricsViewModel vm)
@@ -506,6 +509,10 @@ public partial class LyricsView : UserControl
             else if (LyricsScrollViewer != null)
                 ApplyScrollOffset(LyricsScrollViewer, 0);
         }
+        // Cleared only after the block above: the IsAutoFollowPaused reset re-enters
+        // OnViewModelPropertyChanged, whose resume re-anchor must see the swap still
+        // in progress and stand down — the jump owns anchoring here.
+        _lyricsSwapInProgress = false;
         FadeLyricsHost(1.0, 240);
     }
 
@@ -600,6 +607,23 @@ public partial class LyricsView : UserControl
             UpdateLyricsCenterPadding();
             if (DataContext is LyricsViewModel { IsSyncTabSelected: true, IsAutoFollowPaused: false, ActiveLineIndex: >= 0 })
                 _recenterOnNextLayout = true;
+        }
+        else if (e.PropertyName == nameof(LyricsViewModel.IsAutoFollowPaused))
+        {
+            // Resume (Follow button, the 5s auto-resume, or a committed seek): re-anchor
+            // now. Waiting for the next line change left the page parked — after a far
+            // seek every visible line sits outside the ±9 dim window at opacity 0, so
+            // the lyrics looked gone until the next line boundary.
+            if (sender is LyricsViewModel resumed && !resumed.IsAutoFollowPaused
+                && !_lyricsSwapInProgress && !_isJumpingOnAttach)
+            {
+                CancelAutoFollowResumeTimer();
+                if (resumed.IsSyncTabSelected && resumed.ActiveLineIndex >= 0)
+                {
+                    _lastScrolledIndex = -1;
+                    ScrollToActiveLine(resumed.ActiveLineIndex);
+                }
+            }
         }
         else if (sender is LyricsViewModel v)
         {
@@ -806,6 +830,14 @@ public partial class LyricsView : UserControl
             vm.Player.EndSeek();
     }
 
+    // Committed seeks from any surface (this page's timeline, the player bar, a
+    // lyric-line click) mark the moment; ScrollToActiveLine routes the resulting
+    // line change to the chase instead of the glide.
+    private void OnPlayerSeeked(object? sender, TimeSpan target)
+    {
+        _lastSeekCommitTicks = Stopwatch.GetTimestamp();
+    }
+
     private static double GetTimelineValueFromPointer(Slider slider, Point position)
     {
         return PillSliderVisualHelper.GetValueFromPointer(slider, position, LyricsTimelineThumbSize);
@@ -829,6 +861,13 @@ public partial class LyricsView : UserControl
     // target only moves the goalpost, so the existing velocity carries straight over.
     private const double ScrubWindowMs = 250;   // updates closer together than this = a drag
     private const double ScrubSettleMs = 380;   // time to ~99% of a stationary target
+    // A committed seek re-anchors with the chase, never the eased glide: smootherstep
+    // opens at near-zero velocity, so after an explicit jump the page sat visibly still
+    // for ~250-300ms before moving — and whether a click even got the chase used to
+    // depend on the request race above, timing the user cannot see. The window covers
+    // the commit debounce (60ms, posted) plus a 100ms sync tick, with margin.
+    private const double SeekFollowWindowMs = 400;
+    private long _lastSeekCommitTicks;
     private long _lastScrollRequestTicks;
     private double _chaseTargetY;
     private double _chaseY;
@@ -1088,13 +1127,19 @@ public partial class LyricsView : UserControl
         // Updates arriving on top of each other mean the position is being dragged, not
         // advancing with playback. Those go to the chase, which retargets instead of
         // restarting; a normal line advance is seconds apart and keeps the eased glide.
+        // A line change landing right after a committed seek is that seek resolving:
+        // chase as well, so a discrete click always answers with the same fast settle.
         var now = Stopwatch.GetTimestamp();
         var sinceLastMs = _lastScrollRequestTicks == 0
             ? double.MaxValue
             : (now - _lastScrollRequestTicks) * 1000.0 / Stopwatch.Frequency;
         _lastScrollRequestTicks = now;
 
-        if (sinceLastMs < ScrubWindowMs && LyricsScrollViewer != null)
+        var sinceSeekMs = _lastSeekCommitTicks == 0
+            ? double.MaxValue
+            : (now - _lastSeekCommitTicks) * 1000.0 / Stopwatch.Frequency;
+
+        if ((sinceLastMs < ScrubWindowMs || sinceSeekMs < SeekFollowWindowMs) && LyricsScrollViewer != null)
         {
             // No settle delay here: a scrub only changes WHICH line is active, so the
             // item layout the offset is measured against has not moved.
@@ -1109,11 +1154,16 @@ public partial class LyricsView : UserControl
 
         CancelScrollAnimation();
 
-        // Minimal delay — just enough for layout to settle after active line change
+        // Minimal delay — just enough for layout to settle after active line change.
+        // Generation-stamped: a cancel or supersede landing inside this window (swap
+        // jump, tab switch, another request) must kill the pending glide too, not
+        // only animations that have already started.
+        var generation = _scrollAnimationGeneration;
         DispatcherTimer.RunOnce(() =>
         {
             try
             {
+                if (generation != _scrollAnimationGeneration) return;
                 if (LyricsItemsControl == null || index >= LyricsItemsControl.ItemCount) return;
 
                 var presenter = LyricsItemsControl.GetVisualDescendants()
