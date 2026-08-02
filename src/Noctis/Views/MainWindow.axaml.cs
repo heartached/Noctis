@@ -492,6 +492,15 @@ public partial class MainWindow : Window
         // Close queue popup on outside click (tunnel so it fires before button commands)
         AddHandler(PointerPressedEvent, OnGlobalPointerPressed, RoutingStrategies.Tunnel);
 
+        // Space = play/pause has to beat whatever currently holds focus. Avalonia's
+        // Button treats Space as its keyboard "click" and marks KeyDown handled, so the
+        // bubbling handler below never saw the key once the user had clicked anything:
+        // click a lyric line to seek and Space re-seeked to it, click the fullscreen
+        // toggle and Space toggled fullscreen again. Tunnel it, same reasoning as the
+        // queue-popup handler above.
+        AddHandler(KeyDownEvent, OnGlobalPlayPauseKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, OnGlobalPlayPauseKeyUp, RoutingStrategies.Tunnel);
+
         // Volume control via mouse wheel and keyboard
         KeyDown += OnWindowKeyDown;
 
@@ -1094,6 +1103,33 @@ public partial class MainWindow : Window
     }
 #pragma warning restore CS0618 // Type or member is obsolete
 
+    /// <summary>
+    /// True between the Space press we consumed as play/pause and its release. Button
+    /// raises Click on key *up*, so swallowing only the press still let the focused
+    /// button fire on the way back up.
+    /// </summary>
+    private bool _spaceShortcutConsumed;
+
+    private void OnGlobalPlayPauseKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Space || e.KeyModifiers != KeyModifiers.None) return;
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        // Typing a space in a search/edit box stays typing a space.
+        if (e.Source is TextBox) return;
+
+        vm.Player.PlayPauseCommand.Execute(null);
+        _spaceShortcutConsumed = true;
+        e.Handled = true;
+    }
+
+    private void OnGlobalPlayPauseKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Space || !_spaceShortcutConsumed) return;
+        _spaceShortcutConsumed = false;
+        e.Handled = true;
+    }
+
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm) return;
@@ -1137,14 +1173,8 @@ public partial class MainWindow : Window
                 }
                 e.Handled = true;
                 break;
-            case Key.Space when e.KeyModifiers == KeyModifiers.None:
-                // Only toggle play/pause if the focused element is NOT a TextBox
-                if (FocusManager?.GetFocusedElement() is not TextBox)
-                {
-                    vm.Player.PlayPauseCommand.Execute(null);
-                    e.Handled = true;
-                }
-                break;
+            // Space is handled by OnGlobalPlayPauseKeyDown (tunneling) so a focused
+            // button can't swallow it first.
             case Key.D when e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift):
                 vm.ToggleDebugPanel();
                 e.Handled = true;
