@@ -148,6 +148,10 @@
                                                           IsVisible="{Binding HasAlbumArt}" />
                                 </Panel>
                             </Border>
+                            <!-- Center: the cell is as tall as the 36px artwork, and a
+                                 stretched TextBlock draws its glyphs at the top of that
+                                 box — which rides ~12px above the artwork and the
+                                 (center-aligned) explicit badge beside it. -->
                             <controls:HighlightTextBlock Grid.Column="1"
                                                          Classes="one-line-explicit-title"
                                                          DisplayText="{Binding TitleDisplay}"
@@ -156,6 +160,7 @@
                                                          FontWeight="SemiBold"
                                                          TextWrapping="NoWrap"
                                                          MaxLines="1"
+                                                         VerticalAlignment="Center"
                                                          TextTrimming="CharacterEllipsis" />
                             <Border Grid.Column="2"
                                     Classes="explicit-badge compact"
