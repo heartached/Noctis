@@ -933,7 +933,9 @@ public partial class MainWindowViewModel : ViewModelBase
             _homeVm.Refresh();
             _favoritesVm.Refresh();
             Settings.RefreshLibraryStats();
-            Settings.RefreshStorageInfo();
+            // Same blocking walk as the navigation path above; a drop-import already
+            // has the user waiting, so don't add the artwork stat pass to the UI thread.
+            _ = Settings.RefreshStorageInfoAsync();
 
             // The relocation into the managed root is otherwise invisible — the
             // dropped file just vanishes from its source folder — so say where it
@@ -1752,7 +1754,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private SettingsViewModel RefreshAndReturnSettings()
     {
         Settings.RefreshLibraryStats();
-        Settings.RefreshStorageInfo();
+        // Off the UI thread, for the same reason OpenSettings does it: the storage
+        // figures need a recursive walk of the artwork cache (a stat per file, memoized
+        // for only 5s), and running that inline stalled the navigation it was reacting
+        // to — reported as Settings "lagging and getting stuck" on switch (issue #31).
+        _ = Settings.RefreshStorageInfoAsync();
         return Settings;
     }
 
