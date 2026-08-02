@@ -683,11 +683,28 @@
                                                     VerticalAlignment="Center"
                                                     Margin="8,0,8,0"
                                                     Spacing="1">
-                                            <TextBlock Text="{Binding TitleDisplay}"
-                                                       FontSize="12"
-                                                       FontWeight="SemiBold"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       MaxLines="1" />
+                                            <!-- Auto/Auto keeps the badge hard against the end of the
+                                                 title (as in the Songs rows) instead of parked at the
+                                                 far edge; MaxWidth trims long titles so the badge is
+                                                 never pushed out of the 320px rail. -->
+                                            <Grid ColumnDefinitions="Auto,Auto" HorizontalAlignment="Left">
+                                                <TextBlock Grid.Column="0"
+                                                           Classes="one-line-explicit-title"
+                                                           Text="{Binding TitleDisplay}"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           MaxWidth="150" />
+                                                <Border Grid.Column="1"
+                                                        Classes="explicit-badge compact"
+                                                        Margin="6,0,0,0"
+                                                        IsVisible="{Binding IsExplicit}"
+                                                        ToolTip.Tip="Explicit">
+                                                    <TextBlock Text="E"
+                                                               Classes="explicit-badge-text compact"
+                                                               FontSize="9"
+                                                               Opacity="0.9" />
+                                                </Border>
+                                            </Grid>
                                             <TextBlock Text="{Binding ArtistDisplay}"
                                                        FontSize="10.5"
                                                        FontWeight="SemiBold"
