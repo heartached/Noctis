@@ -108,6 +108,23 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         }
     }
 
+    /// <summary>Creation date without the "Created " prefix, for the labelled fact
+    /// tiles in the description dialog (the label already says CREATED).</summary>
+    public string CreatedDateValue => _playlist.CreatedAt.ToLocalTime().ToString("MMMM yyyy");
+
+    /// <summary>Last-modified date without the "Updated " prefix; see
+    /// <see cref="CreatedDateValue"/>.</summary>
+    public string ModifiedDateValue
+    {
+        get
+        {
+            var modified = _playlist.ModifiedAt.ToLocalTime();
+            return modified.Year == DateTime.Now.Year
+                ? modified.ToString("MMM d")
+                : modified.ToString("MMM yyyy");
+        }
+    }
+
     /// <summary>Playlist cover color (hex).</summary>
     public string PlaylistColor => _playlist.Color;
 
