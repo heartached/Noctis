@@ -132,10 +132,10 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private bool _hasAnimatedArtworkSearchResults;
     [ObservableProperty] private bool _isAnimatedArtworkSearchOpen;
     [ObservableProperty] private string _animatedSearchStatus = string.Empty;
-    // Optional Apple Music URL / album ID the user can paste to bypass iTunes
-    // free-text search when it fails to surface an album (e.g. Bad Bunny's
-    // "nadie sabe..." is reachable by /lookup?id= but not by /search).
-    [ObservableProperty] private string _animatedSearchUrlInput = string.Empty;
+    // What the user typed into the animated-artwork box: an album name to search for
+    // instead of the loaded track's tags, or an Apple Music URL / album ID to go
+    // straight to one album. Empty means "use this track's metadata".
+    [ObservableProperty] private string _animatedSearchInput = string.Empty;
     // Path to a small variant downloaded only to drive the live preview inside
     // the search popup. Cleared/replaced on every search; deleted when no longer used.
     [ObservableProperty] private string? _animatedPreviewPath;
@@ -1259,34 +1259,34 @@ public partial class MetadataViewModel : ViewModelBase
         {
             var variants = new List<ITunesArtworkService.AnimatedArtworkVariant>();
 
-            // Manual fallback: if the user pasted an Apple Music URL or album ID,
-            // resolve it directly via /lookup and skip free-text search.
-            if (TryExtractAppleAlbumId(AnimatedSearchUrlInput, out var pastedId))
+            // Manual override: a pasted Apple Music URL or album ID names the album outright,
+            // so it skips search on both sources.
+            if (TryExtractAppleAlbumId(AnimatedSearchInput, out var pastedId))
             {
-                var candidate = await _itunes.LookupAlbumByIdAsync(pastedId);
-                if (candidate == null)
-                {
-                    AnimatedSearchStatus = "Album ID not found on iTunes.";
-                    return;
-                }
-                variants.AddRange(await _itunes.SearchAnimatedArtworkVariantsAsync(candidate.ViewUrl));
+                var candidate = _itunes == null ? null : await _itunes.LookupAlbumByIdAsync(pastedId);
+                if (candidate != null)
+                    variants.AddRange(await _itunes!.SearchAnimatedArtworkVariantsAsync(candidate.ViewUrl));
             }
             else
             {
-                var artist = !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
-                var album = GetArtworkSearchAlbumTerm();
-                var results = await _itunes.SearchAlbumsAsync(artist, album, limit: 3);
-                if (results.Count == 0)
-                {
-                    AnimatedSearchStatus = "No matching album on iTunes.";
-                    return;
-                }
+                // A typed album name steers the search away from the loaded track's tags.
+                // The artist is then unknown, and IsLikelySameAlbum falls back to matching on
+                // title alone — which is what the user asked for by typing it.
+                var typed = (AnimatedSearchInput ?? string.Empty).Trim();
+                var manual = typed.Length > 0;
+                var trackArtist = !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
+                var album = manual ? typed : GetArtworkSearchAlbumTerm();
+                // A typed name is the whole query, so there is no artist to corroborate with
+                // and the match falls back to the title alone. That alone would hand over a
+                // karaoke record: typing "YHLQMDLG" matches a cover act's identically titled
+                // album just as well as Bad Bunny's. The track's artist can't be a requirement
+                // (the user may be searching for someone else's album entirely), so it is
+                // passed as a preference that only orders equally-titled matches.
+                var artist = manual ? string.Empty : trackArtist;
 
-                foreach (var r in results)
-                {
-                    variants.AddRange(await _itunes.SearchAnimatedArtworkVariantsAsync(r.ViewUrl));
-                    if (variants.Count > 0) break;
-                }
+                variants.AddRange(await SearchAppleMusicVariantsAsync(album, artist, trackArtist));
+                if (variants.Count == 0)
+                    variants.AddRange(await SearchITunesVariantsAsync(album, artist, trackArtist));
             }
 
             foreach (var variant in variants)
@@ -1295,7 +1295,9 @@ public partial class MetadataViewModel : ViewModelBase
             HasAnimatedArtworkSearchResults = AnimatedArtworkSearchResults.Count > 0;
             if (!HasAnimatedArtworkSearchResults)
             {
-                AnimatedSearchStatus = "Animated cover art is not available.";
+                // Deliberately source-agnostic: which catalogue was consulted, and how many,
+                // is Noctis's business — the user only needs to know there is nothing to offer.
+                AnimatedSearchStatus = "No animated artwork found.";
                 return;
             }
 
@@ -1318,16 +1320,94 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
+    // ── Animated-artwork sources, in fall-through order ───────────────────────
+    // 1. The Apple Music catalogue, via its web search page. 2. The iTunes Search API.
+    // Both end at the same album-page scrape; only the way the album is found differs.
+    // iTunes stays as the second source because its index has holes — it finds nothing for
+    // albums like Bad Bunny's "YHLQMDLG" — but it is a plain JSON API, so it keeps answering
+    // if the web page's markup shifts under the first one.
+
+    private async Task<IReadOnlyList<ITunesArtworkService.AnimatedArtworkVariant>> SearchAppleMusicVariantsAsync(
+        string album, string artist, string preferArtist)
+    {
+        if (_itunes == null || string.IsNullOrWhiteSpace(album))
+            return Array.Empty<ITunesArtworkService.AnimatedArtworkVariant>();
+
+        var results = await _itunes.SearchAppleMusicAlbumsAsync(artist, album);
+        return await FirstMatchingVariantsAsync(results, album, artist, preferArtist);
+    }
+
+    // 0 sorts ahead of 1: candidates by the artist we already know about win ties. Only a
+    // tiebreak — a list with no such candidate is left in the source's own ranked order.
+    private static int PreferredArtistRank(string? candidateArtist, string? preferArtist)
+    {
+        if (string.IsNullOrWhiteSpace(preferArtist) || string.IsNullOrWhiteSpace(candidateArtist))
+            return 1;
+
+        return ITunesArtworkService.IsLikelySameArtist(candidateArtist, preferArtist) ? 0 : 1;
+    }
+
+    private async Task<IReadOnlyList<ITunesArtworkService.AnimatedArtworkVariant>> SearchITunesVariantsAsync(
+        string album, string artist, string preferArtist)
+    {
+        if (_itunes == null)
+            return Array.Empty<ITunesArtworkService.AnimatedArtworkVariant>();
+
+        // Ask for a wider list than we intend to open: ranking puts the right album first
+        // only when the title is distinctive, and self-titled albums sit behind a wall of
+        // karaoke and cover records.
+        var results = await _itunes.SearchAlbumsAsync(artist, album, limit: 8);
+        return await FirstMatchingVariantsAsync(results, album, artist, preferArtist);
+    }
+
+    /// <summary>
+    /// Opens candidates in order and returns the first album that actually has a loop.
+    /// Ranking orders candidates but never rejects one, so taking the first that happened to
+    /// have a video handed people another album's cover — searching Drake's "Nothing Was the
+    /// Same" offered Take Care's loop. Only candidates that really are this album are opened.
+    /// </summary>
+    private async Task<IReadOnlyList<ITunesArtworkService.AnimatedArtworkVariant>> FirstMatchingVariantsAsync(
+        IReadOnlyList<ITunesArtworkService.ArtworkCandidate> results,
+        string album, string artist, string preferArtist)
+    {
+        foreach (var r in results
+                     .Where(r => ITunesArtworkService.IsLikelySameAlbum(
+                         r.CollectionName, r.ArtistName, album, artist))
+                     .OrderBy(r => PreferredArtistRank(r.ArtistName, preferArtist)))
+        {
+            var variants = await _itunes!.SearchAnimatedArtworkVariantsAsync(r.ViewUrl);
+            if (variants.Count > 0)
+                return variants;
+        }
+
+        return Array.Empty<ITunesArtworkService.AnimatedArtworkVariant>();
+    }
+
     // Pulls a numeric album ID from a pasted Apple Music URL or a bare ID.
     // Accepts:  music.apple.com/us/album/<slug>/1710982865[?...]
     //           https://music.apple.com/.../id1710982865
     //           1710982865
-    private static bool TryExtractAppleAlbumId(string? input, out long id)
+    //
+    // The box doubles as an album-name field, so this has to be a real classification. The
+    // old rule took any 6+ digit run *anywhere* in the input, which would read a typed album
+    // name that happens to contain a long number as an ID and search for the wrong thing.
+    internal static bool TryExtractAppleAlbumId(string? input, out long id)
     {
         id = 0;
         if (string.IsNullOrWhiteSpace(input)) return false;
 
-        var match = System.Text.RegularExpressions.Regex.Match(input.Trim(), @"\d{6,}");
+        var trimmed = input.Trim();
+
+        // A bare ID: nothing but digits.
+        if (trimmed.All(char.IsAsciiDigit))
+            return trimmed.Length >= 6 && long.TryParse(trimmed, out id);
+
+        // Otherwise it only counts as an ID if it is actually an Apple Music link.
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) ||
+            !uri.Host.EndsWith("apple.com", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var match = System.Text.RegularExpressions.Regex.Match(trimmed, @"\d{6,}");
         return match.Success && long.TryParse(match.Value, out id);
     }
 

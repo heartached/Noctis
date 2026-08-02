@@ -1140,7 +1140,6 @@
                                 Spacing="9"
                                 Margin="18,0,0,0">
                         <Button x:Name="SearchAnimatedArtworkButton"
-                                Content="Search Artwork"
                                 Command="{Binding SearchAnimatedCoverCommand}"
                                 Classes="accent-pill"
                                 HorizontalAlignment="Stretch"
@@ -1149,15 +1148,24 @@
                                 Cursor="Hand"
                                 FontWeight="SemiBold"
                                 FontSize="12"
-                                ToolTip.Tip="{Binding AnimatedSearchStatus}" />
+                                ToolTip.Tip="{Binding AnimatedSearchStatus}">
+                            <!-- Wraps: the label no longer fits the 168px column on one line. -->
+                            <TextBlock Text="Search Animated Artwork"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center" />
+                        </Button>
 
-                        <!-- URL fallback for when search can't find the album -->
+                        <!-- Type an album name to search for, or paste a link to skip search -->
                         <StackPanel Spacing="4" IsVisible="{Binding !HasAnimatedCover}">
                             <TextBox Classes="metadata-info-field"
-                                     Text="{Binding AnimatedSearchUrlInput, Mode=TwoWay}"
-                                     Watermark="Apple Music URL or album ID"
-                                     FontSize="12" />
-                            <TextBlock Text="or paste a URL if search doesn't find your album"
+                                     Text="{Binding AnimatedSearchInput, Mode=TwoWay}"
+                                     Watermark="Album name, or Apple Music URL"
+                                     FontSize="12">
+                                <TextBox.KeyBindings>
+                                    <KeyBinding Gesture="Enter" Command="{Binding SearchAnimatedCoverCommand}" />
+                                </TextBox.KeyBindings>
+                            </TextBox>
+                            <TextBlock Text="type an album name and press Enter, or paste an Apple Music link"
                                        FontSize="10"
                                        Opacity="0.55"
                                        TextWrapping="Wrap" />
