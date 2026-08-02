@@ -869,13 +869,34 @@
                                                 Margin="12,4,12,4"
                                                 VerticalAlignment="Center"
                                                 Spacing="1">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <controls:HighlightTextBlock Classes="one-line-explicit-title"
+                                        <!-- Auto/Auto/Auto keeps both badges hard against the end of the
+                                             title (as in the Songs rows) rather than parked at the far
+                                             edge of the column, which a star column would do. Auto
+                                             measures with infinite width though, so the title only has
+                                             a width to ellipsize against because OnTitleCellLayoutUpdated
+                                             budgets it MaxWidth = cell - badges; ClipToBounds is the
+                                             backstop for the frame before that lands. Without this the
+                                             title painted straight over the Album column (issue #30). -->
+                                        <Grid ColumnDefinitions="Auto,Auto,Auto"
+                                              ClipToBounds="True"
+                                              LayoutUpdated="OnTitleCellLayoutUpdated">
+                                            <!-- Trimming is also set inline, as in the Songs rows: the
+                                                 one-line-explicit-title class alone is not enough to rely
+                                                 on here, because a TextBlock type selector does not match
+                                                 this HighlightTextBlock subclass. -->
+                                            <controls:HighlightTextBlock Grid.Column="0"
+                                                                         Classes="one-line-explicit-title"
                                                                          DisplayText="{Binding TitleDisplay}"
                                                                          HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
                                                                          FontSize="13"
-                                                                         FontWeight="SemiBold" />
-                                            <Border Classes="explicit-badge compact"
+                                                                         FontWeight="SemiBold"
+                                                                         TextWrapping="NoWrap"
+                                                                         MaxLines="1"
+                                                                         VerticalAlignment="Center"
+                                                                         TextTrimming="CharacterEllipsis" />
+                                            <Border Grid.Column="1"
+                                                    Classes="explicit-badge compact"
+                                                    Margin="6,0,0,0"
                                                     IsVisible="{Binding IsExplicit}"
                                                     ToolTip.Tip="Explicit">
                                                 <TextBlock Text="E"
@@ -883,8 +904,10 @@
                                                            FontSize="9"
                                                            Opacity="0.9" />
                                             </Border>
-                                            <Border CornerRadius="999"
+                                            <Border Grid.Column="2"
+                                                    CornerRadius="999"
                                                     Padding="6,1.5"
+                                                    Margin="6,0,0,0"
                                                     VerticalAlignment="Center"
                                                     BorderThickness="1"
                                                     BorderBrush="{DynamicResource AccentTextExactBrush}"
@@ -895,7 +918,7 @@
                                                            FontWeight="Bold"
                                                            Foreground="{DynamicResource AccentTextExactBrush}" />
                                             </Border>
-                                        </StackPanel>
+                                        </Grid>
                                         <Button Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                                 Cursor="Hand" HorizontalAlignment="Left"
                                                 Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewArtistCommand}"

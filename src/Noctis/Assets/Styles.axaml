@@ -261,6 +261,17 @@
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
 
+    <!-- Same rule for the highlighting variant. Avalonia type selectors match the
+         EXACT type, so the TextBlock rule above never reached HighlightTextBlock even
+         though it derives from TextBlock — the playlist title silently kept
+         TextTrimming=None and painted over the Album column (issue #30). Declared
+         separately for the same reason accent-link is, just below. -->
+    <Style Selector="controls|HighlightTextBlock.one-line-explicit-title">
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="MaxLines" Value="1" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
     <!-- Shared explicit badge styling (keeps the E glyph centered in its gray box) -->
     <Style Selector="Border.explicit-badge">
         <Setter Property="Background" Value="#88888888" />

@@ -460,6 +460,40 @@ public partial class PlaylistView : UserControl
         }
     }
 
+    /// <summary>
+    /// Gives the row title an explicit width budget so it can ellipsize.
+    ///
+    /// The title cell packs title + explicit badge + NEW badge into Auto columns so the
+    /// badges hug the end of the title. Auto measures with infinite width, so the title
+    /// would otherwise report its full text width and paint over the Album column
+    /// (issue #30). Same approach as LibrarySongsView.OnTitleCellLayoutUpdated: hand the
+    /// title whatever the cell has left once the visible badges have taken their share.
+    /// </summary>
+    private static void OnTitleCellLayoutUpdated(object? sender, EventArgs e)
+    {
+        if (sender is not Grid titleCell)
+            return;
+
+        var title = titleCell.Children.OfType<TextBlock>().FirstOrDefault();
+        if (title == null)
+            return;
+
+        // Every other child of this cell is a badge Border, and each reserves its own
+        // width (plus margin) from the title's budget only while it is actually shown.
+        var reservedWidth = titleCell.Children.OfType<Border>()
+            .Where(badge => badge.IsVisible)
+            .Sum(badge =>
+            {
+                var width = badge.Bounds.Width > 0 ? badge.Bounds.Width : badge.DesiredSize.Width;
+                return width + badge.Margin.Left + badge.Margin.Right;
+            });
+
+        var maxTitleWidth = Math.Max(0, titleCell.Bounds.Width - reservedWidth);
+        // Threshold keeps this from re-entering layout forever on sub-pixel churn.
+        if (Math.Abs(title.MaxWidth - maxTitleWidth) > 0.5)
+            title.MaxWidth = maxTitleWidth;
+    }
+
     private void OnTrackItemContextRequested(object? sender, ContextRequestedEventArgs e)
     {
         if (sender is not ListBoxItem item) return;
