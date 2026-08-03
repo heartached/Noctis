@@ -281,6 +281,11 @@ public class AppSettings
     /// closest neighbors while the lyrics page is fullscreen.</summary>
     public bool LyricsFullScreenFocusEnabled { get; set; }
 
+    /// <summary>Whether a word split across several timed TTML spans renders as one
+    /// unbroken word ("compromise", not "com pro mise" — issue #32). The sweep still
+    /// follows each syllable's own timing. Off restores the pre-1.3.9 spacing.</summary>
+    public bool LyricsJoinSplitWords { get; set; } = true;
+
     // ── Lyrics providers ──
 
     /// <summary>Whether LRCLIB online lyrics search is enabled.</summary>

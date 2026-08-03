@@ -12,7 +12,9 @@ namespace Noctis.Services;
 ///
 /// Each &lt;p&gt; becomes a line (begin/end → line timestamps). Timed &lt;span&gt;
 /// children become karaoke words; whitespace text nodes between spans mark word
-/// boundaries (adjacent spans with no whitespace are syllables and get merged).
+/// boundaries (adjacent spans with no whitespace are syllables and get merged) —
+/// except pure XML indentation in documents that write their own spaces inside the
+/// spans, see <see cref="UsesAuthoredSpaces"/>.
 /// Untimed wrapper spans (e.g. Apple background vocals, ttm:role="x-bg") are
 /// recursed into so their timed descendants still contribute.
 /// </summary>
@@ -30,7 +32,12 @@ public static class TtmlParser
     /// Parses TTML content. Returns (lines, plainText) where plainText is the lines
     /// joined for the Unsync tab. Returns nulls when the content is malformed.
     /// </summary>
-    public static (List<LyricLine>? Lines, string? Plain) Parse(string? content)
+    /// <param name="joinSplitWords">
+    /// When true (Settings → "Join Split Words"), whitespace that is only XML
+    /// indentation stops counting as a word boundary, so a word split across several
+    /// timed spans renders unbroken — see <see cref="UsesAuthoredSpaces"/> (issue #32).
+    /// </param>
+    public static (List<LyricLine>? Lines, string? Plain) Parse(string? content, bool joinSplitWords = true)
     {
         if (string.IsNullOrWhiteSpace(content)) return (null, null);
 
@@ -53,10 +60,12 @@ public static class TtmlParser
         var root = doc.Root;
         if (root == null || !LocalNameIs(root, "tt")) return (null, null);
 
+        var ignoreFormattingWhitespace = joinSplitWords && UsesAuthoredSpaces(root);
+
         var lines = new List<LyricLine>();
         foreach (var p in root.Descendants().Where(e => LocalNameIs(e, "p")))
         {
-            var line = ParseLine(p);
+            var line = ParseLine(p, ignoreFormattingWhitespace);
             if (line != null)
                 lines.Add(line);
         }
@@ -69,7 +78,32 @@ public static class TtmlParser
         return (lines, plain);
     }
 
-    private static LyricLine? ParseLine(XElement p)
+    /// <summary>
+    /// True when the document separates words with real spaces written inside the timed
+    /// spans (<c>&lt;span&gt;Is &lt;/span&gt;</c>) rather than relying on the whitespace
+    /// between elements. Those files are usually pretty-printed, and their newline+indent
+    /// between spans is XML formatting, not a word break — treating it as one is what
+    /// rendered "compromise" as "com pro mise" (issue #32).
+    ///
+    /// Documents with no authored space anywhere use the opposite convention (the markup
+    /// whitespace IS the separator), so they keep the original handling; dropping it there
+    /// would fuse a whole line into one unwrappable word. A file mixing both conventions
+    /// picks this branch and over-joins the lines that rely on indentation — the Settings
+    /// toggle is the escape hatch.
+    /// </summary>
+    private static bool UsesAuthoredSpaces(XElement root) =>
+        root.Descendants().Any(e =>
+            LocalNameIs(e, "span")
+            && e.Attribute("begin") != null
+            && !e.Elements().Any()
+            && e.Value.Length > 0
+            && (char.IsWhiteSpace(e.Value[0]) || char.IsWhiteSpace(e.Value[^1])));
+
+    /// <summary>Whitespace-only text carrying a line break is XML indentation, not content.</summary>
+    private static bool IsFormattingWhitespace(string value) =>
+        string.IsNullOrWhiteSpace(value) && (value.Contains('\n') || value.Contains('\r'));
+
+    private static LyricLine? ParseLine(XElement p, bool ignoreFormattingWhitespace)
     {
         var start = ParseTime(p.Attribute("begin")?.Value);
         var end = ParseTime(p.Attribute("end")?.Value);
@@ -79,7 +113,8 @@ public static class TtmlParser
         var words = new List<WordTiming>();
         var bgText = new StringBuilder();
         var bgWords = new List<WordTiming>();
-        CollectContent(p, text, words, bgText, bgWords, inBackground: false);
+        CollectContent(p, text, words, bgText, bgWords, inBackground: false,
+            ignoreFormattingWhitespace: ignoreFormattingWhitespace);
 
         var lineText = text.ToString().Trim();
         var bgLineText = bgText.ToString().Trim();
@@ -165,6 +200,7 @@ public static class TtmlParser
         StringBuilder text, List<WordTiming> words,
         StringBuilder bgText, List<WordTiming> bgWords,
         bool inBackground,
+        bool ignoreFormattingWhitespace,
         int depth = 0)
     {
         if (depth > MaxNestingDepth) return;
@@ -176,6 +212,11 @@ public static class TtmlParser
         {
             switch (node)
             {
+                // Indentation between spans of a document that writes its own spaces
+                // is formatting — swallowing it keeps split words whole (issue #32).
+                case XText t when ignoreFormattingWhitespace && IsFormattingWhitespace(t.Value):
+                    break;
+
                 case XText t:
                     AppendText(t.Value, targetText, targetWords);
                     break;
@@ -208,7 +249,8 @@ public static class TtmlParser
                     {
                         // Untimed or wrapper span — recurse (background wrappers route
                         // their timed descendants into the background buffers).
-                        CollectContent(el, text, words, bgText, bgWords, isBg, depth + 1);
+                        CollectContent(el, text, words, bgText, bgWords, isBg,
+                            ignoreFormattingWhitespace, depth + 1);
                     }
                     break;
             }

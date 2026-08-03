@@ -1,3 +1,5 @@
+using Noctis.Models;
+
 namespace Noctis.Services;
 
 /// <summary>One word of a karaoke share line: the sanitized token as rendered on the
@@ -57,6 +59,55 @@ public static class KaraokeSweep
         if (raw <= -1) return InertFuture;
         if (raw >= 2) return InertPast;
         return raw;
+    }
+
+    /// <summary>
+    /// <see cref="BandProgress"/> for a word built from several timed syllables (Apple
+    /// TTML splits "compromise" into com/pro/mise). The word paints as one unbreakable
+    /// cell, so a single linear ramp would run ahead of the voice whenever one syllable
+    /// is held longer than its share of characters; instead the reveal is weighted by
+    /// each syllable's character count and driven by that syllable's own window.
+    ///
+    /// Outside the word this defers to <see cref="BandProgress"/>, keeping the
+    /// overshoot that lets the feathered edge straddle neighbouring words.
+    ///
+    /// Weighting is by character count, not glyph width — KaraokeSweep stays font-free
+    /// so it can be unit-tested. Within one word the error is a fraction of a glyph.
+    /// </summary>
+    public static double SyllableBandProgress(
+        IReadOnlyList<WordSyllable> syllables,
+        double startSeconds, double endSeconds, double tSeconds)
+    {
+        if (syllables.Count == 0 || tSeconds <= startSeconds || tSeconds >= endSeconds)
+            return BandProgress(startSeconds, endSeconds, tSeconds);
+
+        double total = 0;
+        foreach (var s in syllables) total += s.Length;
+        if (total <= 0) return BandProgress(startSeconds, endSeconds, tSeconds);
+
+        double covered = 0;
+        for (int i = 0; i < syllables.Count; i++)
+        {
+            var s = syllables[i];
+            var segStart = s.Start.TotalSeconds;
+            // A syllable with no end runs to the next one's start (the last to the
+            // word's end) — the same resolution the word list itself uses.
+            var segEnd = (s.End?.TotalSeconds)
+                ?? (i + 1 < syllables.Count ? syllables[i + 1].Start.TotalSeconds : endSeconds);
+
+            if (tSeconds >= segEnd)
+            {
+                covered += s.Length;
+                continue;
+            }
+            // Before this syllable opens: the playhead is in the rest between
+            // syllables, so the reveal simply holds where the last one left it.
+            if (tSeconds > segStart && segEnd > segStart)
+                covered += s.Length * (tSeconds - segStart) / (segEnd - segStart);
+            break;
+        }
+
+        return Math.Clamp(covered / total, 0, 1);
     }
 
     /// <summary>

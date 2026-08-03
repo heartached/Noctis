@@ -129,6 +129,93 @@ public class TtmlParserTests
         Assert.Equal("now", words[1].Text);
     }
 
+    /// <summary>
+    /// Issue #32: pretty-printed Apple TTML writes its word spacing inside the spans
+    /// ("Is ", "that ") and splits "compromise" across three of them. The newline+indent
+    /// between those spans is XML formatting, not a word break — rendering it as one
+    /// showed "Is that a com pro mise?".
+    /// </summary>
+    [Fact]
+    public void Parse_PrettyPrintedSyllableSpans_JoinIntoOneWord()
+    {
+        var ttml = $@"<tt {Ns}><body><div>
+            <p begin=""00:00:54.822"" end=""00:00:58.399"">
+                <span begin=""00:00:54.822"" end=""00:00:55.164"">Is </span>
+                <span begin=""00:00:55.164"" end=""00:00:55.458"">that </span>
+                <span begin=""00:00:55.458"" end=""00:00:55.647"">a </span>
+                <span begin=""00:00:55.647"" end=""00:00:56.352"">com</span>
+                <span begin=""00:00:56.352"" end=""00:00:56.728"">pro</span>
+                <span begin=""00:00:56.728"" end=""00:00:58.399"">mise?</span>
+            </p>
+        </div></body></tt>";
+
+        var (lines, _) = TtmlParser.Parse(ttml);
+
+        var words = lines![0].Words;
+        Assert.Equal(4, words!.Count);
+        Assert.Equal(new[] { "Is ", "that ", "a ", "compromise?" }, words.Select(w => w.Text));
+        Assert.Equal("Is that a compromise?", lines[0].Text);
+
+        // The joined word still carries all three syllable windows for the sweep.
+        var joined = words[3];
+        Assert.Equal(TimeSpan.FromMilliseconds(55_647), joined.Start);
+        Assert.Equal(TimeSpan.FromMilliseconds(58_399), joined.End);
+        Assert.Equal(3, joined.Syllables!.Count);
+        Assert.Equal(new[] { 3, 3, 5 }, joined.Syllables.Select(s => s.Length));
+        Assert.Equal(TimeSpan.FromMilliseconds(56_352), joined.Syllables[1].Start);
+    }
+
+    [Fact]
+    public void Parse_PrettyPrintedSyllableSpans_JoinDisabled_KeepsSpaces()
+    {
+        var ttml = $@"<tt {Ns}><body><div>
+            <p begin=""0:10.000"" end=""0:12.000"">
+                <span begin=""0:10.000"" end=""0:10.500"">a </span>
+                <span begin=""0:10.500"" end=""0:11.000"">com</span>
+                <span begin=""0:11.000"" end=""0:12.000"">mise</span>
+            </p>
+        </div></body></tt>";
+
+        var (lines, _) = TtmlParser.Parse(ttml, joinSplitWords: false);
+
+        Assert.Equal(new[] { "a ", "com ", "mise" }, lines![0].Words!.Select(w => w.Text));
+    }
+
+    /// <summary>
+    /// The opposite convention: no span writes its own spacing, so the whitespace
+    /// between elements IS the word separator. Dropping it would fuse the line into a
+    /// single unwrappable word, so those documents keep the original handling.
+    /// </summary>
+    [Fact]
+    public void Parse_PrettyPrintedWithoutAuthoredSpaces_KeepsWordBoundaries()
+    {
+        var ttml = $@"<tt {Ns}><body><div>
+            <p begin=""0:10.000"" end=""0:12.000"">
+                <span begin=""0:10.000"" end=""0:10.500"">Hello</span>
+                <span begin=""0:10.500"" end=""0:12.000"">world</span>
+            </p>
+        </div></body></tt>";
+
+        var (lines, _) = TtmlParser.Parse(ttml);
+
+        Assert.Equal(new[] { "Hello ", "world" }, lines![0].Words!.Select(w => w.Text));
+        Assert.Equal("Hello world", lines[0].Text);
+    }
+
+    /// <summary>A real space between two spans on the same line is authored content,
+    /// not indentation, so it still separates words in a join-enabled document.</summary>
+    [Fact]
+    public void Parse_SameLineSpaceBetweenSpans_StillSeparatesWords()
+    {
+        var ttml = $@"<tt {Ns}><body><div>
+            <p begin=""0:10.000"" end=""0:12.000""><span begin=""0:10.000"" end=""0:10.400"">Let </span><span begin=""0:10.400"" end=""0:11.000"">your</span> <span begin=""0:11.000"" end=""0:12.000"">go</span></p>
+        </div></body></tt>";
+
+        var (lines, _) = TtmlParser.Parse(ttml);
+
+        Assert.Equal(new[] { "Let ", "your ", "go" }, lines![0].Words!.Select(w => w.Text));
+    }
+
     [Fact]
     public void Parse_BackgroundVocalWrapperSpan_TimedChildrenBecomeBackgroundWords()
     {

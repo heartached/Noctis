@@ -222,6 +222,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _enableAnimatedCovers = true;
     [ObservableProperty] private bool _lyricsFlowingLightEnabled = true;
     [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
+    [ObservableProperty] private bool _lyricsJoinSplitWords = true;
 
     /// <summary>Minimize hides the main window to the system tray.</summary>
     [ObservableProperty] private bool _minimizeToTray;
@@ -868,6 +869,7 @@ public partial class SettingsViewModel : ViewModelBase
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
             LyricsFlowingLightEnabled = _settings.LyricsFlowingLightEnabled;
             LyricsFullScreenFocusEnabled = _settings.LyricsFullScreenFocusEnabled;
+            LyricsJoinSplitWords = _settings.LyricsJoinSplitWords;
             MinimizeToTray = _settings.MinimizeToTray;
             CloseToTray = _settings.CloseToTray;
             // Reflect the real OS autostart state (not an AppSettings copy) so the
@@ -1153,6 +1155,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
         _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
+        _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
         _settings.MinimizeToTray = MinimizeToTray;
         _settings.CloseToTray = CloseToTray;
         _settings.StartMinimizedToTray = StartMinimizedToTray;
@@ -1263,6 +1266,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _player.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
         _player.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
+        _player.LyricsJoinSplitWords = LyricsJoinSplitWords;
         Controls.MarqueeTextBlock.GlobalCoverFlowScrollEnabled = CoverFlowMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowArtistScrollEnabled = CoverFlowArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowAlbumScrollEnabled = CoverFlowAlbumMarqueeEnabled;
@@ -1972,6 +1976,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLyricsFullScreenFocusEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsJoinSplitWordsChanged(bool value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -3403,6 +3413,7 @@ public partial class SettingsViewModel : ViewModelBase
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
             LyricsFlowingLightEnabled = defaultSettings.LyricsFlowingLightEnabled;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
+            LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
             FfmpegPath = defaultSettings.FfmpegPath;
             ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
             PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;

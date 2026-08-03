@@ -1,3 +1,4 @@
+using Noctis.Models;
 using Noctis.Services;
 using Xunit;
 
@@ -110,6 +111,79 @@ public class KaraokeSweepTests
         Assert.Equal(KaraokeSweep.InertFuture, KaraokeSweep.BandProgress(10, 12, 7.9));  // raw ≤ -1
         Assert.Equal(KaraokeSweep.InertPast, KaraokeSweep.BandProgress(10, 12, 16.1));   // raw ≥ 2
     }
+
+    /// <summary>
+    /// "compromise" from issue #32: com 55.647–56.352, pro 56.352–56.728, mise 56.728–58.399.
+    /// "com pro" is 39% of the word's time but 55% of its glyphs, so a linear ramp trails
+    /// the voice through them and then lurches across the held "mise"; weighting by
+    /// characters keeps the edge on the syllable actually being sung.
+    /// </summary>
+    [Fact]
+    public void SyllableBandProgress_WeightsEachSyllableByItsCharacters()
+    {
+        var syllables = Compromise();
+
+        // Each syllable boundary lands on its own character offset.
+        Assert.Equal(3 / 11.0, KaraokeSweep.SyllableBandProgress(syllables, 55.647, 58.399, 56.352), 6);
+        Assert.Equal(6 / 11.0, KaraokeSweep.SyllableBandProgress(syllables, 55.647, 58.399, 56.728), 6);
+
+        // Halfway through the held final syllable: 6 chars + half of 5.
+        Assert.Equal(8.5 / 11.0, KaraokeSweep.SyllableBandProgress(syllables, 55.647, 58.399, 57.5635), 6);
+
+        // A linear sweep is still short of "mise" when the voice reaches it.
+        Assert.True(KaraokeSweep.BandProgress(55.647, 58.399, 56.728) < 6 / 11.0);
+    }
+
+    [Fact]
+    public void SyllableBandProgress_OutsideTheWordDefersToBandProgress()
+    {
+        var syllables = Compromise();
+
+        // Pre-roll, overshoot and the far-out sentinels stay identical, so the
+        // feathered edge still straddles the neighbouring words.
+        Assert.Equal(KaraokeSweep.BandProgress(55.647, 58.399, 55.6),
+                     KaraokeSweep.SyllableBandProgress(syllables, 55.647, 58.399, 55.6), 6);
+        Assert.Equal(KaraokeSweep.BandProgress(55.647, 58.399, 58.5),
+                     KaraokeSweep.SyllableBandProgress(syllables, 55.647, 58.399, 58.5), 6);
+        Assert.Equal(KaraokeSweep.InertFuture,
+                     KaraokeSweep.SyllableBandProgress(syllables, 55.647, 58.399, 50.0));
+        Assert.Equal(KaraokeSweep.InertPast,
+                     KaraokeSweep.SyllableBandProgress(syllables, 55.647, 58.399, 65.0));
+    }
+
+    [Fact]
+    public void SyllableBandProgress_HoldsThroughAGapBetweenSyllables()
+    {
+        // Second syllable opens a beat late: the reveal parks on the character
+        // boundary through the rest instead of creeping across unsung glyphs.
+        var syllables = new List<WordSyllable>
+        {
+            new(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10.5), 3),
+            new(TimeSpan.FromSeconds(11), TimeSpan.FromSeconds(12), 3),
+        };
+
+        Assert.Equal(0.5, KaraokeSweep.SyllableBandProgress(syllables, 10, 12, 10.75), 6);
+    }
+
+    [Fact]
+    public void SyllableBandProgress_MissingEndFallsBackToTheNextSyllable()
+    {
+        var syllables = new List<WordSyllable>
+        {
+            new(TimeSpan.FromSeconds(10), null, 2),
+            new(TimeSpan.FromSeconds(11), null, 2),
+        };
+
+        Assert.Equal(0.25, KaraokeSweep.SyllableBandProgress(syllables, 10, 12, 10.5), 6);
+        Assert.Equal(0.75, KaraokeSweep.SyllableBandProgress(syllables, 10, 12, 11.5), 6);
+    }
+
+    private static List<WordSyllable> Compromise() =>
+    [
+        new(TimeSpan.FromSeconds(55.647), TimeSpan.FromSeconds(56.352), 3),  // com
+        new(TimeSpan.FromSeconds(56.352), TimeSpan.FromSeconds(56.728), 3),  // pro
+        new(TimeSpan.FromSeconds(56.728), TimeSpan.FromSeconds(58.399), 5),  // mise?
+    ];
 
     [Fact]
     public void BandProgress_ZeroLengthWordSnapsToInertStates()

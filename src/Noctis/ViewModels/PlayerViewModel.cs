@@ -90,6 +90,9 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Opt-in fullscreen lyrics focus — dims all but the active line and its
     /// closest neighbors while the lyrics page is fullscreen. Driven by Settings.</summary>
     [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
+    /// <summary>Whether TTML words split across several timed spans render unbroken
+    /// (issue #32). Driven by Settings; the lyrics VM re-parses when it flips.</summary>
+    [ObservableProperty] private bool _lyricsJoinSplitWords = true;
 
     // ── Lyrics page integration (flags + pass-through commands set up by MainWindowViewModel) ──
 

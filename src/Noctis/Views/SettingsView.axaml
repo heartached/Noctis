@@ -1667,6 +1667,20 @@
                 </Grid>
             </Border>
 
+            <!-- Join split karaoke words (issue #32) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Join Split Words" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Keep words whole when lyrics split them into syllables."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding LyricsJoinSplitWords}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Player bar opacity -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">

@@ -1872,6 +1872,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(IsLyricsFocusActive));
             RefreshFocusDimming();
         }
+        // Word-joining flipped: it changes how the sidecar is parsed, not how it is
+        // drawn, so the current track has to go back through the load path.
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsJoinSplitWords))
+        {
+            if (_currentTrack is { } track)
+                LoadLyricsForTrack(track);
+        }
     }
 
     /// <summary>Raised on the UI thread when a lyric reload has its result ready and
@@ -1937,6 +1944,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     private async Task LoadLocalLyricsAsync(Track track, int generation)
     {
+        // Read the parse-affecting setting here, on the UI thread that owns it.
+        var joinSplitWords = _player.LyricsJoinSplitWords;
         var probe = await Task.Run(() =>
         {
             // Track lyrics are store-backed and lazy: the first touch is a small
@@ -1945,7 +1954,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             // store's LRU for the UI-thread reads in ApplyLocalLyricsResult).
             _loadedLyrics = track.Lyrics;
             _loadedSyncedLyrics = track.SyncedLyrics;
-            return ProbeLocalLyricSources(track);
+            return ProbeLocalLyricSources(track, joinSplitWords);
         });
 
         if (generation != _searchGeneration) return;
@@ -1986,7 +1995,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         bool FromCache);
 
     /// <summary>Synchronous probe helper — must only be called off the UI thread.</summary>
-    private static LocalLyricsProbe ProbeLocalLyricSources(Track track)
+    private static LocalLyricsProbe ProbeLocalLyricSources(Track track, bool joinSplitWords)
     {
         // Priority 1: .lyricsfile sidecar (word-level, LRCGET v2.0+).
         try
@@ -2007,7 +2016,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var sidecarTtml = TryReadSidecar(track.FilePath, new[] { ".ttml", ".TTML", ".Ttml" });
             if (sidecarTtml != null)
             {
-                var (lines, plain) = TtmlParser.Parse(sidecarTtml);
+                var (lines, plain) = TtmlParser.Parse(sidecarTtml, joinSplitWords);
                 if (lines != null && lines.Count > 0)
                     return new LocalLyricsProbe(lines, plain, "Sidecar:Ttml", FromCache: false);
             }
@@ -2855,8 +2864,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var end = w.End ?? (i + 1 < words.Count
                 ? words[i + 1].Start
                 : layerEnd ?? KaraokeSweep.ResolveOpenLastWordEnd(w.Start, NextSyncedLineStart()));
-            var progress = KaraokeSweep.BandProgress(
-                w.Start.TotalSeconds, end.TotalSeconds, adjusted.TotalSeconds);
+            // Words joined from several timed spans sweep on their syllables' own
+            // clocks — a linear ramp would outrun the voice on a held syllable.
+            var progress = w.Syllables is { Count: > 1 } syllables
+                ? KaraokeSweep.SyllableBandProgress(
+                    syllables, w.Start.TotalSeconds, end.TotalSeconds, adjusted.TotalSeconds)
+                : KaraokeSweep.BandProgress(
+                    w.Start.TotalSeconds, end.TotalSeconds, adjusted.TotalSeconds);
             if (w.Progress != progress)
                 w.Progress = progress;
         }
