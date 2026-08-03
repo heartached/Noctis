@@ -18,13 +18,19 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     private readonly PlayerViewModel _player;
     private readonly SidebarViewModel _sidebar;
     private readonly IPersistenceService _persistence;
+    private readonly SettingsViewModel? _settings;
 
     private List<Track> _allTracks = new();
     private string _currentFilter = string.Empty;
     private int _filterGeneration;
     private DispatcherTimer? _searchDebounce;
     private EventHandler? _libraryUpdatedHandler;
+    private EventHandler? _viewStateLoadedHandler;
     private bool _isDirty = true;
+
+    /// <summary>Guards the startup adoption of persisted sort/filter so echoing each
+    /// value straight back into settings doesn't queue a pointless disk write.</summary>
+    private bool _adoptingPersistedState;
 
     [ObservableProperty] private bool _isSearchVisible = false;
     [ObservableProperty] private string _searchText = string.Empty;
@@ -56,12 +62,25 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     /// <summary>Fires when the user wants to view an album from a track.</summary>
     public event EventHandler<Track>? ViewAlbumRequested;
 
-    public LibrarySongsViewModel(ILibraryService library, PlayerViewModel player, SidebarViewModel sidebar, IPersistenceService persistence)
+    /// <param name="settings">Owns the persisted sort/filter round-trip. Optional so tests
+    /// that only exercise filtering can build the view model without a settings stack;
+    /// when absent the sort/filter simply stay session-only, as they were before.</param>
+    public LibrarySongsViewModel(ILibraryService library, PlayerViewModel player, SidebarViewModel sidebar,
+        IPersistenceService persistence, SettingsViewModel? settings = null)
     {
         _library = library;
         _player = player;
         _sidebar = sidebar;
         _persistence = persistence;
+        _settings = settings;
+
+        // Settings load asynchronously and finish after this view model is built, so the
+        // persisted sort/filter is adopted when it lands rather than read here.
+        if (_settings != null)
+        {
+            _viewStateLoadedHandler = (_, _) => AdoptPersistedViewState();
+            _settings.ViewStateLoaded += _viewStateLoadedHandler;
+        }
 
         // Mark dirty when library changes — actual reload deferred to next Refresh() call.
         // Only rebuild immediately while this view is current: a scan fires LibraryUpdated
@@ -180,26 +199,13 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         ApplyFilterAndSort();
     }
 
+    /// <summary>
+    /// Column-header click: re-clicking the active column flips the direction, any other
+    /// column starts ascending. Menus must not use this — see <see cref="SelectSort"/>.
+    /// </summary>
     [RelayCommand]
     private void Sort(string column)
     {
-        // Handle Ascending/Descending from filter menu
-        if (column == "Ascending")
-        {
-            SortAscending = true;
-            IsFilterMenuOpen = false;
-            ApplyFilterAndSort();
-            return;
-        }
-        if (column == "Descending")
-        {
-            SortAscending = false;
-            IsFilterMenuOpen = false;
-            ApplyFilterAndSort();
-            return;
-        }
-
-        // Handle column sorting
         if (SortColumn == column)
             SortAscending = !SortAscending;
         else
@@ -210,6 +216,72 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
 
         IsFilterMenuOpen = false;
         ApplyFilterAndSort();
+    }
+
+    /// <summary>
+    /// Menu/dialog sort selection: sets the field, or the direction for the literals
+    /// "Ascending"/"Descending". Picking the field that is already active is a no-op.
+    /// <para>
+    /// Distinct from <see cref="Sort"/> because these surfaces show the field and the
+    /// direction as separate checked entries. Sharing the header's toggle meant choosing
+    /// the already-active field silently inverted the direction, moving the ✓ off the
+    /// direction the user had picked without them ever touching it.
+    /// </para>
+    /// </summary>
+    [RelayCommand]
+    private void SelectSort(string option)
+    {
+        switch (option)
+        {
+            case "Ascending":
+                SortAscending = true;
+                break;
+            case "Descending":
+                SortAscending = false;
+                break;
+            default:
+                if (SortColumn == option) return;
+                SortColumn = option;
+                break;
+        }
+
+        IsFilterMenuOpen = false;
+        ApplyFilterAndSort();
+    }
+
+    /// <summary>Applies the sort/filter persisted from the previous session.</summary>
+    private void AdoptPersistedViewState()
+    {
+        if (_settings == null) return;
+
+        _adoptingPersistedState = true;
+        try
+        {
+            SortColumn = _settings.SongsSortColumn;
+            SortAscending = _settings.SongsSortAscending;
+            ShowOnlyFavorites = _settings.SongsShowOnlyFavorites;
+        }
+        finally
+        {
+            _adoptingPersistedState = false;
+        }
+
+        ApplyFilterAndSort();
+    }
+
+    partial void OnSortColumnChanged(string value)
+    {
+        if (_settings != null && !_adoptingPersistedState) _settings.SongsSortColumn = value;
+    }
+
+    partial void OnSortAscendingChanged(bool value)
+    {
+        if (_settings != null && !_adoptingPersistedState) _settings.SongsSortAscending = value;
+    }
+
+    partial void OnShowOnlyFavoritesChanged(bool value)
+    {
+        if (_settings != null && !_adoptingPersistedState) _settings.SongsShowOnlyFavorites = value;
     }
 
     [RelayCommand]
@@ -496,6 +568,12 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         {
             _library.LibraryUpdated -= _libraryUpdatedHandler;
             _libraryUpdatedHandler = null;
+        }
+
+        if (_viewStateLoadedHandler != null && _settings != null)
+        {
+            _settings.ViewStateLoaded -= _viewStateLoadedHandler;
+            _viewStateLoadedHandler = null;
         }
     }
 

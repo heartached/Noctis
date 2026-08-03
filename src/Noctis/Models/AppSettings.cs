@@ -153,12 +153,47 @@ public class AppSettings
     public int WebRemotePort { get; set; } = 9420;
 
     // ── Songs page optional columns ──
+    // All six were the original set, chosen from the column-header dropdown.
     public bool ShowArtworkColumn { get; set; } = true;
     public bool ShowGenreColumn { get; set; } = true;
     public bool ShowRatingColumn { get; set; } = true;
     public bool ShowBpmColumn { get; set; }
     public bool ShowBitrateColumn { get; set; }
     public bool ShowSampleRateColumn { get; set; }
+
+    // Columns that used to be unconditionally visible. They became hideable when the
+    // chooser moved into View Options — a list of five permanently-checked entries
+    // reads as broken. Default true so existing libraries look unchanged on upgrade.
+    public bool ShowTimeColumn { get; set; } = true;
+    public bool ShowArtistColumn { get; set; } = true;
+    public bool ShowAlbumColumn { get; set; } = true;
+    public bool ShowFavoritesColumn { get; set; } = true;
+    public bool ShowPlaysColumn { get; set; } = true;
+
+    // ── Songs page sort / filter ──
+    // Previously view-model-only, so every launch reset the list to Date Added ▼
+    // while the column choices beside them persisted. Defaults reproduce that
+    // former startup state exactly.
+
+    /// <summary>Active Songs sort field, matching the column keys understood by
+    /// <c>LibrarySongsViewModel.BuildFilteredAndSortedTracks</c>.</summary>
+    public string SongsSortColumn { get; set; } = "Date Added";
+
+    /// <summary>Songs sort direction. False (descending) puts newest additions first.</summary>
+    public bool SongsSortAscending { get; set; }
+
+    /// <summary>Whether the Songs list is filtered to favorites only.</summary>
+    public bool SongsShowOnlyFavorites { get; set; }
+
+    // ── Albums grid sort ──
+
+    /// <summary>Albums grid sort: "default", "title", "dateadded", "mostplayed",
+    /// "albumartist" or "year".</summary>
+    public string AlbumSortMode { get; set; } = "default";
+
+    /// <summary>Albums sort direction. Only meaningful outside "default"; each mode
+    /// starts in its natural direction (see LibraryAlbumsViewModel.IsDescendingByDefault).</summary>
+    public bool AlbumSortAscending { get; set; } = true;
 
     /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the

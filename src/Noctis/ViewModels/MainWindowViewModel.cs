@@ -258,13 +258,17 @@ public partial class MainWindowViewModel : ViewModelBase
                 Navigate("home");
         };
         _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService, playHistory);
-        _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence);
+        _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence, Settings);
         _albumsVm = new LibraryAlbumsViewModel(library, Player, Sidebar, Settings);
         // Keep the top-bar dropdown labels in sync with the Albums grid filters/sort.
         _albumsVm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumSortLabel))
                 TopBar.AlbumSortLabel = _albumsVm.AlbumSortLabel;
+            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumSortMode))
+                TopBar.AlbumSortMode = _albumsVm.AlbumSortMode;
+            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumSortAscending))
+                TopBar.AlbumSortAscending = _albumsVm.AlbumSortAscending;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.ReleaseTypeFilterLabel))
                 TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.QualityFilterLabel))
@@ -1955,7 +1959,24 @@ public partial class MainWindowViewModel : ViewModelBase
             _songsVm.SortColumn,
             _songsVm.SetShowAllItemsCommand,
             _songsVm.SetShowOnlyFavoritesCommand,
-            _songsVm.SortCommand);
+            // SelectSortCommand, not SortCommand: menu entries show the field and the
+            // direction as separate checked items, so picking the active field must not
+            // flip the direction the way a repeated column-header click does.
+            _songsVm.SelectSortCommand,
+            new AsyncRelayCommand(async () =>
+            {
+                // Disposed on close: the dialog view model listens to the Songs view
+                // model, which outlives it by the whole session.
+                using var optionsVm = new SongsViewOptionsViewModel(_songsVm, Settings);
+                try
+                {
+                    await Views.SongsViewOptionsDialog.ShowAsync(optionsVm);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[MainVM] View Options dialog failed: {ex.Message}");
+                }
+            }));
         TopBar.ShowSongsFilters(_songsVm.SummaryText, _songsVm.QualityFilter, _songsVm.SetQualityFilterCommand);
         _songsVmTopBarHandler = (_, e) =>
         {
@@ -2066,6 +2087,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 _albumsVm.QualityChips, _albumsVm.SelectQualityChipCommand, _albumsVm.SetAlbumSortCommand,
                 _albumsVm.SetReleaseTypeFilterCommand, _albumsVm.SetQualityFilterCommand);
             TopBar.AlbumSortLabel = _albumsVm.AlbumSortLabel;
+            TopBar.AlbumSortMode = _albumsVm.AlbumSortMode;
+            TopBar.AlbumSortAscending = _albumsVm.AlbumSortAscending;
             TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
             TopBar.QualityFilterLabel = _albumsVm.QualityFilterLabel;
         }

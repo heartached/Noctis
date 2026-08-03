@@ -27,6 +27,15 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private DispatcherTimer? _searchDebounce;
     private int _rebuildGeneration;
     private bool _isDirty = true;
+    private EventHandler? _viewStateLoadedHandler;
+
+    /// <summary>Guards the startup adoption of the persisted sort so echoing it back into
+    /// settings doesn't queue a pointless disk write.</summary>
+    private bool _adoptingPersistedState;
+
+    /// <summary>Set while mode and direction are changed together, so the grid rebuilds
+    /// once for the pair rather than once per property.</summary>
+    private bool _suspendSortRebuild;
 
     private const int ColumnsPerRow = 5;
     private const double TileTextHeight = 64;
@@ -56,19 +65,30 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Active quality filter: "" (off), "lossless", or "hires".</summary>
     [ObservableProperty] private string _qualityFilter = string.Empty;
 
-    /// <summary>Grid sort: "default" (artist/recent floats), "dateadded", "mostplayed",
-    /// "albumartist", or "year".</summary>
+    /// <summary>Grid sort: "default" (artist/recent floats), "title", "dateadded",
+    /// "mostplayed", "albumartist", or "year".</summary>
     [ObservableProperty] private string _albumSortMode = "default";
+
+    /// <summary>Sort direction. Ignored by "default", which has its own recent-import
+    /// float rather than a single ordering key.</summary>
+    [ObservableProperty] private bool _albumSortAscending = true;
 
     /// <summary>Label for the sort dropdown button.</summary>
     public string AlbumSortLabel => AlbumSortMode switch
     {
+        "title" => "Title",
         "dateadded" => "Recently added",
         "mostplayed" => "Most played",
         "albumartist" => "Album Artist",
         "year" => "Year",
         _ => "Default",
     };
+
+    /// <summary>Whether the direction controls apply to the current mode.</summary>
+    public bool AlbumSortDirectionEnabled => AlbumSortMode != "default";
+
+    /// <summary>Checkmark helpers for the sort dropdown.</summary>
+    public bool AlbumSortDescending => !AlbumSortAscending;
 
     /// <summary>Label for the release-type dropdown button.</summary>
     public string ReleaseTypeFilterLabel => ReleaseTypeFilter switch
@@ -100,7 +120,16 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     partial void OnAlbumSortModeChanged(string value)
     {
         OnPropertyChanged(nameof(AlbumSortLabel));
-        RebuildFilteredRows();
+        OnPropertyChanged(nameof(AlbumSortDirectionEnabled));
+        if (!_adoptingPersistedState) _settings.AlbumSortMode = value;
+        if (!_suspendSortRebuild) RebuildFilteredRows();
+    }
+
+    partial void OnAlbumSortAscendingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(AlbumSortDescending));
+        if (!_adoptingPersistedState) _settings.AlbumSortAscending = value;
+        if (!_suspendSortRebuild) RebuildFilteredRows();
     }
 
     /// <summary>Toggles a quality chip; clicking the active chip clears the filter.</summary>
@@ -111,8 +140,68 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         QualityFilter = chip.Key == QualityFilter ? string.Empty : chip.Key;
     }
 
+    /// <summary>
+    /// Sets the grid sort from the dropdown: a mode key, or "ascending"/"descending" for
+    /// the direction. Switching mode adopts that mode's natural direction — picking
+    /// "Recently added" should mean newest first, not whichever way the previous mode ran.
+    /// </summary>
     [RelayCommand]
-    private void SetAlbumSort(string mode) => AlbumSortMode = mode;
+    private void SetAlbumSort(string mode)
+    {
+        switch (mode)
+        {
+            case "ascending":
+                AlbumSortAscending = true;
+                return;
+            case "descending":
+                AlbumSortAscending = false;
+                return;
+        }
+
+        if (AlbumSortMode == mode) return;
+
+        // Mode and direction change together; hold the rebuild so the grid is rebuilt
+        // once for the pair instead of once per property.
+        _suspendSortRebuild = true;
+        try
+        {
+            AlbumSortAscending = !IsDescendingByDefault(mode);
+            AlbumSortMode = mode;
+        }
+        finally
+        {
+            _suspendSortRebuild = false;
+        }
+
+        RebuildFilteredRows();
+    }
+
+    /// <summary>
+    /// Modes whose natural reading is "most/newest first": a user picking Year or
+    /// Recently added means latest, not 1954.
+    /// </summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static bool IsDescendingByDefault(string sortMode) =>
+        sortMode is "dateadded" or "mostplayed" or "year";
+
+    /// <summary>Applies the grid sort persisted from the previous session.</summary>
+    private void AdoptPersistedSort()
+    {
+        _adoptingPersistedState = true;
+        _suspendSortRebuild = true;
+        try
+        {
+            AlbumSortMode = _settings.AlbumSortMode;
+            AlbumSortAscending = _settings.AlbumSortAscending;
+        }
+        finally
+        {
+            _suspendSortRebuild = false;
+            _adoptingPersistedState = false;
+        }
+
+        RebuildFilteredRows();
+    }
 
     /// <summary>Sets the release-type filter from a dropdown key ("all" clears it).</summary>
     [RelayCommand]
@@ -180,6 +269,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             }
         };
         _settings.PropertyChanged += _settingsPropertyChangedHandler;
+
+        // Settings load asynchronously and finish after this view model is built, so the
+        // persisted sort is adopted when it lands rather than read here.
+        _viewStateLoadedHandler = (_, _) => AdoptPersistedSort();
+        _settings.ViewStateLoaded += _viewStateLoadedHandler;
 
         ReleaseTypeChips = new ObservableCollection<ReleaseTypeChip>
         {
@@ -293,7 +387,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // rows on first paint — otherwise the grid flashes the previous (unfiltered)
         // album list for a frame before the async rebuild's UI post lands.
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
@@ -338,7 +432,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         OnPropertyChanged(nameof(HasActiveFilter));
 
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
@@ -353,6 +447,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var releaseTypeFilter = ReleaseTypeFilter;
         var qualityFilter = QualityFilter;
         var sortMode = AlbumSortMode;
+        var sortAscending = AlbumSortAscending;
         var library = refreshFromLibrary ? _library : null;
 
         ThreadPool.QueueUserWorkItem(_ =>
@@ -361,7 +456,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             if (library != null)
                 albums = library.Albums.ToList();
 
-            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter, qualityFilter, sortMode);
+            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter, qualityFilter, sortMode, sortAscending);
 
             // Only apply if no newer rebuild was requested. A superseded library
             // reload must re-mark dirty: the newer request may have captured the
@@ -386,7 +481,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
     private List<object> BuildFilteredRows(
         List<Album> allAlbums, string artistFilter, string searchFilter, int columnsPerRow,
-        ReleaseType? releaseTypeFilter = null, string qualityFilter = "", string sortMode = "default")
+        ReleaseType? releaseTypeFilter = null, string qualityFilter = "", string sortMode = "default",
+        bool sortAscending = true)
     {
         var filtered = allAlbums.AsEnumerable();
 
@@ -454,7 +550,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // float) when no artist/search filter narrows the grid.
         if (sortMode != "default" && string.IsNullOrEmpty(artistFilter) && string.IsNullOrWhiteSpace(searchFilter))
         {
-            filtered = ApplySortMode(filtered, sortMode);
+            filtered = ApplySortMode(filtered, sortMode, sortAscending);
 
             IEnumerable<Album> sortedAlbums = filtered;
             if (_settings.CollapseAlbumEditions)
@@ -514,25 +610,44 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     }
 
     /// <summary>
-    /// Orders the grid for an explicit sort mode ("dateadded", "mostplayed",
+    /// Orders the grid for an explicit sort mode ("title", "dateadded", "mostplayed",
     /// "albumartist", "year"); any other mode returns the input unchanged.
+    /// <para>
+    /// <paramref name="ascending"/> flips the primary key only — tie-breakers stay
+    /// ascending, so reversing "Most played" still lists equally-played albums A→Z
+    /// rather than shuffling them into reverse alphabetical order.
+    /// </para>
     /// </summary>
     /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
-    internal static IEnumerable<Album> ApplySortMode(IEnumerable<Album> albums, string sortMode) =>
+    internal static IEnumerable<Album> ApplySortMode(IEnumerable<Album> albums, string sortMode, bool ascending) =>
         sortMode switch
         {
-            "dateadded" => albums.OrderByDescending(a =>
-                a.Tracks.Count > 0 ? a.Tracks.Max(t => t.DateAdded) : DateTime.MinValue),
-            "mostplayed" => albums.OrderByDescending(a => a.Tracks.Sum(t => (long)t.PlayCount))
+            // Straight alphabetical by album title — what Apple Music's Albums view does,
+            // and the one ordering the grid was missing (issue #33).
+            "title" => (ascending
+                    ? albums.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
+                    : albums.OrderByDescending(a => a.Name, StringComparer.OrdinalIgnoreCase))
+                .ThenBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(a => a.Year),
+            "dateadded" => ascending
+                ? albums.OrderBy(a => a.Tracks.Count > 0 ? a.Tracks.Max(t => t.DateAdded) : DateTime.MinValue)
+                : albums.OrderByDescending(a => a.Tracks.Count > 0 ? a.Tracks.Max(t => t.DateAdded) : DateTime.MinValue),
+            "mostplayed" => (ascending
+                    ? albums.OrderBy(a => a.Tracks.Sum(t => (long)t.PlayCount))
+                    : albums.OrderByDescending(a => a.Tracks.Sum(t => (long)t.PlayCount)))
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
             // Album Artist/Year (Apple Music/MusicBee): artists A→Z, each artist's
             // releases in chronological order. Album.Artist is the album artist.
-            "albumartist" => albums.OrderBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
+            "albumartist" => (ascending
+                    ? albums.OrderBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
+                    : albums.OrderByDescending(a => a.Artist, StringComparer.OrdinalIgnoreCase))
                 .ThenBy(a => a.Year)
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
-            // Newest releases first, like the sibling modes' descending defaults;
-            // unknown years (0) sink to the bottom.
-            "year" => albums.OrderByDescending(a => a.Year)
+            // Descending by default so newest releases lead; unknown years (0) sink
+            // to the bottom there, and lead when the direction is flipped.
+            "year" => (ascending
+                    ? albums.OrderBy(a => a.Year)
+                    : albums.OrderByDescending(a => a.Year))
                 .ThenBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
             _ => albums,
@@ -1115,6 +1230,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     public void Dispose()
     {
         _settings.PropertyChanged -= _settingsPropertyChangedHandler;
+        if (_viewStateLoadedHandler != null)
+        {
+            _settings.ViewStateLoaded -= _viewStateLoadedHandler;
+            _viewStateLoadedHandler = null;
+        }
         if (_searchDebounce != null)
         {
             _searchDebounce.Stop();

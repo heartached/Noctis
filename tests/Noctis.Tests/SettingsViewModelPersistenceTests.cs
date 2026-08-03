@@ -73,6 +73,77 @@ public class SettingsViewModelPersistenceTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task SongsViewState_SurvivesSaveAndReload()
+    {
+        var vm = CreateViewModel();
+        await vm.LoadAsync();
+
+        // These three used to be view-model-only, so the Songs list reset to
+        // Date Added ▼ / All Songs on every launch while the columns beside them
+        // persisted. SyncToSettings must carry them now.
+        vm.SongsSortColumn = "Artist";
+        vm.SongsSortAscending = true;
+        vm.SongsShowOnlyFavorites = true;
+        vm.ShowTimeColumn = false;
+        vm.ShowArtistColumn = false;
+        vm.ShowAlbumColumn = false;
+        vm.ShowFavoritesColumn = false;
+        vm.ShowPlaysColumn = false;
+        vm.ShowBpmColumn = true;
+        await vm.SaveAsync();
+
+        var reloaded = CreateViewModel();
+        await reloaded.LoadAsync();
+
+        Assert.Equal("Artist", reloaded.SongsSortColumn);
+        Assert.True(reloaded.SongsSortAscending);
+        Assert.True(reloaded.SongsShowOnlyFavorites);
+        Assert.False(reloaded.ShowTimeColumn);
+        Assert.False(reloaded.ShowArtistColumn);
+        Assert.False(reloaded.ShowAlbumColumn);
+        Assert.False(reloaded.ShowFavoritesColumn);
+        Assert.False(reloaded.ShowPlaysColumn);
+        Assert.True(reloaded.ShowBpmColumn);
+    }
+
+    [AvaloniaFact]
+    public async Task AlbumSort_SurvivesSaveAndReload()
+    {
+        var vm = CreateViewModel();
+        await vm.LoadAsync();
+
+        vm.AlbumSortMode = "title";
+        vm.AlbumSortAscending = false;
+        await vm.SaveAsync();
+
+        var reloaded = CreateViewModel();
+        await reloaded.LoadAsync();
+
+        Assert.Equal("title", reloaded.AlbumSortMode);
+        Assert.False(reloaded.AlbumSortAscending);
+    }
+
+    [AvaloniaFact]
+    public async Task SongsViewState_DefaultsMatchTheFormerStartupBehaviour()
+    {
+        var vm = CreateViewModel();
+        await vm.LoadAsync();
+
+        // A fresh install must land exactly where the old hardcoded defaults did,
+        // so upgrading doesn't silently reorder anyone's library.
+        Assert.Equal("Date Added", vm.SongsSortColumn);
+        Assert.False(vm.SongsSortAscending);
+        Assert.False(vm.SongsShowOnlyFavorites);
+        Assert.True(vm.ShowTimeColumn);
+        Assert.True(vm.ShowArtistColumn);
+        Assert.True(vm.ShowAlbumColumn);
+        Assert.True(vm.ShowFavoritesColumn);
+        Assert.True(vm.ShowPlaysColumn);
+        Assert.Equal("default", vm.AlbumSortMode);
+        Assert.True(vm.AlbumSortAscending);
+    }
+
+    [AvaloniaFact]
     public async Task MediaServerConnection_SurvivesUnrelatedSaves_AndDisconnectRemovesIt()
     {
         // Seed a stored server connection (what a successful Connect persists).

@@ -224,26 +224,20 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _pageSetShowAllItemsCommand;
     [ObservableProperty] private ICommand? _pageSetShowOnlyFavoritesCommand;
     [ObservableProperty] private ICommand? _pageSortCommand;
+    [ObservableProperty] private ICommand? _pageViewOptionsCommand;
 
     // Computed inverses for non-compiled binding compatibility
     public bool PageShowAllItems => !PageShowOnlyFavorites;
     public bool PageSortDescending => !PageSortAscending;
 
-    // Per-field active-sort flags used to render checkmarks in the Sort By submenu.
-    // Only sorts without a clickable column header live in the menu; the rest are
-    // sorted directly from the Songs page column headers.
-    public bool PageSortByAlbumArtist => string.Equals(PageSortColumn, "Album Artist", StringComparison.OrdinalIgnoreCase);
-    public bool PageSortByYear      => string.Equals(PageSortColumn, "Year",       StringComparison.OrdinalIgnoreCase);
-    public bool PageSortByDateAdded => string.Equals(PageSortColumn, "Date Added", StringComparison.OrdinalIgnoreCase);
+    // Checkmarks in the Sort Options submenu compare each item's key against
+    // PageSortColumn through StringEqualsConverter. This replaced three hand-written
+    // per-field flags that covered only Album Artist / Year / Date Added — sorting by
+    // any other field (every one reachable from a column header) left the whole submenu
+    // rendering unchecked, as if nothing were selected.
 
     partial void OnPageShowOnlyFavoritesChanged(bool value) => OnPropertyChanged(nameof(PageShowAllItems));
     partial void OnPageSortAscendingChanged(bool value) => OnPropertyChanged(nameof(PageSortDescending));
-    partial void OnPageSortColumnChanged(string value)
-    {
-        OnPropertyChanged(nameof(PageSortByAlbumArtist));
-        OnPropertyChanged(nameof(PageSortByYear));
-        OnPropertyChanged(nameof(PageSortByDateAdded));
-    }
 
     public void ShowPageActions(
         ICommand shuffleCommand,
@@ -253,7 +247,8 @@ public partial class TopBarViewModel : ViewModelBase
         string sortColumn,
         ICommand setShowAllItemsCommand,
         ICommand setShowOnlyFavoritesCommand,
-        ICommand sortCommand)
+        ICommand sortCommand,
+        ICommand viewOptionsCommand)
     {
         PageShuffleCommand = shuffleCommand;
         PageQueueCommand = queueCommand;
@@ -263,6 +258,7 @@ public partial class TopBarViewModel : ViewModelBase
         PageSetShowAllItemsCommand = setShowAllItemsCommand;
         PageSetShowOnlyFavoritesCommand = setShowOnlyFavoritesCommand;
         PageSortCommand = sortCommand;
+        PageViewOptionsCommand = viewOptionsCommand;
         HasPageActions = true;
     }
 
@@ -274,6 +270,7 @@ public partial class TopBarViewModel : ViewModelBase
         PageSetShowAllItemsCommand = null;
         PageSetShowOnlyFavoritesCommand = null;
         PageSortCommand = null;
+        PageViewOptionsCommand = null;
     }
 
     public void ShowPlaylistActions(ICommand createPlaylistCommand, ICommand createSmartPlaylistCommand,
@@ -376,6 +373,21 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _qualityChipCommand;
     [ObservableProperty] private ICommand? _albumSortCommand;
     [ObservableProperty] private string _albumSortLabel = "Default";
+
+    // Sort mode/direction mirrored for the dropdown's checkmarks, the same way the label
+    // is. AlbumSortMode is compared per item via StringEqualsConverter.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AlbumSortDirectionEnabled))]
+    private string _albumSortMode = "default";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AlbumSortDescending))]
+    private bool _albumSortAscending = true;
+
+    public bool AlbumSortDescending => !AlbumSortAscending;
+
+    /// <summary>"Default" floats recent imports instead of ordering by a single key,
+    /// so a direction can't be applied to it.</summary>
+    public bool AlbumSortDirectionEnabled => AlbumSortMode != "default";
 
     // Dropdown variants of the release-type / quality filters (albums grid top bar).
     [ObservableProperty] private ICommand? _releaseTypeFilterCommand;

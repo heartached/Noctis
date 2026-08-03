@@ -13,6 +13,7 @@
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry" />
+        <conv:BoolToColumnWidthConverter x:Key="ColumnWidth" />
     </UserControl.Resources>
 
     <Grid RowDefinitions="*">
@@ -20,36 +21,63 @@
              edge (matches the Albums section) instead of being inset ~16px from it. -->
         <DockPanel Grid.Row="0" Margin="16,8,2,16">
 
-        <!-- Column headers (sortable). Optional columns (Rating, BPM, Bitrate, Sample
-             rate) live in Auto columns whose cells carry fixed widths, so hidden
-             columns collapse to zero in both the header and the rows.
+        <!-- Column headers (sortable). Optional columns live in Auto columns whose cells
+             carry fixed widths, so hiding a cell collapses its column to zero in both the
+             header and the rows. Artist and Album can't use that trick — they're star
+             columns that flex with the window, and a star column keeps its share of the
+             space even when empty — so their widths run through ColumnWidth instead.
+             The trailing 42px column is the rows' per-track 3-dots button; the header
+             leaves it empty (its column chooser now lives in View Options).
              Margin 1,_,9,_ mirrors the track-list row insets (1px ListBoxItem border
              each side + 8px right padding) so header cells sit exactly over row cells. -->
-        <Grid DockPanel.Dock="Top"
-              ColumnDefinitions="*,80,*,*,Auto,80,Auto,55,Auto,Auto,Auto,42"
-              Margin="1,0,9,8">
+        <Grid DockPanel.Dock="Top" Margin="1,0,9,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtistColumn, Converter={StaticResource ColumnWidth}}" />
+                <ColumnDefinition Width="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowAlbumColumn, Converter={StaticResource ColumnWidth}}" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="42" />
+            </Grid.ColumnDefinitions>
             <Button Grid.Column="0" Content="Title" Command="{Binding SortCommand}" CommandParameter="Title"
                     Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
-            <Button Grid.Column="1" Content="Time" Command="{Binding SortCommand}" CommandParameter="Time"
-                    Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            <Border Grid.Column="1" Width="80"
+                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowTimeColumn, FallbackValue=True}">
+                <Button Content="Time" Command="{Binding SortCommand}" CommandParameter="Time"
+                        Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            </Border>
             <Button Grid.Column="2" Content="Artist" Command="{Binding SortCommand}" CommandParameter="Artist"
+                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtistColumn, FallbackValue=True}"
                     Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="3" Content="Album" Command="{Binding SortCommand}" CommandParameter="Album"
+                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowAlbumColumn, FallbackValue=True}"
                     Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Border Grid.Column="4" Width="110"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowGenreColumn, FallbackValue=True}">
                 <Button Content="Genre" Command="{Binding SortCommand}" CommandParameter="Genre"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             </Border>
-            <Button Grid.Column="5" Content="Favorites" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
-                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            <Border Grid.Column="5" Width="80"
+                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowFavoritesColumn, FallbackValue=True}">
+                <Button Content="Favorites" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
+                        Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            </Border>
             <Border Grid.Column="6" Width="84"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowRatingColumn, FallbackValue=True}">
                 <Button Content="Rating" Command="{Binding SortCommand}" CommandParameter="Rating"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             </Border>
-            <Button Grid.Column="7" Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
-                    Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            <Border Grid.Column="7" Width="55"
+                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowPlaysColumn, FallbackValue=True}">
+                <Button Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
+                        Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            </Border>
             <Border Grid.Column="8" Width="48"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowBpmColumn, FallbackValue=False}">
                 <Button Content="BPM" Command="{Binding SortCommand}" CommandParameter="Bpm"
@@ -65,31 +93,6 @@
                 <Button Content="Sample" Command="{Binding SortCommand}" CommandParameter="SampleRate"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             </Border>
-            <!-- Column chooser -->
-            <Button Grid.Column="11"
-                    Background="Transparent" BorderThickness="0" Padding="0"
-                    Width="24" Height="20" MinWidth="0"
-                    HorizontalAlignment="Center"
-                    Cursor="Hand" Opacity="0.6"
-                    ToolTip.Tip="Choose columns">
-                <PathIcon Data="{StaticResource MoreDotsIcon}" Width="12" Height="12"/>
-                <Button.Flyout>
-                    <MenuFlyout Placement="BottomEdgeAlignedRight">
-                        <MenuItem Header="Artwork" ToggleType="CheckBox" StaysOpenOnClick="True"
-                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtworkColumn, Mode=TwoWay}"/>
-                        <MenuItem Header="Genre" ToggleType="CheckBox" StaysOpenOnClick="True"
-                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowGenreColumn, Mode=TwoWay}"/>
-                        <MenuItem Header="Rating" ToggleType="CheckBox" StaysOpenOnClick="True"
-                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowRatingColumn, Mode=TwoWay}"/>
-                        <MenuItem Header="BPM" ToggleType="CheckBox" StaysOpenOnClick="True"
-                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowBpmColumn, Mode=TwoWay}"/>
-                        <MenuItem Header="Bitrate" ToggleType="CheckBox" StaysOpenOnClick="True"
-                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowBitrateColumn, Mode=TwoWay}"/>
-                        <MenuItem Header="Sample rate" ToggleType="CheckBox" StaysOpenOnClick="True"
-                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowSampleRateColumn, Mode=TwoWay}"/>
-                    </MenuFlyout>
-                </Button.Flyout>
-            </Button>
         </Grid>
 
         <Separator DockPanel.Dock="Top" Margin="0,0,0,4" />
@@ -111,11 +114,26 @@
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="m:Track">
                     <Border Classes.now-playing="{Binding IsNowPlaying}">
-                    <Grid ColumnDefinitions="*,80,*,*,Auto,80,Auto,55,Auto,Auto,Auto,42"
-                          Margin="0,2"
+                    <!-- Column definitions must stay identical to the header grid above,
+                         or every header label drifts off the cells it labels. -->
+                    <Grid Margin="0,2"
                           Background="Transparent"
                           helpers:DragFileBehavior.EnableFileDrag="True"
                           x:Name="TrackRow">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtistColumn, Converter={StaticResource ColumnWidth}}" />
+                            <ColumnDefinition Width="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowAlbumColumn, Converter={StaticResource ColumnWidth}}" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="42" />
+                        </Grid.ColumnDefinitions>
 
                         <!-- Artwork + Title + Explicit badge -->
                         <Grid Grid.Column="0"
@@ -174,15 +192,18 @@
                             </Border>
                         </Grid>
 
-                        <TextBlock Grid.Column="1"
-                                   Text="{Binding DurationFormatted}"
-                                   FontSize="12"
-                                   Opacity="0.5"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center" />
+                        <Border Grid.Column="1" Width="80"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowTimeColumn, FallbackValue=True}">
+                            <TextBlock Text="{Binding DurationFormatted}"
+                                       FontSize="12"
+                                       Opacity="0.5"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
                         <Button Grid.Column="2"
                                 Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                 Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtistColumn, FallbackValue=True}"
                                 Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ViewArtistCommand}"
                                 CommandParameter="{Binding Artist}">
                             <controls:HighlightTextBlock Classes="accent-link"
@@ -196,6 +217,7 @@
                         <Button Grid.Column="3"
                                 Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                 Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowAlbumColumn, FallbackValue=True}"
                                 Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ViewAlbumCommand}"
                                 CommandParameter="{Binding}">
                             <controls:HighlightTextBlock Classes="accent-link"
@@ -217,13 +239,15 @@
                                                          HorizontalAlignment="Left"
                                                          VerticalAlignment="Center" />
                         </Border>
-                        <PathIcon Grid.Column="5"
-                                 Data="{StaticResource HeartFillIcon}"
-                                 Width="12" Height="12"
-                                 Foreground="#E74856"
-                                 HorizontalAlignment="Center"
-                                 VerticalAlignment="Center"
-                                 IsVisible="{Binding IsFavorite}" />
+                        <Border Grid.Column="5" Width="80"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowFavoritesColumn, FallbackValue=True}">
+                            <PathIcon Data="{StaticResource HeartFillIcon}"
+                                     Width="12" Height="12"
+                                     Foreground="#E74856"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     IsVisible="{Binding IsFavorite}" />
+                        </Border>
                         <Border Grid.Column="6" Width="84"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowRatingColumn, FallbackValue=True}">
                             <controls:RatingStars Value="{Binding Rating}"
@@ -236,12 +260,14 @@
                                                   IsVisible="{Binding !!Rating}" />
                         </Border>
 
-                        <TextBlock Grid.Column="7"
-                                   Text="{Binding PlayCount}"
-                                   FontSize="12"
-                                   Opacity="0.5"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center" />
+                        <Border Grid.Column="7" Width="55"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowPlaysColumn, FallbackValue=True}">
+                            <TextBlock Text="{Binding PlayCount}"
+                                       FontSize="12"
+                                       Opacity="0.5"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
 
                         <!-- Optional columns: BPM / Bitrate / Sample rate -->
                         <Border Grid.Column="8" Width="48"

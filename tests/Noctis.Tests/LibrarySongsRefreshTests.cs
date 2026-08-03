@@ -170,4 +170,66 @@ public class LibrarySongsRefreshTests
         Assert.Equal("sixxam", track.SearchArtistKey);
         Assert.Equal("theheroindiaries", track.SearchAlbumKey);
     }
+
+    // ── Sort selection: menu/dialog vs column header ──
+
+    [AvaloniaFact]
+    public void SelectSort_RepickingTheActiveField_LeavesTheDirectionAlone()
+    {
+        var (vm, _) = CreateVm();
+
+        vm.SelectSortCommand.Execute("Year");
+        vm.SelectSortCommand.Execute("Descending");
+        Assert.Equal("Year", vm.SortColumn);
+        Assert.False(vm.SortAscending);
+
+        // The bug: the menu shared the column-header command, so choosing the field
+        // already in effect flipped the direction and moved the ✓ off "Descending"
+        // even though the user never touched the direction.
+        vm.SelectSortCommand.Execute("Year");
+
+        Assert.Equal("Year", vm.SortColumn);
+        Assert.False(vm.SortAscending);
+    }
+
+    [AvaloniaFact]
+    public void SelectSort_SwitchingField_KeepsTheChosenDirection()
+    {
+        var (vm, _) = CreateVm();
+
+        vm.SelectSortCommand.Execute("Descending");
+        vm.SelectSortCommand.Execute("Artist");
+
+        Assert.Equal("Artist", vm.SortColumn);
+        Assert.False(vm.SortAscending);
+    }
+
+    [AvaloniaFact]
+    public void SelectSort_DirectionLiterals_SetTheDirection()
+    {
+        var (vm, _) = CreateVm();
+
+        vm.SelectSortCommand.Execute("Ascending");
+        Assert.True(vm.SortAscending);
+
+        vm.SelectSortCommand.Execute("Descending");
+        Assert.False(vm.SortAscending);
+    }
+
+    [AvaloniaFact]
+    public void Sort_ColumnHeader_StillTogglesOnRepeatClick()
+    {
+        var (vm, _) = CreateVm();
+
+        vm.SortCommand.Execute("Title");
+        Assert.Equal("Title", vm.SortColumn);
+        Assert.True(vm.SortAscending);
+
+        // Toggle-on-repeat is correct for a header click and must survive the split.
+        vm.SortCommand.Execute("Title");
+        Assert.False(vm.SortAscending);
+
+        vm.SortCommand.Execute("Title");
+        Assert.True(vm.SortAscending);
+    }
 }

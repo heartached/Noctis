@@ -303,12 +303,43 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _showBitrateColumn;
     [ObservableProperty] private bool _showSampleRateColumn;
 
+    // Formerly always-on columns; hideable since the chooser moved into View Options.
+    [ObservableProperty] private bool _showTimeColumn = true;
+    [ObservableProperty] private bool _showArtistColumn = true;
+    [ObservableProperty] private bool _showAlbumColumn = true;
+    [ObservableProperty] private bool _showFavoritesColumn = true;
+    [ObservableProperty] private bool _showPlaysColumn = true;
+
     partial void OnShowArtworkColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowGenreColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowRatingColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBpmColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBitrateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowSampleRateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowTimeColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowArtistColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowAlbumColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowFavoritesColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowPlaysColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+
+    // ── Songs page sort / filter, Albums grid sort ──
+    //
+    // Persisted view state rather than user-facing Settings toggles: nothing in
+    // SettingsView binds these. They live here because SettingsViewModel owns the
+    // AppSettings round-trip, and the Songs/Albums view models read and write them
+    // through it — the same route the column flags already take.
+
+    [ObservableProperty] private string _songsSortColumn = "Date Added";
+    [ObservableProperty] private bool _songsSortAscending;
+    [ObservableProperty] private bool _songsShowOnlyFavorites;
+    [ObservableProperty] private string _albumSortMode = "default";
+    [ObservableProperty] private bool _albumSortAscending = true;
+
+    partial void OnSongsSortColumnChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnSongsSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnSongsShowOnlyFavoritesChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     // ── Web remote ──
 
@@ -660,6 +691,11 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Fires after a full settings reset so the shell can reload playlists, etc.</summary>
     public event EventHandler? SettingsReset;
 
+    /// <summary>Fires once the persisted list view state (Songs sort/filter, Albums sort)
+    /// has been read from disk, so the library view models can adopt it. They are built
+    /// during startup, before the settings load completes.</summary>
+    public event EventHandler? ViewStateLoaded;
+
     /// <summary>Fires when a media folder is added or removed so the Folders view can rebuild its tree.</summary>
     public event EventHandler? MusicFoldersChanged;
 
@@ -884,6 +920,16 @@ public partial class SettingsViewModel : ViewModelBase
             ShowBpmColumn = _settings.ShowBpmColumn;
             ShowBitrateColumn = _settings.ShowBitrateColumn;
             ShowSampleRateColumn = _settings.ShowSampleRateColumn;
+            ShowTimeColumn = _settings.ShowTimeColumn;
+            ShowArtistColumn = _settings.ShowArtistColumn;
+            ShowAlbumColumn = _settings.ShowAlbumColumn;
+            ShowFavoritesColumn = _settings.ShowFavoritesColumn;
+            ShowPlaysColumn = _settings.ShowPlaysColumn;
+            SongsSortColumn = _settings.SongsSortColumn;
+            SongsSortAscending = _settings.SongsSortAscending;
+            SongsShowOnlyFavorites = _settings.SongsShowOnlyFavorites;
+            AlbumSortMode = _settings.AlbumSortMode;
+            AlbumSortAscending = _settings.AlbumSortAscending;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             LiquidGlassEnabled = _settings.LiquidGlassEnabled;
@@ -1016,6 +1062,12 @@ public partial class SettingsViewModel : ViewModelBase
             // already fired during the load when the stored value was true; this
             // explicit (idempotent) invoke keeps the window consistent either way.
             LiquidGlassChanged?.Invoke(this, LiquidGlassEnabled);
+
+            // The Songs/Albums view models are constructed before this async load
+            // finishes, so they start on hardcoded defaults. Tell them the persisted
+            // sort/filter is now readable rather than having them watch three
+            // properties each and guess when the last one landed.
+            ViewStateLoaded?.Invoke(this, EventArgs.Empty);
 
             _settingsLoaded = true;
         }
@@ -1167,6 +1219,16 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ShowBpmColumn = ShowBpmColumn;
         _settings.ShowBitrateColumn = ShowBitrateColumn;
         _settings.ShowSampleRateColumn = ShowSampleRateColumn;
+        _settings.ShowTimeColumn = ShowTimeColumn;
+        _settings.ShowArtistColumn = ShowArtistColumn;
+        _settings.ShowAlbumColumn = ShowAlbumColumn;
+        _settings.ShowFavoritesColumn = ShowFavoritesColumn;
+        _settings.ShowPlaysColumn = ShowPlaysColumn;
+        _settings.SongsSortColumn = SongsSortColumn;
+        _settings.SongsSortAscending = SongsSortAscending;
+        _settings.SongsShowOnlyFavorites = SongsShowOnlyFavorites;
+        _settings.AlbumSortMode = AlbumSortMode;
+        _settings.AlbumSortAscending = AlbumSortAscending;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.LiquidGlassEnabled = LiquidGlassEnabled;

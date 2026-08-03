@@ -1,0 +1,274 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Noctis.ViewModels"
+        x:Class="Noctis.Views.SongsViewOptionsDialog"
+        x:DataType="vm:SongsViewOptionsViewModel"
+        Title="View Options"
+        CanResize="False"
+        SystemDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        ShowInTaskbar="False">
+
+    <!-- Dialog-local chrome, following PlaylistDescriptionDialog: only the pieces this
+         surface needs, defined here rather than added to the global sheet. -->
+    <Window.Styles>
+        <!-- Small caps section heading (Music / Personal / File) -->
+        <Style Selector="TextBlock.view-opt-section">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+
+        <Style Selector="TextBlock.view-opt-label">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Opacity" Value="0.75" />
+        </Style>
+
+        <!-- Segmented two-option pills (Ascending/Descending, All Songs/Only Favorites).
+             Same shape as the top bar's quality chips so the dialog reads as part of the
+             app rather than a stock settings sheet. -->
+        <Style Selector="Border.view-opt-segment">
+            <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="3" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style Selector="Button.view-opt-seg">
+            <Setter Property="Padding" Value="14,6" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Opacity" Value="0.55" />
+        </Style>
+        <Style Selector="Button.view-opt-seg:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.view-opt-seg.on">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Background" Value="#30FFFFFF" />
+        </Style>
+
+        <Style Selector="Border.view-opt-rule">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="Margin" Value="0,18" />
+        </Style>
+
+        <!-- Column checkboxes reuse the app's round accent checkbox; only the label
+             size is dialed down for the two-column grid. -->
+        <Style Selector="CheckBox.metadata-pill-checkbox">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+
+        <Style Selector="Button.view-opt-footer">
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.view-opt-footer:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+    </Window.Styles>
+
+    <!-- Fade/scale open-close animation: same pattern as the description dialogs
+         (code-behind settles to the open state on the next frame, mirrors on close). -->
+    <Border x:Name="DialogOverlay"
+            Background="#98000000"
+            Opacity="0"
+            PointerPressed="OnOverlayPointerPressed"
+            PointerWheelChanged="OnOverlayWheel">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut/>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Border.Transitions>
+
+        <Border x:Name="OptionsCard"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                PointerPressed="OnCardPointerPressed"
+                Width="440"
+                MaxHeight="720"
+                CornerRadius="12"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="1"
+                RenderTransformOrigin="50%,50%"
+                RenderTransform="scale(0.96)"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Border.Transitions>
+
+            <Grid RowDefinitions="Auto,*,Auto">
+
+                <!-- Header -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="24,20,16,0">
+                    <TextBlock Grid.Column="0"
+                               Text="View Options"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center" />
+                    <Button Grid.Column="1"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Width="32" Height="32"
+                            Padding="0"
+                            Cursor="Hand"
+                            ToolTip.Tip="Close"
+                            Click="OnCloseClick">
+                        <PathIcon Data="{StaticResource DismissIcon}"
+                                  Width="15" Height="15"
+                                  Opacity="0.75"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center" />
+                    </Button>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1"
+                              Margin="24,16,24,0"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+
+                        <!-- Sort by -->
+                        <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,12">
+                            <TextBlock Grid.Column="0" Classes="view-opt-label" Text="Sort by:" Margin="0,0,12,0" />
+                            <!-- Explicit ItemTemplate rather than DisplayMemberBinding: the
+                                 project compiles bindings by default, and an item-scoped
+                                 binding needs its own x:DataType to resolve against the
+                                 option rather than this dialog's view model. -->
+                            <ComboBox Grid.Column="1"
+                                      HorizontalAlignment="Stretch"
+                                      ItemsSource="{Binding SortOptions}"
+                                      SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SongSortOption">
+                                        <TextBlock Text="{Binding Label}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </Grid>
+
+                        <Border Classes="view-opt-segment" Margin="0,0,0,4">
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <Button Classes="view-opt-seg" Classes.on="{Binding IsAscending}"
+                                        Content="Ascending"
+                                        Command="{Binding SetAscendingCommand}" />
+                                <Button Classes="view-opt-seg" Classes.on="{Binding IsDescending}"
+                                        Content="Descending"
+                                        Command="{Binding SetDescendingCommand}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="view-opt-rule" />
+
+                        <!-- Show -->
+                        <TextBlock Classes="view-opt-label" Text="Show:" Margin="0,0,0,8" />
+                        <Border Classes="view-opt-segment">
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <Button Classes="view-opt-seg" Classes.on="{Binding ShowAllSongs}"
+                                        Content="All Songs"
+                                        Command="{Binding SetAllSongsCommand}" />
+                                <Button Classes="view-opt-seg" Classes.on="{Binding ShowOnlyFavorites}"
+                                        Content="Only Favorites"
+                                        Command="{Binding SetOnlyFavoritesCommand}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="view-opt-rule" />
+
+                        <!-- Columns. Grouped the way Apple Music groups them: what the track
+                             is, what you did with it, what the file is. -->
+                        <TextBlock Classes="view-opt-section" Text="MUSIC" />
+                        <Grid ColumnDefinitions="*,*">
+                            <StackPanel Grid.Column="0">
+                                <CheckBox Classes="metadata-pill-checkbox" Content="Artwork"
+                                          IsChecked="{Binding Settings.ShowArtworkColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox" Content="Artist"
+                                          IsChecked="{Binding Settings.ShowArtistColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox" Content="Album"
+                                          IsChecked="{Binding Settings.ShowAlbumColumn, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <CheckBox Classes="metadata-pill-checkbox" Content="Genre"
+                                          IsChecked="{Binding Settings.ShowGenreColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox" Content="Time"
+                                          IsChecked="{Binding Settings.ShowTimeColumn, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Classes="view-opt-section" Text="PERSONAL" Margin="0,8,0,10" />
+                        <Grid ColumnDefinitions="*,*">
+                            <StackPanel Grid.Column="0">
+                                <CheckBox Classes="metadata-pill-checkbox" Content="Favorite"
+                                          IsChecked="{Binding Settings.ShowFavoritesColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox" Content="Plays"
+                                          IsChecked="{Binding Settings.ShowPlaysColumn, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <CheckBox Classes="metadata-pill-checkbox" Content="Rating"
+                                          IsChecked="{Binding Settings.ShowRatingColumn, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Classes="view-opt-section" Text="FILE" Margin="0,8,0,10" />
+                        <Grid ColumnDefinitions="*,*">
+                            <StackPanel Grid.Column="0">
+                                <CheckBox Classes="metadata-pill-checkbox" Content="BPM"
+                                          IsChecked="{Binding Settings.ShowBpmColumn, Mode=TwoWay}" />
+                                <CheckBox Classes="metadata-pill-checkbox" Content="Sample Rate"
+                                          IsChecked="{Binding Settings.ShowSampleRateColumn, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <CheckBox Classes="metadata-pill-checkbox" Content="Bitrate"
+                                          IsChecked="{Binding Settings.ShowBitrateColumn, Mode=TwoWay}" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Footer. No OK/Cancel: every control above applies immediately. -->
+                <StackPanel Grid.Row="2"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Spacing="8"
+                            Margin="24,18,24,20">
+                    <Button Classes="view-opt-footer"
+                            Content="Restore Defaults"
+                            Background="Transparent"
+                            BorderThickness="1"
+                            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                            Command="{Binding RestoreDefaultsCommand}" />
+                    <Button Classes="view-opt-footer"
+                            Content="Done"
+                            Background="{DynamicResource AccentColorBrush}"
+                            Foreground="{DynamicResource AccentForegroundBrush}"
+                            BorderThickness="0"
+                            Click="OnCloseClick" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Border>
+</Window>

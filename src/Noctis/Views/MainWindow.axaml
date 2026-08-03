@@ -16,6 +16,12 @@
         Background="{DynamicResource AppMainBackground}"
         DragDrop.AllowDrop="True">
 
+    <Window.Resources>
+        <!-- Ticks the active entry in the Songs sort menu: one bound field
+             (PageSortColumn) decides which of a dozen items shows its checkmark. -->
+        <conv:StringEqualsConverter x:Key="StringEquals" />
+    </Window.Resources>
+
     <Window.KeyBindings>
         <KeyBinding Gesture="Ctrl+Right" Command="{Binding Player.NextCommand}" />
         <KeyBinding Gesture="Ctrl+Left" Command="{Binding Player.PreviousCommand}" />
@@ -247,19 +253,73 @@
                                 <MenuFlyout Placement="BottomEdgeAlignedRight">
                                     <MenuItem Header="Default"
                                               Command="{Binding AlbumSortCommand}"
-                                              CommandParameter="default"/>
-                                    <MenuItem Header="Recently added"
+                                              CommandParameter="default">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                     IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=default}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Title (A–Z)"
                                               Command="{Binding AlbumSortCommand}"
-                                              CommandParameter="dateadded"/>
-                                    <MenuItem Header="Most played"
-                                              Command="{Binding AlbumSortCommand}"
-                                              CommandParameter="mostplayed"/>
+                                              CommandParameter="title">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                     IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=title}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <MenuItem Header="Album Artist"
                                               Command="{Binding AlbumSortCommand}"
-                                              CommandParameter="albumartist"/>
+                                              CommandParameter="albumartist">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                     IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=albumartist}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <MenuItem Header="Year"
                                               Command="{Binding AlbumSortCommand}"
-                                              CommandParameter="year"/>
+                                              CommandParameter="year">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                     IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=year}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Recently added"
+                                              Command="{Binding AlbumSortCommand}"
+                                              CommandParameter="dateadded">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                     IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=dateadded}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Most played"
+                                              Command="{Binding AlbumSortCommand}"
+                                              CommandParameter="mostplayed">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                     IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=mostplayed}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator />
+                                    <!-- Direction is meaningless for "Default", which floats
+                                         recent imports rather than ordering by one key. -->
+                                    <MenuItem Header="Ascending"
+                                              Command="{Binding AlbumSortCommand}"
+                                              CommandParameter="ascending"
+                                              IsEnabled="{Binding AlbumSortDirectionEnabled}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                     IsVisible="{Binding AlbumSortAscending}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Descending"
+                                              Command="{Binding AlbumSortCommand}"
+                                              CommandParameter="descending"
+                                              IsEnabled="{Binding AlbumSortDirectionEnabled}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                     IsVisible="{Binding AlbumSortDescending}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                 </MenuFlyout>
                             </Button.Flyout>
                         </Button>
@@ -320,7 +380,7 @@
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
                                             PlacementConstraintAdjustment="None"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
-                                    <MenuItem Header="All Items" Command="{Binding PageSetShowAllItemsCommand}">
+                                    <MenuItem Header="All Songs" Command="{Binding PageSetShowAllItemsCommand}">
                                         <MenuItem.Icon>
                                             <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
                                                      IsVisible="{Binding PageShowAllItems}" />
@@ -334,26 +394,94 @@
                                     </MenuItem>
                                     <Separator />
                                     <MenuItem x:Name="PageSortByMenuItem"
-                                              Header="Sort By"
+                                              Header="Sort Options"
                                               PointerEntered="OnPageSortByMenuItemPointerEntered">
-                                        <!-- Only sorts without a clickable column header; everything
-                                             else is sorted by clicking the column headers directly. -->
-                                        <MenuItem Header="Album Artist" Command="{Binding PageSortCommand}" CommandParameter="Album Artist">
+                                        <!-- Every sortable field, in the same order as the View
+                                             Options list. Checkmarks compare each key against
+                                             PageSortColumn, so a sort chosen from a column header
+                                             shows up here too. -->
+                                        <MenuItem Header="Title" Command="{Binding PageSortCommand}" CommandParameter="Title">
                                             <MenuItem.Icon>
                                                 <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                         IsVisible="{Binding PageSortByAlbumArtist}" />
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Title}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Artist" Command="{Binding PageSortCommand}" CommandParameter="Artist">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Artist}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Album" Command="{Binding PageSortCommand}" CommandParameter="Album">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Album}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Album by Artist" Command="{Binding PageSortCommand}" CommandParameter="Album Artist">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter='Album Artist'}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Genre" Command="{Binding PageSortCommand}" CommandParameter="Genre">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Genre}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Time" Command="{Binding PageSortCommand}" CommandParameter="Time">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Time}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Plays" Command="{Binding PageSortCommand}" CommandParameter="Plays">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Plays}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Favorite" Command="{Binding PageSortCommand}" CommandParameter="IsFavorite">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=IsFavorite}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Rating" Command="{Binding PageSortCommand}" CommandParameter="Rating">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Rating}" />
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="Year" Command="{Binding PageSortCommand}" CommandParameter="Year">
                                             <MenuItem.Icon>
                                                 <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                         IsVisible="{Binding PageSortByYear}" />
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Year}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="BPM" Command="{Binding PageSortCommand}" CommandParameter="Bpm">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Bpm}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Bitrate" Command="{Binding PageSortCommand}" CommandParameter="Bitrate">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Bitrate}" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Sample Rate" Command="{Binding PageSortCommand}" CommandParameter="SampleRate">
+                                            <MenuItem.Icon>
+                                                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=SampleRate}" />
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="Date Added" Command="{Binding PageSortCommand}" CommandParameter="Date Added">
                                             <MenuItem.Icon>
                                                 <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
-                                                         IsVisible="{Binding PageSortByDateAdded}" />
+                                                         IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter='Date Added'}" />
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <Separator />
@@ -369,6 +497,12 @@
                                                          IsVisible="{Binding PageSortDescending}" />
                                             </MenuItem.Icon>
                                         </MenuItem>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Header="Show View Options" Command="{Binding PageViewOptionsCommand}">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource SettingsIcon}" Width="14" Height="14" />
+                                        </MenuItem.Icon>
                                     </MenuItem>
                                 </MenuFlyout>
                             </Button.Flyout>

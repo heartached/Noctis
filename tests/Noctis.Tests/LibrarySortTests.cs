@@ -161,7 +161,7 @@ public class LibrarySortTests
             Alb("Early", "Beta",  2010),
         };
 
-        var result = LibraryAlbumsViewModel.ApplySortMode(albums, "albumartist").ToList();
+        var result = LibraryAlbumsViewModel.ApplySortMode(albums, "albumartist", ascending: true).ToList();
 
         // Case-insensitive artist A→Z, then each artist's releases oldest→newest.
         Assert.Equal(new[] { "Solo", "Early", "Late" }, result.Select(a => a.Name));
@@ -177,7 +177,7 @@ public class LibrarySortTests
             Alb("Newest",  "A", 2024),
         };
 
-        var result = LibraryAlbumsViewModel.ApplySortMode(albums, "year").ToList();
+        var result = LibraryAlbumsViewModel.ApplySortMode(albums, "year", ascending: false).ToList();
 
         Assert.Equal(new[] { "Newest", "Middle", "Unknown" }, result.Select(a => a.Name));
     }
@@ -192,7 +192,7 @@ public class LibrarySortTests
             Alb("Any",   "Alpha", 2020),
         };
 
-        var result = LibraryAlbumsViewModel.ApplySortMode(albums, "year").ToList();
+        var result = LibraryAlbumsViewModel.ApplySortMode(albums, "year", ascending: false).ToList();
 
         Assert.Equal(new[] { "Any", "Apple", "Zed" }, result.Select(a => a.Name));
     }
@@ -207,11 +207,102 @@ public class LibrarySortTests
         };
 
         Assert.Equal(new[] { "Newer", "Older" },
-            LibraryAlbumsViewModel.ApplySortMode(albums, "dateadded").Select(a => a.Name));
+            LibraryAlbumsViewModel.ApplySortMode(albums, "dateadded", ascending: false).Select(a => a.Name));
         Assert.Equal(new[] { "Older", "Newer" },
-            LibraryAlbumsViewModel.ApplySortMode(albums, "mostplayed").Select(a => a.Name));
+            LibraryAlbumsViewModel.ApplySortMode(albums, "mostplayed", ascending: false).Select(a => a.Name));
         // Unrecognized/default mode leaves the incoming order untouched.
         Assert.Equal(new[] { "Older", "Newer" },
-            LibraryAlbumsViewModel.ApplySortMode(albums, "default").Select(a => a.Name));
+            LibraryAlbumsViewModel.ApplySortMode(albums, "default", ascending: true).Select(a => a.Name));
+    }
+
+    // ── Albums: alphabetical sort + direction (issue #33) ──
+
+    [Fact]
+    public void Albums_TitleMode_SortsAlphabeticallyIgnoringCase()
+    {
+        var albums = new List<Album>
+        {
+            Alb("zebra",   "X", 2001),
+            Alb("Apple",   "Y", 2002),
+            Alb("mango",   "Z", 2003),
+        };
+
+        Assert.Equal(new[] { "Apple", "mango", "zebra" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "title", ascending: true).Select(a => a.Name));
+    }
+
+    [Fact]
+    public void Albums_TitleMode_Descending_ReversesTheOrder()
+    {
+        var albums = new List<Album>
+        {
+            Alb("Apple", "Y", 2002),
+            Alb("zebra", "X", 2001),
+            Alb("mango", "Z", 2003),
+        };
+
+        Assert.Equal(new[] { "zebra", "mango", "Apple" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "title", ascending: false).Select(a => a.Name));
+    }
+
+    [Fact]
+    public void Albums_TitleMode_TiesBreakByArtist()
+    {
+        // Same title from two artists — the tie-break stays ascending in both
+        // directions so a reversal doesn't scramble equal-titled releases.
+        var albums = new List<Album>
+        {
+            Alb("Greatest Hits", "Zephyr", 2001),
+            Alb("Greatest Hits", "Alpha",  2002),
+        };
+
+        Assert.Equal(new[] { "Alpha", "Zephyr" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "title", ascending: true).Select(a => a.Artist));
+        Assert.Equal(new[] { "Alpha", "Zephyr" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "title", ascending: false).Select(a => a.Artist));
+    }
+
+    [Fact]
+    public void Albums_EveryMode_HonoursTheDirectionFlag()
+    {
+        var albums = new List<Album>
+        {
+            Alb("Older", "A", 2000, dateAdded: new DateTime(2026, 1, 1), playCount: 9),
+            Alb("Newer", "B", 2001, dateAdded: new DateTime(2026, 6, 1), playCount: 2),
+        };
+
+        // Each mode's natural direction, then its opposite.
+        Assert.Equal(new[] { "Newer", "Older" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "dateadded", ascending: false).Select(a => a.Name));
+        Assert.Equal(new[] { "Older", "Newer" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "dateadded", ascending: true).Select(a => a.Name));
+
+        Assert.Equal(new[] { "Older", "Newer" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "mostplayed", ascending: false).Select(a => a.Name));
+        Assert.Equal(new[] { "Newer", "Older" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "mostplayed", ascending: true).Select(a => a.Name));
+
+        Assert.Equal(new[] { "Newer", "Older" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "year", ascending: false).Select(a => a.Name));
+        Assert.Equal(new[] { "Older", "Newer" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "year", ascending: true).Select(a => a.Name));
+
+        Assert.Equal(new[] { "Older", "Newer" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "albumartist", ascending: true).Select(a => a.Name));
+        Assert.Equal(new[] { "Newer", "Older" },
+            LibraryAlbumsViewModel.ApplySortMode(albums, "albumartist", ascending: false).Select(a => a.Name));
+    }
+
+    [Fact]
+    public void Albums_NaturalDirection_IsDescendingOnlyForMostRecentModes()
+    {
+        // Picking "Year" or "Recently added" means latest first; picking "Title" or
+        // "Album Artist" means A→Z.
+        Assert.True(LibraryAlbumsViewModel.IsDescendingByDefault("dateadded"));
+        Assert.True(LibraryAlbumsViewModel.IsDescendingByDefault("mostplayed"));
+        Assert.True(LibraryAlbumsViewModel.IsDescendingByDefault("year"));
+        Assert.False(LibraryAlbumsViewModel.IsDescendingByDefault("title"));
+        Assert.False(LibraryAlbumsViewModel.IsDescendingByDefault("albumartist"));
+        Assert.False(LibraryAlbumsViewModel.IsDescendingByDefault("default"));
     }
 }
