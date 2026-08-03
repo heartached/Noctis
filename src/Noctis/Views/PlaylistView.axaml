@@ -210,6 +210,24 @@
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
 
+        <!-- Album cell repeating the row above (stamped .repeat-dim by code-behind):
+             dimmed at rest so only album changes catch the eye, but restored under the
+             pointer — it is a link to the album page, and a permanently faded control
+             reads as disabled at the moment you go to click it. -->
+        <Style Selector="Button.album-btn">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.album-btn.repeat-dim">
+            <Setter Property="Opacity" Value="0.4" />
+        </Style>
+        <Style Selector="Border.row-body:pointerover Button.album-btn.repeat-dim">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
         <!-- Floating selection action bar: fades/slides in when rows are Ctrl-selected -->
         <Style Selector="Border#SelectionBar">
             <Setter Property="Opacity" Value="0" />

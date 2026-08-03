@@ -149,8 +149,9 @@ public partial class PlaylistView : UserControl
 
         var albumBtn = descendants.OfType<Button>()
             .FirstOrDefault(b => b.Classes.Contains("album-btn"));
-        if (albumBtn != null)
-            albumBtn.Opacity = sameAsPrevious ? 0.4 : 1.0;
+        // Class, not a local Opacity value: a local set beats every style, so the
+        // :pointerover rule that un-dims the link could never win against it.
+        albumBtn?.Classes.Set("repeat-dim", sameAsPrevious);
 
         // Zebra stripe parity (the row Border paints it now, not the ListBoxItem)
         var rowBody = descendants.OfType<Border>()
