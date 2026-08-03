@@ -389,7 +389,58 @@ public partial class MetadataViewModel : ViewModelBase
 
         if (_multiSelect)
             RebuildRenamePreview();
+
+        CaptureLoadedTagSignatures();
     }
+
+    // What each track's tags looked like when the dialog opened, so Save can tell whether a
+    // file actually needs rewriting. Save used to call WriteTrackMetadata on every album
+    // track unconditionally: saving an animated cover — a separate sidecar that never touches
+    // the audio tags — rewrote every FLAC on the album, and the one the player held open
+    // failed, reporting "Couldn't write tags" for an edit that needed no tag write at all.
+    private readonly Dictionary<Track, TagState> _loadedTagSignatures = new();
+
+    private void CaptureLoadedTagSignatures()
+    {
+        _loadedTagSignatures[_track] = ComputeTagState(_track);
+        foreach (var t in _albumTracks ?? Enumerable.Empty<Track>())
+            _loadedTagSignatures[t] = ComputeTagState(t);
+    }
+
+    /// <summary>
+    /// True when <paramref name="track"/>'s tag-bearing fields differ from what they were when
+    /// the dialog opened. A track with no snapshot is treated as changed, so an unexpected
+    /// path errs towards writing rather than silently dropping an edit.
+    /// </summary>
+    private bool NeedsTagWrite(Track track)
+        => !_loadedTagSignatures.TryGetValue(track, out var loaded) ||
+           loaded != ComputeTagState(track);
+
+    /// <summary>
+    /// Every field <see cref="IMetadataService.WriteTrackMetadata"/> puts in the file, and only
+    /// those. Journal-only state (play count, skip-when-shuffling, start/stop, volume, EQ) is
+    /// deliberately absent: changing it must not trigger a file rewrite. Rating and disliked
+    /// ARE here, because they are written into the tag.
+    ///
+    /// A record rather than a joined string: structural equality needs no separator, so no
+    /// field value can collide with one.
+    /// </summary>
+    private sealed record TagState(
+        string? Title, string? Artist, string? AlbumArtist, string? Album, string? Genre,
+        string? Composer, int TrackNumber, int TrackCount, int DiscNumber, int DiscCount,
+        int Bpm, int Year, string? Lyrics, string? Comment, string? Grouping, string? Copyright,
+        bool IsCompilation, bool ShowComposerInAllViews, bool UseWorkAndMovement,
+        string? WorkName, string? MovementName, int MovementNumber, int MovementCount,
+        int Rating, bool IsDisliked, string ReleaseTypeOverride);
+
+    private static TagState ComputeTagState(Track t) => new(
+        t.Title, t.Artist, t.AlbumArtist, t.Album, t.Genre, t.Composer,
+        t.TrackNumber, t.TrackCount, t.DiscNumber, t.DiscCount, t.Bpm, t.Year,
+        t.Lyrics, t.Comment, t.Grouping, t.Copyright,
+        t.IsCompilation, t.ShowComposerInAllViews, t.UseWorkAndMovement,
+        t.WorkName, t.MovementName, t.MovementNumber, t.MovementCount,
+        t.Rating, t.IsDisliked,
+        t.IsReleaseTypeOverridden ? t.ReleaseType.ToString() : string.Empty);
 
     // ── Search metadata (tag lookup → before/after review) ──────────────────
     // One button matches the track (or every track of an album) via
@@ -1928,9 +1979,13 @@ public partial class MetadataViewModel : ViewModelBase
         // edit then silently vanished on the next rescan.
         var failedWrites = new List<string>();
 
+        // Only files whose tags actually changed. Rewriting the rest is not merely wasted
+        // work: the audio file the player holds open cannot be written at all, so an
+        // unconditional pass made an animated-cover or rating save fail on the playing track
+        // and report an error for an edit that never needed to touch it.
         if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
         {
-            var tagWriteTargets = _albumTracks.ToList();
+            var tagWriteTargets = _albumTracks.Where(NeedsTagWrite).ToList();
             await Task.Run(() =>
             {
                 foreach (var t in tagWriteTargets)
@@ -1938,7 +1993,7 @@ public partial class MetadataViewModel : ViewModelBase
                         lock (failedWrites) failedWrites.Add(Path.GetFileName(t.FilePath));
             });
         }
-        else
+        else if (NeedsTagWrite(_track))
         {
             var ok = await Task.Run(() => _metadata.WriteTrackMetadata(_track));
             if (!ok) failedWrites.Add(Path.GetFileName(_track.FilePath));
