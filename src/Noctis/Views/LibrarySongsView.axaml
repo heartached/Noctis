@@ -154,10 +154,11 @@
                 </Style>
                 <!-- Styles.axaml also carries a compound :selected variant (a row can be both
                      natively :selected — e.g. a plain click before a Ctrl+click on the same
-                     row — and .ctrl-selected at once). Neither the plain :selected neutraliser
-                     above nor the /template/ ContentPresenter one above reaches this exact
-                     compound selector, so it needs its own pair rather than being assumed
-                     covered. -->
+                     row — and .ctrl-selected at once). The neutralisers above already cover
+                     it: Avalonia has no selector specificity, so the plain .ctrl-selected
+                     pair matches such a row too and wins on origin order (view styles apply
+                     after app styles). Kept as belt-and-braces so the compound case is
+                     visibly accounted for. -->
                 <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:selected">
                     <Setter Property="Background" Value="Transparent" />
                 </Style>
