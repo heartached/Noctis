@@ -100,10 +100,17 @@
         <!-- Content area with overlay for empty state -->
         <Grid>
             <!-- Track list -->
+            <!-- Negative left margin pulls the row box 8px past the DockPanel's 16px inset so
+                 it reaches further left, matching the album page. Border.row-body adds a
+                 matching 8px left padding, so row CONTENT lands exactly where it did and the
+                 column headers above (Margin 1,_,9,_) stay over their cells. Moving the
+                 ListBox rather than the Border keeps the box inside the scroll viewport —
+                 a negative margin on the Border alone would be clipped. -->
             <ListBox Classes="track-list"
                      ItemsSource="{Binding FilteredTracks}"
                      SelectionMode="Multiple"
                      AutoScrollToSelectedItem="False"
+                     Margin="-8,0,0,0"
                      Padding="0,0,0,115"
                      x:Name="TrackList">
             <ListBox.Styles>
@@ -169,7 +176,8 @@
                 <!-- Row body: carries stripe, hover, ctrl-select and the now-playing fill on
                      one rectangle. -->
                 <Style Selector="Border.row-body">
-                    <Setter Property="Padding" Value="0,8,8,8" />
+                    <!-- Left 8 cancels the ListBox's -8 margin: box wider, content unmoved. -->
+                    <Setter Property="Padding" Value="8,8,8,8" />
                     <Setter Property="CornerRadius" Value="4" />
                     <Setter Property="Background" Value="Transparent" />
                     <Setter Property="Transitions">
