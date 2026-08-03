@@ -167,8 +167,9 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Right panel: title, meta, description -->
-                <Grid Grid.Column="1" Margin="26,20,26,0" RowDefinitions="Auto,Auto,*,Auto">
+                <!-- Right panel: title, description. Track count / duration / size are
+                     deliberately NOT repeated here — the left fact cards already carry them. -->
+                <Grid Grid.Column="1" Margin="26,20,26,0" RowDefinitions="Auto,*,Auto">
 
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
                         <TextBlock Grid.Column="0"
@@ -216,21 +217,7 @@
                         </Button>
                     </Grid>
 
-                    <TextBlock Grid.Row="1"
-                               FontSize="15"
-                               Opacity="0.6"
-                               FontWeight="SemiBold"
-                               Margin="0,6,0,0">
-                        <TextBlock.Text>
-                            <MultiBinding StringFormat="{}{0} tracks · {1} · {2}">
-                                <Binding Path="TrackCount" />
-                                <Binding Path="TotalDuration" />
-                                <Binding Path="TotalSize" />
-                            </MultiBinding>
-                        </TextBlock.Text>
-                    </TextBlock>
-
-                    <ScrollViewer Grid.Row="2"
+                    <ScrollViewer Grid.Row="1"
                                   Margin="0,16,0,0"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
@@ -254,7 +241,7 @@
                         </Grid>
                     </ScrollViewer>
 
-                    <StackPanel Grid.Row="3"
+                    <StackPanel Grid.Row="2"
                                 Orientation="Horizontal"
                                 HorizontalAlignment="Right"
                                 Spacing="8"
