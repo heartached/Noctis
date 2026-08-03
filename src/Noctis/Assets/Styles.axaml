@@ -762,10 +762,9 @@
     </Style>
 
     <!-- Now-playing row: Apple-Music-style box on the current track
-         (Folders/Songs/Albums/Playlists) — a rounded fill tinted from the playing
-         track's artwork (NowPlayingRowBrush, App.axaml, retinted in place by
-         PlayerViewModel once per artwork change; falls back to the accent) with
-         plain white text instead of the old accent-coloured title.
+         (Folders/Songs/Albums/Playlists) — a rounded fill in the user's accent colour
+         (NowPlayingRowBrush, written by App.SetAccent) with a contrast-picked
+         foreground (NowPlayingRowForegroundBrush, black or white by accent luminance).
          Lives on the row's inner Border (class toggled by Track.IsNowPlaying), so when the
          class is removed the setters revert cleanly and the row returns to normal.
          PlaylistView's row-body carries its own stripe/hover backgrounds at view
@@ -775,13 +774,13 @@
         <Setter Property="CornerRadius" Value="4" />
     </Style>
     <Style Selector="Border.now-playing :is(TextBlock)">
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
     </Style>
     <Style Selector="Border.now-playing PathIcon.row-dots-icon">
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
     </Style>
     <Style Selector="Border.now-playing controls|RatingStars">
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
     </Style>
     <!-- The white style above also matches through the logical tree into popups,
          so a context menu / flyout opened on a now-playing row painted every menu
@@ -793,9 +792,9 @@
     <Style Selector="Border.now-playing MenuItem.danger :is(TextBlock)">
         <Setter Property="Foreground" Value="#E74856" />
     </Style>
-    <!-- Keep the explicit "E" badge glyph white on now-playing rows. -->
+    <!-- Keep the explicit "E" badge glyph on the row foreground, not the page foreground. -->
     <Style Selector="Border.now-playing TextBlock.explicit-badge-text">
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
     </Style>
 
     <!-- Note: ContentPresenter background overrides for track-list items are handled by

@@ -167,7 +167,7 @@
         <Style Selector="ListBoxItem.ctrl-selected Border.row-body">
             <Setter Property="Background" Value="#3FFFFFFF" />
         </Style>
-        <!-- Now-playing: the artwork-tinted box (see Styles.axaml) must be re-applied
+        <!-- Now-playing: the accent-coloured box (see Styles.axaml) must be re-applied
              at view scope because the stripe/hover/ctrl-select styles above live here
              too and would otherwise outrank the app-level fill. Declared after them
              so the box wins on even, hovered and ctrl-selected rows alike. -->
