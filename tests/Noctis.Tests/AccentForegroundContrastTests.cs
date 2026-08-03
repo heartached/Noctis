@@ -23,32 +23,10 @@ public class AccentForegroundContrastTests
 {
     private const string WhiteAccent = "#FFFFFF";
 
-    /// <summary>
-    /// Runs <paramref name="probe"/> with the real accent overlay App.SetAccent builds
-    /// merged onto the headless application, so Fluent templates resolve exactly what
-    /// they resolve in the running app.
-    /// </summary>
-    private static void WithAccent(string hex, Action probe)
-    {
-        var noctisApp = new Noctis.App();
-        noctisApp.SetAccent(hex);
-        var overlay = noctisApp.Resources.MergedDictionaries[^1];
-        // A dictionary can only have one owner; hand it over to the headless app.
-        noctisApp.Resources.MergedDictionaries.Remove(overlay);
-
-        var app = Application.Current!;
-        app.Resources.MergedDictionaries.Add(overlay);
-        try { probe(); }
-        finally { app.Resources.MergedDictionaries.Remove(overlay); }
-    }
-
-    private static Color ColorOf(IBrush? b) =>
-        Assert.IsAssignableFrom<ISolidColorBrush>(b).Color;
-
     [AvaloniaFact]
     public void WhiteAccent_KeepsCheckedControlsReadable()
     {
-        WithAccent(WhiteAccent, () =>
+        AccentTestHarness.WithAccent(WhiteAccent, () =>
         {
             var toggle = new ToggleButton { Content = "Raw" };
             var check = new CheckBox { Content = "Check", IsChecked = true };
@@ -90,7 +68,7 @@ public class AccentForegroundContrastTests
 
     private static void AssertReadable(IBrush? fill, IBrush? foreground, string what)
     {
-        var ratio = ThemeDerivation.ContrastRatio(ColorOf(fill), ColorOf(foreground));
+        var ratio = ThemeDerivation.ContrastRatio(AccentTestHarness.ColorOf(fill), AccentTestHarness.ColorOf(foreground));
         Assert.True(ratio >= 4.5, $"{what}: contrast {ratio:F2}:1 against the accent fill");
     }
 }

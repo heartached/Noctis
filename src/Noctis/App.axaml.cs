@@ -362,6 +362,13 @@ public partial class App : Application
         var light2 = Mix(color, Colors.White, 0.30);
         var light3 = Mix(color, Colors.White, 0.45);
         var accentForeground = GetReadableForeground(color);
+        // Row foreground for the now-playing track box. GetReadableForeground above biases
+        // toward white (flips only at luminance >= 0.6) because it was tuned for small
+        // glyphs — checkbox ticks, radio dots, pill labels — and leaves a pale accent's row
+        // text at roughly 1.7:1. Flip at 0.30 instead: the point where white drops below
+        // 3:1. Deliberately NOT the strict-AA crossover (~0.183), which would put black text
+        // on the stock red and most of the picker — see the spec. Committed floor is 3:1.
+        var nowPlayingRowForeground = Luminance(color) >= 0.30 ? Colors.Black : Colors.White;
         var isLightTheme = RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light;
         // Outline around accent-filled pills. Only meaningful when the accent fill
         // would be indistinguishable from the page background — in practice that's
@@ -402,6 +409,12 @@ public partial class App : Application
             ["AccentTextExactBrush"]               = new SolidColorBrush(accentTextExact),
             ["AccentColorBrushLight1"]             = new SolidColorBrush(light1),
             ["AccentColorBrushDark1"]              = new SolidColorBrush(dark1),
+
+            // Now-playing track row box. Previously retinted at runtime from the current
+            // artwork's vibrant colour, which ignored the user's accent; it now follows the
+            // accent like every other accent-filled surface.
+            ["NowPlayingRowBrush"]           = new SolidColorBrush(color),
+            ["NowPlayingRowForegroundBrush"] = new SolidColorBrush(nowPlayingRowForeground),
             ["ToggleSwitchFillOn"]                 = new SolidColorBrush(color),
             ["ToggleSwitchFillOnPointerOver"]      = new SolidColorBrush(light1),
             ["ToggleSwitchFillOnPressed"]          = new SolidColorBrush(dark1),
