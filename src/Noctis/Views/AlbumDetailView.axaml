@@ -87,6 +87,56 @@
         <Style Selector="Button.row-more-dots:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
+
+        <!-- Row background moves off the ListBoxItem onto the inner row-body Border so the
+             hover box and the now-playing box are one element and cannot drift apart. The
+             ListBoxItem keeps its hit-testing and layout role but paints nothing. Same
+             pattern as PlaylistView. -->
+        <Style Selector="ListBox.track-list ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n)">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem:pointerover">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n):pointerover">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem:selected">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n):selected">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <!-- Row body: carries stripe, hover and the now-playing fill on one rectangle.
+             The stripe uses a descendant selector off the container's :nth-child so this
+             view needs no code-behind "even" stamping (PlaylistView stamps it only because
+             its album run headers live inside the item). -->
+        <Style Selector="Border.row-body">
+            <Setter Property="Padding" Value="0,9,8,9" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.04" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n) Border.row-body">
+            <Setter Property="Background" Value="{DynamicResource TrackListStripeBrush}" />
+        </Style>
+        <Style Selector="Border.row-body:pointerover">
+            <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
+        </Style>
+        <!-- MUST stay last: equal-origin Avalonia styles resolve by declaration order, so
+             this is what makes the box win on striped and hovered rows alike. -->
+        <Style Selector="Border.row-body.now-playing">
+            <Setter Property="Background" Value="{DynamicResource NowPlayingRowBrush}" />
+        </Style>
     </UserControl.Styles>
 
     <Grid>
@@ -473,8 +523,8 @@
             </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="m:Track">
-                    <Border Classes.now-playing="{Binding IsNowPlaying}">
-                    <Grid ColumnDefinitions="32,*,Auto" Margin="0,3" Background="Transparent"
+                    <Border Classes="row-body" Classes.now-playing="{Binding IsNowPlaying}">
+                    <Grid ColumnDefinitions="32,*,Auto" Background="Transparent"
                           helpers:DragFileBehavior.EnableFileDrag="True"
                           Tag="{Binding}">
 
