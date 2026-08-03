@@ -362,14 +362,14 @@ public partial class App : Application
         var light2 = Mix(color, Colors.White, 0.30);
         var light3 = Mix(color, Colors.White, 0.45);
         var accentForeground = GetReadableForeground(color);
-        // Row foreground for the now-playing track box. GetReadableForeground above biases
-        // toward white (flips only at luminance >= 0.6) because it was tuned for small
-        // glyphs — checkbox ticks, radio dots, pill labels — and leaves a pale accent's row
-        // text at roughly 1.7:1. Flip at 0.30 instead: the point where white drops below
-        // 3:1. Deliberately NOT the strict-AA crossover (~0.183), which would put black text
-        // on the stock red and most of the picker — see the spec. Committed floor is 3:1.
-        var nowPlayingRowForeground = Luminance(color) >= 0.30 ? Colors.Black : Colors.White;
         var isLightTheme = RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light;
+        // Row text / EQ bars / icons on the now-playing track box: white on dark themes,
+        // black on light ones. Deliberately theme-driven rather than derived from the
+        // accent's own luminance — flipping per-accent made the row read as mismatched
+        // against the rest of the list, and a solid accent band with constant text is what
+        // the design targets. The trade-off is accepted: a pale accent leaves the text
+        // around 1.7:1, so contrast is NOT guaranteed here.
+        var nowPlayingRowForeground = isLightTheme ? Colors.Black : Colors.White;
         // Outline around accent-filled pills. Only meaningful when the accent fill
         // would be indistinguishable from the page background — in practice that's
         // a white / very-light accent on the Light theme. In every other case the

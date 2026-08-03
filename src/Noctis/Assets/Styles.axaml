@@ -133,7 +133,8 @@
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentTextExactBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="NowPlayingRowBrush" Color="{StaticResource SystemAccentColor}" />
-                    <SolidColorBrush x:Key="NowPlayingRowForegroundBrush" Color="White" />
+                    <!-- Light theme: black row text. App.SetAccent overrides with the same rule. -->
+                    <SolidColorBrush x:Key="NowPlayingRowForegroundBrush" Color="Black" />
 
                     <!-- ToggleSwitch checked fill (#E74856) -->
                     <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#E74856" />
@@ -767,8 +768,8 @@
 
     <!-- Now-playing row: Apple-Music-style box on the current track
          (Folders/Songs/Albums/Playlists) — a rounded fill in the user's accent colour
-         (NowPlayingRowBrush, written by App.SetAccent) with a contrast-picked
-         foreground (NowPlayingRowForegroundBrush, black or white by accent luminance).
+         (NowPlayingRowBrush, written by App.SetAccent) with a theme-driven
+         foreground (NowPlayingRowForegroundBrush: white on dark themes, black on light).
          Lives on the row's inner Border (class toggled by Track.IsNowPlaying), so when the
          class is removed the setters revert cleanly and the row returns to normal.
          PlaylistView's row-body carries its own stripe/hover backgrounds at view

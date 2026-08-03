@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Xunit;
 
 namespace Noctis.Tests;
@@ -10,9 +11,18 @@ namespace Noctis.Tests;
 /// </summary>
 internal static class AccentTestHarness
 {
-    public static void WithAccent(string hex, Action probe)
+    public static void WithAccent(string hex, Action probe) => WithAccent(hex, null, probe);
+
+    /// <summary>
+    /// <paramref name="variant"/> is applied before SetAccent runs, because SetAccent reads
+    /// RequestedThemeVariant to decide theme-dependent entries — the now-playing row
+    /// foreground among them. Pass null to leave the app on its default variant.
+    /// </summary>
+    public static void WithAccent(string hex, ThemeVariant? variant, Action probe)
     {
         var noctisApp = new Noctis.App();
+        if (variant is not null)
+            noctisApp.RequestedThemeVariant = variant;
         noctisApp.SetAccent(hex);
         var overlay = noctisApp.Resources.MergedDictionaries[^1];
         // A dictionary can only have one owner; hand it over to the headless app.
