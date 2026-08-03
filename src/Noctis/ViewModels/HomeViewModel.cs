@@ -246,9 +246,34 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             return tracks.Count >= HomeRowsBuilder.MinRowItems ? tracks : new List<Track>();
         }
 
-        TimeRotationTracks.ReplaceAll(Resolve(timeIds));
-        HeavyRotationTracks.ReplaceAll(Resolve(heavyIds));
-        RediscoveredTracks.ReplaceAll(Resolve(rediscoveredIds));
+        // These rows rebuild on every Home visit (clock + play log move without the
+        // library dirtying), so skip the Reset when the resolved tracks are unchanged —
+        // each Reset re-materializes every container in the row, felt as a stutter on
+        // each visit on slow renderers (issue #31).
+        ReplaceRowIfChanged(TimeRotationTracks, Resolve(timeIds));
+        ReplaceRowIfChanged(HeavyRotationTracks, Resolve(heavyIds));
+        ReplaceRowIfChanged(RediscoveredTracks, Resolve(rediscoveredIds));
+    }
+
+    /// <summary>
+    /// Replaces the row only when membership or order actually changed. Reference
+    /// equality on purpose: a rescan rebuilds Track instances with the same Id but
+    /// fresh metadata, and an Id-based skip would leave the row bound to stale
+    /// objects. Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal static void ReplaceRowIfChanged(BulkObservableCollection<Track> row, IReadOnlyList<Track> next)
+    {
+        if (row.Count == next.Count)
+        {
+            var same = true;
+            for (int i = 0; i < next.Count; i++)
+            {
+                if (!ReferenceEquals(row[i], next[i])) { same = false; break; }
+            }
+            if (same) return;
+        }
+
+        row.ReplaceAll(next);
     }
 
     /// <summary>Plays a track from one of the time-aware rows, queueing the rest of its row.</summary>
