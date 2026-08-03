@@ -28,6 +28,8 @@
                     <SolidColorBrush x:Key="AccentBorderBrush" Color="{StaticResource SystemAccentColorDark1}" />
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentTextExactBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="NowPlayingRowBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="NowPlayingRowForegroundBrush" Color="White" />
 
                     <!-- Custom App Background Colors -->
                     <SolidColorBrush x:Key="AppSidebarBackground" Color="#141414" />
@@ -130,6 +132,8 @@
                     <SolidColorBrush x:Key="AccentBorderBrush" Color="{StaticResource SystemAccentColorDark1}" />
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentTextExactBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="NowPlayingRowBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="NowPlayingRowForegroundBrush" Color="White" />
 
                     <!-- ToggleSwitch checked fill (#E74856) -->
                     <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#E74856" />
@@ -782,10 +786,16 @@
     <Style Selector="Border.now-playing controls|RatingStars">
         <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
     </Style>
-    <!-- The white style above also matches through the logical tree into popups,
-         so a context menu / flyout opened on a now-playing row painted every menu
-         label white. Restore the normal menu foreground (and keep destructive
-         items red) inside any menu content. -->
+    <!-- The row's playing indicator. EqVisualizer.axaml defaults its Foreground to
+         AccentColorBrush, which would be accent-on-accent here; the bars are only ever
+         visible on the now-playing row, so this setter is the only one that renders. -->
+    <Style Selector="Border.now-playing controls|EqVisualizer">
+        <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
+    </Style>
+    <!-- The row-foreground styles above also match through the logical tree into popups,
+         so a context menu / flyout opened on a now-playing row repainted every menu
+         label in the row foreground. Restore the normal menu foreground (and keep
+         destructive items red) inside any menu content. -->
     <Style Selector="Border.now-playing MenuItem :is(TextBlock)">
         <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
     </Style>
@@ -797,9 +807,11 @@
         <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
     </Style>
 
-    <!-- Note: ContentPresenter background overrides for track-list items are handled by
-         TrackListBoxItemTheme (ControlTheme with BasedOn) applied via ItemContainerTheme above.
-         App-level /template/ styles cannot override ControlTheme inner pseudo-class styles. -->
+    <!-- Note: track-list items get their container template from TrackListBoxItemTheme
+         (ItemContainerTheme, set above). That theme declares no BasedOn and carries only a
+         Template setter — see its comment at the top of this file — so it contributes no
+         pseudo-class background setters of its own, and the row background styles above are
+         the only thing painting a track ListBoxItem. -->
 
     <!-- Album grid ListBox items (transparent, no selection highlight, compact, no pointer interaction) -->
     <Style Selector="ListBox:not(.track-list):not(.sidebar) ListBoxItem">

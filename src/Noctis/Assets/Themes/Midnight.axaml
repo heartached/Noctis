@@ -18,6 +18,10 @@
     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush2" Color="#EC5F6A" />
     <SolidColorBrush x:Key="AccentColorBrush" Color="#E74856" />
     <SolidColorBrush x:Key="AccentForegroundBrush" Color="#FFFFFF" />
+    <!-- Now-playing row box. Brand red sits below the 0.30 luminance crossover, so the row
+         text stays white — same call App.SetAccent makes for a saturated accent. -->
+    <SolidColorBrush x:Key="NowPlayingRowBrush" Color="#E74856" />
+    <SolidColorBrush x:Key="NowPlayingRowForegroundBrush" Color="#FFFFFF" />
 
     <!-- Toggle switch fill -->
     <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#E74856" />

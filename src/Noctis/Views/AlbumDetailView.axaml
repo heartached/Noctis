@@ -131,9 +131,10 @@
         </Style>
         <!-- Styles.axaml also carries a compound :selected variant (a row can be both
              natively :selected — e.g. a plain click before a Ctrl+click on the same row —
-             and .ctrl-selected at once). Neither the plain :selected neutraliser above nor
-             the /template/ ContentPresenter one above reaches this exact compound selector,
-             so it needs its own pair rather than being assumed covered. -->
+             and .ctrl-selected at once). The neutralisers above already cover it: Avalonia
+             has no selector specificity, so the plain .ctrl-selected pair matches such a row
+             too and wins on origin order (view styles apply after app styles). Kept as
+             belt-and-braces so the compound case is visibly accounted for. -->
         <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:selected">
             <Setter Property="Background" Value="Transparent" />
         </Style>
@@ -683,14 +684,15 @@
                                HorizontalAlignment="Right"
                                Margin="0,0,10,0"
                                VerticalAlignment="Center">
-                            <!-- Only visible on the now-playing row, which carries the tinted box —
-                                 so the dots are plain white like the rest of the row content. -->
+                            <!-- Only visible on the now-playing row, so the bars take the row
+                                 foreground from Styles.axaml. No local Foreground here: a local
+                                 value beats every style setter and would pin the bars to one
+                                 colour regardless of the accent. -->
                             <controls:EqVisualizer x:Name="RowEq"
                                                     Width="34" Height="22"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Center"
                                                     Margin="0,0,-10,0"
-                                                    Foreground="White"
                                                     IsPlaying="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).IsPlayerPlaying, Mode=OneWay}">
                                 <controls:EqVisualizer.IsVisible>
                                     <MultiBinding Converter="{StaticResource GuidEquals}" Mode="OneWay">

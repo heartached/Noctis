@@ -18,6 +18,10 @@
     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush2" Color="#F0F0F0" />
     <SolidColorBrush x:Key="AccentColorBrush" Color="#E8E8E8" />
     <SolidColorBrush x:Key="AccentForegroundBrush" Color="#000000" />
+    <!-- Now-playing row box. Silver sits well above the 0.30 luminance crossover, so the
+         row text is black — same call App.SetAccent makes for a pale accent. -->
+    <SolidColorBrush x:Key="NowPlayingRowBrush" Color="#E8E8E8" />
+    <SolidColorBrush x:Key="NowPlayingRowForegroundBrush" Color="#000000" />
 
     <!-- Toggle switch fill — silver on, dark off -->
     <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#E8E8E8" />
