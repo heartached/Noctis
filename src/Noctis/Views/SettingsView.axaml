@@ -82,6 +82,31 @@
             <Setter Property="Foreground" Value="#E5534B"/>
             <Setter Property="Opacity" Value="0.9"/>
         </Style>
+        <!-- Server type picker: same white pill outline as the metadata-info-field
+             text boxes beside it. The template-border overrides keep the outline
+             from snapping back to the theme chrome on hover/press/focus. -->
+        <Style Selector="ComboBox.server-pill">
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill:pointerover /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill:pressed /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill:focus /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill:focus-within /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+        </Style>
 
         <!-- Setting card -->
         <Style Selector="Border.setting-card">
@@ -2360,7 +2385,7 @@
                                   MaxWidth="560" HorizontalAlignment="Left" Margin="-2,10,0,0">
                                 <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4" Margin="0,0,0,10">
                                     <TextBlock Classes="server-field-label" Text="SERVER TYPE"/>
-                                    <ComboBox Classes="pill-list"
+                                    <ComboBox Classes="pill-list server-pill"
                                               ItemsSource="{Binding MediaServerTypeOptions}"
                                               SelectedItem="{Binding MediaServerType}"
                                               IsEnabled="{Binding !IsMediaServerBusy}"

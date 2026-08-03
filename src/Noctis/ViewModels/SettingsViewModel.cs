@@ -94,6 +94,7 @@ public partial class SettingsViewModel : ViewModelBase
         // a Connect click, not to persisted state — drop them when navigating tabs so
         // they don't reappear when returning to Integrations.
         ListenBrainzError = "";
+        ClearTransientServerError();
 
         // Play counts change during the session without a LibraryUpdated event,
         // so recompute stats whenever the Statistics tab is opened.
@@ -2501,6 +2502,41 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Media server ──
 
+    private DispatcherTimer? _serverErrorDismissTimer;
+
+    /// <summary>
+    /// Shows a failure on the status line and schedules it to dissolve back to
+    /// "Not connected" after 3 seconds — error nags are tied to the Connect click
+    /// that caused them, not to state, so they must not linger (or survive a tab
+    /// switch, see OnSelectedSettingsTabChanged).
+    /// </summary>
+    private void ShowTransientServerError(string message)
+    {
+        MediaServerStatusText = message;
+        HasMediaServerError = true;
+        if (_serverErrorDismissTimer == null)
+        {
+            _serverErrorDismissTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            _serverErrorDismissTimer.Tick += (_, _) => ClearTransientServerError();
+        }
+        _serverErrorDismissTimer.Stop();
+        _serverErrorDismissTimer.Start();
+    }
+
+    /// <summary>
+    /// Reverts an error status to the idle baseline. Safe to call in any state:
+    /// no-op unless an error is actually showing, and it never overwrites the
+    /// busy/connected status lines. Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal void ClearTransientServerError()
+    {
+        _serverErrorDismissTimer?.Stop();
+        if (!HasMediaServerError) return;
+        HasMediaServerError = false;
+        if (!IsMediaServerConnected && !IsMediaServerBusy)
+            MediaServerStatusText = "Not connected";
+    }
+
     /// <summary>
     /// Maps a picker preset to the protocol client. Jellyfin speaks its own API;
     /// Navidrome, Airsonic, Gonic and "Subsonic (other)" all speak the Subsonic
@@ -2520,14 +2556,12 @@ public partial class SettingsViewModel : ViewModelBase
         var type = MediaServerOptionToSourceType(MediaServerType);
         if (string.IsNullOrWhiteSpace(MediaServerUrl))
         {
-            MediaServerStatusText = "Enter the server address.";
-            HasMediaServerError = true;
+            ShowTransientServerError("Enter the server address.");
             return;
         }
         if (string.IsNullOrWhiteSpace(MediaServerUsername) || string.IsNullOrWhiteSpace(MediaServerPassword))
         {
-            MediaServerStatusText = "Enter the username and password.";
-            HasMediaServerError = true;
+            ShowTransientServerError("Enter the username and password.");
             return;
         }
 
@@ -2540,8 +2574,7 @@ public partial class SettingsViewModel : ViewModelBase
                 type, MediaServerUrl, MediaServerUsername, MediaServerPassword, _mediaServerConnection?.Id);
             if (!result.Success)
             {
-                MediaServerStatusText = result.Message;
-                HasMediaServerError = true;
+                ShowTransientServerError(result.Message);
                 return;
             }
 

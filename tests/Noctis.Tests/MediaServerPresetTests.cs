@@ -67,6 +67,50 @@ public class MediaServerPresetTests
     }
 
     [AvaloniaFact]
+    public async Task ValidationError_ClearsWhenLeavingTheTab()
+    {
+        var vm = new SettingsViewModel(
+            new TestPersistenceService(), new FakeLibraryService(), new NoOpPlayHistoryService(), new FakeMediaServerService());
+        await vm.LoadAsync();
+        vm.SelectedSettingsTab = SettingsViewModel.TabIntegrations;
+
+        vm.MediaServerType = "Navidrome";
+        vm.MediaServerUrl = "";
+        vm.MediaServerUsername = "u";
+        vm.MediaServerPassword = "pw";
+        await vm.ConnectMediaServerCommand.ExecuteAsync(null);
+        Assert.True(vm.HasMediaServerError);
+
+        vm.SelectedSettingsTab = SettingsViewModel.TabGeneral;
+
+        Assert.False(vm.HasMediaServerError);
+        Assert.Equal("Not connected", vm.MediaServerStatusText);
+    }
+
+    [AvaloniaFact]
+    public async Task ClearTransientServerError_LeavesNonErrorStatusAlone()
+    {
+        var server = new FakeMediaServerService();
+        var vm = new SettingsViewModel(
+            new TestPersistenceService(), new FakeLibraryService(), new NoOpPlayHistoryService(), server);
+        await vm.LoadAsync();
+
+        vm.MediaServerType = "Jellyfin";
+        vm.MediaServerUrl = "https://demo.example";
+        vm.MediaServerUsername = "u";
+        vm.MediaServerPassword = "pw";
+        await vm.ConnectMediaServerCommand.ExecuteAsync(null);
+        Assert.True(vm.IsMediaServerConnected);
+
+        // The 3s dismiss tick and tab switches call this in every state — it must
+        // never wipe a healthy "Connected" status line.
+        vm.ClearTransientServerError();
+
+        Assert.True(vm.IsMediaServerConnected);
+        Assert.Equal("Connected", vm.MediaServerStatusText);
+    }
+
+    [AvaloniaFact]
     public async Task StoredFlavor_RestoredOnLoad()
     {
         var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
