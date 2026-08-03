@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -27,6 +28,14 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
     // Accept both spellings, and .m3u8 or .mp4, to survive the next rename.
     private static readonly Regex AnimatedUrlRegex = new(
         "\"video(?:Url)?\"\\s*:\\s*\"(?<u>https?:[^\"]+?\\.(?:m3u8|mp4)[^\"]*)\"",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    // The rendered element that carries the same stream. Apple has already renamed the JSON
+    // key above once, and when it did, everything fell through to the host-only sweep — which
+    // cannot tell a cover loop from a music-video preview. This is precise, so it sits between
+    // the two. Route confirmed by Ben Dodson, who maintains the Apple Music Artwork Finder.
+    private static readonly Regex AmbientVideoRegex = new(
+        "<amp-ambient-video\\b[^>]*\\bsrc=\"(?<u>[^\"]+?\\.m3u8[^\"]*)\"",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly Regex AnimatedUrlFallbackRegex = new(
@@ -106,7 +115,13 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
     {
         try
         {
-            using var resp = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+            // Precautionary, not a reproduced fix: Apple's CDN serves these byte-identically
+            // under the default agent today (checked on every hop). Ben Dodson reports having
+            // seen the videos fail outside Safari, so the browser agent the page fetch already
+            // uses is carried through to the playlists and the media itself.
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.UserAgent.ParseAdd(AppleMusicHtmlUserAgent);
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!resp.IsSuccessStatusCode) return null;
             return await HttpSafety.ReadBytesBoundedAsync(resp.Content, maxBytes, ct);
         }
@@ -132,7 +147,7 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
             if (!resp.IsSuccessStatusCode) return Array.Empty<AnimatedArtworkVariant>();
 
             var html = await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct);
-            var mediaUrls = ExtractAnimatedMediaUrls(html);
+            var mediaUrls = ExtractAnimatedMediaUrls(html, albumViewUrl);
             var variants = new List<AnimatedArtworkVariant>();
 
             foreach (var mediaUrl in mediaUrls)
@@ -435,19 +450,38 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
         }
     }
 
-    internal static IReadOnlyList<string> ExtractAnimatedMediaUrls(string html)
+    internal static IReadOnlyList<string> ExtractAnimatedMediaUrls(string html, string? pageUrl = null)
     {
         var urls = new List<string>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        Uri.TryCreate(pageUrl, UriKind.Absolute, out var pageUri);
 
         void Add(string url)
         {
-            if (IsAppleMediaHost(url) && seen.Add(url))
-                urls.Add(url);
+            // The element's src is markup, so it is HTML-encoded, and it is allowed to be
+            // relative. Apple serves an absolute one today, but a CDN moving to a
+            // protocol-relative "//host/…" is ordinary and would otherwise go silently dark.
+            var decoded = WebUtility.HtmlDecode(CleanUrl(url));
+
+            string? resolved = null;
+            if (IsAbsoluteWebUrl(decoded))
+                resolved = decoded; // verbatim: no Uri round-trip to re-escape it
+            else if (pageUri != null &&
+                     Uri.TryCreate(pageUri, decoded, out var combined) &&
+                     IsAbsoluteWebUrl(combined.ToString()))
+                resolved = combined.ToString();
+
+            if (resolved != null && IsAppleMediaHost(resolved) && seen.Add(resolved))
+                urls.Add(resolved);
         }
 
+        // Both structured passes are precise, so they are merged rather than ranked: the live
+        // page carries the JSON and the element, and dropping either loses a crop.
         foreach (Match m in AnimatedUrlRegex.Matches(html))
-            Add(CleanUrl(m.Groups["u"].Value));
+            Add(m.Groups["u"].Value);
+
+        foreach (Match m in AmbientVideoRegex.Matches(html))
+            Add(m.Groups["u"].Value);
 
         // Only when the structured entries are missing. This net matches any Apple-hosted
         // stream on the page and cannot tell a cover loop from a music-video preview, so it
@@ -457,10 +491,19 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
             return urls;
 
         foreach (Match m in AnimatedUrlFallbackRegex.Matches(html))
-            Add(CleanUrl(m.Value));
+            Add(m.Value);
 
         return urls;
     }
+
+    /// <summary>
+    /// True only for absolute http(s). On Windows a protocol-relative "//host/path" parses as
+    /// an absolute UNC path, i.e. file://host/path — which would sail through the Apple-host
+    /// check below while pointing at something that is not a web URL at all.
+    /// </summary>
+    private static bool IsAbsoluteWebUrl(string url)
+        => Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+           (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
     internal static bool IsAppleMediaHost(string url)
         => url.Contains("mvod.itunes.apple.com", StringComparison.OrdinalIgnoreCase) ||
@@ -563,7 +606,9 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
 
     private async Task<string?> GetTextAsync(string url, CancellationToken ct)
     {
-        using var resp = await _http.GetAsync(url, ct);
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.UserAgent.ParseAdd(AppleMusicHtmlUserAgent);
+        using var resp = await _http.SendAsync(req, ct);
         if (!resp.IsSuccessStatusCode)
             return null;
 

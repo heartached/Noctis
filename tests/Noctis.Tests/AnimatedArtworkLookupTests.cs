@@ -69,6 +69,71 @@ public class AnimatedArtworkLookupTests
         Assert.Contains(SquareUrl, urls);
     }
 
+    // ── the <amp-ambient-video> element ───────────────────────────────────────
+    // Apple has already renamed the JSON key once ("videoUrl" -> "video"), and when that
+    // happened everything fell through to the host-only sweep, which cannot tell a cover loop
+    // from a music-video preview. The rendered element carries the same stream and is precise,
+    // so it sits between the two as a second structured pass. Route confirmed by Ben Dodson,
+    // who maintains the Apple Music Artwork Finder.
+
+    [Fact]
+    public void ReadsTheAmbientVideoElementWithoutTrustingTheHostOnlySweep()
+    {
+        // The JSON is gone, exactly as it would be after another rename. A music-video preview
+        // sits on the same page: the loose sweep would happily offer it as the cover.
+        const string strayPreview =
+            "https://mvod.itunes.apple.com/itunes-assets/HLSVideo999/v4/aa/bb/cc/music-video.m3u8";
+        var html = "<amp-ambient-video class=\"editorial-video\" src=\"" + SquareUrl + "\"></amp-ambient-video>" +
+                   "<video src=\"" + strayPreview + "\"></video>";
+
+        var urls = ITunesArtworkService.ExtractAnimatedMediaUrls(html);
+
+        Assert.Contains(SquareUrl, urls);
+        Assert.DoesNotContain(strayPreview, urls);
+    }
+
+    [Fact]
+    public void DecodesHtmlEntitiesInTheAmbientVideoSource()
+    {
+        // It is markup, so the attribute is HTML-encoded. An &amp; left as-is produces a URL
+        // that 404s.
+        var encoded = SquareUrl + "?a=1&amp;b=2";
+        var html = "<amp-ambient-video src=\"" + encoded + "\"></amp-ambient-video>";
+
+        var urls = ITunesArtworkService.ExtractAnimatedMediaUrls(html);
+
+        Assert.Equal(SquareUrl + "?a=1&b=2", Assert.Single(urls));
+    }
+
+    [Fact]
+    public void ResolvesARelativeAmbientVideoSourceAgainstThePageUrl()
+    {
+        // Apple serves an absolute src today, but a protocol-relative one is a normal thing
+        // for a CDN to switch to, and dropping it would silently kill the feature.
+        const string albumPage = "https://music.apple.com/us/album/legends-never-die/1526575291";
+        var html = "<amp-ambient-video src=\"//mvod.itunes.apple.com/itunes-assets/x/y.m3u8\"></amp-ambient-video>";
+
+        var urls = ITunesArtworkService.ExtractAnimatedMediaUrls(html, albumPage);
+
+        Assert.Equal("https://mvod.itunes.apple.com/itunes-assets/x/y.m3u8", Assert.Single(urls));
+    }
+
+    [Fact]
+    public void StillPrefersTheStructuredJsonWhenBothArePresent()
+    {
+        // The live page carries both. Neither may be dropped, and neither may open the door
+        // to the loose sweep.
+        const string ambientOnly =
+            "https://mvod.itunes.apple.com/itunes-assets/HLSMusic999/v4/zz/ambient.m3u8";
+        var html = CurrentAppleJson +
+                   "<amp-ambient-video src=\"" + ambientOnly + "\"></amp-ambient-video>";
+
+        var urls = ITunesArtworkService.ExtractAnimatedMediaUrls(html);
+
+        Assert.Contains(SquareUrl, urls);
+        Assert.Contains(ambientOnly, urls);
+    }
+
     [Fact]
     public void AcceptsTheAlbumThatWasSearchedFor()
     {
