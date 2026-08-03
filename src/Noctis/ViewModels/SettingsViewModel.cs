@@ -506,7 +506,11 @@ public partial class SettingsViewModel : ViewModelBase
     // state is _mediaServerConnection (token/user id inside), which is what
     // SyncToSettings persists. Credentials follow the ListenBrainz idiom: no
     // autosave, persisted only by the Connect/Disconnect commands.
-    public string[] MediaServerTypeOptions { get; } = { "Jellyfin", "Subsonic (Navidrome, Airsonic…)" };
+    // Named presets rather than a protocol pair: Navidrome/Airsonic/Gonic users
+    // shouldn't have to know they are "a Subsonic". Everything except Jellyfin
+    // speaks the Subsonic protocol underneath (SourceType.Navidrome).
+    public string[] MediaServerTypeOptions { get; } =
+        { "Jellyfin", "Navidrome", "Airsonic", "Gonic", "Subsonic (other)" };
     [ObservableProperty] private string _mediaServerType = "Jellyfin";
     [ObservableProperty] private string _mediaServerUrl = "";
     [ObservableProperty] private string _mediaServerUsername = "";
@@ -514,6 +518,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _isMediaServerConnected;
     [ObservableProperty] private bool _isMediaServerBusy;
     [ObservableProperty] private string _mediaServerStatusText = "Not connected";
+    /// <summary>True while the status line shows a failure — drives the red status styling.</summary>
+    [ObservableProperty] private bool _hasMediaServerError;
 
     /// <summary>The persisted server connection while connected; null otherwise.</summary>
     private SourceConnection? _mediaServerConnection;
@@ -1017,9 +1023,14 @@ public partial class SettingsViewModel : ViewModelBase
             if (serverConnection != null)
             {
                 _mediaServerConnection = serverConnection;
-                MediaServerType = serverConnection.Type == SourceType.Jellyfin
-                    ? MediaServerTypeOptions[0]
-                    : MediaServerTypeOptions[1];
+                // Prefer the stored flavor ("Gonic", "Airsonic", …); connections saved
+                // before flavors existed carry the client's generic protocol name, so
+                // fall back to the protocol's default preset.
+                MediaServerType = MediaServerTypeOptions.Contains(serverConnection.Name)
+                    ? serverConnection.Name
+                    : serverConnection.Type == SourceType.Jellyfin
+                        ? MediaServerTypeOptions[0]
+                        : MediaServerTypeOptions[^1];
                 MediaServerUrl = serverConnection.BaseUriOrPath;
                 MediaServerUsername = serverConnection.Username;
                 // The credential (Subsonic password / Jellyfin token) stays in the
@@ -2490,22 +2501,38 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Media server ──
 
+    /// <summary>
+    /// Maps a picker preset to the protocol client. Jellyfin speaks its own API;
+    /// Navidrome, Airsonic, Gonic and "Subsonic (other)" all speak the Subsonic
+    /// protocol (SourceType.Navidrome internally). Null falls back to Jellyfin to
+    /// mirror the field's default selection.
+    /// Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal static SourceType MediaServerOptionToSourceType(string? option) =>
+        option is null or "Jellyfin" ? SourceType.Jellyfin : SourceType.Navidrome;
+
     /// <summary>Validates the typed server details and, on success, persists the connection.</summary>
     [RelayCommand]
     private async Task ConnectMediaServer()
     {
         if (_mediaServer == null || IsMediaServerBusy) return;
 
-        var type = MediaServerType != null && MediaServerType.StartsWith("Subsonic", StringComparison.Ordinal)
-            ? SourceType.Navidrome
-            : SourceType.Jellyfin;
+        var type = MediaServerOptionToSourceType(MediaServerType);
+        if (string.IsNullOrWhiteSpace(MediaServerUrl))
+        {
+            MediaServerStatusText = "Enter the server address.";
+            HasMediaServerError = true;
+            return;
+        }
         if (string.IsNullOrWhiteSpace(MediaServerUsername) || string.IsNullOrWhiteSpace(MediaServerPassword))
         {
             MediaServerStatusText = "Enter the username and password.";
+            HasMediaServerError = true;
             return;
         }
 
         IsMediaServerBusy = true;
+        HasMediaServerError = false;
         MediaServerStatusText = "Connecting…";
         try
         {
@@ -2514,9 +2541,13 @@ public partial class SettingsViewModel : ViewModelBase
             if (!result.Success)
             {
                 MediaServerStatusText = result.Message;
+                HasMediaServerError = true;
                 return;
             }
 
+            // Keep the picked flavor ("Navidrome", "Gonic", …) rather than the client's
+            // generic protocol name, so the connected summary echoes what the user chose.
+            connection.Name = MediaServerType ?? connection.Name;
             _mediaServerConnection = connection;
             MediaServerUrl = connection.BaseUriOrPath; // normalized by the client
             MediaServerPassword = string.Empty;        // never keep the password in a bound field
@@ -2539,6 +2570,7 @@ public partial class SettingsViewModel : ViewModelBase
         IsMediaServerConnected = false;
         MediaServerPassword = string.Empty;
         MediaServerStatusText = "Not connected";
+        HasMediaServerError = false;
         _mediaServer?.SetActiveConnection(null);
         MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
         await SaveAsync();
@@ -3564,6 +3596,7 @@ public partial class SettingsViewModel : ViewModelBase
             MediaServerPassword = "";
             IsMediaServerConnected = false;
             MediaServerStatusText = "Not connected";
+            HasMediaServerError = false;
             _mediaServer?.SetActiveConnection(null);
             MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
 
