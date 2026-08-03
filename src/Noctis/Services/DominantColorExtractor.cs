@@ -704,29 +704,6 @@ public static class DominantColorExtractor
     }
 
     /// <summary>
-    /// Clamps an artwork-derived color so white row text stays readable on it
-    /// (≈3:1 contrast for the semibold row typography) while keeping the fill
-    /// visible against dark page backgrounds. Saturation is floored only for
-    /// colors that already carry a hue — genuinely grey covers stay grey rather
-    /// than picking up the phantom red that hue 0 would introduce.
-    /// Used for the now-playing row box (Apple-Music-style colored row).
-    /// </summary>
-    public static Color ClampForWhiteText(Color color)
-    {
-        var (h, s, l) = RgbToHsl(color.R, color.G, color.B);
-        if (s >= 0.05)
-            s = Math.Max(s, 0.30);
-        l = Math.Clamp(l, 0.22, 0.55);
-        var result = HslToColor(h, s, l);
-        while (GetRelativeLuminance(result) > 0.30 && l > 0.10)
-        {
-            l -= 0.04;
-            result = HslToColor(h, s, l);
-        }
-        return result;
-    }
-
-    /// <summary>
     /// sRGB relative luminance per WCAG 2.x (0 = black, 1 = white).
     /// Used to decide whether a tint is light enough to need dark foreground text.
     /// </summary>
