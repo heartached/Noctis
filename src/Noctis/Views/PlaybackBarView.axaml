@@ -688,7 +688,8 @@
                             <!-- Artist name. The 200px viewport clips the marquee; the Button
                                  sits inside and wraps only the text, so hover/click are limited
                                  to the artist name itself, not the blank space to its right.
-                                 Clicking opens the full lyrics page (same path as the Lyrics button). -->
+                                 Clicking opens the artist's discography page (same ViewArtist
+                                 path as the queue popup's artist link). -->
                             <Border x:Name="ArtistNameViewport"
                                     Grid.Row="1"
                                     Width="192"
@@ -698,8 +699,9 @@
                                 <Button Classes="artist-link-btn"
                                         Background="Transparent" BorderThickness="0" Padding="0"
                                         Cursor="Hand" HorizontalAlignment="Left"
-                                        Click="OnLyricsButtonClick"
-                                        ToolTip.Tip="Lyrics">
+                                        Command="{Binding ViewArtistCommand}"
+                                        CommandParameter="{Binding CurrentTrack}"
+                                        ToolTip.Tip="View Artist">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Classes="artist-text-hover"
                                                 CornerRadius="2"
