@@ -21,7 +21,8 @@ public static class FuzzyTrackMatcher
     public static IReadOnlyList<MatchResult> Match(
         IReadOnlyList<PlaylistImportEntry> entries,
         IReadOnlyList<Track> library,
-        double threshold = DefaultThreshold)
+        double threshold = DefaultThreshold,
+        CancellationToken ct = default)
     {
         var norm = library
             .Where(t => !string.IsNullOrWhiteSpace(t.Title))
@@ -56,6 +57,10 @@ public static class FuzzyTrackMatcher
         var results = new List<MatchResult>(entries.Count);
         foreach (var e in entries)
         {
+            // Each unmatched entry costs a Levenshtein pass over the library; without
+            // this check a closed import dialog kept burning CPU to completion.
+            ct.ThrowIfCancellationRequested();
+
             if (e.FilePath.Length > 0 && byPath != null)
             {
                 var p = NormalizePath(e.FilePath);
@@ -136,14 +141,16 @@ public static class FuzzyTrackMatcher
         if (a.Length == 0 && b.Length == 0) return 1.0;
         var maxLen = Math.Max(a.Length, b.Length);
         if (maxLen == 0) return 1.0;
+        // Length-based early-out: edit distance is at least the length gap, so if
+        // lengths differ by more than half the longer length the ratio can't clear
+        // our 0.5 prune threshold anyway — skip the O(a×b) pass and its allocations.
+        if (Math.Abs(a.Length - b.Length) * 2 > maxLen) return 0;
         var dist = Levenshtein(a, b);
         return 1.0 - (double)dist / maxLen;
     }
 
     private static int Levenshtein(string a, string b)
     {
-        // Length-based early-out: if lengths differ by more than half the longer length,
-        // the ratio can't clear our prune threshold anyway.
         var n = a.Length;
         var m = b.Length;
         if (n == 0) return m;

@@ -24,7 +24,7 @@ public sealed class PlaylistImportService : IPlaylistImportService
         return Task.Run(() =>
         {
             var parsed = PlaylistImportParser.Parse(filePath);
-            var matches = FuzzyTrackMatcher.Match(parsed.Entries, library);
+            var matches = FuzzyTrackMatcher.Match(parsed.Entries, library, ct: ct);
 
             var matchedIds = new List<Guid>();
             var matchedLabels = new List<string>();

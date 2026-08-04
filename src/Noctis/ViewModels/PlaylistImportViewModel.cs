@@ -15,6 +15,7 @@ public partial class PlaylistImportViewModel : ViewModelBase
 {
     private readonly IPlaylistImportService _service;
     private PlaylistImportPreview? _preview;
+    private CancellationTokenSource? _analyzeCts;
 
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string _statusMessage = "Choose an Exportify CSV or TuneMyMusic JSON export.";
@@ -41,9 +42,13 @@ public partial class PlaylistImportViewModel : ViewModelBase
         HasPreview = false;
         CanCreate = false;
 
+        _analyzeCts?.Cancel();
+        _analyzeCts?.Dispose();
+        _analyzeCts = new CancellationTokenSource();
+
         try
         {
-            var preview = await _service.AnalyzeAsync(path);
+            var preview = await _service.AnalyzeAsync(path, _analyzeCts.Token);
             _preview = preview;
             PlaylistName = preview.SuggestedName;
             MatchedCount = preview.MatchedTrackIds.Count;
@@ -55,6 +60,10 @@ public partial class PlaylistImportViewModel : ViewModelBase
             StatusMessage = HasPreview
                 ? $"{MatchedCount} matched · {MissingCount} missing of {preview.TotalEntries}"
                 : "No tracks found in that file.";
+        }
+        catch (OperationCanceledException)
+        {
+            // Dialog closed mid-analysis; the background match loop stops here.
         }
         catch (Exception ex)
         {
@@ -86,5 +95,9 @@ public partial class PlaylistImportViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void Close() => Closed?.Invoke(this, EventArgs.Empty);
+    private void Close()
+    {
+        _analyzeCts?.Cancel();
+        Closed?.Invoke(this, EventArgs.Empty);
+    }
 }
