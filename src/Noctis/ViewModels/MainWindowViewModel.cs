@@ -1203,6 +1203,15 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        if (ReferenceEquals(CurrentView, _lyricsVm))
+        {
+            // The top bar is hidden on the lyrics page, so this only arms the
+            // sidebar's back chevron — same exit path as the playbar's lyrics toggle
+            // (history pop, or the pre-lyrics section when history is empty).
+            TopBar.ShowBackButton("Back", ToggleLyricsCommand);
+            return;
+        }
+
         if (_navigationHistory.Count > 0 && ShouldShowTopBarBackButton(CurrentView))
         {
             var backButtonText = _navigationHistory.Peek().BackButtonText;
