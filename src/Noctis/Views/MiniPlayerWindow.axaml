@@ -194,7 +194,9 @@
                 </Border.Background>
             </Border>
 
-            <!-- Expand (returns to the main window) -->
+            <!-- Close (returns to the main window). X glyph reuses the shared DismissIcon;
+                 16px matches the app's other close buttons and sits visually level with
+                 the 17px volume glyph across the window. -->
             <Button Classes="mini-transport"
                     Width="32" Height="32"
                     HorizontalAlignment="Left"
@@ -202,8 +204,8 @@
                     Margin="10"
                     ToolTip.Tip="Back to full view"
                     Click="OnCloseClick">
-                <PathIcon Data="{StaticResource ExpandIcon}"
-                          Width="14" Height="14"
+                <PathIcon Data="{StaticResource DismissIcon}"
+                          Width="16" Height="16"
                           Foreground="White"/>
             </Button>
 

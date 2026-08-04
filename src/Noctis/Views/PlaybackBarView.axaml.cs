@@ -9,6 +9,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Noctis.ViewModels;
 using Avalonia.LogicalTree;
 using Noctis.Helpers;
@@ -62,6 +63,18 @@ public partial class PlaybackBarView : UserControl
     private const double VolumeSliderVisualWidth = 84;
     private readonly TranslateTransform _volumeThumbTransform = new();
 
+    // Island edge-resize drag state (persistent bar only; the lyrics-page copy is fixed).
+    // The reference visual is the TopLevel: the bar itself is Center-aligned and
+    // shrink-wraps the island, so its own origin shifts as the width changes.
+    private bool _isResizeDragging;
+    private bool _resizeFromLeftGrip;
+    private bool _resizeWidthChanged;
+    private double _resizeStartX;
+    private double _resizeStartWidth;
+    private Visual? _resizeReference;
+    private Control? _resizeHost;
+    private bool _isWidthCompact;
+
     public PlaybackBarView()
     {
         InitializeComponent();
@@ -92,6 +105,11 @@ public partial class PlaybackBarView : UserControl
         VolumeSlider.PropertyChanged += OnVolumeSliderPropertyChanged;
         VolumeSlider.SizeChanged += (_, _) => UpdateVolumeSliderVisual();
 
+        // Shape follows the ARRANGED width, so a window squeeze (MaxWidth clamping the
+        // island) morphs the layout exactly like a user drag does.
+        IslandBorder.SizeChanged += OnIslandBorderSizeChanged;
+        UpdateResizeGripVisibility();
+
         PropertyChanged += OnPlaybackBarPropertyChanged;
         TrackTitleTextBlock.PropertyChanged += OnTrackTitleTextBlockPropertyChanged;
         TrackTitleViewport.PropertyChanged += OnTrackTitleViewportPropertyChanged;
@@ -107,7 +125,10 @@ public partial class PlaybackBarView : UserControl
     private void OnPlaybackBarPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
         if (e.Property == CompactWhenLyricsPageActiveProperty)
+        {
+            UpdateResizeGripVisibility();
             UpdateIslandWidth();
+        }
 
         // The main-window bar stays mounted and IsVisible while the fullscreen lyrics page
         // is up — only its Opacity goes to 0 — so the 16 ms marquee timer went on mutating
@@ -125,6 +146,18 @@ public partial class PlaybackBarView : UserControl
         ScheduleTrackTitleMarqueeUpdate(resetAnimation: true);
         ScheduleArtistNameMarqueeUpdate(resetAnimation: true);
         DispatcherTimer.RunOnce(RefreshTrackInfoLayout, TimeSpan.FromMilliseconds(10));
+
+        // The resizable (persistent) bar may never be wider than its host: track the
+        // host's size and clamp via MaxWidth, so the stored user width survives a
+        // too-narrow window untouched and comes back when there is room again.
+        if (!CompactWhenLyricsPageActive && _resizeHost == null
+            && this.GetVisualParent() is Control host)
+        {
+            _resizeHost = host;
+            host.SizeChanged += OnResizeHostSizeChanged;
+            UpdateIslandMaxWidth();
+        }
+
         UpdateIslandWidth();
     }
 
@@ -137,6 +170,13 @@ public partial class PlaybackBarView : UserControl
             if (DataContext is PlayerViewModel vm)
                 vm.EndSeek();
         }
+
+        if (_resizeHost != null)
+        {
+            _resizeHost.SizeChanged -= OnResizeHostSizeChanged;
+            _resizeHost = null;
+        }
+        _isResizeDragging = false;
 
         StopTrackTitleMarqueeTimer();
     }
@@ -175,7 +215,8 @@ public partial class PlaybackBarView : UserControl
             ScheduleArtistNameMarqueeUpdate(resetAnimation: true);
         }
 
-        if (e.PropertyName == nameof(PlayerViewModel.IsLyricsPageActive))
+        if (e.PropertyName == nameof(PlayerViewModel.IsLyricsPageActive) ||
+            e.PropertyName == nameof(PlayerViewModel.PlaybackBarIslandWidth))
         {
             UpdateIslandWidth();
         }
@@ -825,6 +866,19 @@ public partial class PlaybackBarView : UserControl
     private const double IslandBaseWidth = 590;
     // Lyrics page hides the center track-info, so the pill only holds transport + right icons.
     private const double IslandLyricsPageWidth = 340;
+
+    // ── User resize (persistent bar only) ──
+    // Shape thresholds derived from the clusters' natural widths as declared in the
+    // XAML: transport 148 + 14 margin = 162; right icons 142 − 16 margin = 126;
+    // track info 36 art + 12 + 192 viewport + 8 + 6 margins = 254; island chrome
+    // 24 padding + 3 border = 27. Full layout therefore needs 569px; with the
+    // viewports narrowed to 120 ("bar-mid") it needs 497px; transport + icons alone
+    // need 315px — 340 is the proven compact layout the lyrics page already uses.
+    private const double IslandFullShapeMinWidth = 570; // below: viewports narrow to 120
+    private const double IslandMidShapeMinWidth = 500;  // below: track info hidden (compact pill)
+    private const double IslandMinUserWidth = IslandLyricsPageWidth;
+    // Breathing room to the host's edges, matching the 8px margins the side panels use.
+    private const double IslandEdgeMargin = 8;
     private static readonly TimeSpan VolumeFlyoutCloseDelay = TimeSpan.FromMilliseconds(140);
     // Matches the slowest entrance/exit transition on VolumeFlyoutContent (Y = 0.18s) so the
     // popup stays alive long enough for the slide-down + fade-out to finish before it unmaps.
@@ -989,14 +1043,170 @@ public partial class PlaybackBarView : UserControl
     }
 
     /// <summary>Sizes the pill for the page it is on. Always an instant write — see the
-    /// note on IslandBorder in the XAML for why the width must never animate.</summary>
+    /// note on IslandBorder in the XAML for why the width must never animate. The
+    /// persistent bar uses the user's stored width (PlayerViewModel, hydrated from
+    /// AppSettings.PlaybackBarWidth); the lyrics-page copy keeps its fixed sizes.</summary>
     private void UpdateIslandWidth()
     {
-        IslandBorder.Width = CompactWhenLyricsPageActive
-                              && _observedPlayerViewModel?.IsLyricsPageActive == true
-            ? IslandLyricsPageWidth
-            : IslandBaseWidth;
+        if (_isResizeDragging) return; // the live drag owns the width until release
+
+        if (CompactWhenLyricsPageActive && _observedPlayerViewModel?.IsLyricsPageActive == true)
+            IslandBorder.Width = IslandLyricsPageWidth;
+        else if (!CompactWhenLyricsPageActive && _observedPlayerViewModel is { } vm)
+            IslandBorder.Width = ClampUserIslandWidth(vm.PlaybackBarIslandWidth);
+        else
+            IslandBorder.Width = IslandBaseWidth;
+
+        // SizeChanged only fires when the arranged size actually changes, so re-apply
+        // here too: a lyrics-page flip must refresh the track-info visibility even
+        // when the width stays put.
+        ApplyIslandShape(IslandBorder.Width);
     }
+
+    /// <summary>Lower bound + garbage guard for a stored width; the upper bound is the
+    /// window, enforced live via MaxWidth (see UpdateIslandMaxWidth).</summary>
+    private static double ClampUserIslandWidth(double width) =>
+        double.IsFinite(width) ? Math.Max(IslandMinUserWidth, width) : IslandBaseWidth;
+
+    /// <summary>Adapts the persistent bar's layout to its width, reusing the same
+    /// hide-the-track-info trick the 340px lyrics state already relies on: full
+    /// layout → "bar-mid" (title/artist viewports narrow to 120) → compact pill
+    /// (track info hidden entirely). Classes only toggle on threshold crossings.</summary>
+    private void ApplyIslandShape(double width)
+    {
+        if (!CompactWhenLyricsPageActive && width > 0)
+        {
+            _isWidthCompact = width < IslandMidShapeMinWidth;
+            var mid = !_isWidthCompact && width < IslandFullShapeMinWidth;
+            if (IslandBorder.Classes.Contains("bar-mid") != mid)
+            {
+                if (mid) IslandBorder.Classes.Add("bar-mid");
+                else IslandBorder.Classes.Remove("bar-mid");
+            }
+        }
+
+        UpdateTrackInfoVisibility();
+    }
+
+    /// <summary>Replaces the old IsVisible="{Binding !IsLyricsPageActive}" on
+    /// TrackInfoPanel: the compact resize shape must hide it too, and a width-driven
+    /// style could never beat that local binding, so both conditions live here.</summary>
+    private void UpdateTrackInfoVisibility()
+    {
+        var visible = _observedPlayerViewModel?.IsLyricsPageActive != true && !_isWidthCompact;
+        if (TrackInfoPanel.IsVisible == visible)
+            return;
+
+        TrackInfoPanel.IsVisible = visible;
+        if (!visible)
+        {
+            // A hidden panel's viewports report zero bounds, which makes the marquee
+            // update bail out early — so stop the ticking here or the 16ms timer would
+            // keep scrolling a collapsed panel. Re-showing re-schedules automatically
+            // via the viewport Bounds-change handlers.
+            ResetTrackTitleMarquee();
+            ResetArtistNameMarquee();
+        }
+    }
+
+    private void OnIslandBorderSizeChanged(object? sender, SizeChangedEventArgs e) =>
+        ApplyIslandShape(e.NewSize.Width);
+
+    private void OnResizeHostSizeChanged(object? sender, SizeChangedEventArgs e) =>
+        UpdateIslandMaxWidth();
+
+    /// <summary>The island may never exceed the host: Width keeps the user's choice,
+    /// MaxWidth does the clamping, so a squeezed window shrinks the bar gracefully and
+    /// growing it back restores the stored width with no state loss.</summary>
+    private void UpdateIslandMaxWidth()
+    {
+        if (_resizeHost == null) return;
+        var available = _resizeHost.Bounds.Width - IslandEdgeMargin * 2;
+        if (available <= 0) return;
+        IslandBorder.MaxWidth = Math.Max(IslandMinUserWidth, available);
+    }
+
+    private void UpdateResizeGripVisibility()
+    {
+        // Grips exist on the persistent bottom bar only; the lyrics-page copy is fixed.
+        var visible = !CompactWhenLyricsPageActive;
+        LeftResizeGrip.IsVisible = visible;
+        RightResizeGrip.IsVisible = visible;
+    }
+
+    private void OnResizeGripPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Border grip) return;
+        if (!e.GetCurrentPoint(grip).Properties.IsLeftButtonPressed) return;
+
+        if (e.ClickCount == 2)
+        {
+            // Double-click a grip: back to the stock width, persisted like a drag.
+            _isResizeDragging = false;
+            IslandBorder.Width = IslandBaseWidth;
+            PersistIslandWidth(IslandBaseWidth);
+            e.Handled = true;
+            return;
+        }
+
+        _resizeReference = TopLevel.GetTopLevel(this);
+        if (_resizeReference == null) return;
+
+        _isResizeDragging = true;
+        _resizeWidthChanged = false;
+        _resizeFromLeftGrip = ReferenceEquals(grip, LeftResizeGrip);
+        _resizeStartX = e.GetPosition(_resizeReference).X;
+        // Start from the ARRANGED width: if MaxWidth is currently clamping a wider
+        // stored value, starting from Width would jump on the first move.
+        _resizeStartWidth = IslandBorder.Bounds.Width > 0 ? IslandBorder.Bounds.Width : IslandBorder.Width;
+        e.Pointer.Capture(grip);
+        e.Handled = true;
+    }
+
+    private void OnResizeGripMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isResizeDragging || _resizeReference == null) return;
+
+        var dx = e.GetPosition(_resizeReference).X - _resizeStartX;
+        // The island stays centred, so both edges move together: pulling one edge out
+        // by dx grows the width by 2*dx — the dragged edge then tracks the cursor.
+        var target = _resizeFromLeftGrip ? _resizeStartWidth - dx * 2 : _resizeStartWidth + dx * 2;
+        var max = double.IsFinite(IslandBorder.MaxWidth)
+            ? Math.Max(IslandMinUserWidth, IslandBorder.MaxWidth)
+            : double.MaxValue;
+        target = Math.Round(Math.Clamp(target, IslandMinUserWidth, max));
+
+        // Whole-pixel writes only: no allocations, no saves, and no layout pass at all
+        // unless the width actually changed.
+        if (Math.Abs(IslandBorder.Width - target) >= 1)
+        {
+            IslandBorder.Width = target;
+            _resizeWidthChanged = true;
+        }
+        e.Handled = true;
+    }
+
+    private void OnResizeGripReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_isResizeDragging) return;
+        _isResizeDragging = false;
+        e.Pointer.Capture(null);
+        if (_resizeWidthChanged) PersistIslandWidth(IslandBorder.Width);
+        e.Handled = true;
+    }
+
+    private void OnResizeGripCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (!_isResizeDragging) return;
+        _isResizeDragging = false;
+        // The width already changed on screen; keep VM + disk consistent with it.
+        if (_resizeWidthChanged) PersistIslandWidth(IslandBorder.Width);
+    }
+
+    /// <summary>Pushes a finished resize into the view model and, through it, into the
+    /// settings save pipeline (drag release, capture loss and double-click reset).</summary>
+    private void PersistIslandWidth(double width) =>
+        _observedPlayerViewModel?.CommitPlaybackBarWidth(width);
 
     private void OnTrackInfoRightClick(object? sender, PointerReleasedEventArgs e)
     {

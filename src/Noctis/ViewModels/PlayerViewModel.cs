@@ -83,6 +83,10 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Opacity of the playback bar's glass fill (0–1). Driven by Settings; default
     /// 0.4 matches the original #66 alpha. Background only — controls/text stay opaque.</summary>
     [ObservableProperty] private double _islandBackgroundOpacity = 0.4;
+    /// <summary>User-resized width of the persistent playback bar island. Hydrated from
+    /// AppSettings.PlaybackBarWidth at startup and updated by the bar's edge-drag; the
+    /// 590 default mirrors both the settings default and the XAML base width.</summary>
+    [ObservableProperty] private double _playbackBarIslandWidth = 590;
     /// <summary>Whether the lyrics page's flowing-light blobs are shown in artwork
     /// background mode (issue #22). Driven by Settings like the marquee flags.</summary>
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
@@ -495,6 +499,16 @@ public partial class PlayerViewModel : ViewModelBase
 
     /// <summary>Sets the SettingsViewModel for per-track EQ and audio overrides.</summary>
     public void SetSettingsViewModel(SettingsViewModel settings) => _settings = settings;
+
+    /// <summary>Commits a finished playback-bar resize (drag release or grip
+    /// double-click reset): updates the live width and persists it through the
+    /// settings pipeline. No-ops the persistence when no settings VM is wired
+    /// (headless tests), leaving the property itself fully usable.</summary>
+    public void CommitPlaybackBarWidth(double width)
+    {
+        PlaybackBarIslandWidth = width;
+        _settings?.SetPlaybackBarWidth(width);
+    }
 
     /// <summary>Sets the play history log used for play/skip event recording.</summary>
     public void SetPlayHistory(IPlayHistoryService playHistory) => _playHistory = playHistory;

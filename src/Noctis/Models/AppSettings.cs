@@ -206,6 +206,12 @@ public class AppSettings
     /// original #66 alpha glass look.</summary>
     public double PlaybackBarBackgroundOpacity { get; set; } = 0.4;
 
+    /// <summary>User-chosen width of the floating playback bar island, set by dragging its
+    /// edges (double-click a grip resets). 590 is the classic full layout; 340 is the
+    /// smallest proven layout (the lyrics-page compact pill). The window clamps the upper
+    /// end live, so only a sanity ceiling is stored.</summary>
+    public double PlaybackBarWidth { get; set; } = 590;
+
     /// <summary>Whether the sidebar expands on hover (with its slide animation). When false the
     /// sidebar stays in the icon-only rail and never expands. Off by default: the rail should
     /// not move unless the user asks it to.</summary>
@@ -387,5 +393,9 @@ public class AppSettings
         ReplayGainPreampDb = Math.Clamp(ReplayGainPreampDb, -12, 12);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        // IsFinite first: Math.Clamp propagates NaN, and a NaN width would wedge the bar.
+        PlaybackBarWidth = double.IsFinite(PlaybackBarWidth)
+            ? Math.Clamp(PlaybackBarWidth, 340, 4096)
+            : 590;
     }
 }

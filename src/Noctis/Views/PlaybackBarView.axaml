@@ -416,6 +416,23 @@
             <Setter Property="Width" Value="12"/>
             <Setter Property="Height" Value="12"/>
         </Style>
+
+        <!-- Track-info viewport widths live here (not as local values) so the mid
+             resize shape can narrow them: a style can never override a local Width.
+             "bar-mid" is toggled on the island by code-behind when the user drags
+             the persistent bar below the full-layout width (see ApplyIslandShape). -->
+        <Style Selector="Border#TrackTitleViewport">
+            <Setter Property="Width" Value="192"/>
+        </Style>
+        <Style Selector="Border#ArtistNameViewport">
+            <Setter Property="Width" Value="192"/>
+        </Style>
+        <Style Selector="Border.island.bar-mid Border#TrackTitleViewport">
+            <Setter Property="Width" Value="120"/>
+        </Style>
+        <Style Selector="Border.island.bar-mid Border#ArtistNameViewport">
+            <Setter Property="Width" Value="120"/>
+        </Style>
     </UserControl.Styles>
 
         <!-- Dynamic Island: Single unified glass pill-shaped container -->
@@ -446,6 +463,11 @@
                  bar is already attached, which played as a visible shrink/settle every
                  time the page opened. -->
 
+            <!-- Panel wrapper: hosts the content grid plus the invisible edge grips the
+                 user drags to resize the persistent bar (see the resize handlers in
+                 code-behind). Grips overlay the pill's rounded ends via the negative
+                 margins that reach back across the island's 12px padding. -->
+            <Panel>
             <Grid HorizontalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/> <!-- Playback controls -->
@@ -559,14 +581,16 @@
 
                 </StackPanel>
 
-                <!-- CENTER: Album Art + Track Info + Seek Bar (right-click opens options) -->
+                <!-- CENTER: Album Art + Track Info + Seek Bar (right-click opens options).
+                     IsVisible is code-managed (UpdateTrackInfoVisibility): hidden on the
+                     lyrics page AND in the compact resize shape — a binding here would
+                     be a local value no width-driven style could ever override. -->
                 <Grid x:Name="TrackInfoPanel"
                       Grid.Column="1"
                       VerticalAlignment="Center"
                       Margin="0,0,6,0"
                       Background="Transparent"
-                      ColumnDefinitions="Auto,*"
-                      IsVisible="{Binding !IsLyricsPageActive}">
+                      ColumnDefinitions="Auto,*">
 
                     <!-- Album art thumbnail (click opens the Mini Player) -->
                     <Border Grid.Column="0"
@@ -619,12 +643,12 @@
 
                             <!-- Track title + explicit badge -->
                             <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6">
-                            <!-- Width + right margin keep the original 200px footprint but pull
-                                 the clip edge 8px inward, so clipped/ellipsized text always has a
-                                 gap before whatever sits to the right. (Shrinking the width alone
-                                 is a no-op: the auto-sized column shrinks with it.) -->
+                            <!-- Width (styled, so the bar-mid resize shape can narrow it) + right
+                                 margin keep the original 200px footprint but pull the clip edge
+                                 8px inward, so clipped/ellipsized text always has a gap before
+                                 whatever sits to the right. (Shrinking the width alone is a
+                                 no-op: the auto-sized column shrinks with it.) -->
                             <Border x:Name="TrackTitleViewport"
-                                    Width="192"
                                     Margin="0,0,8,0"
                                     ClipToBounds="True"
                                     HorizontalAlignment="Left"
@@ -688,7 +712,6 @@
                                  path as the queue popup's artist link). -->
                             <Border x:Name="ArtistNameViewport"
                                     Grid.Row="1"
-                                    Width="192"
                                     Margin="0,0,8,0"
                                     ClipToBounds="True"
                                     HorizontalAlignment="Left">
@@ -1207,6 +1230,36 @@
                 </StackPanel>
 
             </Grid>
+
+            <!-- Edge resize grips (persistent bar only — code-behind shows them when
+                 CompactWhenLyricsPageActive is off). Plain Borders, never Buttons:
+                 they must not join the tab order or eat Space. Drag adjusts the
+                 island width live; double-click resets to the stock width. -->
+            <Border x:Name="LeftResizeGrip"
+                    Width="8"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Stretch"
+                    Margin="-12,0,0,0"
+                    Background="Transparent"
+                    Cursor="SizeWestEast"
+                    IsVisible="False"
+                    PointerPressed="OnResizeGripPressed"
+                    PointerMoved="OnResizeGripMoved"
+                    PointerReleased="OnResizeGripReleased"
+                    PointerCaptureLost="OnResizeGripCaptureLost"/>
+            <Border x:Name="RightResizeGrip"
+                    Width="8"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Stretch"
+                    Margin="0,0,-12,0"
+                    Background="Transparent"
+                    Cursor="SizeWestEast"
+                    IsVisible="False"
+                    PointerPressed="OnResizeGripPressed"
+                    PointerMoved="OnResizeGripMoved"
+                    PointerReleased="OnResizeGripReleased"
+                    PointerCaptureLost="OnResizeGripCaptureLost"/>
+            </Panel>
         </Border>
 
 </UserControl>

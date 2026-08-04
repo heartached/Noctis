@@ -1079,7 +1079,11 @@ public partial class SettingsViewModel : ViewModelBase
             }
 
             // Ensure player gets the persisted startup settings even if no toggle changed.
+            // SetPlayer runs in the MainWindowViewModel constructor — before this load —
+            // so fields without an OnChanged partial (e.g. the playback-bar width) would
+            // otherwise only ever see their defaults. Both applies are idempotent.
             ApplyAudioSettings();
+            ApplyPlayerSettings();
 
             // Apply the persisted theme on startup
             ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
@@ -1307,6 +1311,11 @@ public partial class SettingsViewModel : ViewModelBase
         // SaveAsync, and without this re-apply the on-disk merge above reverted it to
         // the stale stored value — the session's volume never survived a restart.
         if (_volume is int volume) _settings.Volume = volume;
+
+        // Playback-bar width follows the same rule: the bar pushes it straight into
+        // _settings via SetPlaybackBarWidth, so without this re-apply the on-disk
+        // merge above would silently revert every resize on the next save.
+        if (_playbackBarWidth is double barWidth) _settings.PlaybackBarWidth = barWidth;
     }
 
     /// <summary>Returns the loaded settings object.</summary>
@@ -1318,6 +1327,18 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Updates the volume setting in the internal settings object.</summary>
     public void SetVolume(int volume) => _volume = _settings.Volume = volume;
+
+    /// <summary>Last playback-bar width pushed via <see cref="SetPlaybackBarWidth"/>;
+    /// null until the bar pushes one, so saves before that leave the stored value alone.</summary>
+    private double? _playbackBarWidth;
+
+    /// <summary>Persists a user resize of the playback bar (drag release / grip
+    /// double-click reset). Debounced like every other settings write.</summary>
+    public void SetPlaybackBarWidth(double width)
+    {
+        _playbackBarWidth = _settings.PlaybackBarWidth = width;
+        QueueSettingsSave();
+    }
 
     private void ApplyAudioSettings()
     {
@@ -1356,6 +1377,9 @@ public partial class SettingsViewModel : ViewModelBase
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        // Already clamped by AppSettings.ClampToValidRanges on load; a live
+        // SetPlaybackBarWidth writes the same value into _settings first.
+        _player.PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
         _player.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
         _player.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _player.LyricsJoinSplitWords = LyricsJoinSplitWords;
@@ -3579,6 +3603,10 @@ public partial class SettingsViewModel : ViewModelBase
             FfmpegPath = defaultSettings.FfmpegPath;
             ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
             PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;
+            // Playback-bar width: clear the pending session value, or SyncToSettings
+            // would re-persist the pre-reset width over the freshly defaulted file
+            // (the ApplyPlayerSettings call below pushes the default to the bar).
+            _playbackBarWidth = null;
             ProfileName = defaultSettings.ProfileName;
             ProfileUsername = defaultSettings.ProfileUsername;
             ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
@@ -3677,6 +3705,9 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Apply audio settings
             ApplyAudioSettings();
+            // Push the defaulted playback UI settings (incl. the bar width, which has
+            // no OnChanged partial to fire) onto the player.
+            ApplyPlayerSettings();
 
             // Apply theme
             ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
