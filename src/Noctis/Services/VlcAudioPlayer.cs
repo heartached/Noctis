@@ -3748,6 +3748,9 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         var w = _vlcDiagWriter;
         if (w == null) return;
+        // LibVLC quotes the full MRL in many of its lines; stream URLs embed auth
+        // tokens, so scrub query strings before anything lands in the diag file.
+        line = LogRedaction.Scrub(line);
         var ms = (Stopwatch.GetTimestamp() - _vlcDiagStartTicks) * 1000L / Stopwatch.Frequency;
         lock (_vlcDiagLock)
         {

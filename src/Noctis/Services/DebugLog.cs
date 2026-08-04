@@ -44,6 +44,9 @@ public static class DebugLog
 
     public static void Write(string source, string message)
     {
+        // This log leaves the machine via "Copy Logs" — no auth-bearing URLs
+        // (media-server stream tokens) may ever be stored in it.
+        message = LogRedaction.Scrub(message);
         lock (Lock)
         {
             SeedLocked();
