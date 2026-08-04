@@ -1154,6 +1154,12 @@
                 <Setter Property="StrokeDashArray" Value="11,5"/>
                 <Setter Property="StrokeLineCap" Value="Round"/>
                 <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+            </Style>
+            <!-- Animation keyed on [IsVisible=True] (same pattern as LyricsView's
+                 search dots): selector matching ignores visibility, so an ungated
+                 INFINITE clock would tick behind the hidden pill for the whole
+                 app session. -->
+            <Style Selector="Ellipse.loading-spinner[IsVisible=True]">
                 <Style.Animations>
                     <Animation Duration="0:0:0.85" IterationCount="INFINITE" Easing="LinearEasing">
                         <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0"/></KeyFrame>
@@ -1163,7 +1169,11 @@
             </Style>
         </Border.Styles>
         <StackPanel Orientation="Horizontal" Spacing="10">
-            <Ellipse Classes="loading-spinner" VerticalAlignment="Center"/>
+            <!-- Own IsVisible mirrors the pill Border's so the [IsVisible=True]
+                 animation gate can see it (parent visibility alone is invisible
+                 to the selector). -->
+            <Ellipse Classes="loading-spinner" VerticalAlignment="Center"
+                     IsVisible="{Binding IsDropImporting}"/>
             <TextBlock Text="{Binding DropImportStatus}"
                        FontSize="13" FontWeight="SemiBold"
                        Foreground="{DynamicResource IslandForeground}"

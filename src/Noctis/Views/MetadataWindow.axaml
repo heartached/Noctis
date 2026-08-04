@@ -22,6 +22,11 @@
             <Setter Property="StrokeDashArray" Value="11,5"/>
             <Setter Property="StrokeLineCap" Value="Round"/>
             <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+        </Style>
+        <!-- Animation keyed on [IsVisible=True] (same pattern as LyricsView's search
+             dots): selector matching ignores visibility, so an ungated INFINITE
+             clock would keep ticking on every hidden spinner. -->
+        <Style Selector="Ellipse.loading-spinner[IsVisible=True]">
             <Style.Animations>
                 <Animation Duration="0:0:0.85" IterationCount="INFINITE" Easing="LinearEasing">
                     <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0"/></KeyFrame>
@@ -474,8 +479,11 @@
                                     VerticalAlignment="Center"
                                     IsVisible="{Binding IsSaving}">
                             <TextBlock Text="Saving" VerticalAlignment="Center" />
+                            <!-- Own IsVisible mirrors the parent's so the
+                                 [IsVisible=True] animation gate can see it. -->
                             <Ellipse Classes="loading-spinner"
-                                     Stroke="{DynamicResource AccentForegroundBrush}" />
+                                     Stroke="{DynamicResource AccentForegroundBrush}"
+                                     IsVisible="{Binding IsSaving}" />
                         </StackPanel>
                     </Panel>
                 </Button>
@@ -1043,8 +1051,11 @@
                                                     HorizontalAlignment="Center"
                                                     Spacing="8"
                                                     IsVisible="{Binding IsDownloadingArtwork}">
+                                            <!-- Own IsVisible mirrors the parent's so the
+                                                 [IsVisible=True] animation gate can see it. -->
                                             <Ellipse Classes="loading-spinner"
-                                                     VerticalAlignment="Center"/>
+                                                     VerticalAlignment="Center"
+                                                     IsVisible="{Binding IsDownloadingArtwork}"/>
                                             <TextBlock Text="Downloading…"
                                                        FontSize="11"
                                                        Opacity="0.75"
@@ -1320,8 +1331,11 @@
                                                         HorizontalAlignment="Center"
                                                         Spacing="8"
                                                         IsVisible="{Binding IsDownloadingAnimatedCover}">
+                                                <!-- Own IsVisible mirrors the parent's so the
+                                                     [IsVisible=True] animation gate can see it. -->
                                                 <Ellipse Classes="loading-spinner"
-                                                         VerticalAlignment="Center"/>
+                                                         VerticalAlignment="Center"
+                                                         IsVisible="{Binding IsDownloadingAnimatedCover}"/>
                                                 <TextBlock Text="Downloading…"
                                                            FontSize="11"
                                                            Opacity="0.75"
