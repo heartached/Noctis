@@ -112,9 +112,6 @@
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="Cursor" Value="Hand" />
         </Style>
-        <Style Selector="Button.view-opt-footer:pointerover">
-            <Setter Property="RenderTransform" Value="scale(1)" />
-        </Style>
     </Window.Styles>
 
     <!-- Fade/scale open-close animation: same pattern as the description dialogs
@@ -297,7 +294,7 @@
                             BorderThickness="1"
                             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                             Command="{Binding RestoreDefaultsCommand}" />
-                    <Button Classes="view-opt-footer"
+                    <Button Classes="view-opt-footer accent-btn"
                             Content="Done"
                             Background="{DynamicResource AccentColorBrush}"
                             Foreground="{DynamicResource AccentForegroundBrush}"
