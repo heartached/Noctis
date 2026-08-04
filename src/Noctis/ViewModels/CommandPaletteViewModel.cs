@@ -46,10 +46,11 @@ public partial class CommandPaletteViewModel : ViewModelBase
         Refresh();
     }
 
-    // Debounced. Refresh() scans _library.Tracks, .Albums and .Artists in full,
-    // allocating a PaletteItem per match and then sorting — on the dispatcher thread,
-    // synchronously, once per character. On a 50k-track library that is ~50k string
-    // comparisons plus allocations per keystroke, so typing in Ctrl+K stuttered.
+    // Debounced. Refresh() scans _library.Tracks, .Albums and .Artists in full;
+    // that used to run on the dispatcher thread, synchronously, once per character
+    // (~50k string comparisons plus allocations per keystroke on a 50k-track library,
+    // so typing in Ctrl+K stuttered). The scan now runs in Task.Run, but the debounce
+    // still bounds how often it starts.
     // 200ms matches the debounce every other search surface in the app already uses.
     private const int QueryDebounceMs = 200;
     private CancellationTokenSource? _queryDebounceCts;
@@ -130,79 +131,119 @@ public partial class CommandPaletteViewModel : ViewModelBase
         return items;
     }
 
-    private void Refresh()
+    /// <summary>Stale-result guard: only the newest Refresh may touch Results.</summary>
+    private int _refreshGeneration;
+
+    private async void Refresh()
     {
         var query = Query.Trim();
-        Results.Clear();
 
         if (query.Length == 0)
         {
+            // Invalidate any in-flight scan so a stale result can't overwrite this.
+            Interlocked.Increment(ref _refreshGeneration);
+            Results.Clear();
             foreach (var item in _staticItems.Take(MaxResults))
                 Results.Add(item);
             SelectedIndex = Results.Count > 0 ? 0 : -1;
             return;
         }
 
-        var scored = new List<(PaletteItem Item, int Score)>();
-
-        foreach (var item in _staticItems)
+        try
         {
-            var score = MatchScore(item.Title, query);
-            if (score > 0) scored.Add((item, score + 5)); // slight bias to commands
-        }
+            var generation = Interlocked.Increment(ref _refreshGeneration);
 
-        foreach (var track in _library.Tracks)
-        {
-            var score = MatchScore(track.Title, query);
-            if (score <= 0) continue;
-            var t = track;
-            scored.Add((new PaletteItem
+            // Resource lookups must stay on the UI thread; they are constant per
+            // category, so resolve them once per refresh instead of once per match.
+            var songIcon = Icon("SongsIcon");
+            var albumIcon = Icon("AlbumsIcon");
+            var artistIcon = Icon("ArtistsIcon");
+
+            var staticItems = _staticItems;
+            var library = _library;
+
+            // Full-library scan runs off the dispatcher thread; matches are scored as
+            // value tuples (no per-match PaletteItem/closure/subtitle allocations) and
+            // only the winning MaxResults rows are materialized below. .NET 8's
+            // OrderBy+Take is a partial sort, so this never fully sorts the match set.
+            var top = await Task.Run(() =>
             {
-                Title = t.Title,
-                Subtitle = $"{t.ArtistDisplay} · Song",
-                Category = "Song",
-                Icon = Icon("SongsIcon"),
-                Execute = () => _main.Player.ReplaceQueueAndPlay(new List<Track> { t }, 0),
-            }, score));
-        }
+                var scored = new List<(object Entity, string Title, int Score)>();
 
-        foreach (var album in _library.Albums)
-        {
-            var score = MatchScore(album.Name, query);
-            if (score <= 0) continue;
-            var a = album;
-            scored.Add((new PaletteItem
+                foreach (var item in staticItems)
+                {
+                    var score = MatchScore(item.Title, query);
+                    if (score > 0) scored.Add((item, item.Title, score + 5)); // slight bias to commands
+                }
+
+                foreach (var track in library.Tracks)
+                {
+                    var score = MatchScore(track.Title, query);
+                    if (score > 0) scored.Add((track, track.Title, score));
+                }
+
+                foreach (var album in library.Albums)
+                {
+                    var score = MatchScore(album.Name, query);
+                    if (score > 0) scored.Add((album, album.Name, score));
+                }
+
+                foreach (var artist in library.Artists)
+                {
+                    var score = MatchScore(artist.Name, query);
+                    if (score > 0) scored.Add((artist, artist.Name, score));
+                }
+
+                return scored
+                    .OrderByDescending(x => x.Score)
+                    .ThenBy(x => x.Title, StringComparer.OrdinalIgnoreCase)
+                    .Take(MaxResults)
+                    .ToList();
+            });
+
+            if (generation != _refreshGeneration) return;
+
+            Results.Clear();
+            foreach (var (entity, _, _) in top)
             {
-                Title = a.Name,
-                Subtitle = $"{a.Artist} · Album",
-                Category = "Album",
-                Icon = Icon("AlbumsIcon"),
-                Execute = () => _main.OpenAlbumDetail(a),
-            }, score));
-        }
+                var row = entity switch
+                {
+                    PaletteItem item => item,
+                    Track t => new PaletteItem
+                    {
+                        Title = t.Title,
+                        Subtitle = $"{t.ArtistDisplay} · Song",
+                        Category = "Song",
+                        Icon = songIcon,
+                        Execute = () => _main.Player.ReplaceQueueAndPlay(new List<Track> { t }, 0),
+                    },
+                    Album a => new PaletteItem
+                    {
+                        Title = a.Name,
+                        Subtitle = $"{a.Artist} · Album",
+                        Category = "Album",
+                        Icon = albumIcon,
+                        Execute = () => _main.OpenAlbumDetail(a),
+                    },
+                    Artist ar => new PaletteItem
+                    {
+                        Title = ar.Name,
+                        Subtitle = "Artist",
+                        Category = "Artist",
+                        Icon = artistIcon,
+                        Execute = () => _main.OpenArtistByName(ar.Name),
+                    },
+                    _ => null,
+                };
+                if (row != null) Results.Add(row);
+            }
 
-        foreach (var artist in _library.Artists)
+            SelectedIndex = Results.Count > 0 ? 0 : -1;
+        }
+        catch (Exception ex)
         {
-            var score = MatchScore(artist.Name, query);
-            if (score <= 0) continue;
-            var name = artist.Name;
-            scored.Add((new PaletteItem
-            {
-                Title = name,
-                Subtitle = "Artist",
-                Category = "Artist",
-                Icon = Icon("ArtistsIcon"),
-                Execute = () => _main.OpenArtistByName(name),
-            }, score));
+            System.Diagnostics.Debug.WriteLine($"[Palette] Refresh failed: {ex.Message}");
         }
-
-        foreach (var (item, _) in scored
-                     .OrderByDescending(x => x.Score)
-                     .ThenBy(x => x.Item.Title, StringComparer.OrdinalIgnoreCase)
-                     .Take(MaxResults))
-            Results.Add(item);
-
-        SelectedIndex = Results.Count > 0 ? 0 : -1;
     }
 
     /// <summary>
