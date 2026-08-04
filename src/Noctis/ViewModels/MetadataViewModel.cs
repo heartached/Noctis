@@ -2057,7 +2057,7 @@ public partial class MetadataViewModel : ViewModelBase
             if (!string.IsNullOrWhiteSpace(_track.SyncedLyrics))
                 await File.WriteAllTextAsync(lrcPath, _track.SyncedLyrics);
             else if (SyncedLyricsWereRemoved && File.Exists(lrcPath))
-                Helpers.RecycleBin.TryMoveToTrash(lrcPath);
+                await Task.Run(() => Helpers.RecycleBin.TryMoveToTrash(lrcPath));
         }
         catch { /* Best effort — sidecar write is non-fatal */ }
 
@@ -2072,7 +2072,7 @@ public partial class MetadataViewModel : ViewModelBase
             if (!string.IsNullOrWhiteSpace(_track.Lyrics) && (plainChanged || File.Exists(txtPath)))
                 await File.WriteAllTextAsync(txtPath, _track.Lyrics);
             else if (PlainLyricsWereRemoved && File.Exists(txtPath))
-                Helpers.RecycleBin.TryMoveToTrash(txtPath);
+                await Task.Run(() => Helpers.RecycleBin.TryMoveToTrash(txtPath));
         }
         catch { /* Best effort — sidecar write is non-fatal */ }
 
