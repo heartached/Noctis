@@ -265,6 +265,15 @@ public sealed class UpdateService
     }
 
     /// <summary>
+    /// Picks the release that wears the version manager's "Latest" pill: the
+    /// highest-version non-prerelease, matching GitHub's own "Latest" badge
+    /// (which never sits on a pre-release). Returns null when every release is
+    /// a pre-release — GitHub shows no badge then either.
+    /// </summary>
+    internal static ReleaseListItem? PickLatestRelease(IEnumerable<ReleaseListItem> releases) =>
+        releases.Where(r => !r.Info.IsPrerelease).MaxBy(r => r.Version);
+
+    /// <summary>
     /// Pulls the warning text out of a GitHub release body's "[!WARNING]" admonition
     /// (the blockquote lines following the marker), so releases flagged in their notes
     /// — e.g. v1.2.0's startup crash — surface a warning in the version manager

@@ -1266,7 +1266,7 @@
                                     <DataTemplate x:DataType="vm:DevReleaseItem">
                                         <Border Background="#12FFFFFF" CornerRadius="10"
                                                 Padding="12,8" Margin="0,3">
-                                            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+                                            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
                                                 <TextBlock Grid.Column="0"
                                                            Text="{Binding VersionDisplay}"
                                                            FontSize="13" FontWeight="SemiBold"
@@ -1280,14 +1280,22 @@
                                                                Foreground="{DynamicResource AccentForegroundBrush}"/>
                                                 </Border>
                                                 <Border Grid.Column="2"
-                                                        IsVisible="{Binding IsCurrent}"
+                                                        IsVisible="{Binding IsLatest}"
                                                         Background="{DynamicResource AccentColorBrush}" CornerRadius="999"
                                                         Padding="7,2" Margin="8,0,0,0"
                                                         VerticalAlignment="Center">
                                                     <TextBlock Text="Latest" FontSize="10" FontWeight="SemiBold"
                                                                Foreground="{DynamicResource AccentForegroundBrush}"/>
                                                 </Border>
-                                                <TextBlock Grid.Column="3"
+                                                <Border Grid.Column="3"
+                                                        IsVisible="{Binding ShowInstalledBadge}"
+                                                        Background="{DynamicResource AccentColorBrush}" CornerRadius="999"
+                                                        Padding="7,2" Margin="8,0,0,0"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="Installed" FontSize="10" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource AccentForegroundBrush}"/>
+                                                </Border>
+                                                <TextBlock Grid.Column="4"
                                                            IsVisible="{Binding HasWarning}"
                                                            Text="{Binding WarningText}"
                                                            ToolTip.Tip="{Binding WarningText}"
@@ -1298,12 +1306,12 @@
                                                            VerticalAlignment="Center"
                                                            HorizontalAlignment="Left"
                                                            Margin="8,0,0,0"/>
-                                                <TextBlock Grid.Column="4"
+                                                <TextBlock Grid.Column="5"
                                                            Text="{Binding DateDisplay}"
                                                            FontSize="12" Opacity="0.5"
                                                            VerticalAlignment="Center"
                                                            Margin="12,0"/>
-                                                <Button Grid.Column="5"
+                                                <Button Grid.Column="6"
                                                         Classes="pill-action"
                                                         IsVisible="{Binding !IsCurrent}"
                                                         Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).InstallReleaseCommand}"

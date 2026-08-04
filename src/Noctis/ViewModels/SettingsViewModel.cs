@@ -3973,6 +3973,7 @@ public partial class SettingsViewModel : ViewModelBase
             var releases = await _updateService.ListReleasesAsync(cts.Token);
 
             var current = UpdateService.CurrentVersion;
+            var latest = UpdateService.PickLatestRelease(releases);
             _allReleases.Clear();
             foreach (var release in releases)
             {
@@ -3984,6 +3985,7 @@ public partial class SettingsViewModel : ViewModelBase
                     DateDisplay = release.PublishedAt?.ToLocalTime().ToString("MMM d, yyyy") ?? "",
                     IsPrerelease = release.Info.IsPrerelease,
                     IsCurrent = isCurrent,
+                    IsLatest = ReferenceEquals(release, latest),
                     CanInstall = !isCurrent
                                  && UpdateService.SupportsInAppUpdate
                                  && release.Info.InstallerApiUrl is not null,
