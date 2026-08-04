@@ -379,10 +379,15 @@ public partial class MetadataViewModel : ViewModelBase
         _multiSelect = multiSelect;
 
         LoadFromTrack();
-        LoadFileInfo();
-        LoadArtwork();
+        // Cheap path-derived File-tab fields so the window isn't blank while
+        // InitializeAsync loads the rest. Copyright must be seeded before any
+        // Save (SaveInternalAsync writes it back to the track unconditionally).
+        FileName = Path.GetFileName(_track.FilePath);
+        FileLocation = _track.FilePath;
+        FullFilePath = _track.FilePath;
+        FolderName = Path.GetDirectoryName(_track.FilePath) ?? string.Empty;
+        Copyright = _track.Copyright;
         LoadAnimatedCover();
-        LoadAdvancedFields();
 
         if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
             LoadAlbumScopedOverrides();
@@ -391,6 +396,68 @@ public partial class MetadataViewModel : ViewModelBase
             RebuildRenamePreview();
 
         CaptureLoadedTagSignatures();
+    }
+
+    /// <summary>
+    /// Loads everything that opens or decodes files — two TagLib parses (file info,
+    /// advanced tags) and the cached-cover read + decode — off the UI thread. Called
+    /// fire-and-forget after the window is shown; the ctor only sets in-memory state.
+    /// Saving before this completes is safe: advanced-tag writes are gated on
+    /// _originalAdvancedFields != null and artwork writes on _newArtworkData/_artworkRemoved.
+    /// </summary>
+    public async Task InitializeAsync()
+    {
+        var (info, artwork, advanced) = await Task.Run(() =>
+        {
+            var fileInfo = _metadata.ReadFileInfo(_track.FilePath);
+
+            // Multi-select can span albums; don't show one album's art as if shared.
+            Bitmap? artworkBitmap = null;
+            if (!_multiSelect)
+            {
+                var artPath = _persistence.GetArtworkPath(_track.AlbumId);
+
+                // The persisted cache file is the source of truth for "does this album
+                // have a cover in Noctis." If the user removed it, cachedData is null
+                // on purpose. We must not silently fall back to extracting from the
+                // audio file's embedded tag here — every track in the album still has
+                // its own embedded copy, and WriteAlbumArt() during Remove can fail
+                // silently for any one of them (file locked, AV, etc.), causing the
+                // removed cover to come right back. Library scans/imports handle
+                // initial extraction-to-cache; the dialog must not re-do that work.
+                byte[]? cachedData = null;
+                if (File.Exists(artPath))
+                {
+                    try { cachedData = File.ReadAllBytes(artPath); } catch { }
+                }
+
+                if (cachedData != null && cachedData.Length > 0)
+                {
+                    try
+                    {
+                        // Decode at display size — the preview renders at ~240px; a
+                        // full-res `new Bitmap` of a 3000x3000 cover costs ~36 MB.
+                        using var ms = new MemoryStream(cachedData);
+                        artworkBitmap = Bitmap.DecodeToWidth(ms, 512);
+                    }
+                    catch { }
+                }
+            }
+
+            AdvancedTagIO.AdvancedFields? advancedFields = null;
+            if (!_albumScoped)
+            {
+                try { advancedFields = AdvancedTagIO.ReadAll(_track.FilePath); }
+                catch { /* Non-fatal — advanced fields are best-effort */ }
+            }
+
+            return (fileInfo, artworkBitmap, advancedFields);
+        });
+
+        ApplyFileInfo(info);
+        ApplyArtwork(artwork);
+        if (advanced != null)
+            ApplyAdvancedFields(advanced);
     }
 
     // What each track's tags looked like when the dialog opened, so Save can tell whether a
@@ -980,17 +1047,10 @@ public partial class MetadataViewModel : ViewModelBase
         SelectedEqPreset = string.IsNullOrEmpty(_track.EqPreset) ? "None" : _track.EqPreset;
     }
 
-    private void LoadFileInfo()
+    private void ApplyFileInfo(AudioFileInfo? info)
     {
-        var info = _metadata.ReadFileInfo(_track.FilePath);
         if (info == null)
-        {
-            FileName = Path.GetFileName(_track.FilePath);
-            FileLocation = _track.FilePath;
-            FullFilePath = _track.FilePath;
-            FolderName = Path.GetDirectoryName(_track.FilePath) ?? string.Empty;
-            return;
-        }
+            return; // ctor already seeded the path-derived fallback fields
 
         FileName = info.FileName;
         FileFormat = info.FileFormat;
@@ -1007,7 +1067,6 @@ public partial class MetadataViewModel : ViewModelBase
         FileLocation = info.FilePath;
         FullFilePath = info.FilePath;
         FolderName = Path.GetDirectoryName(info.FilePath) ?? string.Empty;
-        Copyright = _track.Copyright;
     }
 
     private static string FormatCodecForFileTab(string codec)
@@ -1023,44 +1082,13 @@ public partial class MetadataViewModel : ViewModelBase
             : normalized;
     }
 
-    private void LoadArtwork()
+    private void ApplyArtwork(Bitmap? artwork)
     {
-        // Multi-select can span albums; don't show one album's art as if shared.
-        if (_multiSelect) { HasArtwork = false; return; }
-
-        var artPath = _persistence.GetArtworkPath(_track.AlbumId);
-
-        byte[]? cachedData = null;
-        if (File.Exists(artPath))
-        {
-            try { cachedData = File.ReadAllBytes(artPath); } catch { }
-        }
-
-        // The persisted cache file is the source of truth for "does this album
-        // have a cover in Noctis." If the user removed it, cachedData is null
-        // on purpose. We must not silently fall back to extracting from the
-        // audio file's embedded tag here — every track in the album still has
-        // its own embedded copy, and WriteAlbumArt() during Remove can fail
-        // silently for any one of them (file locked, AV, etc.), causing the
-        // removed cover to come right back. Library scans/imports handle
-        // initial extraction-to-cache; the dialog must not re-do that work.
-        byte[]? preferredData = cachedData;
-        if (preferredData == null || preferredData.Length == 0)
-        {
-            HasArtwork = false;
-            return;
-        }
-
-        try
-        {
-            using var ms = new MemoryStream(preferredData);
-            ArtworkPreview = new Bitmap(ms);
-            HasArtwork = true;
-        }
-        catch
-        {
-            HasArtwork = false;
-        }
+        if (artwork == null) return;
+        // Don't clobber an artwork add/remove the user made while the load was in flight.
+        if (_newArtworkData != null || _artworkRemoved) return;
+        ArtworkPreview = artwork;
+        HasArtwork = true;
     }
 
     private static byte[]? SelectPreferredArtworkData(byte[]? cachedData, byte[]? extractedData)
@@ -2286,12 +2314,10 @@ public partial class MetadataViewModel : ViewModelBase
 
     // ── Advanced Details ──
 
-    private void LoadAdvancedFields()
+    private void ApplyAdvancedFields(AdvancedTagIO.AdvancedFields fields)
     {
-        if (_albumScoped) return;
         try
         {
-            var fields = AdvancedTagIO.ReadAll(_track.FilePath);
             _originalAdvancedFields = fields;
 
             TitleSort = fields.TitleSort;
