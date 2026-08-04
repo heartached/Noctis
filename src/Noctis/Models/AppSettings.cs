@@ -309,8 +309,9 @@ public class AppSettings
     public bool LyricsShowArtworkBackground { get; set; } = true;
 
     /// <summary>Whether the flowing-light color blobs drift over the artwork background
-    /// on the lyrics page (issue #22). Only applies while the artwork mode is active.</summary>
-    public bool LyricsFlowingLightEnabled { get; set; } = true;
+    /// on the lyrics page (issue #22). Only applies while the artwork mode is active.
+    /// Ships off: animated artwork is the only Appearance extra that defaults on.</summary>
+    public bool LyricsFlowingLightEnabled { get; set; }
 
     /// <summary>Opt-in fullscreen focus — dims everything but the active line and its
     /// closest neighbors while the lyrics page is fullscreen.</summary>
@@ -318,8 +319,8 @@ public class AppSettings
 
     /// <summary>Whether a word split across several timed TTML spans renders as one
     /// unbroken word ("compromise", not "com pro mise" — issue #32). The sweep still
-    /// follows each syllable's own timing. Off restores the pre-1.3.9 spacing.</summary>
-    public bool LyricsJoinSplitWords { get; set; } = true;
+    /// follows each syllable's own timing. Ships off, keeping the authored spacing.</summary>
+    public bool LyricsJoinSplitWords { get; set; }
 
     // ── Lyrics providers ──
 

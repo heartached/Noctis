@@ -80,10 +80,13 @@ public class FreshInstallDefaultsTests
         Assert.Equal("Gray", Fresh.Theme);
         Assert.Equal("Crimson", Fresh.AccentPresetName);
         Assert.Equal("#E74856", Fresh.AccentColorHex);
+        // Animated artwork is the only Appearance extra that ships on; liquid glass,
+        // flowing lyrics, fullscreen focus and join-split-words are all opt-in.
         Assert.True(Fresh.EnableAnimatedCovers);
-        Assert.True(Fresh.LyricsFlowingLightEnabled);
-        // Fullscreen focus is opt-in — the default keeps the full ±9 depth-of-field ramp.
+        Assert.False(Fresh.LiquidGlassEnabled);
+        Assert.False(Fresh.LyricsFlowingLightEnabled);
         Assert.False(Fresh.LyricsFullScreenFocusEnabled);
+        Assert.False(Fresh.LyricsJoinSplitWords);
         Assert.Equal(0.4, Fresh.PlaybackBarBackgroundOpacity);
         Assert.True(Fresh.GaplessPlaybackEnabled);
         // Songs rows ship with album art thumbnails (issue #23); the column chooser

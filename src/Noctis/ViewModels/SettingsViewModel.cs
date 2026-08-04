@@ -221,9 +221,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _miniPlayerTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _miniPlayerAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
-    [ObservableProperty] private bool _lyricsFlowingLightEnabled = true;
+    [ObservableProperty] private bool _lyricsFlowingLightEnabled;
     [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
-    [ObservableProperty] private bool _lyricsJoinSplitWords = true;
+    [ObservableProperty] private bool _lyricsJoinSplitWords;
 
     /// <summary>Minimize hides the main window to the system tray.</summary>
     [ObservableProperty] private bool _minimizeToTray;
