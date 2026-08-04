@@ -44,6 +44,11 @@ internal sealed class AvaloniaLogBridge : ILogSink
 
     private void Forward(LogEventLevel level, string area, object? source, string message)
     {
+        // Errors always land; known-benign binding transients don't reach the
+        // user-facing log at all (they still reach the debugger trace unchanged).
+        if (level == LogEventLevel.Warning && IsKnownBenignBindingTransient(message))
+            return;
+
         var line = source is null
             ? $"{area} {level}: {message}"
             : $"{area} {level}: {message} [{source.GetType().Name}]";
@@ -63,6 +68,29 @@ internal sealed class AvaloniaLogBridge : ILogSink
         if (capNotice)
             DebugLog.Write("UI", $"further Avalonia warnings suppressed after {MaxForwarded} for this session");
     }
+
+    /// <summary>
+    /// Two binding-warning classes are structural noise, not bug trails, and they
+    /// used to fill the session log (and eat the 80-warning cap) at every startup:
+    ///
+    /// 1. View-model-to-view-model cast failures. A hosted sub-view (top bar,
+    ///    playback bar, the pre-warmed lyrics page, queue, mini player) briefly
+    ///    inherits its host's DataContext (MainWindowViewModel) in the instant
+    ///    between joining the tree and its own DataContext="{Binding ...}"
+    ///    resolving; every compiled binding logs one cast failure, then re-resolves
+    ///    against the right view model and works. A genuine model-type mismatch
+    ///    (Track vs Album) is NOT matched and still logs.
+    ///
+    /// 2. Chains failing at a null DataContext — recycled/detached list containers
+    ///    whose $parent[...].DataContext.* bindings evaluate while unparented.
+    ///
+    /// Both re-resolve on their own; neither has ever been actionable in a user
+    /// report. Everything still reaches the debugger's trace sink unchanged.
+    /// </summary>
+    internal static bool IsKnownBenignBindingTransient(string message)
+        => (message.Contains("Unable to cast object of type 'Noctis.ViewModels.", StringComparison.Ordinal)
+            && message.Contains("to type 'Noctis.ViewModels.", StringComparison.Ordinal))
+           || message.Contains("at DataContext: Value is null", StringComparison.Ordinal);
 
     /// <summary>
     /// Fills an Avalonia message template's {Placeholder} slots positionally.
