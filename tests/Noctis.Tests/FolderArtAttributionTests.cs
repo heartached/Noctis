@@ -15,6 +15,10 @@ namespace Noctis.Tests;
 /// the artwork of the track that was playing onto the newly dropped file.
 /// </para>
 /// </summary>
+// Shares a collection with EmbeddedArtworkBackfillTests: both flip the
+// MetadataService.UseEmbeddedArtwork static, which must not bleed into the
+// other class mid-run (xUnit parallelizes across collections, not within).
+[Collection("MetadataServiceStatics")]
 public class FolderArtAttributionTests : IDisposable
 {
     private readonly string _dir =
@@ -90,6 +94,17 @@ public class FolderArtAttributionTests : IDisposable
         Assert.Equal(CoverBytes, new MetadataService().ExtractAlbumArt(track));
     }
 
+    private static void AttachEmbeddedArt(string path)
+    {
+        using var f = TagLib.File.Create(path);
+        f.Tag.Pictures = new TagLib.IPicture[]
+        {
+            new TagLib.Picture(new TagLib.ByteVector(EmbeddedBytes))
+                { Type = TagLib.PictureType.FrontCover, MimeType = "image/jpeg" }
+        };
+        f.Save();
+    }
+
     [Fact]
     public void ExtractAlbumArt_UntaggedFileWithEmbeddedArt_StillReturnsTheEmbeddedArt()
     {
@@ -97,16 +112,55 @@ public class FolderArtAttributionTests : IDisposable
         // irrelevant — only the folder-level guess is attribution-sensitive.
         WriteFolderCover();
         var path = CreateWav("embedded.wav", album: null);
-        using (var f = TagLib.File.Create(path))
-        {
-            f.Tag.Pictures = new TagLib.IPicture[]
-            {
-                new TagLib.Picture(new TagLib.ByteVector(EmbeddedBytes))
-                    { Type = TagLib.PictureType.FrontCover, MimeType = "image/jpeg" }
-            };
-            f.Save();
-        }
+        AttachEmbeddedArt(path);
 
         Assert.Equal(EmbeddedBytes, new MetadataService().ExtractAlbumArt(path));
+    }
+
+    [Fact]
+    public void ExtractAlbumArt_EmbeddedArtworkDisabled_UsesFolderCoverInstead()
+    {
+        // "Use Embedded Artwork" off must not blind the folder-cover fallback —
+        // it only removes the tag picture from consideration.
+        WriteFolderCover();
+        var path = CreateWav("toggled.wav", album: "Real Album");
+        AttachEmbeddedArt(path);
+
+        MetadataService.UseEmbeddedArtwork = false;
+        try
+        {
+            Assert.Equal(CoverBytes, new MetadataService().ExtractAlbumArt(path));
+        }
+        finally
+        {
+            MetadataService.UseEmbeddedArtwork = true;
+        }
+
+        // Back on, the tag picture wins again (embedded has priority over folder).
+        Assert.Equal(EmbeddedBytes, new MetadataService().ExtractAlbumArt(path));
+    }
+
+    [Fact]
+    public void ReadTrackMetadata_EmbeddedArtworkDisabled_SuppressesInlineArt()
+    {
+        // The scan caches each album's first embedded cover straight from the parse;
+        // the toggle must silence that inline channel too, not just ExtractAlbumArt.
+        var path = CreateWav("inline.wav", album: "Real Album");
+        AttachEmbeddedArt(path);
+
+        MetadataService.UseEmbeddedArtwork = false;
+        try
+        {
+            var track = new MetadataService().ReadTrackMetadata(path, out var art);
+            Assert.NotNull(track);
+            Assert.Null(art);
+        }
+        finally
+        {
+            MetadataService.UseEmbeddedArtwork = true;
+        }
+
+        Assert.NotNull(new MetadataService().ReadTrackMetadata(path, out var artOn));
+        Assert.Equal(EmbeddedBytes, artOn);
     }
 }

@@ -2797,6 +2797,22 @@
                 </Grid>
             </Border>
 
+            <!-- Embedded tag artwork (Library group) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Use Embedded Artwork" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Use artwork embedded in file tags for album covers."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding UseEmbeddedArtwork}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Snoozed tracks (hidden from shuffle + radio) -->
             <Border Classes="setting-card">
                 <StackPanel Spacing="12">

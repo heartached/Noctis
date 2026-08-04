@@ -198,7 +198,7 @@ public class MetadataService : IMetadataService
 
             // Pull the embedded cover from the already-parsed tag (no extra I/O) so a
             // scan can cache album art inline instead of re-opening every file later.
-            embeddedArt = SelectBestEmbeddedPicture(file.Tag.Pictures);
+            embeddedArt = UseEmbeddedArtwork ? SelectBestEmbeddedPicture(file.Tag.Pictures) : null;
 
             return track;
         }
@@ -257,15 +257,18 @@ public class MetadataService : IMetadataService
 
     public byte[]? ExtractAlbumArt(string filePath)
     {
-        // 1. Try embedded artwork first (most reliable).
+        // 1. Try embedded artwork first (most reliable), unless disabled in Settings.
         // Prefer FrontCover if present; within each bucket pick largest payload.
         var namesAnAlbum = false;
         try
         {
             using var file = TagLib.File.Create(filePath);
-            var bestEmbedded = SelectBestEmbeddedPicture(file.Tag.Pictures);
-            if (bestEmbedded != null)
-                return bestEmbedded;
+            if (UseEmbeddedArtwork)
+            {
+                var bestEmbedded = SelectBestEmbeddedPicture(file.Tag.Pictures);
+                if (bestEmbedded != null)
+                    return bestEmbedded;
+            }
             namesAnAlbum = Track.IsRealAlbumName(file.Tag.Album);
         }
         catch
@@ -962,6 +965,14 @@ public class MetadataService : IMetadataService
     /// kept current by SettingsViewModel when the user flips the switch.
     /// </summary>
     internal static volatile bool MergeFeaturedFromTitles = true;
+
+    /// <summary>
+    /// Mirrors <see cref="Models.AppSettings.UseEmbeddedArtwork"/> so every artwork
+    /// extraction path (scan, import, backfill, externally opened files) can honor the
+    /// toggle without threading settings through every call site. Set on startup by
+    /// LibraryService and kept current by SettingsViewModel when the user flips it.
+    /// </summary>
+    internal static volatile bool UseEmbeddedArtwork = true;
 
     /// <summary>
     /// If the title contains "feat."/"ft." artists not already present in the artist field,

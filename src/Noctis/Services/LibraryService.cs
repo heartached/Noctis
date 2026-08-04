@@ -112,6 +112,9 @@ public class LibraryService : ILibraryService
     private async Task ScanCoreAsync(IEnumerable<string> folders, CancellationToken ct)
     {
         var settings = await _persistence.LoadSettingsAsync();
+        // Refresh the artwork-toggle mirror from the persisted settings so even a
+        // scan that starts before SettingsViewModel finishes loading honors it.
+        MetadataService.UseEmbeddedArtwork = settings.UseEmbeddedArtwork;
         var includeRoots = BuildIncludeRoots(folders, settings).ToList();
         var excludedRoots = settings.FolderRules
             .Where(r => r.Enabled && !r.Include && !string.IsNullOrWhiteSpace(r.Path))
@@ -487,6 +490,15 @@ public class LibraryService : ILibraryService
                     ["finalTrackCount"] = originalTrackCount.ToString()
                 }
             }, ct);
+
+            // A no-change scan used to return without ever looking at artwork, so an
+            // album whose cover was never cached (interrupted first scan, a file or
+            // network mount that was unreadable during extraction) kept its
+            // placeholder forever — unchanged files are skipped by mtime above, and
+            // this fast path skipped the post-scan extraction pass entirely. Heal
+            // those albums here; it costs one existence probe per album when there
+            // is nothing to do.
+            await BackfillMissingArtworkAsync(ct);
             return;
         }
 
@@ -610,15 +622,20 @@ public class LibraryService : ILibraryService
     /// groups are complete here (post-scan) and the cover is taken from each album's
     /// lowest disc/track representative. Static art and user-attached animated
     /// covers both surface through the LibraryUpdated notifications below.
+    /// Albums that already have a cached cover cost one existence probe and no file
+    /// reads. Returns the number of albums whose cover was extracted and cached.
     /// </summary>
-    private async Task ExtractArtworkProgressivelyAsync(ConcurrentBag<Track> scanned, CancellationToken ct)
+    private async Task<int> ExtractArtworkProgressivelyAsync(IReadOnlyCollection<Track> scanned, CancellationToken ct)
     {
         var artGroups = scanned
             .Where(t => t.SourceType == SourceType.Local)
             .GroupBy(t => t.AlbumId)
+            // SaveArtwork refuses the shared "Unknown Album" bucket, so probing its
+            // representative would re-read the same file on every pass for nothing.
+            .Where(g => g.Key != Track.UnknownAlbumBucketId)
             .Where(g => !File.Exists(_persistence.GetArtworkPath(g.Key)))
             .ToList();
-        if (artGroups.Count == 0) return;
+        if (artGroups.Count == 0) return 0;
 
         // Publish loop: while art is extracted, periodically rebuild the indexes
         // (so newly saved covers attach to their albums) and notify the views.
@@ -640,6 +657,7 @@ public class LibraryService : ILibraryService
         }
         var publish = PublishLoopAsync();
 
+        var extracted = 0;
         try
         {
             await Task.Run(() =>
@@ -652,8 +670,11 @@ public class LibraryService : ILibraryService
                         var rep = Album.SelectArtworkRepresentative(g.ToList());
                         if (rep == null) return;
                         var artBytes = _metadata.ExtractAlbumArt(rep.FilePath);
-                        if (artBytes != null)
+                        if (artBytes is { Length: > 0 })
+                        {
                             _persistence.SaveArtwork(g.Key, artBytes);
+                            Interlocked.Increment(ref extracted);
+                        }
                     });
             }, ct);
         }
@@ -661,6 +682,44 @@ public class LibraryService : ILibraryService
         {
             pubCts.Cancel();
             try { await publish.ConfigureAwait(false); } catch { /* publisher already stopping */ }
+        }
+        return extracted;
+    }
+
+    // Single-flight guard for BackfillMissingArtworkAsync: the startup heal, a
+    // no-change scan and a settings-toggle flip can all request one concurrently,
+    // and two passes at once would just read the same files twice.
+    private int _artworkBackfillActive;
+
+    /// <inheritdoc />
+    public async Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default)
+    {
+        if (Interlocked.CompareExchange(ref _artworkBackfillActive, 1, 0) != 0)
+            return 0;
+        try
+        {
+            var tracks = _tracks;
+            if (tracks.Count == 0) return 0;
+
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+            var extracted = await ExtractArtworkProgressivelyAsync(tracks, linked.Token);
+            if (extracted > 0 && !linked.Token.IsCancellationRequested)
+            {
+                // Persist the rebuilt indexes: the launch fast path restores each
+                // album's ArtworkPath straight from the index cache without checking
+                // disk, so an unpersisted heal would look lost again on next start.
+                await RebuildIndexesAsync();
+                LibraryUpdated?.Invoke(this, EventArgs.Empty);
+            }
+            return extracted;
+        }
+        catch (OperationCanceledException)
+        {
+            return 0;
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _artworkBackfillActive, 0);
         }
     }
 
@@ -1099,6 +1158,13 @@ public class LibraryService : ILibraryService
                         await _sqliteIndex.UpsertTracksAsync(_tracks);
                         LibraryUpdated?.Invoke(this, EventArgs.Empty);
                     }
+
+                    // Heal albums whose cover was never cached. Scans only extract
+                    // art for new/changed files plus a one-shot post-scan pass, so
+                    // any interruption or unreadable file left an album artless for
+                    // good — rescans skip unchanged files by mtime and never retry.
+                    // Cheap when every album already has art (one probe per album).
+                    await BackfillMissingArtworkAsync(_shutdownCts.Token);
                 }
                 catch (Exception ex)
                 {
@@ -1591,6 +1657,7 @@ public class LibraryService : ILibraryService
         // Runs once per startup before any scan or migration touches metadata, so the
         // static enrichment toggle reflects the persisted setting from the first read.
         MetadataService.MergeFeaturedFromTitles = settings.MergeFeaturedFromTitles;
+        MetadataService.UseEmbeddedArtwork = settings.UseEmbeddedArtwork;
 
         if (settings.MetadataSchemaVersion >= CurrentMetadataSchemaVersion)
             return false;

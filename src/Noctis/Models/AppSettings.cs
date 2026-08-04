@@ -59,6 +59,12 @@ public class AppSettings
     public bool WatchFoldersEnabled { get; set; } = true;
 
     /// <summary>
+    /// Whether album covers may be read from the artwork embedded in each file's
+    /// tags (ID3 APIC / FLAC picture / MP4 covr). Off = folder images only.
+    /// </summary>
+    public bool UseEmbeddedArtwork { get; set; } = true;
+
+    /// <summary>
     /// Folder/filename template for the auto-organize tool. Tokens:
     /// {AlbumArtist} {Artist} {Album} {Title} {TrackNo} {DiscNo} {Year} {Genre}.
     /// </summary>

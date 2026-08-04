@@ -542,6 +542,8 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private bool _watchFoldersEnabled = true;
 
+    [ObservableProperty] private bool _useEmbeddedArtwork = true;
+
     [ObservableProperty] private string _organizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
     [ObservableProperty] private string _organizeTargetRoot = string.Empty;
 
@@ -898,6 +900,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             ScanOnStartup = _settings.ScanOnStartup;
             WatchFoldersEnabled = _settings.WatchFoldersEnabled;
+            UseEmbeddedArtwork = _settings.UseEmbeddedArtwork;
             OrganizePattern = _settings.OrganizePattern;
             OrganizeTargetRoot = _settings.OrganizeTargetRoot;
             IncludePrereleaseUpdates = _settings.IncludePrereleaseUpdates;
@@ -1195,6 +1198,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         _settings.ScanOnStartup = ScanOnStartup;
         _settings.WatchFoldersEnabled = WatchFoldersEnabled;
+        _settings.UseEmbeddedArtwork = UseEmbeddedArtwork;
         _settings.OrganizePattern = OrganizePattern;
         _settings.OrganizeTargetRoot = OrganizeTargetRoot;
         // The change handlers write these straight into _settings, but SaveAsync
@@ -1849,6 +1853,19 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
         // Start/stop the filesystem watchers to match the new preference.
         App.Services?.GetService<ILibraryWatcherService>()?.Refresh();
+    }
+
+    partial void OnUseEmbeddedArtworkChanged(bool value)
+    {
+        // Keep the extractor's static mirror current even during settings load, so
+        // the first scan after startup honors a persisted "off" without a toggle flip.
+        Services.MetadataService.UseEmbeddedArtwork = value;
+        if (_suspendSettingPersistence) return;
+        _settings.UseEmbeddedArtwork = value;
+        _ = SaveAsync();
+        // Turning it on can immediately heal albums that only carry tag art; turning
+        // it off keeps covers already cached, matching the cache's fill-once design.
+        if (value) _ = _library.BackfillMissingArtworkAsync();
     }
 
     partial void OnIncludePrereleaseUpdatesChanged(bool value)
@@ -3539,6 +3556,7 @@ public partial class SettingsViewModel : ViewModelBase
             // Preferences
             ScanOnStartup = true;
             WatchFoldersEnabled = true;
+            UseEmbeddedArtwork = defaultSettings.UseEmbeddedArtwork;
             OrganizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
             OrganizeTargetRoot = string.Empty;
             IncludePrereleaseUpdates = false;
