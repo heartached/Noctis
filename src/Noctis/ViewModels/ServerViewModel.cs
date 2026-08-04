@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.MediaServer;
@@ -22,6 +23,26 @@ public partial class ServerAlbumTileViewModel : ObservableObject
 }
 
 /// <summary>
+/// A row of up to 5 server album tiles: the grid's outer ListBox virtualizes
+/// rows while each row lays its tiles out in a non-virtualizing UniformGrid
+/// (same pattern as the local Albums page).
+/// </summary>
+public class ServerAlbumRow
+{
+    public List<ServerAlbumTileViewModel> Tiles { get; init; } = new();
+}
+
+/// <summary>
+/// Sentinel last item of the album-row list: hosts the status line and the
+/// load-more button inside the virtualized list so they keep scrolling with
+/// the grid content.
+/// </summary>
+public class ServerGridFooter
+{
+    public static readonly ServerGridFooter Instance = new();
+}
+
+/// <summary>
 /// The "Server" section: browse the connected media server's albums, open an
 /// album's track list, and search server-side — all on demand, nothing enters
 /// the local library. Tracks play through the regular queue (their FilePath is
@@ -30,6 +51,7 @@ public partial class ServerAlbumTileViewModel : ObservableObject
 public partial class ServerViewModel : ViewModelBase, ISearchable
 {
     private const int AlbumPageSize = 60;
+    private const int AlbumGridColumns = 5;
 
     private readonly IMediaServerService _mediaServer;
     private readonly PlayerViewModel _player;
@@ -41,6 +63,13 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
     private int _openAlbumGeneration;
 
     public ObservableCollection<ServerAlbumTileViewModel> Albums { get; } = new();
+
+    /// <summary>
+    /// <see cref="Albums"/> chunked into <see cref="ServerAlbumRow"/>s (plus the
+    /// trailing <see cref="ServerGridFooter"/>) for the virtualized grid ListBox.
+    /// </summary>
+    public BulkObservableCollection<object> AlbumRows { get; } = new();
+
     public ObservableCollection<ServerAlbumTileViewModel> SearchAlbums { get; } = new();
     public ObservableCollection<Track> SearchTracks { get; } = new();
     public ObservableCollection<Track> AlbumTracks { get; } = new();
@@ -148,6 +177,7 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
         _needsReload = false;
         _albumOffset = 0;
         Albums.Clear();
+        RebuildAlbumRows();
         HasMoreAlbums = false;
         StatusText = "";
         IsLoading = true;
@@ -206,6 +236,27 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
             Albums.Add(tile);
             _ = LoadTileArtworkAsync(tile, ct);
         }
+        RebuildAlbumRows();
+    }
+
+    /// <summary>
+    /// Re-chunks <see cref="Albums"/> into fixed-column rows (one Reset
+    /// notification) so the grid's outer ListBox only realizes visible rows.
+    /// The footer sentinel is always last; its content hides itself via
+    /// StatusText/HasMoreAlbums bindings.
+    /// </summary>
+    private void RebuildAlbumRows()
+    {
+        var rows = new List<object>();
+        for (int i = 0; i < Albums.Count; i += AlbumGridColumns)
+        {
+            var row = new ServerAlbumRow();
+            for (int j = i; j < Albums.Count && j < i + AlbumGridColumns; j++)
+                row.Tiles.Add(Albums[j]);
+            rows.Add(row);
+        }
+        rows.Add(ServerGridFooter.Instance);
+        AlbumRows.ReplaceAll(rows);
     }
 
     private async Task LoadTileArtworkAsync(ServerAlbumTileViewModel tile, CancellationToken ct)
@@ -349,6 +400,7 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
         _openAlbumGeneration++;
         _searchQuery = "";
         Albums.Clear();
+        RebuildAlbumRows();
         SearchAlbums.Clear();
         SearchTracks.Clear();
         AlbumTracks.Clear();
