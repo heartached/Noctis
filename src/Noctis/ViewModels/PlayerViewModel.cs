@@ -2015,7 +2015,8 @@ public partial class PlayerViewModel : ViewModelBase
         _naturalEndFallbackTimer = null;
     }
 
-    private bool TryAdvanceForAutoMix(TimeSpan position, TimeSpan duration)
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal bool TryAdvanceForAutoMix(TimeSpan position, TimeSpan duration)
     {
         if (AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.Off ||
             _autoMixAdvanceQueued ||
@@ -2056,24 +2057,30 @@ public partial class PlayerViewModel : ViewModelBase
         if (fadeStart < TimeSpan.Zero)
             fadeStart = TimeSpan.Zero;
 
-        if (position < fadeStart)
+        // A seek can land directly inside the fade window without ever crossing the
+        // approach band; without a prepared snapshot the validator below would cancel
+        // on every tick and the track would end with no transition at all.
+        var preloadLead = TimeSpan.FromSeconds(Math.Clamp(plan.Duration.TotalSeconds + 2, 3, 8));
+        if (position >= fadeStart - preloadLead && _autoMixPreparedTrackId != nextTrack.Id)
         {
-            var preloadLead = TimeSpan.FromSeconds(Math.Clamp(plan.Duration.TotalSeconds + 2, 3, 8));
-            if (position >= fadeStart - preloadLead && _autoMixPreparedTrackId != nextTrack.Id)
-            {
-                _autoMixPreparedTrackId = nextTrack.Id;
-                _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
-                    nextTrack.Id,
-                    nextTrack.FilePath,
-                    _queueVersion,
-                    IsShuffleEnabled,
-                    RepeatMode,
-                    AutoMixTransitionMode,
-                    _audioPlayer.CurrentSessionId);
-                _audioPlayer.PrepareNext(nextTrack.FilePath, (long)plan.NextTrackStartPosition.TotalMilliseconds);
-            }
-            return false;
+            _autoMixPreparedTrackId = nextTrack.Id;
+            _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
+                nextTrack.Id,
+                nextTrack.FilePath,
+                _queueVersion,
+                IsShuffleEnabled,
+                RepeatMode,
+                AutoMixTransitionMode,
+                _audioPlayer.CurrentSessionId);
+            _audioPlayer.PrepareNext(nextTrack.FilePath, (long)plan.NextTrackStartPosition.TotalMilliseconds);
+            // Prepared late (already inside the window): give the async prepare a
+            // tick of head start rather than committing against a cold standby.
+            if (position >= fadeStart)
+                return false;
         }
+
+        if (position < fadeStart)
+            return false;
 
         var remaining = transitionEnd - position;
         var overlapBlend = AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.AutoMix;

@@ -9,6 +9,7 @@ namespace Noctis.Tests;
 internal sealed class FakeAudioPlayer : IAudioPlayer
 {
     public List<string> PlayedPaths { get; } = new();
+    public List<string> PreparedPaths { get; } = new();
 
     public event EventHandler? TrackEnded;
     public event EventHandler<TimeSpan>? PositionChanged;
@@ -50,7 +51,7 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public void ApplyReplayGain(string mode, double preampDb) { }
     public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false) { }
     public void SetGapless(bool enabled) { }
-    public void PrepareNext(string filePath, long startPositionMs = -1) { }
+    public void PrepareNext(string filePath, long startPositionMs = -1) => PreparedPaths.Add(filePath);
     public void CancelPreparedNext() { }
     public void SetAdvancedEqualizer(bool enabled, float[] bands, float preampDb) { }
     public void Dispose() { }
