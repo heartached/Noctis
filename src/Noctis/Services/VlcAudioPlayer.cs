@@ -2286,6 +2286,9 @@ public class VlcAudioPlayer : IAudioPlayer
             if (cancel.IsCancellationRequested || _disposed)
             {
                 SetPlayerVolumeGuarded(_player, finalVolume);
+                // Cancel may have no follow-up Play(): disarm the transition guard so
+                // the volume setters aren't swallowed until the next track change.
+                _transitionInFlight = false;
                 ReleasePreparedNext();
                 return true;
             }
@@ -2413,6 +2416,12 @@ public class VlcAudioPlayer : IAudioPlayer
             if (_disposed || cancel.IsCancellationRequested)
             {
                 sessionVolume.SetLevel(userMilli / 1000.0); // a new Play() cancelled us; restore + let it take over
+                // The cancel may come from pause/seek/settings with NO follow-up Play():
+                // resync the ramp baseline to the restore (the cancelled fade left it at 0,
+                // which the seek duck would later "restore" as silence) and disarm the
+                // transition guard so the volume setters aren't swallowed until next track.
+                Volatile.Write(ref _rampCurrentMilli, userMilli);
+                _transitionInFlight = false;
                 ReleasePreparedNext();
                 return true;
             }
@@ -2596,6 +2605,10 @@ public class VlcAudioPlayer : IAudioPlayer
                 if (_disposed || cancel.IsCancellationRequested)
                 {
                     sessionVolume.SetLevel(userMilli / 1000.0);
+                    // Cancel may have no follow-up Play(): resync the ramp baseline
+                    // (parked at blendMilli above) and disarm the transition guard.
+                    Volatile.Write(ref _rampCurrentMilli, userMilli);
+                    _transitionInFlight = false;
                     ReleasePreparedNext();
                     return true;
                 }
