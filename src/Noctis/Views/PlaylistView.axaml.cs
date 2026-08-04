@@ -470,29 +470,42 @@ public partial class PlaylistView : UserControl
     /// (issue #30). Same approach as LibrarySongsView.OnTitleCellLayoutUpdated: hand the
     /// title whatever the cell has left once the visible badges have taken their share.
     /// </summary>
+    /// <summary>Child lookups for <see cref="OnTitleCellLayoutUpdated"/>, resolved once
+    /// per cell and stashed in Tag: LayoutUpdated fires after EVERY window layout pass,
+    /// and a template cell's children never change (recycling reuses the same Grid).</summary>
+    private sealed record TitleCellChildren(TextBlock Title, Border[] Badges);
+
     private static void OnTitleCellLayoutUpdated(object? sender, EventArgs e)
     {
         if (sender is not Grid titleCell)
             return;
 
-        var title = titleCell.Children.OfType<TextBlock>().FirstOrDefault();
-        if (title == null)
-            return;
+        if (titleCell.Tag is not TitleCellChildren children)
+        {
+            var title = titleCell.Children.OfType<TextBlock>().FirstOrDefault();
+            if (title == null)
+                return;
 
-        // Every other child of this cell is a badge Border, and each reserves its own
-        // width (plus margin) from the title's budget only while it is actually shown.
-        var reservedWidth = titleCell.Children.OfType<Border>()
-            .Where(badge => badge.IsVisible)
-            .Sum(badge =>
-            {
-                var width = badge.Bounds.Width > 0 ? badge.Bounds.Width : badge.DesiredSize.Width;
-                return width + badge.Margin.Left + badge.Margin.Right;
-            });
+            // Every other child of this cell is a badge Border.
+            children = new TitleCellChildren(title, titleCell.Children.OfType<Border>().ToArray());
+            titleCell.Tag = children;
+        }
+
+        // Each badge reserves its own width (plus margin) from the title's budget
+        // only while it is actually shown.
+        var reservedWidth = 0.0;
+        foreach (var badge in children.Badges)
+        {
+            if (!badge.IsVisible)
+                continue;
+            var width = badge.Bounds.Width > 0 ? badge.Bounds.Width : badge.DesiredSize.Width;
+            reservedWidth += width + badge.Margin.Left + badge.Margin.Right;
+        }
 
         var maxTitleWidth = Math.Max(0, titleCell.Bounds.Width - reservedWidth);
         // Threshold keeps this from re-entering layout forever on sub-pixel churn.
-        if (Math.Abs(title.MaxWidth - maxTitleWidth) > 0.5)
-            title.MaxWidth = maxTitleWidth;
+        if (Math.Abs(children.Title.MaxWidth - maxTitleWidth) > 0.5)
+            children.Title.MaxWidth = maxTitleWidth;
     }
 
     private void OnTrackItemContextRequested(object? sender, ContextRequestedEventArgs e)
