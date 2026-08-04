@@ -1213,12 +1213,17 @@
                          track has no composer or no lyrics (WrittenByText is empty then).
                          Not a lyric line: it lives outside LyricsItemsControl, so line
                          indices, active-line anchoring and opacity dimming never see it. -->
+                    <!-- 2px optical inset: layout boxes are flush with the lyric lines
+                         (verified by headless pixel probe), but the big bold lyric
+                         glyphs carry ~1-2px of left-side bearing while the 15px "W"
+                         overhangs its box — without this the credit reads as sitting
+                         left of the text above. -->
                     <TextBlock x:Name="WrittenByFooter"
                                FontSize="15"
                                TextWrapping="Wrap"
                                HorizontalAlignment="Left"
                                MaxWidth="{Binding #LyricsItemsControl.MaxWidth}"
-                               Margin="0,44,0,0"
+                               Margin="2,44,0,0"
                                IsVisible="{Binding WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="Written By: " FontWeight="SemiBold" Foreground="{Binding LyricsSecondaryFg}"/><Run Text="{Binding WrittenByText}" Foreground="{Binding LyricsSubtleFg}"/></TextBlock>
                     </StackPanel>
                 </ScrollViewer>

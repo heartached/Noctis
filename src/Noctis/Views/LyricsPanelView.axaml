@@ -403,11 +403,13 @@
                      panel scale. Collapses (no reserved space) when WrittenByText is
                      empty; never part of the line collection, so line indices and
                      the active-line anchor never see it. -->
+                <!-- 1px optical inset — panel-scale copy of the page footer's
+                     bearing compensation (see LyricsView WrittenByFooter). -->
                 <TextBlock FontSize="12"
                            TextWrapping="Wrap"
                            HorizontalAlignment="Left"
                            MaxWidth="292"
-                           Margin="0,24,0,10"
+                           Margin="1,24,0,10"
                            IsVisible="{Binding WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="Written By: " FontWeight="SemiBold" Foreground="{Binding LyricsSecondaryFg}"/><Run Text="{Binding WrittenByText}" Foreground="{Binding LyricsSubtleFg}"/></TextBlock>
                 </StackPanel>
             </ScrollViewer>
