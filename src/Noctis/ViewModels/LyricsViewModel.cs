@@ -1405,9 +1405,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// resets lyrics state, and shows the search button so the user can retry.
     /// </summary>
     [RelayCommand]
-    private void RemoveLyrics()
+    private async Task RemoveLyrics()
     {
         if (_currentTrack == null) return;
+        // Capture the track: awaiting the writer lane frees the UI thread, so
+        // _currentTrack can change (or go null) before the deletes finish.
+        var track = _currentTrack;
 
         // Remove every artifact this view-model created for the track.
         //
@@ -1420,9 +1423,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // and the deletes join the lane behind whatever is in flight, so an unawaited
         // write can never land after the delete and resurrect the removed files.
         Interlocked.Increment(ref _lyricsRemovalStamp);
-        var trackId = _currentTrack.Id;
-        var trackPath = _currentTrack.FilePath;
-        EnqueueLyricsFileWork(() =>
+        var trackId = track.Id;
+        var trackPath = track.FilePath;
+        await EnqueueLyricsFileWork(() =>
         {
             try
             {
@@ -1454,12 +1457,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 }
             }
             catch { }
-        }).Wait();
+        });
 
         // Clear the in-memory copies too, otherwise the next probe finds them on the
         // Track and re-displays what was just removed.
-        _currentTrack.Lyrics = string.Empty;
-        _currentTrack.SyncedLyrics = string.Empty;
+        track.Lyrics = string.Empty;
+        track.SyncedLyrics = string.Empty;
 
         // Reset state
         _currentOnlineResult = null;

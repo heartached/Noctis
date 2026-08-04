@@ -273,7 +273,7 @@ public class LyricsSearchEndToEndTests
             Assert.True(AppWrittenSidecarRegistry.Default.Contains(lrcPath));
             Assert.True(vm.CanRemoveLyrics);
 
-            vm.RemoveLyricsCommand.Execute(null);
+            await vm.RemoveLyricsCommand.ExecuteAsync(null);
 
             Assert.False(AppWrittenSidecarRegistry.Default.Contains(lrcPath));
             Assert.False(File.Exists(cacheLrc));
@@ -314,7 +314,7 @@ public class LyricsSearchEndToEndTests
             // The probe found the user's sidecar; no online search ever ran.
             Assert.Equal(0, lrcLib.GetCalls + lrcLib.SearchCalls + netEase.Calls);
 
-            vm.RemoveLyricsCommand.Execute(null);
+            await vm.RemoveLyricsCommand.ExecuteAsync(null);
 
             // Not in the registry → not ours → never deleted on the user's behalf.
             Assert.True(File.Exists(lrcPath));
@@ -475,9 +475,9 @@ public class LyricsSearchEndToEndTests
                 Assert.True(vm.CanRemoveLyrics);
                 Assert.False(File.Exists(cacheLrc));
 
-                // RemoveLyrics blocks on the lane, so release it from the background.
+                // RemoveLyrics awaits the lane, so release it from the background.
                 lane.ReleaseAfter(100);
-                vm.RemoveLyricsCommand.Execute(null);
+                await vm.RemoveLyricsCommand.ExecuteAsync(null);
             }
 
             // The queued writes must have landed as no-ops (removal stamp) or been
@@ -515,14 +515,14 @@ public class LyricsSearchEndToEndTests
             // the registry entry must stay too — dropping it first made the app's own
             // sidecar permanently look user-owned and forever un-removable.
             vm.TrashSidecarFile = _ => false;
-            vm.RemoveLyricsCommand.Execute(null);
+            await vm.RemoveLyricsCommand.ExecuteAsync(null);
 
             Assert.True(File.Exists(lrcPath));
             Assert.True(AppWrittenSidecarRegistry.Default.Contains(lrcPath));
 
             // Retry with the lock gone: now it trashes and unregisters.
             vm.TrashSidecarFile = p => { File.Delete(p); return true; };
-            vm.RemoveLyricsCommand.Execute(null);
+            await vm.RemoveLyricsCommand.ExecuteAsync(null);
 
             Assert.False(File.Exists(lrcPath));
             Assert.False(AppWrittenSidecarRegistry.Default.Contains(lrcPath));
