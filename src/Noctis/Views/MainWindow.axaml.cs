@@ -46,7 +46,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// Opens the compact always-on-top mini player (hiding the main window), or closes
     /// it if it's already open. Closing the mini player restores the main window.
-    /// Triggered by the mini player button in the bottom player bar.
+    /// Triggered by clicking the album art in the bottom player bar.
     /// </summary>
     public void ToggleMiniPlayer()
     {

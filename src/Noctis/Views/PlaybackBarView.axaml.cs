@@ -658,11 +658,16 @@ public partial class PlaybackBarView : UserControl
         return PillSliderVisualHelper.GetValueFromPointer(slider, position, SeekThumbSize);
     }
 
-    // The mini player button toggles the compact always-on-top player window.
-    private void OnMiniPlayerButtonClick(object? sender, RoutedEventArgs e)
+    // Clicking the album-art thumbnail toggles the compact always-on-top mini player window.
+    private void OnAlbumArtPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+
         if (TopLevel.GetTopLevel(this) is MainWindow mainWindow)
+        {
             mainWindow.ToggleMiniPlayer();
+            e.Handled = true;
+        }
     }
 
     private void ShowVolumeBubble(bool show)
