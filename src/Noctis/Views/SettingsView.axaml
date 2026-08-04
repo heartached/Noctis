@@ -82,43 +82,63 @@
             <Setter Property="Foreground" Value="#E5534B"/>
             <Setter Property="Opacity" Value="0.9"/>
         </Style>
-        <!-- Server type picker: identical white pill outline to the metadata-info-field
-             text boxes beside it — recipe copied from MetadataWindow's outlined combos,
-             with the border pinned on the template's own Border#Background so the theme
-             chrome can't dim or thin it in any state (rest, hover, press, focus). -->
+        <!-- Server type picker: the visible outline is drawn by a plain wrapper Border
+             (server-pill-shell) carrying exactly the metadata-info-field stroke, and the
+             ComboBox's own Fluent chrome is fully disarmed in every state. Pinning the
+             stroke on the template's Border#Background was tried twice and never rendered
+             the same as the TextBox's PART_BorderElement (same declared 1.5px/brush,
+             different layering/snapping) — so all four boxes now share one drawing
+             mechanism. Contract pinned by MediaServerOutlineParityTests. -->
+        <Style Selector="Border.server-pill-shell">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+        </Style>
+        <!-- Focus parity: the field boxes turn accent on :focus, the shell follows suit. -->
+        <Style Selector="Border.server-pill-shell:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
         <Style Selector="ComboBox.server-pill">
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Padding" Value="14,10"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-            <Setter Property="UseLayoutRounding" Value="True"/>
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="ComboBox.server-pill /template/ Border#Background">
             <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
-            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="ComboBox.server-pill /template/ Border#HighlightBackground">
-            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="IsVisible" Value="False"/>
         </Style>
         <Style Selector="ComboBox.server-pill:pointerover /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="ComboBox.server-pill:pressed /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="ComboBox.server-pill:focus /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="ComboBox.server-pill:focus-within /template/ Border#Background">
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill:dropdownopen /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill:disabled /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
 
         <!-- Setting card -->
@@ -2398,11 +2418,13 @@
                                   MaxWidth="560" HorizontalAlignment="Left" Margin="-2,10,0,0">
                                 <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4" Margin="0,0,0,10">
                                     <TextBlock Classes="server-field-label" Text="SERVER TYPE"/>
-                                    <ComboBox Classes="pill-list server-pill"
-                                              ItemsSource="{Binding MediaServerTypeOptions}"
-                                              SelectedItem="{Binding MediaServerType}"
-                                              IsEnabled="{Binding !IsMediaServerBusy}"
-                                              HorizontalAlignment="Stretch"/>
+                                    <Border Classes="server-pill-shell">
+                                        <ComboBox Classes="pill-list server-pill"
+                                                  ItemsSource="{Binding MediaServerTypeOptions}"
+                                                  SelectedItem="{Binding MediaServerType}"
+                                                  IsEnabled="{Binding !IsMediaServerBusy}"
+                                                  HorizontalAlignment="Stretch"/>
+                                    </Border>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4" Margin="0,0,0,10">
                                     <TextBlock Classes="server-field-label" Text="SERVER ADDRESS"/>
