@@ -366,6 +366,49 @@ public class MetadataViewModelTests
         finally { Directory.Delete(dir, true); }
     }
 
+    // ── Artwork chooser: iTunes search term construction ──
+    // "Choose Artwork — From Apple Music" for the album "7" (Lil Nas X) showed George
+    // Strait and Beach House records: the title-only query surfaced every album named
+    // "7", and the artist-enriched one carried the full multi-artist tag string, which
+    // over-specifies iTunes's AND-matched free-text search into returning nothing.
+
+    [Fact]
+    public void ArtworkSearchTerm_CarriesPrimaryArtistAndAlbum()
+    {
+        // Track.GetPrimaryArtist reduces the tag to its first credited artist ("Lil
+        // Nas", by its current separator rules) — every remaining word still matches
+        // the store's "Lil Nas X" credit, while "Billy Ray Cyrus" must not be sent.
+        Assert.Equal("Lil Nas 7",
+            ITunesArtworkService.BuildAlbumSearchTerm("Lil Nas X feat. Billy Ray Cyrus", "7"));
+    }
+
+    [Fact]
+    public void ArtworkSearchTerm_WithoutAnArtist_IsTheAlbumAlone()
+    {
+        Assert.Equal("7", ITunesArtworkService.BuildAlbumSearchTerm("", "7"));
+        Assert.Equal("7", ITunesArtworkService.BuildAlbumSearchTerm(null, "7"));
+        Assert.Equal("7", ITunesArtworkService.BuildAlbumSearchTerm("   ", "7"));
+    }
+
+    [Fact]
+    public void ArtworkSearchTerm_StripsJoinedArtistsNotTheAlbumText()
+    {
+        // Only the artist side is reduced to the primary credit; the album text is the
+        // user's tag and goes through untouched.
+        Assert.Equal("Rema Rave & Roses",
+            ITunesArtworkService.BuildAlbumSearchTerm("Rema & Selena Gomez", "Rave & Roses"));
+    }
+
+    [Fact]
+    public void ArtworkRanking_AcceptsTheStoreCreditForAMultiArtistTag()
+    {
+        // Ranking corroborates candidates against the tag's artist. The store credits
+        // "Lil Nas X"; the shorter credit can never *contain* the longer tag string, so
+        // the comparison has to run both ways or the real album ties with the strangers.
+        Assert.True(ITunesArtworkService.IsLikelySameArtist(
+            "Lil Nas X", "Lil Nas X feat. Billy Ray Cyrus"));
+    }
+
     // ── Helpers ──
 
     private static List<Track> Album(string album, string albumArtist, int count)

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Noctis.Models;
 
 namespace Noctis.Services;
 
@@ -70,7 +71,10 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
 
     /// <summary>
     /// Searches Apple's catalogue for album artwork, using the same iTunes Search API
-    /// surface as the iTunes Artwork Finder. Exact album-title matches are ranked first.
+    /// surface as the iTunes Artwork Finder. When the tag names an artist, the query
+    /// says so — a title-only "7" surfaces every album in the store called "7" — and
+    /// the old title-only search stays on as the fallback when the enriched term finds
+    /// nothing, so a mistagged artist never costs results the title alone would find.
     /// </summary>
     public async Task<IReadOnlyList<ArtworkCandidate>> SearchAlbumsAsync(
         string artist, string album, int limit = 8, CancellationToken ct = default)
@@ -84,13 +88,15 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
         {
             var candidates = new Dictionary<long, ArtworkCandidate>();
 
-            if (albumTerm.Length > 0)
-                await AddSearchResultsAsync(candidates, albumTerm, limit * 3, albumAttributeOnly: true, ct);
+            var enrichedTerm = BuildAlbumSearchTerm(artistTerm, albumTerm);
+            if (!string.Equals(enrichedTerm, albumTerm, StringComparison.OrdinalIgnoreCase))
+                await AddSearchResultsAsync(candidates, enrichedTerm, limit * 3, albumAttributeOnly: false, ct);
 
-            var combinedTerm = $"{artistTerm} {albumTerm}".Trim();
-            if (combinedTerm.Length > 0 &&
-                !string.Equals(combinedTerm, albumTerm, StringComparison.OrdinalIgnoreCase))
-                await AddSearchResultsAsync(candidates, combinedTerm, limit * 3, albumAttributeOnly: false, ct);
+            // Title-only search: the whole query when no artist is known, and the
+            // fallback when the enriched term came back empty. Gated on zero results,
+            // so the ordinary artist-tagged case stays a single request.
+            if (candidates.Count == 0 && albumTerm.Length > 0)
+                await AddSearchResultsAsync(candidates, albumTerm, limit * 3, albumAttributeOnly: true, ct);
 
             return candidates.Values
                 .OrderBy(c => RankAlbumCandidate(c, albumTerm, artistTerm))
@@ -104,6 +110,17 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
             return Array.Empty<ArtworkCandidate>();
         }
     }
+
+    /// <summary>
+    /// Free-text term for the artist-enriched album searches. Only the primary credited
+    /// artist goes in: /search AND-matches every word of the term, and a multi-artist tag
+    /// string ("Lil Nas X feat. Billy Ray Cyrus") carries words the store's album entry
+    /// may not, which pushes recall to zero — the reported symptom was a grid of unrelated
+    /// albums that merely shared the title "7". The album text is the user's tag and is
+    /// passed through untouched. Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal static string BuildAlbumSearchTerm(string? artist, string? album)
+        => $"{Track.GetPrimaryArtist(artist)} {(album ?? string.Empty).Trim()}".Trim();
 
     // Animated covers are short video loops; generous cap so a hostile response
     // still can't fill memory, while 1080p variants (~60 MB) pass untouched.
@@ -312,7 +329,9 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
     public async Task<IReadOnlyList<ArtworkCandidate>> SearchAppleMusicAlbumsAsync(
         string artist, string album, int limit = 6, CancellationToken ct = default)
     {
-        var term = $"{(artist ?? string.Empty).Trim()} {(album ?? string.Empty).Trim()}".Trim();
+        // Same primary-artist policy as SearchAlbumsAsync: the featured-artist tail of a
+        // multi-artist tag only muddies the page's ranking of the album we want.
+        var term = BuildAlbumSearchTerm(artist, album);
         if (term.Length == 0)
             return Array.Empty<ArtworkCandidate>();
 
@@ -733,7 +752,11 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
         {
             if (candidateArtist == wantedArtist)
                 score -= 80;
-            else if (candidateArtist.Contains(wantedArtist, StringComparison.Ordinal))
+            // Symmetric containment: the store's credit ("Lil Nas X") must corroborate
+            // the longer multi-artist tag it came from ("Lil Nas X feat. Billy Ray
+            // Cyrus"). A one-directional Contains could never rank the real album above
+            // the same-titled strangers a title-only search drags in.
+            else if (IsLikelySameArtist(candidate.ArtistName, artist))
                 score -= 35;
             else
                 score += 35;
