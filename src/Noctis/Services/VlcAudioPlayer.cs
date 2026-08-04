@@ -2098,8 +2098,13 @@ public class VlcAudioPlayer : IAudioPlayer
             if (fadeInMs > 0)
             {
                 // Single-player approximation of crossfade: fade out old track, then fade in new one.
+                // NOT to targetVolume: on the OS-session path _player.Volume IS the shared
+                // mmdevice session and targetVolume is 100 there, so the incoming track would
+                // swell to FULL session volume and only snap down to the slider level when the
+                // reassert below lands. Fade to the session-open equivalent of the user's level
+                // instead (on non-session paths GetSessionOpenVolume == targetVolume already).
                 SetPlayerVolumeGuarded(_player, 0);
-                FadePlayerVolumeBlocking(0, targetVolume, fadeInMs, cancel);
+                FadePlayerVolumeBlocking(0, GetSessionOpenVolume(), fadeInMs, cancel);
             }
             else if (ActiveCallbackSink != null)
             {
