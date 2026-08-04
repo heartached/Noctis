@@ -63,7 +63,8 @@ internal sealed class FakeLibraryService : ILibraryService
     public List<Track> TrackList { get; } = new();
     public IReadOnlyList<Track> Tracks => TrackList;
     public IReadOnlyList<Album> Albums { get; } = new List<Album>();
-    public IReadOnlyList<Artist> Artists { get; } = new List<Artist>();
+    public List<Artist> ArtistList { get; } = new();
+    public IReadOnlyList<Artist> Artists => ArtistList;
 
     public event EventHandler? LibraryUpdated;
     public event EventHandler<int>? ScanProgress;

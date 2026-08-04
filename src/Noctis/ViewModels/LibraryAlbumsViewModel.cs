@@ -260,12 +260,15 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         _settings = settings;
 
         // Rebuild the grid when the "collapse album editions" setting is toggled.
+        // Dirty-only while hidden (which includes sitting beneath the Settings
+        // modal the toggle lives in) — the catch-up Refresh on activation rebuilds.
         _settingsPropertyChangedHandler = (_, e) =>
         {
             if (e.PropertyName == nameof(SettingsViewModel.CollapseAlbumEditions))
             {
                 _isDirty = true;
-                Dispatcher.UIThread.Post(() => RebuildFilteredRows());
+                if (_isActive)
+                    Dispatcher.UIThread.Post(() => RebuildFilteredRows());
             }
         };
         _settings.PropertyChanged += _settingsPropertyChangedHandler;

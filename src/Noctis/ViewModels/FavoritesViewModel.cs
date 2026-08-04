@@ -62,14 +62,36 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         // Dispatch to UI thread since scan fires LibraryUpdated from a background thread.
         // Held in fields so Dispose can detach them; anonymous lambdas with no stored
         // reference can never be unsubscribed (this view-model had no Dispose at all).
-        _libraryUpdatedHandler = (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
-        _favoritesChangedHandler = (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
+        // Only rebuild immediately while this view is current — the rebuild is a
+        // full-library favorites scan on the UI thread, and it used to run on every
+        // LibraryUpdated regardless of what page (or modal) was actually showing.
+        _libraryUpdatedHandler = (_, _) => { _isDirty = true; if (_isActive) Dispatcher.UIThread.Post(Refresh); };
+        _favoritesChangedHandler = (_, _) => { _isDirty = true; if (_isActive) Dispatcher.UIThread.Post(Refresh); };
         _library.LibraryUpdated += _libraryUpdatedHandler;
         _library.FavoritesChanged += _favoritesChangedHandler;
     }
 
     private EventHandler? _libraryUpdatedHandler;
     private EventHandler? _favoritesChangedHandler;
+
+    /// <summary>
+    /// Set by MainWindowViewModel when Favorites becomes (or stops being) the current
+    /// view. Mirrors the other library-view VMs: gates event-driven rebuilds while
+    /// hidden, and catches up on activation (no-op when nothing changed).
+    /// </summary>
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive == value) return;
+            _isActive = value;
+            // Covers back-navigation paths that swap CurrentView without a Refresh call.
+            if (value) Refresh();
+        }
+    }
+
+    private bool _isActive;
 
     public void Dispose()
     {

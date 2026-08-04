@@ -56,6 +56,32 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void CloseSettings() => IsSettingsModalOpen = false;
 
+    // The modal fully covers the section beneath it, so that section counts as
+    // hidden while it is open: settings flips that rebuild library views (Merge
+    // Featured, Collapse Album Editions) used to rebuild the covered grid on the
+    // UI thread mid-click, janking the very toggle animation that triggered them.
+    partial void OnIsSettingsModalOpenChanged(bool value) => UpdateSectionActiveFlags();
+
+    /// <summary>
+    /// A section VM is "active" only while it is the current view AND not covered
+    /// by the Settings modal. Cover Flow is long-lived and subscribes to queue
+    /// changes in its constructor, so it rebuilt ~60 bound properties on every
+    /// queue mutation even while hidden; the big library list VMs each rebuilt
+    /// their full contents on every LibraryUpdated (fired every ~1.5 s during a
+    /// scan). Inactive VMs just mark dirty and catch up once when they become
+    /// current (or uncovered) again.
+    /// </summary>
+    private void UpdateSectionActiveFlags()
+    {
+        var current = IsSettingsModalOpen ? null : CurrentView;
+        _coverFlowVm.IsActive = ReferenceEquals(current, _coverFlowVm);
+        _songsVm.IsActive = ReferenceEquals(current, _songsVm);
+        _albumsVm.IsActive = ReferenceEquals(current, _albumsVm);
+        _artistsVm.IsActive = ReferenceEquals(current, _artistsVm);
+        _foldersVm.IsActive = ReferenceEquals(current, _foldersVm);
+        _favoritesVm.IsActive = ReferenceEquals(current, _favoritesVm);
+    }
+
     // ── Debug panel ──
     [ObservableProperty] private bool _isDebugPanelVisible;
     private DebugPanelViewModel? _debugPanelVm;
@@ -1089,18 +1115,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnCurrentViewChanged(ViewModelBase? oldValue, ViewModelBase newValue)
     {
-        // Cover Flow is long-lived and subscribes to queue changes in its constructor,
-        // so it rebuilt ~60 bound properties on every queue mutation even while the user
-        // was on Songs or Settings. Gate it on being the visible view.
-        _coverFlowVm.IsActive = ReferenceEquals(newValue, _coverFlowVm);
-
-        // Same gating for the big library list VMs: each rebuilt its full contents on
-        // every LibraryUpdated (fired every ~1.5 s during a scan) even while hidden.
-        // Hidden VMs now just mark dirty and catch up once when they become current.
-        _songsVm.IsActive = ReferenceEquals(newValue, _songsVm);
-        _albumsVm.IsActive = ReferenceEquals(newValue, _albumsVm);
-        _artistsVm.IsActive = ReferenceEquals(newValue, _artistsVm);
-        _foldersVm.IsActive = ReferenceEquals(newValue, _foldersVm);
+        UpdateSectionActiveFlags();
 
         var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
         var leavingLyrics = ReferenceEquals(oldValue, _lyricsVm) && !enteringLyrics;
