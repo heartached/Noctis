@@ -1684,12 +1684,22 @@
                                               VerticalScrollBarVisibility="Auto"
                                               HorizontalScrollBarVisibility="Disabled"
                                               Padding="14,10,18,0">
-                                    <!-- A real trailing spacer (below) carries the bottom gap. Neither
-                                         ScrollViewer.Padding nor a content Margin is reliably folded into
-                                         Avalonia's scroll extent, so the final row would otherwise stay
-                                         clipped at the bottom edge. -->
-                                    <StackPanel>
-                                    <ItemsControl ItemsSource="{Binding SyncedLyricLines}">
+                                    <!-- The list is the ScrollViewer's DIRECT child on purpose: wrapped
+                                         in the old spacer StackPanel, the virtualizing panel could not
+                                         own the viewport (same failure mode as the AlbumDetailView track
+                                         list) and every line inflated on the first click of this tab —
+                                         lag that scaled with lyric length. The trailing bottom gap rides
+                                         as ItemsControl.Padding, which is part of the content's desired
+                                         size and so folds into the scroll extent (ScrollViewer.Padding
+                                         and a content Margin are not — the old spacer's reason to exist).
+                                         Pinned by TimestampLyricsVirtualizationTests. -->
+                                    <ItemsControl ItemsSource="{Binding SyncedLyricLines}"
+                                                  Padding="0,0,0,24">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:SyncedLyricEditorLine">
                                                 <Border Classes="synced-row">
@@ -1749,8 +1759,6 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                        <Border Height="24" />
-                                    </StackPanel>
                                 </ScrollViewer>
                             </Panel>
                         </Border>
