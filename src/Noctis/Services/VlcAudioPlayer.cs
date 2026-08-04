@@ -3007,13 +3007,34 @@ public class VlcAudioPlayer : IAudioPlayer
         CancelSkipCts();
         CancelPreparedNext();
 
-        if (_player.IsPlaying)
+        // Queued to the ThreadPool + serialized by _playbackLock like every other
+        // playback entry point (Play, Stop, Resume, PrepareNext). Inline, a pause
+        // landing while a transition worker held the lock read the pre-swap _player
+        // and was then overwritten by the swap's _isPaused = false — audio kept
+        // playing while the UI showed paused. The CancelSkipCts above makes any
+        // in-flight fade bail within one step, so the lock wait stays short.
+        ThreadPool.QueueUserWorkItem(_ =>
         {
-            ResetEndReachedPending();
-            _player.Pause();
-            _isPaused = true;
-            _positionTimer.Stop();
-        }
+            try { _playbackLock.Wait(); }
+            catch (ObjectDisposedException) { return; }
+
+            try
+            {
+                if (_disposed) return;
+                if (_player.IsPlaying)
+                {
+                    ResetEndReachedPending();
+                    _player.Pause();
+                    _isPaused = true;
+                    _positionTimer.Stop();
+                }
+            }
+            catch (ObjectDisposedException) { /* disposed mid-pause */ }
+            finally
+            {
+                try { _playbackLock.Release(); } catch (ObjectDisposedException) { }
+            }
+        });
     }
 
     public void Resume()
