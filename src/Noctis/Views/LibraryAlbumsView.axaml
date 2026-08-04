@@ -101,10 +101,10 @@
                                                                VerticalAlignment="Center"
                                                                Opacity="0.2"
                                                                IsVisible="{Binding Track.AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                    <Image Source="{Binding Track.AlbumArtworkPath, Converter={StaticResource ArtworkConverter}}"
-                                                           Stretch="UniformToFill"
-                                                           RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                           IsVisible="{Binding Track.AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                    <ctrl:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}"
+                                                                      Stretch="UniformToFill"
+                                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                      IsVisible="{Binding Track.AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                                 </Panel>
                                             </Border>
                                             <TextBlock Grid.Column="1"

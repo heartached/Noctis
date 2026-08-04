@@ -162,10 +162,10 @@
                             </Grid>
 
                             <!-- Custom cover art (highest priority) -->
-                            <Image Source="{Binding CoverArtPath, Converter={StaticResource ArtworkConverter}}"
-                                   Stretch="UniformToFill"
-                                   RenderOptions.BitmapInterpolationMode="HighQuality"
-                                   IsVisible="{Binding HasCustomArt}" />
+                            <ctrl:CachedImage SourcePath="{Binding CoverArtPath}"
+                                              Stretch="UniformToFill"
+                                              RenderOptions.BitmapInterpolationMode="HighQuality"
+                                              IsVisible="{Binding HasCustomArt}" />
                         </Panel>
                     </Border>
                     <Button Content="Set Cover Art"
