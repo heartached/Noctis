@@ -216,7 +216,13 @@
                         <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
                     </Image.RenderTransform>
                 </Image>
-                <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}" ClearOnSourceChange="False"
+                <!-- DataContext narrows to the Track (null while nothing plays): binding
+                     SourcePath straight through Player.CurrentTrack.AlbumArtworkPath broke
+                     mid-chain whenever CurrentTrack was null and logged a binding warning
+                     at every startup. A null DataContext is silently "no value". -->
+                <controls:CachedImage DataContext="{Binding Player.CurrentTrack}"
+                                      x:DataType="m:Track"
+                                      SourcePath="{Binding AlbumArtworkPath}" ClearOnSourceChange="False"
                                       DecodeWidth="500"
                                       Stretch="UniformToFill"
                                       RenderOptions.BitmapInterpolationMode="HighQuality">

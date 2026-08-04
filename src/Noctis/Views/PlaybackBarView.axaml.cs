@@ -650,7 +650,10 @@ public partial class PlaybackBarView : UserControl
             _seekThumbTransform,
             SeekThumbSize);
 
-        SeekTrackFill.Width = Math.Max(0, SeekTrackFill.Width - (SeekThumbSize / 2.0));
+        // No extra width trim here: the helper already ends the fill at the thumb's
+        // centre (the volume slider uses it as-is). Shaving another half-thumb off
+        // left a visible dark gap between the fill's rounded end and the thumb, and
+        // an unfilled sliver at the track's right end even at 100%.
     }
 
     private static double GetPercentageFromPointer(Slider slider, Point position)

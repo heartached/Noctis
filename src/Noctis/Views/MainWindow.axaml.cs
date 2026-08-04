@@ -95,8 +95,19 @@ public partial class MainWindow : Window
         Activate();
     }
 
-    public MainWindow()
+    // Parameterless overload kept for the XAML previewer/designer; the app always
+    // passes the view model.
+    public MainWindow() : this(null) { }
+
+    public MainWindow(MainWindowViewModel? viewModel)
     {
+        // Must land before InitializeComponent: bindings that walk
+        // $parent[Window].DataContext then resolve on their first evaluation instead
+        // of erroring against null (a logged warning per binding, every startup) and
+        // re-resolving when the DataContext arrives afterwards.
+        if (viewModel is not null)
+            DataContext = viewModel;
+
         InitializeComponent();
         Services.StartupTrace.Mark("mainwindow-xaml-initialized");
 

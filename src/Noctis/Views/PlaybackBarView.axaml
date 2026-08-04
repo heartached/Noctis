@@ -336,8 +336,8 @@
         </Style>
 
         <!-- Apple-Music-style hover reveal for the seek row: at rest only the slim pill
-             track shows; hovering the row fades in the side time labels, the thumb, a
-             slightly thicker track and a soft frosted backdrop pill behind it all. -->
+             track shows; hovering the row fades in the side time labels, the thumb and
+             a slightly thicker track. -->
         <Style Selector="TextBlock.seek-time">
             <Setter Property="Transitions">
                 <Transitions>
@@ -415,20 +415,6 @@
         <Style Selector="Grid.seek-row:pointerover Border.seek-thumb">
             <Setter Property="Width" Value="12"/>
             <Setter Property="Height" Value="12"/>
-        </Style>
-
-        <!-- Frosted backdrop pill behind slider + times (approximates Apple's blur;
-             real backdrop blur isn't available for in-content elements). -->
-        <Style Selector="Grid.seek-row Border.seek-hover-backdrop">
-            <Setter Property="Opacity" Value="0"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.18"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Grid.seek-row:pointerover Border.seek-hover-backdrop">
-            <Setter Property="Opacity" Value="1"/>
         </Style>
     </UserControl.Styles>
 
@@ -668,13 +654,20 @@
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource IslandForeground}" />
                                     </Border>
+                                    <!-- DataContext narrows to the Track (null while nothing plays), so
+                                         IsVisible never walks a null CurrentTrack chain — a chain broken
+                                         mid-path logs an Avalonia binding warning at every startup, while a
+                                         null DataContext is silently "no value" and FallbackValue keeps the
+                                         badge hidden. Track's IsExplicit INPC still drives live updates. -->
                                     <Border x:Name="ExplicitBadge"
                                             Background="{DynamicResource IslandExplicitBadge}"
                                             CornerRadius="2"
                                             Padding="4,0"
                                             Height="14"
                                             VerticalAlignment="Center"
-                                            IsVisible="{Binding CurrentTrack.IsExplicit, FallbackValue=False}"
+                                            DataContext="{Binding CurrentTrack}"
+                                            x:DataType="m:Track"
+                                            IsVisible="{Binding IsExplicit, FallbackValue=False}"
                                             ToolTip.Tip="Explicit">
                                         <TextBlock Text="E"
                                                    FontSize="9"
@@ -710,8 +703,12 @@
                                                 CornerRadius="2"
                                                 Padding="1,0,2,0"
                                                 Margin="0,0,0,-2">
+                                            <!-- Converter form (same shape as the title above): binding through
+                                                 CurrentTrack.Artist broke mid-chain while no track was playing
+                                                 and logged a warning at every startup. Artist raises no INPC, so
+                                                 re-evaluating on CurrentTrack change is exactly equivalent. -->
                                             <TextBlock x:Name="ArtistNameTextBlock"
-                                                       Text="{Binding CurrentTrack.Artist, FallbackValue='', TargetNullValue=''}"
+                                                       Text="{Binding CurrentTrack, Converter={StaticResource DisplayArtist}, FallbackValue=''}"
                                                        FontSize="10"
                                                        MaxLines="1"
                                                        Foreground="{DynamicResource AccentColorBrush}"
@@ -731,12 +728,6 @@
                             <Grid Grid.Row="2" Height="20" Margin="-22,-2,0,0" ClipToBounds="False"
                                   Classes="seek-row" Background="Transparent"
                                   ColumnDefinitions="Auto,*,Auto">
-                                <Border Classes="seek-hover-backdrop"
-                                        Grid.Column="0" Grid.ColumnSpan="3"
-                                        CornerRadius="999"
-                                        Background="#1AFFFFFF"
-                                        Margin="12,1,-4,1"
-                                        IsHitTestVisible="False"/>
                                 <TextBlock Grid.Column="0"
                                            Classes="seek-time"
                                            Text="{Binding PositionText}"

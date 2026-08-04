@@ -1035,9 +1035,15 @@
                                 </Border.RenderTransform>
                             </Border>
 
-                            <!-- Floating drag preview: follows the pointer Y while reordering. -->
+                            <!-- Floating drag preview: follows the pointer Y while reordering.
+                                 DataContext starts pinned to null (the state ResetQueueDragState
+                                 restores after every drag) so the Track-typed bindings inside never
+                                 see the window's inherited MainWindowViewModel — casting that to
+                                 Track logged three binding warnings at every startup. StartQueueDrag
+                                 assigns the real Track before the preview becomes visible. -->
                             <Border x:Name="QueueDragPreview"
                                     x:DataType="m:Track"
+                                    DataContext="{x:Null}"
                                     IsHitTestVisible="False"
                                     IsVisible="False"
                                     Margin="12,0,12,0"

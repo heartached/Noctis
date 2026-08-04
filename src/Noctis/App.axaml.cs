@@ -108,10 +108,13 @@ public partial class App : Application
             var mainVm = Services!.GetRequiredService<MainWindowViewModel>();
             Noctis.Services.StartupTrace.Mark("viewmodel-graph-resolved");
 
-            var mainWindow = new MainWindow
-            {
-                DataContext = mainVm
-            };
+            // The view model rides the constructor so DataContext is set BEFORE
+            // InitializeComponent. Assigning it afterwards (object initializer) let every
+            // $parent[Window].DataContext.* chain in MainWindow.axaml evaluate once
+            // against a null DataContext and log a binding warning at each startup.
+            // Same total work between the surrounding marks — bindings now resolve in a
+            // single pass instead of erroring first and re-resolving.
+            var mainWindow = new MainWindow(mainVm);
             Noctis.Services.StartupTrace.Mark("main-window-constructed");
 
             // Decide "start minimized to tray" before the window is realized. Avalonia
