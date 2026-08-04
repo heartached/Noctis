@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using System.ComponentModel;
 using Noctis.Models;
 using Noctis.ViewModels;
@@ -22,11 +23,18 @@ public partial class SidebarView : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
-        DetachedFromVisualTree += (_, _) => UnsubscribeFromViewModel();
-        // After first layout, so the very first open of the run is already pinned
-        // instead of spending a frame at the Popup's default 0,0 offsets.
+        DetachedFromVisualTree += (_, _) =>
+        {
+            UnsubscribeFromViewModel();
+            DetachOutsideClickWatcher();
+        };
         AttachedToVisualTree += (_, _) =>
+        {
+            AttachOutsideClickWatcher();
+            // After first layout, so the very first open of the run is already pinned
+            // instead of spending a frame at the Popup's default 0,0 offsets.
             Dispatcher.UIThread.Post(EnsureSearchPopupPinned, DispatcherPriority.Loaded);
+        };
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -136,7 +144,8 @@ public partial class SidebarView : UserControl
     // hiding the button while the popup is open and growing the capsule rightward
     // from the bare 32px circle reads as the button morphing into the pill. The
     // pill is a non-light-dismiss Popup so it stays open while the user interacts
-    // with the filtered page beneath it.
+    // with the filtered page beneath it — except when it is EMPTY, where a click
+    // anywhere else dismisses it (see OnHostPointerPressed).
 
     private const double SearchAnimMs = 250;
     // The capsule sits a lip's width left of the icon (Border Padding.Left in XAML),
@@ -260,6 +269,45 @@ public partial class SidebarView : UserControl
         // Ctrl+F toggling an open pill shut: same collapse path as Esc.
         var topBar = _vm?.TopBar;
         if (topBar != null) CloseSearchPopup(topBar);
+    }
+
+    // The pill stays up while the user works with the page it is filtering — but
+    // an EMPTY pill filters nothing, so a click anywhere else reads as "done
+    // searching" and collapses it. Typed text keeps it sticky. Watched on the
+    // TopLevel because the capsule renders in its overlay layer, not under this
+    // control.
+    private TopLevel? _outsideClickHost;
+
+    private void AttachOutsideClickWatcher()
+    {
+        DetachOutsideClickWatcher();
+        _outsideClickHost = TopLevel.GetTopLevel(this);
+        _outsideClickHost?.AddHandler(PointerPressedEvent, OnHostPointerPressed, RoutingStrategies.Tunnel);
+    }
+
+    private void DetachOutsideClickWatcher()
+    {
+        _outsideClickHost?.RemoveHandler(PointerPressedEvent, OnHostPointerPressed);
+        _outsideClickHost = null;
+    }
+
+    private void OnHostPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        var topBar = _vm?.TopBar;
+        if (topBar is not { IsSearchOpen: true } || !string.IsNullOrEmpty(topBar.SearchText))
+            return;
+        if (e.Source is Visual source && IsInsideSearchCapsule(source))
+            return;
+        // Not marked handled: dismissal must not eat the click the user aimed at
+        // the page (a nav item, a play button) — it lands normally.
+        CloseSearchPopup(topBar);
+    }
+
+    private bool IsInsideSearchCapsule(Visual node)
+    {
+        for (Visual? v = node; v != null; v = v.GetVisualParent())
+            if (ReferenceEquals(v, SearchPopupContent)) return true;
+        return false;
     }
 
     private void EnsureSearchTransitions(TimeSpan duration)
