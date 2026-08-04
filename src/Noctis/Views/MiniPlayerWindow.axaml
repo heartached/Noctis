@@ -6,7 +6,7 @@
         x:Class="Noctis.Views.MiniPlayerWindow"
         x:DataType="vm:PlayerViewModel"
         Title="Noctis Mini Player"
-        Width="340" Height="340"
+        Width="300" Height="300"
         CanResize="False"
         Topmost="True"
         SystemDecorations="None"
@@ -15,13 +15,34 @@
         WindowStartupLocation="Manual">
 
     <Window.Styles>
-        <!-- Transport buttons: borderless white glyphs over the artwork -->
+        <!-- Transport buttons: borderless white glyphs over the artwork. Press feel
+             mirrors the playback bar's transport-btn: a soft opacity dip that eases
+             back on release — deliberately NO scale (scale(1) on hover/press
+             neutralizes the global Button zoom). -->
         <Style Selector="Button.mini-transport">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.mini-transport:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.mini-transport:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="Opacity" Value="0.45"/>
         </Style>
         <Style Selector="Button.mini-transport /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
@@ -32,6 +53,13 @@
         </Style>
         <Style Selector="Button.mini-transport:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="#40FFFFFF"/>
+        </Style>
+        <!-- Favorite heart opts out of the hover/press circle: glyph-only feedback -->
+        <Style Selector="Button.mini-transport.no-hover-circle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.mini-transport.no-hover-circle:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
 
         <!-- Compact seek slider (accent fill/thumb to match the playback bar).
@@ -126,11 +154,11 @@
             <!-- ClipToBounds clips to the rectangular bounds only, so the square
                  artwork bled past the rounded outline; this geometry clips the
                  content to the same rounded rect the 1px border draws (window is
-                 fixed at 340×340, so the static rect is safe). -->
+                 fixed at 300×300, so the static rect is safe). -->
             <Panel.Clip>
-                <RectangleGeometry Rect="0,0,336,336" RadiusX="20" RadiusY="20"/>
+                <RectangleGeometry Rect="0,0,296,296" RadiusX="20" RadiusY="20"/>
             </Panel.Clip>
-            <!-- Artwork (or placeholder note) fills the window. 768 keeps the 336px
+            <!-- Artwork (or placeholder note) fills the window. 768 keeps the 296px
                  cover sharp on high-DPI displays and shares the album-grid / player
                  cache entry (the 512 default would decode the same cover again). -->
             <controls:CachedImage SourcePath="{Binding CurrentArtPath}" ClearOnSourceChange="False"
@@ -163,7 +191,7 @@
                     </LinearGradientBrush>
                 </Border.OpacityMask>
                 <controls:CachedImage SourcePath="{Binding CurrentArtPath}" ClearOnSourceChange="False"
-                                      Width="338" Height="338"
+                                      Width="298" Height="298"
                                       Stretch="UniformToFill"
                                       VerticalAlignment="Bottom">
                     <controls:CachedImage.Effect>
@@ -319,7 +347,7 @@
                             <controls:MarqueeTextBlock Text="{Binding CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
                                                        FontSize="18" FontWeight="Bold"
                                                        Foreground="White"
-                                                       MaxDisplayWidth="230"
+                                                       MaxDisplayWidth="190"
                                                        HorizontalAlignment="Left"
                                                        IsMiniPlayer="True"/>
                             <Border Background="#59FFFFFF"
@@ -340,14 +368,14 @@
                         <controls:MarqueeTextBlock Text="{Binding CurrentTrack.Album, FallbackValue=''}"
                                                    FontSize="14"
                                                    Foreground="#C0FFFFFF"
-                                                   MaxDisplayWidth="262"
+                                                   MaxDisplayWidth="222"
                                                    HorizontalAlignment="Left"
                                                    IsMiniPlayer="True"
                                                    IsForAlbum="True"/>
                     </StackPanel>
 
                     <!-- Favorite heart (Apple Music's star spot) -->
-                    <Button Grid.Column="1" Classes="mini-transport" Width="34" Height="34"
+                    <Button Grid.Column="1" Classes="mini-transport no-hover-circle" Width="34" Height="34"
                             VerticalAlignment="Center"
                             Command="{Binding ToggleCurrentTrackFavoriteCommand}"
                             ToolTip.Tip="Favorites">
