@@ -119,6 +119,12 @@ public class AppSettings
     /// standby player instead of an audible stop/start. On by default.</summary>
     public bool GaplessPlaybackEnabled { get; set; } = true;
 
+    /// <summary>Autoplay: when the queue is exhausted by a natural track end, playback
+    /// continues with similar tracks from the library (same genre as the just-ended
+    /// track, then same primary artist). Off by default — continuing playback the
+    /// user didn't queue is opt-in.</summary>
+    public bool AutoplayEnabled { get; set; }
+
     /// <summary>Whether long playback-bar track titles should scroll while playing.</summary>
     public bool TrackTitleMarqueeEnabled { get; set; } = true;
 

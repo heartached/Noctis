@@ -1909,6 +1909,20 @@
                 </Grid>
             </Border>
 
+            <!-- Autoplay (tag-based queue continuation) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Autoplay" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="When the queue ends, keep playing similar songs from your library."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding AutoplayEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Exclusive mode (Windows WASAPI) -->
             <Border Classes="setting-card" IsVisible="{Binding IsExclusiveAudioSupported}">
                 <Grid ColumnDefinitions="*,Auto">

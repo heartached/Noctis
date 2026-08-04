@@ -436,6 +436,10 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private bool _gaplessPlaybackEnabled = true;
 
+    /// <summary>Autoplay: when the queue ends naturally, keep playing similar songs
+    /// from the library. Off by default (new behavior-changing extras ship opt-in).</summary>
+    [ObservableProperty] private bool _autoplayEnabled;
+
     // ── Audio analysis (background BPM/key detection) ──
 
     [ObservableProperty] private bool _bpmKeyAnalysisEnabled = true;
@@ -974,6 +978,7 @@ public partial class SettingsViewModel : ViewModelBase
             ReplayGainPreampDb = Math.Clamp(_settings.ReplayGainPreampDb, -12, 12);
             ReplayGainEnabled = !string.Equals(ReplayGainMode, "Off", StringComparison.OrdinalIgnoreCase);
             GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
+            AutoplayEnabled = _settings.AutoplayEnabled;
             BpmKeyAnalysisEnabled = _settings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = _settings.WriteAnalysisToTags;
             ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
@@ -1275,6 +1280,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ReplayGainMode = ReplayGainMode ?? "Off";
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
+        _settings.AutoplayEnabled = AutoplayEnabled;
         _settings.BpmKeyAnalysisEnabled = BpmKeyAnalysisEnabled;
         _settings.WriteAnalysisToTags = WriteAnalysisToTags;
         _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
@@ -1374,6 +1380,7 @@ public partial class SettingsViewModel : ViewModelBase
         // gapless covers natural track changes when transitions are off.
         ApplyAutoMixToPlayer();
         _player.GaplessEnabled = GaplessPlaybackEnabled;
+        _player.AutoplayEnabled = AutoplayEnabled;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
@@ -2204,6 +2211,15 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer?.SetGapless(value);
         if (_player != null) _player.GaplessEnabled = value;
+        _ = SaveAsync();
+    }
+
+    partial void OnAutoplayEnabledChanged(bool value)
+    {
+        // Live apply: the player reads this at each queue exhaustion, so flipping it
+        // mid-session arms (or disarms) the very next one — no restart needed.
+        if (_player != null) _player.AutoplayEnabled = value;
+        if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
 
@@ -3628,6 +3644,7 @@ public partial class SettingsViewModel : ViewModelBase
             GaplessPlaybackEnabled = true;
             // Read from defaultSettings, not literals: these drifted from AppSettings the
             // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.
+            AutoplayEnabled = defaultSettings.AutoplayEnabled;
             BpmKeyAnalysisEnabled = defaultSettings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = defaultSettings.WriteAnalysisToTags;
             ReplayGainMode = defaultSettings.ReplayGainMode;

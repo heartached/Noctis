@@ -66,6 +66,11 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Gapless playback (Settings > Audio): natural track changes hand off to a
     /// pre-decoded standby player instead of the audible stop/parse/start path.</summary>
     [ObservableProperty] private bool _gaplessEnabled = true;
+    /// <summary>Autoplay (Settings > Playback): when the queue is exhausted by a natural
+    /// track end, keep playing similar tracks from the library (same genre, then same
+    /// primary artist). Driven by Settings; read at each queue exhaustion, so flipping
+    /// it mid-session arms or disarms the next one. Off by default.</summary>
+    [ObservableProperty] private bool _autoplayEnabled;
 
     // ── Signal path / quality badge (Roon-style) ──
     /// <summary>Overall chain quality: "Bit-perfect", "Hi-Res Lossless", "Lossless", "Enhanced", "Lossy".</summary>
@@ -195,6 +200,15 @@ public partial class PlayerViewModel : ViewModelBase
     private bool _radioRefillInFlight;
     private const int RadioRefillThreshold = 5;
     private const int RadioBatchSize = 25;
+
+    // ── Autoplay (tag-based queue continuation) ──
+    private readonly IAutoplayService _autoplayService = new AutoplayService();
+    // Everything autoplay picked this session, so it doesn't repeat itself until the
+    // candidate pool is exhausted (then it's cleared and reuse is allowed).
+    private readonly HashSet<Guid> _autoplayPickedIds = new();
+    // Small visible batch (Apple Music-style): the first pick plays, the rest land in
+    // Up Next so the queue popup shows where playback is heading.
+    private const int AutoplayBatchSize = 5;
 
     public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers)
     {
@@ -1578,12 +1592,91 @@ public partial class PlayerViewModel : ViewModelBase
         }
         else
         {
+            if (TryContinueWithAutoplay(reason))
+                return;
+
             DebugLogger.Info(
                 DebugLogger.Category.Queue,
                 "TrackEnded.NoNext",
                 $"queueCount={UpNext.Count}, historyCount={History.Count}, repeat={RepeatMode}");
             StopAndClear();
         }
+    }
+
+    /// <summary>
+    /// Tag-based Autoplay (Settings > Playback): when the queue is exhausted by a
+    /// natural track end, continues playback with similar tracks from the library —
+    /// same genre as the just-ended track, then same primary artist when the genre
+    /// tier has nothing. Returns false (caller stops exactly as before) when the
+    /// setting is off, the end wasn't natural, or neither tier has candidates.
+    ///
+    /// This runs after the stop-after-current guard, and repeat modes never reach
+    /// the exhaustion branch at all (Repeat One replays above, Repeat All wraps the
+    /// cycle), so autoplay can only extend a queue that would otherwise go silent.
+    /// The first pick plays immediately; the rest are appended to Up Next so the
+    /// queue popup shows where playback is heading. Selection is a synchronous O(n)
+    /// scan (see <see cref="AutoplayService"/>) — cheap enough for the advance path.
+    /// </summary>
+    private bool TryContinueWithAutoplay(QueueAdvanceReason reason)
+    {
+        if (!AutoplayEnabled)
+            return false;
+        // Only a genuinely finished track flows into autoplay. User skips on an empty
+        // queue, Previous, and playback errors all keep today's stop behavior — and a
+        // queue drained by removals never advances by itself, so it can't land here.
+        if (reason is not (QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix))
+            return false;
+        // Defensive: both repeat modes are handled before the exhaustion branch; if
+        // that ever changes, autoplay must still never fight a repeat wrap.
+        if (RepeatMode != RepeatMode.Off)
+            return false;
+        var seed = CurrentTrack; // the just-ended track (already prepended to History)
+        if (seed == null)
+            return false;
+
+        // No immediate repeats: skip everything just played (History) and everything
+        // autoplay already picked this session.
+        var exclude = new HashSet<Guid>(_autoplayPickedIds) { seed.Id };
+        foreach (var t in History)
+            exclude.Add(t.Id);
+
+        var picks = _autoplayService.PickSimilar(seed, _library.Tracks, AutoplayBatchSize, exclude);
+        if (picks.Count == 0)
+        {
+            // Candidate pool exhausted for this run — allow reuse: start a fresh cycle
+            // that only refuses to replay the seed itself back-to-back.
+            _autoplayPickedIds.Clear();
+            picks = _autoplayService.PickSimilar(
+                seed, _library.Tracks, AutoplayBatchSize, new HashSet<Guid> { seed.Id });
+            if (picks.Count == 0)
+                return false;
+        }
+
+        foreach (var t in picks)
+            _autoplayPickedIds.Add(t.Id);
+
+        DebugLogger.Info(
+            DebugLogger.Category.Queue,
+            "Autoplay.Continue",
+            $"seed={seed.Title}, genre={seed.Genre}, picked={picks.Count}, reason={reason}");
+
+        MarkQueueChanged();
+        if (picks.Count > 1)
+        {
+            _suppressHasContentNotify = true;
+            try
+            {
+                for (int i = 1; i < picks.Count; i++)
+                    UpNext.Add(picks[i]);
+            }
+            finally
+            {
+                _suppressHasContentNotify = false;
+                OnPropertyChanged(nameof(HasContent));
+            }
+        }
+        PlayTrack(picks[0]);
+        return true;
     }
 
     /// <summary>

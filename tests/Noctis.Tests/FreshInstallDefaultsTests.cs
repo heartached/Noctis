@@ -25,6 +25,10 @@ public class FreshInstallDefaultsTests
 
         // ReplayGain does nothing until files carry REPLAYGAIN_* tags.
         Assert.Equal("Off", Fresh.ReplayGainMode);
+
+        // Autoplay keeps playing past the end of the queue — continuing playback
+        // the user didn't queue is opt-in.
+        Assert.False(Fresh.AutoplayEnabled);
     }
 
     [Fact]
