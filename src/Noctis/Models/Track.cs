@@ -28,7 +28,7 @@ public partial class Track : ObservableObject
     public string Artist
     {
         get => _artist;
-        set { _artist = value; _searchArtistKey = null; }
+        set { _artist = value; _searchArtistKey = null; _primaryArtist = null; }
     }
     private string _artist = "Unknown Artist";
 
@@ -484,9 +484,14 @@ public partial class Track : ObservableObject
         !string.IsNullOrWhiteSpace(album) &&
         !album.Trim().Equals("Unknown Album", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Primary display artist derived from the first credited artist token.</summary>
+    /// <summary>Primary display artist derived from the first credited artist token.
+    /// Lazily cached like <see cref="SearchArtistKey"/>: the uncached regex-backed parse
+    /// ran once per track per index rebuild, which repeats every ~1.5 s during scans.
+    /// The Artist setter invalidates, covering the Merge Featured toggle rewriting
+    /// Artist at runtime.</summary>
     [JsonIgnore]
-    public string PrimaryArtist => GetPrimaryArtist(Artist);
+    public string PrimaryArtist => _primaryArtist ??= GetPrimaryArtist(Artist);
+    private string? _primaryArtist;
 
     // Everything below this point is computed from the persisted fields above. All of it
     // is [JsonIgnore]d: none of these have setters, so they can never round-trip, and
