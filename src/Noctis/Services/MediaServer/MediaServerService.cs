@@ -45,6 +45,15 @@ public sealed class MediaServerService : IMediaServerService
     /// <summary>Decode size requested from the server; matches the player's art width.</summary>
     private const int ArtworkFetchSize = 768;
 
+    /// <summary>
+    /// Hard ceiling on one artwork download. HttpClient.Timeout stops applying once
+    /// ResponseHeadersRead has delivered the headers (verified empirically on .NET 8:
+    /// a stalled body read outlives the client timeout), so without this a stalled
+    /// server would pin an <see cref="_artworkGate"/> slot and park the album's
+    /// <see cref="_artworkInFlight"/> entry forever. Internal-settable for tests.
+    /// </summary>
+    internal static TimeSpan ArtworkDownloadTimeout = TimeSpan.FromSeconds(30);
+
     private readonly IPersistenceService _persistence;
     private readonly Dictionary<SourceType, IMediaServerClient> _clients;
     private readonly SemaphoreSlim _artworkGate = new(3);
@@ -188,7 +197,10 @@ public sealed class MediaServerService : IMediaServerService
         try
         {
             if (File.Exists(artPath)) return artPath;
-            var bytes = await client.GetArtworkAsync(connection, artId, ArtworkFetchSize, CancellationToken.None);
+            // The download is shared by every caller via _artworkInFlight, so it
+            // deliberately ignores caller tokens — the timeout is its only bound.
+            using var timeout = new CancellationTokenSource(ArtworkDownloadTimeout);
+            var bytes = await client.GetArtworkAsync(connection, artId, ArtworkFetchSize, timeout.Token);
             if (bytes is not { Length: > 0 }) return null;
             _persistence.SaveArtwork(albumId, bytes);
             ArtworkCache.Invalidate(artPath);

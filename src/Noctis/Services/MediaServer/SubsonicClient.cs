@@ -178,7 +178,9 @@ public sealed class SubsonicClient : IMediaServerClient
     /// </summary>
     internal static string BuildRequestUrl(string baseUrl, string username, string password, string method, params (string key, string value)[] extra)
     {
-        var salt = Guid.NewGuid().ToString("N")[..12];
+        // Crypto-RNG salt: Guid.NewGuid is random in practice but not contractually
+        // a CSPRNG, and the salt is the only thing between the md5 token and replay.
+        var salt = RandomNumberGenerator.GetHexString(12, lowercase: true);
         var token = Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(password + salt))).ToLowerInvariant();
 
         var sb = new StringBuilder(baseUrl.TrimEnd('/'))
@@ -257,7 +259,7 @@ public sealed class SubsonicClient : IMediaServerClient
             {
                 40 or 41 => (null, MediaServerError.AuthFailed, "Wrong username or password."),
                 _ => (null, MediaServerError.ServerError,
-                    string.IsNullOrWhiteSpace(serverMessage) ? $"Server error (code {code})." : serverMessage)
+                    string.IsNullOrWhiteSpace(serverMessage) ? $"Server error (code {code})." : SanitizeServerMessage(serverMessage))
             };
         }
         catch (JsonException)
@@ -265,6 +267,27 @@ public sealed class SubsonicClient : IMediaServerClient
             doc?.Dispose();
             return (null, MediaServerError.ServerError, "Unexpected response — is this a Subsonic-compatible server?");
         }
+    }
+
+    /// <summary>
+    /// Server-supplied error text goes straight onto the Settings status line, so a
+    /// hostile or broken server must not be able to flood the UI: control characters
+    /// (including newlines) collapse to spaces and the length is hard-capped.
+    /// </summary>
+    internal static string SanitizeServerMessage(string message)
+    {
+        const int MaxLength = 200;
+        var sb = new StringBuilder(Math.Min(message.Length, MaxLength + 1));
+        foreach (var ch in message)
+        {
+            if (sb.Length == MaxLength)
+            {
+                sb.Append('…');
+                break;
+            }
+            sb.Append(char.IsControl(ch) ? ' ' : ch);
+        }
+        return sb.ToString().Trim();
     }
 
     private static ServerAlbum? MapAlbum(JsonElement album)

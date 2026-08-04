@@ -64,6 +64,43 @@ public class MediaServerClientTests
     }
 
     [Fact]
+    public void Subsonic_RequestUrl_SaltIsFreshLowercaseHex_PerRequest()
+    {
+        static string SaltOf(string url) => url.Split('?')[1].Split('&')
+            .Select(p => p.Split('=', 2))
+            .First(p => p[0] == "s")[1];
+
+        var first = SaltOf(SubsonicClient.BuildRequestUrl("https://music.example.com", "demo", "sesame", "ping"));
+        var second = SaltOf(SubsonicClient.BuildRequestUrl("https://music.example.com", "demo", "sesame", "ping"));
+
+        // Crypto-RNG salt: 12 lowercase hex chars, and never reused between requests.
+        Assert.Matches("^[0-9a-f]{12}$", first);
+        Assert.Matches("^[0-9a-f]{12}$", second);
+        Assert.NotEqual(first, second);
+    }
+
+    [Fact]
+    public async Task Subsonic_Connect_HostileServerErrorMessage_IsCappedAndSingleLine()
+    {
+        // Unknown error code → the server's own message reaches the status line;
+        // a hostile server must not be able to flood it or inject line breaks.
+        var flood = new string('x', 5000);
+        var payload = """{"subsonic-response":{"status":"failed","error":{"code":0,"message":"FLOOD\r\nsecond line"}}}"""
+            .Replace("FLOOD", flood);
+        var handler = new StubHttpMessageHandler(_ => Json(payload));
+        var client = new SubsonicClient(new HttpClient(handler));
+        var connection = new SourceConnection { BaseUriOrPath = "https://music.example.com", Username = "demo" };
+
+        var result = await client.ConnectAsync(connection, "sesame");
+
+        Assert.False(result.Success);
+        Assert.Equal(MediaServerError.ServerError, result.Error);
+        Assert.True(result.Message.Length <= 201, $"status text not capped: {result.Message.Length} chars");
+        Assert.DoesNotContain("\n", result.Message);
+        Assert.StartsWith("xxx", result.Message);
+    }
+
+    [Fact]
     public async Task Subsonic_Connect_ErrorCode40_MapsToAuthFailed()
     {
         var handler = new StubHttpMessageHandler(_ =>
@@ -335,6 +372,35 @@ public class MediaServerClientTests
         Assert.Equal(expected, MediaServerUrl.TryNormalizeBase(input, out _, out _));
     }
 
+    // ── Artwork download bounds ──
+
+    [Fact]
+    public async Task Artwork_StalledServer_GivesUpAfterTimeout_InsteadOfHangingForever()
+    {
+        // HttpClient.Timeout does not bound body reads after ResponseHeadersRead,
+        // so the service applies its own per-download ceiling; without it a stalled
+        // server pinned an artwork-gate slot (and the album's in-flight entry) forever.
+        var previous = MediaServerService.ArtworkDownloadTimeout;
+        MediaServerService.ArtworkDownloadTimeout = TimeSpan.FromMilliseconds(250);
+        try
+        {
+            using var persistence = new TestPersistenceService();
+            var service = new MediaServerService(new HttpClient(new StallingHttpMessageHandler()), persistence);
+            service.SetActiveConnection(ConnectedSubsonic());
+            var album = new ServerAlbum { Id = "al-1", Name = "Abbey Road", Artist = "The Beatles", CoverArtId = "al-1" };
+
+            var task = service.EnsureAlbumArtworkAsync(album);
+            var done = await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(10)));
+
+            Assert.Same(task, done); // gave up instead of hanging
+            Assert.Null(await task); // stalled download surfaces as "no art"
+        }
+        finally
+        {
+            MediaServerService.ArtworkDownloadTimeout = previous;
+        }
+    }
+
     // ── Scheme → FromType decision in the player ──
 
     [Theory]
@@ -382,5 +448,15 @@ public class MediaServerClientTests
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(_responder(request));
+    }
+
+    /// <summary>Never answers; completes only when the request's token is cancelled.</summary>
+    private sealed class StallingHttpMessageHandler : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            await Task.Delay(System.Threading.Timeout.Infinite, cancellationToken);
+            throw new InvalidOperationException("unreachable");
+        }
     }
 }
