@@ -29,14 +29,49 @@
             <Setter Property="Opacity" Value="0.75" />
         </Style>
 
+        <!-- Pill sort dropdown, same recipe as the metadata editor's genre combo.
+             Those styles are window-local to MetadataWindow, so this dialog carries
+             its own copies. Content is centered in the pill on both axes: the
+             selection box's default Stretch alignment draws the text at the top. -->
+        <Style Selector="ComboBox.view-opt-combo">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="ComboBox.view-opt-combo /template/ Border#Background">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="ComboBox.view-opt-combo /template/ Border#HighlightBackground">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+
+        <!-- Pill-shaped hover/selection highlight for the dropdown's items, matching
+             the genre combo's popup. Inset via margin so the pill doesn't bleed to
+             the popup edges, and round the background presenter. -->
+        <Style Selector="ComboBoxItem">
+            <Setter Property="Margin" Value="4,1" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style Selector="ComboBoxItem /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+
         <!-- Segmented two-option pills (Ascending/Descending, All Songs/Only Favorites).
              Same shape as the top bar's quality chips so the dialog reads as part of the
-             app rather than a stock settings sheet. -->
+             app rather than a stock settings sheet. Centered so the pair reads as one
+             control row rather than hanging off the left edge. -->
         <Style Selector="Border.view-opt-segment">
             <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="Padding" Value="3" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
         </Style>
         <Style Selector="Button.view-opt-seg">
             <Setter Property="Padding" Value="14,6" />
@@ -160,6 +195,7 @@
                                  binding needs its own x:DataType to resolve against the
                                  option rather than this dialog's view model. -->
                             <ComboBox Grid.Column="1"
+                                      Classes="view-opt-combo"
                                       HorizontalAlignment="Stretch"
                                       ItemsSource="{Binding SortOptions}"
                                       SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}">
