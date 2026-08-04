@@ -2040,17 +2040,22 @@ public class LibraryService : ILibraryService
 
             if (enabled)
             {
-                // Merging is pure string work against the indexed titles — instant.
-                foreach (var track in snapshot)
+                // Merging is pure string work against the indexed titles, but it is a
+                // full-library pass — run it on the pool so the toggle click that
+                // awaits this doesn't stall the UI thread.
+                await Task.Run(() =>
                 {
-                    if (token.IsCancellationRequested) break;
-                    var enriched = MetadataService.EnrichArtistFromTitle(track.Artist, track.Title);
-                    if (!string.Equals(enriched, track.Artist, StringComparison.Ordinal))
+                    foreach (var track in snapshot)
                     {
-                        track.Artist = enriched;
-                        changed.Add(track);
+                        if (token.IsCancellationRequested) break;
+                        var enriched = MetadataService.EnrichArtistFromTitle(track.Artist, track.Title);
+                        if (!string.Equals(enriched, track.Artist, StringComparison.Ordinal))
+                        {
+                            track.Artist = enriched;
+                            changed.Add(track);
+                        }
                     }
-                }
+                }, CancellationToken.None);
             }
             else
             {
@@ -2060,45 +2065,46 @@ public class LibraryService : ILibraryService
                 // bounded to those. Server-backed sources (Navidrome/WebDav/Plex) have
                 // no readable file; their tracks are rebuilt fresh on the next connector
                 // sync, which honors the flipped toggle.
-                var candidates = snapshot
-                    .Where(t => t.SourceType is SourceType.Local or SourceType.Smb &&
-                                MetadataService.MayHaveMergedFeaturedCredit(t.Artist, t.Title))
-                    .ToList();
-
-                if (candidates.Count > 0)
+                // The candidate scan is itself a full-library pass, so it runs on the
+                // pool with the re-reads rather than on the caller's (UI) thread.
+                await Task.Run(() =>
                 {
-                    await Task.Run(() =>
+                    var candidates = snapshot
+                        .Where(t => t.SourceType is SourceType.Local or SourceType.Smb &&
+                                    MetadataService.MayHaveMergedFeaturedCredit(t.Artist, t.Title))
+                        .ToList();
+
+                    if (candidates.Count == 0) return;
+
+                    try
                     {
-                        try
-                        {
-                            Parallel.ForEach(
-                                candidates,
-                                new ParallelOptions
+                        Parallel.ForEach(
+                            candidates,
+                            new ParallelOptions
+                            {
+                                MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                                CancellationToken = token
+                            },
+                            track =>
+                            {
+                                try
                                 {
-                                    MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
-                                    CancellationToken = token
-                                },
-                                track =>
+                                    var refreshed = _metadata.ReadTrackMetadata(track.FilePath);
+                                    if (refreshed == null) return;
+                                    if (!string.Equals(refreshed.Artist, track.Artist, StringComparison.Ordinal))
+                                    {
+                                        track.Artist = refreshed.Artist;
+                                        lock (changed) changed.Add(track);
+                                    }
+                                }
+                                catch
                                 {
-                                    try
-                                    {
-                                        var refreshed = _metadata.ReadTrackMetadata(track.FilePath);
-                                        if (refreshed == null) return;
-                                        if (!string.Equals(refreshed.Artist, track.Artist, StringComparison.Ordinal))
-                                        {
-                                            track.Artist = refreshed.Artist;
-                                            lock (changed) changed.Add(track);
-                                        }
-                                    }
-                                    catch
-                                    {
-                                        // Non-fatal: keep the merged credit for unreadable files.
-                                    }
-                                });
-                        }
-                        catch (OperationCanceledException) { }
-                    }, CancellationToken.None);
-                }
+                                    // Non-fatal: keep the merged credit for unreadable files.
+                                }
+                            });
+                    }
+                    catch (OperationCanceledException) { }
+                }, CancellationToken.None);
             }
 
             if (changed.Count == 0)

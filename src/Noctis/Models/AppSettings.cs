@@ -238,7 +238,8 @@ public class AppSettings
     /// <summary>When true (default), "feat./ft." credits found in track titles — or file names,
     /// which stand in for the title on untagged files — are merged into the artist credit at
     /// scan time so collaborations show the full credit. Off: artist tags are used exactly as
-    /// written. Only affects tracks read after the change (rescan to re-read existing ones).</summary>
+    /// written. Flipping the toggle re-applies to already-indexed tracks right away
+    /// (LibraryService.ApplyMergeFeaturedFromTitlesAsync).</summary>
     public bool MergeFeaturedFromTitles { get; set; } = true;
 
     /// <summary>Whether long track titles in the Lyrics page should scroll.</summary>
