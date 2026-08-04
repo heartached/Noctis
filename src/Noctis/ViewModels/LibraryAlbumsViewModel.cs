@@ -527,10 +527,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             var q = searchFilter.Trim();
             var qNoSpaces = RemoveWhitespace(q);
             filtered = filtered.Where(a =>
-                MatchesSearch(a.Name, q, qNoSpaces) ||
-                MatchesSearch(a.Artist, q, qNoSpaces) ||
-                a.Tracks.Any(t => MatchesSearch(t.Title, q, qNoSpaces) ||
-                                  MatchesSearch(t.Artist, q, qNoSpaces)));
+                MatchesSearch(a.Name, a.SearchNameKey, q, qNoSpaces) ||
+                MatchesSearch(a.Artist, a.SearchArtistKey, q, qNoSpaces) ||
+                a.Tracks.Any(t => MatchesSearch(t.Title, t.SearchTitleKey, q, qNoSpaces) ||
+                                  MatchesSearch(t.Artist, t.SearchArtistKey, q, qNoSpaces)));
 
             // In artist discographies, show the artist's own releases before feature appearances.
             filtered = filtered
@@ -682,7 +682,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         {
             var q = searchFilter.Trim();
             var qNoSpaces = RemoveWhitespace(q);
-            tracks = tracks.Where(t => MatchesSearch(t.Title, q, qNoSpaces));
+            tracks = tracks.Where(t => MatchesSearch(t.Title, t.SearchTitleKey, q, qNoSpaces));
         }
 
         var orderedSongs = tracks
@@ -1087,7 +1087,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         CtrlSelectedAlbums.Clear();
     }
 
-    private static bool MatchesSearch(string? source, string query, string queryNoSpaces)
+    // sourceKey is the cached SearchText.Normalize key (Album.SearchNameKey,
+    // Track.SearchTitleKey etc.). Match and rank used to re-normalize every album and
+    // track string per keystroke — hundreds of thousands of throwaway strings at scale.
+    // The cached key is allocation-free here; see LibrarySongsViewModel for the pattern.
+    private static bool MatchesSearch(string? source, string sourceKey, string query, string queryNoSpaces)
     {
         if (string.IsNullOrWhiteSpace(source))
             return false;
@@ -1096,7 +1100,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (source.Contains(query, StringComparison.OrdinalIgnoreCase))
             return true;
 
-        if (RemoveWhitespace(source).Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
+        if (sourceKey.Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
             return true;
 
         // Word-level match: every word in the query must appear somewhere in the source
@@ -1119,40 +1123,41 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
     private static int GetAlbumSearchRank(Album album, string query, string queryNoSpaces)
     {
-        var nameRank = RankMatch(album.Name, query, queryNoSpaces);
-        var artistRank = RankMatch(album.Artist, query, queryNoSpaces);
+        var nameRank = RankMatch(album.Name, album.SearchNameKey, query, queryNoSpaces);
+        var artistRank = RankMatch(album.Artist, album.SearchArtistKey, query, queryNoSpaces);
         // Also check individual track artists so featured-artist albums rank properly
         var trackArtistRank = album.Tracks.Count == 0
             ? 1000
-            : album.Tracks.Min(t => RankMatch(t.Artist, query, queryNoSpaces));
+            : album.Tracks.Min(t => RankMatch(t.Artist, t.SearchArtistKey, query, queryNoSpaces));
         var trackTitleRank = album.Tracks.Count == 0
             ? 1000
-            : album.Tracks.Min(t => RankMatch(t.Title, query, queryNoSpaces));
+            : album.Tracks.Min(t => RankMatch(t.Title, t.SearchTitleKey, query, queryNoSpaces));
 
         // Artist matches rank equally to name matches for proper grouping
         return Math.Min(nameRank, Math.Min(artistRank, Math.Min(trackArtistRank + 5, trackTitleRank + 40)));
     }
 
-    private static int RankMatch(string? source, string query, string queryNoSpaces)
+    private static int RankMatch(string? source, string sourceKey, string query, string queryNoSpaces)
     {
         if (string.IsNullOrWhiteSpace(source))
             return 1000;
 
+        // Normalize strips whitespace, so the cached key equals the old
+        // RemoveWhitespace(source.Trim()) result without the per-call allocations.
         var normalized = source.Trim();
-        var normalizedNoSpaces = RemoveWhitespace(normalized);
 
         if (string.Equals(normalized, query, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(normalizedNoSpaces, queryNoSpaces, StringComparison.OrdinalIgnoreCase))
+            string.Equals(sourceKey, queryNoSpaces, StringComparison.OrdinalIgnoreCase))
             return 0;
 
         if (normalized.StartsWith(query, StringComparison.OrdinalIgnoreCase) ||
-            normalizedNoSpaces.StartsWith(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
+            sourceKey.StartsWith(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
             return 1;
 
         if (normalized.Contains(query, StringComparison.OrdinalIgnoreCase))
             return 2;
 
-        if (normalizedNoSpaces.Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
+        if (sourceKey.Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
             return 3;
 
         // Word-level match: all query words found in source

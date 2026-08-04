@@ -14,10 +14,32 @@ public class Album : ObservableObject
     public Guid Id { get; set; }
 
     /// <summary>Album title.</summary>
-    public string Name { get; set; } = "Unknown Album";
+    public string Name
+    {
+        get => _name;
+        set { _name = value; _searchNameKey = null; }
+    }
+    private string _name = "Unknown Album";
 
     /// <summary>Album artist. "Various Artists" if tracks have mixed artists.</summary>
-    public string Artist { get; set; } = "Unknown Artist";
+    public string Artist
+    {
+        get => _artist;
+        set { _artist = value; _searchArtistKey = null; }
+    }
+    private string _artist = "Unknown Artist";
+
+    private string? _searchNameKey;
+    private string? _searchArtistKey;
+
+    /// <summary>Lazily cached <see cref="Noctis.Helpers.SearchText.Normalize"/> key for
+    /// Name, mirroring <see cref="Track.SearchTitleKey"/>: the Albums-view search used to
+    /// re-normalize every album and track string per keystroke. The setters above
+    /// invalidate on reassignment.</summary>
+    public string SearchNameKey => _searchNameKey ??= Helpers.SearchText.Normalize(_name);
+
+    /// <summary>Lazily cached normalized search key for Artist. See <see cref="SearchNameKey"/>.</summary>
+    public string SearchArtistKey => _searchArtistKey ??= Helpers.SearchText.Normalize(_artist);
 
     /// <summary>Release year (from the first track that has one).</summary>
     public int Year { get; set; }
