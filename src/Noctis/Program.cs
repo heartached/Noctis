@@ -160,6 +160,12 @@ internal class Program
             .With(new SkiaOptions { MaxGpuResourceSizeBytes = 256L * 1024 * 1024 })
             .LogToTrace();
 
+        // LogToTrace installed its sink; wrap it so Avalonia's own warnings and
+        // errors (binding failures, layout complaints — the usual trail behind
+        // "weird UI renders") also land in the session log, deduplicated and
+        // capped so recycled-container binding noise can't flood the ring.
+        Avalonia.Logging.Logger.Sink = new Services.AvaloniaLogBridge(Avalonia.Logging.Logger.Sink);
+
         // The app's default font is the embedded Inter, which carries no
         // CJK/Hangul glyphs. Windows resolves missing glyphs through the system
         // font manager automatically, but on macOS/Linux that lookup doesn't
