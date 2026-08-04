@@ -206,8 +206,11 @@ public sealed class MediaServerService : IMediaServerService
             ArtworkCache.Invalidate(artPath);
             return File.Exists(artPath) ? artPath : null;
         }
-        catch
+        catch (Exception ex)
         {
+            // One line per failure kind — a dead server fails for every cover.
+            DebugLog.WriteOnce("Server", $"artwork:{ex.GetBaseException().GetType().Name}",
+                $"Server artwork fetch failed: {ex.Message}");
             return null;
         }
         finally

@@ -2200,12 +2200,18 @@ public partial class PlayerViewModel : ViewModelBase
     private void OnPlaybackError(object? sender, string message)
     {
         DebugLogger.Error(DebugLogger.Category.Playback, "PlaybackError", $"msg={message}, track={CurrentTrack?.Title}");
+        // DebugLogger is the dev-only ring (off by default) — the session log
+        // must carry playback errors too, or Copy Logs shows nothing for the
+        // single most-reported failure class.
+        DebugLog.Write("Audio", $"Playback error: {message} — track: {CurrentTrack?.Title ?? "(none)"}");
         Dispatcher.UIThread.Post(() =>
         {
             if (++_consecutivePlaybackErrors >= MaxConsecutivePlaybackErrors)
             {
                 DebugLogger.Error(DebugLogger.Category.Playback, "PlaybackError.CascadeStop",
                     $"{_consecutivePlaybackErrors} consecutive playback errors — stopping instead of skipping");
+                DebugLog.Write("Audio",
+                    $"{_consecutivePlaybackErrors} consecutive playback errors — stopping playback");
                 _consecutivePlaybackErrors = 0;
                 StopAndClear();
                 return;

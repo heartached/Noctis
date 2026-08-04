@@ -793,8 +793,14 @@ public partial class SettingsViewModel : ViewModelBase
         // the async "Shared output…" notice would immediately re-populate it (card
         // grows again) — a visible shrink-then-grow that jolted the toggle/text.
         audioPlayer.OutputModeChanged += (_, status) =>
+        {
+            // Output-path transitions (exclusive engaged, fell back to shared,
+            // sink rebuilt after a device error) are exactly what an audio bug
+            // report needs, and they are rare — log them all.
+            DebugLog.Write("Audio", $"Output path: {status}");
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 ExclusiveAudioStatus = ExclusiveAudioEnabled ? status : "");
+        };
         ApplyAudioSettings();
     }
 

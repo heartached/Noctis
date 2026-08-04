@@ -1049,6 +1049,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 {
                     lrcLibErrored = true;
                     DebugLogger.Warn(DebugLogger.Category.Lyrics, "LRCLIB:Error", ex.Message);
+                    // Keyed per failure kind, not per track: an offline session
+                    // fails for every track and must not eat the session log.
+                    DebugLog.WriteOnce("Lyrics", $"lrclib:{ex.GetBaseException().GetType().Name}",
+                        $"LRCLIB fetch failed: {ex.Message}");
                 }
             }
 
@@ -1062,6 +1066,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 {
                     netEaseErrored = true;
                     DebugLogger.Warn(DebugLogger.Category.Lyrics, "NetEase:Error", ex.Message);
+                    DebugLog.WriteOnce("Lyrics", $"netease:{ex.GetBaseException().GetType().Name}",
+                        $"NetEase fetch failed: {ex.Message}");
                 }
             }
 

@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Models;
+using Noctis.Services;
 using Noctis.Services.MediaServer;
 
 namespace Noctis.ViewModels;
@@ -154,7 +155,12 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
         {
             await LoadAlbumPageAsync();
             if (Albums.Count == 0)
+            {
                 StatusText = "No albums yet — the server returned an empty music library (or wasn't reachable).";
+                // The clients fold network failures into empty results, so this
+                // is the one spot that knows the server browse came back empty.
+                DebugLog.Write("Server", "Album browse returned nothing — empty library or unreachable server.");
+            }
         }
         finally
         {
@@ -236,7 +242,10 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
             foreach (var track in tracks)
                 AlbumTracks.Add(track);
             if (AlbumTracks.Count == 0)
+            {
                 StatusText = "Couldn't load this album from the server.";
+                DebugLog.Write("Server", $"Album load returned no tracks: {tile.Name}");
+            }
         }
         finally
         {
