@@ -2309,6 +2309,11 @@ public class VlcAudioPlayer : IAudioPlayer
             _standbyStartPositionMs = -1;
             Interlocked.Exchange(ref _standbyPreparedTicksUtc, 0);
             _standbyPrepared = false;
+            // The outgoing track can hit its real end during warmup/fade (gapless hands
+            // off ~0.3 s before the end) and arm the grace deadline with the incoming
+            // session's id — clear it post-swap like the sequential/overlap paths do,
+            // or TrackEnded fires 1.2 s in and double-advances the queue.
+            ResetEndReachedPending();
 
             // Crossfade just wrote finalVolume directly to _player.Volume — sync
             // the throttle deadband baseline so the next slider write isn't
@@ -3195,6 +3200,19 @@ public class VlcAudioPlayer : IAudioPlayer
         }
 
         var sessionId = CurrentSessionId;
+        if (_transitionInFlight)
+        {
+            // A crossfade/AutoMix transition is committing: this EndReached is the
+            // OUTGOING track reaching its natural end mid-fade (sender is still the
+            // pre-swap _player), but sessionId already names the INCOMING track —
+            // PlayInternal bumps it before the transition worker runs. Arming the
+            // grace deadline here would fire TrackEnded for the new session ~1.2 s
+            // later and double-advance the queue (a track gets skipped). The
+            // transition owns the advance; every cancel/fault path clears the flag.
+            DebugLogger.Info(DebugLogger.Category.Playback, "VLC.EndReached.IgnoredTransition", $"session={sessionId}");
+            return;
+        }
+
         var elapsedSinceStartMs = (DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastPlayStartTicksUtc)) / TimeSpan.TicksPerMillisecond;
         if (elapsedSinceStartMs is >= 0 and < 500)
         {
