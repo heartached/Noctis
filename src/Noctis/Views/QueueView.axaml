@@ -43,17 +43,22 @@
         </Style>
     </UserControl.Styles>
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                  VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="16">
+    <!-- Grid, not ScrollViewer+StackPanel: a page-level ScrollViewer measures the
+         Up Next ListBox at infinite height, so its VirtualizingStackPanel realizes
+         a row for every queued track at once. The star row gives the ListBox a
+         finite viewport so virtualization actually works; History (capped at 50)
+         scrolls within its own MaxHeight-bounded region. -->
+    <Grid Margin="16" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
 
             <!-- Now Playing section -->
             <TextBlock Text="Now Playing"
+                       Grid.Row="0"
                        FontSize="24"
                        FontWeight="Bold"
                        Margin="0,0,0,12" />
 
-            <Border Padding="12"
+            <Border Grid.Row="1"
+                    Padding="12"
                     CornerRadius="8"
                     Background="{DynamicResource SystemControlBackgroundListLowBrush}"
                     Margin="0,0,0,24"
@@ -97,13 +102,14 @@
             </Border>
 
             <TextBlock Text="No track playing"
+                       Grid.Row="2"
                        FontSize="14"
                        Opacity="0.4"
                        Margin="0,0,0,24"
                        IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNull}}" />
 
             <!-- Up Next section -->
-            <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,8">
+            <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,8">
                 <!-- Title + Shuffle/Repeat toggles. These live here (not in the slim Home
                      playback bar) so set-once controls stay out of the bar's way. -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -211,7 +217,8 @@
             </Grid>
 
 
-            <ListBox Classes="track-list"
+            <ListBox Grid.Row="4"
+                     Classes="track-list"
                      ItemsSource="{Binding UpNext}"
                      Margin="0,0,0,24">
                 <ListBox.ItemTemplate>
@@ -253,13 +260,16 @@
 
             <!-- History section -->
             <TextBlock Text="History"
+                       Grid.Row="5"
                        FontSize="18"
                        FontWeight="SemiBold"
                        Margin="0,0,0,8"
                        IsVisible="{Binding !!History.Count}" />
 
-            <ListBox Classes="track-list"
+            <ListBox Grid.Row="6"
+                     Classes="track-list"
                      ItemsSource="{Binding History}"
+                     MaxHeight="240"
                      IsVisible="{Binding !!History.Count}"
                      Opacity="0.6">
                 <ListBox.ItemTemplate>
@@ -299,7 +309,6 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-        </StackPanel>
-    </ScrollViewer>
+    </Grid>
 
 </UserControl>
