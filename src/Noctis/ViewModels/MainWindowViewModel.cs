@@ -74,6 +74,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private void UpdateSectionActiveFlags()
     {
         var current = IsSettingsModalOpen ? null : CurrentView;
+        _homeVm.IsActive = ReferenceEquals(current, _homeVm);
         _coverFlowVm.IsActive = ReferenceEquals(current, _coverFlowVm);
         _songsVm.IsActive = ReferenceEquals(current, _songsVm);
         _albumsVm.IsActive = ReferenceEquals(current, _albumsVm);

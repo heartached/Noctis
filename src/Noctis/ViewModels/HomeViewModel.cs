@@ -84,12 +84,20 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             _refreshDebounce.Stop();
             Refresh();
         };
-        _libraryUpdatedHandler = (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(() =>
+        // Rebuild only while Home is the current view: hidden views just mark dirty
+        // and catch up once on activation, like the other library view models.
+        // FavoritesChanged rides the same 500 ms debounce — a heart click used to
+        // trigger an immediate full rebuild.
+        _libraryUpdatedHandler = (_, _) => { _isDirty = true; if (_isActive) Dispatcher.UIThread.Post(() =>
         {
             _refreshDebounce.Stop();
             _refreshDebounce.Start();
         }); };
-        _favoritesChangedHandler = (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
+        _favoritesChangedHandler = (_, _) => { _isDirty = true; if (_isActive) Dispatcher.UIThread.Post(() =>
+        {
+            _refreshDebounce.Stop();
+            _refreshDebounce.Start();
+        }); };
         _library.LibraryUpdated += _libraryUpdatedHandler;
         _library.FavoritesChanged += _favoritesChangedHandler;
     }
@@ -115,6 +123,27 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             }
         });
     }
+
+    /// <summary>
+    /// Set by MainWindowViewModel when Home becomes (or stops being) the current view.
+    /// Mirrors LibrarySongsViewModel.IsActive: gates event-driven rebuilds while
+    /// hidden, and catches up on activation (no-op when nothing changed).
+    /// </summary>
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive == value) return;
+            _isActive = value;
+            // Covers back-navigation paths that swap CurrentView without a Refresh call.
+            if (value) Refresh();
+        }
+    }
+
+    // True at construction: Home is the startup view, and UpdateSectionActiveFlags
+    // only runs on the first navigation/modal change.
+    private bool _isActive = true;
 
     /// <summary>Forces the next Refresh() call to rebuild even if data hasn't changed.</summary>
     public void MarkDirty() => _isDirty = true;
