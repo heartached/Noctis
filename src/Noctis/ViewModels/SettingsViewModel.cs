@@ -105,6 +105,14 @@ public partial class SettingsViewModel : ViewModelBase
             // reported "0 playlists" to every user who had any.
             _ = RefreshPlaylistCountAsync();
         }
+
+        // The GitHub release list is otherwise fetched only when Developer Mode
+        // flips on (once at startup for users who keep it enabled), so a release
+        // published while the app runs would never appear or claim the "Latest"
+        // pill. Re-fetch whenever the About tab opens with the version manager
+        // visible; the old rows stay on screen until the new list arrives.
+        if (value == TabAbout && DeveloperMode)
+            _ = RefreshReleasesAsync();
     }
 
     [RelayCommand]
