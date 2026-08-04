@@ -57,6 +57,17 @@ internal class Program
                 SingleInstanceGuard.StartActivationListener();
             }
 
+            // Settle whether the previous run died (preserving its log for
+            // Settings → About) and start mirroring this session's log to disk
+            // so a crash can't take it along. Deliberately AFTER the
+            // single-instance guard: a duplicate launch exits above without ever
+            // touching the live instance's journal — on Linux/macOS File.Move
+            // ignores advisory locks, so an early Initialize in the duplicate
+            // would steal the running session's log as a bogus crash file.
+            // Everything logged before this point reaches the file anyway: the
+            // journal replays the in-memory ring when it attaches.
+            Services.CrashJournal.Initialize(AppPaths.DataRoot);
+
             App.PendingOpenFiles = filesToOpen;
 
             // Configure DI container
@@ -92,7 +103,7 @@ internal class Program
             AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             {
                 if (args.ExceptionObject is Exception ex)
-                    LogCrash("AppDomain.UnhandledException", ex);
+                    LogCrash("AppDomain.UnhandledException", ex, fatal: args.IsTerminating);
             };
 
             TaskScheduler.UnobservedTaskException += (_, args) =>
@@ -106,11 +117,16 @@ internal class Program
 
             // Cleanup
             provider.Dispose();
+
+            // The lifetime exited under its own power (window close, tray quit,
+            // OS session end after the shutdown save) — the only clean-exit path
+            // in the app, so the journal must not survive into the next launch.
+            Services.CrashJournal.MarkCleanShutdown();
         }
         catch (Exception ex)
         {
             // Always log so we can post-mortem regardless of platform
-            LogCrash("Program.Main", ex);
+            LogCrash("Program.Main", ex, fatal: true);
 
             // On Windows, surface a native message box (libvlc DLLs missing etc.).
             // On macOS/Linux, the crash log + stderr is the post-mortem path.
@@ -302,8 +318,16 @@ internal class Program
         services.AddSingleton<MainWindowViewModel>();
     }
 
-    private static void LogCrash(string source, Exception ex)
+    private static void LogCrash(string source, Exception ex, bool fatal = false)
     {
+        // Fatal faults stamp the session journal first, so the preserved file
+        // reads as a crash (marker, then the stack via the DebugLog write below)
+        // instead of an anonymous kill. Non-fatal callers (unobserved tasks, the
+        // single-instance fallback) must NOT stamp — the app carries on, and a
+        // false stamp would put a scary "crashed" banner on the next launch.
+        if (fatal)
+            Services.CrashJournal.MarkFatal(source);
+
         try
         {
             var crashDir = AppPaths.DataRoot;

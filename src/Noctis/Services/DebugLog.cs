@@ -14,7 +14,13 @@ public static class DebugLog
 
     private static readonly object Lock = new();
     private static readonly List<string> Lines = new();
+    private static readonly HashSet<string> OnceKeys = new(StringComparer.Ordinal);
     private static bool _seeded;
+
+    // Disk mirror (CrashJournal). Invoked inside Lock so the file gets lines in
+    // exactly the order the ring does.
+    private static Action<string>? _sink;
+    private static Action? _sinkReset;
 
     /// <summary>Raised after a write or clear. May fire on any thread.</summary>
     public static event Action? Changed;
@@ -50,14 +56,52 @@ public static class DebugLog
         lock (Lock)
         {
             SeedLocked();
-            Lines.Add($"[{DateTime.Now:HH:mm:ss}] [{source}] {message}");
+            var line = $"[{DateTime.Now:HH:mm:ss}] [{source}] {message}";
+            Lines.Add(line);
             if (Lines.Count > MaxLines)
                 Lines.RemoveRange(0, Lines.Count - MaxLines);
+            _sink?.Invoke(line);
         }
         Changed?.Invoke();
     }
 
     public static void Write(string source, Exception ex) => Write(source, ex.ToString());
+
+    /// <summary>
+    /// Writes the first occurrence per <paramref name="key"/> and stays quiet on
+    /// repeats — for failure paths that fire per track or per request (offline
+    /// lyrics fetches, server artwork errors) and would otherwise flood the ring.
+    /// </summary>
+    public static void WriteOnce(string source, string key, string message)
+    {
+        lock (Lock)
+        {
+            if (OnceKeys.Contains(key)) return;
+            // Pathological key churn: stop admitting new keys rather than flood.
+            if (OnceKeys.Count >= 256) return;
+            OnceKeys.Add(key);
+        }
+        Write(source, message + " (repeats of this are suppressed)");
+    }
+
+    /// <summary>
+    /// Registers the disk mirror (one sink, set once at startup). Replays what
+    /// is already in the ring — seeding the header first if nothing has logged
+    /// yet — so the file always starts with the system info, then receives every
+    /// later line in ring order. <paramref name="reset"/> runs on
+    /// <see cref="Clear"/> so the file restarts alongside the ring.
+    /// </summary>
+    internal static void AttachSink(Action<string> sink, Action reset)
+    {
+        lock (Lock)
+        {
+            SeedLocked();
+            foreach (var line in Lines)
+                sink(line);
+            _sink = sink;
+            _sinkReset = reset;
+        }
+    }
 
     /// <summary>Current log contents as one string (oldest first).</summary>
     public static string Snapshot()
@@ -75,8 +119,13 @@ public static class DebugLog
         lock (Lock)
         {
             Lines.Clear();
+            OnceKeys.Clear();
             _seeded = false;
+            _sinkReset?.Invoke();
             SeedLocked();
+            if (_sink != null)
+                foreach (var line in Lines)
+                    _sink(line);
         }
         Changed?.Invoke();
     }

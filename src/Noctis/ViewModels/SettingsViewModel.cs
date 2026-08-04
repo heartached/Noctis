@@ -760,7 +760,7 @@ public partial class SettingsViewModel : ViewModelBase
         DebugLog.Changed += () => Dispatcher.UIThread.Post(() =>
         {
             if (DeveloperMode)
-                DevLogText = DebugLog.Snapshot();
+                DevLogText = ComposeDevLogText();
         });
 
         if (Avalonia.Application.Current is Noctis.App app)
@@ -3477,6 +3477,9 @@ public partial class SettingsViewModel : ViewModelBase
             Debug.WriteLine($"[Settings] Failed to clear crash log: {ex.Message}");
         }
 
+        // Preserved crash-session logs go with it.
+        CrashJournal.ClearPreserved();
+
         // Clear index cache
         try
         {
@@ -3943,6 +3946,17 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _isDevDownloading;
     [ObservableProperty] private double _devDownloadProgress;
     [ObservableProperty] private string _devLogText = "";
+
+    /// <summary>Banner above the log pane when a previous session died and its
+    /// log was preserved; null hides it. Only the Clear button removes it.</summary>
+    [ObservableProperty] private string? _preservedCrashBanner;
+
+    /// <summary>The log pane / Copy Logs content: any preserved crash log from a
+    /// previous session first, then the live session log.</summary>
+    private static string ComposeDevLogText()
+        => CrashJournal.PreservedBlock is { } preserved
+            ? preserved + Environment.NewLine + DebugLog.Snapshot()
+            : DebugLog.Snapshot();
     [ObservableProperty] private bool _devLogsCopied;
 
     private CancellationTokenSource? _devCts;
@@ -3958,7 +3972,8 @@ public partial class SettingsViewModel : ViewModelBase
 
         if (value)
         {
-            DevLogText = DebugLog.Snapshot();
+            PreservedCrashBanner = CrashJournal.PreservedBanner;
+            DevLogText = ComposeDevLogText();
             _ = RefreshReleasesAsync();
         }
     }
@@ -4184,7 +4199,7 @@ public partial class SettingsViewModel : ViewModelBase
             ?.MainWindow?.Clipboard;
         if (clipboard is null) return;
 
-        try { await clipboard.SetTextAsync(DebugLog.Snapshot()); } catch { return; }
+        try { await clipboard.SetTextAsync(ComposeDevLogText()); } catch { return; }
 
         DevLogsCopied = true;
         await Task.Delay(1500);
@@ -4194,8 +4209,10 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void ClearDevLogs()
     {
+        CrashJournal.ClearPreserved();
+        PreservedCrashBanner = null;
         DebugLog.Clear();
-        DevLogText = DebugLog.Snapshot();
+        DevLogText = ComposeDevLogText();
     }
 
     /// <summary>Opens the app data folder, which also holds crash.log.</summary>
