@@ -1771,25 +1771,33 @@ public class VlcAudioPlayer : IAudioPlayer
 
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            try { _playbackLock.Wait(); }
+            var prepareStart = Environment.TickCount64;
+            DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.DualPrepareStart", $"path={Path.GetFileName(normalizedPath)}, startMs={startPositionMs}");
+
+            if (_disposed || _currentMedia == null)
+                return;
+
+            // Parse OUTSIDE _playbackLock: the wait can block up to 8 s on slow media
+            // (NAS, spun-down HDD) and every other playback entry point queues behind
+            // the lock, so holding it here made Next/Resume/Stop wait out the parse.
+            // The skip token aborts the wait so a user skip isn't held up either.
+            CancellationToken cancel;
+            try { cancel = _skipCts.Token; }
             catch (ObjectDisposedException) { return; }
+
+            Media media;
+            try
+            {
+                media = new Media(_libVlc, normalizedPath, FromType.FromPath);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.DualPrepareFailed", ex.Message);
+                return;
+            }
 
             try
             {
-                var prepareStart = Environment.TickCount64;
-                DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.DualPrepareStart", $"path={Path.GetFileName(normalizedPath)}, startMs={startPositionMs}");
-
-                if (_disposed || _currentMedia == null)
-                    return;
-
-                if (_standbyPrepared &&
-                    string.Equals(_standbyPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
-                    _standbyStartPositionMs == startPositionMs)
-                    return;
-
-                ReleasePreparedNext();
-
-                var media = new Media(_libVlc, normalizedPath, FromType.FromPath);
                 if (_normalizationEnabled)
                 {
                     media.AddOption(":audio-replay-gain-mode=track");
@@ -1798,12 +1806,48 @@ public class VlcAudioPlayer : IAudioPlayer
                 }
 
                 var parseTask = media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
-                if (!parseTask.Wait(8000) || parseTask.Result != MediaParsedStatus.Done)
+                bool parsed;
+                try
+                {
+                    parsed = parseTask.Wait(8000, cancel) && parseTask.Result == MediaParsedStatus.Done;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Superseded by a skip/track change — abort quietly.
+                    media.Dispose();
+                    return;
+                }
+                if (!parsed)
                 {
                     media.Dispose();
                     DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.DualPrepareFailed", $"path={Path.GetFileName(normalizedPath)}");
                     return;
                 }
+            }
+            catch (Exception ex)
+            {
+                media.Dispose();
+                DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.DualPrepareFailed", ex.Message);
+                return;
+            }
+
+            try { _playbackLock.Wait(); }
+            catch (ObjectDisposedException) { media.Dispose(); return; }
+
+            try
+            {
+                // Re-validate under the lock — a Play/Stop or a duplicate prepare may
+                // have superseded this parse while it ran unlocked.
+                if (_disposed || _currentMedia == null || cancel.IsCancellationRequested ||
+                    (_standbyPrepared &&
+                     string.Equals(_standbyPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
+                     _standbyStartPositionMs == startPositionMs))
+                {
+                    media.Dispose();
+                    return;
+                }
+
+                ReleasePreparedNext();
 
                 _standbyMedia = media;
                 _standbyPath = normalizedPath;
