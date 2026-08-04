@@ -536,7 +536,10 @@ public class LibraryService : ILibraryService
 
         // Persist to disk
         await SaveAsync();
-        await _sqliteIndex.ReplaceAllAsync(_tracks, ct);
+        // The SQLite tracks mirror is deliberately not rewritten here: nothing reads
+        // it yet (startup loads library.json), and a full DELETE+reinsert of every
+        // row after each scan was pure write amplification at 50k+ tracks. The manual
+        // RebuildIndexAsync path still refreshes the mirror in full.
 
         await _auditTrail.AppendAsync(new AuditEvent
         {
@@ -593,9 +596,10 @@ public class LibraryService : ILibraryService
     }
 
     /// <summary>
-    /// Persists the given track set + indexes to disk and the SQLite mirror,
-    /// ignoring cancellation. Used to checkpoint scan progress on shutdown so a
-    /// re-scan resumes incrementally instead of starting over.
+    /// Persists the given track set + indexes to disk, ignoring cancellation. Used to
+    /// checkpoint scan progress on shutdown so a re-scan resumes incrementally
+    /// instead of starting over. The SQLite tracks mirror is deliberately not
+    /// rewritten here — see the scan-completion note above SaveAsync.
     /// </summary>
     private async Task PersistScanCheckpointAsync(List<Track> tracks)
     {
@@ -604,14 +608,6 @@ public class LibraryService : ILibraryService
             .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
         await RebuildIndexesAsync();
         await SaveAsync();
-        try
-        {
-            await _sqliteIndex.ReplaceAllAsync(_tracks);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[LibraryService] Checkpoint SQLite sync failed: {ex.Message}");
-        }
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
 
