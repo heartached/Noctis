@@ -13,7 +13,6 @@
     <UserControl.Resources>
         <conv:GuidEqualsConverter x:Key="GuidEquals" />
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
-        <conv:TrackPlaylistCommandParameterConverter x:Key="TrackPlaylistParamConverter" />
         <conv:MetadataLineConverter x:Key="MetadataLine" />
     </UserControl.Resources>
 
