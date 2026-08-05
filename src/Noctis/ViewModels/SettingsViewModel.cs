@@ -1397,6 +1397,7 @@ public partial class SettingsViewModel : ViewModelBase
         Controls.MarqueeTextBlock.GlobalLyricsArtistScrollEnabled = LyricsArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled = MiniPlayerTitleMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalMiniPlayerAlbumScrollEnabled = MiniPlayerAlbumMarqueeEnabled;
+        Controls.MarqueeTextBlock.NotifyGlobalSettingsChanged();
     }
 
     private void ApplyEqualizer()

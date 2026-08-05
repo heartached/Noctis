@@ -25,6 +25,16 @@ public class MarqueeTextBlock : UserControl
     public static bool GlobalMiniPlayerTitleScrollEnabled { get; set; } = true;
     public static bool GlobalMiniPlayerAlbumScrollEnabled { get; set; } = true;
 
+    // The switches above are plain statics with no change notification, so flipping
+    // a toggle ON did nothing for already-attached instances until the text or
+    // layout next changed. Raised after the settings code rewrites the statics;
+    // each attached instance re-evaluates. Instances subscribe in OnAttached and
+    // unsubscribe in OnDetached so recycled controls are not kept alive.
+    private static event EventHandler? GlobalSettingsChanged;
+
+    public static void NotifyGlobalSettingsChanged() =>
+        GlobalSettingsChanged?.Invoke(null, EventArgs.Empty);
+
     private const double OverflowThreshold = 1.0;
     private const double ScrollSpeed = 26.0;
     private static readonly TimeSpan EdgePause = TimeSpan.FromMilliseconds(850);
@@ -259,14 +269,19 @@ public class MarqueeTextBlock : UserControl
         _textBlock.FontWeight = FontWeight;
         _textBlock.Foreground = Foreground;
 
+        GlobalSettingsChanged += OnGlobalSettingsChanged;
+
         // Schedule measurement after layout
         Dispatcher.UIThread.Post(RecalcAndStart, DispatcherPriority.Render);
     }
 
     private void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
     {
+        GlobalSettingsChanged -= OnGlobalSettingsChanged;
         StopTimer();
     }
+
+    private void OnGlobalSettingsChanged(object? sender, EventArgs e) => ResetAndRecalc();
 
     private bool IsScrollEnabled => IsLyricsPage
         ? (IsForArtist ? GlobalLyricsArtistScrollEnabled : GlobalLyricsTitleScrollEnabled)
