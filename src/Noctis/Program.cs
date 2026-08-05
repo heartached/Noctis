@@ -278,7 +278,6 @@ internal class Program
         // (and one lock over wrap_archive.json).
         services.AddSingleton<IWrapArchiveService, WrapArchiveService>();
         services.AddSingleton<DeezerMetadataService>();
-        services.AddSingleton<IAlbumArtworkSearch>(sp => sp.GetRequiredService<ITunesArtworkService>());
         services.AddSingleton<AutoMatchCoordinator>(sp =>
             new AutoMatchCoordinator(
                 sp.GetRequiredService<IMetadataFinderService>(),
