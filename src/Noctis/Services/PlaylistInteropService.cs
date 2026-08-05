@@ -19,12 +19,21 @@ public sealed class PlaylistInteropService : IPlaylistInteropService
         {
             ct.ThrowIfCancellationRequested();
             var seconds = (int)Math.Round(track.Duration.TotalSeconds);
-            sb.AppendLine($"#EXTINF:{seconds},{track.Artist} - {track.Title}");
+            sb.AppendLine($"#EXTINF:{seconds},{SanitizeExtinfField(track.Artist)} - {SanitizeExtinfField(track.Title)}");
             sb.AppendLine(PortablePath(baseDir, track.FilePath));
         }
 
         await File.WriteAllTextAsync(filePath, sb.ToString(), new UTF8Encoding(false), ct);
     }
+
+    // Tag text goes into a line-oriented format: a CR/LF embedded in an Artist/
+    // Title tag would inject attacker-chosen lines (including entry paths) into
+    // the exported playlist. A leading '#' is stripped so a tag can't pose as a
+    // directive either. Titles with newlines are already malformed for m3u.
+    private static string SanitizeExtinfField(string? value)
+        => string.IsNullOrEmpty(value)
+            ? string.Empty
+            : value.Replace("\r", string.Empty).Replace("\n", string.Empty).TrimStart('#');
 
     /// <summary>
     /// Relative to the playlist's own folder with forward slashes whenever a
