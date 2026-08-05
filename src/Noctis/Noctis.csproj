@@ -107,7 +107,7 @@
 
   <!-- YAML: Lyricsfile (word-level sync) parsing -->
   <ItemGroup>
-    <PackageReference Include="YamlDotNet" Version="15.1.6" />
+    <PackageReference Include="YamlDotNet" Version="15.3.0" />
   </ItemGroup>
 
   <!-- Embedded assets -->
