@@ -1591,7 +1591,6 @@ public class LibraryService : ILibraryService
         target.LastPlayed = source.LastPlayed;
         target.Rating = source.Rating;
         target.IsDisliked = source.IsDisliked;
-        target.OfflineState = source.OfflineState;
         target.SourceType = source.SourceType;
         target.SourceTrackId = source.SourceTrackId;
         target.SourceConnectionId = source.SourceConnectionId;

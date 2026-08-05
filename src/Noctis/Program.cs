@@ -228,7 +228,6 @@ internal class Program
         services.AddSingleton<ISqliteLibraryIndexService, SqliteLibraryIndexService>();
         services.AddSingleton<IAuditTrailService, AuditTrailService>();
         services.AddSingleton<IPlaylistInteropService, PlaylistInteropService>();
-        services.AddSingleton<IOfflineCacheService, OfflineCacheService>();
         services.AddSingleton<ILibraryService, LibraryService>();
         // Continuous folder watching. Reads MusicFolders/WatchFoldersEnabled lazily
         // through the canonical SettingsViewModel so toggling in Settings takes effect

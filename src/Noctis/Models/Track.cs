@@ -365,9 +365,6 @@ public partial class Track : ObservableObject
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsSnoozed => SnoozedUntil is { } until && until > DateTime.UtcNow;
 
-    /// <summary>Offline cache state for this track.</summary>
-    public OfflineState OfflineState { get; set; } = OfflineState.None;
-
     /// <summary>Whether this track is marked as a favorite.</summary>
     [ObservableProperty]
     private bool _isFavorite;
