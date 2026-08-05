@@ -4,6 +4,8 @@ One line per finding: ID | commit | files | what to test by hand. Deferred/skipp
 
 Totals: 57 finding-commits (51 code/CI fixes + dead-code removals −701 lines), 8 deferred with plans, 0 findings disproved during implementation (1 fix — L23 — landed on code later proven unreachable and deleted; see note).
 
+Follow-up round (2026-08-05, after Phase 3): L17, L10, H7/H8 and M26 were taken off the deferred list on your call — see the "Follow-up round" section below. H6 (Last.fm key) is CLOSED BY YOUR DECISION: key stays hardcoded, no rotation. Still open: M4, L2, M12, L18, M24.
+
 ## Committed
 
 - H1 | 8f191cf | VlcAudioPlayer.cs | Crossfade ON: pause or seek mid-fade → volume slider must stay responsive; a later timeline click must never mute audio.
@@ -69,12 +71,18 @@ Totals: 57 finding-commits (51 code/CI fixes + dead-code removals −701 lines),
 - M4 | remote-stream gapless/crossfade requires remote-capable PrepareNext (FromLocation/ParseNetwork), lifting !isRemote gates in VlcAudioPlayer + 2 File.Exists bails in PlayerViewModel, grace tuning, URL token scrubbing — a ~150+ line cross-file feature needing a real media server to verify.
 - L2 | playlist-tile virtualization: audit's own risk note says "not worth the churn unless large playlist counts are real"; fix is ~130 lines (chunked-row model + XAML restructure + scroll-restore migration) for a view holding tens of items. Evidence re-verified accurate; deferred on cost/benefit.
 - M12 | artwork downscale-on-persist: metadata editor exports the persisted store bytes verbatim (its "source of truth"), and user-applied custom covers land in the same dir under the same {albumId} name — a safe fix needs provenance tracking + format-preserving capped re-encode + migration + opt-out setting (~4-5 files) and a product decision on lossy re-encoding.
-- L10 | profile name/avatar consumed nowhere: product fork — (a) surface the profile somewhere (Home greeting was already rejected; anything else is UI design), (b) delete the dead ProfileUsername plumbing (~5 sites, forecloses (a)), or (c) accept the card as self-contained. Pick a branch.
-- L17 | cover proxy hardening IMPLEMENTED ON DISK but uncommittable — tools/ is gitignored and the proxy was never git-tracked. JPEG magic check + store caps + no-TTL-refresh build clean in tools/NoctisCoverProxy. Decide: un-ignore tools/ to commit. HMAC auth further deferred (no verifiable consumer of the JSON /art protocol; could break a deployed client).
-- H6 | Last.fm key+secret (LastFmService.cs:15-16): needs YOUR rotation at last.fm/api/account first; then MSBuild-generated secrets file from NOCTIS_LASTFM_KEY/_SECRET env (CI secret), empty-string fallback keeps local builds working. csproj change = Phase 3.
+- L10 | RESOLVED 2026-08-05 (aeb0ea3): ProfileUsername plumbing deleted per user go-ahead; name/avatar card kept as self-contained.
+- L17 | RESOLVED 2026-08-05 (0ec21a9): tools/NoctisCoverProxy un-ignored (tools/* pattern keeps other tools excluded) and hardening committed. Still open: HMAC auth on /art (no verifiable consumer of the JSON protocol); REDEPLOY the proxy to the Oracle VM to actually get the caps + JPEG check running.
 - L18 | keychain-backed secret storage (macOS Keychain + libsecret behind the ProtectSecret seam) is feature-sized with locked-keyring failure modes; 0700/0600 permission hardening already shipped. Needs hands-on mac/Linux testing.
 - M24 | macOS Now Playing/media keys: new MacNowPlayingService mirroring MprisService (TryStart-null off-mac), either ~400-700 lines of objc_msgSend interop (MPNowPlayingInfoCenter + MPRemoteCommandCenter, block trampolines are the hard part — repo has zero objc interop today) or a bundled Swift helper (+CI signing step). Hardware-bound verification (real mac, media keys, Control Center).
 
-## Phase 3 (dependency changes — excluded from this phase by rule)
+## Follow-up round (2026-08-05) — items taken off the deferred list
 
-- H7, H8 (VideoLAN.LibVLC.Mac ghost pin), M25 (TagLibSharp), M26 (.NET 8 EOL retarget), L26 (Microsoft.Data.Sqlite 8.0.29), L27 (xunit v2).
+- L17 | 0ec21a9 | .gitignore, tools/NoctisCoverProxy/* | Proxy now tracked + hardened. TEST: `dotnet run` the proxy, publish non-JPEG bytes → rejected; 17th content_id on one connection → rejected; re-fetch /art past 60 s → 404. THEN redeploy to the Oracle VM.
+- L10 | aeb0ea3 | AppSettings.cs, SettingsViewModel.cs | Settings → profile card: name + avatar still save and survive restart (only the unused username field is gone).
+- H7/H8 | 1b71b28 | Noctis.csproj, VlcAudioPlayer.cs, .github/workflows/dotnet.yml | See DEPENDENCY_LOG.md. TEST: next CI mac legs restore + package cleanly; then a real-mac smoke test WITHOUT VLC.app installed → app launches and plays on Apple Silicon.
+- M26 | 32df2b2 + 3488280 | 3 csproj + workflow | .NET 10 LTS retarget, no source changes; System.Text.Json ref dropped (in-box). TEST: general app smoke — launch, play, Settings, media keys/SMTC overlay. YOU MUST INSTALL THE .NET 10 SDK to build locally (`winget install Microsoft.DotNet.SDK.10`); your system SDK is still 8.0.423.
+
+## Phase 3 (dependency changes — excluded from Phase 2 by rule)
+
+- Done: H7, H8, M26, L26 (Microsoft.Data.Sqlite 8.0.29) — see DEPENDENCY_LOG.md. Remaining: M25 (TagLibSharp — no newer release exists; upstream MP4-corruption report is the open risk), L27 (xunit v2 → v3, test-project migration).
