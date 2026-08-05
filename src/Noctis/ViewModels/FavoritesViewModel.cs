@@ -427,7 +427,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
             }
         }
         await _library.SaveTrackUserStateAsync(changed);
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(changed);
         Refresh();
         CtrlSelectedItems.Clear();
     }

@@ -930,7 +930,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         track.IsFavorite = !track.IsFavorite;
         await _library.SaveTrackUserStateAsync(new[] { track });
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(new[] { track });
     }
 
     [RelayCommand]
@@ -1013,7 +1013,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             }
         }
         await _library.SaveTrackUserStateAsync(changed);
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(changed);
         CtrlSelectedAlbums.Clear();
     }
 

@@ -676,7 +676,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     private async Task PersistFavoriteChangeAsync(Track track)
     {
         await _library.SaveTrackUserStateAsync(new[] { track });
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(new[] { track });
     }
 
     [RelayCommand]
