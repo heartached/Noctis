@@ -3107,7 +3107,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// Async variant of <see cref="RefreshStorageInfo"/> for click paths (e.g. opening Settings).
     /// Computes sizes on a background thread, then marshals formatted strings back to the UI.
     /// </summary>
-    public async Task RefreshStorageInfoAsync()
+    public async Task RefreshStorageInfoAsync(bool forceRefresh = false)
     {
         var dataDir = _persistence.DataDirectory;
         if (!Directory.Exists(dataDir)) return;
@@ -3118,7 +3118,7 @@ public partial class SettingsViewModel : ViewModelBase
             long queueSize = GetFileSize(Path.Combine(dataDir, "queue.json"));
             long playlistsSize = GetFileSize(Path.Combine(dataDir, "playlists.json"));
             long settingsSize = GetFileSize(Path.Combine(dataDir, "settings.json"));
-            long artworkSize = GetDirectorySize(Path.Combine(dataDir, "artwork"));
+            long artworkSize = GetDirectorySize(Path.Combine(dataDir, "artwork"), forceRefresh);
 
             return new
             {
@@ -3361,7 +3361,9 @@ public partial class SettingsViewModel : ViewModelBase
                 ? "No tracks found."
                 : $"{_library.Tracks.Count} tracks found.", autoClear: true);
             RefreshLibraryStats();
-            RefreshStorageInfo(forceRefresh: true);
+            // Fire-and-forget async variant: the forced artwork-cache walk scales
+            // with library size and froze the UI right as the scan finished.
+            _ = RefreshStorageInfoAsync(forceRefresh: true);
         }
         catch (OperationCanceledException)
         {
@@ -3399,7 +3401,7 @@ public partial class SettingsViewModel : ViewModelBase
                 ? "No tracks found."
                 : "Indexed Library.", autoClear: true);
             RefreshLibraryStats();
-            RefreshStorageInfo(forceRefresh: true);
+            _ = RefreshStorageInfoAsync(forceRefresh: true);
         }
         catch (Exception ex)
         {
