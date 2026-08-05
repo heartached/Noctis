@@ -2180,7 +2180,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="Web Remote" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Control playback from your phone with a private link on your local network. Traffic is unencrypted, so avoid open Wi-Fi networks you don't trust."
+                            <TextBlock Text="Control playback from your phone on your local network. Traffic is unencrypted — avoid untrusted Wi-Fi."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
