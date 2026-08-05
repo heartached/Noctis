@@ -130,7 +130,7 @@ public static class MetadataHelper
             autoMatch: App.Services!.GetService<AutoMatchCoordinator>());
 
         var window = new MetadataWindow(vm);
-        _ = vm.InitializeAsync(); // heavy file reads off the UI thread; window shows immediately
+        await vm.InitializeAsync(); // file reads stay off the UI thread; window opens fully populated
         await ShowDialogOwned(window);
     }
 
@@ -186,7 +186,7 @@ public static class MetadataHelper
         };
 
         var window = new MetadataWindow(vm);
-        _ = vm.InitializeAsync(); // heavy file reads off the UI thread; window shows immediately
+        await vm.InitializeAsync(); // file reads stay off the UI thread; window opens fully populated
         await ShowDialogOwned(window);
     }
 }

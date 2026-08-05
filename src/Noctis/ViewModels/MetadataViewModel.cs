@@ -400,10 +400,11 @@ public partial class MetadataViewModel : ViewModelBase
 
     /// <summary>
     /// Loads everything that opens or decodes files — two TagLib parses (file info,
-    /// advanced tags) and the cached-cover read + decode — off the UI thread. Called
-    /// fire-and-forget after the window is shown; the ctor only sets in-memory state.
-    /// Saving before this completes is safe: advanced-tag writes are gated on
-    /// _originalAdvancedFields != null and artwork writes on _newArtworkData/_artworkRemoved.
+    /// advanced tags) and the cached-cover read + decode — off the UI thread. Awaited
+    /// before the window is shown so artwork and tag fields are already populated on
+    /// open; the ctor only sets in-memory state. Every file read inside is individually
+    /// guarded (ReadFileInfo catches internally, the rest are try/catch'd here), so
+    /// this never throws into the open path.
     /// </summary>
     public async Task InitializeAsync()
     {
