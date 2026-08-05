@@ -1299,7 +1299,10 @@ public partial class SettingsViewModel : ViewModelBase
             _settings.LastFmSessionKey = lfm.GetSessionKey() ?? "";
 
         _settings.ListenBrainzScrobblingEnabled = ListenBrainzScrobblingEnabled;
-        _settings.ListenBrainzToken = ListenBrainzToken ?? string.Empty;
+        // Persist-on-Connect contract (see OnListenBrainzTokenChanged): a token typed
+        // but never validated must not ride along with unrelated saves — only a
+        // connected (validated) token is stored.
+        _settings.ListenBrainzToken = IsListenBrainzConnected ? (ListenBrainzToken ?? string.Empty) : string.Empty;
         _settings.ListenBrainzUsername = ListenBrainzUsername ?? string.Empty;
 
         // Media server: this VM owns the single Subsonic/Jellyfin connection, so the
