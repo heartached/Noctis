@@ -1,3 +1,4 @@
+using Noctis.Helpers;
 using Noctis.Models;
 
 namespace Noctis.Services;
@@ -32,7 +33,7 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
     private readonly SemaphoreSlim _applyLock = new(1, 1);
     // Per-path count of how many times an import target was found still-being-written,
     // so a file that never settles is eventually imported anyway instead of retried forever.
-    private readonly Dictionary<string, int> _importAttempts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> _importAttempts = new(PathComparison.Comparer);
     private System.Threading.Timer? _flushTimer;
     private bool _disposed;
 
@@ -95,7 +96,7 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
     // Paths the app itself is about to move, mapped to the UTC tick at which the
     // suppression expires. See ILibraryWatcherService.SuppressPaths.
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> _suppressed =
-        new(StringComparer.OrdinalIgnoreCase);
+        new(PathComparison.Comparer);
 
     /// <inheritdoc />
     public void SuppressPaths(IEnumerable<string> paths, TimeSpan window)
@@ -378,7 +379,7 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
 
     /// <summary>Last observed size per pending path, for the growth check in IsFileReady.</summary>
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> _lastSeenSize =
-        new(StringComparer.OrdinalIgnoreCase);
+        new(PathComparison.Comparer);
 
     private bool NextAttemptReachesCap(string path)
     {
@@ -411,14 +412,14 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
             // (dir-removal + re-imports of the same files) ends up imported, not removed.
             if (batch.ToRemove.Count > 0 || batch.ToRemoveDirs.Count > 0)
             {
-                var removeSet = new HashSet<string>(batch.ToRemove, StringComparer.OrdinalIgnoreCase);
+                var removeSet = new HashSet<string>(batch.ToRemove, PathComparison.Comparer);
                 var dirPrefixes = batch.ToRemoveDirs
                     .Select(d => d.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                                  + Path.DirectorySeparatorChar)
                     .ToList();
                 var ids = _library.Tracks
                     .Where(t => removeSet.Contains(t.FilePath) ||
-                                dirPrefixes.Any(p => t.FilePath.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+                                dirPrefixes.Any(p => t.FilePath.StartsWith(p, PathComparison.Comparison)))
                     .Select(t => t.Id)
                     .ToList();
                 if (ids.Count > 0)

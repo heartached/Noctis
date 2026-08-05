@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Noctis.Helpers;
 using Noctis.Models;
 
 namespace Noctis.Services;
@@ -121,7 +122,7 @@ public class LibraryService : ILibraryService
             .Select(r => TryNormalizePath(r.Path))
             .Where(p => !string.IsNullOrWhiteSpace(p))
             .Select(p => p!)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Distinct(PathComparison.Comparer)
             .ToArray();
         var ignoredNames = new HashSet<string>(
             settings.IgnoredFolderNames
@@ -131,7 +132,7 @@ public class LibraryService : ILibraryService
         var excludedFiles = new HashSet<string>(
             settings.ExcludedFilePaths
                 .Where(p => !string.IsNullOrWhiteSpace(p)),
-            StringComparer.OrdinalIgnoreCase);
+            PathComparison.Comparer);
 
         var newTracks = new ConcurrentBag<Track>();
         // Roots that were configured but not present on disk this pass (unplugged external
@@ -735,7 +736,7 @@ public class LibraryService : ILibraryService
 
         // Clear exclusions for files being explicitly re-imported
         var settings = await _persistence.LoadSettingsAsync();
-        var excludedSet = new HashSet<string>(settings.ExcludedFilePaths, StringComparer.OrdinalIgnoreCase);
+        var excludedSet = new HashSet<string>(settings.ExcludedFilePaths, PathComparison.Comparer);
         if (excludedSet.Overlaps(files))
         {
             excludedSet.ExceptWith(files);
@@ -1056,7 +1057,7 @@ public class LibraryService : ILibraryService
         var settings = await _persistence.LoadSettingsAsync();
 
         // Add to exclusion list
-        var excluded = new HashSet<string>(settings.ExcludedFilePaths, StringComparer.OrdinalIgnoreCase);
+        var excluded = new HashSet<string>(settings.ExcludedFilePaths, PathComparison.Comparer);
         foreach (var path in removedPaths)
         {
             if (!string.IsNullOrWhiteSpace(path))
@@ -2225,7 +2226,7 @@ public class LibraryService : ILibraryService
             .Select(TryNormalizePath)
             .Where(p => !string.IsNullOrWhiteSpace(p))
             .Select(p => p!)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Distinct(PathComparison.Comparer)
             .ToArray();
         if (failedPrefixes.Length == 0)
             return new List<Track>();
@@ -2271,11 +2272,11 @@ public class LibraryService : ILibraryService
 
     private static bool IsUnderRoot(string normalizedPath, string root)
     {
-        if (normalizedPath.Equals(root, StringComparison.OrdinalIgnoreCase))
+        if (normalizedPath.Equals(root, PathComparison.Comparison))
             return true;
 
-        return normalizedPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
-               normalizedPath.StartsWith(root + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        return normalizedPath.StartsWith(root + Path.DirectorySeparatorChar, PathComparison.Comparison) ||
+               normalizedPath.StartsWith(root + Path.AltDirectorySeparatorChar, PathComparison.Comparison);
     }
 
     private static string NormalizePath(string path)
