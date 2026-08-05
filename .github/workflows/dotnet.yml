@@ -74,7 +74,8 @@ jobs:
       # transitives (which is where the shipped native SQLite advisory lived).
       #
       # One leg per OS: the graph only varies by host OS (the OS-conditional native
-      # libVLC references — a Windows run never evaluates VideoLAN.LibVLC.Mac), so
+      # libVLC reference — only a Windows run evaluates VideoLAN.LibVLC.Windows; the
+      # Mac payload is bundled from videolan.org at packaging time, not via NuGet), so
       # auditing win-x64, osx-arm64 and linux-x64 covers every shipped package graph.
       - name: Audit dependencies
         if: matrix.audit
@@ -172,6 +173,29 @@ jobs:
           # Copy the published binary + all dependencies into the bundle
           cp -R publish/${{ matrix.rid }}/. "$APP/Contents/MacOS/"
           chmod +x "$APP/Contents/MacOS/Noctis"
+
+          # ── Bundle libvlc (AUDIT H7/H8) ───────────────────────────────
+          # The VideoLAN.LibVLC.Mac NuGet was dropped: its 3.0.21 pin never
+          # existed on nuget.org, so restore silently floated to the abandoned
+          # 2019-era 3.1.3.1 payload (x86_64-only, no plugins). Bundle the
+          # official universal (arm64+x86_64) VLC 3.0.23 dylibs + plugins at
+          # Contents/MacOS/libvlc/{lib,plugins} — the same sibling layout as
+          # VLC.app, which the plugins' @loader_path/../lib install names
+          # require. VlcAudioPlayer probes this path after a user-installed
+          # VLC.app. Pinned + SHA-256-verified like the ffmpeg bundles above;
+          # any failure FAILS the build.
+          curl -sSL https://download.videolan.org/pub/videolan/vlc/3.0.23/macosx/vlc-3.0.23-universal.dmg -o vlc.dmg
+          echo "56ee657c3aaf5c71b4ab7d6e4f4a77f6eca54633e0bf42a93b8116eb1d1f6ec9  vlc.dmg" | shasum -a 256 -c -
+          VLC_MOUNT=$(hdiutil attach vlc.dmg -nobrowse -readonly | awk -F$'\t' '/\/Volumes\//{print $NF}')
+          mkdir -p "$APP/Contents/MacOS/libvlc"
+          cp -R "$VLC_MOUNT/VLC.app/Contents/MacOS/lib" "$APP/Contents/MacOS/libvlc/lib"
+          cp -R "$VLC_MOUNT/VLC.app/Contents/MacOS/plugins" "$APP/Contents/MacOS/libvlc/plugins"
+          hdiutil detach "$VLC_MOUNT" -quiet
+          # Stale plugin cache pins absolute build-machine paths — delete it so
+          # libvlc rescans the bundled directory at runtime (AppImage precedent).
+          find "$APP/Contents/MacOS/libvlc" -name plugins.dat -delete
+          test -f "$APP/Contents/MacOS/libvlc/lib/libvlc.dylib"
+          test -d "$APP/Contents/MacOS/libvlc/plugins"
 
           # Build .icns from the canonical Windows .ico so the macOS dock icon
           # matches the Windows taskbar icon.

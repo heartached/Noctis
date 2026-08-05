@@ -314,7 +314,12 @@ public class VlcAudioPlayer : IAudioPlayer
             var macLibPath = TryFindMacLibVlcPath();
             if (macLibPath != null)
             {
-                var pluginsPath = Path.Combine(Path.GetDirectoryName(macLibPath) ?? "", "plugins");
+                // Plugins live beside the dylibs (homebrew-style lib/plugins) or as
+                // a sibling of lib/ (VLC.app and our bundled Contents/MacOS/libvlc
+                // layout both use MacOS/{lib,plugins}) — probe both shapes.
+                var pluginsPath = Path.Combine(macLibPath, "plugins");
+                if (!Directory.Exists(pluginsPath))
+                    pluginsPath = Path.GetFullPath(Path.Combine(macLibPath, "..", "plugins"));
                 if (Directory.Exists(pluginsPath) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VLC_PLUGIN_PATH")))
                 {
                     // libvlc reads VLC_PLUGIN_PATH via libc getenv(), and on Unix
@@ -3883,10 +3888,18 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         if (!OperatingSystem.IsMacOS()) return null;
 
-        // Standard VLC.app install (covers `brew install --cask vlc` and manual installs).
+        // Standard VLC.app install (covers `brew install --cask vlc` and manual
+        // installs) stays first: a user-installed VLC is newer than our bundle.
+        // Second choice is the libvlc payload the CI .app packaging step bundles
+        // at Contents/MacOS/libvlc (dylibs + plugins/) — the VideoLAN.LibVLC.Mac
+        // NuGet was dropped because its 3.0.21 pin never existed on nuget.org
+        // and restore floated to an abandoned 2019 payload (AUDIT H7/H8).
+        // The bundle mirrors VLC.app's lib/ + plugins/ sibling layout because the
+        // plugins' install names reference libvlccore via @loader_path/../lib/.
         string[] candidates =
         {
             "/Applications/VLC.app/Contents/MacOS/lib",
+            Path.Combine(AppContext.BaseDirectory, "libvlc", "lib"),
             "/opt/homebrew/lib",
             "/usr/local/lib",
         };
