@@ -238,7 +238,6 @@ internal class Program
                 sp.GetRequiredService<ILibraryService>(),
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
                       ?? new Noctis.Models.AppSettings()));
-        services.AddSingleton<IUnifiedLibraryService, UnifiedLibraryService>();
         services.AddSingleton<ISyncService, NavidromeSyncService>();
         services.AddSingleton<IAudioPlayer, VlcAudioPlayer>();
 
