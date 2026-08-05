@@ -289,8 +289,8 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
             using var resp = await _http.GetAsync(url, ct);
             if (!resp.IsSuccessStatusCode) return null;
 
-            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+            var json = await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct);
+            using var doc = JsonDocument.Parse(json);
 
             if (!doc.RootElement.TryGetProperty("results", out var results) ||
                 results.ValueKind != JsonValueKind.Array)
@@ -392,8 +392,8 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
             using var resp = await _http.GetAsync(url, ct);
             if (!resp.IsSuccessStatusCode) return Array.Empty<ArtworkCandidate>();
 
-            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+            var json = await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct);
+            using var doc = JsonDocument.Parse(json);
 
             if (!doc.RootElement.TryGetProperty("results", out var results) ||
                 results.ValueKind != JsonValueKind.Array)
@@ -454,8 +454,8 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
 
         using var resp = await _http.GetAsync(url, ct);
         if (!resp.IsSuccessStatusCode) return;
-        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
-        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+        var json = await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct);
+        using var doc = JsonDocument.Parse(json);
 
         if (!doc.RootElement.TryGetProperty("results", out var results) ||
             results.ValueKind != JsonValueKind.Array)
