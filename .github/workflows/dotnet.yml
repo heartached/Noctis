@@ -26,30 +26,35 @@ jobs:
             rid: win-x64
             artifact: Noctis-windows-x64
             run-tests: true
+            audit: true
 
           - name: macos-arm64
             runs-on: macos-14
             rid: osx-arm64
             artifact: Noctis-macos-arm64
             run-tests: true
+            audit: true
 
           - name: macos-x64
             runs-on: macos-14
             rid: osx-x64
             artifact: Noctis-macos-x64
             run-tests: false
+            audit: false
 
           - name: linux-x64
             runs-on: ubuntu-latest
             rid: linux-x64
             artifact: Noctis-linux-x64
             run-tests: true
+            audit: true
 
           - name: linux-arm64
             runs-on: ubuntu-latest
             rid: linux-arm64
             artifact: Noctis-linux-arm64
             run-tests: false
+            audit: false
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -59,18 +64,20 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      # NU1603 (approximate package match) as error: a pinned version that no longer
+      # resolves exactly must fail the restore loudly instead of silently floating to
+      # the nearest available version.
       - name: Restore
-        run: dotnet restore src/Noctis/Noctis.csproj -r ${{ matrix.rid }}
+        run: dotnet restore src/Noctis/Noctis.csproj -r ${{ matrix.rid }} -warnaserror:NU1603
 
       # Fails the build on a known-vulnerable package anywhere in the graph, including
       # transitives (which is where the shipped native SQLite advisory lived).
       #
-      # Windows only: the graph is identical across targets except the OS-conditional
-      # native libVLC references, and those are invisible to an audit run on the wrong
-      # host anyway (a Windows run never evaluates VideoLAN.LibVLC.Mac — see the audit
-      # note in AUDIT_2026-07-24.md).
+      # One leg per OS: the graph only varies by host OS (the OS-conditional native
+      # libVLC references — a Windows run never evaluates VideoLAN.LibVLC.Mac), so
+      # auditing win-x64, osx-arm64 and linux-x64 covers every shipped package graph.
       - name: Audit dependencies
-        if: matrix.rid == 'win-x64'
+        if: matrix.audit
         shell: bash
         run: |
           set -euo pipefail
