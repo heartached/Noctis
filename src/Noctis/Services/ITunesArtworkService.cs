@@ -253,6 +253,12 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
             await using var output = File.Create(destinationPath);
             foreach (var part in parts.DistinctBy(p => p.ToString()))
             {
+                // A playlist line may carry an absolute URI to any host; a segment
+                // off the Apple allowlist means a hostile or broken playlist, and
+                // concatenating the remaining parts would be garbage anyway.
+                if (!IsAppleMediaHost(part.ToString()))
+                    return false;
+
                 // Animated-cover cap, not the 24MB image cap: Apple often serves the
                 // whole loop as ONE fMP4 part (~31MB at 1080p, ~90MB at 2160p), and
                 // the image cap silently failed every download over 24MB.
@@ -525,8 +531,19 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
     internal static bool IsAppleMediaHost(string url)
-        => url.Contains("mvod.itunes.apple.com", StringComparison.OrdinalIgnoreCase) ||
-           url.Contains("mzstatic.com", StringComparison.OrdinalIgnoreCase);
+    {
+        // A real host comparison, not a substring of the whole URL: otherwise
+        // "https://evil.example/?x=mzstatic.com" or "mzstatic.com.evil.example"
+        // would pass the allowlist.
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+        return IsHostOrSubdomain(uri.Host, "mvod.itunes.apple.com") ||
+               IsHostOrSubdomain(uri.Host, "mzstatic.com");
+    }
+
+    private static bool IsHostOrSubdomain(string host, string domain)
+        => host.Equals(domain, StringComparison.OrdinalIgnoreCase) ||
+           host.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase);
 
     private async Task<IReadOnlyList<AnimatedArtworkVariant>> ParseHlsMasterVariantsAsync(
         string masterUrl,
@@ -557,6 +574,13 @@ public sealed class ITunesArtworkService : IAlbumArtworkSearch
                 continue;
 
             var url = new Uri(new Uri(masterUrl), line).ToString();
+            // An absolute URI in the playlist can point anywhere; keep the
+            // variants pinned to the same allowlist as the page extraction.
+            if (!IsAppleMediaHost(url))
+            {
+                pendingInfo = null;
+                continue;
+            }
             var (width, height) = ParseResolution(pendingInfo);
             var codec = ParseAttribute(pendingInfo, "CODECS");
             var bandwidth = ParseLongAttribute(pendingInfo, "BANDWIDTH");
