@@ -209,17 +209,7 @@ public partial class LyricsView : UserControl
         {
             // Re-subscribe on re-attach (detach unsubscribed; DataContextChanged
             // won't fire again when the DataContext is unchanged).
-            if (_subscribedVm == null)
-            {
-                vm.PropertyChanged += OnViewModelPropertyChanged;
-                vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
-                // The Settings toggle for the flowing light lives on the Player VM
-                // (same live channel as the marquee flags) — watch it so flipping the
-                // switch while this page is open starts/stops the drift immediately.
-                vm.Player.PropertyChanged += OnPlayerPropertyChanged;
-                vm.Player.Seeked += OnPlayerSeeked;
-                _subscribedVm = vm;
-            }
+            SubscribeVm(vm);
 
             vm.IsAutoFollowPaused = false;
             _isJumpingOnAttach = true;
@@ -250,17 +240,22 @@ public partial class LyricsView : UserControl
                 vm.Player.EndSeek();
         }
 
-        // Full VM unsubscribe: the VM is a process singleton and this view is
-        // recreated per visit — DataContextChanged never fires for a discarded
-        // view, so leaving PropertyChanged attached leaks the whole view and
-        // keeps its scroll handler running for every later line change.
-        if (_subscribedVm != null)
+        // Full VM unsubscribe: the VM is a process singleton, so leaving handlers
+        // attached would keep this cached view doing scroll/swap work for every
+        // later line and track change while it sits off screen.
+        UnsubscribeVm();
+
+        // The swap events are unhooked while detached, so a swap that had faded
+        // the host out could never fade back in — snap it visible for the next
+        // visit (the attach path re-anchors the active line itself).
+        if (_lyricsSwapInProgress)
         {
-            _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
-            _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
-            _subscribedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
-            _subscribedVm.Player.Seeked -= OnPlayerSeeked;
-            _subscribedVm = null;
+            _lyricsSwapInProgress = false;
+            if (LyricsContentHost is { } swapHost)
+            {
+                swapHost.Transitions = null;
+                swapHost.Opacity = 1.0;
+            }
         }
 
         if (_hostWindow != null)
@@ -454,15 +449,7 @@ public partial class LyricsView : UserControl
         base.OnDataContextChanged(e);
 
         // Unsubscribe from previous ViewModel
-        if (_subscribedVm != null)
-        {
-            _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
-            _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
-            _subscribedVm.LyricsSwapPending -= OnLyricsSwapPending;
-            _subscribedVm.LyricsSwapped -= OnLyricsSwapped;
-            _subscribedVm.Player.Seeked -= OnPlayerSeeked;
-            _subscribedVm = null;
-        }
+        UnsubscribeVm();
 
         // Reset scroll state
         _lastScrolledIndex = -1;
@@ -470,14 +457,40 @@ public partial class LyricsView : UserControl
         CancelAutoFollowResumeTimer();
 
         if (DataContext is LyricsViewModel vm)
-        {
-            vm.PropertyChanged += OnViewModelPropertyChanged;
-            vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
-            vm.LyricsSwapPending += OnLyricsSwapPending;
-            vm.LyricsSwapped += OnLyricsSwapped;
-            vm.Player.Seeked += OnPlayerSeeked;
-            _subscribedVm = vm;
-        }
+            SubscribeVm(vm);
+    }
+
+    /// <summary>
+    /// The ONE canonical subscription set for this view, used by all three lifecycle
+    /// hooks (DataContextChanged, attach, detach). Keeping a single set is what
+    /// guarantees Player.PropertyChanged is live on the first visit and that the
+    /// swap events don't keep firing into a detached (cached) view.
+    /// </summary>
+    private void SubscribeVm(LyricsViewModel vm)
+    {
+        if (_subscribedVm != null) return;
+        vm.PropertyChanged += OnViewModelPropertyChanged;
+        vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
+        vm.LyricsSwapPending += OnLyricsSwapPending;
+        vm.LyricsSwapped += OnLyricsSwapped;
+        // The Settings toggle for the flowing light lives on the Player VM
+        // (same live channel as the marquee flags) — watch it so flipping the
+        // switch while this page is open starts/stops the drift immediately.
+        vm.Player.PropertyChanged += OnPlayerPropertyChanged;
+        vm.Player.Seeked += OnPlayerSeeked;
+        _subscribedVm = vm;
+    }
+
+    private void UnsubscribeVm()
+    {
+        if (_subscribedVm == null) return;
+        _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
+        _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
+        _subscribedVm.LyricsSwapPending -= OnLyricsSwapPending;
+        _subscribedVm.LyricsSwapped -= OnLyricsSwapped;
+        _subscribedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
+        _subscribedVm.Player.Seeked -= OnPlayerSeeked;
+        _subscribedVm = null;
     }
 
     // ── Track-change lyric swap: fade out, swap while hidden, fade back ──
@@ -488,12 +501,16 @@ public partial class LyricsView : UserControl
 
     private void OnLyricsSwapPending(object? sender, EventArgs e)
     {
+        // Subscribed-but-not-yet-attached window (first creation): don't animate
+        // a tree that isn't on screen.
+        if (this.GetVisualRoot() == null) return;
         _lyricsSwapInProgress = true;
         FadeLyricsHost(0.0, LyricsViewModel.LyricsSwapFadeOutMs);
     }
 
     private void OnLyricsSwapped(object? sender, EventArgs e)
     {
+        if (this.GetVisualRoot() == null) return;
         // Re-anchor from scratch while still invisible: a glide from the old
         // track's offset is meaningless on new content, so jump.
         if (DataContext is LyricsViewModel vm)
