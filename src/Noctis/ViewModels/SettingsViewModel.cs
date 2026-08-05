@@ -1870,6 +1870,17 @@ public partial class SettingsViewModel : ViewModelBase
         return Helpers.PlatformHelper.IsSystemDarkMode();
     }
 
+    /// <summary>
+    /// Re-applies the theme after an OS light/dark switch. No-op unless the System
+    /// tile is active, so explicit picks and custom themes are never disturbed.
+    /// Does not save: the persisted value stays "System".
+    /// </summary>
+    public void NotifySystemColorsChanged()
+    {
+        if (!IsSystemTheme || !string.IsNullOrEmpty(ActiveCustomThemeId)) return;
+        ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
+    }
+
     // ── Property change handlers ──
 
     partial void OnScanOnStartupChanged(bool value)
