@@ -251,9 +251,6 @@ internal class Program
             http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             return http;
         });
-        services.AddSingleton<IMediaSourceConnector, LocalMediaSourceConnector>();
-        services.AddSingleton<IMediaSourceConnector, SmbMediaSourceConnector>();
-        services.AddSingleton<IMediaSourceConnector, WebDavMediaSourceConnector>();
         services.AddSingleton<IMediaSourceConnector, NavidromeMediaSourceConnector>();
         // On-demand media-server browsing/streaming (the "Server" section).
         services.AddSingleton<Services.MediaServer.IMediaServerService, Services.MediaServer.MediaServerService>();
