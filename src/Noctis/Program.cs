@@ -353,6 +353,10 @@ internal class Program
             catch { /* rotation is best effort */ }
 
             var entry = $"[{DateTime.UtcNow:O}] {source}: {ex}\n---\n";
+            // Scrub before the sink — crash.log is shared in bug reports like every
+            // other log, and exception text can echo auth-bearing URLs. A scrubber
+            // failure must not lose the crash report itself.
+            try { entry = Services.LogRedaction.Scrub(entry); } catch { }
             File.AppendAllText(crashPath, entry);
         }
         catch
