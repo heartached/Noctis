@@ -31,9 +31,6 @@ public class AppSettings
     /// <summary>Display name shown in the Settings profile section.</summary>
     public string ProfileName { get; set; } = string.Empty;
 
-    /// <summary>Username/handle shown beneath the profile name.</summary>
-    public string ProfileUsername { get; set; } = string.Empty;
-
     /// <summary>Absolute path to the user's avatar image, or empty for the default placeholder.</summary>
     public string ProfileAvatarPath { get; set; } = string.Empty;
 

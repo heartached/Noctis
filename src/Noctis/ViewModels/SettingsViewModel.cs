@@ -120,11 +120,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Profile ──
     [ObservableProperty] private string _profileName = string.Empty;
-    [ObservableProperty] private string _profileUsername = string.Empty;
     [ObservableProperty] private string _profileAvatarPath = string.Empty;
 
     partial void OnProfileNameChanged(string value) { if (_settingsLoaded) QueueSettingsSave(); }
-    partial void OnProfileUsernameChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnProfileAvatarPathChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     private AppSettings _settings;
@@ -886,7 +884,6 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Profile
             ProfileName = _settings.ProfileName ?? string.Empty;
-            ProfileUsername = _settings.ProfileUsername ?? string.Empty;
             ProfileAvatarPath = _settings.ProfileAvatarPath ?? string.Empty;
 
             // Accent colour
@@ -1200,7 +1197,6 @@ public partial class SettingsViewModel : ViewModelBase
 
         _settings.ThemeV2Migrated = true;
         _settings.ProfileName = ProfileName ?? string.Empty;
-        _settings.ProfileUsername = ProfileUsername ?? string.Empty;
         _settings.ProfileAvatarPath = ProfileAvatarPath ?? string.Empty;
         _settings.AccentColorHex = ActiveAccentHex;
         _settings.AccentPresetName = ActiveAccentName;
@@ -3679,7 +3675,6 @@ public partial class SettingsViewModel : ViewModelBase
             // (the ApplyPlayerSettings call below pushes the default to the bar).
             _playbackBarWidth = null;
             ProfileName = defaultSettings.ProfileName;
-            ProfileUsername = defaultSettings.ProfileUsername;
             ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
 
             // Launch-at-login is an OS-level registration, not a settings field — a reset
