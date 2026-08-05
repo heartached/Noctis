@@ -2582,6 +2582,9 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _listenBrainz?.Logout();
         IsListenBrainzConnected = false;
+        // Mirror the connect path (which sets this true): leaving the hidden toggle
+        // armed meant any token typed after logout scrobbled without validation.
+        ListenBrainzScrobblingEnabled = false;
         ListenBrainzToken = "";
         ListenBrainzUsername = "";
         ListenBrainzStatusText = "Not connected";
