@@ -13,7 +13,6 @@
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:HexColorToBrushConverter x:Key="HexColorConverter" />
-        <conv:GuidEqualsConverter x:Key="GuidEquals" />
         <conv:DateAddedDisplayConverter x:Key="DateAddedDisplay" />
         <conv:RecentlyAddedConverter x:Key="RecentAdded" />
     </UserControl.Resources>

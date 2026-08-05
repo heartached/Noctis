@@ -14,7 +14,6 @@
     <UserControl.Resources>
         <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter"/>
-        <conv:VolumeToIconConverter x:Key="VolumeToIcon"/>
         <conv:ProgressToSweepForegroundConverter x:Key="ProgressToSweepFg"/>
         <conv:EmphasisGlowConverter x:Key="EmphasisGlow"/>
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
