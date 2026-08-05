@@ -2226,7 +2226,25 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnBpmKeyAnalysisEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
-        _ = SaveAsync();
+        if (value)
+        {
+            // The only other StartBackfill trigger is LibraryUpdated, so enabling
+            // this mid-session on a static library did nothing until the next scan
+            // or restart. StartBackfill reads the persisted settings object, so the
+            // save (which syncs the flag into it) must complete first.
+            _ = SaveThenStartAnalysisAsync();
+        }
+        else
+        {
+            App.Services?.GetService<Noctis.Services.AudioAnalysis.AudioAnalysisCoordinator>()?.Stop();
+            _ = SaveAsync();
+        }
+    }
+
+    private async Task SaveThenStartAnalysisAsync()
+    {
+        await SaveAsync();
+        App.Services?.GetService<Noctis.Services.AudioAnalysis.AudioAnalysisCoordinator>()?.StartBackfill();
     }
 
     partial void OnWriteAnalysisToTagsChanged(bool value)
