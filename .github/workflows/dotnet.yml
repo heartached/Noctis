@@ -212,6 +212,7 @@ jobs:
             <key>CFBundlePackageType</key><string>APPL</string>
             <key>LSMinimumSystemVersion</key><string>12.0</string>
             <key>NSHighResolutionCapable</key><true/>
+            <key>NSAppleEventsUsageDescription</key><string>Noctis asks Finder to move deleted music files to the Trash.</string>
           </dict>
           </plist>
           PLIST
