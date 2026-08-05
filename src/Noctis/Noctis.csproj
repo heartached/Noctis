@@ -94,7 +94,7 @@
   <!-- JSON persistence -->
   <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.29" />
     <!-- Floats the native SQLite past CVE-2025-6965 / GHSA-2m69-gcr7-jv3q (High).
          Microsoft.Data.Sqlite 8.0.11 pins SQLitePCLRaw.lib.e_sqlite3 2.1.6, which
          bundles SQLite < 3.50.2 and shipped e_sqlite3.dll in every release. This
