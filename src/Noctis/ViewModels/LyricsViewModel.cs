@@ -549,6 +549,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         _lyricsSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(LineSyncIntervalMs) };
         _lyricsSyncTimer.Tick += (_, _) =>
         {
+            // Visibility-gate backstop: several paths (TrackStarted, play/pause,
+            // library updates, online-lyrics apply) call Start() unconditionally.
+            // With no lyrics surface on screen there is nothing to drive, so park
+            // the timer; SetLyricsSurfaceVisible restarts it when a surface opens,
+            // and while parked the Position fallback in OnPlayerPropertyChanged
+            // keeps ActiveLineIndex fresh for the reopen jump.
+            if (!IsAnyLyricsSurfaceVisible)
+            {
+                _lyricsSyncTimer.Stop();
+                return;
+            }
             if (_hasSyncedLyrics && _player.State == Models.PlaybackState.Playing)
                 UpdateActiveLine(GetPlaybackPosition());
             UpdateWordClockSubscription();
