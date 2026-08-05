@@ -43,7 +43,15 @@ public static class PlatformHelper
                 {
                     var parent = Path.GetDirectoryName(filePath);
                     if (!string.IsNullOrEmpty(parent))
-                        Process.Start("xdg-open", parent);
+                    {
+                        // ArgumentList — the string overload splits on spaces.
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = "xdg-open",
+                            ArgumentList = { parent },
+                            UseShellExecute = false
+                        });
+                    }
                 }
             }
         }
@@ -58,6 +66,10 @@ public static class PlatformHelper
         // Try the FileManager1 D-Bus interface first (works for nautilus, nemo, dolphin, thunar).
         try
         {
+            // Percent-encoded file URI: dbus-send's array:string: syntax splits
+            // elements on commas, and Uri leaves ',' unescaped (legal in a URI
+            // path), so it must be encoded on top of Uri's own escaping.
+            var fileUri = new Uri(filePath).AbsoluteUri.Replace(",", "%2C");
             var psi = new ProcessStartInfo
             {
                 FileName = "dbus-send",
@@ -68,7 +80,7 @@ public static class PlatformHelper
                     "--type=method_call",
                     "/org/freedesktop/FileManager1",
                     "org.freedesktop.FileManager1.ShowItems",
-                    $"array:string:file://{filePath}",
+                    $"array:string:{fileUri}",
                     "string:"
                 },
                 UseShellExecute = false,
@@ -149,7 +161,13 @@ public static class PlatformHelper
             }
             else if (IsLinux)
             {
-                Process.Start("xdg-open", folderPath);
+                // ArgumentList — the string overload splits on spaces.
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "xdg-open",
+                    ArgumentList = { folderPath },
+                    UseShellExecute = false
+                });
             }
         }
         catch
