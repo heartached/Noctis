@@ -96,9 +96,10 @@
     <PackageReference Include="SkiaSharp" Version="2.88.9" />
   </ItemGroup>
 
-  <!-- JSON persistence -->
+  <!-- JSON persistence. System.Text.Json needs no PackageReference on net10.0:
+       the framework's in-box copy (10.0.x) supersedes any 8.x package and the
+       SDK flags the reference as inert (NU1510). -->
   <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="8.0.6" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.29" />
     <!-- Floats the native SQLite past CVE-2025-6965 / GHSA-2m69-gcr7-jv3q (High).
          Microsoft.Data.Sqlite 8.0.11 pins SQLitePCLRaw.lib.e_sqlite3 2.1.6, which
