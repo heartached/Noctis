@@ -3469,16 +3469,21 @@ public partial class SettingsViewModel : ViewModelBase
             Debug.WriteLine($"[Settings] Failed to clear queue state: {ex.Message}");
         }
 
-        // Clear artwork cache (albums + artists)
+        // Clear artwork cache (albums + artists). Task.Run for every recursive
+        // delete below: they run back-to-back on the UI context and blocked the
+        // dispatcher for their whole duration on large libraries or slow disks.
         try
         {
             var artworkDir = Path.Combine(_persistence.DataDirectory, "artwork");
-            if (Directory.Exists(artworkDir))
+            await Task.Run(() =>
             {
-                Directory.Delete(artworkDir, true);
-                Directory.CreateDirectory(artworkDir);
-                Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
-            }
+                if (Directory.Exists(artworkDir))
+                {
+                    Directory.Delete(artworkDir, true);
+                    Directory.CreateDirectory(artworkDir);
+                    Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
+                }
+            });
             _dirSizeCache.TryRemove(artworkDir, out _);
         }
         catch (Exception ex)
@@ -3490,11 +3495,14 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var lyricsDir = Path.Combine(Helpers.AppPaths.DataRoot, "lyrics_cache");
-            if (Directory.Exists(lyricsDir))
+            await Task.Run(() =>
             {
-                Directory.Delete(lyricsDir, true);
-                Directory.CreateDirectory(lyricsDir);
-            }
+                if (Directory.Exists(lyricsDir))
+                {
+                    Directory.Delete(lyricsDir, true);
+                    Directory.CreateDirectory(lyricsDir);
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -3505,11 +3513,14 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var coversDir = Path.Combine(_persistence.DataDirectory, "playlist_covers");
-            if (Directory.Exists(coversDir))
+            await Task.Run(() =>
             {
-                Directory.Delete(coversDir, true);
-                Directory.CreateDirectory(coversDir);
-            }
+                if (Directory.Exists(coversDir))
+                {
+                    Directory.Delete(coversDir, true);
+                    Directory.CreateDirectory(coversDir);
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -3520,11 +3531,14 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var cacheDir = Path.Combine(_persistence.DataDirectory, "cache");
-            if (Directory.Exists(cacheDir))
+            await Task.Run(() =>
             {
-                Directory.Delete(cacheDir, true);
-                Directory.CreateDirectory(cacheDir);
-            }
+                if (Directory.Exists(cacheDir))
+                {
+                    Directory.Delete(cacheDir, true);
+                    Directory.CreateDirectory(cacheDir);
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -3535,11 +3549,14 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var auditDir = Path.Combine(_persistence.DataDirectory, "audit");
-            if (Directory.Exists(auditDir))
+            await Task.Run(() =>
             {
-                Directory.Delete(auditDir, true);
-                Directory.CreateDirectory(auditDir);
-            }
+                if (Directory.Exists(auditDir))
+                {
+                    Directory.Delete(auditDir, true);
+                    Directory.CreateDirectory(auditDir);
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -3764,22 +3781,28 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void ClearArtworkCache()
+    private async Task ClearArtworkCache()
     {
         try
         {
             var artworkDir = Path.Combine(_persistence.DataDirectory, "artwork");
-            if (Directory.Exists(artworkDir))
+            // Task.Run: the recursive delete scales with library size (one file per
+            // album) and blocked the UI thread for its whole duration on large
+            // libraries or slow disks.
+            await Task.Run(() =>
             {
-                Directory.Delete(artworkDir, true);
-                Directory.CreateDirectory(artworkDir);
-                // ArtistImageService creates artwork/artists once, in its constructor, so
-                // recreating only the parent left every later artist-photo write throwing
-                // DirectoryNotFoundException into a swallowing catch — artist images
-                // silently stopped caching until the app was restarted. ConfirmResetLibrary
-                // already got this right.
-                Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
-            }
+                if (Directory.Exists(artworkDir))
+                {
+                    Directory.Delete(artworkDir, true);
+                    Directory.CreateDirectory(artworkDir);
+                    // ArtistImageService creates artwork/artists once, in its constructor, so
+                    // recreating only the parent left every later artist-photo write throwing
+                    // DirectoryNotFoundException into a swallowing catch — artist images
+                    // silently stopped caching until the app was restarted. ConfirmResetLibrary
+                    // already got this right.
+                    Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
+                }
+            });
             _dirSizeCache.TryRemove(artworkDir, out _);
             RefreshStorageInfo();
             SetScanStatus("Artwork cache cleared.", autoClear: true);
