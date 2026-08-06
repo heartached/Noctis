@@ -440,7 +440,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,16,0,0">
                         <Button Command="{Binding PlayAllCommand}"
                                 Classes="accent-btn"
-                                Background="{DynamicResource AccentColorBrush}"
+                                Background="{DynamicResource AccentButtonBackground}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
                                 BorderThickness="0"
                                 CornerRadius="999"
@@ -459,7 +459,7 @@
                         <!-- Shuffle: solid accent pill matching the Albums/Singles header (layered icon) -->
                         <Button Command="{Binding ShuffleAllCommand}"
                                 Classes="accent-btn"
-                                Background="{DynamicResource AccentColorBrush}"
+                                Background="{DynamicResource AccentButtonBackground}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
                                 BorderThickness="0"
                                 CornerRadius="999"
@@ -1120,7 +1120,7 @@
                         <Button Content="Add Songs"
                                 Command="{Binding AddSongsCommand}"
                                 Classes="accent-btn"
-                                Background="{DynamicResource AccentColorBrush}"
+                                Background="{DynamicResource AccentButtonBackground}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
                                 BorderThickness="0"
                                 CornerRadius="999"

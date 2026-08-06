@@ -15,8 +15,10 @@
     </Window.Resources>
 
     <Window.Styles>
+        <!-- The card sits on the theme's chrome surface, so the fact tiles have to be
+             theme-driven too: hardcoded white text left the whole panel blank on Light. -->
         <Style Selector="Border.album-desc-fact">
-            <Setter Property="Background" Value="#14FFFFFF" />
+            <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
             <Setter Property="CornerRadius" Value="10" />
             <Setter Property="Padding" Value="12,9" />
         </Style>
@@ -24,12 +26,13 @@
             <Setter Property="FontSize" Value="10" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="LetterSpacing" Value="1.2" />
-            <Setter Property="Foreground" Value="#8AFFFFFF" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="Opacity" Value="0.54" />
         </Style>
         <Style Selector="TextBlock.album-desc-fact-value">
             <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
     </Window.Styles>
@@ -84,7 +87,7 @@
                                 Margin="0,0,0,16"
                                 CornerRadius="10"
                                 ClipToBounds="True"
-                                Background="#1AFFFFFF"
+                                Background="{DynamicResource ChipBackground}"
                                 BoxShadow="0 10 30 0 #55000000">
                             <Panel>
                                 <TextBlock Text="&#x266A;"

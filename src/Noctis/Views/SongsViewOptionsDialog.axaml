@@ -296,7 +296,7 @@
                             Command="{Binding RestoreDefaultsCommand}" />
                     <Button Classes="view-opt-footer accent-btn"
                             Content="Done"
-                            Background="{DynamicResource AccentColorBrush}"
+                            Background="{DynamicResource AccentButtonBackground}"
                             Foreground="{DynamicResource AccentForegroundBrush}"
                             BorderThickness="0"
                             Click="OnCloseClick" />

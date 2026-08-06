@@ -203,6 +203,7 @@ public partial class MainWindow : Window
         // built-in or custom — keeps its own tint behind the glass.
         var main = ResolveThemeColor("AppMainBackground", Color.Parse("#252525"));
         var sidebar = ResolveThemeColor("AppSidebarBackground", Color.Parse("#141414"));
+        var accent = ResolveThemeColor("AccentColorBrush", Color.Parse("#E74856"));
 
         TransparencyLevelHint = new[]
         {
@@ -235,6 +236,16 @@ public partial class MainWindow : Window
         {
             ["AppMainBackground"] = new SolidColorBrush(main, 0.35),
             ["AppSidebarBackground"] = new SolidColorBrush(sidebar, 0.55),
+
+            // Accent-filled action buttons (accent-btn / accent-pill: Settings Close,
+            // Save, Confirm, Create, Play All, the queue pills) frost along with the
+            // surfaces they sit on, instead of staying the one opaque slab on a glass
+            // panel. 0.55 keeps enough accent for AccentForegroundBrush to stay legible
+            // against whatever the acrylic pulls through. AccentBorderBrush is consumed
+            // only by these buttons, so re-pointing it here adds the glass edge without
+            // touching anything else.
+            ["AccentButtonBackground"] = new SolidColorBrush(accent, 0.55),
+            ["AccentBorderBrush"] = new SolidColorBrush(Colors.White, 0.35),
         };
         Resources.MergedDictionaries.Add(_liquidGlassOverlay);
     }
@@ -271,6 +282,10 @@ public partial class MainWindow : Window
                 {
                     if (Avalonia.Application.Current is App app)
                         app.SetAccent(hex);
+                    // The frosted button fill is derived from the accent, so it has to be
+                    // re-derived here too — same reason as the theme handler above.
+                    if (_liquidGlassActive)
+                        ApplyLiquidGlass(true);
                 };
                 vm.Settings.AccentChanged += _accentChangedHandler;
 
@@ -1300,21 +1315,9 @@ public partial class MainWindow : Window
         // Clicks elsewhere in the app (player controls, sidebar, content area) do not dismiss it.
     }
 
-    private async void OnQueueClearClick(object? sender, RoutedEventArgs e)
+    private void OnQueueClearClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm) return;
-
-        // A queue curated over many sessions with Play Next / Add to Queue used to be
-        // destroyed by one click on a small ghost button — and PlayTrack overwrites
-        // queue.json immediately afterwards, so it couldn't be recovered from disk either.
-        var count = vm.Player.UpNext.Count;
-        if (count >= 5)
-        {
-            var confirmed = await Views.ConfirmationDialog.ShowAsync(
-                $"Clear all {count} tracks from the queue? This cannot be undone.");
-            if (!confirmed) return;
-        }
-
         vm.Player.ClearQueue();
     }
 

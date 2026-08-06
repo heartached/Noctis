@@ -117,7 +117,7 @@
                             Width="100"
                             Padding="0,8"
                             Classes="accent-btn"
-                            Background="{DynamicResource AccentColorBrush}"
+                            Background="{DynamicResource AccentButtonBackground}"
                             Foreground="{DynamicResource AccentForegroundBrush}"
                             FontWeight="Bold"
                             HorizontalContentAlignment="Center"
@@ -178,7 +178,7 @@
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
                             Classes="accent-btn"
-                            Background="{DynamicResource AccentColorBrush}"
+                            Background="{DynamicResource AccentButtonBackground}"
                             Foreground="{DynamicResource AccentForegroundBrush}"
                             Cursor="Hand" />
                     <Button Content="Remove Cover Art"

@@ -145,7 +145,7 @@
                                 IsEnabled="{Binding HasSelection}"
                                 MinWidth="100" Padding="16,8"
                                 Classes="accent-btn"
-                                Background="{DynamicResource AccentColorBrush}"
+                                Background="{DynamicResource AccentButtonBackground}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
                                 FontWeight="Bold"
                                 HorizontalContentAlignment="Center"
