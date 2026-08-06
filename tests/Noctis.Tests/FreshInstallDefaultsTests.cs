@@ -58,6 +58,7 @@ public class FreshInstallDefaultsTests
         // Finding the user's music, though, is the whole point.
         Assert.True(Fresh.ScanOnStartup);
         Assert.True(Fresh.WatchFoldersEnabled);
+        Assert.True(Fresh.UseEmbeddedArtwork);
     }
 
     [Fact]
