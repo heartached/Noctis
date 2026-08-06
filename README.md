@@ -6,12 +6,9 @@
 
 **A music player that respects what's yours. Zero tracking, total control.**
 
-[![Discord](https://img.shields.io/badge/DISCORD-JOIN%20SERVER-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=4F4F4F)](https://discord.gg/BNCDZQUVx7) &nbsp; [![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=E74856&style=for-the-badge&cacheSeconds=600)](https://github.com/heartached/Noctis/releases) &nbsp; [![Latest](https://img.shields.io/github/v/release/heartached/Noctis?color=E74856&style=for-the-badge&label=LATEST)](https://github.com/heartached/Noctis/releases/latest)
+[![Discord](https://img.shields.io/badge/DISCORD-JOIN%20SERVER-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=4F4F4F)](https://discord.gg/BNCDZQUVx7) &nbsp; [![Downloads](https://img.shields.io/github/downloads/heartached/Noctis/total?color=E74856&style=for-the-badge&cacheSeconds=600)](https://github.com/heartached/Noctis/releases) &nbsp; [![Support](https://img.shields.io/badge/SUPPORT-BUY%20ME%20A%20COFFEE-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black&labelColor=4F4F4F)](https://buymeacoffee.com/heartached)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-E74856.svg?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg?style=for-the-badge)]()
-[![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg?style=for-the-badge)]()
-[![Build](https://img.shields.io/github/actions/workflow/status/heartached/Noctis/dotnet.yml?label=build&style=for-the-badge)](https://github.com/heartached/Noctis/actions)
 
 </div>
 
@@ -40,7 +37,7 @@
 ![Themes](docs/images/appearance.png)
 
 <details>
-<summary><b>More screenshots</b> — Hi-Res library, parametric EQ, lyrics panel, queue, artist pages</summary>
+<summary><b>More screenshots</b>: Hi-Res library, parametric EQ, lyrics panel, queue, artist pages</summary>
 <br>
 
 |  |  |
@@ -56,7 +53,7 @@
 
 ## Install
 
-**Windows** — via a package manager:
+**Windows**, via a package manager:
 
 ```powershell
 # winget
@@ -65,16 +62,14 @@ winget install heartached.Noctis
 # Scoop (add the bucket once, then install)
 scoop bucket add noctis https://github.com/heartached/scoop-bucket
 scoop install noctis
-
-# Chocolatey
-choco install noctis
 ```
 
-Or download the installer / portable zip from the
+Or download the installer or portable zip from the
 [latest release](https://github.com/heartached/Noctis/releases/latest).
 
-**macOS / Linux** — download the `.dmg` / AppImage from the
+**macOS and Linux**: download the `.dmg` or AppImage from the
 [latest release](https://github.com/heartached/Noctis/releases/latest).
+Both ship with everything they need, so there is nothing else to install.
 
 ---
 
@@ -82,47 +77,56 @@ Or download the installer / portable zip from the
 
 ### Sound
 
-- [x] Plays everything — FLAC, ALAC, WAV, AIFF, APE, WavPack, MP3, AAC, OGG, Opus, WMA, M4A
-- [x] Bit-perfect exclusive output on Windows, with a live signal-path badge
-- [x] Parametric EQ with presets
-- [x] Gapless playback, crossfade & AutoMix
-- [x] ReplayGain volume leveling
+- [x] Plays FLAC, ALAC, WAV, AIFF, APE, WavPack, MP3, AAC, OGG, Opus, WMA and M4A
+- [x] Bit-perfect exclusive output on Windows
+- [x] Parametric EQ with presets, and a saved preset per track if you want one
+- [x] Gapless playback, crossfade and AutoMix transitions
+- [x] ReplayGain and Sound Check volume leveling
+- [x] Automatic BPM and musical key detection
+- [x] Track Radio and Autoplay keep the music going when the queue runs out
 - [x] Batch converter between formats (ffmpeg)
 
 ### Library
 
-- [x] Songs, Albums, Artists, Folders & Playlists views
-- [x] Albums split into Albums / Singles / EPs / Compilations
-- [x] Smart playlists & favorites
-- [x] Full metadata editor — artwork, lyrics, per-track options
-- [x] Drag & drop import, watched folders, bulk edits
-- [x] Duplicate finder & file organizer
+- [x] Songs, Albums, Artists, Folders and Playlists views
+- [x] Albums split into Albums, Singles and EPs
+- [x] Smart playlists, favorites, star ratings and play counts
+- [x] Full metadata editor for artwork, lyrics and per-track options
+- [x] Auto-tagging and cover art search using Deezer, MusicBrainz and Apple Music
+- [x] Drag and drop import, watched folders, bulk edits
+- [x] Playlist import from Exportify CSV, TuneMyMusic JSON and m3u files
+- [x] Duplicate finder and file organizer
 - [x] Command palette
-- [x] Listening stats + a monthly / yearly Wrap
+- [x] Listening stats with a monthly and yearly Wrap
 
 ### Lyrics
 
 - [x] Word-by-word karaoke lyrics, Apple Music style
-- [x] Auto-fetched from LRCLIB & NetEase, cached offline
+- [x] Reads plain text, LRC, word-level LRC, TTML and Lyricsfile sidecars
+- [x] Auto-fetched from LRCLIB and NetEase, cached offline
 - [x] Lyrics panel you can keep open next to any page
+- [x] Written By credits for the songwriters and producers
 - [x] Built-in lyrics editor with `.lrc` export
 - [x] Share lyrics as image cards or short clips
 
-### Look & feel
+### Look and feel
 
 - [x] Cover Flow browsing
 - [x] Animated cover art
-- [x] Ambient backgrounds on lyrics & album pages
-- [x] Themes & accent colors, plus a custom theme editor
-- [x] Floating mini player
+- [x] Ambient blurred backdrops on the lyrics page
+- [x] Themes and accent colors, plus a custom theme editor
+- [x] Liquid Glass translucent window mode
+- [x] Resizable mini player with search, queue, volume and karaoke lyrics
 
 ### Connect
 
+- [x] Stream from Jellyfin, Navidrome, Airsonic, Gonic or any Subsonic server
 - [x] Discord Rich Presence
-- [x] Scrobble to Last.fm & ListenBrainz
-- [x] Stream from Navidrome, SMB & WebDAV
-- [x] Web remote — control playback from your phone
-- [x] Artist images & bios via MusicBrainz and Deezer
+- [x] Scrobble to Last.fm and ListenBrainz
+- [x] Web remote so you can control playback from your phone
+- [x] Media keys on every platform, plus Windows taskbar controls
+- [x] Artist images from Deezer
+- [x] Sleep timer, tray icon and launch at login
 - [x] Updates itself from GitHub releases
 
 <p align="center">
@@ -139,19 +143,25 @@ cd Noctis
 dotnet run --project src/Noctis/Noctis.csproj
 ```
 
-**Requirements:** .NET 8 SDK
+**Requirements:** .NET 10 SDK
 
-Supported platforms: Windows 10/11 (x64), macOS 12+ (Intel & Apple Silicon), Linux (x64 & ARM64).
+Supported platforms: Windows 10/11 (x64), macOS 12+ (Intel and Apple Silicon), Linux (x64 and ARM64).
 
-### Native dependency — libvlc
+### Native dependency: libvlc
 
-- **Windows:** bundled automatically via NuGet — nothing to install.
-- **macOS:** install [VLC](https://www.videolan.org/vlc/) (Noctis loads libvlc from `/Applications/VLC.app`):
+The released downloads already carry everything they need. This only matters if
+you are building from source.
+
+- **Windows:** bundled automatically via NuGet, nothing to install.
+- **macOS:** install [VLC](https://www.videolan.org/vlc/), which Noctis loads from
+  `/Applications/VLC.app`. Packaged release builds bundle their own copy of VLC
+  inside the app, so a downloaded Noctis needs no VLC install.
   ```bash
   brew install --cask vlc
   ```
 - **Linux:** install via your package manager. The `-dev` package provides the
-  unversioned `libvlc.so` symlink that the .NET loader looks for:
+  unversioned `libvlc.so` symlink that the .NET loader looks for. The released
+  AppImage bundles libvlc and its plugins, so it runs without this.
   ```bash
   # Debian/Ubuntu
   sudo apt install libvlc-dev
@@ -164,20 +174,26 @@ Supported platforms: Windows 10/11 (x64), macOS 12+ (Intel & Apple Silicon), Lin
 ### Running a downloaded build (macOS / Linux)
 
 The macOS and Linux artifacts on the [Releases page](https://github.com/heartached/Noctis/releases)
-are unsigned self-contained builds. After unzipping:
+are unsigned self-contained builds.
 
-**macOS:**
+**macOS**, using the portable zip:
 ```bash
-cd Noctis-macos-arm64
-xattr -dr com.apple.quarantine .   # remove Gatekeeper quarantine flag
-./Noctis
+unzip Noctis-osx-arm64.zip
+xattr -dr com.apple.quarantine Noctis.app   # remove Gatekeeper quarantine flag
+open Noctis.app
 ```
 
-**Linux:**
+**Linux**, using the AppImage:
 ```bash
-cd Noctis-linux-x64
-chmod +x Noctis
-./Noctis
+chmod +x Noctis-x86_64.AppImage
+./Noctis-x86_64.AppImage
+```
+
+Or the portable tarball, which extracts without a top-level folder:
+```bash
+mkdir noctis && tar -xzf Noctis-linux-x64.tar.gz -C noctis
+chmod +x noctis/Noctis
+./noctis/Noctis
 ```
 
 ### Build for another OS
@@ -207,9 +223,9 @@ Yours Truly, heartached.
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT, see [LICENSE](LICENSE)
 
 ---
 
 > [!WARNING]
-> Windows may flag the installer as untrusted because it isn't code-signed. This is normal for indie software — the app is safe to use.
+> Windows may flag the installer as untrusted because it isn't code-signed. This is normal for indie software and the app is safe to use.
