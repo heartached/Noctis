@@ -76,7 +76,7 @@
                             Click="OnCancelClick"
                             Padding="14,8"
                             Classes="accent-btn"
-                            Background="{DynamicResource AccentColorBrush}"
+                            Background="{DynamicResource AccentButtonBackground}"
                             Foreground="{DynamicResource AccentForegroundBrush}"
                             FontWeight="Bold"
                             HorizontalContentAlignment="Center"

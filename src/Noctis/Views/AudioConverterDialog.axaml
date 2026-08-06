@@ -80,7 +80,7 @@
                                 IsEnabled="{Binding !IsConverting}"
                                 Width="100" Padding="0,8"
                                 Classes="accent-btn"
-                                Background="{DynamicResource AccentColorBrush}"
+                                Background="{DynamicResource AccentButtonBackground}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
                                 FontWeight="SemiBold"
                                 HorizontalContentAlignment="Center"

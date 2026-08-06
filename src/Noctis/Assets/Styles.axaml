@@ -24,6 +24,10 @@
                     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush2" Color="{StaticResource SystemAccentColorLight1}" />
                     <SolidColorBrush x:Key="AccentColorBrush" Color="{StaticResource SystemAccentColor}" />
+                    <!-- Fill for accent-filled action buttons only (accent-btn / accent-pill).
+                         Split from AccentColorBrush so Liquid Glass can frost the buttons
+                         without turning every other accent surface translucent. -->
+                    <SolidColorBrush x:Key="AccentButtonBackground" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentForegroundBrush" Color="White" />
                     <SolidColorBrush x:Key="AccentBorderBrush" Color="{StaticResource SystemAccentColorDark1}" />
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
@@ -128,6 +132,10 @@
                     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="SystemControlHighlightAccentBrush2" Color="{StaticResource SystemAccentColorLight1}" />
                     <SolidColorBrush x:Key="AccentColorBrush" Color="{StaticResource SystemAccentColor}" />
+                    <!-- Fill for accent-filled action buttons only (accent-btn / accent-pill).
+                         Split from AccentColorBrush so Liquid Glass can frost the buttons
+                         without turning every other accent surface translucent. -->
+                    <SolidColorBrush x:Key="AccentButtonBackground" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentForegroundBrush" Color="White" />
                     <SolidColorBrush x:Key="AccentBorderBrush" Color="{StaticResource SystemAccentColorDark1}" />
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
@@ -299,14 +307,6 @@
         <Setter Property="Margin" Value="0" />
     </Style>
 
-    <!-- Global input text alignment: keep dropdown/numeric text visually centered -->
-    <Style Selector="ComboBox">
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
-
-    <Style Selector="ComboBox /template/ ContentPresenter">
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Margin" Value="0,1,0,0" />
     <!-- "BETA" tag sitting next to a settings-row title. Non-interactive marker, so it
          uses the neutral chip fill rather than the accent — the accent in this app means
          "active control", which a status tag is not. -->
@@ -325,6 +325,14 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
+    <!-- Global input text alignment: keep dropdown/numeric text visually centered -->
+    <Style Selector="ComboBox">
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="ComboBox /template/ ContentPresenter">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,1,0,0" />
     </Style>
 
     <Style Selector="ComboBoxItem /template/ ContentPresenter">
@@ -639,17 +647,21 @@
     </Style>
 
     <!-- Solid accent pill: keeps the themed accent (red) on hover/press instead of
-         falling back to the theme's pointerover background. -->
+         falling back to the theme's pointerover background. Fill comes from
+         AccentButtonBackground so Liquid Glass can frost it (see ApplyLiquidGlass);
+         the border rides AccentBorderBrush, which glass turns into the light edge. -->
     <Style Selector="Button.accent-pill">
-        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
     </Style>
     <Style Selector="Button.accent-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
     </Style>
     <Style Selector="Button.accent-pill:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
     </Style>
 

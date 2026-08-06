@@ -532,7 +532,7 @@
                                 </MenuFlyout>
                             </Button.Flyout>
                         </Button>
-                        <Button Classes="accent-btn" Background="{DynamicResource AccentColorBrush}"
+                        <Button Classes="accent-btn" Background="{DynamicResource AccentButtonBackground}"
                                 Padding="14,8" CornerRadius="999" Cursor="Hand"
                                 ToolTip.Tip="New Playlist" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -644,7 +644,7 @@
                     <!-- Folders action buttons: Play (accent) + Shuffle / Manage Folders (neutral chips) -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding HasFoldersActions}">
-                        <Button Classes="accent-btn" Background="{DynamicResource AccentColorBrush}"
+                        <Button Classes="accent-btn" Background="{DynamicResource AccentButtonBackground}"
                                 Padding="16,6" CornerRadius="999" Cursor="Hand"
                                 Command="{Binding PagePlayFolderCommand}"
                                 ToolTip.Tip="Play folder" VerticalAlignment="Center">
@@ -1304,7 +1304,7 @@
                             HorizontalAlignment="Right"
                             Padding="22,9"
                             CornerRadius="999"
-                            Background="{DynamicResource AccentColorBrush}"
+                            Background="{DynamicResource AccentButtonBackground}"
                             Foreground="{DynamicResource AccentForegroundBrush}"
                             Cursor="Hand"
                             Content="Close"

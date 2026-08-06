@@ -416,6 +416,11 @@ public partial class App : Application
             ["SystemControlHighlightAccentBrush"]  = new SolidColorBrush(color),
             ["SystemControlHighlightAccentBrush2"] = new SolidColorBrush(light1),
             ["AccentColorBrush"]                   = new SolidColorBrush(color),
+            // Fill for accent-filled action buttons. Identical to AccentColorBrush here;
+            // it exists as its own key so MainWindow's Liquid Glass overlay can frost the
+            // buttons without making every accent surface (sliders, now-playing row,
+            // sidebar selection, drag preview) translucent too.
+            ["AccentButtonBackground"]             = new SolidColorBrush(color),
             ["AccentForegroundBrush"]              = new SolidColorBrush(accentForeground),
             ["AccentBorderBrush"]                  = new SolidColorBrush(accentBorder),
             ["AccentTextBrush"]                    = new SolidColorBrush(accentText),
@@ -503,11 +508,6 @@ public partial class App : Application
 
     private static bool IsLight(Color c) => GetReadableForeground(c) == Colors.Black;
 
-    private static bool TryParseHex(string? hex, out Color color)
-    {
-        color = default;
-        if (string.IsNullOrWhiteSpace(hex)) return false;
-        try { color = Color.Parse(hex.Trim()); return true; }
     /// <summary>WCAG contrast ratio between two opaque colours (1.0 = identical, 21.0 = black on white).</summary>
     private static double ContrastRatio(Color a, Color b)
     {
@@ -528,6 +528,11 @@ public partial class App : Application
             ? Colors.Black
             : Colors.White;
 
+    private static bool TryParseHex(string? hex, out Color color)
+    {
+        color = default;
+        if (string.IsNullOrWhiteSpace(hex)) return false;
+        try { color = Color.Parse(hex.Trim()); return true; }
         catch { return false; }
     }
 }

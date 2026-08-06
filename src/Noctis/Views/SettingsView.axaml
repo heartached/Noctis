@@ -1333,7 +1333,7 @@
                         <Button IsVisible="{Binding HasHiddenReleases}"
                                 Command="{Binding ShowOlderReleasesCommand}"
                                 Classes="accent-btn"
-                                Background="{DynamicResource AccentColorBrush}"
+                                Background="{DynamicResource AccentButtonBackground}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
                                 BorderThickness="0"
                                 CornerRadius="999"
