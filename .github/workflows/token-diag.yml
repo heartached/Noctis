@@ -1,0 +1,39 @@
+name: WINGET_PAT diagnostic
+
+on:
+  push:
+    paths:
+      - ".github/workflows/token-diag.yml"
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect WINGET_PAT and test CreateRef
+        env:
+          T: ${{ secrets.WINGET_PAT }}
+        run: |
+          set -uo pipefail
+          echo "== 1. identity =="
+          curl -s -H "Authorization: token $T" https://api.github.com/user | jq -r '.login // .message'
+          echo "== 2. actual token scopes =="
+          curl -sI -H "Authorization: token $T" https://api.github.com/user | grep -i '^x-oauth-scopes' || echo "(no scopes header)"
+          echo "== 3. upstream master OID =="
+          OID=$(curl -s https://api.github.com/repos/microsoft/winget-pkgs/git/ref/heads/master | jq -r .object.sha)
+          echo "$OID"
+          echo "== 4. REST createRef on fork =="
+          curl -s -X POST -H "Authorization: token $T" \
+            https://api.github.com/repos/heartached/winget-pkgs/git/refs \
+            -d "{\"ref\":\"refs/heads/pat-diag-rest\",\"sha\":\"$OID\"}" | jq -c '{ref: .ref, message: .message}'
+          echo "== 5. GraphQL createRef on fork (komac's exact call) =="
+          REPOID=$(curl -s -H "Authorization: token $T" -X POST https://api.github.com/graphql \
+            -d '{"query":"query { repository(owner: \"heartached\", name: \"winget-pkgs\") { id } }"}' | jq -r .data.repository.id)
+          echo "repoid=$REPOID"
+          curl -s -H "Authorization: token $T" -X POST https://api.github.com/graphql \
+            -d "{\"query\":\"mutation { createRef(input: {repositoryId: \\\"$REPOID\\\", name: \\\"refs/heads/pat-diag-gql\\\", oid: \\\"$OID\\\"}) { ref { name } } }\"}" | jq -c .
+          echo "== 6. cleanup =="
+          for BR in pat-diag-rest pat-diag-gql; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE -H "Authorization: token $T" \
+              "https://api.github.com/repos/heartached/winget-pkgs/git/refs/heads/$BR")
+            echo "delete $BR -> HTTP $CODE"
+          done
