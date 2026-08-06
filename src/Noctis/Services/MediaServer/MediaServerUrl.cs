@@ -36,9 +36,18 @@ public static class MediaServerUrl
             return null;
         }
 
-        // Accept bare "host:port" style input by assuming https.
+        // Accept bare "host:port" style input. Private/LAN hosts assume http —
+        // Jellyfin's default port 8096 (and most NAS setups) speak plain http, and
+        // an https attempt against it dies in the TLS handshake as a bare
+        // "couldn't reach the server". Public hosts assume https, matching the
+        // transport policy below.
         if (!trimmed.Contains("://", StringComparison.Ordinal))
-            trimmed = "https://" + trimmed;
+        {
+            var scheme = Uri.TryCreate("https://" + trimmed, UriKind.Absolute, out var probe) && IsPrivateHost(probe)
+                ? "http://"
+                : "https://";
+            trimmed = scheme + trimmed;
+        }
 
         if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
