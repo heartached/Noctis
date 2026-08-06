@@ -2440,26 +2440,19 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         else
         {
-            _preLyricsViewKey = GetCurrentViewKey();
-            // Push current view to history so we can restore it (including detail views)
-            PushCurrentViewToHistory();
-            // Set lyrics directly — Navigate() would clear the search/tab state we
-            // want restored when toggling back out of lyrics.
-            EnsureLyricsAndReturn(_lyricsVm);
-            CurrentView = _lyricsVm;
-            Player.IsQueuePopupOpen = false;
-            TopBar.SearchText = string.Empty;
-            TopBar.CurrentTabName = "Lyrics";
-            ClearAllTopBarActions();
-            WireLyricsPageToPlayer();
+            OpenLyricsView();
         }
     }
 
-    /// <summary>Navigates to lyrics view and searches for lyrics for the given track.</summary>
-    private void SearchLyricsForTrack(Track track)
+    /// <summary>Shared open path for the lyrics view: records the view to return to,
+    /// then swaps <see cref="CurrentView"/> and re-points the top bar at the page.</summary>
+    private void OpenLyricsView()
     {
         _preLyricsViewKey = GetCurrentViewKey();
+        // Push current view to history so we can restore it (including detail views)
         PushCurrentViewToHistory();
+        // Set lyrics directly — Navigate() would clear the search/tab state we
+        // want restored when toggling back out of lyrics.
         EnsureLyricsAndReturn(_lyricsVm);
         CurrentView = _lyricsVm;
         Player.IsQueuePopupOpen = false;
@@ -2467,6 +2460,12 @@ public partial class MainWindowViewModel : ViewModelBase
         TopBar.CurrentTabName = "Lyrics";
         ClearAllTopBarActions();
         WireLyricsPageToPlayer();
+    }
+
+    /// <summary>Navigates to lyrics view and searches for lyrics for the given track.</summary>
+    private void SearchLyricsForTrack(Track track)
+    {
+        OpenLyricsView();
         _lyricsVm.SearchLyricsForTrack(track);
     }
 
