@@ -99,7 +99,9 @@
                     <DataTemplate DataType="vm:ServerGridFooter">
                         <StackPanel>
                             <TextBlock Text="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).StatusText}"
-                                       FontSize="13" Opacity="0.6" Margin="10,16,0,0"
+                                       FontSize="13" Opacity="0.6" Margin="0,40,0,0"
+                                       HorizontalAlignment="Center" TextAlignment="Center"
+                                       TextWrapping="Wrap" MaxWidth="420"
                                        IsVisible="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
 
                             <Button Content="Load more albums"

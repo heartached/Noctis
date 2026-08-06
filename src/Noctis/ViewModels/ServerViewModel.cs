@@ -186,7 +186,7 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
             await LoadAlbumPageAsync();
             if (Albums.Count == 0)
             {
-                StatusText = "No albums yet — the server returned an empty music library (or wasn't reachable).";
+                StatusText = "No albums yet. The music library on this server is empty — or it couldn't be reached.";
                 // The clients fold network failures into empty results, so this
                 // is the one spot that knows the server browse came back empty.
                 DebugLog.Write("Server", "Album browse returned nothing — empty library or unreachable server.");
@@ -384,7 +384,7 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
         IsConfigured = connection != null;
         ServerLabel = connection == null
             ? string.Empty
-            : $"{connection.Name} · {connection.BaseUriOrPath}";
+            : $"Connected to {connection.Name} at {connection.BaseUriOrPath}";
     }
 
     private void ResetForConnectionChange()

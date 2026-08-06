@@ -372,6 +372,17 @@ public class MediaServerClientTests
         Assert.Equal(expected, MediaServerUrl.TryNormalizeBase(input, out _, out _));
     }
 
+    [Theory]
+    [InlineData("10.0.0.157:8096", "http://10.0.0.157:8096")]     // Jellyfin's default port is plain http
+    [InlineData("192.168.1.10:4533", "http://192.168.1.10:4533")]
+    [InlineData("mynas:8096", "http://mynas:8096")]
+    [InlineData("nas.local:8096", "http://nas.local:8096")]
+    [InlineData("music.example.com", "https://music.example.com")] // public host still assumes https
+    public void UrlPolicy_SchemelessInput_AssumesHttpOnPrivateHosts(string input, string expected)
+    {
+        Assert.Equal(expected, MediaServerUrl.TryNormalizeBase(input, out _, out _));
+    }
+
     // ── Artwork download bounds ──
 
     [Fact]
