@@ -4,6 +4,16 @@ using Noctis.Services;
 namespace Noctis.Models;
 
 /// <summary>
+/// One syllable inside a merged <see cref="WordTiming"/>: its own timing window plus
+/// how many characters of the merged word it contributes. Lets the sweep follow the
+/// original per-syllable timing across a word that renders as one unbreakable cell.
+/// </summary>
+/// <param name="Start">Syllable start time.</param>
+/// <param name="End">Syllable end time; null falls back to the next syllable's start.</param>
+/// <param name="Length">Characters this syllable contributes to the merged word.</param>
+public readonly record struct WordSyllable(TimeSpan Start, TimeSpan? End, int Length);
+
+/// <summary>
 /// A single word inside a <see cref="LyricLine"/> with karaoke-style timing.
 /// Produced by the Lyricsfile (YAML, LRCGET v2.0+) parser.
 ///
@@ -30,6 +40,14 @@ public partial class WordTiming : ObservableObject
 
     /// <summary>Word end time. Null when not provided; treated as the next word's Start (or line end).</summary>
     public TimeSpan? End { get; init; }
+
+    /// <summary>
+    /// Syllable breakdown for words built by joining several timed segments (Apple
+    /// TTML splits "compromise" into com/pro/mise). Null for ordinary single-segment
+    /// words. The cell renders unbroken either way; this only lets the sweep advance
+    /// on each syllable's own clock instead of linearly across the whole word.
+    /// </summary>
+    public IReadOnlyList<WordSyllable>? Syllables { get; init; }
 
     /// <summary>
     /// True for long-held words (slow vocal passages). Drives the Apple Music-style

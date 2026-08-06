@@ -245,9 +245,13 @@ public partial class AlbumDetailView : UserControl
     {
         CancelPendingScrollRestore();
 
-        if (_bgHandler != null && DataContext is AlbumDetailViewModel bgVm)
+        // Unhook from _trackedVm (the VM the handler is actually subscribed to):
+        // after an in-place VM swap the subscription follows the DataContext via
+        // OnAlbumDataContextChanged, and _trackedVm is kept in step with it.
+        if (_bgHandler != null)
         {
-            bgVm.PropertyChanged -= _bgHandler;
+            if (_trackedVm != null)
+                _trackedVm.PropertyChanged -= _bgHandler;
             _bgHandler = null;
         }
 
@@ -291,9 +295,21 @@ public partial class AlbumDetailView : UserControl
 
         CancelPendingScrollRestore();
 
+        // Re-wire the BackgroundBrush watcher too: on an in-place VM swap neither
+        // attach nor detach fires, so without this the handler would stay subscribed
+        // to the old VM (rooting this view for as long as that VM sits in history).
+        if (_trackedVm != null && _bgHandler != null)
+            _trackedVm.PropertyChanged -= _bgHandler;
+
         var newVm = DataContext as AlbumDetailViewModel;
         _trackedVm = newVm;
         if (newVm == null) return;
+
+        if (_bgHandler != null)
+        {
+            newVm.PropertyChanged += _bgHandler;
+            AlbumGradientBg.Opacity = newVm.BackgroundBrush != null ? 1 : 0;
+        }
 
         if (newVm.SavedScrollOffset > 0)
         {

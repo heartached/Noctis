@@ -1,6 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Noctis.ViewModels"
+        xmlns:conv="using:Noctis.Converters"
+        xmlns:controls="using:Noctis.Controls"
         x:Class="Noctis.Views.PlaylistDescriptionDialog"
         x:DataType="vm:PlaylistViewModel"
         Title="Playlist Description"
@@ -9,6 +11,32 @@
         Background="Transparent"
         TransparencyLevelHint="Transparent"
         ShowInTaskbar="False">
+
+    <Window.Resources>
+        <conv:HexColorToBrushConverter x:Key="HexColorConverter" />
+    </Window.Resources>
+
+    <!-- Fact-tile styling mirrors AlbumDescriptionDialog so both description dialogs
+         read as the same surface; the labels carry playlist info instead of album tags. -->
+    <Window.Styles>
+        <Style Selector="Border.playlist-desc-fact">
+            <Setter Property="Background" Value="#14FFFFFF" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="12,9" />
+        </Style>
+        <Style Selector="TextBlock.playlist-desc-fact-label">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="#8AFFFFFF" />
+        </Style>
+        <Style Selector="TextBlock.playlist-desc-fact-value">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+    </Window.Styles>
 
     <!-- Fade/scale open-close animation: same pattern as the Create Playlist dialog
          (code-behind settles to the open state on the next frame, mirrors on close). -->
@@ -27,14 +55,13 @@
             </Transitions>
         </Border.Transitions>
 
+        <!-- Centered dialog card: cover/facts panel on the left, text on the right -->
         <Border x:Name="DescriptionCard"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 PointerPressed="OnCardPointerPressed"
-                Padding="22,18"
-                Width="780"
-                MaxWidth="840"
-                MaxHeight="600"
+                Width="920"
+                MaxHeight="620"
                 CornerRadius="12"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="1"
@@ -50,30 +77,175 @@
                     </TransformOperationsTransition>
                 </Transitions>
             </Border.Transitions>
-            <Grid RowDefinitions="Auto,*"
-                  ColumnDefinitions="*,Auto,Auto">
-                <StackPanel Grid.Row="0"
-                            Grid.Column="0"
-                            Spacing="4"
-                            Margin="0,0,18,0">
-                    <TextBlock Text="{Binding Name}"
-                               FontSize="38"
-                               FontWeight="Bold"
-                               TextWrapping="Wrap" />
-                    <TextBlock FontSize="17"
-                               Opacity="0.75"
-                               VerticalAlignment="Center">
-                        <TextBlock.Text>
-                            <MultiBinding StringFormat="{}{0} · {1} tracks · {2}">
-                                <Binding Path="CreatedDateDisplay" />
-                                <Binding Path="TrackCount" />
-                                <Binding Path="TotalDuration" />
-                            </MultiBinding>
-                        </TextBlock.Text>
-                    </TextBlock>
-                    <StackPanel Orientation="Horizontal"
+
+            <Grid ColumnDefinitions="290,*">
+
+                <!-- Left panel: cover + facts, same surface as the description side -->
+                <Border Grid.Column="0">
+                    <StackPanel Margin="22" VerticalAlignment="Center">
+                        <!-- Cover resolution matches the playlist page rail:
+                             custom art > collage > single art > color tile. -->
+                        <Border Height="246"
+                                Margin="0,0,0,16"
+                                CornerRadius="10"
+                                ClipToBounds="True"
+                                BoxShadow="0 10 30 0 #55000000">
+                            <Panel>
+                                <Border Background="{Binding PlaylistColor, Converter={StaticResource HexColorConverter}}" />
+                                <PathIcon Data="{StaticResource PlaylistsIcon}"
+                                          Width="56" Height="56"
+                                          Foreground="#4DFFFFFF"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding ShowFallbackIcon}" />
+                                <controls:CachedImage SourcePath="{Binding Art1}"
+                                                      DecodeWidth="512"
+                                                      Stretch="UniformToFill"
+                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                      IsVisible="{Binding HasSingleArt}" />
+                                <Grid RowDefinitions="*,*"
+                                      ColumnDefinitions="*,*"
+                                      IsVisible="{Binding HasCollageArt}">
+                                    <controls:CachedImage Grid.Row="0" Grid.Column="0"
+                                                          SourcePath="{Binding Art1}"
+                                                          DecodeWidth="256"
+                                                          Stretch="UniformToFill" />
+                                    <controls:CachedImage Grid.Row="0" Grid.Column="1"
+                                                          SourcePath="{Binding Art2}"
+                                                          DecodeWidth="256"
+                                                          Stretch="UniformToFill" />
+                                    <controls:CachedImage Grid.Row="1" Grid.Column="0"
+                                                          SourcePath="{Binding Art3}"
+                                                          DecodeWidth="256"
+                                                          Stretch="UniformToFill" />
+                                    <controls:CachedImage Grid.Row="1" Grid.Column="1"
+                                                          SourcePath="{Binding Art4}"
+                                                          DecodeWidth="256"
+                                                          Stretch="UniformToFill" />
+                                </Grid>
+                                <controls:CachedImage SourcePath="{Binding PlaylistCoverArtPath}"
+                                                      DecodeWidth="512"
+                                                      Stretch="UniformToFill"
+                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                      IsVisible="{Binding HasCustomArt}" />
+                            </Panel>
+                        </Border>
+
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
+                            <Border Grid.Row="0" Grid.Column="0" Classes="playlist-desc-fact" Margin="0,0,4,8">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Classes="playlist-desc-fact-label" Text="CREATED" />
+                                    <TextBlock Classes="playlist-desc-fact-value" Text="{Binding CreatedDateValue}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Row="0" Grid.Column="1" Classes="playlist-desc-fact" Margin="4,0,0,8">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Classes="playlist-desc-fact-label" Text="UPDATED" />
+                                    <TextBlock Classes="playlist-desc-fact-value" Text="{Binding ModifiedDateValue}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Row="1" Grid.Column="0" Classes="playlist-desc-fact" Margin="0,0,4,8">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Classes="playlist-desc-fact-label" Text="TRACKS" />
+                                    <TextBlock Classes="playlist-desc-fact-value" Text="{Binding TrackCount}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Row="1" Grid.Column="1" Classes="playlist-desc-fact" Margin="4,0,0,8">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Classes="playlist-desc-fact-label" Text="DURATION" />
+                                    <TextBlock Classes="playlist-desc-fact-value" Text="{Binding TotalDuration}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Classes="playlist-desc-fact"
+                                    IsVisible="{Binding TotalSize, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Classes="playlist-desc-fact-label" Text="SIZE" />
+                                    <TextBlock Classes="playlist-desc-fact-value" Text="{Binding TotalSize}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Right panel: title, description. Track count / duration / size are
+                     deliberately NOT repeated here — the left fact cards already carry them. -->
+                <Grid Grid.Column="1" Margin="26,20,26,0" RowDefinitions="Auto,*,Auto">
+
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding Name}"
+                                   FontSize="34"
+                                   FontWeight="Bold"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,14,0" />
+
+                        <Button Grid.Column="1"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Width="32"
+                                Height="32"
+                                Padding="0"
+                                Margin="0,0,4,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                Cursor="Hand"
+                                ToolTip.Tip="Edit description"
+                                Command="{Binding StartDescriptionEditCommand}"
+                                IsVisible="{Binding !IsDescriptionEditing}">
+                            <PathIcon Data="{StaticResource EditIcon}"
+                                      Width="16" Height="16"
+                                      Opacity="0.75"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </Button>
+
+                        <Button Grid.Column="2"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Width="32"
+                                Height="32"
+                                Padding="0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                Cursor="Hand"
+                                Click="OnCloseClick">
+                            <PathIcon Data="{StaticResource DismissIcon}"
+                                      Width="16" Height="16"
+                                      Opacity="0.75"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </Button>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1"
+                                  Margin="0,16,0,0"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <Grid>
+                            <TextBlock Text="{Binding PlaylistDescription}"
+                                       FontSize="15"
+                                       LineHeight="26"
+                                       Opacity="0.9"
+                                       Margin="0,0,14,0"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding !IsDescriptionEditing}" />
+                            <TextBox Text="{Binding DescriptionEditorText}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top"
+                                     FontSize="15"
+                                     LineHeight="26"
+                                     Padding="10,8"
+                                     MinHeight="240"
+                                     IsVisible="{Binding IsDescriptionEditing}" />
+                        </Grid>
+                    </ScrollViewer>
+
+                    <StackPanel Grid.Row="2"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right"
                                 Spacing="8"
-                                Margin="0,8,0,0"
+                                Margin="0,14,0,16"
                                 IsVisible="{Binding IsDescriptionEditing}">
                         <Button Content="Cancel"
                                 Command="{Binding CancelDescriptionEditCommand}"
@@ -84,8 +256,7 @@
                                 Cursor="Hand"
                                 Background="{DynamicResource AccentColorBrush}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
-                                Classes="album-desc-btn"
-                                IsVisible="{Binding IsDescriptionEditing}" />
+                                Classes="album-desc-btn" />
                         <Button Content="Save"
                                 Command="{Binding SaveDescriptionEditCommand}"
                                 Padding="12,6"
@@ -96,71 +267,9 @@
                                 Background="{DynamicResource AccentColorBrush}"
                                 Foreground="{DynamicResource AccentForegroundBrush}"
                                 Classes="album-desc-btn"
-                                IsVisible="{Binding IsDescriptionEditing}"
                                 IsEnabled="{Binding HasDescriptionChanges}" />
                     </StackPanel>
-                </StackPanel>
-
-                <Button Grid.Row="0"
-                        Grid.Column="1"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Width="32"
-                        Height="32"
-                        Padding="0"
-                        Margin="0,0,4,0"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Top"
-                        Cursor="Hand"
-                        ToolTip.Tip="Edit description"
-                        Command="{Binding StartDescriptionEditCommand}"
-                        IsVisible="{Binding !IsDescriptionEditing}">
-                    <PathIcon Data="{StaticResource EditIcon}"
-                              Width="16" Height="16"
-                              Opacity="0.75"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center" />
-                </Button>
-
-                <Button Grid.Row="0"
-                        Grid.Column="2"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Width="32"
-                        Height="32"
-                        Padding="0"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Top"
-                        Cursor="Hand"
-                        Click="OnCloseClick">
-                    <PathIcon Data="{StaticResource DismissIcon}"
-                             Width="16" Height="16"
-                             Opacity="0.75"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Center" />
-                </Button>
-
-                <ScrollViewer Grid.Row="1"
-                              Grid.ColumnSpan="3"
-                              Margin="0,16,0,0"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled"
-                              MaxHeight="420">
-                    <Grid>
-                        <TextBlock Text="{Binding PlaylistDescription}"
-                                   FontSize="15"
-                                   LineHeight="24"
-                                   TextWrapping="Wrap"
-                                   IsVisible="{Binding !IsDescriptionEditing}" />
-                        <TextBox Text="{Binding DescriptionEditorText}"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 VerticalContentAlignment="Top"
-                                 FontSize="15"
-                                 MinHeight="240"
-                                 IsVisible="{Binding IsDescriptionEditing}" />
-                    </Grid>
-                </ScrollViewer>
+                </Grid>
             </Grid>
         </Border>
     </Border>

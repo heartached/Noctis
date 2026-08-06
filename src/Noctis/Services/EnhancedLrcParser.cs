@@ -22,6 +22,34 @@ public static partial class EnhancedLrcParser
         !string.IsNullOrEmpty(body) && WordTagRegex().IsMatch(body);
 
     /// <summary>
+    /// Strips an iTunes/Gramophone duet voice marker from a line body — the text directly
+    /// after the <c>[mm:ss.xx]</c> timestamp block. Matches Gramophone's accepted syntax
+    /// exactly: <c>v1:</c>, <c>v2:</c> or <c>v3:</c>, lowercase only, at most one leading
+    /// space, and before any inline word tag. Anything else (uppercase, "v4:", extra
+    /// spaces, mid-line) is plain lyric text. "v1:" maps to <see cref="LyricVoice.Default"/>:
+    /// voice 1 is the normal left-aligned layout either way.
+    /// </summary>
+    public static (string Body, LyricVoice Voice) StripVoiceMarker(string? body)
+    {
+        if (string.IsNullOrEmpty(body)) return (string.Empty, LyricVoice.Default);
+
+        var i = body[0] == ' ' ? 1 : 0;
+        if (i + 2 < body.Length && body[i] == 'v' && body[i + 2] == ':'
+            && body[i + 1] is >= '1' and <= '3')
+        {
+            var voice = body[i + 1] switch
+            {
+                '2' => LyricVoice.Voice2,
+                '3' => LyricVoice.Group,
+                _ => LyricVoice.Default,
+            };
+            return (body[(i + 3)..], voice);
+        }
+
+        return (body, LyricVoice.Default);
+    }
+
+    /// <summary>
     /// Splits an enhanced-LRC line body into display text and per-word timings.
     /// Returns (plainText, null) when the body carries no inline word tags.
     /// </summary>
@@ -113,8 +141,9 @@ public static partial class EnhancedLrcParser
     /// Joins syllable-level timings (adjacent segments with no whitespace between
     /// them, e.g. "tal" + "king ") into whole words, so the karaoke WrapPanel can
     /// never insert a line break mid-word. The merged segment spans first.Start →
-    /// last.End, which the sweep still crosses continuously. CJK scripts carry no
-    /// spaces at all, so those boundaries are left unmerged — per-character cells
+    /// last.End, and keeps each source syllable in <see cref="WordTiming.Syllables"/>
+    /// so the sweep can still advance on the syllables' own clocks. CJK scripts carry
+    /// no spaces at all, so those boundaries are left unmerged — per-character cells
     /// wrap fine typographically, and merging would build one unwrappable mega-cell.
     /// </summary>
     public static List<WordTiming> MergeSyllables(List<WordTiming> words)
@@ -122,6 +151,9 @@ public static partial class EnhancedLrcParser
         if (words.Count < 2) return words;
 
         var merged = new List<WordTiming>(words.Count) { words[0] };
+        // Parallel to `merged`; null until a word actually absorbs a second syllable.
+        var parts = new List<List<WordSyllable>?>(words.Count) { null };
+
         for (int i = 1; i < words.Count; i++)
         {
             var prev = merged[^1];
@@ -129,6 +161,8 @@ public static partial class EnhancedLrcParser
             if (prev.Text.Length > 0 && cur.Text.Length > 0
                 && IsJoinable(prev.Text[^1]) && IsJoinable(cur.Text[0]))
             {
+                var segments = parts[^1] ??= [new WordSyllable(prev.Start, prev.End, prev.Text.Length)];
+                segments.Add(new WordSyllable(cur.Start, cur.End, cur.Text.Length));
                 merged[^1] = new WordTiming
                 {
                     Text = prev.Text + cur.Text,
@@ -139,9 +173,40 @@ public static partial class EnhancedLrcParser
             else
             {
                 merged.Add(cur);
+                parts.Add(null);
             }
         }
+
+        for (int i = 0; i < merged.Count; i++)
+        {
+            if (parts[i] is not { } segments) continue;
+            merged[i] = new WordTiming
+            {
+                Text = merged[i].Text,
+                Start = merged[i].Start,
+                End = merged[i].End,
+                Syllables = TrimTrailingSpace(segments, merged[i].Text),
+            };
+        }
+
         return merged;
+    }
+
+    /// <summary>
+    /// Discounts the merged word's trailing whitespace from the final syllable's
+    /// character count. The sweep overlay renders <see cref="WordTiming.SweepText"/>
+    /// (trailing space stripped), so counting that space would stretch the syllable
+    /// weights over glyphs that are never painted. Only the last syllable can carry
+    /// it — an inner one ending in whitespace would not have been joinable.
+    /// </summary>
+    private static List<WordSyllable> TrimTrailingSpace(List<WordSyllable> segments, string mergedText)
+    {
+        var trailing = mergedText.Length - mergedText.TrimEnd().Length;
+        if (trailing == 0) return segments;
+
+        var last = segments[^1];
+        segments[^1] = last with { Length = Math.Max(0, last.Length - trailing) };
+        return segments;
     }
 
     // Letters/digits/apostrophes/hyphens below the CJK blocks join into one word;

@@ -237,30 +237,50 @@ public partial class LibrarySongsView : UserControl
         }
     }
 
+    /// <summary>Child lookups for <see cref="OnTitleCellLayoutUpdated"/>, resolved once
+    /// per cell and stashed in Tag: LayoutUpdated fires after EVERY window layout pass,
+    /// and a template cell's children never change (recycling reuses the same Grid).</summary>
+    private sealed record TitleCellChildren(TextBlock Title, Border? ExplicitBadge, Border? ArtThumb);
+
     private static void OnTitleCellLayoutUpdated(object? sender, EventArgs e)
     {
         if (sender is not Grid titleCell)
             return;
 
-        var title = titleCell.Children.OfType<TextBlock>().FirstOrDefault();
-        if (title == null)
-            return;
-
-        var explicitBadge = titleCell.Children.OfType<Border>().FirstOrDefault();
-        var reservedBadgeWidth = 0.0;
-
-        if (explicitBadge?.IsVisible == true)
+        if (titleCell.Tag is not TitleCellChildren children)
         {
-            var badgeMargin = explicitBadge.Margin;
-            var badgeWidth = explicitBadge.Bounds.Width > 0
-                ? explicitBadge.Bounds.Width
-                : explicitBadge.DesiredSize.Width;
-            reservedBadgeWidth = badgeWidth + badgeMargin.Left + badgeMargin.Right;
+            var title = titleCell.Children.OfType<TextBlock>().FirstOrDefault();
+            if (title == null)
+                return;
+
+            // Select by class: the cell holds two Borders (leading artwork thumb, trailing
+            // explicit badge) and each reserves its own width from the title's budget.
+            var explicitBadge = titleCell.Children.OfType<Border>()
+                .FirstOrDefault(b => b.Classes.Contains("explicit-badge"));
+            var artThumb = titleCell.Children.OfType<Border>()
+                .FirstOrDefault(b => b.Classes.Contains("row-art"));
+            children = new TitleCellChildren(title, explicitBadge, artThumb);
+            titleCell.Tag = children;
         }
 
-        var maxTitleWidth = Math.Max(0, titleCell.Bounds.Width - reservedBadgeWidth);
-        if (Math.Abs(title.MaxWidth - maxTitleWidth) > 0.5)
-            title.MaxWidth = maxTitleWidth;
+        var reservedWidth = 0.0;
+
+        if (children.ExplicitBadge?.IsVisible == true)
+            reservedWidth += ReservedWidth(children.ExplicitBadge);
+        if (children.ArtThumb?.IsVisible == true)
+            reservedWidth += ReservedWidth(children.ArtThumb);
+
+        var maxTitleWidth = Math.Max(0, titleCell.Bounds.Width - reservedWidth);
+        if (Math.Abs(children.Title.MaxWidth - maxTitleWidth) > 0.5)
+            children.Title.MaxWidth = maxTitleWidth;
+
+        static double ReservedWidth(Border element)
+        {
+            var width = element.Bounds.Width > 0
+                ? element.Bounds.Width
+                : element.DesiredSize.Width;
+            return width + element.Margin.Left + element.Margin.Right;
+        }
     }
 
     private void OnQueueButtonClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

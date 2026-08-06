@@ -24,6 +24,10 @@ public partial class MainWindow : Window
     private bool _exitRequestedFromTray;
     private EventHandler<string>? _themeChangedHandler;
     private EventHandler<string>? _accentChangedHandler;
+    private EventHandler<bool>? _liquidGlassChangedHandler;
+    private EventHandler<Avalonia.Platform.PlatformColorValues>? _platformColorsChangedHandler;
+    private ResourceDictionary? _liquidGlassOverlay;
+    private bool _liquidGlassActive;
     private System.ComponentModel.PropertyChangedEventHandler? _playerPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _queuePopupStateHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _topBarPropertyChangedHandler;
@@ -43,7 +47,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// Opens the compact always-on-top mini player (hiding the main window), or closes
     /// it if it's already open. Closing the mini player restores the main window.
-    /// Triggered by clicking the cover art in the bottom player bar.
+    /// Triggered by clicking the album art in the bottom player bar.
     /// </summary>
     public void ToggleMiniPlayer()
     {
@@ -55,14 +59,16 @@ public partial class MainWindow : Window
 
         if (DataContext is not MainWindowViewModel vm) return;
 
-        _miniPlayer = new MiniPlayerWindow { DataContext = vm.Player };
-        // The mini player's DataContext is the PlayerViewModel, which has no view of
-        // Settings, so the animated-cover gate is bound here (live, so toggling the
-        // setting while the mini player is open takes effect immediately).
-        _miniPlayer.AnimatedArt.Bind(
-            Noctis.Controls.AnimatedCoverImage.IsActiveProperty,
-            new Avalonia.Data.Binding(nameof(SettingsViewModel.EnableAnimatedCovers)) { Source = vm.Settings });
+        var miniVm = vm.CreateMiniPlayerViewModel();
+        _miniPlayer = new MiniPlayerWindow { DataContext = miniVm };
         _miniPlayer.Closed += OnMiniPlayerClosed;
+
+        // Always open as the compact bar (Apple Music-style widget); resizing from
+        // there morphs it into the other forms.
+        var (barWidth, barHeight) = MiniPlayerViewModel.CanonicalSize(MiniPlayerForm.Bar);
+        _miniPlayer.Width = barWidth;
+        _miniPlayer.Height = barHeight;
+        miniVm.UpdateFromSize(barWidth, barHeight);
 
         // Place it near the top-right of the screen the main window is on.
         var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
@@ -92,8 +98,19 @@ public partial class MainWindow : Window
         Activate();
     }
 
-    public MainWindow()
+    // Parameterless overload kept for the XAML previewer/designer; the app always
+    // passes the view model.
+    public MainWindow() : this(null) { }
+
+    public MainWindow(MainWindowViewModel? viewModel)
     {
+        // Must land before InitializeComponent: bindings that walk
+        // $parent[Window].DataContext then resolve on their first evaluation instead
+        // of erroring against null (a logged warning per binding, every startup) and
+        // re-resolving when the DataContext arrives afterwards.
+        if (viewModel is not null)
+            DataContext = viewModel;
+
         InitializeComponent();
         Services.StartupTrace.Mark("mainwindow-xaml-initialized");
 
@@ -134,6 +151,105 @@ public partial class MainWindow : Window
         catch { /* the dialog itself is best effort */ }
     }
 
+    /// <summary>
+    /// Applies or removes the Liquid Glass appearance (Settings → Appearance).
+    ///
+    /// On: the window asks the OS for blur-behind (AcrylicBlur, falling back to
+    /// Mica/Blur where unavailable), shows the ExperimentalAcrylicBorder backdrop
+    /// tinted with the active theme's surface color, and merges a window-scoped
+    /// resource overlay that swaps the structural surface brushes (window/content
+    /// background, sidebar) to translucent variants so the blur shows through.
+    /// The overlay lives in <b>this window's</b> resources, never the Application's,
+    /// so dialog windows and the mini player keep their opaque surfaces.
+    ///
+    /// Off: the overlay is removed (DynamicResource consumers snap back to the
+    /// theme's opaque brushes), the transparency hint is cleared back to its
+    /// default, and the backdrop is hidden — restoring the stock rendering.
+    ///
+    /// Fallback: if the platform grants no transparency (Linux without a
+    /// compositor, headless), the material's FallbackColor paints an opaque
+    /// theme-colored backdrop, so the translucent surfaces above it stay readable.
+    /// </summary>
+    private void ApplyLiquidGlass(bool on)
+    {
+        // Never applies on Linux: AcrylicBlur/Mica don't exist there, Blur is
+        // KDE-only, and Avalonia's X11 backend doesn't track compositor changes
+        // (AvaloniaUI/Avalonia#3300; #5333 "Transparency effect does not work on
+        // Fedora GNOME") — the hint list would degrade to a plain see-through
+        // window on most WMs, the exact "window turns transparent" artifact from
+        // issue #26. The toggle is hidden in Settings on Linux
+        // (IsLiquidGlassSupported); this gate also covers a settings file that
+        // already carries LiquidGlassEnabled=true.
+        if (OperatingSystem.IsLinux()) on = false;
+        _liquidGlassActive = on;
+
+        if (_liquidGlassOverlay != null)
+        {
+            Resources.MergedDictionaries.Remove(_liquidGlassOverlay);
+            _liquidGlassOverlay = null;
+        }
+
+        var acrylic = this.FindControl<ExperimentalAcrylicBorder>("LiquidGlassAcrylic");
+
+        if (!on)
+        {
+            ClearValue(TransparencyLevelHintProperty);
+            if (acrylic != null) acrylic.IsVisible = false;
+            return;
+        }
+
+        // Resolve the active theme's surface colors from Application-level resources
+        // (the window-scoped glass overlay never shadows those), so every theme —
+        // built-in or custom — keeps its own tint behind the glass.
+        var main = ResolveThemeColor("AppMainBackground", Color.Parse("#252525"));
+        var sidebar = ResolveThemeColor("AppSidebarBackground", Color.Parse("#141414"));
+
+        TransparencyLevelHint = new[]
+        {
+            WindowTransparencyLevel.AcrylicBlur,
+            WindowTransparencyLevel.Mica,
+            WindowTransparencyLevel.Blur,
+            WindowTransparencyLevel.None,
+        };
+
+        if (acrylic != null)
+        {
+            // Fresh material instance: assigning the Material property is guaranteed
+            // to invalidate, and the tint follows the active theme's surface color.
+            acrylic.Material = new ExperimentalAcrylicMaterial
+            {
+                BackgroundSource = AcrylicBackgroundSource.Digger,
+                TintColor = main,
+                TintOpacity = 0.65,
+                MaterialOpacity = 0.35,
+                FallbackColor = main,
+            };
+            acrylic.IsVisible = true;
+        }
+
+        // Translucent surface variants. The acrylic tint underneath carries most of
+        // the readability: in the content area the window, content-grid and page
+        // layers stack (≈73% net), the sidebar pill lands at ≈71% — text always sits
+        // on a solid-enough frosted surface.
+        _liquidGlassOverlay = new ResourceDictionary
+        {
+            ["AppMainBackground"] = new SolidColorBrush(main, 0.35),
+            ["AppSidebarBackground"] = new SolidColorBrush(sidebar, 0.55),
+        };
+        Resources.MergedDictionaries.Add(_liquidGlassOverlay);
+    }
+
+    /// <summary>Reads a theme surface color from Application resources for the active
+    /// theme variant; theme overlays (built-in and custom) win over the base palette.</summary>
+    private static Color ResolveThemeColor(string key, Color fallback)
+    {
+        if (Avalonia.Application.Current is { } app
+            && app.TryGetResource(key, app.ActualThemeVariant, out var value)
+            && value is ISolidColorBrush brush)
+            return brush.Color;
+        return fallback;
+    }
+
     private async Task InitializeOnLoadedAsync()
     {
         {
@@ -144,6 +260,10 @@ public partial class MainWindow : Window
                 {
                     if (Avalonia.Application.Current is App app)
                         app.SetTheme(themeKey);
+                    // Liquid Glass derives its tints from the theme's surface colors,
+                    // so a theme switch while glass is on re-resolves them.
+                    if (_liquidGlassActive)
+                        ApplyLiquidGlass(true);
                 };
                 vm.Settings.ThemeChanged += _themeChangedHandler;
 
@@ -153,6 +273,20 @@ public partial class MainWindow : Window
                         app.SetAccent(hex);
                 };
                 vm.Settings.AccentChanged += _accentChangedHandler;
+
+                _liquidGlassChangedHandler = (_, on) => ApplyLiquidGlass(on);
+                vm.Settings.LiquidGlassChanged += _liquidGlassChangedHandler;
+
+                // The 'System' theme tile resolved the OS light/dark mode once and
+                // never tracked later switches. The VM no-ops unless System is the
+                // active theme; Post guards against a non-UI-thread raise (SetTheme
+                // touches Application.Resources, which is UI-thread-only).
+                if (PlatformSettings is { } platformSettings)
+                {
+                    _platformColorsChangedHandler = (_, _) =>
+                        Dispatcher.UIThread.Post(() => vm.Settings.NotifySystemColorsChanged());
+                    platformSettings.ColorValuesChanged += _platformColorsChangedHandler;
+                }
 
                 // Load settings first so window placement is restored before the
                 // rest of init runs (avoids a visible resize jump on startup).
@@ -255,12 +389,9 @@ public partial class MainWindow : Window
                             Grid.SetRow(_contentDockPanel, lyricsActive ? 0 : 1);
                             Grid.SetRowSpan(_contentDockPanel, lyricsActive ? 2 : 1);
                         }
-                        // Restore sidebar when leaving lyrics view
-                        if (!mainVm2.IsLyricsViewActive && mainVm2.IsSidebarHidden)
-                        {
-                            mainVm2.IsSidebarHidden = false;
-                            if (_sidebarWrapper != null) _sidebarWrapper.Width = 60;
-                        }
+                        // Fullscreen lyrics hide the sidebar; leaving the page restores
+                        // it even windowed, since nothing else would bring it back.
+                        UpdateImmersiveLyricsState();
                     }
                     if (e.PropertyName == nameof(MainWindowViewModel.IsSettingsModalOpen))
                     {
@@ -386,6 +517,15 @@ public partial class MainWindow : Window
         // Close queue popup on outside click (tunnel so it fires before button commands)
         AddHandler(PointerPressedEvent, OnGlobalPointerPressed, RoutingStrategies.Tunnel);
 
+        // Space = play/pause has to beat whatever currently holds focus. Avalonia's
+        // Button treats Space as its keyboard "click" and marks KeyDown handled, so the
+        // bubbling handler below never saw the key once the user had clicked anything:
+        // click a lyric line to seek and Space re-seeked to it, click the fullscreen
+        // toggle and Space toggled fullscreen again. Tunnel it, same reasoning as the
+        // queue-popup handler above.
+        AddHandler(KeyDownEvent, OnGlobalPlayPauseKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, OnGlobalPlayPauseKeyUp, RoutingStrategies.Tunnel);
+
         // Volume control via mouse wheel and keyboard
         KeyDown += OnWindowKeyDown;
 
@@ -406,9 +546,15 @@ public partial class MainWindow : Window
         Helpers.SingleInstanceGuard.ActivationRequested += _singleInstanceActivationHandler;
 
         // Minimize-to-tray: hide the window when it minimizes and the setting is on.
+        // Every WindowState change also re-evaluates the fullscreen-lyrics sidebar
+        // rule here — F11, Escape and WM-initiated transitions all funnel through
+        // this one observer.
         PropertyChanged += (_, e) =>
         {
-            if (e.Property != WindowStateProperty || WindowState != WindowState.Minimized)
+            if (e.Property != WindowStateProperty)
+                return;
+            UpdateImmersiveLyricsState();
+            if (WindowState != WindowState.Minimized)
                 return;
             if (_trayIcon != null
                 && DataContext is MainWindowViewModel trayVm
@@ -697,6 +843,9 @@ public partial class MainWindow : Window
             _trayIcon = null;
         }
 
+        if (_platformColorsChangedHandler != null && PlatformSettings is { } platformSettings)
+            platformSettings.ColorValuesChanged -= _platformColorsChangedHandler;
+
         // Unsubscribe from all event handlers to prevent memory leak
         if (DataContext is MainWindowViewModel vm)
         {
@@ -705,6 +854,9 @@ public partial class MainWindow : Window
 
             if (_accentChangedHandler != null)
                 vm.Settings.AccentChanged -= _accentChangedHandler;
+
+            if (_liquidGlassChangedHandler != null)
+                vm.Settings.LiquidGlassChanged -= _liquidGlassChangedHandler;
 
             if (_playerPropertyChangedHandler != null)
                 vm.Player.PropertyChanged -= _playerPropertyChangedHandler;
@@ -979,6 +1131,33 @@ public partial class MainWindow : Window
     }
 #pragma warning restore CS0618 // Type or member is obsolete
 
+    /// <summary>
+    /// True between the Space press we consumed as play/pause and its release. Button
+    /// raises Click on key *up*, so swallowing only the press still let the focused
+    /// button fire on the way back up.
+    /// </summary>
+    private bool _spaceShortcutConsumed;
+
+    private void OnGlobalPlayPauseKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Space || e.KeyModifiers != KeyModifiers.None) return;
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        // Typing a space in a search/edit box stays typing a space.
+        if (e.Source is TextBox) return;
+
+        vm.Player.PlayPauseCommand.Execute(null);
+        _spaceShortcutConsumed = true;
+        e.Handled = true;
+    }
+
+    private void OnGlobalPlayPauseKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Space || !_spaceShortcutConsumed) return;
+        _spaceShortcutConsumed = false;
+        e.Handled = true;
+    }
+
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm) return;
@@ -1022,14 +1201,8 @@ public partial class MainWindow : Window
                 }
                 e.Handled = true;
                 break;
-            case Key.Space when e.KeyModifiers == KeyModifiers.None:
-                // Only toggle play/pause if the focused element is NOT a TextBox
-                if (FocusManager?.GetFocusedElement() is not TextBox)
-                {
-                    vm.Player.PlayPauseCommand.Execute(null);
-                    e.Handled = true;
-                }
-                break;
+            // Space is handled by OnGlobalPlayPauseKeyDown (tunneling) so a focused
+            // button can't swallow it first.
             case Key.D when e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift):
                 vm.ToggleDebugPanel();
                 e.Handled = true;
@@ -1062,6 +1235,25 @@ public partial class MainWindow : Window
             _preFullScreenState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
             WindowState = WindowState.FullScreen;
         }
+    }
+
+    /// <summary>
+    /// Fullscreen lyrics own the whole screen: the sidebar hides while the window is
+    /// FullScreen with the lyrics page up, and comes back the moment either condition
+    /// ends — leaving fullscreen, or navigating off the page (windowed included, since
+    /// nothing else would un-hide it). The same condition feeds the lyrics VM's
+    /// fullscreen flag, which gates the opt-in focus dimming. Runs off both the
+    /// WindowState observer and the IsLyricsViewActive handler so every path lands on
+    /// the same answer.
+    /// </summary>
+    private void UpdateImmersiveLyricsState()
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        var immersive = WindowState == WindowState.FullScreen && vm.IsLyricsViewActive;
+        if (vm.IsSidebarHidden != immersive)
+            vm.IsSidebarHidden = immersive;
+        if (vm.Lyrics.IsFullScreenPageActive != immersive)
+            vm.Lyrics.IsFullScreenPageActive = immersive;
     }
 
     // ── Albums toggle visuals ──

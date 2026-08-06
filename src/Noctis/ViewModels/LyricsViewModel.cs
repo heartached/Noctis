@@ -222,8 +222,33 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _hasSyncedLyricsAvailable;
 
+    /// <summary>Set by the shell — true only while the lyrics PAGE is up in a fullscreen
+    /// window; drives the focus dimming gate in <see cref="UpdateLineOpacities"/>.</summary>
+    [ObservableProperty]
+    private bool _isFullScreenPageActive;
+
+    partial void OnIsFullScreenPageActiveChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsLyricsFocusActive));
+        RefreshFocusDimming();
+    }
+
+    /// <summary>True while the opt-in fullscreen focus dimming is in effect (fullscreen
+    /// lyrics page + Appearance toggle). The page view also anchors the active line
+    /// near center while this is on (FocusAnchorRatio), since the dimmed-away lines
+    /// leave the lower viewport empty at the page's default anchor.</summary>
+    public bool IsLyricsFocusActive => IsFullScreenPageActive && Player.LyricsFullScreenFocusEnabled;
+
     /// <summary>Plain text lyrics without timestamps for the Unsync tab.</summary>
     public BulkObservableCollection<LyricLine> UnsyncedLines { get; } = new();
+
+    /// <summary>
+    /// True when the loaded lyrics carry duet voice markers (any non-default
+    /// <see cref="LyricLine.Voice"/>). The page and panel bind this to force the
+    /// lyric column to full width so voice-2 lines have a stable right edge.
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasDuetLines;
 
     /// <summary>Lines bound to the lyrics page — synced or plain depending on the toggle.</summary>
     public IEnumerable<LyricLine> ActiveLyricLines =>
@@ -477,6 +502,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private string _lyricsSourceName = string.Empty;
 
+    /// <summary>"Written By: …" credit shown after the last lyric line: the current track's
+    /// composer(s), comma-joined. Empty when the track has no composer tag or no lyrics are
+    /// displayed — the views collapse the footer then. Kept in lock-step with the line
+    /// collections (see <see cref="UpdateWrittenByCredit"/>), so it swaps behind the same
+    /// fade as the lyrics themselves.</summary>
+    [ObservableProperty]
+    private string _writtenByText = string.Empty;
+
     /// <summary>Whether an alternate lyrics source is available to switch to.</summary>
     [ObservableProperty]
     private bool _hasAlternateLyrics;
@@ -516,10 +549,34 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         _lyricsSyncTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(LineSyncIntervalMs) };
         _lyricsSyncTimer.Tick += (_, _) =>
         {
+            // Visibility-gate backstop: several paths (TrackStarted, play/pause,
+            // library updates, online-lyrics apply) call Start() unconditionally.
+            // With no lyrics surface on screen there is nothing to drive, so park
+            // the timer; SetLyricsSurfaceVisible restarts it when a surface opens,
+            // and while parked the Position fallback in OnPlayerPropertyChanged
+            // keeps ActiveLineIndex fresh for the reopen jump.
+            if (!IsAnyLyricsSurfaceVisible)
+            {
+                _lyricsSyncTimer.Stop();
+                return;
+            }
             if (_hasSyncedLyrics && _player.State == Models.PlaybackState.Playing)
                 UpdateActiveLine(GetPlaybackPosition());
             UpdateWordClockSubscription();
         };
+
+        // The Written-By credit must appear exactly when lyrics do: every load/clear
+        // path mutates these collections (Clear and ReplaceAll both raise
+        // CollectionChanged), so one hook covers local probes, online results,
+        // removals, search failures and the queue-end clear.
+        LyricLines.CollectionChanged += (_, _) => UpdateWrittenByCredit();
+        UnsyncedLines.CollectionChanged += (_, _) => UpdateWrittenByCredit();
+
+        // Duet files force the lyric column to its full MaxWidth (view-side MinWidth
+        // binding) so voice-2 lines right-align against a stable edge; single-voice
+        // files keep today's content-hugging layout untouched.
+        LyricLines.CollectionChanged += (_, _) =>
+            HasDuetLines = LyricLines.Any(l => l.Voice != LyricVoice.Default);
 
         // Subscribe to track changes to update lyrics
         _player.TrackStarted += OnTrackStarted;
@@ -529,6 +586,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         // Subscribe to state changes to start/stop the sync timer
         _player.PropertyChanged += OnPlayerPropertyChanged;
+
+        // A committed seek — timeline release, Previous-restart, any surface — is an
+        // explicit "go here", the same intent as clicking a lyric line (see SeekToLine):
+        // browsing is over, so resume following the new position. Without this, a seek
+        // during the wheel-scroll pause window left the view parked while every visible
+        // line dimmed to opacity 0 (outside the ±9 window around the new active line).
+        // The views re-anchor on the resulting IsAutoFollowPaused change.
+        _player.Seeked += (_, _) => IsAutoFollowPaused = false;
 
         // React to accent colour changes so the artist/album text recolours live.
         _accentHandler = (_, _) => Dispatcher.UIThread.Post(RefreshAccentForegrounds);
@@ -995,6 +1060,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 {
                     lrcLibErrored = true;
                     DebugLogger.Warn(DebugLogger.Category.Lyrics, "LRCLIB:Error", ex.Message);
+                    // Keyed per failure kind, not per track: an offline session
+                    // fails for every track and must not eat the session log.
+                    DebugLog.WriteOnce("Lyrics", $"lrclib:{ex.GetBaseException().GetType().Name}",
+                        $"LRCLIB fetch failed: {ex.Message}");
                 }
             }
 
@@ -1008,6 +1077,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 {
                     netEaseErrored = true;
                     DebugLogger.Warn(DebugLogger.Category.Lyrics, "NetEase:Error", ex.Message);
+                    DebugLog.WriteOnce("Lyrics", $"netease:{ex.GetBaseException().GetType().Name}",
+                        $"NetEase fetch failed: {ex.Message}");
                 }
             }
 
@@ -1345,9 +1416,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// resets lyrics state, and shows the search button so the user can retry.
     /// </summary>
     [RelayCommand]
-    private void RemoveLyrics()
+    private async Task RemoveLyrics()
     {
         if (_currentTrack == null) return;
+        // Capture the track: awaiting the writer lane frees the UI thread, so
+        // _currentTrack can change (or go null) before the deletes finish.
+        var track = _currentTrack;
 
         // Remove every artifact this view-model created for the track.
         //
@@ -1360,9 +1434,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // and the deletes join the lane behind whatever is in flight, so an unawaited
         // write can never land after the delete and resurrect the removed files.
         Interlocked.Increment(ref _lyricsRemovalStamp);
-        var trackId = _currentTrack.Id;
-        var trackPath = _currentTrack.FilePath;
-        EnqueueLyricsFileWork(() =>
+        var trackId = track.Id;
+        var trackPath = track.FilePath;
+        await EnqueueLyricsFileWork(() =>
         {
             try
             {
@@ -1394,12 +1468,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 }
             }
             catch { }
-        }).Wait();
+        });
 
         // Clear the in-memory copies too, otherwise the next probe finds them on the
         // Track and re-displays what was just removed.
-        _currentTrack.Lyrics = string.Empty;
-        _currentTrack.SyncedLyrics = string.Empty;
+        track.Lyrics = string.Empty;
+        track.SyncedLyrics = string.Empty;
 
         // Reset state
         _currentOnlineResult = null;
@@ -1631,6 +1705,26 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         LyricsSwapped?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>Recomputes <see cref="WrittenByText"/> from the current track's Composer
+    /// tag. Empty (footer collapsed) when there is no composer or no lyrics on screen.
+    /// Multi-writer tags arrive as one string — ID3v2.3-style "/" or ";" separated —
+    /// and are shown comma-joined, Apple Music style. Called from the collection-changed
+    /// hooks in the constructor, so it runs on the UI thread with every lyrics apply.</summary>
+    private void UpdateWrittenByCredit()
+    {
+        var composer = _currentTrack?.Composer;
+        if (string.IsNullOrWhiteSpace(composer) ||
+            (LyricLines.Count == 0 && UnsyncedLines.Count == 0))
+        {
+            WrittenByText = string.Empty;
+            return;
+        }
+
+        WrittenByText = string.Join(", ",
+            composer.Split(new[] { '/', ';' },
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+    }
+
     private void OnTrackStarted(object? sender, Track track)
     {
         Dispatcher.UIThread.Post(() =>
@@ -1678,6 +1772,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 else
                     _lyricsSyncTimer.Stop();
             }
+
+            // A metadata edit can change Composer without touching the lyrics text —
+            // the collection hooks never fire then, so refresh the credit directly.
+            UpdateWrittenByCredit();
         });
     }
 
@@ -1788,6 +1886,19 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         {
             UpdateAdaptiveBackground(_player.AlbumArt);
         }
+        // Fullscreen-focus setting flipped while lyrics are showing — re-dim in place.
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsFullScreenFocusEnabled))
+        {
+            OnPropertyChanged(nameof(IsLyricsFocusActive));
+            RefreshFocusDimming();
+        }
+        // Word-joining flipped: it changes how the sidecar is parsed, not how it is
+        // drawn, so the current track has to go back through the load path.
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsJoinSplitWords))
+        {
+            if (_currentTrack is { } track)
+                LoadLyricsForTrack(track);
+        }
     }
 
     /// <summary>Raised on the UI thread when a lyric reload has its result ready and
@@ -1853,6 +1964,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     private async Task LoadLocalLyricsAsync(Track track, int generation)
     {
+        // Read the parse-affecting setting here, on the UI thread that owns it.
+        var joinSplitWords = _player.LyricsJoinSplitWords;
         var probe = await Task.Run(() =>
         {
             // Track lyrics are store-backed and lazy: the first touch is a small
@@ -1861,7 +1974,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             // store's LRU for the UI-thread reads in ApplyLocalLyricsResult).
             _loadedLyrics = track.Lyrics;
             _loadedSyncedLyrics = track.SyncedLyrics;
-            return ProbeLocalLyricSources(track);
+            return ProbeLocalLyricSources(track, joinSplitWords);
         });
 
         if (generation != _searchGeneration) return;
@@ -1902,7 +2015,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         bool FromCache);
 
     /// <summary>Synchronous probe helper — must only be called off the UI thread.</summary>
-    private static LocalLyricsProbe ProbeLocalLyricSources(Track track)
+    private static LocalLyricsProbe ProbeLocalLyricSources(Track track, bool joinSplitWords)
     {
         // Priority 1: .lyricsfile sidecar (word-level, LRCGET v2.0+).
         try
@@ -1923,7 +2036,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var sidecarTtml = TryReadSidecar(track.FilePath, new[] { ".ttml", ".TTML", ".Ttml" });
             if (sidecarTtml != null)
             {
-                var (lines, plain) = TtmlParser.Parse(sidecarTtml);
+                var (lines, plain) = TtmlParser.Parse(sidecarTtml, joinSplitWords);
                 if (lines != null && lines.Count > 0)
                     return new LocalLyricsProbe(lines, plain, "Sidecar:Ttml", FromCache: false);
             }
@@ -2299,7 +2412,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         return split.Length <= MaxLyricLines ? split : split[..MaxLyricLines];
     }
 
-    private static List<LyricLine> ParseLrcContent(string content)
+    // Internal for tests (InternalsVisibleTo Noctis.Tests).
+    internal static List<LyricLine> ParseLrcContent(string content)
     {
         var lines = new List<LyricLine>();
         var rawLines = content.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
@@ -2329,7 +2443,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 // per-word karaoke timings and strip from the displayed text.
                 var lastMatch = matches[^1];
                 var body = trimmed[(lastMatch.Index + lastMatch.Length)..];
-                var (text, words) = EnhancedLrcParser.ParseLine(body);
+
+                // Duet voice marker ("v1:"/"v2:"/"v3:", Gramophone syntax) sits between
+                // the timestamp block and any word tags; strip it before word parsing
+                // so it never reaches display text.
+                var (unvoiced, voice) = EnhancedLrcParser.StripVoiceMarker(body);
+                var (text, words) = EnhancedLrcParser.ParseLine(unvoiced);
 
                 // Skip empty timestamp lines — LRC files often end with
                 // [03:24.00] (no text) as an end marker. If parsed, this empty
@@ -2357,7 +2476,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                         var line = new LyricLine
                         {
                             Timestamp = adjusted,
-                            Text = SoftWrapText(text)
+                            Text = SoftWrapText(text),
+                            Voice = voice
                         };
 
                         if (lineWords != null)
@@ -2764,8 +2884,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var end = w.End ?? (i + 1 < words.Count
                 ? words[i + 1].Start
                 : layerEnd ?? KaraokeSweep.ResolveOpenLastWordEnd(w.Start, NextSyncedLineStart()));
-            var progress = KaraokeSweep.BandProgress(
-                w.Start.TotalSeconds, end.TotalSeconds, adjusted.TotalSeconds);
+            // Words joined from several timed spans sweep on their syllables' own
+            // clocks — a linear ramp would outrun the voice on a held syllable.
+            var progress = w.Syllables is { Count: > 1 } syllables
+                ? KaraokeSweep.SyllableBandProgress(
+                    syllables, w.Start.TotalSeconds, end.TotalSeconds, adjusted.TotalSeconds)
+                : KaraokeSweep.BandProgress(
+                    w.Start.TotalSeconds, end.TotalSeconds, adjusted.TotalSeconds);
             if (w.Progress != progress)
                 w.Progress = progress;
         }
@@ -2855,12 +2980,33 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// there is no per-frame cost for line-only lyrics or paused playback; the 100ms
     /// sync timer restarts it when a word-synced line becomes active again.
     /// </summary>
+    // The word clock rides the main window's render loop. While the mini player's
+    // lyrics form is the visible surface, the main window is hidden and pumps no
+    // frames — the mini player registers itself as the frame source instead.
+    private Avalonia.Controls.TopLevel? _wordClockHostOverride;
+
+    /// <summary>Alternative TopLevel to drive the word clock (the mini player's lyrics
+    /// form); null falls back to the main window.</summary>
+    public void SetWordClockHost(Avalonia.Controls.TopLevel? host)
+    {
+        _wordClockHostOverride = host;
+        if (host != null)
+            UpdateWordClockSubscription();
+    }
+
+    private Avalonia.Controls.TopLevel? GetWordClockHost()
+    {
+        if (_wordClockHostOverride != null) return _wordClockHostOverride;
+        return Application.Current?.ApplicationLifetime is
+            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+    }
+
     private void UpdateWordClockSubscription()
     {
         if (!WantsWordClock || _wordClockRunning) return;
-        if (Application.Current?.ApplicationLifetime is not
-            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            || desktop.MainWindow is not { } topLevel) return;
+        if (GetWordClockHost() is not { } topLevel) return;
 
         _wordClockRunning = true;
         topLevel.RequestAnimationFrame(OnWordClockFrame);
@@ -2904,9 +3050,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // the _wordClockRunning flag prevents a second concurrent loop.
         UpdateActiveLine(GetPlaybackPosition());
 
-        if (Application.Current?.ApplicationLifetime is
-            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow is { } topLevel)
+        if (GetWordClockHost() is { } topLevel)
         {
             topLevel.RequestAnimationFrame(OnWordClockFrame);
         }
@@ -2918,7 +3062,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Sets LineOpacity on each lyric line based on distance from the active line.
-    /// Active=1.0, adjacent lines fade gradually over ±9 lines, rest=0.0 (hidden).
+    /// Active=1.0, adjacent lines fade gradually over ±9 lines, rest=0.0 (hidden);
+    /// fullscreen focus (opt-in) tightens the ramp to the active line ±2.
     /// Pass activeIndex=-1 to restore all lines to full opacity (e.g. unsynced or reset).
     /// </summary>
     private void UpdateLineOpacities(int activeIndex)
@@ -2934,24 +3079,38 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        // Fullscreen focus (opt-in): only the active line and ±2 neighbours stay visible
+        // while the lyrics page fills a fullscreen window. The side panel shares these
+        // lines but can never be open with the page up, so the tight ramp never leaks
+        // into it.
+        var focus = IsLyricsFocusActive;
+
         for (int i = 0; i < LyricLines.Count; i++)
         {
             var dist = i - activeIndex;
             var absDist = Math.Abs(dist);
-            var opacity = absDist switch
-            {
-                 0 => 1.0,
-                 1 => 0.55,
-                 2 => 0.32,
-                 3 => 0.18,
-                 4 => 0.12,
-                 5 => 0.08,
-                 6 => 0.06,
-                 7 => 0.04,
-                 8 => 0.03,
-                 9 => 0.02,
-                 _ => 0.0
-            };
+            var opacity = focus
+                ? absDist switch
+                {
+                     0 => 1.0,
+                     1 => 0.5,
+                     2 => 0.22,
+                     _ => 0.0
+                }
+                : absDist switch
+                {
+                     0 => 1.0,
+                     1 => 0.55,
+                     2 => 0.32,
+                     3 => 0.18,
+                     4 => 0.12,
+                     5 => 0.08,
+                     6 => 0.06,
+                     7 => 0.04,
+                     8 => 0.03,
+                     9 => 0.02,
+                     _ => 0.0
+                };
             // Apple Music–style depth: active crisp, neighbours softly blurred.
             var blur = absDist switch
             {
@@ -2973,6 +3132,18 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             if (line.IsClickable != clickable)
                 line.IsClickable = clickable;
         }
+    }
+
+    // The focus gate flips mid-line (fullscreen entered/left, or the Settings toggle),
+    // so the ramp re-runs in place rather than waiting for the next line change. Mirrors
+    // RefreshActiveLyricPosition's guards: the synced tab re-dims around the active line,
+    // everything else restores full opacity.
+    private void RefreshFocusDimming()
+    {
+        if (_hasSyncedLyrics && IsSyncTabSelected && LyricLines.Count > 0)
+            UpdateLineOpacities(ActiveLineIndex);
+        else
+            UpdateLineOpacities(-1);
     }
 
     [GeneratedRegex(@"\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]")]

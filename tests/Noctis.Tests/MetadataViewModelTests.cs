@@ -173,6 +173,99 @@ public class MetadataViewModelTests
             Assert.Contains(t.FilePath, meta.WrittenArtPaths);
     }
 
+    // ── Tag writes only happen when a tag actually changed ────────────────────
+    // Every save used to rewrite every album track's audio file unconditionally. Saving an
+    // animated cover — which is a separate sidecar file and never touches the audio tags —
+    // therefore rewrote all 20 FLACs of an album, and the one the player held open failed,
+    // so the dialog reported "Couldn't write tags" for an edit that needed no tag write.
+
+    [Fact]
+    public async Task Save_WithNothingChanged_WritesNoTags()
+    {
+        var tracks = Album("A", "X", 3);
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Empty(meta.WrittenTagPaths);
+    }
+
+    [Fact]
+    public async Task Save_WithOnlyAnAnimatedCover_WritesNoTags()
+    {
+        // The reported bug: the audio files are irrelevant to this edit.
+        var tracks = Album("A", "X", 3);
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+
+        SetNewAnimatedCover(vm, Path.Combine(Path.GetTempPath(), "cover.mp4"));
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Empty(meta.WrittenTagPaths);
+        Assert.Empty(vm.SaveErrorMessage);
+    }
+
+    [Fact]
+    public async Task Save_WithAChangedTag_StillWritesEveryAlbumTrack()
+    {
+        // The guard must not cost the fan-out: an album-scoped Details edit still has to
+        // reach every track's file.
+        var tracks = Album("A", "X", 3);
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+
+        vm.Genre = "Reggaeton";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        foreach (var t in tracks)
+            Assert.Contains(t.FilePath, meta.WrittenTagPaths);
+    }
+
+    [Fact]
+    public async Task Save_WithAChangedTag_WritesOnlyTheTracksThatChanged()
+    {
+        // A per-track edit must not drag the rest of the album's files through a rewrite.
+        var tracks = Album("A", "X", 3);
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+
+        tracks[1].Title = "Renamed by the user";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(new[] { tracks[1].FilePath }, meta.WrittenTagPaths);
+    }
+
+    [Fact]
+    public async Task Save_WithOnlyAPlayCountReset_WritesNoTags()
+    {
+        // Play count lives in the library journal, not the file's tags.
+        var tracks = Album("A", "X", 2);
+        tracks[0].PlayCount = 5;
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+
+        vm.ResetPlayCountCommand.Execute(null);
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Empty(meta.WrittenTagPaths);
+    }
+
+    [Fact]
+    public async Task Save_WithAChangedRating_WritesTheTagBecauseRatingIsStoredInIt()
+    {
+        // Rating is not journal-only: WriteTrackMetadata puts it in the file, so it has to
+        // count as a tag change or the rating would never reach disk.
+        var tracks = Album("A", "X", 1);
+        using var p = new TestPersistenceService();
+        var vm = NewAlbumVm(tracks, p, out var meta, out _);
+
+        vm.Rating = 4;
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Contains(tracks[0].FilePath, meta.WrittenTagPaths);
+    }
+
     // ── Genre: off-list values (from a metadata search) must be displayable ──
 
     [Fact]
@@ -273,6 +366,49 @@ public class MetadataViewModelTests
         finally { Directory.Delete(dir, true); }
     }
 
+    // ── Artwork chooser: iTunes search term construction ──
+    // "Choose Artwork — From Apple Music" for the album "7" (Lil Nas X) showed George
+    // Strait and Beach House records: the title-only query surfaced every album named
+    // "7", and the artist-enriched one carried the full multi-artist tag string, which
+    // over-specifies iTunes's AND-matched free-text search into returning nothing.
+
+    [Fact]
+    public void ArtworkSearchTerm_CarriesPrimaryArtistAndAlbum()
+    {
+        // Track.GetPrimaryArtist reduces the tag to its first credited artist ("Lil
+        // Nas", by its current separator rules) — every remaining word still matches
+        // the store's "Lil Nas X" credit, while "Billy Ray Cyrus" must not be sent.
+        Assert.Equal("Lil Nas 7",
+            ITunesArtworkService.BuildAlbumSearchTerm("Lil Nas X feat. Billy Ray Cyrus", "7"));
+    }
+
+    [Fact]
+    public void ArtworkSearchTerm_WithoutAnArtist_IsTheAlbumAlone()
+    {
+        Assert.Equal("7", ITunesArtworkService.BuildAlbumSearchTerm("", "7"));
+        Assert.Equal("7", ITunesArtworkService.BuildAlbumSearchTerm(null, "7"));
+        Assert.Equal("7", ITunesArtworkService.BuildAlbumSearchTerm("   ", "7"));
+    }
+
+    [Fact]
+    public void ArtworkSearchTerm_StripsJoinedArtistsNotTheAlbumText()
+    {
+        // Only the artist side is reduced to the primary credit; the album text is the
+        // user's tag and goes through untouched.
+        Assert.Equal("Rema Rave & Roses",
+            ITunesArtworkService.BuildAlbumSearchTerm("Rema & Selena Gomez", "Rave & Roses"));
+    }
+
+    [Fact]
+    public void ArtworkRanking_AcceptsTheStoreCreditForAMultiArtistTag()
+    {
+        // Ranking corroborates candidates against the tag's artist. The store credits
+        // "Lil Nas X"; the shorter credit can never *contain* the longer tag string, so
+        // the comparison has to run both ways or the real album ties with the strangers.
+        Assert.True(ITunesArtworkService.IsLikelySameArtist(
+            "Lil Nas X", "Lil Nas X feat. Billy Ray Cyrus"));
+    }
+
     // ── Helpers ──
 
     private static List<Track> Album(string album, string albumArtist, int count)
@@ -305,6 +441,14 @@ public class MetadataViewModelTests
             albumScoped: true, albumTracks: tracks.ToList());
     }
 
+    private static void SetNewAnimatedCover(MetadataViewModel vm, string sourcePath)
+    {
+        var field = typeof(MetadataViewModel).GetField("_newAnimatedCoverSource",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(field);
+        field!.SetValue(vm, sourcePath);
+    }
+
     private static void SetNewArtwork(MetadataViewModel vm, byte[] data)
     {
         var field = typeof(MetadataViewModel).GetField("_newArtworkData",
@@ -327,8 +471,19 @@ public class MetadataViewModelTests
             return null;
         }
         public byte[]? ExtractAlbumArt(string filePath) => null;
-        public bool WriteTrackMetadata(Track track) => true;
-        public bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null) => true;
+        public List<string> WrittenTagPaths { get; } = new();
+
+        public bool WriteTrackMetadata(Track track)
+        {
+            lock (_gate) WrittenTagPaths.Add(track.FilePath);
+            return true;
+        }
+
+        public bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null)
+        {
+            lock (_gate) WrittenTagPaths.Add(targetFilePath);
+            return true;
+        }
         public bool WriteRating(string filePath, int rating, bool isDisliked) => true;
 
         bool IMetadataService.WriteAdvancedFields(string filePath,
@@ -386,5 +541,7 @@ public class MetadataViewModelTests
         public Task SetTracksDislikedAsync(IReadOnlyList<Track> tracks, bool isDisliked) => Task.CompletedTask;
         public Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until) => Task.CompletedTask;
         public void NotifyMetadataChanged() { }
+        public Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default) => Task.FromResult(0);
+        public Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
 }

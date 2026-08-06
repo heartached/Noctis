@@ -49,6 +49,10 @@ public class EqVisualizer : TemplatedControl
     static EqVisualizer()
     {
         IsPlayingProperty.Changed.AddClassHandler<EqVisualizer>((c, e) => c.OnIsPlayingChanged(e));
+        // Rows bind IsPlaying to the GLOBAL play state and flip only this
+        // control's IsVisible per row, so without this a hidden instance keeps
+        // its 16ms timer running until the page is left.
+        IsVisibleProperty.Changed.AddClassHandler<EqVisualizer>((c, e) => c.OnIsVisibleChanged());
     }
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
@@ -63,7 +67,7 @@ public class EqVisualizer : TemplatedControl
         SetAllBars(FlatHeight);
         _initialized = true;
 
-        if (IsPlaying)
+        if (IsPlaying && IsVisible)
             StartAnimating();
     }
 
@@ -72,7 +76,7 @@ public class EqVisualizer : TemplatedControl
         base.OnAttachedToLogicalTree(e);
         // Recycled rows re-attach without a template re-apply or an IsPlaying
         // change; restart the oscillation or the bars come back frozen.
-        if (_initialized && IsPlaying)
+        if (_initialized && IsPlaying && IsVisible)
             StartAnimating();
     }
 
@@ -90,11 +94,41 @@ public class EqVisualizer : TemplatedControl
         if (IsPlaying)
         {
             _flattening = false;
-            StartAnimating();
+            if (IsVisible)
+                StartAnimating();
+        }
+        else if (IsVisible)
+        {
+            BeginFlatten();
         }
         else
         {
-            BeginFlatten();
+            // Hidden: skip the animated flatten, just land flat with no timer.
+            _flattening = false;
+            StopAnimating();
+            SetAllBars(FlatHeight);
+        }
+    }
+
+    private void OnIsVisibleChanged()
+    {
+        if (!_initialized) return;
+
+        if (IsVisible)
+        {
+            if (IsPlaying)
+            {
+                _flattening = false;
+                StartAnimating();
+            }
+        }
+        else
+        {
+            // Park hidden instances: finish any flatten instantly and stop the
+            // timer; the visible/attach paths above restart the oscillation.
+            _flattening = false;
+            StopAnimating();
+            SetAllBars(FlatHeight);
         }
     }
 

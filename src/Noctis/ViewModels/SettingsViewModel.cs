@@ -10,6 +10,7 @@ using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Loon;
+using Noctis.Services.MediaServer;
 
 namespace Noctis.ViewModels;
 
@@ -28,6 +29,7 @@ public partial class SettingsViewModel : ViewModelBase
     private LoonClient? _loon;
     private ILastFmService? _lastFm;
     private IListenBrainzService? _listenBrainz;
+    private IMediaServerService? _mediaServer;
     private UpdateService? _updateService;
     private CancellationTokenSource? _updateCts;
     private string? _downloadedInstallerPath;
@@ -92,6 +94,7 @@ public partial class SettingsViewModel : ViewModelBase
         // a Connect click, not to persisted state — drop them when navigating tabs so
         // they don't reappear when returning to Integrations.
         ListenBrainzError = "";
+        ClearTransientServerError();
 
         // Play counts change during the session without a LibraryUpdated event,
         // so recompute stats whenever the Statistics tab is opened.
@@ -102,6 +105,14 @@ public partial class SettingsViewModel : ViewModelBase
             // reported "0 playlists" to every user who had any.
             _ = RefreshPlaylistCountAsync();
         }
+
+        // The GitHub release list is otherwise fetched only when Developer Mode
+        // flips on (once at startup for users who keep it enabled), so a release
+        // published while the app runs would never appear or claim the "Latest"
+        // pill. Re-fetch whenever the About tab opens with the version manager
+        // visible; the old rows stay on screen until the new list arrives.
+        if (value == TabAbout && DeveloperMode)
+            _ = RefreshReleasesAsync();
     }
 
     [RelayCommand]
@@ -109,11 +120,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Profile ──
     [ObservableProperty] private string _profileName = string.Empty;
-    [ObservableProperty] private string _profileUsername = string.Empty;
     [ObservableProperty] private string _profileAvatarPath = string.Empty;
 
     partial void OnProfileNameChanged(string value) { if (_settingsLoaded) QueueSettingsSave(); }
-    partial void OnProfileUsernameChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnProfileAvatarPathChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     private AppSettings _settings;
@@ -218,7 +227,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _miniPlayerTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _miniPlayerAlbumMarqueeEnabled = true;
     [ObservableProperty] private bool _enableAnimatedCovers = true;
-    [ObservableProperty] private bool _lyricsFlowingLightEnabled = true;
+    [ObservableProperty] private bool _lyricsFlowingLightEnabled;
+    [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
+    [ObservableProperty] private bool _lyricsJoinSplitWords;
 
     /// <summary>Minimize hides the main window to the system tray.</summary>
     [ObservableProperty] private bool _minimizeToTray;
@@ -292,17 +303,50 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Songs page optional columns ──
 
+    [ObservableProperty] private bool _showArtworkColumn = true;
     [ObservableProperty] private bool _showGenreColumn = true;
     [ObservableProperty] private bool _showRatingColumn = true;
     [ObservableProperty] private bool _showBpmColumn;
     [ObservableProperty] private bool _showBitrateColumn;
     [ObservableProperty] private bool _showSampleRateColumn;
 
+    // Formerly always-on columns; hideable since the chooser moved into View Options.
+    [ObservableProperty] private bool _showTimeColumn = true;
+    [ObservableProperty] private bool _showArtistColumn = true;
+    [ObservableProperty] private bool _showAlbumColumn = true;
+    [ObservableProperty] private bool _showFavoritesColumn = true;
+    [ObservableProperty] private bool _showPlaysColumn = true;
+
+    partial void OnShowArtworkColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowGenreColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowRatingColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBpmColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBitrateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowSampleRateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowTimeColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowArtistColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowAlbumColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowFavoritesColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowPlaysColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+
+    // ── Songs page sort / filter, Albums grid sort ──
+    //
+    // Persisted view state rather than user-facing Settings toggles: nothing in
+    // SettingsView binds these. They live here because SettingsViewModel owns the
+    // AppSettings round-trip, and the Songs/Albums view models read and write them
+    // through it — the same route the column flags already take.
+
+    [ObservableProperty] private string _songsSortColumn = "Date Added";
+    [ObservableProperty] private bool _songsSortAscending;
+    [ObservableProperty] private bool _songsShowOnlyFavorites;
+    [ObservableProperty] private string _albumSortMode = "default";
+    [ObservableProperty] private bool _albumSortAscending = true;
+
+    partial void OnSongsSortColumnChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnSongsSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnSongsShowOnlyFavoritesChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     // ── Web remote ──
 
@@ -359,7 +403,14 @@ public partial class SettingsViewModel : ViewModelBase
     }
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
+    /// <summary>Liquid Glass needs OS blur-behind (Acrylic/Mica/vibrancy). On Linux/X11
+    /// none of those exist and the hint would degrade to a plain see-through window
+    /// (issue #26), so the Settings card is hidden there (same pattern as
+    /// <see cref="IsExclusiveAudioSupported"/>) and MainWindow ignores the value.</summary>
+    public bool IsLiquidGlassSupported => !OperatingSystem.IsLinux();
+    [ObservableProperty] private bool _liquidGlassEnabled;
     [ObservableProperty] private bool _collapseAlbumEditions;
+    [ObservableProperty] private bool _mergeFeaturedFromTitles = true;
 
     // ── Lyrics Providers ──
 
@@ -382,6 +433,10 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _suppressRgNotify;
 
     [ObservableProperty] private bool _gaplessPlaybackEnabled = true;
+
+    /// <summary>Autoplay: when the queue ends naturally, keep playing similar songs
+    /// from the library. Off by default (new behavior-changing extras ship opt-in).</summary>
+    [ObservableProperty] private bool _autoplayEnabled;
 
     // ── Audio analysis (background BPM/key detection) ──
 
@@ -457,11 +512,39 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _listenBrainzStatusText = "Not connected";
     [ObservableProperty] private string _listenBrainzError = "";
 
+    // ── Media server ──
+    // The editable fields below are typing state; the authoritative connected
+    // state is _mediaServerConnection (token/user id inside), which is what
+    // SyncToSettings persists. Credentials follow the ListenBrainz idiom: no
+    // autosave, persisted only by the Connect/Disconnect commands.
+    // Named presets rather than a protocol pair: Navidrome/Airsonic/Gonic users
+    // shouldn't have to know they are "a Subsonic". Everything except Jellyfin
+    // speaks the Subsonic protocol underneath (SourceType.Navidrome).
+    public string[] MediaServerTypeOptions { get; } =
+        { "Jellyfin", "Navidrome", "Airsonic", "Gonic", "Subsonic (other)" };
+    [ObservableProperty] private string _mediaServerType = "Jellyfin";
+    [ObservableProperty] private string _mediaServerUrl = "";
+    [ObservableProperty] private string _mediaServerUsername = "";
+    [ObservableProperty] private string _mediaServerPassword = "";
+    [ObservableProperty] private bool _isMediaServerConnected;
+    [ObservableProperty] private bool _isMediaServerBusy;
+    [ObservableProperty] private string _mediaServerStatusText = "Not connected";
+    /// <summary>True while the status line shows a failure — drives the red status styling.</summary>
+    [ObservableProperty] private bool _hasMediaServerError;
+
+    /// <summary>The persisted server connection while connected; null otherwise.</summary>
+    private SourceConnection? _mediaServerConnection;
+
+    /// <summary>Raised after Connect/Disconnect so the shell can show/hide the Server section.</summary>
+    public event EventHandler? MediaServerConnectionChanged;
+
     // ── Preferences ──
 
     [ObservableProperty] private bool _scanOnStartup = true;
 
     [ObservableProperty] private bool _watchFoldersEnabled = true;
+
+    [ObservableProperty] private bool _useEmbeddedArtwork = true;
 
     [ObservableProperty] private string _organizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
     [ObservableProperty] private string _organizeTargetRoot = string.Empty;
@@ -620,8 +703,17 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Fires when the theme changes so the App can update. Payload is the theme key.</summary>
     public event EventHandler<string>? ThemeChanged;
 
+    /// <summary>Fires when the Liquid Glass appearance toggle changes so the main window
+    /// can switch its transparency hint, acrylic backdrop and surface brushes.</summary>
+    public event EventHandler<bool>? LiquidGlassChanged;
+
     /// <summary>Fires after a full settings reset so the shell can reload playlists, etc.</summary>
     public event EventHandler? SettingsReset;
+
+    /// <summary>Fires once the persisted list view state (Songs sort/filter, Albums sort)
+    /// has been read from disk, so the library view models can adopt it. They are built
+    /// during startup, before the settings load completes.</summary>
+    public event EventHandler? ViewStateLoaded;
 
     /// <summary>Fires when a media folder is added or removed so the Folders view can rebuild its tree.</summary>
     public event EventHandler? MusicFoldersChanged;
@@ -630,11 +722,13 @@ public partial class SettingsViewModel : ViewModelBase
     /// from the Settings → Statistics tab. The shell closes the modal and navigates.</summary>
     public event EventHandler? OpenStatisticsRequested;
 
-    public SettingsViewModel(IPersistenceService persistence, ILibraryService library, IPlayHistoryService playHistory)
+    public SettingsViewModel(IPersistenceService persistence, ILibraryService library, IPlayHistoryService playHistory,
+        IMediaServerService? mediaServer = null)
     {
         _persistence = persistence;
         _library = library;
         _playHistory = playHistory;
+        _mediaServer = mediaServer;
         _settings = new AppSettings();
 
         _library.ScanProgress += (_, count) =>
@@ -670,7 +764,7 @@ public partial class SettingsViewModel : ViewModelBase
         DebugLog.Changed += () => Dispatcher.UIThread.Post(() =>
         {
             if (DeveloperMode)
-                DevLogText = DebugLog.Snapshot();
+                DevLogText = ComposeDevLogText();
         });
 
         if (Avalonia.Application.Current is Noctis.App app)
@@ -703,8 +797,14 @@ public partial class SettingsViewModel : ViewModelBase
         // the async "Shared output…" notice would immediately re-populate it (card
         // grows again) — a visible shrink-then-grow that jolted the toggle/text.
         audioPlayer.OutputModeChanged += (_, status) =>
+        {
+            // Output-path transitions (exclusive engaged, fell back to shared,
+            // sink rebuilt after a device error) are exactly what an audio bug
+            // report needs, and they are rare — log them all.
+            DebugLog.Write("Audio", $"Output path: {status}");
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 ExclusiveAudioStatus = ExclusiveAudioEnabled ? status : "");
+        };
         ApplyAudioSettings();
     }
 
@@ -784,7 +884,6 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Profile
             ProfileName = _settings.ProfileName ?? string.Empty;
-            ProfileUsername = _settings.ProfileUsername ?? string.Empty;
             ProfileAvatarPath = _settings.ProfileAvatarPath ?? string.Empty;
 
             // Accent colour
@@ -802,6 +901,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             ScanOnStartup = _settings.ScanOnStartup;
             WatchFoldersEnabled = _settings.WatchFoldersEnabled;
+            UseEmbeddedArtwork = _settings.UseEmbeddedArtwork;
             OrganizePattern = _settings.OrganizePattern;
             OrganizeTargetRoot = _settings.OrganizeTargetRoot;
             IncludePrereleaseUpdates = _settings.IncludePrereleaseUpdates;
@@ -829,6 +929,8 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerAlbumMarqueeEnabled = _settings.MiniPlayerAlbumMarqueeEnabled;
             EnableAnimatedCovers = _settings.EnableAnimatedCovers;
             LyricsFlowingLightEnabled = _settings.LyricsFlowingLightEnabled;
+            LyricsFullScreenFocusEnabled = _settings.LyricsFullScreenFocusEnabled;
+            LyricsJoinSplitWords = _settings.LyricsJoinSplitWords;
             MinimizeToTray = _settings.MinimizeToTray;
             CloseToTray = _settings.CloseToTray;
             // Reflect the real OS autostart state (not an AppSettings copy) so the
@@ -837,14 +939,27 @@ public partial class SettingsViewModel : ViewModelBase
             StartMinimizedToTray = _settings.StartMinimizedToTray;
             RestoreLastTrackOnStartup = _settings.RestoreLastTrackOnStartup;
             WebRemoteEnabled = _settings.WebRemoteEnabled;
+            ShowArtworkColumn = _settings.ShowArtworkColumn;
             ShowGenreColumn = _settings.ShowGenreColumn;
             ShowRatingColumn = _settings.ShowRatingColumn;
             ShowBpmColumn = _settings.ShowBpmColumn;
             ShowBitrateColumn = _settings.ShowBitrateColumn;
             ShowSampleRateColumn = _settings.ShowSampleRateColumn;
+            ShowTimeColumn = _settings.ShowTimeColumn;
+            ShowArtistColumn = _settings.ShowArtistColumn;
+            ShowAlbumColumn = _settings.ShowAlbumColumn;
+            ShowFavoritesColumn = _settings.ShowFavoritesColumn;
+            ShowPlaysColumn = _settings.ShowPlaysColumn;
+            SongsSortColumn = _settings.SongsSortColumn;
+            SongsSortAscending = _settings.SongsSortAscending;
+            SongsShowOnlyFavorites = _settings.SongsShowOnlyFavorites;
+            AlbumSortMode = _settings.AlbumSortMode;
+            AlbumSortAscending = _settings.AlbumSortAscending;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
+            LiquidGlassEnabled = _settings.LiquidGlassEnabled;
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
+            MergeFeaturedFromTitles = _settings.MergeFeaturedFromTitles;
 
             // Lyrics providers
             LrcLibEnabled = _settings.LrcLibEnabled;
@@ -860,6 +975,7 @@ public partial class SettingsViewModel : ViewModelBase
             ReplayGainPreampDb = Math.Clamp(_settings.ReplayGainPreampDb, -12, 12);
             ReplayGainEnabled = !string.Equals(ReplayGainMode, "Off", StringComparison.OrdinalIgnoreCase);
             GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
+            AutoplayEnabled = _settings.AutoplayEnabled;
             BpmKeyAnalysisEnabled = _settings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = _settings.WriteAnalysisToTags;
             ExclusiveAudioEnabled = _settings.ExclusiveAudioEnabled && IsExclusiveAudioSupported;
@@ -921,6 +1037,30 @@ public partial class SettingsViewModel : ViewModelBase
                     ListenBrainzStatusText = $"Connected as {_settings.ListenBrainzUsername}";
             }
 
+            // Media server (v1: a single Subsonic/Jellyfin connection)
+            var serverConnection = _settings.SourceConnections
+                .FirstOrDefault(c => c.Type is SourceType.Navidrome or SourceType.Jellyfin);
+            if (serverConnection != null)
+            {
+                _mediaServerConnection = serverConnection;
+                // Prefer the stored flavor ("Gonic", "Airsonic", …); connections saved
+                // before flavors existed carry the client's generic protocol name, so
+                // fall back to the protocol's default preset.
+                MediaServerType = MediaServerTypeOptions.Contains(serverConnection.Name)
+                    ? serverConnection.Name
+                    : serverConnection.Type == SourceType.Jellyfin
+                        ? MediaServerTypeOptions[0]
+                        : MediaServerTypeOptions[^1];
+                MediaServerUrl = serverConnection.BaseUriOrPath;
+                MediaServerUsername = serverConnection.Username;
+                // The credential (Subsonic password / Jellyfin token) stays in the
+                // connection object only — never surfaced back into the password box.
+                IsMediaServerConnected = true;
+                MediaServerStatusText = $"Connected to {serverConnection.BaseUriOrPath}";
+                _mediaServer?.SetActiveConnection(serverConnection);
+                MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+            }
+
             if (_discord != null)
             {
                 // Lets the service's background reconnect stop as soon as the user turns
@@ -941,13 +1081,28 @@ public partial class SettingsViewModel : ViewModelBase
             }
 
             // Ensure player gets the persisted startup settings even if no toggle changed.
+            // SetPlayer runs in the MainWindowViewModel constructor — before this load —
+            // so fields without an OnChanged partial (e.g. the playback-bar width) would
+            // otherwise only ever see their defaults. Both applies are idempotent.
             ApplyAudioSettings();
+            ApplyPlayerSettings();
 
             // Apply the persisted theme on startup
             ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
 
             // Apply the persisted accent colour on startup
             AccentChanged?.Invoke(this, ActiveAccentHex);
+
+            // Apply the persisted Liquid Glass state on startup. The change handler
+            // already fired during the load when the stored value was true; this
+            // explicit (idempotent) invoke keeps the window consistent either way.
+            LiquidGlassChanged?.Invoke(this, LiquidGlassEnabled);
+
+            // The Songs/Albums view models are constructed before this async load
+            // finishes, so they start on hardcoded defaults. Tell them the persisted
+            // sort/filter is now readable rather than having them watch three
+            // properties each and guess when the last one landed.
+            ViewStateLoaded?.Invoke(this, EventArgs.Empty);
 
             _settingsLoaded = true;
         }
@@ -1042,13 +1197,13 @@ public partial class SettingsViewModel : ViewModelBase
 
         _settings.ThemeV2Migrated = true;
         _settings.ProfileName = ProfileName ?? string.Empty;
-        _settings.ProfileUsername = ProfileUsername ?? string.Empty;
         _settings.ProfileAvatarPath = ProfileAvatarPath ?? string.Empty;
         _settings.AccentColorHex = ActiveAccentHex;
         _settings.AccentPresetName = ActiveAccentName;
 
         _settings.ScanOnStartup = ScanOnStartup;
         _settings.WatchFoldersEnabled = WatchFoldersEnabled;
+        _settings.UseEmbeddedArtwork = UseEmbeddedArtwork;
         _settings.OrganizePattern = OrganizePattern;
         _settings.OrganizeTargetRoot = OrganizeTargetRoot;
         // The change handlers write these straight into _settings, but SaveAsync
@@ -1086,19 +1241,34 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MiniPlayerAlbumMarqueeEnabled = MiniPlayerAlbumMarqueeEnabled;
         _settings.EnableAnimatedCovers = EnableAnimatedCovers;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
+        _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
+        _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
         _settings.MinimizeToTray = MinimizeToTray;
         _settings.CloseToTray = CloseToTray;
         _settings.StartMinimizedToTray = StartMinimizedToTray;
         _settings.RestoreLastTrackOnStartup = RestoreLastTrackOnStartup;
         _settings.WebRemoteEnabled = WebRemoteEnabled;
+        _settings.ShowArtworkColumn = ShowArtworkColumn;
         _settings.ShowGenreColumn = ShowGenreColumn;
         _settings.ShowRatingColumn = ShowRatingColumn;
         _settings.ShowBpmColumn = ShowBpmColumn;
         _settings.ShowBitrateColumn = ShowBitrateColumn;
         _settings.ShowSampleRateColumn = ShowSampleRateColumn;
+        _settings.ShowTimeColumn = ShowTimeColumn;
+        _settings.ShowArtistColumn = ShowArtistColumn;
+        _settings.ShowAlbumColumn = ShowAlbumColumn;
+        _settings.ShowFavoritesColumn = ShowFavoritesColumn;
+        _settings.ShowPlaysColumn = ShowPlaysColumn;
+        _settings.SongsSortColumn = SongsSortColumn;
+        _settings.SongsSortAscending = SongsSortAscending;
+        _settings.SongsShowOnlyFavorites = SongsShowOnlyFavorites;
+        _settings.AlbumSortMode = AlbumSortMode;
+        _settings.AlbumSortAscending = AlbumSortAscending;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
+        _settings.LiquidGlassEnabled = LiquidGlassEnabled;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
+        _settings.MergeFeaturedFromTitles = MergeFeaturedFromTitles;
         _settings.LrcLibEnabled = LrcLibEnabled;
         _settings.DeezerEnabled = DeezerEnabled;
         _settings.MusicBrainzEnabled = MusicBrainzEnabled;
@@ -1106,6 +1276,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ReplayGainMode = ReplayGainMode ?? "Off";
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
+        _settings.AutoplayEnabled = AutoplayEnabled;
         _settings.BpmKeyAnalysisEnabled = BpmKeyAnalysisEnabled;
         _settings.WriteAnalysisToTags = WriteAnalysisToTags;
         _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
@@ -1124,13 +1295,32 @@ public partial class SettingsViewModel : ViewModelBase
             _settings.LastFmSessionKey = lfm.GetSessionKey() ?? "";
 
         _settings.ListenBrainzScrobblingEnabled = ListenBrainzScrobblingEnabled;
-        _settings.ListenBrainzToken = ListenBrainzToken ?? string.Empty;
+        // Persist-on-Connect contract (see OnListenBrainzTokenChanged): a token typed
+        // but never validated must not ride along with unrelated saves — only a
+        // connected (validated) token is stored.
+        _settings.ListenBrainzToken = IsListenBrainzConnected ? (ListenBrainzToken ?? string.Empty) : string.Empty;
         _settings.ListenBrainzUsername = ListenBrainzUsername ?? string.Empty;
+
+        // Media server: this VM owns the single Subsonic/Jellyfin connection, so the
+        // stored list is rebuilt from the connected state on every save (the on-disk
+        // merge above would otherwise revert a connect/disconnect). Connector types
+        // this UI doesn't manage (Local/Smb/WebDav) are passed through untouched.
+        var preservedConnections = _settings.SourceConnections
+            .Where(c => c.Type is not (SourceType.Navidrome or SourceType.Jellyfin))
+            .ToList();
+        if (_mediaServerConnection != null)
+            preservedConnections.Add(_mediaServerConnection);
+        _settings.SourceConnections = preservedConnections;
 
         // Volume rides the same save: the shutdown path calls SetVolume right before
         // SaveAsync, and without this re-apply the on-disk merge above reverted it to
         // the stale stored value — the session's volume never survived a restart.
         if (_volume is int volume) _settings.Volume = volume;
+
+        // Playback-bar width follows the same rule: the bar pushes it straight into
+        // _settings via SetPlaybackBarWidth, so without this re-apply the on-disk
+        // merge above would silently revert every resize on the next save.
+        if (_playbackBarWidth is double barWidth) _settings.PlaybackBarWidth = barWidth;
     }
 
     /// <summary>Returns the loaded settings object.</summary>
@@ -1142,6 +1332,18 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Updates the volume setting in the internal settings object.</summary>
     public void SetVolume(int volume) => _volume = _settings.Volume = volume;
+
+    /// <summary>Last playback-bar width pushed via <see cref="SetPlaybackBarWidth"/>;
+    /// null until the bar pushes one, so saves before that leave the stored value alone.</summary>
+    private double? _playbackBarWidth;
+
+    /// <summary>Persists a user resize of the playback bar (drag release / grip
+    /// double-click reset). Debounced like every other settings write.</summary>
+    public void SetPlaybackBarWidth(double width)
+    {
+        _playbackBarWidth = _settings.PlaybackBarWidth = width;
+        QueueSettingsSave();
+    }
 
     private void ApplyAudioSettings()
     {
@@ -1177,10 +1379,16 @@ public partial class SettingsViewModel : ViewModelBase
         // gapless covers natural track changes when transitions are off.
         ApplyAutoMixToPlayer();
         _player.GaplessEnabled = GaplessPlaybackEnabled;
+        _player.AutoplayEnabled = AutoplayEnabled;
         _player.TrackTitleMarqueeEnabled = TrackTitleMarqueeEnabled;
         _player.ArtistMarqueeEnabled = ArtistMarqueeEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        // Already clamped by AppSettings.ClampToValidRanges on load; a live
+        // SetPlaybackBarWidth writes the same value into _settings first.
+        _player.PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
         _player.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
+        _player.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
+        _player.LyricsJoinSplitWords = LyricsJoinSplitWords;
         Controls.MarqueeTextBlock.GlobalCoverFlowScrollEnabled = CoverFlowMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowArtistScrollEnabled = CoverFlowArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalCoverFlowAlbumScrollEnabled = CoverFlowAlbumMarqueeEnabled;
@@ -1188,6 +1396,7 @@ public partial class SettingsViewModel : ViewModelBase
         Controls.MarqueeTextBlock.GlobalLyricsArtistScrollEnabled = LyricsArtistMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled = MiniPlayerTitleMarqueeEnabled;
         Controls.MarqueeTextBlock.GlobalMiniPlayerAlbumScrollEnabled = MiniPlayerAlbumMarqueeEnabled;
+        Controls.MarqueeTextBlock.NotifyGlobalSettingsChanged();
     }
 
     private void ApplyEqualizer()
@@ -1661,6 +1870,17 @@ public partial class SettingsViewModel : ViewModelBase
         return Helpers.PlatformHelper.IsSystemDarkMode();
     }
 
+    /// <summary>
+    /// Re-applies the theme after an OS light/dark switch. No-op unless the System
+    /// tile is active, so explicit picks and custom themes are never disturbed.
+    /// Does not save: the persisted value stays "System".
+    /// </summary>
+    public void NotifySystemColorsChanged()
+    {
+        if (!IsSystemTheme || !string.IsNullOrEmpty(ActiveCustomThemeId)) return;
+        ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
+    }
+
     // ── Property change handlers ──
 
     partial void OnScanOnStartupChanged(bool value)
@@ -1675,6 +1895,19 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
         // Start/stop the filesystem watchers to match the new preference.
         App.Services?.GetService<ILibraryWatcherService>()?.Refresh();
+    }
+
+    partial void OnUseEmbeddedArtworkChanged(bool value)
+    {
+        // Keep the extractor's static mirror current even during settings load, so
+        // the first scan after startup honors a persisted "off" without a toggle flip.
+        Services.MetadataService.UseEmbeddedArtwork = value;
+        if (_suspendSettingPersistence) return;
+        _settings.UseEmbeddedArtwork = value;
+        _ = SaveAsync();
+        // Turning it on can immediately heal albums that only carry tag art; turning
+        // it off keeps covers already cached, matching the cache's fill-once design.
+        if (value) _ = _library.BackfillMissingArtworkAsync();
     }
 
     partial void OnIncludePrereleaseUpdatesChanged(bool value)
@@ -1751,6 +1984,14 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnLiquidGlassEnabledChanged(bool value)
+    {
+        // Raised even while settings are loading so a persisted "on" is applied as
+        // soon as the value lands; the save itself stays gated on a finished load.
+        LiquidGlassChanged?.Invoke(this, value);
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnPlaybackBarBackgroundOpacityChanged(double value)
     {
         var clamped = Math.Clamp(value, 0, 1);
@@ -1768,6 +2009,52 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
+    }
+
+    partial void OnMergeFeaturedFromTitlesChanged(bool value)
+    {
+        // Keep the scanner's static mirror current even during settings load, so the
+        // first scan after startup honors a persisted "off" without a toggle flip.
+        Services.MetadataService.MergeFeaturedFromTitles = value;
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+        _ = ApplyMergeFeaturedToLibraryAsync(value);
+    }
+
+    // Guards the status line against a superseded flip finishing after a newer one.
+    private int _mergeFeatApplyGeneration;
+
+    /// <summary>
+    /// Applies a merge-featured toggle flip to the indexed library right away — a rescan
+    /// reuses unchanged files, so it would never propagate this. Turning it off re-reads
+    /// tags in the background (the pre-merge artist only exists in the files), so that
+    /// direction announces itself in the scan status first.
+    /// </summary>
+    private async Task ApplyMergeFeaturedToLibraryAsync(bool value)
+    {
+        var generation = ++_mergeFeatApplyGeneration;
+        if (!value)
+            SetScanStatus("Restoring original artist credits…");
+
+        int changed;
+        try
+        {
+            changed = await _library.ApplyMergeFeaturedFromTitlesAsync(value);
+        }
+        catch (Exception)
+        {
+            if (generation == _mergeFeatApplyGeneration)
+                SetScanStatus("Couldn't update artist credits.", autoClear: true);
+            return;
+        }
+
+        if (generation != _mergeFeatApplyGeneration) return;
+        SetScanStatus(changed switch
+        {
+            0 => "Artist credits already up to date.",
+            1 => "Artist credits updated on 1 track.",
+            _ => $"Artist credits updated on {changed:N0} tracks."
+        }, autoClear: true);
     }
 
     partial void OnTrackTitleMarqueeEnabledChanged(bool value)
@@ -1830,6 +2117,18 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLyricsFlowingLightEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsFullScreenFocusEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsJoinSplitWordsChanged(bool value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -1926,10 +2225,37 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnAutoplayEnabledChanged(bool value)
+    {
+        // Live apply: the player reads this at each queue exhaustion, so flipping it
+        // mid-session arms (or disarms) the very next one — no restart needed.
+        if (_player != null) _player.AutoplayEnabled = value;
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
     partial void OnBpmKeyAnalysisEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
-        _ = SaveAsync();
+        if (value)
+        {
+            // The only other StartBackfill trigger is LibraryUpdated, so enabling
+            // this mid-session on a static library did nothing until the next scan
+            // or restart. StartBackfill reads the persisted settings object, so the
+            // save (which syncs the flag into it) must complete first.
+            _ = SaveThenStartAnalysisAsync();
+        }
+        else
+        {
+            App.Services?.GetService<Noctis.Services.AudioAnalysis.AudioAnalysisCoordinator>()?.Stop();
+            _ = SaveAsync();
+        }
+    }
+
+    private async Task SaveThenStartAnalysisAsync()
+    {
+        await SaveAsync();
+        App.Services?.GetService<Noctis.Services.AudioAnalysis.AudioAnalysisCoordinator>()?.StartBackfill();
     }
 
     partial void OnWriteAnalysisToTagsChanged(bool value)
@@ -2267,11 +2593,123 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _listenBrainz?.Logout();
         IsListenBrainzConnected = false;
+        // Mirror the connect path (which sets this true): leaving the hidden toggle
+        // armed meant any token typed after logout scrobbled without validation.
+        ListenBrainzScrobblingEnabled = false;
         ListenBrainzToken = "";
         ListenBrainzUsername = "";
         ListenBrainzStatusText = "Not connected";
         ListenBrainzError = "";
         _ = SaveAsync();
+    }
+
+    // ── Media server ──
+
+    private DispatcherTimer? _serverErrorDismissTimer;
+
+    /// <summary>
+    /// Shows a failure on the status line and schedules it to dissolve back to
+    /// "Not connected" after 3 seconds — error nags are tied to the Connect click
+    /// that caused them, not to state, so they must not linger (or survive a tab
+    /// switch, see OnSelectedSettingsTabChanged).
+    /// </summary>
+    private void ShowTransientServerError(string message)
+    {
+        MediaServerStatusText = message;
+        HasMediaServerError = true;
+        if (_serverErrorDismissTimer == null)
+        {
+            _serverErrorDismissTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            _serverErrorDismissTimer.Tick += (_, _) => ClearTransientServerError();
+        }
+        _serverErrorDismissTimer.Stop();
+        _serverErrorDismissTimer.Start();
+    }
+
+    /// <summary>
+    /// Reverts an error status to the idle baseline. Safe to call in any state:
+    /// no-op unless an error is actually showing, and it never overwrites the
+    /// busy/connected status lines. Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal void ClearTransientServerError()
+    {
+        _serverErrorDismissTimer?.Stop();
+        if (!HasMediaServerError) return;
+        HasMediaServerError = false;
+        if (!IsMediaServerConnected && !IsMediaServerBusy)
+            MediaServerStatusText = "Not connected";
+    }
+
+    /// <summary>
+    /// Maps a picker preset to the protocol client. Jellyfin speaks its own API;
+    /// Navidrome, Airsonic, Gonic and "Subsonic (other)" all speak the Subsonic
+    /// protocol (SourceType.Navidrome internally). Null falls back to Jellyfin to
+    /// mirror the field's default selection.
+    /// Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal static SourceType MediaServerOptionToSourceType(string? option) =>
+        option is null or "Jellyfin" ? SourceType.Jellyfin : SourceType.Navidrome;
+
+    /// <summary>Validates the typed server details and, on success, persists the connection.</summary>
+    [RelayCommand]
+    private async Task ConnectMediaServer()
+    {
+        if (_mediaServer == null || IsMediaServerBusy) return;
+
+        var type = MediaServerOptionToSourceType(MediaServerType);
+        if (string.IsNullOrWhiteSpace(MediaServerUrl))
+        {
+            ShowTransientServerError("Enter the server address.");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(MediaServerUsername) || string.IsNullOrWhiteSpace(MediaServerPassword))
+        {
+            ShowTransientServerError("Enter the username and password.");
+            return;
+        }
+
+        IsMediaServerBusy = true;
+        HasMediaServerError = false;
+        MediaServerStatusText = "Connecting…";
+        try
+        {
+            var (result, connection) = await _mediaServer.ConnectAsync(
+                type, MediaServerUrl, MediaServerUsername, MediaServerPassword, _mediaServerConnection?.Id);
+            if (!result.Success)
+            {
+                ShowTransientServerError(result.Message);
+                return;
+            }
+
+            // Keep the picked flavor ("Navidrome", "Gonic", …) rather than the client's
+            // generic protocol name, so the connected summary echoes what the user chose.
+            connection.Name = MediaServerType ?? connection.Name;
+            _mediaServerConnection = connection;
+            MediaServerUrl = connection.BaseUriOrPath; // normalized by the client
+            MediaServerPassword = string.Empty;        // never keep the password in a bound field
+            IsMediaServerConnected = true;
+            MediaServerStatusText = result.Message;
+            _mediaServer.SetActiveConnection(connection);
+            MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+            await SaveAsync();
+        }
+        finally
+        {
+            IsMediaServerBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DisconnectMediaServer()
+    {
+        _mediaServerConnection = null;
+        IsMediaServerConnected = false;
+        MediaServerPassword = string.Empty;
+        MediaServerStatusText = "Not connected";
+        HasMediaServerError = false;
+        _mediaServer?.SetActiveConnection(null);
+        MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+        await SaveAsync();
     }
 
     // ── Equalizer handlers ──
@@ -2683,7 +3121,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// Async variant of <see cref="RefreshStorageInfo"/> for click paths (e.g. opening Settings).
     /// Computes sizes on a background thread, then marshals formatted strings back to the UI.
     /// </summary>
-    public async Task RefreshStorageInfoAsync()
+    public async Task RefreshStorageInfoAsync(bool forceRefresh = false)
     {
         var dataDir = _persistence.DataDirectory;
         if (!Directory.Exists(dataDir)) return;
@@ -2694,7 +3132,7 @@ public partial class SettingsViewModel : ViewModelBase
             long queueSize = GetFileSize(Path.Combine(dataDir, "queue.json"));
             long playlistsSize = GetFileSize(Path.Combine(dataDir, "playlists.json"));
             long settingsSize = GetFileSize(Path.Combine(dataDir, "settings.json"));
-            long artworkSize = GetDirectorySize(Path.Combine(dataDir, "artwork"));
+            long artworkSize = GetDirectorySize(Path.Combine(dataDir, "artwork"), forceRefresh);
 
             return new
             {
@@ -2937,7 +3375,9 @@ public partial class SettingsViewModel : ViewModelBase
                 ? "No tracks found."
                 : $"{_library.Tracks.Count} tracks found.", autoClear: true);
             RefreshLibraryStats();
-            RefreshStorageInfo(forceRefresh: true);
+            // Fire-and-forget async variant: the forced artwork-cache walk scales
+            // with library size and froze the UI right as the scan finished.
+            _ = RefreshStorageInfoAsync(forceRefresh: true);
         }
         catch (OperationCanceledException)
         {
@@ -2975,7 +3415,7 @@ public partial class SettingsViewModel : ViewModelBase
                 ? "No tracks found."
                 : "Indexed Library.", autoClear: true);
             RefreshLibraryStats();
-            RefreshStorageInfo(forceRefresh: true);
+            _ = RefreshStorageInfoAsync(forceRefresh: true);
         }
         catch (Exception ex)
         {
@@ -3045,16 +3485,21 @@ public partial class SettingsViewModel : ViewModelBase
             Debug.WriteLine($"[Settings] Failed to clear queue state: {ex.Message}");
         }
 
-        // Clear artwork cache (albums + artists)
+        // Clear artwork cache (albums + artists). Task.Run for every recursive
+        // delete below: they run back-to-back on the UI context and blocked the
+        // dispatcher for their whole duration on large libraries or slow disks.
         try
         {
             var artworkDir = Path.Combine(_persistence.DataDirectory, "artwork");
-            if (Directory.Exists(artworkDir))
+            await Task.Run(() =>
             {
-                Directory.Delete(artworkDir, true);
-                Directory.CreateDirectory(artworkDir);
-                Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
-            }
+                if (Directory.Exists(artworkDir))
+                {
+                    Directory.Delete(artworkDir, true);
+                    Directory.CreateDirectory(artworkDir);
+                    Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
+                }
+            });
             _dirSizeCache.TryRemove(artworkDir, out _);
         }
         catch (Exception ex)
@@ -3066,11 +3511,14 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var lyricsDir = Path.Combine(Helpers.AppPaths.DataRoot, "lyrics_cache");
-            if (Directory.Exists(lyricsDir))
+            await Task.Run(() =>
             {
-                Directory.Delete(lyricsDir, true);
-                Directory.CreateDirectory(lyricsDir);
-            }
+                if (Directory.Exists(lyricsDir))
+                {
+                    Directory.Delete(lyricsDir, true);
+                    Directory.CreateDirectory(lyricsDir);
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -3081,11 +3529,14 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var coversDir = Path.Combine(_persistence.DataDirectory, "playlist_covers");
-            if (Directory.Exists(coversDir))
+            await Task.Run(() =>
             {
-                Directory.Delete(coversDir, true);
-                Directory.CreateDirectory(coversDir);
-            }
+                if (Directory.Exists(coversDir))
+                {
+                    Directory.Delete(coversDir, true);
+                    Directory.CreateDirectory(coversDir);
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -3096,11 +3547,14 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var cacheDir = Path.Combine(_persistence.DataDirectory, "cache");
-            if (Directory.Exists(cacheDir))
+            await Task.Run(() =>
             {
-                Directory.Delete(cacheDir, true);
-                Directory.CreateDirectory(cacheDir);
-            }
+                if (Directory.Exists(cacheDir))
+                {
+                    Directory.Delete(cacheDir, true);
+                    Directory.CreateDirectory(cacheDir);
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -3111,11 +3565,14 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var auditDir = Path.Combine(_persistence.DataDirectory, "audit");
-            if (Directory.Exists(auditDir))
+            await Task.Run(() =>
             {
-                Directory.Delete(auditDir, true);
-                Directory.CreateDirectory(auditDir);
-            }
+                if (Directory.Exists(auditDir))
+                {
+                    Directory.Delete(auditDir, true);
+                    Directory.CreateDirectory(auditDir);
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -3133,6 +3590,9 @@ public partial class SettingsViewModel : ViewModelBase
         {
             Debug.WriteLine($"[Settings] Failed to clear crash log: {ex.Message}");
         }
+
+        // Preserved crash-session logs go with it.
+        CrashJournal.ClearPreserved();
 
         // Clear index cache
         try
@@ -3187,6 +3647,7 @@ public partial class SettingsViewModel : ViewModelBase
             // Preferences
             ScanOnStartup = true;
             WatchFoldersEnabled = true;
+            UseEmbeddedArtwork = defaultSettings.UseEmbeddedArtwork;
             OrganizePattern = "{AlbumArtist}/{Album}/{TrackNo} {Title}";
             OrganizeTargetRoot = string.Empty;
             IncludePrereleaseUpdates = false;
@@ -3201,13 +3662,19 @@ public partial class SettingsViewModel : ViewModelBase
             RestoreLastTrackOnStartup = defaultSettings.RestoreLastTrackOnStartup;
             WebRemoteEnabled = defaultSettings.WebRemoteEnabled;
             CollapseAlbumEditions = defaultSettings.CollapseAlbumEditions;
+            MergeFeaturedFromTitles = defaultSettings.MergeFeaturedFromTitles;
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
             LyricsFlowingLightEnabled = defaultSettings.LyricsFlowingLightEnabled;
+            LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
+            LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
             FfmpegPath = defaultSettings.FfmpegPath;
             ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
             PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;
+            // Playback-bar width: clear the pending session value, or SyncToSettings
+            // would re-persist the pre-reset width over the freshly defaulted file
+            // (the ApplyPlayerSettings call below pushes the default to the bar).
+            _playbackBarWidth = null;
             ProfileName = defaultSettings.ProfileName;
-            ProfileUsername = defaultSettings.ProfileUsername;
             ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
 
             // Launch-at-login is an OS-level registration, not a settings field — a reset
@@ -3227,6 +3694,7 @@ public partial class SettingsViewModel : ViewModelBase
             GaplessPlaybackEnabled = true;
             // Read from defaultSettings, not literals: these drifted from AppSettings the
             // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.
+            AutoplayEnabled = defaultSettings.AutoplayEnabled;
             BpmKeyAnalysisEnabled = defaultSettings.BpmKeyAnalysisEnabled;
             WriteAnalysisToTags = defaultSettings.WriteAnalysisToTags;
             ReplayGainMode = defaultSettings.ReplayGainMode;
@@ -3240,6 +3708,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerTitleMarqueeEnabled = true;
             MiniPlayerAlbumMarqueeEnabled = true;
             SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
+            LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
 
             // Lyrics providers
             LrcLibEnabled = true;
@@ -3281,6 +3750,19 @@ public partial class SettingsViewModel : ViewModelBase
             ListenBrainzStatusText = "Not connected";
             _listenBrainz?.Logout();
 
+            // Media server — drop the connection (SyncToSettings would otherwise
+            // re-persist the stale one over the freshly defaulted file).
+            _mediaServerConnection = null;
+            MediaServerType = MediaServerTypeOptions[0];
+            MediaServerUrl = "";
+            MediaServerUsername = "";
+            MediaServerPassword = "";
+            IsMediaServerConnected = false;
+            MediaServerStatusText = "Not connected";
+            HasMediaServerError = false;
+            _mediaServer?.SetActiveConnection(null);
+            MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+
             // Disconnect Discord if connected (Loon rides its lifecycle)
             if (_discord != null)
             {
@@ -3290,6 +3772,9 @@ public partial class SettingsViewModel : ViewModelBase
 
             // Apply audio settings
             ApplyAudioSettings();
+            // Push the defaulted playback UI settings (incl. the bar width, which has
+            // no OnChanged partial to fire) onto the player.
+            ApplyPlayerSettings();
 
             // Apply theme
             ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
@@ -3311,22 +3796,28 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void ClearArtworkCache()
+    private async Task ClearArtworkCache()
     {
         try
         {
             var artworkDir = Path.Combine(_persistence.DataDirectory, "artwork");
-            if (Directory.Exists(artworkDir))
+            // Task.Run: the recursive delete scales with library size (one file per
+            // album) and blocked the UI thread for its whole duration on large
+            // libraries or slow disks.
+            await Task.Run(() =>
             {
-                Directory.Delete(artworkDir, true);
-                Directory.CreateDirectory(artworkDir);
-                // ArtistImageService creates artwork/artists once, in its constructor, so
-                // recreating only the parent left every later artist-photo write throwing
-                // DirectoryNotFoundException into a swallowing catch — artist images
-                // silently stopped caching until the app was restarted. ConfirmResetLibrary
-                // already got this right.
-                Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
-            }
+                if (Directory.Exists(artworkDir))
+                {
+                    Directory.Delete(artworkDir, true);
+                    Directory.CreateDirectory(artworkDir);
+                    // ArtistImageService creates artwork/artists once, in its constructor, so
+                    // recreating only the parent left every later artist-photo write throwing
+                    // DirectoryNotFoundException into a swallowing catch — artist images
+                    // silently stopped caching until the app was restarted. ConfirmResetLibrary
+                    // already got this right.
+                    Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
+                }
+            });
             _dirSizeCache.TryRemove(artworkDir, out _);
             RefreshStorageInfo();
             SetScanStatus("Artwork cache cleared.", autoClear: true);
@@ -3583,6 +4074,17 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _isDevDownloading;
     [ObservableProperty] private double _devDownloadProgress;
     [ObservableProperty] private string _devLogText = "";
+
+    /// <summary>Banner above the log pane when a previous session died and its
+    /// log was preserved; null hides it. Only the Clear button removes it.</summary>
+    [ObservableProperty] private string? _preservedCrashBanner;
+
+    /// <summary>The log pane / Copy Logs content: any preserved crash log from a
+    /// previous session first, then the live session log.</summary>
+    private static string ComposeDevLogText()
+        => CrashJournal.PreservedBlock is { } preserved
+            ? preserved + Environment.NewLine + DebugLog.Snapshot()
+            : DebugLog.Snapshot();
     [ObservableProperty] private bool _devLogsCopied;
 
     private CancellationTokenSource? _devCts;
@@ -3598,7 +4100,8 @@ public partial class SettingsViewModel : ViewModelBase
 
         if (value)
         {
-            DevLogText = DebugLog.Snapshot();
+            PreservedCrashBanner = CrashJournal.PreservedBanner;
+            DevLogText = ComposeDevLogText();
             _ = RefreshReleasesAsync();
         }
     }
@@ -3621,6 +4124,7 @@ public partial class SettingsViewModel : ViewModelBase
             var releases = await _updateService.ListReleasesAsync(cts.Token);
 
             var current = UpdateService.CurrentVersion;
+            var latest = UpdateService.PickLatestRelease(releases);
             _allReleases.Clear();
             foreach (var release in releases)
             {
@@ -3632,6 +4136,7 @@ public partial class SettingsViewModel : ViewModelBase
                     DateDisplay = release.PublishedAt?.ToLocalTime().ToString("MMM d, yyyy") ?? "",
                     IsPrerelease = release.Info.IsPrerelease,
                     IsCurrent = isCurrent,
+                    IsLatest = ReferenceEquals(release, latest),
                     CanInstall = !isCurrent
                                  && UpdateService.SupportsInAppUpdate
                                  && release.Info.InstallerApiUrl is not null,
@@ -3822,7 +4327,7 @@ public partial class SettingsViewModel : ViewModelBase
             ?.MainWindow?.Clipboard;
         if (clipboard is null) return;
 
-        try { await clipboard.SetTextAsync(DebugLog.Snapshot()); } catch { return; }
+        try { await clipboard.SetTextAsync(ComposeDevLogText()); } catch { return; }
 
         DevLogsCopied = true;
         await Task.Delay(1500);
@@ -3832,8 +4337,10 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void ClearDevLogs()
     {
+        CrashJournal.ClearPreserved();
+        PreservedCrashBanner = null;
         DebugLog.Clear();
-        DevLogText = DebugLog.Snapshot();
+        DevLogText = ComposeDevLogText();
     }
 
     /// <summary>Opens the app data folder, which also holds crash.log.</summary>

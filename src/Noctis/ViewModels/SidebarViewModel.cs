@@ -73,6 +73,29 @@ public partial class SidebarViewModel : ViewModelBase
         _library.FavoritesChanged += (_, _) => RefreshFavoritesCount();
     }
 
+    /// <summary>
+    /// Shows or hides the "Server" entry (between Playlists and Settings). The item
+    /// is inserted/removed rather than IsVisible-toggled so the collapsed ListBoxItem
+    /// container doesn't leave a dead gap in the rail.
+    /// </summary>
+    public void SetServerSectionVisible(bool visible)
+    {
+        var existing = NavItems.FirstOrDefault(i => i.Key == "server");
+        if (visible == (existing != null)) return;
+
+        if (!visible)
+        {
+            NavItems.Remove(existing!);
+            return;
+        }
+
+        var settingsIndex = NavItems
+            .Select((item, index) => (item, index))
+            .FirstOrDefault(x => x.item.Key == "settings").index;
+        var insertAt = settingsIndex > 0 ? settingsIndex : NavItems.Count;
+        NavItems.Insert(insertAt, new NavItem { Key = "server", Label = "Server", IconGlyph = "ServerIcon" });
+    }
+
     private bool _suppressNavigationRequest;
 
     partial void OnSelectedNavItemChanged(NavItem? oldValue, NavItem? newValue)
@@ -146,12 +169,41 @@ public partial class SidebarViewModel : ViewModelBase
     /// <summary>
     /// Rebuilds the flattened sidebar rows: pinned playlists, then folders
     /// (alphabetical) with their playlists when expanded, then loose playlists.
+    /// Syncs the collection in place instead of Clear+refill: tearing down the
+    /// row under the pointer mid-click dropped the sidebar wrapper's
+    /// IsPointerOver for a frame, which the hover-expand handler in MainWindow
+    /// read as the cursor leaving — the rail snapped shut and reopened on
+    /// every folder toggle.
     /// </summary>
     public void RebuildSidebarRows()
     {
-        SidebarRows.Clear();
-        foreach (var row in BuildRows(PlaylistItems, _collapsedFolders))
-            SidebarRows.Add(row);
+        var desired = BuildRows(PlaylistItems, _collapsedFolders);
+
+        // Folder headers are synthesized fresh by BuildRows; swap in the live
+        // instances (matched by key) so their ListBox containers survive.
+        for (int i = 0; i < desired.Count; i++)
+        {
+            if (!desired[i].IsFolder) continue;
+            var existing = SidebarRows.FirstOrDefault(r =>
+                r.IsFolder && string.Equals(r.Key, desired[i].Key, StringComparison.OrdinalIgnoreCase));
+            if (existing == null) continue;
+            existing.Label = desired[i].Label;
+            existing.IsExpanded = desired[i].IsExpanded;
+            existing.TrackCount = desired[i].TrackCount;
+            desired[i] = existing;
+        }
+
+        // Minimal moves/inserts; desired rows are distinct, so a row not yet
+        // placed sits at an index >= i (or is absent). Excess rows fall off the end.
+        for (int i = 0; i < desired.Count; i++)
+        {
+            var at = SidebarRows.IndexOf(desired[i]);
+            if (at == i) continue;
+            if (at > i) SidebarRows.Move(at, i);
+            else SidebarRows.Insert(i, desired[i]);
+        }
+        while (SidebarRows.Count > desired.Count)
+            SidebarRows.RemoveAt(SidebarRows.Count - 1);
     }
 
     /// <summary>

@@ -17,13 +17,21 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private bool _isSearchFocused;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageTitleDisplay))]
+    [NotifyPropertyChangedFor(nameof(IsSearchActionAvailable))]
     private string _currentTabName = "Library";
 
     /// <summary>Header title: reflects the Cover Flow / Collage view when active, otherwise the section name.
     /// Collage is a Cover Flow sub-mode, so its label only applies while Cover Flow is active.</summary>
     public string PageTitleDisplay => IsCoverFlowMode ? (IsCollageMode ? "Cover Collage" : "Cover Flow") : CurrentTabName;
     [ObservableProperty] private string _searchWatermark = "Search in Library";
-    [ObservableProperty] private bool _isSearchVisible = true;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSearchActionAvailable))]
+    private bool _isSearchVisible = true;
+
+    /// <summary>Enables the sidebar magnifier. Home itself is not searchable, but the
+    /// button stays clickable there because invoking search on Home redirects to the
+    /// Songs page (see <see cref="OpenSearch"/>).</summary>
+    public bool IsSearchActionAvailable => IsSearchVisible || CurrentTabName == "Home";
     // The search pill is a persistent (non-light-dismiss) popup: it stays open while
     // the user browses/filters and only closes explicitly (toggle, Esc, or navigating
     // to a page without search).
@@ -216,24 +224,20 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _pageSetShowAllItemsCommand;
     [ObservableProperty] private ICommand? _pageSetShowOnlyFavoritesCommand;
     [ObservableProperty] private ICommand? _pageSortCommand;
+    [ObservableProperty] private ICommand? _pageViewOptionsCommand;
 
     // Computed inverses for non-compiled binding compatibility
     public bool PageShowAllItems => !PageShowOnlyFavorites;
     public bool PageSortDescending => !PageSortAscending;
 
-    // Per-field active-sort flags used to render checkmarks in the Sort By submenu.
-    // Only sorts without a clickable column header live in the menu; the rest are
-    // sorted directly from the Songs page column headers.
-    public bool PageSortByYear      => string.Equals(PageSortColumn, "Year",       StringComparison.OrdinalIgnoreCase);
-    public bool PageSortByDateAdded => string.Equals(PageSortColumn, "Date Added", StringComparison.OrdinalIgnoreCase);
+    // Checkmarks in the Sort Options submenu compare each item's key against
+    // PageSortColumn through StringEqualsConverter. This replaced three hand-written
+    // per-field flags that covered only Album Artist / Year / Date Added — sorting by
+    // any other field (every one reachable from a column header) left the whole submenu
+    // rendering unchecked, as if nothing were selected.
 
     partial void OnPageShowOnlyFavoritesChanged(bool value) => OnPropertyChanged(nameof(PageShowAllItems));
     partial void OnPageSortAscendingChanged(bool value) => OnPropertyChanged(nameof(PageSortDescending));
-    partial void OnPageSortColumnChanged(string value)
-    {
-        OnPropertyChanged(nameof(PageSortByYear));
-        OnPropertyChanged(nameof(PageSortByDateAdded));
-    }
 
     public void ShowPageActions(
         ICommand shuffleCommand,
@@ -243,7 +247,8 @@ public partial class TopBarViewModel : ViewModelBase
         string sortColumn,
         ICommand setShowAllItemsCommand,
         ICommand setShowOnlyFavoritesCommand,
-        ICommand sortCommand)
+        ICommand sortCommand,
+        ICommand viewOptionsCommand)
     {
         PageShuffleCommand = shuffleCommand;
         PageQueueCommand = queueCommand;
@@ -253,6 +258,7 @@ public partial class TopBarViewModel : ViewModelBase
         PageSetShowAllItemsCommand = setShowAllItemsCommand;
         PageSetShowOnlyFavoritesCommand = setShowOnlyFavoritesCommand;
         PageSortCommand = sortCommand;
+        PageViewOptionsCommand = viewOptionsCommand;
         HasPageActions = true;
     }
 
@@ -264,6 +270,7 @@ public partial class TopBarViewModel : ViewModelBase
         PageSetShowAllItemsCommand = null;
         PageSetShowOnlyFavoritesCommand = null;
         PageSortCommand = null;
+        PageViewOptionsCommand = null;
     }
 
     public void ShowPlaylistActions(ICommand createPlaylistCommand, ICommand createSmartPlaylistCommand,
@@ -367,6 +374,21 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _albumSortCommand;
     [ObservableProperty] private string _albumSortLabel = "Default";
 
+    // Sort mode/direction mirrored for the dropdown's checkmarks, the same way the label
+    // is. AlbumSortMode is compared per item via StringEqualsConverter.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AlbumSortDirectionEnabled))]
+    private string _albumSortMode = "default";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AlbumSortDescending))]
+    private bool _albumSortAscending = true;
+
+    public bool AlbumSortDescending => !AlbumSortAscending;
+
+    /// <summary>"Default" floats recent imports instead of ordering by a single key,
+    /// so a direction can't be applied to it.</summary>
+    public bool AlbumSortDirectionEnabled => AlbumSortMode != "default";
+
     // Dropdown variants of the release-type / quality filters (albums grid top bar).
     [ObservableProperty] private ICommand? _releaseTypeFilterCommand;
     [ObservableProperty] private string _releaseTypeFilterLabel = "All";
@@ -406,9 +428,17 @@ public partial class TopBarViewModel : ViewModelBase
     partial void OnCurrentTabNameChanged(string value)
     {
         IsSearchVisible = value is not ("Home" or "Settings" or "Lyrics");
-        if (!IsSearchVisible) IsSearchOpen = false;
         SearchWatermark = $"Search in {value}";
         UpdatePageTitleVisibility();
+    }
+
+    partial void OnIsSearchVisibleChanged(bool value)
+    {
+        // Search is disabled from several places (tab switches here, Cover Flow and
+        // Home directly from the shell). Whoever disables it, the pill must close
+        // with it — otherwise it sits orphaned on screen while the toggle button
+        // that could dismiss it is greyed out.
+        if (!value) IsSearchOpen = false;
     }
 
     partial void OnIsBackButtonVisibleChanged(bool value)
@@ -451,14 +481,40 @@ public partial class TopBarViewModel : ViewModelBase
         IsSearchFocused = true;
     }
 
-    /// <summary>Raised when search should open/focus (Ctrl+F), even if already open.</summary>
+    /// <summary>Raised when search should open/focus, even if already open.</summary>
     public event EventHandler? SearchOpenRequested;
+
+    /// <summary>Raised when Ctrl+F toggles an open pill shut. The collapse
+    /// animation lives in the view, so closing routes through it instead of
+    /// flipping <see cref="IsSearchOpen"/> here (which would snap the popup
+    /// shut without the morph).</summary>
+    public event EventHandler? SearchCloseRequested;
+
+    /// <summary>Raised when search is invoked on Home, which has nothing to filter.
+    /// The shell answers by navigating to the Songs page and opening search there.</summary>
+    public event EventHandler? HomeSearchRedirectRequested;
 
     [RelayCommand]
     private void OpenSearch()
     {
-        if (!IsSearchVisible) return;
+        if (!IsSearchVisible)
+        {
+            // Home redirects to the searchable Songs page; Settings stays a silent
+            // no-op and Lyrics has its own in-page search.
+            if (CurrentTabName == "Home")
+                HomeSearchRedirectRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
         IsSearchOpen = true;
         SearchOpenRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
+    private void ToggleSearch()
+    {
+        if (IsSearchOpen)
+            SearchCloseRequested?.Invoke(this, EventArgs.Empty);
+        else
+            OpenSearch();
     }
 }

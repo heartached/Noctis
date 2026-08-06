@@ -118,5 +118,7 @@ public class DropImportFolderScanTests
         public Task SetTracksDislikedAsync(IReadOnlyList<Track> tracks, bool isDisliked) => Task.CompletedTask;
         public Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until) => Task.CompletedTask;
         public void NotifyMetadataChanged() { }
+        public Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default) => Task.FromResult(0);
+        public Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
 }

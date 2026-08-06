@@ -114,6 +114,22 @@
                 <!-- Footer: Cancel / Add -->
                 <Border DockPanel.Dock="Bottom" Padding="24,12,24,16">
                     <Grid ColumnDefinitions="*,Auto,Auto">
+                        <Button Grid.Column="0"
+                                HorizontalAlignment="Left"
+                                IsVisible="{Binding HasSelectableResults}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                CornerRadius="999"
+                                Padding="10,6"
+                                MinHeight="0"
+                                Cursor="Hand"
+                                Command="{Binding ToggleSelectAllCommand}">
+                            <TextBlock Text="{Binding SelectAllText}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Opacity="0.6"
+                                       VerticalAlignment="Center" />
+                        </Button>
                         <Button Grid.Column="1"
                                 Content="Cancel"
                                 Command="{Binding CancelCommand}"

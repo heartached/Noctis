@@ -31,10 +31,16 @@ packages/
 .claude/
 CLAUDE.md
 noctis-v2/
-tools/
+# Contents (not the dir itself), so the relay below can be re-included:
+# git will not descend into a directory excluded as `tools/`.
+tools/*
 # ...but the Chocolatey package's tools/ dir is intentionally tracked.
 !packaging/chocolatey/tools/
 !packaging/chocolatey/tools/**
+# ...and so is the cover-art relay, which is app source, not AI tooling.
+!tools/NoctisCoverProxy/
+tools/NoctisCoverProxy/bin/
+tools/NoctisCoverProxy/obj/
 
 ## Temp / build scratch
 build_tmp_verify/

@@ -48,12 +48,102 @@
             <Setter Property="StrokeDashArray" Value="11,5"/>
             <Setter Property="StrokeLineCap" Value="Round"/>
             <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+        </Style>
+        <!-- Animation keyed on [IsVisible=True] (same pattern as LyricsView's search
+             dots): selector matching ignores visibility, so an ungated INFINITE
+             clock would keep ticking on every hidden spinner. -->
+        <Style Selector="Ellipse.loading-spinner[IsVisible=True]">
             <Style.Animations>
                 <Animation Duration="0:0:0.85" IterationCount="INFINITE" Easing="LinearEasing">
                     <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0"/></KeyFrame>
                     <KeyFrame Cue="100%"><Setter Property="RotateTransform.Angle" Value="360"/></KeyFrame>
                 </Animation>
             </Style.Animations>
+        </Style>
+
+        <!-- Music Server card: tiny caps field labels, a status dot that follows the
+             connection state, and red status text on failures. -->
+        <Style Selector="TextBlock.server-field-label">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Opacity" Value="0.45"/>
+        </Style>
+        <Style Selector="Ellipse.server-status-dot">
+            <Setter Property="Width" Value="7"/>
+            <Setter Property="Height" Value="7"/>
+            <Setter Property="Fill" Value="#8B949E"/>
+        </Style>
+        <Style Selector="Ellipse.server-status-dot.connected">
+            <Setter Property="Fill" Value="#3FB950"/>
+        </Style>
+        <Style Selector="Ellipse.server-status-dot.error">
+            <Setter Property="Fill" Value="#E5534B"/>
+        </Style>
+        <Style Selector="TextBlock.server-status">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Opacity" Value="0.6"/>
+        </Style>
+        <Style Selector="TextBlock.server-status.error">
+            <Setter Property="Foreground" Value="#E5534B"/>
+            <Setter Property="Opacity" Value="0.9"/>
+        </Style>
+        <!-- Server type picker: the visible outline is drawn by a plain wrapper Border
+             (server-pill-shell) carrying exactly the metadata-info-field stroke, and the
+             ComboBox's own Fluent chrome is fully disarmed in every state. Pinning the
+             stroke on the template's Border#Background was tried twice and never rendered
+             the same as the TextBox's PART_BorderElement (same declared 1.5px/brush,
+             different layering/snapping) — so all four boxes now share one drawing
+             mechanism. Contract pinned by MediaServerOutlineParityTests. -->
+        <Style Selector="Border.server-pill-shell">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+        </Style>
+        <!-- Focus parity: the field boxes turn accent on :focus, the shell follows suit. -->
+        <Style Selector="Border.server-pill-shell:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill /template/ Border#Background">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill /template/ Border#HighlightBackground">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill:pointerover /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill:pressed /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill:focus /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill:focus-within /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill:dropdownopen /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ComboBox.server-pill:disabled /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
 
         <!-- Setting card -->
@@ -917,6 +1007,20 @@
                 </Grid>
             </Border>
 
+            <!-- Merge featured artists from titles -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Merge Featured Artists From Titles" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Turn &quot;(feat. X)&quot; in track titles into artist credits."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding MergeFeaturedFromTitles}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════ -->
@@ -1167,7 +1271,7 @@
                                     <DataTemplate x:DataType="vm:DevReleaseItem">
                                         <Border Background="#12FFFFFF" CornerRadius="10"
                                                 Padding="12,8" Margin="0,3">
-                                            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+                                            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
                                                 <TextBlock Grid.Column="0"
                                                            Text="{Binding VersionDisplay}"
                                                            FontSize="13" FontWeight="SemiBold"
@@ -1181,14 +1285,22 @@
                                                                Foreground="{DynamicResource AccentForegroundBrush}"/>
                                                 </Border>
                                                 <Border Grid.Column="2"
-                                                        IsVisible="{Binding IsCurrent}"
+                                                        IsVisible="{Binding IsLatest}"
                                                         Background="{DynamicResource AccentColorBrush}" CornerRadius="999"
                                                         Padding="7,2" Margin="8,0,0,0"
                                                         VerticalAlignment="Center">
                                                     <TextBlock Text="Latest" FontSize="10" FontWeight="SemiBold"
                                                                Foreground="{DynamicResource AccentForegroundBrush}"/>
                                                 </Border>
-                                                <TextBlock Grid.Column="3"
+                                                <Border Grid.Column="3"
+                                                        IsVisible="{Binding ShowInstalledBadge}"
+                                                        Background="{DynamicResource AccentColorBrush}" CornerRadius="999"
+                                                        Padding="7,2" Margin="8,0,0,0"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="Installed" FontSize="10" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource AccentForegroundBrush}"/>
+                                                </Border>
+                                                <TextBlock Grid.Column="4"
                                                            IsVisible="{Binding HasWarning}"
                                                            Text="{Binding WarningText}"
                                                            ToolTip.Tip="{Binding WarningText}"
@@ -1199,12 +1311,12 @@
                                                            VerticalAlignment="Center"
                                                            HorizontalAlignment="Left"
                                                            Margin="8,0,0,0"/>
-                                                <TextBlock Grid.Column="4"
+                                                <TextBlock Grid.Column="5"
                                                            Text="{Binding DateDisplay}"
                                                            FontSize="12" Opacity="0.5"
                                                            VerticalAlignment="Center"
                                                            Margin="12,0"/>
-                                                <Button Grid.Column="5"
+                                                <Button Grid.Column="6"
                                                         Classes="pill-action"
                                                         IsVisible="{Binding !IsCurrent}"
                                                         Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).InstallReleaseCommand}"
@@ -1253,6 +1365,12 @@
                         </StackPanel>
 
                         <!-- ── Debug logs ── -->
+                        <TextBlock Text="{Binding PreservedCrashBanner}"
+                                   FontSize="12" FontWeight="SemiBold"
+                                   Foreground="#E5A34D"
+                                   TextWrapping="Wrap"
+                                   Margin="0,10,0,0"
+                                   IsVisible="{Binding PreservedCrashBanner, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                         <TextBlock Text="Session log for troubleshooting. Share these when reporting bugs."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"
                                    Margin="0,10,0,0"/>
@@ -1595,6 +1713,22 @@
                 </StackPanel>
             </Border>
 
+            <!-- Liquid Glass (frosted translucent window, Apple Music-style).
+                 Hidden on Linux: no Acrylic/Mica/blur-behind there, the hint would
+                 only make the window see-through (issue #26). -->
+            <Border Classes="setting-card" IsVisible="{Binding IsLiquidGlassSupported}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Liquid Glass" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Frost the window with translucent, blurred glass surfaces."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding LiquidGlassEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Animated artwork -->
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">
@@ -1619,6 +1753,34 @@
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
                                           IsChecked="{Binding LyricsFlowingLightEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Fullscreen lyrics focus -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Fullscreen Lyrics Focus" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Dim all but the current line and its neighbors in fullscreen."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding LyricsFullScreenFocusEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Join split karaoke words (issue #32) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Join Split Words" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Keep words whole when lyrics split them into syllables."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding LyricsJoinSplitWords}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -1752,6 +1914,20 @@
                 </Grid>
             </Border>
 
+            <!-- Autoplay (tag-based queue continuation) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Autoplay" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="When the queue ends, keep playing similar songs from your library."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding AutoplayEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
             <!-- Exclusive mode (Windows WASAPI) -->
             <Border Classes="setting-card" IsVisible="{Binding IsExclusiveAudioSupported}">
                 <Grid ColumnDefinitions="*,Auto">
@@ -1785,7 +1961,7 @@
                     <Grid Classes="sub-setting" ColumnDefinitions="*,Auto" IsEnabled="{Binding BpmKeyAnalysisEnabled}">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="Save analysis to file tags" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="Write detected BPM/key into file tags (TBPM/TKEY). Rewrites files, so sync tools like Syncthing will see changes."
+                            <TextBlock Text="Write detected BPM/key into file tags (TBPM/TKEY). Applies to tracks analyzed from now on, not ones already analyzed. Rewrites files, so sync tools like Syncthing will see changes."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -2004,7 +2180,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="Web Remote" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Control playback from your phone with a private link on your local network."
+                            <TextBlock Text="Control playback from your phone on your local network. Traffic is unencrypted — avoid untrusted Wi-Fi."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
@@ -2237,6 +2413,142 @@
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding ListenBrainzScrobblingEnabled}"
                                               VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Classes="section-title" Text="MEDIA SERVER" Margin="0,20,0,10"/>
+
+            <Border Classes="setting-card">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                            <TextBlock Text="Music Server" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Stream your library from Jellyfin, Navidrome, Airsonic, Gonic, or any other Subsonic-compatible server."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
+                                       HorizontalAlignment="Left" Margin="-2,0,0,0"/>
+
+                            <!-- Connected summary -->
+                            <StackPanel IsVisible="{Binding IsMediaServerConnected}" Spacing="3" Margin="-2,8,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Classes="server-field-label" Text="TYPE" Width="68" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding MediaServerType}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Classes="server-field-label" Text="SERVER" Width="68" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding MediaServerUrl}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Classes="server-field-label" Text="ACCOUNT" Width="68" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding MediaServerUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Connection form (hidden while connected): labeled 2×2 grid,
+                                 Enter in any field submits. -->
+                            <Grid IsVisible="{Binding !IsMediaServerConnected}"
+                                  ColumnDefinitions="*,12,*" RowDefinitions="Auto,Auto"
+                                  MaxWidth="560" HorizontalAlignment="Left" Margin="-2,10,0,0">
+                                <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4" Margin="0,0,0,10">
+                                    <TextBlock Classes="server-field-label" Text="SERVER TYPE"/>
+                                    <Border Classes="server-pill-shell">
+                                        <ComboBox Classes="pill-list server-pill"
+                                                  ItemsSource="{Binding MediaServerTypeOptions}"
+                                                  SelectedItem="{Binding MediaServerType}"
+                                                  IsEnabled="{Binding !IsMediaServerBusy}"
+                                                  HorizontalAlignment="Stretch"/>
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel Grid.Row="0" Grid.Column="2" Spacing="4" Margin="0,0,0,10">
+                                    <TextBlock Classes="server-field-label" Text="SERVER ADDRESS"/>
+                                    <TextBox Classes="metadata-info-field"
+                                             Text="{Binding MediaServerUrl}"
+                                             Watermark="https://music.example.com"
+                                             IsEnabled="{Binding !IsMediaServerBusy}"
+                                             FontSize="12">
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Gesture="Enter" Command="{Binding ConnectMediaServerCommand}"/>
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="0" Spacing="4">
+                                    <TextBlock Classes="server-field-label" Text="USERNAME"/>
+                                    <TextBox Classes="metadata-info-field"
+                                             Text="{Binding MediaServerUsername}"
+                                             Watermark="Username"
+                                             IsEnabled="{Binding !IsMediaServerBusy}"
+                                             FontSize="12">
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Gesture="Enter" Command="{Binding ConnectMediaServerCommand}"/>
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="2" Spacing="4">
+                                    <TextBlock Classes="server-field-label" Text="PASSWORD"/>
+                                    <TextBox Classes="metadata-info-field"
+                                             Text="{Binding MediaServerPassword}"
+                                             PasswordChar="•"
+                                             Watermark="Password"
+                                             IsEnabled="{Binding !IsMediaServerBusy}"
+                                             FontSize="12">
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Gesture="Enter" Command="{Binding ConnectMediaServerCommand}"/>
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Status line: dot follows the state (green connected, red error),
+                                 spinner while a connection attempt is running. -->
+                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="-2,8,0,0">
+                                <Ellipse Classes="server-status-dot"
+                                         Classes.connected="{Binding IsMediaServerConnected}"
+                                         Classes.error="{Binding HasMediaServerError}"
+                                         IsVisible="{Binding !IsMediaServerBusy}"
+                                         VerticalAlignment="Center"/>
+                                <Ellipse Classes="loading-spinner" Width="11" Height="11"
+                                         IsVisible="{Binding IsMediaServerBusy}"
+                                         VerticalAlignment="Center"/>
+                                <TextBlock Classes="server-status"
+                                           Classes.error="{Binding HasMediaServerError}"
+                                           Text="{Binding MediaServerStatusText}"
+                                           TextWrapping="Wrap" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Connect (top-right, mirrors the account cards) -->
+                        <Button Grid.Column="1"
+                                IsVisible="{Binding !IsMediaServerConnected}"
+                                IsEnabled="{Binding !IsMediaServerBusy}"
+                                Classes="pill-action"
+                                Command="{Binding ConnectMediaServerCommand}"
+                                Padding="14,8" CornerRadius="16" Cursor="Hand"
+                                VerticalAlignment="Top" Margin="0,4,0,0">
+                            <Button.Template>
+                                <ControlTemplate>
+                                    <ContentPresenter Background="{DynamicResource AccentColorBrush}"
+                                                      Foreground="{DynamicResource AccentForegroundBrush}"
+                                                      CornerRadius="16"
+                                                      Padding="14,8"
+                                                      FontSize="13"
+                                                      FontWeight="SemiBold"
+                                                      Content="{TemplateBinding Content}"/>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <Panel>
+                                <TextBlock Text="Connect" IsVisible="{Binding !IsMediaServerBusy}"/>
+                                <TextBlock Text="Connecting…" IsVisible="{Binding IsMediaServerBusy}"/>
+                            </Panel>
+                        </Button>
+
+                        <Button Grid.Column="1"
+                                IsVisible="{Binding IsMediaServerConnected}"
+                                Command="{Binding DisconnectMediaServerCommand}"
+                                Classes="pill-action"
+                                Padding="14,8" CornerRadius="16" Cursor="Hand"
+                                VerticalAlignment="Top" Margin="0,4,0,0">
+                            <TextBlock Text="Disconnect" FontSize="13" VerticalAlignment="Center"/>
+                        </Button>
                     </Grid>
                 </StackPanel>
             </Border>
@@ -2500,6 +2812,22 @@
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
                                           IsChecked="{Binding WatchFoldersEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Embedded tag artwork (Library group) -->
+            <Border Classes="setting-card">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Use Embedded Artwork" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Use artwork embedded in file tags for album covers."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          IsChecked="{Binding UseEmbeddedArtwork}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>

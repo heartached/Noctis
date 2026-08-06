@@ -13,6 +13,7 @@
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry" />
+        <conv:BoolToColumnWidthConverter x:Key="ColumnWidth" />
     </UserControl.Resources>
 
     <Grid RowDefinitions="*">
@@ -20,36 +21,63 @@
              edge (matches the Albums section) instead of being inset ~16px from it. -->
         <DockPanel Grid.Row="0" Margin="16,8,2,16">
 
-        <!-- Column headers (sortable). Optional columns (Rating, BPM, Bitrate, Sample
-             rate) live in Auto columns whose cells carry fixed widths, so hidden
-             columns collapse to zero in both the header and the rows.
+        <!-- Column headers (sortable). Optional columns live in Auto columns whose cells
+             carry fixed widths, so hiding a cell collapses its column to zero in both the
+             header and the rows. Artist and Album can't use that trick — they're star
+             columns that flex with the window, and a star column keeps its share of the
+             space even when empty — so their widths run through ColumnWidth instead.
+             The trailing 42px column is the rows' per-track 3-dots button; the header
+             leaves it empty (its column chooser now lives in View Options).
              Margin 1,_,9,_ mirrors the track-list row insets (1px ListBoxItem border
              each side + 8px right padding) so header cells sit exactly over row cells. -->
-        <Grid DockPanel.Dock="Top"
-              ColumnDefinitions="*,80,*,*,Auto,80,Auto,55,Auto,Auto,Auto,42"
-              Margin="1,0,9,8">
+        <Grid DockPanel.Dock="Top" Margin="1,0,9,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtistColumn, Converter={StaticResource ColumnWidth}}" />
+                <ColumnDefinition Width="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowAlbumColumn, Converter={StaticResource ColumnWidth}}" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="42" />
+            </Grid.ColumnDefinitions>
             <Button Grid.Column="0" Content="Title" Command="{Binding SortCommand}" CommandParameter="Title"
                     Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
-            <Button Grid.Column="1" Content="Time" Command="{Binding SortCommand}" CommandParameter="Time"
-                    Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            <Border Grid.Column="1" Width="80"
+                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowTimeColumn, FallbackValue=True}">
+                <Button Content="Time" Command="{Binding SortCommand}" CommandParameter="Time"
+                        Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            </Border>
             <Button Grid.Column="2" Content="Artist" Command="{Binding SortCommand}" CommandParameter="Artist"
+                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtistColumn, FallbackValue=True}"
                     Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Button Grid.Column="3" Content="Album" Command="{Binding SortCommand}" CommandParameter="Album"
+                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowAlbumColumn, FallbackValue=True}"
                     Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             <Border Grid.Column="4" Width="110"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowGenreColumn, FallbackValue=True}">
                 <Button Content="Genre" Command="{Binding SortCommand}" CommandParameter="Genre"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Left" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Left" />
             </Border>
-            <Button Grid.Column="5" Content="Favorites" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
-                    Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            <Border Grid.Column="5" Width="80"
+                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowFavoritesColumn, FallbackValue=True}">
+                <Button Content="Favorites" Command="{Binding SortCommand}" CommandParameter="IsFavorite"
+                        Background="Transparent" BorderThickness="0" Padding="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            </Border>
             <Border Grid.Column="6" Width="84"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowRatingColumn, FallbackValue=True}">
                 <Button Content="Rating" Command="{Binding SortCommand}" CommandParameter="Rating"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             </Border>
-            <Button Grid.Column="7" Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
-                    Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            <Border Grid.Column="7" Width="55"
+                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowPlaysColumn, FallbackValue=True}">
+                <Button Content="Plays" Command="{Binding SortCommand}" CommandParameter="Plays"
+                        Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
+            </Border>
             <Border Grid.Column="8" Width="48"
                     IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowBpmColumn, FallbackValue=False}">
                 <Button Content="BPM" Command="{Binding SortCommand}" CommandParameter="Bpm"
@@ -65,29 +93,6 @@
                 <Button Content="Sample" Command="{Binding SortCommand}" CommandParameter="SampleRate"
                         Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" HorizontalContentAlignment="Center" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalAlignment="Center" />
             </Border>
-            <!-- Column chooser -->
-            <Button Grid.Column="11"
-                    Background="Transparent" BorderThickness="0" Padding="0"
-                    Width="24" Height="20" MinWidth="0"
-                    HorizontalAlignment="Center"
-                    Cursor="Hand" Opacity="0.6"
-                    ToolTip.Tip="Choose columns">
-                <PathIcon Data="{StaticResource MoreDotsIcon}" Width="12" Height="12"/>
-                <Button.Flyout>
-                    <MenuFlyout Placement="BottomEdgeAlignedRight">
-                        <MenuItem Header="Genre" ToggleType="CheckBox" StaysOpenOnClick="True"
-                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowGenreColumn, Mode=TwoWay}"/>
-                        <MenuItem Header="Rating" ToggleType="CheckBox" StaysOpenOnClick="True"
-                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowRatingColumn, Mode=TwoWay}"/>
-                        <MenuItem Header="BPM" ToggleType="CheckBox" StaysOpenOnClick="True"
-                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowBpmColumn, Mode=TwoWay}"/>
-                        <MenuItem Header="Bitrate" ToggleType="CheckBox" StaysOpenOnClick="True"
-                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowBitrateColumn, Mode=TwoWay}"/>
-                        <MenuItem Header="Sample rate" ToggleType="CheckBox" StaysOpenOnClick="True"
-                                  IsChecked="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowSampleRateColumn, Mode=TwoWay}"/>
-                    </MenuFlyout>
-                </Button.Flyout>
-            </Button>
         </Grid>
 
         <Separator DockPanel.Dock="Top" Margin="0,0,0,4" />
@@ -95,33 +100,167 @@
         <!-- Content area with overlay for empty state -->
         <Grid>
             <!-- Track list -->
+            <!-- Negative left margin pulls the row box 8px past the DockPanel's 16px inset so
+                 it reaches further left, matching the album page. Border.row-body adds a
+                 matching 8px left padding, so row CONTENT lands exactly where it did and the
+                 column headers above (Margin 1,_,9,_) stay over their cells. Moving the
+                 ListBox rather than the Border keeps the box inside the scroll viewport —
+                 a negative margin on the Border alone would be clipped. -->
             <ListBox Classes="track-list"
                      ItemsSource="{Binding FilteredTracks}"
                      SelectionMode="Multiple"
                      AutoScrollToSelectedItem="False"
+                     Margin="-8,0,0,0"
                      Padding="0,0,0,115"
                      x:Name="TrackList">
             <ListBox.Styles>
                 <Style Selector="ListBoxItem">
                     <Setter Property="Focusable" Value="False" />
                 </Style>
+
+                <!-- Row background moves off the ListBoxItem onto the inner row-body Border so
+                     the hover box and the now-playing box are one element and cannot drift
+                     apart. The ListBoxItem keeps its hit-testing and layout role but paints
+                     nothing. Same pattern as AlbumDetailView / PlaylistView. -->
+                <Style Selector="ListBox.track-list ListBoxItem">
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n)">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem:pointerover">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n):pointerover">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem:selected">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n):selected">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:nth-child(2n)">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:pointerover">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:nth-child(2n):pointerover">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected /template/ ContentPresenter">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <!-- Styles.axaml also carries a compound :selected variant (a row can be both
+                     natively :selected — e.g. a plain click before a Ctrl+click on the same
+                     row — and .ctrl-selected at once). The neutralisers above already cover
+                     it: Avalonia has no selector specificity, so the plain .ctrl-selected
+                     pair matches such a row too and wins on origin order (view styles apply
+                     after app styles). Kept as belt-and-braces so the compound case is
+                     visibly accounted for. -->
+                <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:selected">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:selected /template/ ContentPresenter">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+
+                <!-- Row body: carries stripe, hover, ctrl-select and the now-playing fill on
+                     one rectangle. -->
+                <Style Selector="Border.row-body">
+                    <!-- Left 8 cancels the ListBox's -8 margin: box wider, content unmoved. -->
+                    <Setter Property="Padding" Value="8,8,8,8" />
+                    <Setter Property="CornerRadius" Value="4" />
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Transitions">
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.04" />
+                        </Transitions>
+                    </Setter>
+                </Style>
+                <Style Selector="ListBox.track-list ListBoxItem:nth-child(2n) Border.row-body">
+                    <Setter Property="Background" Value="{DynamicResource TrackListStripeBrush}" />
+                </Style>
+                <Style Selector="Border.row-body:pointerover">
+                    <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
+                </Style>
+                <Style Selector="ListBoxItem.ctrl-selected Border.row-body">
+                    <Setter Property="Background" Value="#3FFFFFFF" />
+                </Style>
+                <!-- MUST stay last: equal-origin Avalonia styles resolve by declaration order,
+                     so this is what makes the box win on striped, hovered and ctrl-selected
+                     rows alike. -->
+                <Style Selector="Border.row-body.now-playing">
+                    <Setter Property="Background" Value="{DynamicResource NowPlayingRowBrush}" />
+                </Style>
             </ListBox.Styles>
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="m:Track">
-                    <Border Classes.now-playing="{Binding IsNowPlaying}">
-                    <Grid ColumnDefinitions="*,80,*,*,Auto,80,Auto,55,Auto,Auto,Auto,42"
-                          Margin="0,2"
-                          Background="Transparent"
+                    <Border Classes="row-body" Classes.now-playing="{Binding IsNowPlaying}">
+                    <!-- Column definitions must stay identical to the header grid above,
+                         or every header label drifts off the cells it labels. -->
+                    <Grid Background="Transparent"
                           helpers:DragFileBehavior.EnableFileDrag="True"
                           x:Name="TrackRow">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtistColumn, Converter={StaticResource ColumnWidth}}" />
+                            <ColumnDefinition Width="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowAlbumColumn, Converter={StaticResource ColumnWidth}}" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="42" />
+                        </Grid.ColumnDefinitions>
 
-                        <!-- Title + Explicit badge -->
+                        <!-- Artwork + Title + Explicit badge -->
                         <Grid Grid.Column="0"
-                              ColumnDefinitions="Auto,Auto"
+                              ColumnDefinitions="Auto,Auto,Auto"
                               ClipToBounds="True"
                               VerticalAlignment="Center"
                               LayoutUpdated="OnTitleCellLayoutUpdated">
-                            <controls:HighlightTextBlock Grid.Column="0"
+                            <!-- Album art thumbnail (Apple Music style); hideable via the
+                                 column chooser. Same lazy pipeline as playlist rows. -->
+                            <Border Grid.Column="0"
+                                    Classes="row-art"
+                                    Width="36" Height="36"
+                                    CornerRadius="5"
+                                    ClipToBounds="True"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    Background="#18FFFFFF"
+                                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtworkColumn, FallbackValue=True}">
+                                <Panel>
+                                    <PathIcon Data="{StaticResource SongsIcon}"
+                                              Width="14" Height="14"
+                                              Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsVisible="{Binding !HasAlbumArt}" />
+                                    <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                          DecodeWidth="256"
+                                                          Stretch="UniformToFill"
+                                                          RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                          IsVisible="{Binding HasAlbumArt}" />
+                                </Panel>
+                            </Border>
+                            <!-- Center: the cell is as tall as the 36px artwork, and a
+                                 stretched TextBlock draws its glyphs at the top of that
+                                 box — which rides ~12px above the artwork and the
+                                 (center-aligned) explicit badge beside it. -->
+                            <controls:HighlightTextBlock Grid.Column="1"
                                                          Classes="one-line-explicit-title"
                                                          DisplayText="{Binding TitleDisplay}"
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
@@ -129,8 +268,9 @@
                                                          FontWeight="SemiBold"
                                                          TextWrapping="NoWrap"
                                                          MaxLines="1"
+                                                         VerticalAlignment="Center"
                                                          TextTrimming="CharacterEllipsis" />
-                            <Border Grid.Column="1"
+                            <Border Grid.Column="2"
                                     Classes="explicit-badge compact"
                                     Margin="6,0,4,0"
                                     IsVisible="{Binding IsExplicit}"
@@ -142,75 +282,82 @@
                             </Border>
                         </Grid>
 
-                        <TextBlock Grid.Column="1"
-                                   Text="{Binding DurationFormatted}"
-                                   FontSize="12"
-                                   Opacity="0.5"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center" />
+                        <Border Grid.Column="1" Width="80"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowTimeColumn, FallbackValue=True}">
+                            <TextBlock Text="{Binding DurationFormatted}"
+                                       FontSize="12"
+                                       Opacity="0.5"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
                         <Button Grid.Column="2"
                                 Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                 Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowArtistColumn, FallbackValue=True}"
                                 Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ViewArtistCommand}"
                                 CommandParameter="{Binding Artist}">
-                            <controls:HighlightTextBlock DisplayText="{Binding ArtistDisplay}"
+                            <controls:HighlightTextBlock Classes="accent-link"
+                                                         DisplayText="{Binding ArtistDisplay}"
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
                                                          FontSize="12"
                                                          FontWeight="SemiBold"
-                                                         Foreground="{DynamicResource AccentTextExactBrush}"
                                                          TextTrimming="CharacterEllipsis"
                                                          VerticalAlignment="Center" />
                         </Button>
                         <Button Grid.Column="3"
                                 Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                 Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowAlbumColumn, FallbackValue=True}"
                                 Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).ViewAlbumCommand}"
                                 CommandParameter="{Binding}">
-                            <controls:HighlightTextBlock DisplayText="{Binding Album}"
+                            <controls:HighlightTextBlock Classes="accent-link"
+                                                         DisplayText="{Binding Album}"
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
                                                          FontSize="12"
                                                          FontWeight="SemiBold"
-                                                         Foreground="{DynamicResource AccentTextExactBrush}"
                                                          TextTrimming="CharacterEllipsis"
                                                          VerticalAlignment="Center" />
                         </Button>
                         <Border Grid.Column="4" Width="110"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowGenreColumn, FallbackValue=True}">
-                            <controls:HighlightTextBlock DisplayText="{Binding Genre}"
+                            <controls:HighlightTextBlock Classes="accent-link"
+                                                         DisplayText="{Binding Genre}"
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
                                                          FontSize="12"
                                                          FontWeight="SemiBold"
-                                                         Foreground="{DynamicResource AccentTextExactBrush}"
                                                          TextTrimming="CharacterEllipsis"
                                                          HorizontalAlignment="Left"
                                                          VerticalAlignment="Center" />
                         </Border>
-                        <PathIcon Grid.Column="5"
-                                 Data="{StaticResource HeartFillIcon}"
-                                 Width="12" Height="12"
-                                 Foreground="#E74856"
-                                 HorizontalAlignment="Center"
-                                 VerticalAlignment="Center"
-                                 IsVisible="{Binding IsFavorite}" />
+                        <Border Grid.Column="5" Width="80"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowFavoritesColumn, FallbackValue=True}">
+                            <PathIcon Data="{StaticResource HeartFillIcon}"
+                                     Width="12" Height="12"
+                                     Foreground="#E74856"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     IsVisible="{Binding IsFavorite}" />
+                        </Border>
                         <Border Grid.Column="6" Width="84"
                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowRatingColumn, FallbackValue=True}">
                             <controls:RatingStars Value="{Binding Rating}"
                                                   StarSize="11"
                                                   StarSpacing="2"
                                                   IsHitTestVisible="False"
-                                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                                   Opacity="0.7"
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   IsVisible="{Binding !!Rating}" />
                         </Border>
 
-                        <TextBlock Grid.Column="7"
-                                   Text="{Binding PlayCount}"
-                                   FontSize="12"
-                                   Opacity="0.5"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center" />
+                        <Border Grid.Column="7" Width="55"
+                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ShowPlaysColumn, FallbackValue=True}">
+                            <TextBlock Text="{Binding PlayCount}"
+                                       FontSize="12"
+                                       Opacity="0.5"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
 
                         <!-- Optional columns: BPM / Bitrate / Sample rate -->
                         <Border Grid.Column="8" Width="48"
@@ -245,9 +392,9 @@
                                 Tag="{Binding}"
                                 ToolTip.Tip="Options"
                                 Click="OnOptionsButtonClick">
-                            <PathIcon Data="{StaticResource MoreDotsIcon}"
+                            <PathIcon Classes="row-dots-icon"
+                                     Data="{StaticResource MoreDotsIcon}"
                                      Width="14" Height="14"
-                                     Foreground="{DynamicResource AccentTextExactBrush}"
                                      HorizontalAlignment="Center"
                                      VerticalAlignment="Center" />
                         </Button>

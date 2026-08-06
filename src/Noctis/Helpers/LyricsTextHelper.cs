@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using Noctis.Services;
 
 namespace Noctis.Helpers;
 
@@ -69,7 +70,14 @@ public static class LyricsTextHelper
             var trimmed = line.Trim();
             if (string.IsNullOrEmpty(trimmed)) { plainLines.Add(""); continue; }
 
-            var text = WordTagRegex.Replace(TimestampRegex.Replace(trimmed, ""), "");
+            var untimed = TimestampRegex.Replace(trimmed, "");
+            // Duet voice markers ("v1:"/"v2:"/"v3:") ride the timestamp prefix —
+            // layout syntax, not lyric text; plain derivations must not show them.
+            // Reference check: Replace returns the same instance when nothing
+            // matched, i.e. the line carried no timestamp and keeps its text.
+            if (!ReferenceEquals(untimed, trimmed))
+                untimed = EnhancedLrcParser.StripVoiceMarker(untimed).Body.TrimStart();
+            var text = WordTagRegex.Replace(untimed, "");
 
             if (text.StartsWith('[') && text.Contains(':')) continue;
 

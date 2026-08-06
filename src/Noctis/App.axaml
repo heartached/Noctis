@@ -37,7 +37,12 @@
                 <ResourceInclude Source="avares://Noctis/Assets/Icons.axaml" />
             </ResourceDictionary.MergedDictionaries>
             <FontFamily x:Key="InterSemiBold">avares://Noctis/Assets/Fonts/Inter-SemiBold.ttf#Inter SemiBold</FontFamily>
-            <FontFamily x:Key="InterExtraBold">avares://Noctis/Assets/Fonts/Inter-ExtraBold.ttf#Inter Extra Bold</FontFamily>
+            <!-- Do NOT declare fallbacks for accent-overlay keys here. A ResourceDictionary
+                 resolves its OWN entries before its merged dictionaries, so a literal in
+                 Application.Resources permanently shadows the entry App.SetAccent merges on
+                 top and the accent never reaches the UI. Accent fallbacks belong in the
+                 per-theme Styles.Resources blocks of Assets/Styles.axaml, which sit below
+                 Application.Resources in the lookup chain. -->
         </ResourceDictionary>
     </Application.Resources>
 
@@ -81,9 +86,6 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:PlaylistFeaturedArtistsViewModel}">
             <views:PlaylistFeaturedArtistsView />
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:NowPlayingViewModel}">
-            <views:NowPlayingView />
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:LyricsViewModel}">
             <views:LyricsView />

@@ -5,6 +5,7 @@
              xmlns:conv="using:Noctis.Converters"
              xmlns:ctrl="using:Noctis.Controls"
              x:Class="Noctis.Views.SidebarView"
+             x:Name="SidebarRoot"
              x:DataType="vm:SidebarViewModel"
              Background="{DynamicResource IslandBackground}"
              Foreground="{DynamicResource IslandForeground}">
@@ -14,6 +15,7 @@
         <conv:HexColorToBrushConverter x:Key="HexColorToBrush" />
         <conv:BoolToHorizontalAlignmentConverter x:Key="BoolToAlignment" />
         <conv:BoolToThicknessConverter x:Key="BoolToThickness" />
+        <conv:CountLabelConverter x:Key="CountLabel" />
     </UserControl.Resources>
 
     <Border CornerRadius="20">
@@ -24,7 +26,8 @@
 
             <!-- Back + contextual search, pinned above the scrolling nav.
                  State (can-go-back, search visibility/watermark/text) comes from TopBarViewModel. -->
-            <StackPanel DockPanel.Dock="Top"
+            <StackPanel x:Name="RailActions"
+                        DockPanel.Dock="Top"
                         Orientation="Vertical"
                         Spacing="10"
                         HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}"
@@ -83,11 +86,11 @@
                 <Button x:Name="SearchButton"
                         Classes="rail-action"
                         Classes.expanded="{Binding IsExpanded}"
-                        IsEnabled="{Binding TopBar.IsSearchVisible, FallbackValue=False}"
+                        IsEnabled="{Binding TopBar.IsSearchActionAvailable, FallbackValue=False}"
                         Click="OnSearchButtonClick"
                         ToolTip.Tip="Search (Ctrl+F)">
                     <StackPanel Orientation="Horizontal" Spacing="14">
-                        <Grid Width="28" Height="28">
+                        <Grid x:Name="SearchIconHost" Width="28" Height="28">
                             <PathIcon Data="{StaticResource SearchIcon}" Width="16" Height="16"
                                       Foreground="{DynamicResource IslandForeground}"/>
                             <!-- Active-filter dot: search text survives the pill closing,
@@ -99,7 +102,8 @@
                                      Margin="0,2,2,0"
                                      IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"/>
                         </Grid>
-                        <TextBlock Text="Search"
+                        <TextBlock x:Name="SearchLabel"
+                                   Text="Search"
                                    FontSize="15"
                                    VerticalAlignment="Center"
                                    IsVisible="{Binding IsExpanded}"/>
@@ -109,38 +113,83 @@
                 <!-- Persistent search pill: a non-light-dismiss popup (unlike the old
                      flyout) so it stays open while the user browses the filtered page.
                      Closed explicitly via the Search button toggle or Esc; opened via
-                     the button or Ctrl+F. Open/close animation lives in code-behind. -->
+                     the button or Ctrl+F. Hosted in the window's overlay layer: a
+                     native popup window is WS_EX_TOPMOST on Win32 and override-redirect
+                     on X11, so it floats over OTHER applications and outlives minimize;
+                     the overlay layer keeps the pill inside the window on every
+                     platform. Anchored on the sidebar ROOT, not the icon's grid: the
+                     hover rail re-aligns and animates its width, and the overlay host
+                     re-resolves its anchor on every frame the capsule's own width
+                     transition resizes it, so a target inside the rail drags the
+                     capsule sideways mid-morph. The root's origin never moves; the
+                     horizontal offset is a CONSTANT (both settled rail states put the
+                     icon grid at the same x — measuring it live caught the collapse
+                     animation mid-slide and pinned the capsule askew), the vertical
+                     offset is measured per open in OnSearchPopupOpened (the vertical
+                     stack never animates, so that read is timing-safe). The Border's
+                     left padding is the lip that keeps the magnifier INSIDE the
+                     rounded cap instead of riding its curve; the capsule sits that
+                     much left of the icon so the glyph itself never moves. The button
+                     hides while the popup is open and the capsule appears to morph
+                     out of it. Open/close animation lives in code-behind. -->
                 <Popup x:Name="SearchPopup"
-                       PlacementTarget="{Binding #SearchButton}"
-                       Placement="Right"
-                       HorizontalOffset="4"
+                       PlacementTarget="{Binding #SidebarRoot}"
+                       Placement="AnchorAndGravity"
+                       PlacementAnchor="TopLeft"
+                       PlacementGravity="BottomRight"
                        IsLightDismissEnabled="False"
+                       ShouldUseOverlayLayer="True"
                        WindowManagerAddShadowHint="False"
                        IsOpen="{Binding TopBar.IsSearchOpen, Mode=TwoWay}"
-                       Opened="OnSearchPopupOpened">
+                       Opened="OnSearchPopupOpened"
+                       Closed="OnSearchPopupClosed">
                     <Border x:Name="SearchPopupContent"
                             Background="{DynamicResource IslandBackground}"
                             BorderBrush="{DynamicResource IslandBorder}"
                             BorderThickness="1"
                             CornerRadius="999"
-                            Padding="12,5">
-                        <Grid ColumnDefinitions="*,Auto" Width="180">
-                            <TextBox x:Name="SearchBox"
-                                     Grid.Column="0"
-                                     Classes="search-box"
-                                     Text="{Binding TopBar.SearchText, Mode=TwoWay}"
-                                     Watermark="{Binding TopBar.SearchWatermark}"
-                                     KeyDown="OnSearchBoxKeyDown"
-                                     Background="Transparent" BorderThickness="0"
-                                     FontSize="12" Padding="4,2"
-                                     VerticalAlignment="Center"/>
-                            <Button Grid.Column="1"
-                                    Command="{Binding TopBar.ClearSearchCommand}"
-                                    IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"
+                            Width="40" Height="32"
+                            Padding="8,0,0,0"
+                            ClipToBounds="True">
+                        <Grid ColumnDefinitions="30,Auto" HorizontalAlignment="Left">
+                            <!-- Left cap: same 16px magnifier as the (hidden) rail button
+                                 beneath, doubling as the close toggle. -->
+                            <Button Grid.Column="0"
+                                    Click="OnSearchButtonClick"
                                     Background="Transparent" BorderThickness="0"
-                                    Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
-                                <TextBlock Text="&#x2715;" FontSize="11" Opacity="0.5"/>
+                                    Padding="0" Cursor="Hand" CornerRadius="999"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center">
+                                <Button.Styles>
+                                    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="#22FFFFFF"/>
+                                    </Style>
+                                </Button.Styles>
+                                <PathIcon Data="{StaticResource SearchIcon}" Width="16" Height="16"
+                                          Foreground="{DynamicResource IslandForeground}"/>
                             </Button>
+                            <Grid x:Name="SearchFieldArea"
+                                  Grid.Column="1"
+                                  ColumnDefinitions="*,Auto" Width="180" Margin="0,0,12,0">
+                                <TextBox x:Name="SearchBox"
+                                         Grid.Column="0"
+                                         Classes="search-box"
+                                         Text="{Binding TopBar.SearchText, Mode=TwoWay}"
+                                         Watermark="{Binding TopBar.SearchWatermark}"
+                                         KeyDown="OnSearchBoxKeyDown"
+                                         Background="Transparent" BorderThickness="0"
+                                         FontSize="12" Padding="4,2"
+                                         VerticalAlignment="Center"/>
+                                <Button Grid.Column="1"
+                                        Command="{Binding TopBar.ClearSearchCommand}"
+                                        IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"
+                                        Background="Transparent" BorderThickness="0"
+                                        Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
+                                    <TextBlock Text="&#x2715;" FontSize="11" Opacity="0.5"/>
+                                </Button>
+                            </Grid>
                         </Grid>
                     </Border>
                 </Popup>
@@ -248,13 +297,8 @@
                                         <TextBlock Text="{Binding Label}"
                                                    FontSize="13" />
                                         <TextBlock FontSize="11"
-                                                   Opacity="0.5">
-                                            <TextBlock.Text>
-                                                <MultiBinding StringFormat="{}{0} songs">
-                                                    <Binding Path="$parent[UserControl].((vm:SidebarViewModel)DataContext).FavoritesCount" />
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
+                                                   Opacity="0.5"
+                                                   Text="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).FavoritesCount, Converter={StaticResource CountLabel}, ConverterParameter=song}" />
                                     </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
@@ -322,13 +366,8 @@
                                                    TextTrimming="CharacterEllipsis"
                                                    MaxWidth="120" />
                                         <TextBlock FontSize="11"
-                                                   Opacity="0.5">
-                                            <TextBlock.Text>
-                                                <MultiBinding StringFormat="{}{0} playlists">
-                                                    <Binding Path="TrackCount" />
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
+                                                   Opacity="0.5"
+                                                   Text="{Binding TrackCount, Converter={StaticResource CountLabel}, ConverterParameter=playlist}" />
                                     </StackPanel>
                                 </StackPanel>
 
@@ -337,8 +376,17 @@
                                             ToolTip.Tip="{Binding Label}"
                                             IsVisible="{Binding !IsFolder}"
                                             HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
-                                    <!-- Indent for playlists inside an expanded folder -->
-                                    <Border Width="14" IsVisible="{Binding IsInFolder}" />
+                                    <!-- Indent for playlists inside an expanded folder. Hidden in the
+                                         collapsed rail: with it, the row is 52px (14+10 spacing+28 art)
+                                         in a 28px slot, so the art rendered off-center and clipped. -->
+                                    <Border Width="14">
+                                        <Border.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                <Binding Path="IsInFolder" />
+                                                <Binding Path="$parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded" FallbackValue="False" />
+                                            </MultiBinding>
+                                        </Border.IsVisible>
+                                    </Border>
                                     <!-- Playlist artwork thumbnail -->
                                     <Border Width="28" Height="28"
                                             CornerRadius="14"
@@ -404,13 +452,8 @@
                                         </StackPanel>
                                         <TextBlock FontSize="11"
                                                    Opacity="0.5"
-                                                   TextTrimming="CharacterEllipsis">
-                                            <TextBlock.Text>
-                                                <MultiBinding StringFormat="{}{0} songs">
-                                                    <Binding Path="TrackCount" />
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Text="{Binding TrackCount, Converter={StaticResource CountLabel}, ConverterParameter=song}" />
                                     </StackPanel>
                                 </StackPanel>
 

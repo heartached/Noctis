@@ -770,44 +770,6 @@
 
                     </Grid>
 
-                    <!-- Navigation arrows — pinned to the carousel's left/right edges and
-                         vertically centered on the covers (siblings of the cover grid). -->
-                    <Button Classes="link-btn"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center"
-                            Margin="16,0,0,0"
-                            ZIndex="100"
-                            Command="{Binding GoPreviousCommand}"
-                            IsVisible="{Binding PreviousTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
-                            Opacity="0.85">
-                        <Border Width="32" Height="32"
-                                Background="White"
-                                RenderOptions.BitmapInterpolationMode="HighQuality"
-                                HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Border.OpacityMask>
-                                <ImageBrush Source="avares://Noctis/Assets/Icons/Left%20arrow%20icon.png" Stretch="Uniform" />
-                            </Border.OpacityMask>
-                        </Border>
-                    </Button>
-
-                    <Button Classes="link-btn"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            Margin="0,0,16,0"
-                            ZIndex="100"
-                            Command="{Binding GoNextCommand}"
-                            IsVisible="{Binding NextTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
-                            Opacity="0.85">
-                        <Border Width="32" Height="32"
-                                Background="White"
-                                RenderOptions.BitmapInterpolationMode="HighQuality"
-                                HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Border.OpacityMask>
-                                <ImageBrush Source="avares://Noctis/Assets/Icons/Right%20arrow%20icon.png" Stretch="Uniform" />
-                            </Border.OpacityMask>
-                        </Border>
-                    </Button>
-
                 </Grid>
 
                 <!-- Track info just below the center cover (carousel only — the collage is covers-only) -->

@@ -26,30 +26,35 @@ jobs:
             rid: win-x64
             artifact: Noctis-windows-x64
             run-tests: true
+            audit: true
 
           - name: macos-arm64
             runs-on: macos-14
             rid: osx-arm64
             artifact: Noctis-macos-arm64
             run-tests: true
+            audit: true
 
           - name: macos-x64
             runs-on: macos-14
             rid: osx-x64
             artifact: Noctis-macos-x64
             run-tests: false
+            audit: false
 
           - name: linux-x64
             runs-on: ubuntu-latest
             rid: linux-x64
             artifact: Noctis-linux-x64
             run-tests: true
+            audit: true
 
           - name: linux-arm64
             runs-on: ubuntu-latest
             rid: linux-arm64
             artifact: Noctis-linux-arm64
             run-tests: false
+            audit: false
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -57,20 +62,23 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
+      # NU1603 (approximate package match) as error: a pinned version that no longer
+      # resolves exactly must fail the restore loudly instead of silently floating to
+      # the nearest available version.
       - name: Restore
-        run: dotnet restore src/Noctis/Noctis.csproj -r ${{ matrix.rid }}
+        run: dotnet restore src/Noctis/Noctis.csproj -r ${{ matrix.rid }} -warnaserror:NU1603
 
       # Fails the build on a known-vulnerable package anywhere in the graph, including
       # transitives (which is where the shipped native SQLite advisory lived).
       #
-      # Windows only: the graph is identical across targets except the OS-conditional
-      # native libVLC references, and those are invisible to an audit run on the wrong
-      # host anyway (a Windows run never evaluates VideoLAN.LibVLC.Mac — see the audit
-      # note in AUDIT_2026-07-24.md).
+      # One leg per OS: the graph only varies by host OS (the OS-conditional native
+      # libVLC reference — only a Windows run evaluates VideoLAN.LibVLC.Windows; the
+      # Mac payload is bundled from videolan.org at packaging time, not via NuGet), so
+      # auditing win-x64, osx-arm64 and linux-x64 covers every shipped package graph.
       - name: Audit dependencies
-        if: matrix.rid == 'win-x64'
+        if: matrix.audit
         shell: bash
         run: |
           set -euo pipefail
@@ -166,6 +174,29 @@ jobs:
           cp -R publish/${{ matrix.rid }}/. "$APP/Contents/MacOS/"
           chmod +x "$APP/Contents/MacOS/Noctis"
 
+          # ── Bundle libvlc (AUDIT H7/H8) ───────────────────────────────
+          # The VideoLAN.LibVLC.Mac NuGet was dropped: its 3.0.21 pin never
+          # existed on nuget.org, so restore silently floated to the abandoned
+          # 2019-era 3.1.3.1 payload (x86_64-only, no plugins). Bundle the
+          # official universal (arm64+x86_64) VLC 3.0.23 dylibs + plugins at
+          # Contents/MacOS/libvlc/{lib,plugins} — the same sibling layout as
+          # VLC.app, which the plugins' @loader_path/../lib install names
+          # require. VlcAudioPlayer probes this path after a user-installed
+          # VLC.app. Pinned + SHA-256-verified like the ffmpeg bundles above;
+          # any failure FAILS the build.
+          curl -sSL https://download.videolan.org/pub/videolan/vlc/3.0.23/macosx/vlc-3.0.23-universal.dmg -o vlc.dmg
+          echo "56ee657c3aaf5c71b4ab7d6e4f4a77f6eca54633e0bf42a93b8116eb1d1f6ec9  vlc.dmg" | shasum -a 256 -c -
+          VLC_MOUNT=$(hdiutil attach vlc.dmg -nobrowse -readonly | awk -F$'\t' '/\/Volumes\//{print $NF}')
+          mkdir -p "$APP/Contents/MacOS/libvlc"
+          cp -R "$VLC_MOUNT/VLC.app/Contents/MacOS/lib" "$APP/Contents/MacOS/libvlc/lib"
+          cp -R "$VLC_MOUNT/VLC.app/Contents/MacOS/plugins" "$APP/Contents/MacOS/libvlc/plugins"
+          hdiutil detach "$VLC_MOUNT" -quiet
+          # Stale plugin cache pins absolute build-machine paths — delete it so
+          # libvlc rescans the bundled directory at runtime (AppImage precedent).
+          find "$APP/Contents/MacOS/libvlc" -name plugins.dat -delete
+          test -f "$APP/Contents/MacOS/libvlc/lib/libvlc.dylib"
+          test -d "$APP/Contents/MacOS/libvlc/plugins"
+
           # Build .icns from the canonical Windows .ico so the macOS dock icon
           # matches the Windows taskbar icon.
           brew install --quiet imagemagick
@@ -205,6 +236,7 @@ jobs:
             <key>CFBundlePackageType</key><string>APPL</string>
             <key>LSMinimumSystemVersion</key><string>12.0</string>
             <key>NSHighResolutionCapable</key><true/>
+            <key>NSAppleEventsUsageDescription</key><string>Noctis asks Finder to move deleted music files to the Trash.</string>
           </dict>
           </plist>
           PLIST
@@ -286,9 +318,69 @@ jobs:
 
           # Assemble AppDir
           APPDIR=Noctis.AppDir
-          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/256x256/apps"
+          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/lib" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/256x256/apps"
           cp -R publish/${{ matrix.rid }}/. "$APPDIR/usr/bin/"
           chmod +x "$APPDIR/usr/bin/Noctis"
+
+          # ── Bundle libvlc + its plugins (issue #26) ─────────────────
+          # Through v1.3.8 the AppImage shipped NO libvlc and silently relied
+          # on the host's VLC install. On distros that split VLC's plugins
+          # into optional packages (Arch: avformat/avcodec live in
+          # vlc-plugin-ffmpeg, an optdepend of vlc) playback then failed on
+          # every file with "VLC is unable to open the MRL …". Bundle the
+          # core libs + Ubuntu's vlc-plugin-base set (filesystem access, all
+          # audio demux/codecs incl. avformat, pulse/alsa outputs) so the
+          # AppImage is self-contained. Note: bundling from ubuntu-latest
+          # sets the AppImage's glibc floor (currently 2.38); older distros
+          # keep the tarball + system VLC path.
+          sudo apt-get install -y --no-install-recommends libvlc5 libvlccore9 vlc-plugin-base vlc-data
+          LIBDIR=/usr/lib/x86_64-linux-gnu
+          cp -a "$LIBDIR"/libvlc.so.5* "$LIBDIR"/libvlccore.so.9* "$APPDIR/usr/lib/"
+          # Whole vlc/ dir: plugins/ plus the private helper libs beside it
+          # (libvlc_pulse.so.0 etc.) that plugins reference via an absolute
+          # RUNPATH on Debian/Ubuntu — AppRun adds usr/lib/vlc to
+          # LD_LIBRARY_PATH so they resolve from the bundle instead.
+          cp -a "$LIBDIR/vlc" "$APPDIR/usr/lib/vlc"
+          # The plugin cache records absolute build-host paths; drop it and
+          # let libvlc rescan the bundled directory at runtime.
+          find "$APPDIR/usr/lib/vlc" -name plugins.dat -delete
+          # .NET's DllImport("libvlc") probes the UNVERSIONED soname
+          # (libvlc.so), which distro packages only ship in -dev packages —
+          # provide the symlinks ourselves.
+          ln -sf libvlc.so.5 "$APPDIR/usr/lib/libvlc.so"
+          ln -sf libvlccore.so.9 "$APPDIR/usr/lib/libvlccore.so"
+
+          # CoreCLR's optional LTTng tracepoint provider hard-links
+          # liblttng-ust.so.0, a soname modern distros/runners no longer ship
+          # (24.04 carries .so.1), and linuxdeploy's AppDir scan hard-fails on
+          # the unresolvable dependency. The runtime dlopen-probes the provider
+          # and runs fine without it — drop it from the AppImage payload only
+          # (the tarball keeps it).
+          rm -f "$APPDIR/usr/bin/libcoreclrtraceptprovider.so"
+
+          # linuxdeploy copies the ELF dependency closure of the bundled
+          # plugins/libs (libavformat, libavcodec & friends) into usr/lib,
+          # minus its denylist of assumed-system libraries, so the plugins
+          # load on distros with different library versions. Runs BEFORE the
+          # desktop file exists: with one in place its desktop-integration
+          # phase errors on the Exec entry (no executable was deployed via
+          # -e); without one it deploys dependencies and exits 0. Pinned
+          # release + SHA-256, same policy as appimagetool below. NO_STRIP:
+          # stripping has broken bundled libs before, and squashfs compresses
+          # the payload anyway.
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage -O linuxdeploy
+          echo "c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d  linuxdeploy" | sha256sum -c -
+          chmod +x linuxdeploy
+          NO_STRIP=1 ./linuxdeploy --appimage-extract-and-run --appdir "$APPDIR" \
+            --deploy-deps-only "$APPDIR/usr/lib/vlc/plugins" \
+            --deploy-deps-only "$APPDIR/usr/lib"
+
+          # Postconditions: fail the build if the payload regresses to the
+          # v1.3.8 "no VLC inside" state (the exact issue #26 failure mode).
+          test -e "$APPDIR/usr/lib/vlc/plugins/access/libfilesystem_plugin.so"
+          test -e "$APPDIR/usr/lib/vlc/plugins/demux/libavformat_plugin.so"
+          test -e "$APPDIR/usr/lib/vlc/plugins/audio_output/libpulse_plugin.so"
+          ls "$APPDIR"/usr/lib/libavformat.so.* > /dev/null
           # Use the canonical Windows .ico (extracted to PNG) so the Linux
           # icon matches the Windows app icon. Ubuntu ships ImageMagick 6, so
           # we use the legacy `convert`/`identify` binaries (the unified
@@ -303,7 +395,21 @@ jobs:
           convert "${SRC_ICO}[${LARGEST_IDX}]" -background none -resize 256x256 noctis.png
           cp noctis.png "$APPDIR/usr/share/icons/hicolor/256x256/apps/noctis.png"
           cp noctis.png "$APPDIR/noctis.png"
-          ln -sf usr/bin/Noctis "$APPDIR/AppRun"
+
+          # AppRun: a real script instead of the old bare symlink, so the
+          # loader and libvlc find the bundled payload. NOCTIS_BUNDLED_VLC=1
+          # tells the app the full plugin set is guaranteed — it then forces
+          # the avformat demuxer (O(1) MP3/M4A seek fix), which is unsafe to
+          # force against unknown system VLCs (see VlcAudioPlayer).
+          cat > "$APPDIR/AppRun" <<'APPRUN'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          export LD_LIBRARY_PATH="${HERE}/usr/lib:${HERE}/usr/lib/vlc${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          export VLC_PLUGIN_PATH="${HERE}/usr/lib/vlc/plugins"
+          export NOCTIS_BUNDLED_VLC=1
+          exec "${HERE}/usr/bin/Noctis" "$@"
+          APPRUN
+          chmod +x "$APPDIR/AppRun"
 
           cat > "$APPDIR/noctis.desktop" <<DESKTOP
           [Desktop Entry]

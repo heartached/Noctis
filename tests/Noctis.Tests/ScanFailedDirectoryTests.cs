@@ -91,7 +91,7 @@ public class ScanFailedDirectoryTests
     }
 
     [Fact]
-    public void FailedDirectoryMatch_IsCaseInsensitive()
+    public void FailedDirectoryMatch_FollowsPlatformCaseSensitivity()
     {
         var track = MakeTrack(TestPaths.Primary("Music", "Firesign", "song.mp3"));
 
@@ -100,7 +100,13 @@ public class ScanFailedDirectoryTests
             new HashSet<Guid>(),
             new[] { TestPaths.Primary("music", "FIRESIGN") });
 
-        Assert.Equal(new[] { track }, carried);
+        if (OperatingSystem.IsLinux())
+            // Case-differing paths are distinct directories on Linux (AUDIT M22):
+            // a failure recorded for music/FIRESIGN says nothing about
+            // Music/Firesign, so its tracks must NOT be carried.
+            Assert.Empty(carried);
+        else
+            Assert.Equal(new[] { track }, carried);
     }
 
     [Fact]

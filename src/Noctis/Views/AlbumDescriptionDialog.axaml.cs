@@ -51,8 +51,13 @@ public partial class AlbumDescriptionDialog : Window
 
     private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // Block clicks on overlay — only X button closes the dialog
+        // Light-dismiss: a click on the dimmed backdrop closes the dialog — unless an
+        // edit is in progress with unsaved changes, which a stray click must not discard.
         e.Handled = true;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (DataContext is AlbumDetailViewModel vm &&
+            vm.IsAlbumDescriptionEditing && vm.HasAlbumDescriptionChanges) return;
+        _ = CloseAnimatedAsync();
     }
 
     private void OnCardPointerPressed(object? sender, PointerPressedEventArgs e)

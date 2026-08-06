@@ -31,9 +31,6 @@ public class AppSettings
     /// <summary>Display name shown in the Settings profile section.</summary>
     public string ProfileName { get; set; } = string.Empty;
 
-    /// <summary>Username/handle shown beneath the profile name.</summary>
-    public string ProfileUsername { get; set; } = string.Empty;
-
     /// <summary>Absolute path to the user's avatar image, or empty for the default placeholder.</summary>
     public string ProfileAvatarPath { get; set; } = string.Empty;
 
@@ -57,6 +54,12 @@ public class AppSettings
     /// near-real-time as files are added/removed/changed (FileSystemWatcher).
     /// </summary>
     public bool WatchFoldersEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Whether album covers may be read from the artwork embedded in each file's
+    /// tags (ID3 APIC / FLAC picture / MP4 covr). Off = folder images only.
+    /// </summary>
+    public bool UseEmbeddedArtwork { get; set; } = true;
 
     /// <summary>
     /// Folder/filename template for the auto-organize tool. Tokens:
@@ -113,6 +116,12 @@ public class AppSettings
     /// standby player instead of an audible stop/start. On by default.</summary>
     public bool GaplessPlaybackEnabled { get; set; } = true;
 
+    /// <summary>Autoplay: when the queue is exhausted by a natural track end, playback
+    /// continues with similar tracks from the library (same genre as the just-ended
+    /// track, then same primary artist). Off by default — continuing playback the
+    /// user didn't queue is opt-in.</summary>
+    public bool AutoplayEnabled { get; set; }
+
     /// <summary>Whether long playback-bar track titles should scroll while playing.</summary>
     public bool TrackTitleMarqueeEnabled { get; set; } = true;
 
@@ -153,26 +162,82 @@ public class AppSettings
     public int WebRemotePort { get; set; } = 9420;
 
     // ── Songs page optional columns ──
+    // All six were the original set, chosen from the column-header dropdown.
+    public bool ShowArtworkColumn { get; set; } = true;
     public bool ShowGenreColumn { get; set; } = true;
     public bool ShowRatingColumn { get; set; } = true;
     public bool ShowBpmColumn { get; set; }
     public bool ShowBitrateColumn { get; set; }
     public bool ShowSampleRateColumn { get; set; }
 
+    // Columns that used to be unconditionally visible. They became hideable when the
+    // chooser moved into View Options — a list of five permanently-checked entries
+    // reads as broken. Default true so existing libraries look unchanged on upgrade.
+    public bool ShowTimeColumn { get; set; } = true;
+    public bool ShowArtistColumn { get; set; } = true;
+    public bool ShowAlbumColumn { get; set; } = true;
+    public bool ShowFavoritesColumn { get; set; } = true;
+    public bool ShowPlaysColumn { get; set; } = true;
+
+    // ── Songs page sort / filter ──
+    // Previously view-model-only, so every launch reset the list to Date Added ▼
+    // while the column choices beside them persisted. Defaults reproduce that
+    // former startup state exactly.
+
+    /// <summary>Active Songs sort field, matching the column keys understood by
+    /// <c>LibrarySongsViewModel.BuildFilteredAndSortedTracks</c>.</summary>
+    public string SongsSortColumn { get; set; } = "Date Added";
+
+    /// <summary>Songs sort direction. False (descending) puts newest additions first.</summary>
+    public bool SongsSortAscending { get; set; }
+
+    /// <summary>Whether the Songs list is filtered to favorites only.</summary>
+    public bool SongsShowOnlyFavorites { get; set; }
+
+    // ── Albums grid sort ──
+
+    /// <summary>Albums grid sort: "default", "title", "dateadded", "mostplayed",
+    /// "albumartist" or "year".</summary>
+    public string AlbumSortMode { get; set; } = "default";
+
+    /// <summary>Albums sort direction. Only meaningful outside "default"; each mode
+    /// starts in its natural direction (see LibraryAlbumsViewModel.IsDescendingByDefault).</summary>
+    public bool AlbumSortAscending { get; set; } = true;
+
     /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
     /// original #66 alpha glass look.</summary>
     public double PlaybackBarBackgroundOpacity { get; set; } = 0.4;
+
+    /// <summary>User-chosen width of the floating playback bar island, set by dragging its
+    /// edges (double-click a grip resets). 590 is the classic full layout; 340 is the
+    /// smallest proven layout (the lyrics-page compact pill). The window clamps the upper
+    /// end live, so only a sanity ceiling is stored.</summary>
+    public double PlaybackBarWidth { get; set; } = 590;
 
     /// <summary>Whether the sidebar expands on hover (with its slide animation). When false the
     /// sidebar stays in the icon-only rail and never expands. Off by default: the rail should
     /// not move unless the user asks it to.</summary>
     public bool SidebarHoverExpand { get; set; } = false;
 
+    /// <summary>Liquid Glass appearance: the main window renders on a translucent
+    /// acrylic/blur backdrop (Apple Music-style frosted glass) and the structural
+    /// surfaces (window background, sidebar, content panels) switch to translucent
+    /// tints so the blur shows through. Main window only — dialogs keep their opaque
+    /// surfaces. Off by default; when off, rendering is identical to before.</summary>
+    public bool LiquidGlassEnabled { get; set; } = false;
+
     /// <summary>When true, the album grids collapse multiple editions/issues of the same release
     /// (same album-artist + normalized base title) into a single representative tile. Hidden
     /// editions remain reachable via the album page's "Other Versions" section. Default off.</summary>
     public bool CollapseAlbumEditions { get; set; } = false;
+
+    /// <summary>When true (default), "feat./ft." credits found in track titles — or file names,
+    /// which stand in for the title on untagged files — are merged into the artist credit at
+    /// scan time so collaborations show the full credit. Off: artist tags are used exactly as
+    /// written. Flipping the toggle re-applies to already-indexed tracks right away
+    /// (LibraryService.ApplyMergeFeaturedFromTitlesAsync).</summary>
+    public bool MergeFeaturedFromTitles { get; set; } = true;
 
     /// <summary>Whether long track titles in the Lyrics page should scroll.</summary>
     public bool LyricsTitleMarqueeEnabled { get; set; } = true;
@@ -260,8 +325,18 @@ public class AppSettings
     public bool LyricsShowArtworkBackground { get; set; } = true;
 
     /// <summary>Whether the flowing-light color blobs drift over the artwork background
-    /// on the lyrics page (issue #22). Only applies while the artwork mode is active.</summary>
-    public bool LyricsFlowingLightEnabled { get; set; } = true;
+    /// on the lyrics page (issue #22). Only applies while the artwork mode is active.
+    /// Ships off: animated artwork is the only Appearance extra that defaults on.</summary>
+    public bool LyricsFlowingLightEnabled { get; set; }
+
+    /// <summary>Opt-in fullscreen focus — dims everything but the active line and its
+    /// closest neighbors while the lyrics page is fullscreen.</summary>
+    public bool LyricsFullScreenFocusEnabled { get; set; }
+
+    /// <summary>Whether a word split across several timed TTML spans renders as one
+    /// unbroken word ("compromise", not "com pro mise" — issue #32). The sweep still
+    /// follows each syllable's own timing. Ships off, keeping the authored spacing.</summary>
+    public bool LyricsJoinSplitWords { get; set; }
 
     // ── Lyrics providers ──
 
@@ -322,5 +397,9 @@ public class AppSettings
         ReplayGainPreampDb = Math.Clamp(ReplayGainPreampDb, -12, 12);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        // IsFinite first: Math.Clamp propagates NaN, and a NaN width would wedge the bar.
+        PlaybackBarWidth = double.IsFinite(PlaybackBarWidth)
+            ? Math.Clamp(PlaybackBarWidth, 340, 4096)
+            : 590;
     }
 }

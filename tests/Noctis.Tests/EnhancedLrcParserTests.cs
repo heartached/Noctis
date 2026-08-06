@@ -290,4 +290,129 @@ public class EnhancedLrcParserTests
         Assert.Equal(2, lines.Count);
         Assert.False(main.HasBackgroundWords);
     }
+
+    // ── Duet voice markers (Gramophone/iTunes "v1:"/"v2:"/"v3:") ──────────────
+
+    [Fact]
+    public void StripVoiceMarker_V1_StripsMarkerAndMapsToDefault()
+    {
+        var (body, voice) = EnhancedLrcParser.StripVoiceMarker("v1: Hello");
+
+        Assert.Equal(" Hello", body);
+        Assert.Equal(Noctis.Models.LyricVoice.Default, voice);
+    }
+
+    [Fact]
+    public void StripVoiceMarker_V2_StripsMarkerAndMapsToVoice2()
+    {
+        var (body, voice) = EnhancedLrcParser.StripVoiceMarker("v2: Hello");
+
+        Assert.Equal(" Hello", body);
+        Assert.Equal(Noctis.Models.LyricVoice.Voice2, voice);
+    }
+
+    [Fact]
+    public void StripVoiceMarker_V3_MapsToGroup()
+    {
+        var (body, voice) = EnhancedLrcParser.StripVoiceMarker("v3:Both");
+
+        Assert.Equal("Both", body);
+        Assert.Equal(Noctis.Models.LyricVoice.Group, voice);
+    }
+
+    [Fact]
+    public void StripVoiceMarker_SingleLeadingSpace_Accepted()
+    {
+        // Gramophone tolerates exactly one space between "]" and the marker.
+        var (body, voice) = EnhancedLrcParser.StripVoiceMarker(" v2: Hey");
+
+        Assert.Equal(" Hey", body);
+        Assert.Equal(Noctis.Models.LyricVoice.Voice2, voice);
+    }
+
+    [Fact]
+    public void StripVoiceMarker_TwoLeadingSpaces_NotAMarker()
+    {
+        var (body, voice) = EnhancedLrcParser.StripVoiceMarker("  v2: Hey");
+
+        Assert.Equal("  v2: Hey", body);
+        Assert.Equal(Noctis.Models.LyricVoice.Default, voice);
+    }
+
+    [Fact]
+    public void StripVoiceMarker_Uppercase_NotAMarker()
+    {
+        // Gramophone matches case-sensitively; "V2:" is lyric text.
+        var (body, voice) = EnhancedLrcParser.StripVoiceMarker("V2: Hey");
+
+        Assert.Equal("V2: Hey", body);
+        Assert.Equal(Noctis.Models.LyricVoice.Default, voice);
+    }
+
+    [Fact]
+    public void StripVoiceMarker_V4_NotAMarker()
+    {
+        var (body, voice) = EnhancedLrcParser.StripVoiceMarker("v4: Hey");
+
+        Assert.Equal("v4: Hey", body);
+        Assert.Equal(Noctis.Models.LyricVoice.Default, voice);
+    }
+
+    [Fact]
+    public void StripVoiceMarker_MidLineOrAfterWordTag_NotAMarker()
+    {
+        // Speaker tags only count directly after the line timestamp, so a "v2:"
+        // later in the body — including right after a word tag — stays literal.
+        Assert.Equal(("Hello v2: there", Noctis.Models.LyricVoice.Default),
+            EnhancedLrcParser.StripVoiceMarker("Hello v2: there"));
+        Assert.Equal(("<00:12.50>v2: word", Noctis.Models.LyricVoice.Default),
+            EnhancedLrcParser.StripVoiceMarker("<00:12.50>v2: word"));
+    }
+
+    [Fact]
+    public void StripVoiceMarker_NoMarker_ReturnsBodyUnchanged()
+    {
+        var (body, voice) = EnhancedLrcParser.StripVoiceMarker("Hello world");
+
+        Assert.Equal("Hello world", body);
+        Assert.Equal(Noctis.Models.LyricVoice.Default, voice);
+    }
+
+    [Fact]
+    public void StripVoiceMarker_MarkerWithEmptyRest_StillCounts()
+    {
+        var (body, voice) = EnhancedLrcParser.StripVoiceMarker("v2:");
+
+        Assert.Equal(string.Empty, body);
+        Assert.Equal(Noctis.Models.LyricVoice.Voice2, voice);
+    }
+
+    [Fact]
+    public void StripVoiceMarker_BeforeWordTags_WordTimingStillParses()
+    {
+        var (body, voice) = EnhancedLrcParser.StripVoiceMarker("v2: <00:12.50>word <00:13.00>two<00:13.40>");
+        var (text, words) = EnhancedLrcParser.ParseLine(body);
+
+        Assert.Equal(Noctis.Models.LyricVoice.Voice2, voice);
+        Assert.Equal("word two", text);
+        Assert.NotNull(words);
+        Assert.Equal(2, words!.Count);
+        Assert.Equal(TimeSpan.FromMilliseconds(12_500), words[0].Start);
+        Assert.Equal(TimeSpan.FromMilliseconds(13_400), words[1].End);
+    }
+
+    [Fact]
+    public void FoldBackgroundLines_AdlibAfterVoicedLine_AttachesAndKeepsVoice()
+    {
+        var main = WordLine("Lead", 10, ("Lead", 10, 10.8));
+        main.Voice = Noctis.Models.LyricVoice.Voice2;
+        var adlib = WordLine("(Ooh)", 11, ("(Ooh)", 11, 11.9));
+        var lines = new List<Noctis.Models.LyricLine> { main, adlib };
+
+        EnhancedLrcParser.FoldBackgroundLines(lines);
+
+        Assert.Single(lines);
+        Assert.Equal(Noctis.Models.LyricVoice.Voice2, main.Voice);
+        Assert.True(main.HasBackgroundWords);
+    }
 }

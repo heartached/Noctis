@@ -1,6 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:helpers="using:Noctis.Helpers">
+        xmlns:helpers="using:Noctis.Helpers"
+        xmlns:controls="using:Noctis.Controls">
 
     <!--
         Global style overrides for the Noctis music player.
@@ -27,6 +28,8 @@
                     <SolidColorBrush x:Key="AccentBorderBrush" Color="{StaticResource SystemAccentColorDark1}" />
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentTextExactBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="NowPlayingRowBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="NowPlayingRowForegroundBrush" Color="White" />
 
                     <!-- Custom App Background Colors -->
                     <SolidColorBrush x:Key="AppSidebarBackground" Color="#141414" />
@@ -129,6 +132,9 @@
                     <SolidColorBrush x:Key="AccentBorderBrush" Color="{StaticResource SystemAccentColorDark1}" />
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentTextExactBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="NowPlayingRowBrush" Color="{StaticResource SystemAccentColor}" />
+                    <!-- Light theme: black row text. App.SetAccent overrides with the same rule. -->
+                    <SolidColorBrush x:Key="NowPlayingRowForegroundBrush" Color="Black" />
 
                     <!-- ToggleSwitch checked fill (#E74856) -->
                     <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#E74856" />
@@ -255,6 +261,17 @@
 
     <!-- Shared title behavior when paired with an explicit badge -->
     <Style Selector="TextBlock.one-line-explicit-title">
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="MaxLines" Value="1" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <!-- Same rule for the highlighting variant. Avalonia type selectors match the
+         EXACT type, so the TextBlock rule above never reached HighlightTextBlock even
+         though it derives from TextBlock — the playlist title silently kept
+         TextTrimming=None and painted over the Album column (issue #30). Declared
+         separately for the same reason accent-link is, just below. -->
+    <Style Selector="controls|HighlightTextBlock.one-line-explicit-title">
         <Setter Property="TextWrapping" Value="NoWrap" />
         <Setter Property="MaxLines" Value="1" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -734,30 +751,68 @@
         <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
     </Style>
 
-    <!-- Now-playing row: accent-coloured text on the current track (Folders/Songs/Albums/Playlists).
-         Lives on the row's inner Border (class toggled by Track.IsNowPlaying), so when the
-         class is removed the setter reverts cleanly and text returns to the inherited white. -->
-    <Style Selector="Border.now-playing :is(TextBlock)">
-        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+    <!-- Shared row accents: artist/album/genre links and the row 3-dot icon are
+         accent-coloured on normal rows. Declared as classes (not local values) so
+         the now-playing overrides below can flip them to white on the tinted box —
+         a local Foreground would always beat a style setter. Must stay ABOVE the
+         now-playing styles: equal-origin styles resolve by declaration order. -->
+    <Style Selector="controls|HighlightTextBlock.accent-link">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
     </Style>
-    <!-- The accent style above also matches through the logical tree into popups,
-         so a context menu / flyout opened on a now-playing row tinted every menu
-         label accent. Restore the normal menu foreground (and keep destructive
-         items red) inside any menu content. -->
+    <Style Selector="PathIcon.row-dots-icon">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
+    </Style>
+    <Style Selector="ListBox.track-list controls|RatingStars">
+        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    </Style>
+
+    <!-- Now-playing row: Apple-Music-style box on the current track
+         (Folders/Songs/Albums/Playlists) — a rounded fill in the user's accent colour
+         (NowPlayingRowBrush, written by App.SetAccent) with a theme-driven
+         foreground (NowPlayingRowForegroundBrush: white on dark themes, black on light).
+         Lives on the row's inner Border (class toggled by Track.IsNowPlaying), so when the
+         class is removed the setters revert cleanly and the row returns to normal.
+         PlaylistView's row-body carries its own stripe/hover backgrounds at view
+         scope (which outranks app styles), so it re-applies this fill locally. -->
+    <Style Selector="Border.now-playing">
+        <Setter Property="Background" Value="{DynamicResource NowPlayingRowBrush}" />
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="Border.now-playing :is(TextBlock)">
+        <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
+    </Style>
+    <Style Selector="Border.now-playing PathIcon.row-dots-icon">
+        <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
+    </Style>
+    <Style Selector="Border.now-playing controls|RatingStars">
+        <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
+    </Style>
+    <!-- The row's playing indicator. EqVisualizer.axaml defaults its Foreground to
+         AccentColorBrush, which would be accent-on-accent here; the bars are only ever
+         visible on the now-playing row, so this setter is the only one that renders. -->
+    <Style Selector="Border.now-playing controls|EqVisualizer">
+        <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
+    </Style>
+    <!-- The row-foreground styles above also match through the logical tree into popups,
+         so a context menu / flyout opened on a now-playing row repainted every menu
+         label in the row foreground. Restore the normal menu foreground (and keep
+         destructive items red) inside any menu content. -->
     <Style Selector="Border.now-playing MenuItem :is(TextBlock)">
         <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
     </Style>
     <Style Selector="Border.now-playing MenuItem.danger :is(TextBlock)">
         <Setter Property="Foreground" Value="#E74856" />
     </Style>
-    <!-- Keep the explicit "E" badge glyph white on now-playing rows. -->
+    <!-- Keep the explicit "E" badge glyph on the row foreground, not the page foreground. -->
     <Style Selector="Border.now-playing TextBlock.explicit-badge-text">
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
     </Style>
 
-    <!-- Note: ContentPresenter background overrides for track-list items are handled by
-         TrackListBoxItemTheme (ControlTheme with BasedOn) applied via ItemContainerTheme above.
-         App-level /template/ styles cannot override ControlTheme inner pseudo-class styles. -->
+    <!-- Note: track-list items get their container template from TrackListBoxItemTheme
+         (ItemContainerTheme, set above). That theme declares no BasedOn and carries only a
+         Template setter — see its comment at the top of this file — so it contributes no
+         pseudo-class background setters of its own, and the row background styles above are
+         the only thing painting a track ListBoxItem. -->
 
     <!-- Album grid ListBox items (transparent, no selection highlight, compact, no pointer interaction) -->
     <Style Selector="ListBox:not(.track-list):not(.sidebar) ListBoxItem">
@@ -913,36 +968,6 @@
     <Style Selector="Button.pill:pressed">
         <Setter Property="RenderTransform" Value="scale(0.95)"/>
         <Setter Property="Opacity" Value="0.8"/>
-    </Style>
-
-    <!-- Playback bar button styling -->
-    <Style Selector="Button.transport-btn">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="8" />
-        <Setter Property="FontSize" Value="18" />
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="MinWidth" Value="36" />
-        <Setter Property="MinHeight" Value="36" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
-
-    <Style Selector="Button.transport-btn:pointerover">
-        <Setter Property="Opacity" Value="0.8" />
-    </Style>
-
-    <Style Selector="Button.transport-btn-main">
-        <Setter Property="Background" Value="{DynamicResource SystemAccentColor}" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="8" />
-        <Setter Property="FontSize" Value="20" />
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="MinWidth" Value="40" />
-        <Setter Property="MinHeight" Value="40" />
-        <Setter Property="CornerRadius" Value="20" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
     <!-- Smooth fade-in for content areas -->

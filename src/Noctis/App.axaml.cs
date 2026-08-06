@@ -53,6 +53,7 @@ public partial class App : Application
             [typeof(QueueViewModel)] = () => new QueueView(),
             [typeof(SettingsViewModel)] = () => new SettingsView(),
             [typeof(LyricsViewModel)] = () => new LyricsView(),
+            [typeof(ServerViewModel)] = () => new ServerView(),
         });
         DataTemplates.Insert(0, cachedLocator);
         CachedLocator = cachedLocator;
@@ -107,10 +108,13 @@ public partial class App : Application
             var mainVm = Services!.GetRequiredService<MainWindowViewModel>();
             Noctis.Services.StartupTrace.Mark("viewmodel-graph-resolved");
 
-            var mainWindow = new MainWindow
-            {
-                DataContext = mainVm
-            };
+            // The view model rides the constructor so DataContext is set BEFORE
+            // InitializeComponent. Assigning it afterwards (object initializer) let every
+            // $parent[Window].DataContext.* chain in MainWindow.axaml evaluate once
+            // against a null DataContext and log a binding warning at each startup.
+            // Same total work between the surrounding marks — bindings now resolve in a
+            // single pass instead of erroring first and re-resolving.
+            var mainWindow = new MainWindow(mainVm);
             Noctis.Services.StartupTrace.Mark("main-window-constructed");
 
             // Decide "start minimized to tray" before the window is realized. Avalonia
@@ -362,6 +366,13 @@ public partial class App : Application
         var light3 = Mix(color, Colors.White, 0.45);
         var accentForeground = GetReadableForeground(color);
         var isLightTheme = RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light;
+        // Row text / EQ bars / icons on the now-playing track box: white on dark themes,
+        // black on light ones. Deliberately theme-driven rather than derived from the
+        // accent's own luminance — flipping per-accent made the row read as mismatched
+        // against the rest of the list, and a solid accent band with constant text is what
+        // the design targets. The trade-off is accepted: a pale accent leaves the text
+        // around 1.7:1, so contrast is NOT guaranteed here.
+        var nowPlayingRowForeground = isLightTheme ? Colors.Black : Colors.White;
         // Outline around accent-filled pills. Only meaningful when the accent fill
         // would be indistinguishable from the page background — in practice that's
         // a white / very-light accent on the Light theme. In every other case the
@@ -401,6 +412,12 @@ public partial class App : Application
             ["AccentTextExactBrush"]               = new SolidColorBrush(accentTextExact),
             ["AccentColorBrushLight1"]             = new SolidColorBrush(light1),
             ["AccentColorBrushDark1"]              = new SolidColorBrush(dark1),
+
+            // Now-playing track row box. Previously retinted at runtime from the current
+            // artwork's vibrant colour, which ignored the user's accent; it now follows the
+            // accent like every other accent-filled surface.
+            ["NowPlayingRowBrush"]           = new SolidColorBrush(color),
+            ["NowPlayingRowForegroundBrush"] = new SolidColorBrush(nowPlayingRowForeground),
             ["ToggleSwitchFillOn"]                 = new SolidColorBrush(color),
             ["ToggleSwitchFillOnPointerOver"]      = new SolidColorBrush(light1),
             ["ToggleSwitchFillOnPressed"]          = new SolidColorBrush(dark1),

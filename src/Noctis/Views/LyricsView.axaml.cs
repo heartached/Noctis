@@ -209,16 +209,7 @@ public partial class LyricsView : UserControl
         {
             // Re-subscribe on re-attach (detach unsubscribed; DataContextChanged
             // won't fire again when the DataContext is unchanged).
-            if (_subscribedVm == null)
-            {
-                vm.PropertyChanged += OnViewModelPropertyChanged;
-                vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
-                // The Settings toggle for the flowing light lives on the Player VM
-                // (same live channel as the marquee flags) — watch it so flipping the
-                // switch while this page is open starts/stops the drift immediately.
-                vm.Player.PropertyChanged += OnPlayerPropertyChanged;
-                _subscribedVm = vm;
-            }
+            SubscribeVm(vm);
 
             vm.IsAutoFollowPaused = false;
             _isJumpingOnAttach = true;
@@ -249,16 +240,22 @@ public partial class LyricsView : UserControl
                 vm.Player.EndSeek();
         }
 
-        // Full VM unsubscribe: the VM is a process singleton and this view is
-        // recreated per visit — DataContextChanged never fires for a discarded
-        // view, so leaving PropertyChanged attached leaks the whole view and
-        // keeps its scroll handler running for every later line change.
-        if (_subscribedVm != null)
+        // Full VM unsubscribe: the VM is a process singleton, so leaving handlers
+        // attached would keep this cached view doing scroll/swap work for every
+        // later line and track change while it sits off screen.
+        UnsubscribeVm();
+
+        // The swap events are unhooked while detached, so a swap that had faded
+        // the host out could never fade back in — snap it visible for the next
+        // visit (the attach path re-anchors the active line itself).
+        if (_lyricsSwapInProgress)
         {
-            _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
-            _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
-            _subscribedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
-            _subscribedVm = null;
+            _lyricsSwapInProgress = false;
+            if (LyricsContentHost is { } swapHost)
+            {
+                swapHost.Transitions = null;
+                swapHost.Opacity = 1.0;
+            }
         }
 
         if (_hostWindow != null)
@@ -342,7 +339,7 @@ public partial class LyricsView : UserControl
                 Grid.SetColumnSpan(LeftPanel, 1);
                 Grid.SetRow(LeftPanel, 0);
                 Grid.SetRowSpan(LeftPanel, 2);
-                LeftPanel.Padding = new Thickness(40, 30);
+                LeftPanel.Padding = new Thickness(48, 42);
 
                 Grid.SetColumn(RightPanel, 1);
                 Grid.SetColumnSpan(RightPanel, 1);
@@ -383,9 +380,11 @@ public partial class LyricsView : UserControl
         else
         {
             // Left column is half the window minus panel padding; vertically
-            // reserve room for track info, timeline, and playback controls.
+            // reserve room for track info, timeline, and playback controls,
+            // plus enough slack that the block never presses against the
+            // screen edges in fullscreen.
             var maxByWidth = width / 2 - 90;
-            var maxByHeight = height - 330;
+            var maxByHeight = height - 370;
             var cover = Math.Clamp(Math.Min(maxByWidth, maxByHeight), 220, 780);
             AlbumArtBorder.Width = cover;
             AlbumArtBorder.Height = cover;
@@ -450,14 +449,7 @@ public partial class LyricsView : UserControl
         base.OnDataContextChanged(e);
 
         // Unsubscribe from previous ViewModel
-        if (_subscribedVm != null)
-        {
-            _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
-            _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
-            _subscribedVm.LyricsSwapPending -= OnLyricsSwapPending;
-            _subscribedVm.LyricsSwapped -= OnLyricsSwapped;
-            _subscribedVm = null;
-        }
+        UnsubscribeVm();
 
         // Reset scroll state
         _lastScrolledIndex = -1;
@@ -465,13 +457,40 @@ public partial class LyricsView : UserControl
         CancelAutoFollowResumeTimer();
 
         if (DataContext is LyricsViewModel vm)
-        {
-            vm.PropertyChanged += OnViewModelPropertyChanged;
-            vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
-            vm.LyricsSwapPending += OnLyricsSwapPending;
-            vm.LyricsSwapped += OnLyricsSwapped;
-            _subscribedVm = vm;
-        }
+            SubscribeVm(vm);
+    }
+
+    /// <summary>
+    /// The ONE canonical subscription set for this view, used by all three lifecycle
+    /// hooks (DataContextChanged, attach, detach). Keeping a single set is what
+    /// guarantees Player.PropertyChanged is live on the first visit and that the
+    /// swap events don't keep firing into a detached (cached) view.
+    /// </summary>
+    private void SubscribeVm(LyricsViewModel vm)
+    {
+        if (_subscribedVm != null) return;
+        vm.PropertyChanged += OnViewModelPropertyChanged;
+        vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
+        vm.LyricsSwapPending += OnLyricsSwapPending;
+        vm.LyricsSwapped += OnLyricsSwapped;
+        // The Settings toggle for the flowing light lives on the Player VM
+        // (same live channel as the marquee flags) — watch it so flipping the
+        // switch while this page is open starts/stops the drift immediately.
+        vm.Player.PropertyChanged += OnPlayerPropertyChanged;
+        vm.Player.Seeked += OnPlayerSeeked;
+        _subscribedVm = vm;
+    }
+
+    private void UnsubscribeVm()
+    {
+        if (_subscribedVm == null) return;
+        _subscribedVm.PropertyChanged -= OnViewModelPropertyChanged;
+        _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
+        _subscribedVm.LyricsSwapPending -= OnLyricsSwapPending;
+        _subscribedVm.LyricsSwapped -= OnLyricsSwapped;
+        _subscribedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
+        _subscribedVm.Player.Seeked -= OnPlayerSeeked;
+        _subscribedVm = null;
     }
 
     // ── Track-change lyric swap: fade out, swap while hidden, fade back ──
@@ -482,13 +501,16 @@ public partial class LyricsView : UserControl
 
     private void OnLyricsSwapPending(object? sender, EventArgs e)
     {
+        // Subscribed-but-not-yet-attached window (first creation): don't animate
+        // a tree that isn't on screen.
+        if (this.GetVisualRoot() == null) return;
         _lyricsSwapInProgress = true;
         FadeLyricsHost(0.0, LyricsViewModel.LyricsSwapFadeOutMs);
     }
 
     private void OnLyricsSwapped(object? sender, EventArgs e)
     {
-        _lyricsSwapInProgress = false;
+        if (this.GetVisualRoot() == null) return;
         // Re-anchor from scratch while still invisible: a glide from the old
         // track's offset is meaningless on new content, so jump.
         if (DataContext is LyricsViewModel vm)
@@ -504,6 +526,10 @@ public partial class LyricsView : UserControl
             else if (LyricsScrollViewer != null)
                 ApplyScrollOffset(LyricsScrollViewer, 0);
         }
+        // Cleared only after the block above: the IsAutoFollowPaused reset re-enters
+        // OnViewModelPropertyChanged, whose resume re-anchor must see the swap still
+        // in progress and stand down — the jump owns anchoring here.
+        _lyricsSwapInProgress = false;
         FadeLyricsHost(1.0, 240);
     }
 
@@ -588,6 +614,32 @@ public partial class LyricsView : UserControl
                     ScrollToActiveLine(targetIndex);
                 else if (LyricsScrollViewer != null)
                     ApplyScrollOffset(LyricsScrollViewer, 0);
+            }
+        }
+        else if (e.PropertyName == nameof(LyricsViewModel.IsLyricsFocusActive))
+        {
+            // Focus mode moves the anchor (22% ↔ 45%): re-pad now, then re-anchor on
+            // the layout pass the margin change triggers — same guarded path as a
+            // min/maximize/restore. If auto-follow is paused, only the padding moves.
+            UpdateLyricsCenterPadding();
+            if (DataContext is LyricsViewModel { IsSyncTabSelected: true, IsAutoFollowPaused: false, ActiveLineIndex: >= 0 })
+                _recenterOnNextLayout = true;
+        }
+        else if (e.PropertyName == nameof(LyricsViewModel.IsAutoFollowPaused))
+        {
+            // Resume (Follow button, the 5s auto-resume, or a committed seek): re-anchor
+            // now. Waiting for the next line change left the page parked — after a far
+            // seek every visible line sits outside the ±9 dim window at opacity 0, so
+            // the lyrics looked gone until the next line boundary.
+            if (sender is LyricsViewModel resumed && !resumed.IsAutoFollowPaused
+                && !_lyricsSwapInProgress && !_isJumpingOnAttach)
+            {
+                CancelAutoFollowResumeTimer();
+                if (resumed.IsSyncTabSelected && resumed.ActiveLineIndex >= 0)
+                {
+                    _lastScrolledIndex = -1;
+                    ScrollToActiveLine(resumed.ActiveLineIndex);
+                }
             }
         }
         else if (sender is LyricsViewModel v)
@@ -795,6 +847,14 @@ public partial class LyricsView : UserControl
             vm.Player.EndSeek();
     }
 
+    // Committed seeks from any surface (this page's timeline, the player bar, a
+    // lyric-line click) mark the moment; ScrollToActiveLine routes the resulting
+    // line change to the chase instead of the glide.
+    private void OnPlayerSeeked(object? sender, TimeSpan target)
+    {
+        _lastSeekCommitTicks = Stopwatch.GetTimestamp();
+    }
+
     private static double GetTimelineValueFromPointer(Slider slider, Point position)
     {
         return PillSliderVisualHelper.GetValueFromPointer(slider, position, LyricsTimelineThumbSize);
@@ -818,6 +878,13 @@ public partial class LyricsView : UserControl
     // target only moves the goalpost, so the existing velocity carries straight over.
     private const double ScrubWindowMs = 250;   // updates closer together than this = a drag
     private const double ScrubSettleMs = 380;   // time to ~99% of a stationary target
+    // A committed seek re-anchors with the chase, never the eased glide: smootherstep
+    // opens at near-zero velocity, so after an explicit jump the page sat visibly still
+    // for ~250-300ms before moving — and whether a click even got the chase used to
+    // depend on the request race above, timing the user cannot see. The window covers
+    // the commit debounce (60ms, posted) plus a 100ms sync tick, with margin.
+    private const double SeekFollowWindowMs = 400;
+    private long _lastSeekCommitTicks;
     private long _lastScrollRequestTicks;
     private double _chaseTargetY;
     private double _chaseY;
@@ -892,6 +959,27 @@ public partial class LyricsView : UserControl
         RequestChaseFrame();
     }
 
+    // The page's anchor math runs in the scroll viewer's extent space, which includes
+    // LyricsItemsControl's top margin (UpdateLyricsCenterPadding) — so it cannot reuse
+    // LyricsScrollAnchor.AnchorRatio (0.22, the panel's margin-exclusive space) directly:
+    // with the normal 10% top margin, 0.32 in extent space IS that shipped geometry
+    // (0.10 + 0.22), offsets and clamps identical.
+    private const double PageAnchorRatio = 0.32;
+
+    // Fullscreen focus dims everything but the active ±2 lines, so the active line sits
+    // at the optical center: geometric 50% reads slightly low to the eye, so the anchor
+    // rides a touch above it (user-tuned). The focus margins (ratio-coupled below) keep
+    // the first and last lines scrollable all the way to that anchor.
+    private const double FocusAnchorRatio = 0.47;
+
+    /// <summary>Anchor ratio in effect: optically centered while fullscreen focus
+    /// dimming is on, the page default otherwise. Every scroll target (glide, scrub
+    /// chase, instant jump) and the center padding follow this same ratio.</summary>
+    private double ActiveAnchorRatio =>
+        DataContext is LyricsViewModel { IsLyricsFocusActive: true }
+            ? FocusAnchorRatio
+            : PageAnchorRatio;
+
     /// <summary>Anchor offset for a line, or null if the item containers are not laid out
     /// yet. Shared by the eased glide and the scrub chase.</summary>
     private double? TryComputeAnchorOffset(int index)
@@ -909,11 +997,15 @@ public partial class LyricsView : UserControl
         var childBounds = targetChild.TransformToVisual(panel);
         if (childBounds == null) return null;
 
-        var childTop = childBounds.Value.Transform(new Point(0, 0)).Y;
+        // Panel coordinates exclude LyricsItemsControl's margin, but the anchor math
+        // runs in the scroll viewer's offset/extent space, which includes it.
+        var childTop = childBounds.Value.Transform(new Point(0, 0)).Y
+                       + LyricsItemsControl.Margin.Top;
         return Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
             childTop, targetChild.Bounds.Height,
             LyricsScrollViewer.Viewport.Height,
-            LyricsScrollViewer.Extent.Height);
+            LyricsScrollViewer.Extent.Height,
+            ActiveAnchorRatio);
     }
 
     private void ClearCascadeTransforms()
@@ -999,20 +1091,38 @@ public partial class LyricsView : UserControl
 
     private void UpdateLyricsCenterPadding()
     {
-        if (LyricsScrollViewer == null || LyricsItemsControl == null) return;
+        if (LyricsScrollViewer == null || LyricsItemsControl == null || LyricsScrollContent == null) return;
 
-        // Top margin = 10% so lyrics start near the top of the center zone
-        // Bottom margin = 78% so the last lyric can still be scrolled to the 22% target
+        // Normal: top margin = 10% so lyrics start near the top of the center zone,
+        // bottom = 78% so the last lyric can still be scrolled to the page anchor.
+        // Fullscreen focus: everything outside the active ±2 window is invisible, so
+        // both margins follow the focus anchor instead — an anchor-sized top margin
+        // lets the first line sit AT the anchor and the complementary bottom margin
+        // lets the last line scroll up to it.
         var viewportHeight = LyricsScrollViewer.Viewport.Height;
         if (viewportHeight <= 0) return;
 
-        var topPad = viewportHeight * 0.10;
-        var bottomPad = viewportHeight * 0.78;
+        double topPad, bottomPad;
+        if (DataContext is LyricsViewModel { IsLyricsFocusActive: true })
+        {
+            topPad = viewportHeight * FocusAnchorRatio;
+            bottomPad = viewportHeight * (1 - FocusAnchorRatio);
+        }
+        else
+        {
+            topPad = viewportHeight * 0.10;
+            bottomPad = viewportHeight * 0.78;
+        }
         // Right margin reserves an overflow zone for the active line's 1.07× scale
         // transform. Without it, scaled glyphs on long lines get clipped by the
         // ScrollViewer's internal viewport ("…GOA" instead of "…GOAT").
         const double activeLineScaleHeadroom = 64;
-        LyricsItemsControl.Margin = new Thickness(0, topPad, activeLineScaleHeadroom, bottomPad);
+        // Top/right pads stay on the ItemsControl — the anchor math reads Margin.Top —
+        // but the bottom run-out moved to the scroll-content wrapper so the Written-By
+        // footer (the wrapper's second child) sits just under the last line instead of
+        // a viewport below it. Total extent is unchanged while the footer is collapsed.
+        LyricsItemsControl.Margin = new Thickness(0, topPad, activeLineScaleHeadroom, 0);
+        LyricsScrollContent.Margin = new Thickness(0, 0, 0, bottomPad);
     }
 
     // Maps the current synced ActiveLineIndex to the corresponding row in UnsyncedLines.
@@ -1039,13 +1149,19 @@ public partial class LyricsView : UserControl
         // Updates arriving on top of each other mean the position is being dragged, not
         // advancing with playback. Those go to the chase, which retargets instead of
         // restarting; a normal line advance is seconds apart and keeps the eased glide.
+        // A line change landing right after a committed seek is that seek resolving:
+        // chase as well, so a discrete click always answers with the same fast settle.
         var now = Stopwatch.GetTimestamp();
         var sinceLastMs = _lastScrollRequestTicks == 0
             ? double.MaxValue
             : (now - _lastScrollRequestTicks) * 1000.0 / Stopwatch.Frequency;
         _lastScrollRequestTicks = now;
 
-        if (sinceLastMs < ScrubWindowMs && LyricsScrollViewer != null)
+        var sinceSeekMs = _lastSeekCommitTicks == 0
+            ? double.MaxValue
+            : (now - _lastSeekCommitTicks) * 1000.0 / Stopwatch.Frequency;
+
+        if ((sinceLastMs < ScrubWindowMs || sinceSeekMs < SeekFollowWindowMs) && LyricsScrollViewer != null)
         {
             // No settle delay here: a scrub only changes WHICH line is active, so the
             // item layout the offset is measured against has not moved.
@@ -1060,11 +1176,16 @@ public partial class LyricsView : UserControl
 
         CancelScrollAnimation();
 
-        // Minimal delay — just enough for layout to settle after active line change
+        // Minimal delay — just enough for layout to settle after active line change.
+        // Generation-stamped: a cancel or supersede landing inside this window (swap
+        // jump, tab switch, another request) must kill the pending glide too, not
+        // only animations that have already started.
+        var generation = _scrollAnimationGeneration;
         DispatcherTimer.RunOnce(() =>
         {
             try
             {
+                if (generation != _scrollAnimationGeneration) return;
                 if (LyricsItemsControl == null || index >= LyricsItemsControl.ItemCount) return;
 
                 var presenter = LyricsItemsControl.GetVisualDescendants()
@@ -1081,13 +1202,17 @@ public partial class LyricsView : UserControl
                 var childBounds = targetChild.TransformToVisual(panel);
                 if (childBounds == null) return;
 
-                var childTop = childBounds.Value.Transform(new Point(0, 0)).Y;
+                // Extent space: panel coordinates + the ItemsControl top margin
+                // (see TryComputeAnchorOffset).
+                var childTop = childBounds.Value.Transform(new Point(0, 0)).Y
+                               + LyricsItemsControl.Margin.Top;
                 var childHeight = targetChild.Bounds.Height;
 
                 var targetOffset = Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
                     childTop, childHeight,
                     LyricsScrollViewer.Viewport.Height,
-                    LyricsScrollViewer.Extent.Height);
+                    LyricsScrollViewer.Extent.Height,
+                    ActiveAnchorRatio);
 
                 var currentOffset = LyricsScrollViewer.Offset.Y;
                 var diff = targetOffset - currentOffset;
@@ -1134,13 +1259,17 @@ public partial class LyricsView : UserControl
                 var childBounds = targetChild.TransformToVisual(panel);
                 if (childBounds == null) return;
 
-                var childTop = childBounds.Value.Transform(new Point(0, 0)).Y;
+                // Extent space: panel coordinates + the ItemsControl top margin
+                // (see TryComputeAnchorOffset).
+                var childTop = childBounds.Value.Transform(new Point(0, 0)).Y
+                               + LyricsItemsControl.Margin.Top;
                 var childHeight = targetChild.Bounds.Height;
 
                 var targetOffset = Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
                     childTop, childHeight,
                     LyricsScrollViewer.Viewport.Height,
-                    LyricsScrollViewer.Extent.Height);
+                    LyricsScrollViewer.Extent.Height,
+                    ActiveAnchorRatio);
                 ApplyScrollOffset(LyricsScrollViewer, targetOffset);
             }
             catch { }

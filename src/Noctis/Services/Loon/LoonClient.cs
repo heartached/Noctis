@@ -105,6 +105,7 @@ public sealed class LoonClient : IDisposable
             catch (Exception ex)
             {
                 Debug.WriteLine($"[Loon] Initial connect failed, retrying in the loop: {ex.Message}");
+                DebugLog.Write("Loon", $"Could not reach the artwork relay ({serverUrl}): {ex.Message}. Retrying.");
             }
 
             // Start receive loop (handles reconnection)
@@ -123,10 +124,14 @@ public sealed class LoonClient : IDisposable
     public string? GetArtworkUrl(string? localArtworkPath)
     {
         if (!_connected || _baseUrl == null || _clientId == null || _secret == null)
-            return null;
+            return ReportArtworkOutcome("No cover for Discord: the artwork relay is not connected.", null);
 
-        if (string.IsNullOrWhiteSpace(localArtworkPath) || !File.Exists(localArtworkPath))
-            return null;
+        if (string.IsNullOrWhiteSpace(localArtworkPath))
+            return ReportArtworkOutcome("No cover for Discord: this track has no album artwork.", null);
+
+        if (!File.Exists(localArtworkPath))
+            return ReportArtworkOutcome(
+                $"No cover for Discord: cached artwork is missing ({Path.GetFileName(localArtworkPath)}).", null);
 
         // The URL carries only the file name, and the relay resolves it back inside
         // _artworkDirectory. A path from anywhere else therefore passes File.Exists here
@@ -134,10 +139,9 @@ public sealed class LoonClient : IDisposable
         // directory, and Discord ends up showing a broken-image placeholder. Don't mint a
         // URL we know cannot be served.
         if (!IsServableArtworkPath(_artworkDirectory, localArtworkPath))
-        {
-            Debug.WriteLine($"[Loon] Artwork outside the served directory, no URL: {localArtworkPath}");
-            return null;
-        }
+            return ReportArtworkOutcome(
+                "No cover for Discord: artwork sits outside the served folder " +
+                $"({Path.GetDirectoryName(localArtworkPath)}).", null);
 
         // Build the thumbnail now, off the caller's thread. This runs on a track change, and
         // Discord's proxy resolves the URL a second or more later, so the ~250-300ms decode
@@ -150,7 +154,29 @@ public sealed class LoonClient : IDisposable
         var path = $"artwork/{fileName}";
         var hash = ComputeHmac(_clientId, path, _secret);
 
-        return $"{_baseUrl}/{_clientId}/{hash}/{path}";
+        return ReportArtworkOutcome(
+            $"Handed Discord a cover URL for {fileName}.", $"{_baseUrl}/{_clientId}/{hash}/{path}");
+    }
+
+    /// <summary>Last line written by <see cref="ReportArtworkOutcome"/>, to suppress repeats.</summary>
+    private string? _lastArtworkOutcome;
+
+    /// <summary>
+    /// Records why a track did or didn't get a cover, then returns <paramref name="result"/>.
+    /// This is the only place that can answer "why is there no album art in Discord", and the
+    /// three failure gates above used to be invisible: they logged through Debug.WriteLine,
+    /// which the compiler strips from release builds, so a user's report could never say
+    /// which one fired. Repeats are suppressed because this runs on every track change and
+    /// every throttled seek, and the log buffer only holds 500 lines.
+    /// </summary>
+    private string? ReportArtworkOutcome(string message, string? result)
+    {
+        if (!string.Equals(_lastArtworkOutcome, message, StringComparison.Ordinal))
+        {
+            _lastArtworkOutcome = message;
+            DebugLog.Write("Loon", message);
+        }
+        return result;
     }
 
     public async Task DisconnectAsync()
@@ -253,6 +279,8 @@ public sealed class LoonClient : IDisposable
         _ws = ws;
         _connected = true;
         Debug.WriteLine($"[Loon] Connected: clientId={_clientId}, chunkSize={_chunkSize}");
+        DebugLog.Write("Loon", $"Connected to the artwork relay as {_clientId}.");
+        _lastArtworkOutcome = null;   // a new clientId is a new story; don't suppress the next line
 
         try { Reconnected?.Invoke(); }
         catch (Exception ex) { Debug.WriteLine($"[Loon] Reconnected handler threw: {ex.Message}"); }
@@ -351,6 +379,8 @@ public sealed class LoonClient : IDisposable
             if (_disposed || ct.IsCancellationRequested) break;
 
             Debug.WriteLine("[Loon] Reconnecting in 5s...");
+            if (hadConnection)
+                DebugLog.Write("Loon", "Lost the artwork relay connection; reconnecting in 5s.");
             try { await Task.Delay(5000, ct); } catch { break; }
 
             try
@@ -360,6 +390,7 @@ public sealed class LoonClient : IDisposable
             catch (Exception ex)
             {
                 Debug.WriteLine($"[Loon] Reconnect failed: {ex.Message}");
+                DebugLog.Write("Loon", $"Artwork relay reconnect failed: {ex.Message}");
             }
         }
     }
@@ -437,6 +468,7 @@ public sealed class LoonClient : IDisposable
             if (!File.Exists(filePath))
             {
                 Debug.WriteLine($"[Loon] File not found for request {request.Id}: {filePath}");
+                DebugLog.Write("Loon", $"Discord asked for {fileName} but it is not in the artwork folder.");
                 await AnswerEmptyAsync(ws, request.Id, ct);
                 return;
             }
@@ -453,6 +485,7 @@ public sealed class LoonClient : IDisposable
             if (thumbnail == null)
             {
                 Debug.WriteLine($"[Loon] Could not decode {fileName} — answering empty");
+                DebugLog.Write("Loon", $"Discord asked for {fileName} but the image could not be decoded.");
                 await AnswerEmptyAsync(ws, request.Id, ct);
                 return;
             }

@@ -78,6 +78,10 @@ public class LyricsBackwardSeekTests
             SyncedLyrics = MakeLrc(),
         };
 
+        // These tests model dragging while a lyrics view is on screen; the sync
+        // timer parks itself when no surface is registered visible.
+        vm.SetLyricsSurfaceVisible(true);
+
         vm.EnsureLyricsForCurrentTrack();
 
         // The local probe runs off the UI thread and posts its apply back. Budgeted in

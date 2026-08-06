@@ -41,6 +41,9 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
     private string? _lastArtworkKey;
     private string? _lastTrackIdentity;
 
+    /// <summary>Track we have already reported as having no cover, so seeks don't repeat it.</summary>
+    private string? _noArtLoggedForIdentity;
+
     public bool IsConnected => _client is { IsInitialized: true, IsDisposed: false };
 
     // Background reconnect. Bounded so a permanently-absent Discord doesn't retry
@@ -121,6 +124,8 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             if (!ok)
             {
                 Debug.WriteLine("[Discord] Initialize returned false.");
+                DebugLog.Write("Discord",
+                    "Could not open the Discord RPC pipe — Discord may not be running. Will retry.");
                 client.Dispose();
 
                 // Retry in the background. ConnectAsync is called exactly once,
@@ -138,6 +143,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             // drop could ever be recovered from — ScheduleReconnect became a permanent no-op.
             _reconnectAttempts = 0;
             Debug.WriteLine("[Discord] Connected.");
+            DebugLog.Write("Discord", "Rich Presence connected.");
             return true;
         }
         catch (Exception ex)
@@ -197,6 +203,15 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             {
                 _lastArtworkKey = artworkKey;
                 _lastTrackIdentity = identity;
+            }
+            else if (!string.Equals(_noArtLoggedForIdentity, identity, StringComparison.Ordinal))
+            {
+                // With no key the image is omitted and Discord falls back to the application
+                // icon — which is exactly what "I can't see album covers" looks like. Say so
+                // once per track; the Loon log line alongside it names the reason.
+                _noArtLoggedForIdentity = identity;
+                DebugLog.Write("Discord",
+                    $"Published \"{title}\" without a cover; Discord shows the app icon instead.");
             }
 
             var presence = new RichPresence

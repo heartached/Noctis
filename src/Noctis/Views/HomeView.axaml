@@ -111,10 +111,10 @@
                                                            VerticalAlignment="Center"
                                                            Opacity="0.2"
                                                            IsVisible="{Binding Track.AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                <Image Source="{Binding Track.AlbumArtworkPath, Converter={StaticResource ArtworkConverter}}"
-                                                       Stretch="UniformToFill"
-                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                       IsVisible="{Binding Track.AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                <controls:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}"
+                                                                      Stretch="UniformToFill"
+                                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                      IsVisible="{Binding Track.AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             </Panel>
                                         </Border>
                                         <TextBlock Grid.Column="1"
@@ -397,10 +397,10 @@
                                                 <TextBlock Text="&#x266A;" FontSize="16" Opacity="0.2"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                            IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                <Image Source="{Binding AlbumArtworkPath, Converter={StaticResource ArtworkConverter}}"
-                                                       Stretch="UniformToFill"
-                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                       IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                                      Stretch="UniformToFill"
+                                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                      IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             </Panel>
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
@@ -442,10 +442,10 @@
                                                 <TextBlock Text="&#x266A;" FontSize="16" Opacity="0.2"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                            IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                <Image Source="{Binding AlbumArtworkPath, Converter={StaticResource ArtworkConverter}}"
-                                                       Stretch="UniformToFill"
-                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                       IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                                      Stretch="UniformToFill"
+                                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                      IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             </Panel>
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
@@ -487,10 +487,10 @@
                                                 <TextBlock Text="&#x266A;" FontSize="16" Opacity="0.2"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                            IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                <Image Source="{Binding AlbumArtworkPath, Converter={StaticResource ArtworkConverter}}"
-                                                       Stretch="UniformToFill"
-                                                       RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                       IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
+                                                                      Stretch="UniformToFill"
+                                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                      IsVisible="{Binding AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             </Panel>
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">

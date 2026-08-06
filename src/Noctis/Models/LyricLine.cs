@@ -4,6 +4,19 @@ using Noctis.Services;
 namespace Noctis.Models;
 
 /// <summary>
+/// Which duet voice sings a line (iTunes/Gramophone ELRC "v1:"/"v2:"/"v3:" markers).
+/// Default covers unmarked lines AND "v1:" — with no opposing voice a lone v1 renders
+/// exactly like a plain line (Gramophone downgrades solitary Voice1 the same way).
+/// Voice2 right-aligns the line block; Group ("v3:", both singers) centers it.
+/// </summary>
+public enum LyricVoice
+{
+    Default,
+    Voice2,
+    Group,
+}
+
+/// <summary>
 /// Represents a single line of lyrics, optionally with a timestamp for synced (LRC) lyrics.
 /// </summary>
 public partial class LyricLine : ObservableObject
@@ -38,6 +51,9 @@ public partial class LyricLine : ObservableObject
 
     /// <summary>Whether this line is the intro placeholder ("...").</summary>
     public bool IsIntroPlaceholder { get; set; }
+
+    /// <summary>Duet voice for this line (Apple Music duet layout). Views bind through the LyricVoice* converters.</summary>
+    public LyricVoice Voice { get; set; }
 
     /// <summary>Whether these lyrics are synced (have timestamps).</summary>
     public bool IsSynced => Timestamp.HasValue;

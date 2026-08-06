@@ -1,0 +1,124 @@
+using System.Text;
+using Avalonia.Logging;
+
+namespace Noctis.Services;
+
+/// <summary>
+/// Mirrors Avalonia's own log stream — Warning and above — into
+/// <see cref="DebugLog"/> under a [UI] tag, then hands every call on to the sink
+/// LogToTrace installed, unchanged. Binding errors are the payoff: they are the
+/// usual trail behind "this control renders weird" reports, and they previously
+/// went only to the debugger's trace output, invisible in a user's Copy Logs.
+///
+/// They also repeat — once per recycled list container — so each distinct
+/// message is logged once and the total is capped; past the cap the bridge goes
+/// quiet for the session rather than eating the 500-line ring.
+/// </summary>
+internal sealed class AvaloniaLogBridge : ILogSink
+{
+    private const int MaxForwarded = 80;
+    private const int MaxDistinctTracked = 512;
+
+    private readonly ILogSink? _inner;
+    private readonly object _lock = new();
+    private readonly HashSet<string> _seen = new(StringComparer.Ordinal);
+    private int _forwarded;
+
+    public AvaloniaLogBridge(ILogSink? inner) => _inner = inner;
+
+    public bool IsEnabled(LogEventLevel level, string area)
+        => level >= LogEventLevel.Warning || (_inner?.IsEnabled(level, area) ?? false);
+
+    public void Log(LogEventLevel level, string area, object? source, string messageTemplate)
+        => Log(level, area, source, messageTemplate, Array.Empty<object?>());
+
+    public void Log(LogEventLevel level, string area, object? source, string messageTemplate,
+        params object?[] propertyValues)
+    {
+        if (level >= LogEventLevel.Warning)
+            Forward(level, area, source, Format(messageTemplate, propertyValues));
+
+        if (_inner != null && _inner.IsEnabled(level, area))
+            _inner.Log(level, area, source, messageTemplate, propertyValues);
+    }
+
+    private void Forward(LogEventLevel level, string area, object? source, string message)
+    {
+        // Errors always land; known-benign binding transients don't reach the
+        // user-facing log at all (they still reach the debugger trace unchanged).
+        if (level == LogEventLevel.Warning && IsKnownBenignBindingTransient(message))
+            return;
+
+        var line = source is null
+            ? $"{area} {level}: {message}"
+            : $"{area} {level}: {message} [{source.GetType().Name}]";
+
+        bool write, capNotice;
+        lock (_lock)
+        {
+            if (_forwarded >= MaxForwarded) return;
+            if (_seen.Count >= MaxDistinctTracked || !_seen.Add(line)) return;
+            _forwarded++;
+            write = true;
+            capNotice = _forwarded == MaxForwarded;
+        }
+
+        if (write)
+            DebugLog.Write("UI", line);
+        if (capNotice)
+            DebugLog.Write("UI", $"further Avalonia warnings suppressed after {MaxForwarded} for this session");
+    }
+
+    /// <summary>
+    /// Two binding-warning classes are structural noise, not bug trails, and they
+    /// used to fill the session log (and eat the 80-warning cap) at every startup:
+    ///
+    /// 1. View-model-to-view-model cast failures. A hosted sub-view (top bar,
+    ///    playback bar, the pre-warmed lyrics page, queue, mini player) briefly
+    ///    inherits its host's DataContext (MainWindowViewModel) in the instant
+    ///    between joining the tree and its own DataContext="{Binding ...}"
+    ///    resolving; every compiled binding logs one cast failure, then re-resolves
+    ///    against the right view model and works. A genuine model-type mismatch
+    ///    (Track vs Album) is NOT matched and still logs.
+    ///
+    /// 2. Chains failing at a null DataContext — recycled/detached list containers
+    ///    whose $parent[...].DataContext.* bindings evaluate while unparented.
+    ///
+    /// Both re-resolve on their own; neither has ever been actionable in a user
+    /// report. Everything still reaches the debugger's trace sink unchanged.
+    /// </summary>
+    internal static bool IsKnownBenignBindingTransient(string message)
+        => (message.Contains("Unable to cast object of type 'Noctis.ViewModels.", StringComparison.Ordinal)
+            && message.Contains("to type 'Noctis.ViewModels.", StringComparison.Ordinal))
+           || message.Contains("at DataContext: Value is null", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Fills an Avalonia message template's {Placeholder} slots positionally.
+    /// Good enough for log lines; unmatched braces pass through untouched.
+    /// </summary>
+    internal static string Format(string template, object?[] values)
+    {
+        if (values.Length == 0 || string.IsNullOrEmpty(template)) return template;
+
+        var sb = new StringBuilder(template.Length + 32);
+        var next = 0;
+        for (var i = 0; i < template.Length; i++)
+        {
+            var c = template[i];
+            if (c == '{')
+            {
+                var close = template.IndexOf('}', i + 1);
+                if (close > i + 1)
+                {
+                    sb.Append(next < values.Length
+                        ? values[next++]?.ToString() ?? "(null)"
+                        : template[i..(close + 1)]);
+                    i = close;
+                    continue;
+                }
+            }
+            sb.Append(c);
+        }
+        return sb.ToString();
+    }
+}

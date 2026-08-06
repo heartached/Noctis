@@ -75,7 +75,7 @@
                                             CommandParameter="{Binding}">
                                         <Button.ContextMenu>
                                             <ContextMenu DataContext="{Binding}">
-                                                <MenuItem Header="Choose from File…" Click="OnChangeArtistImageClick" />
+                                                <MenuItem Header="Choose from File" Click="OnChangeArtistImageClick" />
                                                 <MenuItem Header="Find Picture Online" Click="OnSearchArtistImageClick" />
                                                 <MenuItem Header="Remove Picture" Classes="danger" Click="OnRemoveArtistImageClick"
                                                           IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />

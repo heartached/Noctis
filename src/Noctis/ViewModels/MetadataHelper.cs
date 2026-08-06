@@ -130,11 +130,17 @@ public static class MetadataHelper
             autoMatch: App.Services!.GetService<AutoMatchCoordinator>());
 
         var window = new MetadataWindow(vm);
+        await vm.InitializeAsync(); // file reads stay off the UI thread; window opens fully populated
         await ShowDialogOwned(window);
     }
 
     public static async Task OpenMetadataWindow(Track track, bool albumScoped = false)
     {
+        // The metadata editor is file-backed end to end (TagLib reads, atomic
+        // file rewrites, sidecar renames) — nothing it does is meaningful for a
+        // media-server stream, so opening it on one is a no-op.
+        if (track.IsRemoteStream) return;
+
         var metadata = App.Services!.GetRequiredService<IMetadataService>();
         var library = App.Services!.GetRequiredService<ILibraryService>();
         var persistence = App.Services!.GetRequiredService<IPersistenceService>();
@@ -180,6 +186,7 @@ public static class MetadataHelper
         };
 
         var window = new MetadataWindow(vm);
+        await vm.InitializeAsync(); // file reads stay off the UI thread; window opens fully populated
         await ShowDialogOwned(window);
     }
 }

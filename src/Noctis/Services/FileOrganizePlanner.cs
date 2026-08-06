@@ -129,12 +129,28 @@ public static class FileOrganizePlanner
         return set.ToArray();
     }
 
+    // Windows reserved device names: unusable as a path component (bare or with
+    // an extension, e.g. "CON" or "CON.mp3") on NTFS or an SMB share backed by
+    // Windows — so checked regardless of host OS, like InvalidChars above.
+    private static readonly HashSet<string> ReservedNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    };
+
     private static string Sanitize(string segment)
     {
         var sb = new StringBuilder(segment.Length);
         foreach (var ch in segment)
             sb.Append(ch < 32 || Array.IndexOf(InvalidChars, ch) >= 0 ? '_' : ch);
         // Windows: a path component may not end with a space or dot.
-        return sb.ToString().Trim().TrimEnd('.', ' ').Trim();
+        var name = sb.ToString().Trim().TrimEnd('.', ' ').Trim();
+        // Reserved device names hide in the stem (text before the first dot).
+        var dot = name.IndexOf('.');
+        var stem = dot >= 0 ? name[..dot] : name;
+        if (ReservedNames.Contains(stem))
+            name = "_" + name;
+        return name;
     }
 }

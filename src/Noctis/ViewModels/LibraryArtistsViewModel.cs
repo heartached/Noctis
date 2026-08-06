@@ -148,6 +148,9 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         }
     }
 
+    // Guards a stale background rebuild against overwriting a newer one.
+    private int _rebuildGeneration;
+
     public void ApplyFilter(string query)
     {
         if (SearchText != query)
@@ -156,19 +159,41 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         _currentFilter = query;
         OnPropertyChanged(nameof(HasActiveFilter));
 
+        // Off-UI-thread rebuild via the same generation-guarded path as
+        // LibraryAlbumsViewModel.RebuildFilteredRows. The sort + row chunking is
+        // a full-library pass that used to run inline on the UI thread — on every
+        // LibraryUpdated while this view was current (scans, the merge-featured
+        // settings flip), stalling whatever animation was mid-flight. The grid
+        // keeps its previous rows for the few frames the fresh list takes.
+        var generation = Interlocked.Increment(ref _rebuildGeneration);
+        var artists = _allArtists;
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            var rows = BuildRows(artists, query);
+            if (Volatile.Read(ref _rebuildGeneration) == generation)
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (Volatile.Read(ref _rebuildGeneration) != generation) return;
+                    ArtistRows.ReplaceAll(rows);
+                });
+        });
+    }
+
+    private static List<ArtistRow> BuildRows(List<Artist> allArtists, string query)
+    {
         IEnumerable<Artist> filtered;
         if (!string.IsNullOrWhiteSpace(query))
         {
             var q = query.Trim();
             var qNoSpaces = RemoveWhitespace(q);
-            filtered = _allArtists
+            filtered = allArtists
                 .Where(a => MatchesSearch(a.Name, q, qNoSpaces))
                 .OrderBy(a => RankMatch(a.Name, q, qNoSpaces))
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
         else
         {
-            filtered = _allArtists.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
+            filtered = allArtists.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
 
         // Chunk into fixed-width rows so the outer ListBox can virtualize
@@ -184,7 +209,7 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
             row.Artists.Add(artist);
         }
 
-        ArtistRows.ReplaceAll(rows);
+        return rows;
     }
 
     partial void OnSearchTextChanged(string value)

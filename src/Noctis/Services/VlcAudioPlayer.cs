@@ -314,7 +314,12 @@ public class VlcAudioPlayer : IAudioPlayer
             var macLibPath = TryFindMacLibVlcPath();
             if (macLibPath != null)
             {
-                var pluginsPath = Path.Combine(Path.GetDirectoryName(macLibPath) ?? "", "plugins");
+                // Plugins live beside the dylibs (homebrew-style lib/plugins) or as
+                // a sibling of lib/ (VLC.app and our bundled Contents/MacOS/libvlc
+                // layout both use MacOS/{lib,plugins}) — probe both shapes.
+                var pluginsPath = Path.Combine(macLibPath, "plugins");
+                if (!Directory.Exists(pluginsPath))
+                    pluginsPath = Path.GetFullPath(Path.Combine(macLibPath, "..", "plugins"));
                 if (Directory.Exists(pluginsPath) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VLC_PLUGIN_PATH")))
                 {
                     // libvlc reads VLC_PLUGIN_PATH via libc getenv(), and on Unix
@@ -351,6 +356,14 @@ public class VlcAudioPlayer : IAudioPlayer
         //                           Xing header and builds an O(1) seek table on open,
         //                           fixing per-song variation in seek quality. Also needed
         //                           for AAC/M4A Lossless seek smoothness.
+        //                           NOT forced on Linux system-libvlc installs: distros
+        //                           split VLC's plugins into packages (Arch ships avformat
+        //                           only in the optional vlc-plugin-ffmpeg package), and
+        //                           forcing a demux module that isn't installed makes EVERY
+        //                           media open fail with "VLC is unable to open the MRL"
+        //                           even though the file exists (issue #26). The AppImage
+        //                           bundles the full plugin set and re-enables the flag via
+        //                           NOCTIS_BUNDLED_VLC=1 (see ShouldForceAvformatDemux).
         //   --aout=mmdevice: WASAPI shared-mode output, VLC's modern Windows
         //   backend. Replaces the legacy --aout=directsound path, whose
         //   DirectSound emulation underran on high-latency endpoints
@@ -398,13 +411,21 @@ public class VlcAudioPlayer : IAudioPlayer
             "--no-osd",
             "--no-spu",
             "--input-repeat=0",
-            "--demux=avformat",
             "--no-audio-time-stretch",
             $"--file-caching={cachingMs}",
             $"--disc-caching={cachingMs}",
             $"--live-caching={cachingMs}",
             $"--network-caching={cachingMs}",
         };
+        // See the --demux=avformat note above: only forced where the avformat
+        // plugin is guaranteed to exist (Windows/macOS payloads bundle it; the
+        // Linux AppImage's AppRun sets NOCTIS_BUNDLED_VLC=1). Plain Linux
+        // system-libvlc installs keep VLC's native demuxers so a split plugin
+        // set still plays.
+        if (ShouldForceAvformatDemux(
+                OperatingSystem.IsLinux(),
+                Environment.GetEnvironmentVariable("NOCTIS_BUNDLED_VLC")))
+            vlcArgs.Add("--demux=avformat");
         // The speex resampler module + its quality flag are not always present
         // in third-party VLC builds (notably the macOS VLC.app distribution).
         // mmdevice is Windows-only.
@@ -1755,25 +1776,33 @@ public class VlcAudioPlayer : IAudioPlayer
 
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            try { _playbackLock.Wait(); }
+            var prepareStart = Environment.TickCount64;
+            DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.DualPrepareStart", $"path={Path.GetFileName(normalizedPath)}, startMs={startPositionMs}");
+
+            if (_disposed || _currentMedia == null)
+                return;
+
+            // Parse OUTSIDE _playbackLock: the wait can block up to 8 s on slow media
+            // (NAS, spun-down HDD) and every other playback entry point queues behind
+            // the lock, so holding it here made Next/Resume/Stop wait out the parse.
+            // The skip token aborts the wait so a user skip isn't held up either.
+            CancellationToken cancel;
+            try { cancel = _skipCts.Token; }
             catch (ObjectDisposedException) { return; }
+
+            Media media;
+            try
+            {
+                media = new Media(_libVlc, normalizedPath, FromType.FromPath);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.DualPrepareFailed", ex.Message);
+                return;
+            }
 
             try
             {
-                var prepareStart = Environment.TickCount64;
-                DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.DualPrepareStart", $"path={Path.GetFileName(normalizedPath)}, startMs={startPositionMs}");
-
-                if (_disposed || _currentMedia == null)
-                    return;
-
-                if (_standbyPrepared &&
-                    string.Equals(_standbyPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
-                    _standbyStartPositionMs == startPositionMs)
-                    return;
-
-                ReleasePreparedNext();
-
-                var media = new Media(_libVlc, normalizedPath, FromType.FromPath);
                 if (_normalizationEnabled)
                 {
                     media.AddOption(":audio-replay-gain-mode=track");
@@ -1782,12 +1811,48 @@ public class VlcAudioPlayer : IAudioPlayer
                 }
 
                 var parseTask = media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
-                if (!parseTask.Wait(8000) || parseTask.Result != MediaParsedStatus.Done)
+                bool parsed;
+                try
+                {
+                    parsed = parseTask.Wait(8000, cancel) && parseTask.Result == MediaParsedStatus.Done;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Superseded by a skip/track change — abort quietly.
+                    media.Dispose();
+                    return;
+                }
+                if (!parsed)
                 {
                     media.Dispose();
                     DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.DualPrepareFailed", $"path={Path.GetFileName(normalizedPath)}");
                     return;
                 }
+            }
+            catch (Exception ex)
+            {
+                media.Dispose();
+                DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.DualPrepareFailed", ex.Message);
+                return;
+            }
+
+            try { _playbackLock.Wait(); }
+            catch (ObjectDisposedException) { media.Dispose(); return; }
+
+            try
+            {
+                // Re-validate under the lock — a Play/Stop or a duplicate prepare may
+                // have superseded this parse while it ran unlocked.
+                if (_disposed || _currentMedia == null || cancel.IsCancellationRequested ||
+                    (_standbyPrepared &&
+                     string.Equals(_standbyPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
+                     _standbyStartPositionMs == startPositionMs))
+                {
+                    media.Dispose();
+                    return;
+                }
+
+                ReleasePreparedNext();
 
                 _standbyMedia = media;
                 _standbyPath = normalizedPath;
@@ -1847,17 +1912,29 @@ public class VlcAudioPlayer : IAudioPlayer
 
     // ── Playback control ────────────────────────────────────────
 
+    /// <summary>
+    /// True when the path is a remote http(s) stream (media-server track) rather
+    /// than a local file. Remote streams open with FromType.FromLocation and parse
+    /// over the network; they never use the standby/crossfade machinery (which is
+    /// built around normalized local paths and pre-parsed local media). Stream URLs
+    /// can embed auth tokens, so they must never be logged or shown verbatim.
+    /// </summary>
+    internal static bool IsRemoteStreamPath(string path) =>
+        path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
     public void Play(string filePath)
     {
         if (_disposed || string.IsNullOrWhiteSpace(filePath)) return;
 
-        if (!File.Exists(filePath))
+        if (!IsRemoteStreamPath(filePath) && !File.Exists(filePath))
         {
             PlaybackError?.Invoke(this, $"File not found: {filePath}");
             return;
         }
 
-        DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play", $"path={Path.GetFileName(filePath)}");
+        DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play",
+            $"path={(IsRemoteStreamPath(filePath) ? "<remote stream>" : Path.GetFileName(filePath))}");
         _keepAlive?.NotifyActivity();
         _currentMediaPath = filePath;
 
@@ -1928,10 +2005,14 @@ public class VlcAudioPlayer : IAudioPlayer
 
             var hadPreviousMedia = _currentMedia != null;
             var targetVolume = GetTargetVlcVolume();
+            // Remote streams take the plain open path: the standby/crossfade helpers
+            // compare Path.GetFullPath-normalized local paths and the standby player
+            // is never prepared for URLs (PrepareNext rejects them).
+            var isRemote = IsRemoteStreamPath(filePath);
             // Crossfade needs two simultaneous streams; the WASAPI callback sinks
             // are single-stream, so disable the transition fade on those paths.
             var canTransitionFade = _crossfadeEnabled && hadPreviousMedia && !_player.Mute &&
-                                    _wasapiOut == null && !_exclusiveModeEnabled && !startPaused;
+                                    _wasapiOut == null && !_exclusiveModeEnabled && !startPaused && !isRemote;
             var fadeOutMs = canTransitionFade && _player.IsPlaying
                 ? Math.Clamp(_crossfadeDurationMs / 2, 100, 6000)
                 : 0;
@@ -1966,7 +2047,7 @@ public class VlcAudioPlayer : IAudioPlayer
             // Gapless: no crossfade, but the next track was prepared on the
             // standby player — hand off to it instantly at full volume instead
             // of the audible stop/parse/start path.
-            if (!canTransitionFade && !startPaused && _gaplessEnabled && _standbyPrepared && hadPreviousMedia &&
+            if (!canTransitionFade && !startPaused && !isRemote && _gaplessEnabled && _standbyPrepared && hadPreviousMedia &&
                 TryStartPreparedAutoMix(filePath, targetVolume, sessionId, cancel, instantHandoff: true))
             {
                 Interlocked.Exchange(ref _pendingSeekMs, -1);
@@ -1979,14 +2060,16 @@ public class VlcAudioPlayer : IAudioPlayer
             // 1. Create and parse the new media before fading/stopping the old one.
             // This keeps AutoMix transitions clean: the next track is already picked
             // and decoder-ready before the audible handoff starts.
-            var media = new Media(_libVlc, filePath, FromType.FromPath);
+            // Remote media-server streams are locations, not paths, and their
+            // headers must be parsed over the network.
+            var media = new Media(_libVlc, filePath, isRemote ? FromType.FromLocation : FromType.FromPath);
 
             // Parse the file header synchronously. This reads container
             // metadata (codec, sample rate, duration, channel layout).
             // Without this, M4A/ALAC/AAC can fail to decode.
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancel);
             cts.CancelAfter(8000);
-            var parseTask = media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
+            var parseTask = media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
             try
             {
                 parseTask.Wait(cts.Token);
@@ -2001,9 +2084,12 @@ public class VlcAudioPlayer : IAudioPlayer
             var parseResult = parseTask.Result;
             if (parseResult != MediaParsedStatus.Done)
             {
-                // Parsing failed or timed out — file may be corrupted
+                // Parsing failed or timed out — file may be corrupted. Stream URLs
+                // can embed auth tokens, so never echo them into the error surface.
                 media.Dispose();
-                PlaybackError?.Invoke(this, $"Could not parse: {filePath}");
+                PlaybackError?.Invoke(this, isRemote
+                    ? "Could not open the remote stream. Check the server connection."
+                    : $"Could not parse: {filePath}");
                 return;
             }
 
@@ -2061,8 +2147,13 @@ public class VlcAudioPlayer : IAudioPlayer
             if (fadeInMs > 0)
             {
                 // Single-player approximation of crossfade: fade out old track, then fade in new one.
+                // NOT to targetVolume: on the OS-session path _player.Volume IS the shared
+                // mmdevice session and targetVolume is 100 there, so the incoming track would
+                // swell to FULL session volume and only snap down to the slider level when the
+                // reassert below lands. Fade to the session-open equivalent of the user's level
+                // instead (on non-session paths GetSessionOpenVolume == targetVolume already).
                 SetPlayerVolumeGuarded(_player, 0);
-                FadePlayerVolumeBlocking(0, targetVolume, fadeInMs, cancel);
+                FadePlayerVolumeBlocking(0, GetSessionOpenVolume(), fadeInMs, cancel);
             }
             else if (ActiveCallbackSink != null)
             {
@@ -2249,6 +2340,9 @@ public class VlcAudioPlayer : IAudioPlayer
             if (cancel.IsCancellationRequested || _disposed)
             {
                 SetPlayerVolumeGuarded(_player, finalVolume);
+                // Cancel may have no follow-up Play(): disarm the transition guard so
+                // the volume setters aren't swallowed until the next track change.
+                _transitionInFlight = false;
                 ReleasePreparedNext();
                 return true;
             }
@@ -2264,6 +2358,11 @@ public class VlcAudioPlayer : IAudioPlayer
             _standbyStartPositionMs = -1;
             Interlocked.Exchange(ref _standbyPreparedTicksUtc, 0);
             _standbyPrepared = false;
+            // The outgoing track can hit its real end during warmup/fade (gapless hands
+            // off ~0.3 s before the end) and arm the grace deadline with the incoming
+            // session's id — clear it post-swap like the sequential/overlap paths do,
+            // or TrackEnded fires 1.2 s in and double-advances the queue.
+            ResetEndReachedPending();
 
             // Crossfade just wrote finalVolume directly to _player.Volume — sync
             // the throttle deadband baseline so the next slider write isn't
@@ -2376,6 +2475,12 @@ public class VlcAudioPlayer : IAudioPlayer
             if (_disposed || cancel.IsCancellationRequested)
             {
                 sessionVolume.SetLevel(userMilli / 1000.0); // a new Play() cancelled us; restore + let it take over
+                // The cancel may come from pause/seek/settings with NO follow-up Play():
+                // resync the ramp baseline to the restore (the cancelled fade left it at 0,
+                // which the seek duck would later "restore" as silence) and disarm the
+                // transition guard so the volume setters aren't swallowed until next track.
+                Volatile.Write(ref _rampCurrentMilli, userMilli);
+                _transitionInFlight = false;
                 ReleasePreparedNext();
                 return true;
             }
@@ -2559,6 +2664,10 @@ public class VlcAudioPlayer : IAudioPlayer
                 if (_disposed || cancel.IsCancellationRequested)
                 {
                     sessionVolume.SetLevel(userMilli / 1000.0);
+                    // Cancel may have no follow-up Play(): resync the ramp baseline
+                    // (parked at blendMilli above) and disarm the transition guard.
+                    Volatile.Write(ref _rampCurrentMilli, userMilli);
+                    _transitionInFlight = false;
                     ReleasePreparedNext();
                     return true;
                 }
@@ -2947,13 +3056,34 @@ public class VlcAudioPlayer : IAudioPlayer
         CancelSkipCts();
         CancelPreparedNext();
 
-        if (_player.IsPlaying)
+        // Queued to the ThreadPool + serialized by _playbackLock like every other
+        // playback entry point (Play, Stop, Resume, PrepareNext). Inline, a pause
+        // landing while a transition worker held the lock read the pre-swap _player
+        // and was then overwritten by the swap's _isPaused = false — audio kept
+        // playing while the UI showed paused. The CancelSkipCts above makes any
+        // in-flight fade bail within one step, so the lock wait stays short.
+        ThreadPool.QueueUserWorkItem(_ =>
         {
-            ResetEndReachedPending();
-            _player.Pause();
-            _isPaused = true;
-            _positionTimer.Stop();
-        }
+            try { _playbackLock.Wait(); }
+            catch (ObjectDisposedException) { return; }
+
+            try
+            {
+                if (_disposed) return;
+                if (_player.IsPlaying)
+                {
+                    ResetEndReachedPending();
+                    _player.Pause();
+                    _isPaused = true;
+                    _positionTimer.Stop();
+                }
+            }
+            catch (ObjectDisposedException) { /* disposed mid-pause */ }
+            finally
+            {
+                try { _playbackLock.Release(); } catch (ObjectDisposedException) { }
+            }
+        });
     }
 
     public void Resume()
@@ -3140,6 +3270,19 @@ public class VlcAudioPlayer : IAudioPlayer
         }
 
         var sessionId = CurrentSessionId;
+        if (_transitionInFlight)
+        {
+            // A crossfade/AutoMix transition is committing: this EndReached is the
+            // OUTGOING track reaching its natural end mid-fade (sender is still the
+            // pre-swap _player), but sessionId already names the INCOMING track —
+            // PlayInternal bumps it before the transition worker runs. Arming the
+            // grace deadline here would fire TrackEnded for the new session ~1.2 s
+            // later and double-advance the queue (a track gets skipped). The
+            // transition owns the advance; every cancel/fault path clears the flag.
+            DebugLogger.Info(DebugLogger.Category.Playback, "VLC.EndReached.IgnoredTransition", $"session={sessionId}");
+            return;
+        }
+
         var elapsedSinceStartMs = (DateTime.UtcNow.Ticks - Interlocked.Read(ref _lastPlayStartTicksUtc)) / TimeSpan.TicksPerMillisecond;
         if (elapsedSinceStartMs is >= 0 and < 500)
         {
@@ -3711,6 +3854,9 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         var w = _vlcDiagWriter;
         if (w == null) return;
+        // LibVLC quotes the full MRL in many of its lines; stream URLs embed auth
+        // tokens, so scrub query strings before anything lands in the diag file.
+        line = LogRedaction.Scrub(line);
         var ms = (Stopwatch.GetTimestamp() - _vlcDiagStartTicks) * 1000L / Stopwatch.Frequency;
         lock (_vlcDiagLock)
         {
@@ -3742,10 +3888,18 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         if (!OperatingSystem.IsMacOS()) return null;
 
-        // Standard VLC.app install (covers `brew install --cask vlc` and manual installs).
+        // Standard VLC.app install (covers `brew install --cask vlc` and manual
+        // installs) stays first: a user-installed VLC is newer than our bundle.
+        // Second choice is the libvlc payload the CI .app packaging step bundles
+        // at Contents/MacOS/libvlc (dylibs + plugins/) — the VideoLAN.LibVLC.Mac
+        // NuGet was dropped because its 3.0.21 pin never existed on nuget.org
+        // and restore floated to an abandoned 2019 payload (AUDIT H7/H8).
+        // The bundle mirrors VLC.app's lib/ + plugins/ sibling layout because the
+        // plugins' install names reference libvlccore via @loader_path/../lib/.
         string[] candidates =
         {
             "/Applications/VLC.app/Contents/MacOS/lib",
+            Path.Combine(AppContext.BaseDirectory, "libvlc", "lib"),
             "/opt/homebrew/lib",
             "/usr/local/lib",
         };
@@ -3758,6 +3912,19 @@ public class VlcAudioPlayer : IAudioPlayer
         return null;
     }
 
+    /// <summary>
+    /// Whether to pass --demux=avformat (the VBR-MP3/M4A O(1)-seek fix). True
+    /// everywhere the avformat plugin is guaranteed to exist: Windows/macOS ship
+    /// VideoLAN's full plugin payload, and the Linux AppImage bundles it and
+    /// says so via NOCTIS_BUNDLED_VLC=1. Plain Linux system libvlc must NOT
+    /// force it: distros split the ffmpeg plugins into optional packages (Arch:
+    /// vlc-plugin-ffmpeg), and forcing an uninstalled demux module fails every
+    /// media open with "VLC is unable to open the MRL" (issue #26).
+    /// Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal static bool ShouldForceAvformatDemux(bool isLinux, string? bundledVlcEnv)
+        => !isLinux || bundledVlcEnv == "1";
+
     private static string BuildLibVlcMissingMessage()
     {
         if (OperatingSystem.IsLinux())
@@ -3765,7 +3932,9 @@ public class VlcAudioPlayer : IAudioPlayer
             return "libvlc is required but was not found. Install it with your package manager:\n" +
                    "  Debian/Ubuntu:  sudo apt install vlc\n" +
                    "  Fedora:         sudo dnf install vlc\n" +
-                   "  Arch:           sudo pacman -S vlc";
+                   "  Arch:           sudo pacman -S vlc\n" +
+                   "(On Arch, VLC's plugins are split into separate packages — if playback " +
+                   "errors persist after installing, add vlc-plugins-all.)";
         }
         if (OperatingSystem.IsMacOS())
         {

@@ -20,6 +20,14 @@
         <conv:OpacityFloorConverter x:Key="OpacityFloor"/>
         <conv:DoubleScaleConverter x:Key="FontScale"/>
 
+        <!-- Duet layout (ELRC v1:/v2:/v3: voice markers) — panel copy of the lyrics
+             page keys; keep in sync. -->
+        <conv:LyricVoiceToAlignmentConverter x:Key="VoiceAlign"/>
+        <conv:LyricVoiceToTextAlignmentConverter x:Key="VoiceTextAlign"/>
+        <conv:LyricVoiceToItemsAlignmentConverter x:Key="VoiceItemsAlign"/>
+        <conv:LyricVoiceToTransformOriginConverter x:Key="VoiceOrigin"/>
+        <conv:DuetMinWidthConverter x:Key="DuetMinWidth"/>
+
         <!-- Shared karaoke word cell (glow / dimmed base / gradient sweep), used by the
              main word layer and the background-vocal (adlib) layer below it. Panel copy
              of the lyrics page template (smaller glow headroom). -->
@@ -208,7 +216,13 @@
                         <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
                     </Image.RenderTransform>
                 </Image>
-                <controls:CachedImage SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}" ClearOnSourceChange="False"
+                <!-- DataContext narrows to the Track (null while nothing plays): binding
+                     SourcePath straight through Player.CurrentTrack.AlbumArtworkPath broke
+                     mid-chain whenever CurrentTrack was null and logged a binding warning
+                     at every startup. A null DataContext is silently "no value". -->
+                <controls:CachedImage DataContext="{Binding Player.CurrentTrack}"
+                                      x:DataType="m:Track"
+                                      SourcePath="{Binding AlbumArtworkPath}" ClearOnSourceChange="False"
                                       DecodeWidth="500"
                                       Stretch="UniformToFill"
                                       RenderOptions.BitmapInterpolationMode="HighQuality">
@@ -256,6 +270,11 @@
                           VerticalScrollBarVisibility="Hidden"
                           HorizontalScrollBarVisibility="Disabled"
                           Padding="24,0,24,0">
+                <!-- Scroll content = lyric lines + the Written-By footer (mirrors the
+                     lyrics page). The ItemsControl must stay the FIRST child with
+                     nothing above it: the panel's anchor math uses item-panel
+                     coordinates directly as extent-space offsets. -->
+                <StackPanel ClipToBounds="False">
                 <!-- FontSize here is inherited by the line and karaoke TextBlocks.
                      MaxWidth bounds the wrap width explicitly (as the lyrics page
                      does) — the ScrollViewer's padding is not subtracted from the
@@ -270,6 +289,14 @@
                               MaxWidth="292"
                               ClipToBounds="False"
                               HorizontalAlignment="Left">
+                    <!-- Duet files pin the column to full MaxWidth so voice-2 lines
+                         right-align against a stable edge (mirrors the lyrics page). -->
+                    <ItemsControl.MinWidth>
+                        <MultiBinding Converter="{StaticResource DuetMinWidth}">
+                            <Binding Path="HasDuetLines"/>
+                            <Binding Path="$self.MaxWidth"/>
+                        </MultiBinding>
+                    </ItemsControl.MinWidth>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="m:LyricLine">
                             <Button Background="Transparent"
@@ -279,7 +306,8 @@
                                     Padding="0"
                                     Margin="0,14"
                                     MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
-                                    HorizontalAlignment="Left"
+                                    HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                    RenderTransformOrigin="{Binding Voice, Converter={StaticResource VoiceOrigin}}"
                                     HorizontalContentAlignment="Left"
                                     Cursor="Hand"
                                     IsHitTestVisible="{Binding IsClickable}"
@@ -288,13 +316,14 @@
                                     Effect="{Binding BlurRadius, Converter={StaticResource BlurToEffect}}">
                                 <StackPanel HorizontalAlignment="Left"
                                             MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
-                                <Panel HorizontalAlignment="Left">
+                                <Panel HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}">
                                     <!-- Plain text layer (lines without word timings) -->
                                     <TextBlock Text="{Binding Text}"
                                                Classes="panel-lyric-line"
                                                FontWeight="Bold"
                                                Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
                                                HorizontalAlignment="Left"
+                                               TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
                                                MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                IsVisible="{Binding ShowLineText}"
@@ -318,7 +347,7 @@
                                         </ItemsControl.Transitions>
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <WrapPanel Orientation="Horizontal"/>
+                                                <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
@@ -347,7 +376,7 @@
                                               Classes.active="{Binding IsActive}"
                                               IsVisible="{Binding ShowBackgroundWords}"
                                               Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
-                                              HorizontalAlignment="Left"
+                                              HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
                                               ClipToBounds="False"
                                               Margin="0,4,0,0"
                                               FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
@@ -360,7 +389,7 @@
                                     </ItemsControl.Transitions>
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <WrapPanel Orientation="Horizontal"/>
+                                            <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                 </ItemsControl>
@@ -369,6 +398,20 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <!-- "Written By" credit — local copy of the lyrics page's footer at
+                     panel scale. Collapses (no reserved space) when WrittenByText is
+                     empty; never part of the line collection, so line indices and
+                     the active-line anchor never see it. -->
+                <!-- 1px optical inset — panel-scale copy of the page footer's
+                     bearing compensation (see LyricsView WrittenByFooter). -->
+                <TextBlock FontSize="12"
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Left"
+                           MaxWidth="292"
+                           Margin="1,24,0,10"
+                           IsVisible="{Binding WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="Written By: " FontWeight="SemiBold" Foreground="{Binding LyricsSecondaryFg}"/><Run Text="{Binding WrittenByText}" Foreground="{Binding LyricsSubtleFg}"/></TextBlock>
+                </StackPanel>
             </ScrollViewer>
         </Border>
     </Grid>

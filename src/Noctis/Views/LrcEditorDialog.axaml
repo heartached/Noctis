@@ -142,7 +142,7 @@
                                 </Button>
 
                                 <TextBlock Grid.Column="1"
-                                           Text="{Binding Text}"
+                                           Text="{Binding DisplayText}"
                                            FontSize="13"
                                            VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"

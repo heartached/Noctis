@@ -43,30 +43,40 @@ public partial class AddSongsDialog : Window
     /// titles ellipsize while the badge keeps hugging the title (Auto,Auto columns
     /// measure text unconstrained, which otherwise overflows the row).
     /// </summary>
+    /// <summary>Child lookups for <see cref="OnTitleCellLayoutUpdated"/>, resolved once
+    /// per cell and stashed in Tag: LayoutUpdated fires after EVERY window layout pass,
+    /// and a template cell's children never change (recycling reuses the same Grid).</summary>
+    private sealed record TitleCellChildren(TextBlock Title, Border? ExplicitBadge);
+
     private void OnTitleCellLayoutUpdated(object? sender, EventArgs e)
     {
         if (sender is not Grid titleCell)
             return;
 
-        var title = titleCell.Children.OfType<TextBlock>().FirstOrDefault();
-        if (title == null)
-            return;
+        if (titleCell.Tag is not TitleCellChildren children)
+        {
+            var title = titleCell.Children.OfType<TextBlock>().FirstOrDefault();
+            if (title == null)
+                return;
 
-        var explicitBadge = titleCell.Children.OfType<Border>().FirstOrDefault();
+            children = new TitleCellChildren(title, titleCell.Children.OfType<Border>().FirstOrDefault());
+            titleCell.Tag = children;
+        }
+
         var reservedBadgeWidth = 0.0;
 
-        if (explicitBadge?.IsVisible == true)
+        if (children.ExplicitBadge?.IsVisible == true)
         {
-            var badgeMargin = explicitBadge.Margin;
-            var badgeWidth = explicitBadge.Bounds.Width > 0
-                ? explicitBadge.Bounds.Width
-                : explicitBadge.DesiredSize.Width;
+            var badgeMargin = children.ExplicitBadge.Margin;
+            var badgeWidth = children.ExplicitBadge.Bounds.Width > 0
+                ? children.ExplicitBadge.Bounds.Width
+                : children.ExplicitBadge.DesiredSize.Width;
             reservedBadgeWidth = badgeWidth + badgeMargin.Left + badgeMargin.Right;
         }
 
         var maxTitleWidth = Math.Max(0, titleCell.Bounds.Width - reservedBadgeWidth);
-        if (Math.Abs(title.MaxWidth - maxTitleWidth) > 0.5)
-            title.MaxWidth = maxTitleWidth;
+        if (Math.Abs(children.Title.MaxWidth - maxTitleWidth) > 0.5)
+            children.Title.MaxWidth = maxTitleWidth;
     }
 
     private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)

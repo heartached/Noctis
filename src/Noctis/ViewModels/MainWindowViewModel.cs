@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Loon;
+using Noctis.Services.MediaServer;
 
 namespace Noctis.ViewModels;
 
@@ -55,6 +56,33 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void CloseSettings() => IsSettingsModalOpen = false;
 
+    // The modal fully covers the section beneath it, so that section counts as
+    // hidden while it is open: settings flips that rebuild library views (Merge
+    // Featured, Collapse Album Editions) used to rebuild the covered grid on the
+    // UI thread mid-click, janking the very toggle animation that triggered them.
+    partial void OnIsSettingsModalOpenChanged(bool value) => UpdateSectionActiveFlags();
+
+    /// <summary>
+    /// A section VM is "active" only while it is the current view AND not covered
+    /// by the Settings modal. Cover Flow is long-lived and subscribes to queue
+    /// changes in its constructor, so it rebuilt ~60 bound properties on every
+    /// queue mutation even while hidden; the big library list VMs each rebuilt
+    /// their full contents on every LibraryUpdated (fired every ~1.5 s during a
+    /// scan). Inactive VMs just mark dirty and catch up once when they become
+    /// current (or uncovered) again.
+    /// </summary>
+    private void UpdateSectionActiveFlags()
+    {
+        var current = IsSettingsModalOpen ? null : CurrentView;
+        _homeVm.IsActive = ReferenceEquals(current, _homeVm);
+        _coverFlowVm.IsActive = ReferenceEquals(current, _coverFlowVm);
+        _songsVm.IsActive = ReferenceEquals(current, _songsVm);
+        _albumsVm.IsActive = ReferenceEquals(current, _albumsVm);
+        _artistsVm.IsActive = ReferenceEquals(current, _artistsVm);
+        _foldersVm.IsActive = ReferenceEquals(current, _foldersVm);
+        _favoritesVm.IsActive = ReferenceEquals(current, _favoritesVm);
+    }
+
     // ── Debug panel ──
     [ObservableProperty] private bool _isDebugPanelVisible;
     private DebugPanelViewModel? _debugPanelVm;
@@ -86,6 +114,21 @@ public partial class MainWindowViewModel : ViewModelBase
     public SettingsViewModel Settings { get; }
     public LyricsViewModel Lyrics => _lyricsVm;
 
+    private MiniPlayerViewModel? _miniPlayerVm;
+
+    /// <summary>
+    /// The mini player's ViewModel (shares the always-alive player/lyrics/settings VMs
+    /// and the library for its search layer). A single cached instance: it subscribes
+    /// to the queue/lyrics collections, so per-open instances would pin themselves via
+    /// those handlers. Each open starts with the drawer layers closed.
+    /// </summary>
+    public MiniPlayerViewModel CreateMiniPlayerViewModel()
+    {
+        _miniPlayerVm ??= new MiniPlayerViewModel(Player, _lyricsVm, Settings, _library);
+        _miniPlayerVm.Drawer = MiniDrawer.None;
+        return _miniPlayerVm;
+    }
+
     // ── Content area ──
 
     /// <summary>The ViewModel currently displayed in the main content area (Zone C).</summary>
@@ -108,7 +151,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // ── Sidebar visibility ──
 
-    /// <summary>Whether the sidebar is hidden (toggled from lyrics view).</summary>
+    /// <summary>Whether the sidebar is hidden. Driven by the shell: auto-hidden while
+    /// the lyrics page is up in fullscreen, restored when either condition ends.</summary>
     [ObservableProperty] private bool _isSidebarHidden;
 
     [RelayCommand]
@@ -159,6 +203,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly LibraryPlaylistsViewModel _playlistsVm;
     private readonly FavoritesViewModel _favoritesVm;
     private readonly LibraryFoldersViewModel _foldersVm;
+    private readonly ServerViewModel _serverVm;
 
     private readonly QueueViewModel _queueVm;
     private readonly LyricsViewModel _lyricsVm;
@@ -193,7 +238,8 @@ public partial class MainWindowViewModel : ViewModelBase
         LoonClient loon,
         ILrcLibService lrcLib,
         INetEaseService netEase,
-        IPlayHistoryService playHistory)
+        IPlayHistoryService playHistory,
+        IMediaServerService mediaServer)
     {
         _library = library;
         _playHistory = playHistory;
@@ -211,7 +257,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Sidebar = new SidebarViewModel(persistence, library);
         TopBar = new TopBarViewModel();
         Sidebar.TopBar = TopBar;
-        Settings = new SettingsViewModel(persistence, library, playHistory);
+        Settings = new SettingsViewModel(persistence, library, playHistory, mediaServer);
         Settings.SetAudioPlayer(audioPlayer);
         Settings.SetPlayer(Player);
         Player.SetSettingsViewModel(Settings);
@@ -243,14 +289,28 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
         // Create content ViewModels
+        _serverVm = new ServerViewModel(mediaServer, Player);
+        // The Server entry only exists in the rail while a server is configured;
+        // hydration (Settings.LoadAsync), Connect and Disconnect all raise this.
+        Settings.MediaServerConnectionChanged += (_, _) =>
+        {
+            var configured = mediaServer.IsConfigured;
+            Sidebar.SetServerSectionVisible(configured);
+            if (!configured && ReferenceEquals(CurrentView, _serverVm))
+                Navigate("home");
+        };
         _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService, playHistory);
-        _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence);
+        _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence, Settings);
         _albumsVm = new LibraryAlbumsViewModel(library, Player, Sidebar, Settings);
         // Keep the top-bar dropdown labels in sync with the Albums grid filters/sort.
         _albumsVm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumSortLabel))
                 TopBar.AlbumSortLabel = _albumsVm.AlbumSortLabel;
+            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumSortMode))
+                TopBar.AlbumSortMode = _albumsVm.AlbumSortMode;
+            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.AlbumSortAscending))
+                TopBar.AlbumSortAscending = _albumsVm.AlbumSortAscending;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.ReleaseTypeFilterLabel))
                 TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.QualityFilterLabel))
@@ -343,6 +403,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Wire up search
         TopBar.SearchTextChanged += OnSearchTextChanged;
+        TopBar.HomeSearchRedirectRequested += OnHomeSearchRedirectRequested;
 
         // Wire up album detail navigation from albums view
         _albumsVm.AlbumOpened += OnAlbumOpened;
@@ -375,6 +436,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Wire up Search Lyrics action on ViewModels with track context menus
         _homeVm.SetSearchLyricsAction(SearchLyricsForTrack);
+        _albumsVm.SetSearchLyricsAction(SearchLyricsForTrack);
         _songsVm.SetSearchLyricsAction(SearchLyricsForTrack);
         _foldersVm.SetSearchLyricsAction(SearchLyricsForTrack);
         Player.SetSearchLyricsAction(SearchLyricsForTrack);
@@ -917,7 +979,9 @@ public partial class MainWindowViewModel : ViewModelBase
             _homeVm.Refresh();
             _favoritesVm.Refresh();
             Settings.RefreshLibraryStats();
-            Settings.RefreshStorageInfo();
+            // Same blocking walk as the navigation path above; a drop-import already
+            // has the user waiting, so don't add the artwork stat pass to the UI thread.
+            _ = Settings.RefreshStorageInfoAsync();
 
             // The relocation into the managed root is otherwise invisible — the
             // dropped file just vanishes from its source folder — so say where it
@@ -1067,18 +1131,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnCurrentViewChanged(ViewModelBase? oldValue, ViewModelBase newValue)
     {
-        // Cover Flow is long-lived and subscribes to queue changes in its constructor,
-        // so it rebuilt ~60 bound properties on every queue mutation even while the user
-        // was on Songs or Settings. Gate it on being the visible view.
-        _coverFlowVm.IsActive = ReferenceEquals(newValue, _coverFlowVm);
-
-        // Same gating for the big library list VMs: each rebuilt its full contents on
-        // every LibraryUpdated (fired every ~1.5 s during a scan) even while hidden.
-        // Hidden VMs now just mark dirty and catch up once when they become current.
-        _songsVm.IsActive = ReferenceEquals(newValue, _songsVm);
-        _albumsVm.IsActive = ReferenceEquals(newValue, _albumsVm);
-        _artistsVm.IsActive = ReferenceEquals(newValue, _artistsVm);
-        _foldersVm.IsActive = ReferenceEquals(newValue, _foldersVm);
+        UpdateSectionActiveFlags();
 
         var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
         var leavingLyrics = ReferenceEquals(oldValue, _lyricsVm) && !enteringLyrics;
@@ -1163,6 +1216,15 @@ public partial class MainWindowViewModel : ViewModelBase
         if (ReferenceEquals(CurrentView, _albumsVm) && _albumsVm.IsArtistFiltered)
         {
             TopBar.ShowBackButton("Back", GoBackInHistoryCommand, _albumsVm.HeaderText);
+            return;
+        }
+
+        if (ReferenceEquals(CurrentView, _lyricsVm))
+        {
+            // The top bar is hidden on the lyrics page, so this only arms the
+            // sidebar's back chevron — same exit path as the playbar's lyrics toggle
+            // (history pop, or the pre-lyrics section when history is empty).
+            TopBar.ShowBackButton("Back", ToggleLyricsCommand);
             return;
         }
 
@@ -1416,6 +1478,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return GetSectionBackButtonText("lyrics");
         if (ReferenceEquals(view, _statisticsVm))
             return GetSectionBackButtonText("statistics");
+        if (ReferenceEquals(view, _serverVm))
+            return GetSectionBackButtonText("server");
         if (ReferenceEquals(view, Settings))
             return GetSectionBackButtonText("settings");
         if (view is AlbumDetailViewModel)
@@ -1470,6 +1534,8 @@ public partial class MainWindowViewModel : ViewModelBase
             return "lyrics";
         if (ReferenceEquals(view, _statisticsVm))
             return "statistics";
+        if (ReferenceEquals(view, _serverVm))
+            return "server";
         if (ReferenceEquals(view, Settings))
             return "settings";
 
@@ -1524,6 +1590,7 @@ public partial class MainWindowViewModel : ViewModelBase
                || ReferenceEquals(view, _lyricsVm)
                || ReferenceEquals(view, _statisticsVm)
                || ReferenceEquals(view, _coverFlowVm)
+               || ReferenceEquals(view, _serverVm)
                || ReferenceEquals(view, Settings);
     }
 
@@ -1600,6 +1667,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 "statistics" => RefreshAndReturnStatistics(_statisticsVm),
                 "queue" => _queueVm,
                 "lyrics" => EnsureLyricsAndReturn(_lyricsVm),
+                "server" => RefreshAndReturnServer(_serverVm),
                 "settings" => RefreshAndReturnSettings(),
                 _ when key.StartsWith("playlist:") => CreatePlaylistView(key),
                 _ => _homeVm
@@ -1637,6 +1705,7 @@ public partial class MainWindowViewModel : ViewModelBase
             "statistics" => "Statistics",
             "queue" => "Queue",
             "lyrics" => "Lyrics",
+            "server" => "Server",
             "settings" => "Settings",
             _ when key.StartsWith("playlist:") => "Playlist",
             _ => "Library"
@@ -1695,6 +1764,12 @@ public partial class MainWindowViewModel : ViewModelBase
         return vm;
     }
 
+    private ServerViewModel RefreshAndReturnServer(ServerViewModel vm)
+    {
+        vm.OnNavigatedTo();
+        return vm;
+    }
+
     private LibrarySongsViewModel RefreshAndReturnSongs(LibrarySongsViewModel vm)
     {
         vm.Refresh();
@@ -1723,26 +1798,19 @@ public partial class MainWindowViewModel : ViewModelBase
     private SettingsViewModel RefreshAndReturnSettings()
     {
         Settings.RefreshLibraryStats();
-        Settings.RefreshStorageInfo();
+        // Off the UI thread, for the same reason OpenSettings does it: the storage
+        // figures need a recursive walk of the artwork cache (a stat per file, memoized
+        // for only 5s), and running that inline stalled the navigation it was reacting
+        // to — reported as Settings "lagging and getting stuck" on switch (issue #31).
+        _ = Settings.RefreshStorageInfoAsync();
         return Settings;
     }
 
-    /// <summary>Navigate to the Now Playing view (from clicking album art in playback bar).</summary>
     /// <summary>Opens the Ctrl+K command palette over the current window.</summary>
     public async Task OpenCommandPaletteAsync()
     {
         var vm = new CommandPaletteViewModel(this, _library);
         await Views.CommandPaletteDialog.ShowAsync(vm);
-    }
-
-    [RelayCommand]
-    private void OpenNowPlaying()
-    {
-        PushCurrentViewToHistory();
-
-        var nowPlaying = new NowPlayingViewModel(Player, Settings);
-        nowPlaying.BackRequested += (_, _) => GoBackInHistory();
-        CurrentView = nowPlaying;
     }
 
     private void OnAlbumOpened(object? sender, Album album)
@@ -1906,6 +1974,20 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private void OnHomeSearchRedirectRequested(object? sender, EventArgs e)
+    {
+        // Home has nothing to filter, so the search gesture lands on Songs instead.
+        // Drive the jump through the sidebar selection — the same path as clicking
+        // the Songs item — so history and top-bar state behave like a real
+        // navigation. Navigate closes and clears the search pill as part of the
+        // section switch, so it may only be reopened once navigation is done.
+        var songs = Sidebar.NavItems.FirstOrDefault(n => n.Key == "songs");
+        if (songs == null) return;
+        Sidebar.SelectedNavItem = songs;
+        if (TopBar.IsSearchVisible)
+            TopBar.OpenSearchCommand.Execute(null);
+    }
+
     private void SetupSongsTopBarActions()
     {
         ClearTopBarPageActions();
@@ -1917,7 +1999,24 @@ public partial class MainWindowViewModel : ViewModelBase
             _songsVm.SortColumn,
             _songsVm.SetShowAllItemsCommand,
             _songsVm.SetShowOnlyFavoritesCommand,
-            _songsVm.SortCommand);
+            // SelectSortCommand, not SortCommand: menu entries show the field and the
+            // direction as separate checked items, so picking the active field must not
+            // flip the direction the way a repeated column-header click does.
+            _songsVm.SelectSortCommand,
+            new AsyncRelayCommand(async () =>
+            {
+                // Disposed on close: the dialog view model listens to the Songs view
+                // model, which outlives it by the whole session.
+                using var optionsVm = new SongsViewOptionsViewModel(_songsVm, Settings);
+                try
+                {
+                    await Views.SongsViewOptionsDialog.ShowAsync(optionsVm);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[MainVM] View Options dialog failed: {ex.Message}");
+                }
+            }));
         TopBar.ShowSongsFilters(_songsVm.SummaryText, _songsVm.QualityFilter, _songsVm.SetQualityFilterCommand);
         _songsVmTopBarHandler = (_, e) =>
         {
@@ -2028,6 +2127,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 _albumsVm.QualityChips, _albumsVm.SelectQualityChipCommand, _albumsVm.SetAlbumSortCommand,
                 _albumsVm.SetReleaseTypeFilterCommand, _albumsVm.SetQualityFilterCommand);
             TopBar.AlbumSortLabel = _albumsVm.AlbumSortLabel;
+            TopBar.AlbumSortMode = _albumsVm.AlbumSortMode;
+            TopBar.AlbumSortAscending = _albumsVm.AlbumSortAscending;
             TopBar.ReleaseTypeFilterLabel = _albumsVm.ReleaseTypeFilterLabel;
             TopBar.QualityFilterLabel = _albumsVm.QualityFilterLabel;
         }
@@ -2122,6 +2223,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (CurrentView == _queueVm) return "queue";
         if (CurrentView == _lyricsVm) return "lyrics";
         if (CurrentView == _statisticsVm) return "statistics";
+        if (CurrentView == _serverVm) return "server";
         if (CurrentView == Settings) return "settings";
         return "home";
     }

@@ -9,6 +9,7 @@ namespace Noctis.Tests;
 internal sealed class FakeAudioPlayer : IAudioPlayer
 {
     public List<string> PlayedPaths { get; } = new();
+    public List<string> PreparedPaths { get; } = new();
 
     public event EventHandler? TrackEnded;
     public event EventHandler<TimeSpan>? PositionChanged;
@@ -50,7 +51,7 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public void ApplyReplayGain(string mode, double preampDb) { }
     public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false) { }
     public void SetGapless(bool enabled) { }
-    public void PrepareNext(string filePath, long startPositionMs = -1) { }
+    public void PrepareNext(string filePath, long startPositionMs = -1) => PreparedPaths.Add(filePath);
     public void CancelPreparedNext() { }
     public void SetAdvancedEqualizer(bool enabled, float[] bands, float preampDb) { }
     public void Dispose() { }
@@ -62,7 +63,8 @@ internal sealed class FakeLibraryService : ILibraryService
     public List<Track> TrackList { get; } = new();
     public IReadOnlyList<Track> Tracks => TrackList;
     public IReadOnlyList<Album> Albums { get; } = new List<Album>();
-    public IReadOnlyList<Artist> Artists { get; } = new List<Artist>();
+    public List<Artist> ArtistList { get; } = new();
+    public IReadOnlyList<Artist> Artists => ArtistList;
 
     public event EventHandler? LibraryUpdated;
     public event EventHandler<int>? ScanProgress;
@@ -93,6 +95,8 @@ internal sealed class FakeLibraryService : ILibraryService
     public Task SetTracksDislikedAsync(IReadOnlyList<Track> tracks, bool isDisliked) => Task.CompletedTask;
     public Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until) => Task.CompletedTask;
     public void NotifyMetadataChanged() { }
+    public Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default) => Task.FromResult(0);
+    public Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default) => Task.FromResult(0);
 }
 
 internal sealed class FakeAnimatedCoverService : IAnimatedCoverService

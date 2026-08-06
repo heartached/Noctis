@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Noctis.Helpers;
 using Noctis.Models;
 
 namespace Noctis.Services;
@@ -112,13 +113,16 @@ public class LibraryService : ILibraryService
     private async Task ScanCoreAsync(IEnumerable<string> folders, CancellationToken ct)
     {
         var settings = await _persistence.LoadSettingsAsync();
+        // Refresh the artwork-toggle mirror from the persisted settings so even a
+        // scan that starts before SettingsViewModel finishes loading honors it.
+        MetadataService.UseEmbeddedArtwork = settings.UseEmbeddedArtwork;
         var includeRoots = BuildIncludeRoots(folders, settings).ToList();
         var excludedRoots = settings.FolderRules
             .Where(r => r.Enabled && !r.Include && !string.IsNullOrWhiteSpace(r.Path))
             .Select(r => TryNormalizePath(r.Path))
             .Where(p => !string.IsNullOrWhiteSpace(p))
             .Select(p => p!)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Distinct(PathComparison.Comparer)
             .ToArray();
         var ignoredNames = new HashSet<string>(
             settings.IgnoredFolderNames
@@ -128,7 +132,7 @@ public class LibraryService : ILibraryService
         var excludedFiles = new HashSet<string>(
             settings.ExcludedFilePaths
                 .Where(p => !string.IsNullOrWhiteSpace(p)),
-            StringComparer.OrdinalIgnoreCase);
+            PathComparison.Comparer);
 
         var newTracks = new ConcurrentBag<Track>();
         // Roots that were configured but not present on disk this pass (unplugged external
@@ -487,6 +491,15 @@ public class LibraryService : ILibraryService
                     ["finalTrackCount"] = originalTrackCount.ToString()
                 }
             }, ct);
+
+            // A no-change scan used to return without ever looking at artwork, so an
+            // album whose cover was never cached (interrupted first scan, a file or
+            // network mount that was unreadable during extraction) kept its
+            // placeholder forever — unchanged files are skipped by mtime above, and
+            // this fast path skipped the post-scan extraction pass entirely. Heal
+            // those albums here; it costs one existence probe per album when there
+            // is nothing to do.
+            await BackfillMissingArtworkAsync(ct);
             return;
         }
 
@@ -524,7 +537,10 @@ public class LibraryService : ILibraryService
 
         // Persist to disk
         await SaveAsync();
-        await _sqliteIndex.ReplaceAllAsync(_tracks, ct);
+        // The SQLite tracks mirror is deliberately not rewritten here: nothing reads
+        // it yet (startup loads library.json), and a full DELETE+reinsert of every
+        // row after each scan was pure write amplification at 50k+ tracks. The manual
+        // RebuildIndexAsync path still refreshes the mirror in full.
 
         await _auditTrail.AppendAsync(new AuditEvent
         {
@@ -557,6 +573,11 @@ public class LibraryService : ILibraryService
     /// </summary>
     private readonly CancellationTokenSource _shutdownCts = new();
 
+    // Serializes "Merge Featured Artists" toggle passes: a newer flip cancels the
+    // in-flight pass so rapid on/off flips can't interleave writes.
+    private readonly object _mergeFeatApplyLock = new();
+    private CancellationTokenSource? _mergeFeatApplyCts;
+
     public async Task PauseActiveScanForShutdownAsync(TimeSpan timeout)
     {
         // Stop the background backfills too, not just the scan.
@@ -576,9 +597,10 @@ public class LibraryService : ILibraryService
     }
 
     /// <summary>
-    /// Persists the given track set + indexes to disk and the SQLite mirror,
-    /// ignoring cancellation. Used to checkpoint scan progress on shutdown so a
-    /// re-scan resumes incrementally instead of starting over.
+    /// Persists the given track set + indexes to disk, ignoring cancellation. Used to
+    /// checkpoint scan progress on shutdown so a re-scan resumes incrementally
+    /// instead of starting over. The SQLite tracks mirror is deliberately not
+    /// rewritten here — see the scan-completion note above SaveAsync.
     /// </summary>
     private async Task PersistScanCheckpointAsync(List<Track> tracks)
     {
@@ -587,14 +609,6 @@ public class LibraryService : ILibraryService
             .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
         await RebuildIndexesAsync();
         await SaveAsync();
-        try
-        {
-            await _sqliteIndex.ReplaceAllAsync(_tracks);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[LibraryService] Checkpoint SQLite sync failed: {ex.Message}");
-        }
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
 
@@ -605,15 +619,20 @@ public class LibraryService : ILibraryService
     /// groups are complete here (post-scan) and the cover is taken from each album's
     /// lowest disc/track representative. Static art and user-attached animated
     /// covers both surface through the LibraryUpdated notifications below.
+    /// Albums that already have a cached cover cost one existence probe and no file
+    /// reads. Returns the number of albums whose cover was extracted and cached.
     /// </summary>
-    private async Task ExtractArtworkProgressivelyAsync(ConcurrentBag<Track> scanned, CancellationToken ct)
+    private async Task<int> ExtractArtworkProgressivelyAsync(IReadOnlyCollection<Track> scanned, CancellationToken ct)
     {
         var artGroups = scanned
             .Where(t => t.SourceType == SourceType.Local)
             .GroupBy(t => t.AlbumId)
+            // SaveArtwork refuses the shared "Unknown Album" bucket, so probing its
+            // representative would re-read the same file on every pass for nothing.
+            .Where(g => g.Key != Track.UnknownAlbumBucketId)
             .Where(g => !File.Exists(_persistence.GetArtworkPath(g.Key)))
             .ToList();
-        if (artGroups.Count == 0) return;
+        if (artGroups.Count == 0) return 0;
 
         // Publish loop: while art is extracted, periodically rebuild the indexes
         // (so newly saved covers attach to their albums) and notify the views.
@@ -635,6 +654,7 @@ public class LibraryService : ILibraryService
         }
         var publish = PublishLoopAsync();
 
+        var extracted = 0;
         try
         {
             await Task.Run(() =>
@@ -647,8 +667,11 @@ public class LibraryService : ILibraryService
                         var rep = Album.SelectArtworkRepresentative(g.ToList());
                         if (rep == null) return;
                         var artBytes = _metadata.ExtractAlbumArt(rep.FilePath);
-                        if (artBytes != null)
+                        if (artBytes is { Length: > 0 })
+                        {
                             _persistence.SaveArtwork(g.Key, artBytes);
+                            Interlocked.Increment(ref extracted);
+                        }
                     });
             }, ct);
         }
@@ -656,6 +679,44 @@ public class LibraryService : ILibraryService
         {
             pubCts.Cancel();
             try { await publish.ConfigureAwait(false); } catch { /* publisher already stopping */ }
+        }
+        return extracted;
+    }
+
+    // Single-flight guard for BackfillMissingArtworkAsync: the startup heal, a
+    // no-change scan and a settings-toggle flip can all request one concurrently,
+    // and two passes at once would just read the same files twice.
+    private int _artworkBackfillActive;
+
+    /// <inheritdoc />
+    public async Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default)
+    {
+        if (Interlocked.CompareExchange(ref _artworkBackfillActive, 1, 0) != 0)
+            return 0;
+        try
+        {
+            var tracks = _tracks;
+            if (tracks.Count == 0) return 0;
+
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+            var extracted = await ExtractArtworkProgressivelyAsync(tracks, linked.Token);
+            if (extracted > 0 && !linked.Token.IsCancellationRequested)
+            {
+                // Persist the rebuilt indexes: the launch fast path restores each
+                // album's ArtworkPath straight from the index cache without checking
+                // disk, so an unpersisted heal would look lost again on next start.
+                await RebuildIndexesAsync();
+                LibraryUpdated?.Invoke(this, EventArgs.Empty);
+            }
+            return extracted;
+        }
+        catch (OperationCanceledException)
+        {
+            return 0;
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _artworkBackfillActive, 0);
         }
     }
 
@@ -675,7 +736,7 @@ public class LibraryService : ILibraryService
 
         // Clear exclusions for files being explicitly re-imported
         var settings = await _persistence.LoadSettingsAsync();
-        var excludedSet = new HashSet<string>(settings.ExcludedFilePaths, StringComparer.OrdinalIgnoreCase);
+        var excludedSet = new HashSet<string>(settings.ExcludedFilePaths, PathComparison.Comparer);
         if (excludedSet.Overlaps(files))
         {
             excludedSet.ExceptWith(files);
@@ -996,7 +1057,7 @@ public class LibraryService : ILibraryService
         var settings = await _persistence.LoadSettingsAsync();
 
         // Add to exclusion list
-        var excluded = new HashSet<string>(settings.ExcludedFilePaths, StringComparer.OrdinalIgnoreCase);
+        var excluded = new HashSet<string>(settings.ExcludedFilePaths, PathComparison.Comparer);
         foreach (var path in removedPaths)
         {
             if (!string.IsNullOrWhiteSpace(path))
@@ -1094,6 +1155,13 @@ public class LibraryService : ILibraryService
                         await _sqliteIndex.UpsertTracksAsync(_tracks);
                         LibraryUpdated?.Invoke(this, EventArgs.Empty);
                     }
+
+                    // Heal albums whose cover was never cached. Scans only extract
+                    // art for new/changed files plus a one-shot post-scan pass, so
+                    // any interruption or unreadable file left an album artless for
+                    // good — rescans skip unchanged files by mtime and never retry.
+                    // Cheap when every album already has art (one probe per album).
+                    await BackfillMissingArtworkAsync(_shutdownCts.Token);
                 }
                 catch (Exception ex)
                 {
@@ -1523,7 +1591,6 @@ public class LibraryService : ILibraryService
         target.LastPlayed = source.LastPlayed;
         target.Rating = source.Rating;
         target.IsDisliked = source.IsDisliked;
-        target.OfflineState = source.OfflineState;
         target.SourceType = source.SourceType;
         target.SourceTrackId = source.SourceTrackId;
         target.SourceConnectionId = source.SourceConnectionId;
@@ -1582,6 +1649,11 @@ public class LibraryService : ILibraryService
         {
             return false;
         }
+
+        // Runs once per startup before any scan or migration touches metadata, so the
+        // static enrichment toggle reflects the persisted setting from the first read.
+        MetadataService.MergeFeaturedFromTitles = settings.MergeFeaturedFromTitles;
+        MetadataService.UseEmbeddedArtwork = settings.UseEmbeddedArtwork;
 
         if (settings.MetadataSchemaVersion >= CurrentMetadataSchemaVersion)
             return false;
@@ -1945,6 +2017,119 @@ public class LibraryService : ILibraryService
         return changedCount > 0;
     }
 
+    /// <inheritdoc />
+    public async Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default)
+    {
+        CancellationTokenSource cts;
+        lock (_mergeFeatApplyLock)
+        {
+            _mergeFeatApplyCts?.Cancel();
+            cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+            _mergeFeatApplyCts = cts;
+        }
+
+        try
+        {
+            var token = cts.Token;
+            var snapshot = _tracks.ToList();
+            var changed = new List<Track>();
+
+            if (enabled)
+            {
+                // Merging is pure string work against the indexed titles, but it is a
+                // full-library pass — run it on the pool so the toggle click that
+                // awaits this doesn't stall the UI thread.
+                await Task.Run(() =>
+                {
+                    foreach (var track in snapshot)
+                    {
+                        if (token.IsCancellationRequested) break;
+                        var enriched = MetadataService.EnrichArtistFromTitle(track.Artist, track.Title);
+                        if (!string.Equals(enriched, track.Artist, StringComparison.Ordinal))
+                        {
+                            track.Artist = enriched;
+                            changed.Add(track);
+                        }
+                    }
+                }, CancellationToken.None);
+            }
+            else
+            {
+                // Un-merging needs the pre-merge artist, which only exists in the file
+                // tags — but only collaboration tracks whose artist actually echoes a
+                // featured name from the title can have been merged, so the re-read is
+                // bounded to those. Server-backed sources (Navidrome/WebDav/Plex) have
+                // no readable file; their tracks are rebuilt fresh on the next connector
+                // sync, which honors the flipped toggle.
+                // The candidate scan is itself a full-library pass, so it runs on the
+                // pool with the re-reads rather than on the caller's (UI) thread.
+                await Task.Run(() =>
+                {
+                    var candidates = snapshot
+                        .Where(t => t.SourceType is SourceType.Local or SourceType.Smb &&
+                                    MetadataService.MayHaveMergedFeaturedCredit(t.Artist, t.Title))
+                        .ToList();
+
+                    if (candidates.Count == 0) return;
+
+                    try
+                    {
+                        Parallel.ForEach(
+                            candidates,
+                            new ParallelOptions
+                            {
+                                MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                                CancellationToken = token
+                            },
+                            track =>
+                            {
+                                try
+                                {
+                                    var refreshed = _metadata.ReadTrackMetadata(track.FilePath);
+                                    if (refreshed == null) return;
+                                    if (!string.Equals(refreshed.Artist, track.Artist, StringComparison.Ordinal))
+                                    {
+                                        track.Artist = refreshed.Artist;
+                                        lock (changed) changed.Add(track);
+                                    }
+                                }
+                                catch
+                                {
+                                    // Non-fatal: keep the merged credit for unreadable files.
+                                }
+                            });
+                    }
+                    catch (OperationCanceledException) { }
+                }, CancellationToken.None);
+            }
+
+            if (changed.Count == 0)
+                return 0;
+
+            // Superseded or shutting down: skip persistence. A newer flip's pass will
+            // re-cover these tracks (both directions are idempotent over the library),
+            // and at shutdown the exit flush saves the JSON.
+            if (token.IsCancellationRequested)
+                return changed.Count;
+
+            await RebuildIndexesAsync();
+            await SaveAsync();
+            try { await _sqliteIndex.UpsertTracksAsync(changed); }
+            catch { /* JSON save above is authoritative; SQLite catches up on the next full sync */ }
+            LibraryUpdated?.Invoke(this, EventArgs.Empty);
+            return changed.Count;
+        }
+        finally
+        {
+            lock (_mergeFeatApplyLock)
+            {
+                if (_mergeFeatApplyCts == cts)
+                    _mergeFeatApplyCts = null;
+                cts.Dispose();
+            }
+        }
+    }
+
     private static int EstimateBitrateKbps(long fileSizeBytes, TimeSpan duration)
     {
         if (fileSizeBytes <= 0 || duration.TotalSeconds <= 0)
@@ -2040,7 +2225,7 @@ public class LibraryService : ILibraryService
             .Select(TryNormalizePath)
             .Where(p => !string.IsNullOrWhiteSpace(p))
             .Select(p => p!)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Distinct(PathComparison.Comparer)
             .ToArray();
         if (failedPrefixes.Length == 0)
             return new List<Track>();
@@ -2086,11 +2271,11 @@ public class LibraryService : ILibraryService
 
     private static bool IsUnderRoot(string normalizedPath, string root)
     {
-        if (normalizedPath.Equals(root, StringComparison.OrdinalIgnoreCase))
+        if (normalizedPath.Equals(root, PathComparison.Comparison))
             return true;
 
-        return normalizedPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
-               normalizedPath.StartsWith(root + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        return normalizedPath.StartsWith(root + Path.DirectorySeparatorChar, PathComparison.Comparison) ||
+               normalizedPath.StartsWith(root + Path.AltDirectorySeparatorChar, PathComparison.Comparison);
     }
 
     private static string NormalizePath(string path)

@@ -15,6 +15,8 @@ public partial class LrcEditorLine : ObservableObject
     {
         _timestamp = timestamp;
         Text = text;
+        var (body, _) = EnhancedLrcParser.StripVoiceMarker(text);
+        DisplayText = Regex.Replace(EnhancedLrcParser.StripWordTags(body), @"\s{2,}", " ").Trim();
     }
 
     [ObservableProperty]
@@ -23,6 +25,12 @@ public partial class LrcEditorLine : ObservableObject
     private TimeSpan? _timestamp;
 
     public string Text { get; }
+
+    /// <summary>
+    /// Row display: duet voice markers ("v1:"/"v2:") and inline enhanced-LRC word
+    /// tags stripped. Save round-trips the raw Text, so neither is lost by viewing.
+    /// </summary>
+    public string DisplayText { get; }
 
     public bool HasTimestamp => Timestamp.HasValue;
 
@@ -233,7 +241,7 @@ public partial class LrcEditorViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void Save()
+    private async Task Save()
     {
         var content = Lines
             .Where(l => !string.IsNullOrWhiteSpace(l.Text))
@@ -251,31 +259,37 @@ public partial class LrcEditorViewModel : ViewModelBase
 
         try
         {
-            // Sidecar first (root-cause fix: tag writes can fail on in-use files).
-            if (!string.IsNullOrWhiteSpace(_track.FilePath))
+            // WriteTrackMetadata copies and rewrites the whole audio file, so the
+            // file work runs on a worker thread — inline it froze the UI for the
+            // duration of the copy on large files.
+            await Task.Run(() =>
             {
-                var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
-
-                // Keep one generation of whatever was there. This overwrites the user's
-                // own hand-timed (possibly word-level) sidecar with a line-level file
-                // built from what the editor happened to be seeded with, and there was
-                // no backup and no confirmation.
-                try
+                // Sidecar first (root-cause fix: tag writes can fail on in-use files).
+                if (!string.IsNullOrWhiteSpace(_track.FilePath))
                 {
-                    if (File.Exists(lrcPath))
-                        File.Copy(lrcPath, lrcPath + ".bak", overwrite: true);
+                    var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
+
+                    // Keep one generation of whatever was there. This overwrites the user's
+                    // own hand-timed (possibly word-level) sidecar with a line-level file
+                    // built from what the editor happened to be seeded with, and there was
+                    // no backup and no confirmation.
+                    try
+                    {
+                        if (File.Exists(lrcPath))
+                            File.Copy(lrcPath, lrcPath + ".bak", overwrite: true);
+                    }
+                    catch { /* a missing backup must not block the save */ }
+
+                    // Write via a temp file so a failure part-way through can't leave a
+                    // truncated sidecar where a complete one used to be.
+                    var tempPath = lrcPath + ".tmp";
+                    File.WriteAllText(tempPath, lrc, new UTF8Encoding(false));
+                    File.Move(tempPath, lrcPath, overwrite: true);
                 }
-                catch { /* a missing backup must not block the save */ }
 
-                // Write via a temp file so a failure part-way through can't leave a
-                // truncated sidecar where a complete one used to be.
-                var tempPath = lrcPath + ".tmp";
-                File.WriteAllText(tempPath, lrc, new UTF8Encoding(false));
-                File.Move(tempPath, lrcPath, overwrite: true);
-            }
-
-            // Best-effort metadata write.
-            try { _metadata.WriteTrackMetadata(_track); } catch { }
+                // Best-effort metadata write.
+                try { _metadata.WriteTrackMetadata(_track); } catch { }
+            });
 
             StatusText = "Saved";
             Saved?.Invoke(this, EventArgs.Empty);

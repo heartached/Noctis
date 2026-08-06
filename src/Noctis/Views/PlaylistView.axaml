@@ -13,7 +13,6 @@
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:HexColorToBrushConverter x:Key="HexColorConverter" />
-        <conv:GuidEqualsConverter x:Key="GuidEquals" />
         <conv:DateAddedDisplayConverter x:Key="DateAddedDisplay" />
         <conv:RecentlyAddedConverter x:Key="RecentAdded" />
     </UserControl.Resources>
@@ -167,6 +166,13 @@
         <Style Selector="ListBoxItem.ctrl-selected Border.row-body">
             <Setter Property="Background" Value="#3FFFFFFF" />
         </Style>
+        <!-- Now-playing: the accent-coloured box (see Styles.axaml) must be re-applied
+             at view scope because the stripe/hover/ctrl-select styles above live here
+             too and would otherwise outrank the app-level fill. Declared after them
+             so the box wins on even, hovered and ctrl-selected rows alike. -->
+        <Style Selector="Border.row-body.now-playing">
+            <Setter Property="Background" Value="{DynamicResource NowPlayingRowBrush}" />
+        </Style>
 
         <!-- # column: the row number fades into a grip hint on hover, but only
              when reorder is actually possible (manual playlist + manual sort + no filter) -->
@@ -201,6 +207,24 @@
         </Style>
         <Style Selector="Button.art-play-overlay:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+
+        <!-- Album cell repeating the row above (stamped .repeat-dim by code-behind):
+             dimmed at rest so only album changes catch the eye, but restored under the
+             pointer — it is a link to the album page, and a permanently faded control
+             reads as disabled at the moment you go to click it. -->
+        <Style Selector="Button.album-btn">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.album-btn.repeat-dim">
+            <Setter Property="Opacity" Value="0.4" />
+        </Style>
+        <Style Selector="Border.row-body:pointerover Button.album-btn.repeat-dim">
+            <Setter Property="Opacity" Value="1" />
         </Style>
 
         <!-- Floating selection action bar: fades/slides in when rows are Ctrl-selected -->
@@ -676,11 +700,28 @@
                                                     VerticalAlignment="Center"
                                                     Margin="8,0,8,0"
                                                     Spacing="1">
-                                            <TextBlock Text="{Binding TitleDisplay}"
-                                                       FontSize="12"
-                                                       FontWeight="SemiBold"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       MaxLines="1" />
+                                            <!-- Auto/Auto keeps the badge hard against the end of the
+                                                 title (as in the Songs rows) instead of parked at the
+                                                 far edge; MaxWidth trims long titles so the badge is
+                                                 never pushed out of the 320px rail. -->
+                                            <Grid ColumnDefinitions="Auto,Auto" HorizontalAlignment="Left">
+                                                <TextBlock Grid.Column="0"
+                                                           Classes="one-line-explicit-title"
+                                                           Text="{Binding TitleDisplay}"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           MaxWidth="150" />
+                                                <Border Grid.Column="1"
+                                                        Classes="explicit-badge compact"
+                                                        Margin="6,0,0,0"
+                                                        IsVisible="{Binding IsExplicit}"
+                                                        ToolTip.Tip="Explicit">
+                                                    <TextBlock Text="E"
+                                                               Classes="explicit-badge-text compact"
+                                                               FontSize="9"
+                                                               Opacity="0.9" />
+                                                </Border>
+                                            </Grid>
                                             <TextBlock Text="{Binding ArtistDisplay}"
                                                        FontSize="10.5"
                                                        FontWeight="SemiBold"
@@ -845,13 +886,34 @@
                                                 Margin="12,4,12,4"
                                                 VerticalAlignment="Center"
                                                 Spacing="1">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <controls:HighlightTextBlock Classes="one-line-explicit-title"
+                                        <!-- Auto/Auto/Auto keeps both badges hard against the end of the
+                                             title (as in the Songs rows) rather than parked at the far
+                                             edge of the column, which a star column would do. Auto
+                                             measures with infinite width though, so the title only has
+                                             a width to ellipsize against because OnTitleCellLayoutUpdated
+                                             budgets it MaxWidth = cell - badges; ClipToBounds is the
+                                             backstop for the frame before that lands. Without this the
+                                             title painted straight over the Album column (issue #30). -->
+                                        <Grid ColumnDefinitions="Auto,Auto,Auto"
+                                              ClipToBounds="True"
+                                              LayoutUpdated="OnTitleCellLayoutUpdated">
+                                            <!-- Trimming is also set inline, as in the Songs rows: the
+                                                 one-line-explicit-title class alone is not enough to rely
+                                                 on here, because a TextBlock type selector does not match
+                                                 this HighlightTextBlock subclass. -->
+                                            <controls:HighlightTextBlock Grid.Column="0"
+                                                                         Classes="one-line-explicit-title"
                                                                          DisplayText="{Binding TitleDisplay}"
                                                                          HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
                                                                          FontSize="13"
-                                                                         FontWeight="SemiBold" />
-                                            <Border Classes="explicit-badge compact"
+                                                                         FontWeight="SemiBold"
+                                                                         TextWrapping="NoWrap"
+                                                                         MaxLines="1"
+                                                                         VerticalAlignment="Center"
+                                                                         TextTrimming="CharacterEllipsis" />
+                                            <Border Grid.Column="1"
+                                                    Classes="explicit-badge compact"
+                                                    Margin="6,0,0,0"
                                                     IsVisible="{Binding IsExplicit}"
                                                     ToolTip.Tip="Explicit">
                                                 <TextBlock Text="E"
@@ -859,8 +921,10 @@
                                                            FontSize="9"
                                                            Opacity="0.9" />
                                             </Border>
-                                            <Border CornerRadius="999"
+                                            <Border Grid.Column="2"
+                                                    CornerRadius="999"
                                                     Padding="6,1.5"
+                                                    Margin="6,0,0,0"
                                                     VerticalAlignment="Center"
                                                     BorderThickness="1"
                                                     BorderBrush="{DynamicResource AccentTextExactBrush}"
@@ -871,16 +935,16 @@
                                                            FontWeight="Bold"
                                                            Foreground="{DynamicResource AccentTextExactBrush}" />
                                             </Border>
-                                        </StackPanel>
+                                        </Grid>
                                         <Button Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
                                                 Cursor="Hand" HorizontalAlignment="Left"
                                                 Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewArtistCommand}"
                                                 CommandParameter="{Binding Artist}">
-                                            <controls:HighlightTextBlock DisplayText="{Binding ArtistDisplay}"
+                                            <controls:HighlightTextBlock Classes="accent-link"
+                                                                         DisplayText="{Binding ArtistDisplay}"
                                                                          HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
                                                                          FontSize="11"
                                                                          FontWeight="SemiBold"
-                                                                         Foreground="{DynamicResource AccentTextExactBrush}"
                                                                          TextTrimming="CharacterEllipsis" />
                                         </Button>
                                     </StackPanel>
@@ -892,11 +956,11 @@
                                             Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
                                             Command="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).ViewAlbumCommand}"
                                             CommandParameter="{Binding}">
-                                        <controls:HighlightTextBlock DisplayText="{Binding Album}"
+                                        <controls:HighlightTextBlock Classes="accent-link"
+                                                                     DisplayText="{Binding Album}"
                                                                      HighlightText="{Binding $parent[UserControl].((vm:PlaylistViewModel)DataContext).SearchText}"
                                                                      FontSize="12"
                                                                      FontWeight="SemiBold"
-                                                                     Foreground="{DynamicResource AccentTextExactBrush}"
                                                                      TextTrimming="CharacterEllipsis"
                                                                      VerticalAlignment="Center" />
                                     </Button>
@@ -960,9 +1024,9 @@
                                             ToolTip.Tip="Options"
                                             Tag="{Binding}"
                                             Click="OnOptionsButtonClick">
-                                        <PathIcon Data="{StaticResource MoreDotsIcon}"
+                                        <PathIcon Classes="row-dots-icon"
+                                                  Data="{StaticResource MoreDotsIcon}"
                                                   Width="14" Height="14"
-                                                  Foreground="{DynamicResource AccentTextExactBrush}"
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center" />
                                     </Button>

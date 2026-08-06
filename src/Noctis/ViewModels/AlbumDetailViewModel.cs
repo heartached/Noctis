@@ -672,7 +672,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     {
         track.IsFavorite = !track.IsFavorite;
         await _library.SaveTrackUserStateAsync(new[] { track });
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(new[] { track });
         // Refresh hearts visibility
         OnPropertyChanged(nameof(IsAlbumFavorited));
     }
@@ -687,7 +687,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
             track.IsFavorite = newState;
 
         await _library.SaveTrackUserStateAsync(Tracks.ToList());
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(Tracks);
         // Refresh hearts visibility
         OnPropertyChanged(nameof(IsAlbumFavorited));
     }
@@ -813,7 +813,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         foreach (var track in album.Tracks)
             track.IsFavorite = newState;
         await _library.SaveTrackUserStateAsync(album.Tracks.ToList());
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(album.Tracks);
     }
 
     [RelayCommand]

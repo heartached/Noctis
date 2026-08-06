@@ -22,6 +22,11 @@
             <Setter Property="StrokeDashArray" Value="11,5"/>
             <Setter Property="StrokeLineCap" Value="Round"/>
             <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+        </Style>
+        <!-- Animation keyed on [IsVisible=True] (same pattern as LyricsView's search
+             dots): selector matching ignores visibility, so an ungated INFINITE
+             clock would keep ticking on every hidden spinner. -->
+        <Style Selector="Ellipse.loading-spinner[IsVisible=True]">
             <Style.Animations>
                 <Animation Duration="0:0:0.85" IterationCount="INFINITE" Easing="LinearEasing">
                     <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0"/></KeyFrame>
@@ -474,8 +479,11 @@
                                     VerticalAlignment="Center"
                                     IsVisible="{Binding IsSaving}">
                             <TextBlock Text="Saving" VerticalAlignment="Center" />
+                            <!-- Own IsVisible mirrors the parent's so the
+                                 [IsVisible=True] animation gate can see it. -->
                             <Ellipse Classes="loading-spinner"
-                                     Stroke="{DynamicResource AccentForegroundBrush}" />
+                                     Stroke="{DynamicResource AccentForegroundBrush}"
+                                     IsVisible="{Binding IsSaving}" />
                         </StackPanel>
                     </Panel>
                 </Button>
@@ -1043,8 +1051,11 @@
                                                     HorizontalAlignment="Center"
                                                     Spacing="8"
                                                     IsVisible="{Binding IsDownloadingArtwork}">
+                                            <!-- Own IsVisible mirrors the parent's so the
+                                                 [IsVisible=True] animation gate can see it. -->
                                             <Ellipse Classes="loading-spinner"
-                                                     VerticalAlignment="Center"/>
+                                                     VerticalAlignment="Center"
+                                                     IsVisible="{Binding IsDownloadingArtwork}"/>
                                             <TextBlock Text="Downloading…"
                                                        FontSize="11"
                                                        Opacity="0.75"
@@ -1140,7 +1151,6 @@
                                 Spacing="9"
                                 Margin="18,0,0,0">
                         <Button x:Name="SearchAnimatedArtworkButton"
-                                Content="Search Artwork"
                                 Command="{Binding SearchAnimatedCoverCommand}"
                                 Classes="accent-pill"
                                 HorizontalAlignment="Stretch"
@@ -1149,15 +1159,24 @@
                                 Cursor="Hand"
                                 FontWeight="SemiBold"
                                 FontSize="12"
-                                ToolTip.Tip="{Binding AnimatedSearchStatus}" />
+                                ToolTip.Tip="{Binding AnimatedSearchStatus}">
+                            <!-- Wraps: the label no longer fits the 168px column on one line. -->
+                            <TextBlock Text="Search Animated Artwork"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center" />
+                        </Button>
 
-                        <!-- URL fallback for when search can't find the album -->
+                        <!-- Type an album name to search for, or paste a link to skip search -->
                         <StackPanel Spacing="4" IsVisible="{Binding !HasAnimatedCover}">
                             <TextBox Classes="metadata-info-field"
-                                     Text="{Binding AnimatedSearchUrlInput, Mode=TwoWay}"
-                                     Watermark="Apple Music URL or album ID"
-                                     FontSize="12" />
-                            <TextBlock Text="or paste a URL if search doesn't find your album"
+                                     Text="{Binding AnimatedSearchInput, Mode=TwoWay}"
+                                     Watermark="Album name, or Apple Music URL"
+                                     FontSize="12">
+                                <TextBox.KeyBindings>
+                                    <KeyBinding Gesture="Enter" Command="{Binding SearchAnimatedCoverCommand}" />
+                                </TextBox.KeyBindings>
+                            </TextBox>
+                            <TextBlock Text="type an album name and press Enter, or paste an Apple Music link"
                                        FontSize="10"
                                        Opacity="0.55"
                                        TextWrapping="Wrap" />
@@ -1312,8 +1331,11 @@
                                                         HorizontalAlignment="Center"
                                                         Spacing="8"
                                                         IsVisible="{Binding IsDownloadingAnimatedCover}">
+                                                <!-- Own IsVisible mirrors the parent's so the
+                                                     [IsVisible=True] animation gate can see it. -->
                                                 <Ellipse Classes="loading-spinner"
-                                                         VerticalAlignment="Center"/>
+                                                         VerticalAlignment="Center"
+                                                         IsVisible="{Binding IsDownloadingAnimatedCover}"/>
                                                 <TextBlock Text="Downloading…"
                                                            FontSize="11"
                                                            Opacity="0.75"
@@ -1676,12 +1698,22 @@
                                               VerticalScrollBarVisibility="Auto"
                                               HorizontalScrollBarVisibility="Disabled"
                                               Padding="14,10,18,0">
-                                    <!-- A real trailing spacer (below) carries the bottom gap. Neither
-                                         ScrollViewer.Padding nor a content Margin is reliably folded into
-                                         Avalonia's scroll extent, so the final row would otherwise stay
-                                         clipped at the bottom edge. -->
-                                    <StackPanel>
-                                    <ItemsControl ItemsSource="{Binding SyncedLyricLines}">
+                                    <!-- The list is the ScrollViewer's DIRECT child on purpose: wrapped
+                                         in the old spacer StackPanel, the virtualizing panel could not
+                                         own the viewport (same failure mode as the AlbumDetailView track
+                                         list) and every line inflated on the first click of this tab —
+                                         lag that scaled with lyric length. The trailing bottom gap rides
+                                         as ItemsControl.Padding, which is part of the content's desired
+                                         size and so folds into the scroll extent (ScrollViewer.Padding
+                                         and a content Margin are not — the old spacer's reason to exist).
+                                         Pinned by TimestampLyricsVirtualizationTests. -->
+                                    <ItemsControl ItemsSource="{Binding SyncedLyricLines}"
+                                                  Padding="0,0,0,24">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:SyncedLyricEditorLine">
                                                 <Border Classes="synced-row">
@@ -1741,8 +1773,6 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                        <Border Height="24" />
-                                    </StackPanel>
                                 </ScrollViewer>
                             </Panel>
                         </Border>

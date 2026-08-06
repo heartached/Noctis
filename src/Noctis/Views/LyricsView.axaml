@@ -14,7 +14,6 @@
     <UserControl.Resources>
         <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter"/>
-        <conv:VolumeToIconConverter x:Key="VolumeToIcon"/>
         <conv:ProgressToSweepForegroundConverter x:Key="ProgressToSweepFg"/>
         <conv:EmphasisGlowConverter x:Key="EmphasisGlow"/>
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
@@ -22,6 +21,14 @@
         <conv:PreBlurredArtworkConverter x:Key="PreBlurArt"/>
         <conv:MetadataLineConverter x:Key="MetadataLine"/>
         <conv:DoubleScaleConverter x:Key="FontScale"/>
+
+        <!-- Duet layout (ELRC v1:/v2:/v3: voice markers): voice 2 lines anchor right,
+             group lines center. Same keys exist in LyricsPanelView — keep in sync. -->
+        <conv:LyricVoiceToAlignmentConverter x:Key="VoiceAlign"/>
+        <conv:LyricVoiceToTextAlignmentConverter x:Key="VoiceTextAlign"/>
+        <conv:LyricVoiceToItemsAlignmentConverter x:Key="VoiceItemsAlign"/>
+        <conv:LyricVoiceToTransformOriginConverter x:Key="VoiceOrigin"/>
+        <conv:DuetMinWidthConverter x:Key="DuetMinWidth"/>
 
         <!-- Shared karaoke word cell (glow / dimmed base / gradient sweep), used by the
              main word layer and the background-vocal (adlib) layer below it. -->
@@ -488,7 +495,7 @@
                 Grid.Column="0"
                 Grid.RowSpan="2"
                 Background="Transparent"
-                Padding="40,30">
+                Padding="48,42">
             <StackPanel x:Name="LeftContentStack" VerticalAlignment="Center"
                         HorizontalAlignment="Center"
                         ClipToBounds="False"
@@ -1010,6 +1017,15 @@
                               VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled"
                               Padding="24,0,48,0">
+                    <!-- Scroll content = lyric lines + the Written-By footer, one extent.
+                         The ItemsControl stays this panel's FIRST child at Y=0 with no
+                         header above it: the anchor math (TryComputeAnchorOffset and the
+                         jump path) converts item-panel coordinates to extent space as
+                         panel Y + LyricsItemsControl.Margin.Top, which only holds while
+                         nothing precedes the ItemsControl. The run-out bottom pad lives
+                         on this wrapper (UpdateLyricsCenterPadding) so the footer sits
+                         just after the last line, before the empty run-out. -->
+                    <StackPanel x:Name="LyricsScrollContent" ClipToBounds="False">
                     <!-- FontSize set here (and adjusted from code-behind per window size)
                          is inherited by the lyric-line and karaoke TextBlocks below. -->
                     <!-- ClipToBounds=False here, on the word-layer ItemsControl and on the
@@ -1026,6 +1042,15 @@
                         <!-- No MaxWidth transition: width is set from the window on
                              attach/resize and a transition animated the lyric column
                              width on every open and minimize/maximize. -->
+                        <!-- Duet files pin the column to full MaxWidth so voice-2 lines
+                             right-align against a stable edge; otherwise MinWidth is 0
+                             and the column hugs content exactly as before. -->
+                        <ItemsControl.MinWidth>
+                            <MultiBinding Converter="{StaticResource DuetMinWidth}">
+                                <Binding Path="HasDuetLines"/>
+                                <Binding Path="$self.MaxWidth"/>
+                            </MultiBinding>
+                        </ItemsControl.MinWidth>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="m:LyricLine">
                                 <Button Background="Transparent"
@@ -1035,7 +1060,8 @@
                                         Padding="0"
                                         Margin="0,10"
                                         MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
-                                        HorizontalAlignment="Left"
+                                        HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                        RenderTransformOrigin="{Binding Voice, Converter={StaticResource VoiceOrigin}}"
                                         HorizontalContentAlignment="Left"
                                         Cursor="Hand"
                                         IsHitTestVisible="{Binding IsClickable}"
@@ -1044,7 +1070,7 @@
                                         Effect="{Binding BlurRadius, Converter={StaticResource BlurToEffect}}">
                                     <StackPanel HorizontalAlignment="Left"
                                                 MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
-                                    <Panel HorizontalAlignment="Left">
+                                    <Panel HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}">
                                         <!-- Main text layer (only for lines without word timings; intro uses dots) -->
                                         <TextBlock Text="{Binding Text}"
                                                    Classes="lyric-line"
@@ -1052,6 +1078,7 @@
                                                    FontWeight="Bold"
                                                    Foreground="{Binding $parent[UserControl].((vm:LyricsViewModel)DataContext).LyricsPrimaryFg}"
                                                    HorizontalAlignment="Left"
+                                                   TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
                                                    MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                    Opacity="{Binding LineOpacity}"
                                                    IsVisible="{Binding ShowLineText}"
@@ -1077,7 +1104,7 @@
                                             </ItemsControl.Transitions>
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
-                                                    <WrapPanel Orientation="Horizontal"/>
+                                                    <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
                                                 </ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                         </ItemsControl>
@@ -1157,7 +1184,7 @@
                                                   Classes.active="{Binding IsActive}"
                                                   IsVisible="{Binding ShowBackgroundWords}"
                                                   Opacity="{Binding LineOpacity}"
-                                                  HorizontalAlignment="Left"
+                                                  HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
                                                   ClipToBounds="False"
                                                   Margin="0,6,0,0"
                                                   FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
@@ -1170,7 +1197,7 @@
                                         </ItemsControl.Transitions>
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <WrapPanel Orientation="Horizontal"/>
+                                                <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"/>
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
@@ -1179,6 +1206,25 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!-- "Written By" credit (Apple Music style): scrolls into view after
+                         the final line. Collapses entirely — no reserved space — when the
+                         track has no composer or no lyrics (WrittenByText is empty then).
+                         Not a lyric line: it lives outside LyricsItemsControl, so line
+                         indices, active-line anchoring and opacity dimming never see it. -->
+                    <!-- 2px optical inset: layout boxes are flush with the lyric lines
+                         (verified by headless pixel probe), but the big bold lyric
+                         glyphs carry ~1-2px of left-side bearing while the 15px "W"
+                         overhangs its box — without this the credit reads as sitting
+                         left of the text above. -->
+                    <TextBlock x:Name="WrittenByFooter"
+                               FontSize="15"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Left"
+                               MaxWidth="{Binding #LyricsItemsControl.MaxWidth}"
+                               Margin="2,44,0,0"
+                               IsVisible="{Binding WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="Written By: " FontWeight="SemiBold" Foreground="{Binding LyricsSecondaryFg}"/><Run Text="{Binding WrittenByText}" Foreground="{Binding LyricsSubtleFg}"/></TextBlock>
+                    </StackPanel>
                 </ScrollViewer>
             </Border>
 

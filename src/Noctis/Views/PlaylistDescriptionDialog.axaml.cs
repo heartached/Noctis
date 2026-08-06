@@ -52,9 +52,17 @@ public partial class PlaylistDescriptionDialog : Window
         catch { Close(); }
     }
 
-    private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
+    private async void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        // Light-dismiss: a click on the dimmed backdrop closes the dialog — unless an
+        // edit is in progress with unsaved changes, which a stray click must not discard.
         e.Handled = true;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (DataContext is PlaylistViewModel vm &&
+            vm.IsDescriptionEditing && vm.HasDescriptionChanges) return;
+        // async void: an escaped exception would crash the app.
+        try { await CloseAnimatedAsync(); }
+        catch { Close(); }
     }
 
     private void OnCardPointerPressed(object? sender, PointerPressedEventArgs e)

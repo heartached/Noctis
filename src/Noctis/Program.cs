@@ -57,6 +57,17 @@ internal class Program
                 SingleInstanceGuard.StartActivationListener();
             }
 
+            // Settle whether the previous run died (preserving its log for
+            // Settings → About) and start mirroring this session's log to disk
+            // so a crash can't take it along. Deliberately AFTER the
+            // single-instance guard: a duplicate launch exits above without ever
+            // touching the live instance's journal — on Linux/macOS File.Move
+            // ignores advisory locks, so an early Initialize in the duplicate
+            // would steal the running session's log as a bogus crash file.
+            // Everything logged before this point reaches the file anyway: the
+            // journal replays the in-memory ring when it attaches.
+            Services.CrashJournal.Initialize(AppPaths.DataRoot);
+
             App.PendingOpenFiles = filesToOpen;
 
             // Configure DI container
@@ -92,7 +103,7 @@ internal class Program
             AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             {
                 if (args.ExceptionObject is Exception ex)
-                    LogCrash("AppDomain.UnhandledException", ex);
+                    LogCrash("AppDomain.UnhandledException", ex, fatal: args.IsTerminating);
             };
 
             TaskScheduler.UnobservedTaskException += (_, args) =>
@@ -106,11 +117,16 @@ internal class Program
 
             // Cleanup
             provider.Dispose();
+
+            // The lifetime exited under its own power (window close, tray quit,
+            // OS session end after the shutdown save) — the only clean-exit path
+            // in the app, so the journal must not survive into the next launch.
+            Services.CrashJournal.MarkCleanShutdown();
         }
         catch (Exception ex)
         {
             // Always log so we can post-mortem regardless of platform
-            LogCrash("Program.Main", ex);
+            LogCrash("Program.Main", ex, fatal: true);
 
             // On Windows, surface a native message box (libvlc DLLs missing etc.).
             // On macOS/Linux, the crash log + stderr is the post-mortem path.
@@ -144,6 +160,12 @@ internal class Program
             .With(new SkiaOptions { MaxGpuResourceSizeBytes = 256L * 1024 * 1024 })
             .LogToTrace();
 
+        // LogToTrace installed its sink; wrap it so Avalonia's own warnings and
+        // errors (binding failures, layout complaints — the usual trail behind
+        // "weird UI renders") also land in the session log, deduplicated and
+        // capped so recycled-container binding noise can't flood the ring.
+        Avalonia.Logging.Logger.Sink = new Services.AvaloniaLogBridge(Avalonia.Logging.Logger.Sink);
+
         // The app's default font is the embedded Inter, which carries no
         // CJK/Hangul glyphs. Windows resolves missing glyphs through the system
         // font manager automatically, but on macOS/Linux that lookup doesn't
@@ -175,6 +197,21 @@ internal class Program
                     new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Color Emoji") },
                 }
             });
+
+            // Escape hatch for GPU/driver rendering trouble on Linux (issue #26:
+            // heavy stutter + windows flashing transparent on Arch/X11).
+            // NOCTIS_SOFTWARE_RENDER=1 forces Avalonia's X11 software renderer —
+            // on a number of Linux setups the GL paths render far slower than
+            // software (AvaloniaUI/Avalonia discussion #18807), and a stalled GPU
+            // swapchain presents as see-through window content. Opt-in only; the
+            // default renderer selection is unchanged.
+            if (Environment.GetEnvironmentVariable("NOCTIS_SOFTWARE_RENDER") == "1")
+            {
+                builder = builder.With(new X11PlatformOptions
+                {
+                    RenderingMode = new[] { X11RenderingMode.Software }
+                });
+            }
         }
 
         return builder;
@@ -191,7 +228,6 @@ internal class Program
         services.AddSingleton<ISqliteLibraryIndexService, SqliteLibraryIndexService>();
         services.AddSingleton<IAuditTrailService, AuditTrailService>();
         services.AddSingleton<IPlaylistInteropService, PlaylistInteropService>();
-        services.AddSingleton<IOfflineCacheService, OfflineCacheService>();
         services.AddSingleton<ILibraryService, LibraryService>();
         // Continuous folder watching. Reads MusicFolders/WatchFoldersEnabled lazily
         // through the canonical SettingsViewModel so toggling in Settings takes effect
@@ -201,7 +237,6 @@ internal class Program
                 sp.GetRequiredService<ILibraryService>(),
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
                       ?? new Noctis.Models.AppSettings()));
-        services.AddSingleton<IUnifiedLibraryService, UnifiedLibraryService>();
         services.AddSingleton<ISyncService, NavidromeSyncService>();
         services.AddSingleton<IAudioPlayer, VlcAudioPlayer>();
 
@@ -216,10 +251,9 @@ internal class Program
             http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             return http;
         });
-        services.AddSingleton<IMediaSourceConnector, LocalMediaSourceConnector>();
-        services.AddSingleton<IMediaSourceConnector, SmbMediaSourceConnector>();
-        services.AddSingleton<IMediaSourceConnector, WebDavMediaSourceConnector>();
         services.AddSingleton<IMediaSourceConnector, NavidromeMediaSourceConnector>();
+        // On-demand media-server browsing/streaming (the "Server" section).
+        services.AddSingleton<Services.MediaServer.IMediaServerService, Services.MediaServer.MediaServerService>();
         services.AddSingleton<LoonClient>(sp =>
         {
             var persistence = sp.GetRequiredService<IPersistenceService>();
@@ -239,7 +273,6 @@ internal class Program
         // (and one lock over wrap_archive.json).
         services.AddSingleton<IWrapArchiveService, WrapArchiveService>();
         services.AddSingleton<DeezerMetadataService>();
-        services.AddSingleton<IAlbumArtworkSearch>(sp => sp.GetRequiredService<ITunesArtworkService>());
         services.AddSingleton<AutoMatchCoordinator>(sp =>
             new AutoMatchCoordinator(
                 sp.GetRequiredService<IMetadataFinderService>(),
@@ -285,8 +318,16 @@ internal class Program
         services.AddSingleton<MainWindowViewModel>();
     }
 
-    private static void LogCrash(string source, Exception ex)
+    private static void LogCrash(string source, Exception ex, bool fatal = false)
     {
+        // Fatal faults stamp the session journal first, so the preserved file
+        // reads as a crash (marker, then the stack via the DebugLog write below)
+        // instead of an anonymous kill. Non-fatal callers (unobserved tasks, the
+        // single-instance fallback) must NOT stamp — the app carries on, and a
+        // false stamp would put a scary "crashed" banner on the next launch.
+        if (fatal)
+            Services.CrashJournal.MarkFatal(source);
+
         try
         {
             var crashDir = AppPaths.DataRoot;
@@ -306,6 +347,10 @@ internal class Program
             catch { /* rotation is best effort */ }
 
             var entry = $"[{DateTime.UtcNow:O}] {source}: {ex}\n---\n";
+            // Scrub before the sink — crash.log is shared in bug reports like every
+            // other log, and exception text can echo auth-bearing URLs. A scrubber
+            // failure must not lose the crash report itself.
+            try { entry = Services.LogRedaction.Scrub(entry); } catch { }
             File.AppendAllText(crashPath, entry);
         }
         catch

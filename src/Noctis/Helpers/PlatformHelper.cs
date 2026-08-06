@@ -43,7 +43,15 @@ public static class PlatformHelper
                 {
                     var parent = Path.GetDirectoryName(filePath);
                     if (!string.IsNullOrEmpty(parent))
-                        Process.Start("xdg-open", parent);
+                    {
+                        // ArgumentList — the string overload splits on spaces.
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = "xdg-open",
+                            ArgumentList = { parent },
+                            UseShellExecute = false
+                        });
+                    }
                 }
             }
         }
@@ -58,6 +66,10 @@ public static class PlatformHelper
         // Try the FileManager1 D-Bus interface first (works for nautilus, nemo, dolphin, thunar).
         try
         {
+            // Percent-encoded file URI: dbus-send's array:string: syntax splits
+            // elements on commas, and Uri leaves ',' unescaped (legal in a URI
+            // path), so it must be encoded on top of Uri's own escaping.
+            var fileUri = new Uri(filePath).AbsoluteUri.Replace(",", "%2C");
             var psi = new ProcessStartInfo
             {
                 FileName = "dbus-send",
@@ -68,7 +80,7 @@ public static class PlatformHelper
                     "--type=method_call",
                     "/org/freedesktop/FileManager1",
                     "org.freedesktop.FileManager1.ShowItems",
-                    $"array:string:file://{filePath}",
+                    $"array:string:{fileUri}",
                     "string:"
                 },
                 UseShellExecute = false,
@@ -149,7 +161,13 @@ public static class PlatformHelper
             }
             else if (IsLinux)
             {
-                Process.Start("xdg-open", folderPath);
+                // ArgumentList — the string overload splits on spaces.
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "xdg-open",
+                    ArgumentList = { folderPath },
+                    UseShellExecute = false
+                });
             }
         }
         catch
@@ -160,7 +178,8 @@ public static class PlatformHelper
 
     /// <summary>
     /// Detects whether the system is using dark mode.
-    /// Windows: reads registry, macOS: reads AppleInterfaceStyle default, Linux: GNOME/GTK gsettings.
+    /// Windows: reads registry, macOS: reads AppleInterfaceStyle default,
+    /// Linux: GNOME/GTK gsettings, then the freedesktop settings portal, then KDE's kdeglobals.
     /// </summary>
     public static bool IsSystemDarkMode()
     {
@@ -203,6 +222,19 @@ public static class PlatformHelper
                 var gtkTheme = ReadGSettings("org.gnome.desktop.interface", "gtk-theme");
                 if (!string.IsNullOrEmpty(gtkTheme))
                     return gtkTheme.Contains("dark", StringComparison.OrdinalIgnoreCase);
+
+                // Non-GNOME desktops (KDE, XFCE, …) don't answer the gsettings
+                // probes. The freedesktop settings portal covers them uniformly:
+                // 0 = no preference, 1 = prefer dark, 2 = prefer light.
+                var portal = ReadPortalColorScheme();
+                if (portal == 1) return true;
+                if (portal == 2) return false;
+
+                // KDE without a running portal: kdeglobals records the active
+                // color scheme (e.g. BreezeDark / BreezeLight).
+                var kdeScheme = ReadKdeColorScheme();
+                if (!string.IsNullOrEmpty(kdeScheme))
+                    return kdeScheme.Contains("dark", StringComparison.OrdinalIgnoreCase);
             }
         }
         catch
@@ -211,6 +243,71 @@ public static class PlatformHelper
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Reads org.freedesktop.appearance color-scheme from the xdg-desktop-portal
+    /// (works on KDE, GNOME and most other desktops). Returns 0/1/2 per the
+    /// portal spec, or null when the portal/gdbus is unavailable.
+    /// </summary>
+    private static int? ReadPortalColorScheme()
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "gdbus",
+                Arguments = "call --session --dest org.freedesktop.portal.Desktop " +
+                            "--object-path /org/freedesktop/portal/desktop " +
+                            "--method org.freedesktop.portal.Settings.Read " +
+                            "org.freedesktop.appearance color-scheme",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var proc = Process.Start(psi);
+            if (proc == null) return null;
+            var output = proc.StandardOutput.ReadToEnd().Trim();
+            proc.WaitForExit(1000);
+            if (proc.ExitCode != 0) return null;
+            // Output shape: (<<uint32 1>>,)
+            var idx = output.IndexOf("uint32 ", StringComparison.Ordinal);
+            if (idx < 0 || idx + 7 >= output.Length) return null;
+            return output[idx + 7] switch { '0' => 0, '1' => 1, '2' => 2, _ => (int?)null };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Reads the active KDE color scheme name from kdeglobals, or null when the
+    /// file or key is absent.
+    /// </summary>
+    private static string? ReadKdeColorScheme()
+    {
+        try
+        {
+            var configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+            if (string.IsNullOrEmpty(configHome))
+                configHome = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
+            var kdeGlobals = Path.Combine(configHome, "kdeglobals");
+            if (!File.Exists(kdeGlobals)) return null;
+            foreach (var line in File.ReadLines(kdeGlobals))
+            {
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("ColorScheme=", StringComparison.Ordinal))
+                    return trimmed.Substring("ColorScheme=".Length).Trim();
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static string? ReadGSettings(string schema, string key)

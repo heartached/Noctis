@@ -111,6 +111,32 @@
             <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
 
+        <!-- Press feel for the transport buttons (previous / play-pause / next / repeat):
+             a soft opacity dip that eases back on release — deliberately NO scale, the
+             cluster must never zoom. Reusable — add the class alongside a button's visual
+             class to opt in (QueueView's shuffle/repeat toggles mirror it locally). Must
+             stay declared AFTER the pill-btn / pill-btn-play blocks: their :pressed/
+             :pointerover scale(1) setters neutralize the global Button press scale, and
+             within the same style scope the last declaration wins. Selector-driven state
+             + a single transition keeps quick taps reversing smoothly mid-flight. -->
+        <Style Selector="Button.transport-btn">
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.transport-btn:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="Opacity" Value="0.45"/>
+        </Style>
+
         <!-- Secondary controls (volume, menu) -->
         <Style Selector="Button.secondary-btn">
             <Setter Property="Background" Value="Transparent"/>
@@ -308,20 +334,103 @@
             </Setter>
         </Style>
 
-        <!-- The seek time labels collapse to a hairline at rest and fade back in only while
-             the pointer is over the island. -->
+        <!-- Apple-Music-style hover reveal for the seek row: at rest only the slim pill
+             track shows; hovering the row fades in the side time labels, the thumb and
+             a slightly thicker track. -->
         <Style Selector="TextBlock.seek-time">
             <Setter Property="Transitions">
                 <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18"/>
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Border.island TextBlock.seek-time">
+        <Style Selector="Grid.seek-row TextBlock.seek-time">
             <Setter Property="Opacity" Value="0"/>
         </Style>
-        <Style Selector="Border.island:pointerover TextBlock.seek-time">
+        <Style Selector="Grid.seek-row:pointerover TextBlock.seek-time">
             <Setter Property="Opacity" Value="1"/>
+        </Style>
+
+        <!-- Track pill: slim at rest, slightly thicker on hover. CornerRadius 999 clamps
+             to half the current height, so the ends stay fully rounded at every size.
+             The Height change pairs with an equal-and-opposite translateY so the pill
+             stays vertically centred mid-animation (the code-behind helper only drives
+             Width/Canvas.Left on these borders, so Height/RenderTransform are free). -->
+        <Style Selector="Grid.seek-row Border.seek-track">
+            <Setter Property="Height" Value="3"/>
+            <Setter Property="RenderTransform" Value="translateY(0px)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Height" Duration="0:0:0.18">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Grid.seek-row:pointerover Border.seek-track">
+            <Setter Property="Height" Value="6"/>
+            <Setter Property="RenderTransform" Value="translateY(-1.5px)"/>
+        </Style>
+
+        <!-- Thumb: hidden at rest, fades + grows in on hover. The host Panel carries the
+             fade because PillSliderVisualHelper writes SeekThumb.Opacity (enabled state)
+             on every position tick, which would clobber a style on the thumb itself. -->
+        <Style Selector="Grid.seek-row Panel.seek-thumb-host">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Grid.seek-row:pointerover Panel.seek-thumb-host">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Grid.seek-row Border.seek-thumb">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Height" Value="8"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.18">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
+                    <DoubleTransition Property="Height" Duration="0:0:0.18">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Grid.seek-row:pointerover Border.seek-thumb">
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+        </Style>
+
+        <!-- Track-info viewport widths live here (not as local values) so the mid
+             resize shape can narrow them: a style can never override a local Width.
+             "bar-mid" is toggled on the island by code-behind when the user drags
+             the persistent bar below the full-layout width (see ApplyIslandShape). -->
+        <Style Selector="Border#TrackTitleViewport">
+            <Setter Property="Width" Value="192"/>
+        </Style>
+        <Style Selector="Border#ArtistNameViewport">
+            <Setter Property="Width" Value="192"/>
+        </Style>
+        <Style Selector="Border.island.bar-mid Border#TrackTitleViewport">
+            <Setter Property="Width" Value="120"/>
+        </Style>
+        <Style Selector="Border.island.bar-mid Border#ArtistNameViewport">
+            <Setter Property="Width" Value="120"/>
         </Style>
     </UserControl.Styles>
 
@@ -353,6 +462,11 @@
                  bar is already attached, which played as a visible shrink/settle every
                  time the page opened. -->
 
+            <!-- Panel wrapper: hosts the content grid plus the invisible edge grips the
+                 user drags to resize the persistent bar (see the resize handlers in
+                 code-behind). Grips overlay the pill's rounded ends via the negative
+                 margins that reach back across the island's 12px padding. -->
+            <Panel>
             <Grid HorizontalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/> <!-- Playback controls -->
@@ -366,7 +480,7 @@
                     <!-- Shuffle lives in the Queue panel's Up Next header; Repeat is also surfaced here on the bar. -->
 
                     <!-- Previous button -->
-                    <Button Classes="pill-btn"
+                    <Button Classes="pill-btn transport-btn"
                             Command="{Binding PreviousCommand}"
                             ToolTip.Tip="Previous"
                             Width="34" Height="34">
@@ -378,11 +492,12 @@
                         </Viewbox>
                     </Button>
 
-                    <!-- Play/Pause button (prominent) -->
-                    <Button Classes="pill-btn-play"
+                    <!-- Play/Pause button (prominent). No extra Margin: the panel's 2px
+                         Spacing alone keeps the prev/play/next/repeat cluster tight,
+                         Apple-Music style — gaps shrink, hit targets stay full size. -->
+                    <Button Classes="pill-btn-play transport-btn"
                             Command="{Binding PlayPauseCommand}"
                             ToolTip.Tip="{Binding PlayPauseTooltip}"
-                            Margin="4,0"
                             Width="40"
                             Height="40">
                         <Panel>
@@ -406,7 +521,7 @@
                     </Button>
 
                     <!-- Forward button -->
-                    <Button Classes="pill-btn"
+                    <Button Classes="pill-btn transport-btn"
                             Command="{Binding NextCommand}"
                             ToolTip.Tip="Forward"
                             Width="34" Height="34">
@@ -420,51 +535,63 @@
 
                     <!-- Repeat: cycles Off → All → One. A single PNG glyph is tinted by
                          state (dimmed when off, accent when on); the centered "1" marks
-                         repeat-one, since there is no separate one-shot icon. -->
-                    <Button Classes="pill-btn"
+                         repeat-one, since there is no separate one-shot icon. While on,
+                         an Apple-Music-style soft accent pill sits behind the glyph:
+                         AccentColorBrush (Settings accent, kept live by App.SetAccent)
+                         knocked back by Border.Opacity — never a solid accent fill. -->
+                    <Button Classes="pill-btn transport-btn"
                             Command="{Binding CycleRepeatCommand}"
                             ToolTip.Tip="Repeat"
                             Width="34" Height="34">
-                        <Panel Width="18" Height="18">
-                            <!-- Off: white glyph, matching the transport icons -->
-                            <Border Background="{DynamicResource IslandIconFill}"
-                                    RenderOptions.BitmapInterpolationMode="HighQuality"
-                                    IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
-                                <Border.OpacityMask>
-                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Repeat%20ICON.png" Stretch="Uniform" />
-                                </Border.OpacityMask>
-                            </Border>
-                            <!-- All / One: accent glyph -->
-                            <Border Background="{DynamicResource AccentColorBrush}"
-                                    RenderOptions.BitmapInterpolationMode="HighQuality"
-                                    IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:RepeatMode.Off}}">
-                                <Border.OpacityMask>
-                                    <ImageBrush Source="avares://Noctis/Assets/Icons/Repeat%20ICON.png" Stretch="Uniform" />
-                                </Border.OpacityMask>
-                            </Border>
-                            <!-- "1" badge: repeat-one only -->
-                            <TextBlock Text="1"
-                                       FontSize="8"
-                                       FontWeight="Bold"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       Foreground="{DynamicResource AccentColorBrush}"
-                                       IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}" />
+                        <Panel Width="34" Height="34">
+                            <Border Width="28" Height="28"
+                                    CornerRadius="8"
+                                    Background="{DynamicResource AccentColorBrush}"
+                                    Opacity="0.18"
+                                    IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:RepeatMode.Off}}" />
+                            <Panel Width="18" Height="18">
+                                <!-- Off: white glyph, matching the transport icons -->
+                                <Border Background="{DynamicResource IslandIconFill}"
+                                        RenderOptions.BitmapInterpolationMode="HighQuality"
+                                        IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
+                                    <Border.OpacityMask>
+                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Repeat%20ICON.png" Stretch="Uniform" />
+                                    </Border.OpacityMask>
+                                </Border>
+                                <!-- All / One: accent glyph -->
+                                <Border Background="{DynamicResource AccentColorBrush}"
+                                        RenderOptions.BitmapInterpolationMode="HighQuality"
+                                        IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:RepeatMode.Off}}">
+                                    <Border.OpacityMask>
+                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Repeat%20ICON.png" Stretch="Uniform" />
+                                    </Border.OpacityMask>
+                                </Border>
+                                <!-- "1" badge: repeat-one only -->
+                                <TextBlock Text="1"
+                                           FontSize="8"
+                                           FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource AccentColorBrush}"
+                                           IsVisible="{Binding RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}" />
+                            </Panel>
                         </Panel>
                     </Button>
 
                 </StackPanel>
 
-                <!-- CENTER: Album Art + Track Info + Seek Bar (right-click opens options) -->
+                <!-- CENTER: Album Art + Track Info + Seek Bar (right-click opens options).
+                     IsVisible is code-managed (UpdateTrackInfoVisibility): hidden on the
+                     lyrics page AND in the compact resize shape — a binding here would
+                     be a local value no width-driven style could ever override. -->
                 <Grid x:Name="TrackInfoPanel"
                       Grid.Column="1"
                       VerticalAlignment="Center"
                       Margin="0,0,6,0"
                       Background="Transparent"
-                      ColumnDefinitions="Auto,*"
-                      IsVisible="{Binding !IsLyricsPageActive}">
+                      ColumnDefinitions="Auto,*">
 
-                    <!-- Album art thumbnail (click toggles the mini player) -->
+                    <!-- Album art thumbnail (click opens the Mini Player) -->
                     <Border Grid.Column="0"
                             Width="36" Height="36"
                             CornerRadius="7"
@@ -515,12 +642,12 @@
 
                             <!-- Track title + explicit badge -->
                             <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6">
-                            <!-- Width + right margin keep the original 200px footprint but pull
-                                 the clip edge 8px inward, so clipped/ellipsized text always has a
-                                 gap before whatever sits to the right. (Shrinking the width alone
-                                 is a no-op: the auto-sized column shrinks with it.) -->
+                            <!-- Width (styled, so the bar-mid resize shape can narrow it) + right
+                                 margin keep the original 200px footprint but pull the clip edge
+                                 8px inward, so clipped/ellipsized text always has a gap before
+                                 whatever sits to the right. (Shrinking the width alone is a
+                                 no-op: the auto-sized column shrinks with it.) -->
                             <Border x:Name="TrackTitleViewport"
-                                    Width="192"
                                     Margin="0,0,8,0"
                                     ClipToBounds="True"
                                     HorizontalAlignment="Left"
@@ -550,13 +677,20 @@
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource IslandForeground}" />
                                     </Border>
+                                    <!-- DataContext narrows to the Track (null while nothing plays), so
+                                         IsVisible never walks a null CurrentTrack chain — a chain broken
+                                         mid-path logs an Avalonia binding warning at every startup, while a
+                                         null DataContext is silently "no value" and FallbackValue keeps the
+                                         badge hidden. Track's IsExplicit INPC still drives live updates. -->
                                     <Border x:Name="ExplicitBadge"
                                             Background="{DynamicResource IslandExplicitBadge}"
                                             CornerRadius="2"
                                             Padding="4,0"
                                             Height="14"
                                             VerticalAlignment="Center"
-                                            IsVisible="{Binding CurrentTrack.IsExplicit, FallbackValue=False}"
+                                            DataContext="{Binding CurrentTrack}"
+                                            x:DataType="m:Track"
+                                            IsVisible="{Binding IsExplicit, FallbackValue=False}"
                                             ToolTip.Tip="Explicit">
                                         <TextBlock Text="E"
                                                    FontSize="9"
@@ -572,24 +706,31 @@
 
                             <!-- Artist name. The 200px viewport clips the marquee; the Button
                                  sits inside and wraps only the text, so hover/click are limited
-                                 to the artist name itself, not the blank space to its right. -->
+                                 to the artist name itself, not the blank space to its right.
+                                 Clicking opens the artist's discography page (same ViewArtist
+                                 path as the queue popup's artist link). -->
                             <Border x:Name="ArtistNameViewport"
                                     Grid.Row="1"
-                                    Width="192"
                                     Margin="0,0,8,0"
                                     ClipToBounds="True"
                                     HorizontalAlignment="Left">
                                 <Button Classes="artist-link-btn"
                                         Background="Transparent" BorderThickness="0" Padding="0"
                                         Cursor="Hand" HorizontalAlignment="Left"
-                                        Command="{Binding ViewCurrentArtistCommand}">
+                                        Command="{Binding ViewArtistCommand}"
+                                        CommandParameter="{Binding CurrentTrack}"
+                                        ToolTip.Tip="View Artist">
                                     <StackPanel Orientation="Horizontal">
                                         <Border Classes="artist-text-hover"
                                                 CornerRadius="2"
                                                 Padding="1,0,2,0"
                                                 Margin="0,0,0,-2">
+                                            <!-- Converter form (same shape as the title above): binding through
+                                                 CurrentTrack.Artist broke mid-chain while no track was playing
+                                                 and logged a warning at every startup. Artist raises no INPC, so
+                                                 re-evaluating on CurrentTrack change is exactly equivalent. -->
                                             <TextBlock x:Name="ArtistNameTextBlock"
-                                                       Text="{Binding CurrentTrack.Artist, FallbackValue='', TargetNullValue=''}"
+                                                       Text="{Binding CurrentTrack, Converter={StaticResource DisplayArtist}, FallbackValue=''}"
                                                        FontSize="10"
                                                        MaxLines="1"
                                                        Foreground="{DynamicResource AccentColorBrush}"
@@ -603,8 +744,11 @@
                                 </Button>
                             </Border>
 
-                            <!-- Compact seek bar: fixed side times with a long centered slider -->
+                            <!-- Compact seek bar: fixed side times with a long centered slider.
+                                 The seek-row class drives the Apple-Music-style hover reveal
+                                 (times, thumb, thicker track, frosted backdrop pill). -->
                             <Grid Grid.Row="2" Height="20" Margin="-22,-2,0,0" ClipToBounds="False"
+                                  Classes="seek-row" Background="Transparent"
                                   ColumnDefinitions="Auto,*,Auto">
                                 <TextBlock Grid.Column="0"
                                            Classes="seek-time"
@@ -622,22 +766,30 @@
                                             ClipToBounds="False"
                                             IsHitTestVisible="False">
                                         <Border x:Name="SeekTrackBackground"
-                                                Height="3"
-                                                CornerRadius="2"
+                                                Classes="seek-track"
+                                                CornerRadius="999"
                                                 Background="{DynamicResource IslandSliderUnfilled}"
                                                 Canvas.Top="8.5"/>
                                         <Border x:Name="SeekTrackFill"
-                                                Height="3"
-                                                CornerRadius="2"
+                                                Classes="seek-track"
+                                                CornerRadius="999"
                                                 Background="{DynamicResource IslandSliderFilled}"
                                                 Canvas.Top="8.5"/>
-                                        <Border x:Name="SeekThumb"
-                                                Width="12"
-                                                Height="12"
-                                                CornerRadius="6"
-                                                Background="{DynamicResource IslandSliderFilled}"
-                                                BoxShadow="0 2 4 0 #40000000"
-                                                Canvas.Top="4"/>
+                                        <!-- Fixed 12x12 host keeps the thumb's centre where the
+                                             code-behind transform expects it while the inner
+                                             circle grows/fades with the hover styles. -->
+                                        <Panel Classes="seek-thumb-host"
+                                               Width="12"
+                                               Height="12"
+                                               Canvas.Top="4">
+                                            <Border x:Name="SeekThumb"
+                                                    Classes="seek-thumb"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    CornerRadius="999"
+                                                    Background="{DynamicResource IslandSliderFilled}"
+                                                    BoxShadow="0 2 4 0 #40000000"/>
+                                        </Panel>
                                     </Canvas>
                                     <Slider Value="{Binding PositionFraction, Mode=TwoWay}"
                                             Classes="seek-slider"
@@ -649,7 +801,7 @@
 
                                 <TextBlock Grid.Column="2"
                                            Classes="seek-time"
-                                           Text="{Binding RemainingTimeText}"
+                                           Text="{Binding RemainingTimeText, StringFormat='-{0}'}"
                                            FontSize="10"
                                            VerticalAlignment="Center"
                                            TextAlignment="Left"
@@ -970,6 +1122,9 @@
                             </Panel>
                         </Button>
 
+                        <!-- Overlay-layer hosted: a native popup window is always-on-top and
+                             would float over other apps; the overlay keeps the flyout inside
+                             the window on every platform. -->
                         <Popup x:Name="VolumeFlyout"
                                PlacementTarget="{Binding #VolumeButton}"
                                Placement="Top"
@@ -977,6 +1132,7 @@
                                PlacementGravity="Top"
                                VerticalOffset="-4"
                                IsLightDismissEnabled="False"
+                               ShouldUseOverlayLayer="True"
                                WindowManagerAddShadowHint="False">
                             <StackPanel>
                             <!-- Floating % bubble above the pill; follows the thumb while dragging. -->
@@ -1073,6 +1229,36 @@
                 </StackPanel>
 
             </Grid>
+
+            <!-- Edge resize grips (persistent bar only — code-behind shows them when
+                 CompactWhenLyricsPageActive is off). Plain Borders, never Buttons:
+                 they must not join the tab order or eat Space. Drag adjusts the
+                 island width live; double-click resets to the stock width. -->
+            <Border x:Name="LeftResizeGrip"
+                    Width="8"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Stretch"
+                    Margin="-12,0,0,0"
+                    Background="Transparent"
+                    Cursor="SizeWestEast"
+                    IsVisible="False"
+                    PointerPressed="OnResizeGripPressed"
+                    PointerMoved="OnResizeGripMoved"
+                    PointerReleased="OnResizeGripReleased"
+                    PointerCaptureLost="OnResizeGripCaptureLost"/>
+            <Border x:Name="RightResizeGrip"
+                    Width="8"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Stretch"
+                    Margin="0,0,-12,0"
+                    Background="Transparent"
+                    Cursor="SizeWestEast"
+                    IsVisible="False"
+                    PointerPressed="OnResizeGripPressed"
+                    PointerMoved="OnResizeGripMoved"
+                    PointerReleased="OnResizeGripReleased"
+                    PointerCaptureLost="OnResizeGripCaptureLost"/>
+            </Panel>
         </Border>
 
 </UserControl>

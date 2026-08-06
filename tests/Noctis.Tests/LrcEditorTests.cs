@@ -98,4 +98,49 @@ public class LrcEditorTests
 
         Assert.Equal(original, rebuilt);
     }
+
+    // ── Duet voice markers ("v1:"/"v2:") round-trip and display ───────────────
+
+    [Fact]
+    public void ParseLrc_KeepsVoiceMarkerInRawText()
+    {
+        var lines = LrcEditorViewModel.ParseLrc("[00:10.00]v2: Hey");
+
+        Assert.Single(lines);
+        Assert.Equal("v2: Hey", lines[0].Text);
+    }
+
+    [Fact]
+    public void VoiceMarkers_RoundTripThroughParseAndBuild()
+    {
+        var original = "[00:10.00]v1: First voice\n[00:12.00]v2: Second voice\n";
+
+        var reparsed = LrcEditorViewModel.ParseLrc(original);
+        var rebuilt = LrcEditorViewModel.BuildLrcPreservingUntimed(reparsed).Replace("\r\n", "\n");
+
+        Assert.Equal(original, rebuilt);
+    }
+
+    [Fact]
+    public void LrcEditorLine_DisplayText_StripsVoiceMarkerAndWordTags()
+    {
+        var line = new LrcEditorLine(null, "v2: <00:10.00>Hey <00:10.50>now");
+
+        Assert.Equal("v2: <00:10.00>Hey <00:10.50>now", line.Text);
+        Assert.Equal("Hey now", line.DisplayText);
+    }
+
+    [Fact]
+    public void SyncedLyricEditorLine_DisplayText_StripsVoiceMarker_FlagTracksWordTagsOnly()
+    {
+        var timed = new SyncedLyricEditorLine(null, "v2: <00:10.00>Hey");
+        Assert.Equal("v2: <00:10.00>Hey", timed.Text);
+        Assert.Equal("Hey", timed.DisplayText);
+        Assert.True(timed.HasWordTiming);
+
+        // A marker alone must not read as word timing.
+        var plain = new SyncedLyricEditorLine(null, "v2: Hey");
+        Assert.Equal("Hey", plain.DisplayText);
+        Assert.False(plain.HasWordTiming);
+    }
 }

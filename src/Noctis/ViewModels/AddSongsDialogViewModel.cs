@@ -38,6 +38,14 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     public bool HasSelection => _selected.Count > 0;
     public string AddButtonText => _selected.Count > 0 ? $"Add {_selected.Count}" : "Add";
 
+    /// <summary>Rows the user can actually tick (tracks already in the playlist can't).</summary>
+    private IEnumerable<AddSongItem> SelectableResults => Results.Where(r => !r.IsInPlaylist);
+
+    /// <summary>Drives the select-all button: hidden when there is nothing to tick.</summary>
+    public bool HasSelectableResults => SelectableResults.Any();
+    public bool AreAllResultsSelected => HasSelectableResults && SelectableResults.All(r => r.IsSelected);
+    public string SelectAllText => AreAllResultsSelected ? "Deselect all" : "Select all";
+
     /// <summary>Fires with the chosen tracks when the user confirms.</summary>
     public event EventHandler<IReadOnlyList<Track>>? SongsChosen;
 
@@ -118,6 +126,9 @@ public partial class AddSongsDialogViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsShuffleMode));
         OnPropertyChanged(nameof(ShowPrompt));
         OnPropertyChanged(nameof(ShowNoResults));
+        OnPropertyChanged(nameof(HasSelectableResults));
+        OnPropertyChanged(nameof(AreAllResultsSelected));
+        OnPropertyChanged(nameof(SelectAllText));
     }
 
     [RelayCommand]
@@ -137,9 +148,50 @@ public partial class AddSongsDialogViewModel : ViewModelBase
             item.IsSelected = false;
         }
 
+        RaiseSelectionChanged();
+    }
+
+    /// <summary>
+    /// Ticks every row currently on screen, or clears them when they are all already
+    /// ticked. Scoped to the visible results (not the whole library) so it stays
+    /// predictable: what you see is what gets added.
+    /// </summary>
+    [RelayCommand]
+    private void ToggleSelectAll()
+    {
+        var selectable = SelectableResults.ToList();
+        if (selectable.Count == 0) return;
+
+        if (selectable.All(r => r.IsSelected))
+        {
+            foreach (var item in selectable)
+            {
+                _selected.Remove(item.Track.Id);
+                _selectionOrder.Remove(item.Track.Id);
+                item.IsSelected = false;
+            }
+        }
+        else
+        {
+            // Append in display order, keeping the tick-order contract Add() relies on.
+            foreach (var item in selectable.Where(r => !r.IsSelected))
+            {
+                if (_selected.Add(item.Track.Id))
+                    _selectionOrder.Add(item.Track.Id);
+                item.IsSelected = true;
+            }
+        }
+
+        RaiseSelectionChanged();
+    }
+
+    private void RaiseSelectionChanged()
+    {
         SelectedCount = _selected.Count;
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(AddButtonText));
+        OnPropertyChanged(nameof(AreAllResultsSelected));
+        OnPropertyChanged(nameof(SelectAllText));
     }
 
     [RelayCommand]

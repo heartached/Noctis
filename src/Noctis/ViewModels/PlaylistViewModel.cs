@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -108,6 +109,23 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         }
     }
 
+    /// <summary>Creation date without the "Created " prefix, for the labelled fact
+    /// tiles in the description dialog (the label already says CREATED).</summary>
+    public string CreatedDateValue => _playlist.CreatedAt.ToLocalTime().ToString("MMMM yyyy");
+
+    /// <summary>Last-modified date without the "Updated " prefix; see
+    /// <see cref="CreatedDateValue"/>.</summary>
+    public string ModifiedDateValue
+    {
+        get
+        {
+            var modified = _playlist.ModifiedAt.ToLocalTime();
+            return modified.Year == DateTime.Now.Year
+                ? modified.ToString("MMM d")
+                : modified.ToString("MMM yyyy");
+        }
+    }
+
     /// <summary>Playlist cover color (hex).</summary>
     public string PlaylistColor => _playlist.Color;
 
@@ -128,7 +146,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     public string? BackdropArtPath => HasCustomArt ? PlaylistCoverArtPath : Art1;
 
     /// <summary>Resolved tracks in this playlist (order matches playlist).</summary>
-    public ObservableCollection<Track> Tracks { get; } = new();
+    public BulkObservableCollection<Track> Tracks { get; } = new();
 
     /// <summary>Library-only suggestions (same artists as the playlist) shown in the left rail.</summary>
     public ObservableCollection<Track> SuggestedTracks { get; } = new();
@@ -248,75 +266,92 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         LoadTracks();
     }
 
-    private void LoadTracks()
+    /// <summary>Stale-result guard: LoadTracks runs can overlap (search keystrokes,
+    /// LibraryUpdated every ~1.5 s during scans); only the newest result is applied.</summary>
+    private int _loadGeneration;
+
+    private async void LoadTracks()
     {
-        Tracks.Clear();
-
-        IEnumerable<Track> resolved;
-
-        if (_playlist.IsSmartPlaylist)
+        try
         {
-            resolved = SmartPlaylistEvaluator.Evaluate(_playlist, _library.Tracks);
+            var generation = Interlocked.Increment(ref _loadGeneration);
+
+            // Snapshot mutable state on the UI thread; TrackIds is edited by
+            // remove/reorder so the background pass must not enumerate it live.
+            var playlist = _playlist;
+            var isSmart = playlist.IsSmartPlaylist;
+            var trackIds = isSmart ? null : playlist.TrackIds.ToList();
+            var filter = _currentFilter;
+            var sortMode = SortMode;
+            var library = _library;
+
+            // Smart-playlist eval and filter/sort are full-list passes; run them off the
+            // UI thread like LibrarySongsViewModel.ApplyFilterAndSort does.
+            var (allResolvedTracks, sorted) = await Task.Run(() =>
+            {
+                IEnumerable<Track> resolved = isSmart
+                    ? SmartPlaylistEvaluator.Evaluate(playlist, library.Tracks)
+                    : trackIds!.Select(id => library.GetTrackById(id)).OfType<Track>();
+
+                var all = resolved.ToList();
+
+                var filtered = string.IsNullOrWhiteSpace(filter)
+                    ? all
+                    : all.Where(t => MatchesSearch(t, filter)).ToList();
+
+                return (all, SortTracks(filtered, sortMode));
+            });
+
+            if (generation != _loadGeneration) return;
+
+            Tracks.ReplaceAll(sorted);
+
+            TrackCount = Tracks.Count;
+            var total = TimeSpan.FromTicks(Tracks.Sum(t => t.Duration.Ticks));
+            TotalDuration = total.TotalHours >= 1
+                ? $"{(int)total.TotalHours}h {total.Minutes}m"
+                : $"{(int)total.TotalMinutes} min";
+
+            // Compute total file size from the size the library already indexed.
+            //
+            // This used to do File.Exists + new FileInfo(...).Length per track, synchronously
+            // on the UI thread — and LoadTracks runs on every debounced search keystroke, sort
+            // change, library update and membership change. For a 3,000-track playlist on a
+            // NAS/SMB share that was 6,000 blocking filesystem round-trips per keystroke.
+            // Track.FileSize is populated by MetadataService during scan and kept current by
+            // the watcher, so the number is the same without touching the disk.
+            long totalBytes = 0;
+            foreach (var t in Tracks)
+                totalBytes += t.FileSize;
+            TotalSize = totalBytes switch
+            {
+                >= 1_073_741_824 => $"{totalBytes / 1_073_741_824.0:F1} GB",
+                >= 1_048_576 => $"{totalBytes / 1_048_576.0:F1} MB",
+                _ => $"{totalBytes / 1024.0:F0} KB"
+            };
+
+            // Use first track's album artwork as playlist cover
+            PlaylistArtworkPath = Tracks.FirstOrDefault()?.AlbumArtworkPath;
+
+            UpdateEmptyStateFlags(allResolvedTracks.Count);
+
+            RebuildFeaturedArtists(allResolvedTracks);
+            RebuildSuggestions();
+            OnPropertyChanged(nameof(ModifiedDateDisplay));
         }
-        else
+        catch (Exception ex)
         {
-            resolved = _playlist.TrackIds
-                .Select(id => _library.GetTrackById(id))
-                .OfType<Track>();
+            Debug.WriteLine($"[PlaylistVM] LoadTracks failed: {ex.Message}");
         }
-
-        var allResolvedTracks = resolved.ToList();
-
-        if (!string.IsNullOrWhiteSpace(_currentFilter))
-        {
-            resolved = allResolvedTracks.Where(t => MatchesSearch(t, _currentFilter));
-        }
-        else
-        {
-            resolved = allResolvedTracks;
-        }
-
-        foreach (var track in SortTracks(resolved.ToList(), SortMode))
-            Tracks.Add(track);
-
-        TrackCount = Tracks.Count;
-        var total = TimeSpan.FromTicks(Tracks.Sum(t => t.Duration.Ticks));
-        TotalDuration = total.TotalHours >= 1
-            ? $"{(int)total.TotalHours}h {total.Minutes}m"
-            : $"{(int)total.TotalMinutes} min";
-
-        // Compute total file size from the size the library already indexed.
-        //
-        // This used to do File.Exists + new FileInfo(...).Length per track, synchronously
-        // on the UI thread — and LoadTracks runs on every debounced search keystroke, sort
-        // change, library update and membership change. For a 3,000-track playlist on a
-        // NAS/SMB share that was 6,000 blocking filesystem round-trips per keystroke.
-        // Track.FileSize is populated by MetadataService during scan and kept current by
-        // the watcher, so the number is the same without touching the disk.
-        long totalBytes = 0;
-        foreach (var t in Tracks)
-            totalBytes += t.FileSize;
-        TotalSize = totalBytes switch
-        {
-            >= 1_073_741_824 => $"{totalBytes / 1_073_741_824.0:F1} GB",
-            >= 1_048_576 => $"{totalBytes / 1_048_576.0:F1} MB",
-            _ => $"{totalBytes / 1024.0:F0} KB"
-        };
-
-        // Use first track's album artwork as playlist cover
-        PlaylistArtworkPath = Tracks.FirstOrDefault()?.AlbumArtworkPath;
-
-        UpdateEmptyStateFlags(allResolvedTracks.Count);
-
-        RebuildFeaturedArtists(allResolvedTracks);
-        RebuildSuggestions();
-        OnPropertyChanged(nameof(ModifiedDateDisplay));
     }
 
     // ── Suggested songs (left rail) ──────────────────────────
 
     /// <summary>Membership snapshot so filter/sort reloads don't reshuffle the picks.</summary>
     private string? _lastSuggestionKey;
+
+    /// <summary>Stale-result guard for the suggestion scan (mirrors _loadGeneration).</summary>
+    private int _suggestionGeneration;
 
     private void RebuildSuggestions(bool force = false)
     {
@@ -326,28 +361,50 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         if (!force && key == _lastSuggestionKey) return;
         _lastSuggestionKey = key;
 
-        SuggestedTracks.Clear();
+        _ = RebuildSuggestionsAsync(_playlist.TrackIds.ToList());
+    }
 
-        var inPlaylist = new HashSet<Guid>(_playlist.TrackIds);
-        var playlistArtists = new HashSet<string>(
-            _playlist.TrackIds
-                .Select(id => _library.GetTrackById(id))
-                .OfType<Track>()
-                .SelectMany(t => Track.ParseArtistTokens(t.Artist)),
-            StringComparer.OrdinalIgnoreCase);
-
-        if (playlistArtists.Count > 0)
+    /// <summary>The candidate scan runs ParseArtistTokens (regex) over every library
+    /// track, so it lives on a background thread; only the 3 picks touch the UI.</summary>
+    private async Task RebuildSuggestionsAsync(List<Guid> trackIds)
+    {
+        try
         {
-            var candidates = _library.Tracks
-                .Where(t => !inPlaylist.Contains(t.Id)
-                            && Track.ParseArtistTokens(t.Artist).Any(playlistArtists.Contains))
-                .ToList();
+            var generation = Interlocked.Increment(ref _suggestionGeneration);
+            var library = _library;
 
-            foreach (var pick in candidates.OrderBy(_ => Random.Shared.Next()).Take(3))
+            var picks = await Task.Run(() =>
+            {
+                var inPlaylist = new HashSet<Guid>(trackIds);
+                var playlistArtists = new HashSet<string>(
+                    trackIds
+                        .Select(id => library.GetTrackById(id))
+                        .OfType<Track>()
+                        .SelectMany(t => Track.ParseArtistTokens(t.Artist)),
+                    StringComparer.OrdinalIgnoreCase);
+
+                if (playlistArtists.Count == 0) return new List<Track>();
+
+                var candidates = library.Tracks
+                    .Where(t => !inPlaylist.Contains(t.Id)
+                                && Track.ParseArtistTokens(t.Artist).Any(playlistArtists.Contains))
+                    .ToList();
+
+                return candidates.OrderBy(_ => Random.Shared.Next()).Take(3).ToList();
+            });
+
+            if (generation != _suggestionGeneration) return;
+
+            SuggestedTracks.Clear();
+            foreach (var pick in picks)
                 SuggestedTracks.Add(pick);
-        }
 
-        OnPropertyChanged(nameof(HasSuggestions));
+            OnPropertyChanged(nameof(HasSuggestions));
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[PlaylistVM] Suggestion rebuild failed: {ex.Message}");
+        }
     }
 
     [RelayCommand]
@@ -619,7 +676,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     private async Task PersistFavoriteChangeAsync(Track track)
     {
         await _library.SaveTrackUserStateAsync(new[] { track });
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(new[] { track });
     }
 
     [RelayCommand]

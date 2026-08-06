@@ -66,6 +66,11 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Gapless playback (Settings > Audio): natural track changes hand off to a
     /// pre-decoded standby player instead of the audible stop/parse/start path.</summary>
     [ObservableProperty] private bool _gaplessEnabled = true;
+    /// <summary>Autoplay (Settings > Playback): when the queue is exhausted by a natural
+    /// track end, keep playing similar tracks from the library (same genre, then same
+    /// primary artist). Driven by Settings; read at each queue exhaustion, so flipping
+    /// it mid-session arms or disarms the next one. Off by default.</summary>
+    [ObservableProperty] private bool _autoplayEnabled;
 
     // ── Signal path / quality badge (Roon-style) ──
     /// <summary>Overall chain quality: "Bit-perfect", "Hi-Res Lossless", "Lossless", "Enhanced", "Lossy".</summary>
@@ -83,9 +88,19 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Opacity of the playback bar's glass fill (0–1). Driven by Settings; default
     /// 0.4 matches the original #66 alpha. Background only — controls/text stay opaque.</summary>
     [ObservableProperty] private double _islandBackgroundOpacity = 0.4;
+    /// <summary>User-resized width of the persistent playback bar island. Hydrated from
+    /// AppSettings.PlaybackBarWidth at startup and updated by the bar's edge-drag; the
+    /// 590 default mirrors both the settings default and the XAML base width.</summary>
+    [ObservableProperty] private double _playbackBarIslandWidth = 590;
     /// <summary>Whether the lyrics page's flowing-light blobs are shown in artwork
     /// background mode (issue #22). Driven by Settings like the marquee flags.</summary>
-    [ObservableProperty] private bool _lyricsFlowingLightEnabled = true;
+    [ObservableProperty] private bool _lyricsFlowingLightEnabled;
+    /// <summary>Opt-in fullscreen lyrics focus — dims all but the active line and its
+    /// closest neighbors while the lyrics page is fullscreen. Driven by Settings.</summary>
+    [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
+    /// <summary>Whether TTML words split across several timed spans render unbroken
+    /// (issue #32). Driven by Settings; the lyrics VM re-parses when it flips.</summary>
+    [ObservableProperty] private bool _lyricsJoinSplitWords;
 
     // ── Lyrics page integration (flags + pass-through commands set up by MainWindowViewModel) ──
 
@@ -100,7 +115,7 @@ public partial class PlayerViewModel : ViewModelBase
     /// Used by surfaces that bind via <see cref="Controls.CachedImage"/> so the
     /// previous cover stays visible during async cache-miss decode — no flash on
     /// track switch. The Bitmap-based <see cref="AlbumArt"/> property is kept
-    /// for legacy bindings (NowPlaying, Lyrics) that haven't been migrated yet.
+    /// for legacy bindings (Lyrics) that haven't been migrated yet.
     /// </summary>
     [ObservableProperty] private string? _currentArtPath;
 
@@ -185,6 +200,15 @@ public partial class PlayerViewModel : ViewModelBase
     private bool _radioRefillInFlight;
     private const int RadioRefillThreshold = 5;
     private const int RadioBatchSize = 25;
+
+    // ── Autoplay (tag-based queue continuation) ──
+    private readonly IAutoplayService _autoplayService = new AutoplayService();
+    // Everything autoplay picked this session, so it doesn't repeat itself until the
+    // candidate pool is exhausted (then it's cleared and reuse is allowed).
+    private readonly HashSet<Guid> _autoplayPickedIds = new();
+    // Small visible batch (Apple Music-style): the first pick plays, the rest land in
+    // Up Next so the queue popup shows where playback is heading.
+    private const int AutoplayBatchSize = 5;
 
     public PlayerViewModel(IAudioPlayer audioPlayer, ILibraryService library, IPersistenceService persistence, IAnimatedCoverService animatedCovers)
     {
@@ -490,6 +514,16 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Sets the SettingsViewModel for per-track EQ and audio overrides.</summary>
     public void SetSettingsViewModel(SettingsViewModel settings) => _settings = settings;
 
+    /// <summary>Commits a finished playback-bar resize (drag release or grip
+    /// double-click reset): updates the live width and persists it through the
+    /// settings pipeline. No-ops the persistence when no settings VM is wired
+    /// (headless tests), leaving the property itself fully usable.</summary>
+    public void CommitPlaybackBarWidth(double width)
+    {
+        PlaybackBarIslandWidth = width;
+        _settings?.SetPlaybackBarWidth(width);
+    }
+
     /// <summary>Sets the play history log used for play/skip event recording.</summary>
     public void SetPlayHistory(IPlayHistoryService playHistory) => _playHistory = playHistory;
 
@@ -529,14 +563,6 @@ public partial class PlayerViewModel : ViewModelBase
 
     private Action<string>? _viewArtistAction;
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
-
-    [RelayCommand]
-    private void ViewCurrentArtist()
-    {
-        var artist = CurrentTrack?.Artist;
-        if (!string.IsNullOrWhiteSpace(artist))
-            _viewArtistAction?.Invoke(artist);
-    }
 
     [RelayCommand]
     private void ViewArtist(Track? track)
@@ -1566,12 +1592,91 @@ public partial class PlayerViewModel : ViewModelBase
         }
         else
         {
+            if (TryContinueWithAutoplay(reason))
+                return;
+
             DebugLogger.Info(
                 DebugLogger.Category.Queue,
                 "TrackEnded.NoNext",
                 $"queueCount={UpNext.Count}, historyCount={History.Count}, repeat={RepeatMode}");
             StopAndClear();
         }
+    }
+
+    /// <summary>
+    /// Tag-based Autoplay (Settings > Playback): when the queue is exhausted by a
+    /// natural track end, continues playback with similar tracks from the library —
+    /// same genre as the just-ended track, then same primary artist when the genre
+    /// tier has nothing. Returns false (caller stops exactly as before) when the
+    /// setting is off, the end wasn't natural, or neither tier has candidates.
+    ///
+    /// This runs after the stop-after-current guard, and repeat modes never reach
+    /// the exhaustion branch at all (Repeat One replays above, Repeat All wraps the
+    /// cycle), so autoplay can only extend a queue that would otherwise go silent.
+    /// The first pick plays immediately; the rest are appended to Up Next so the
+    /// queue popup shows where playback is heading. Selection is a synchronous O(n)
+    /// scan (see <see cref="AutoplayService"/>) — cheap enough for the advance path.
+    /// </summary>
+    private bool TryContinueWithAutoplay(QueueAdvanceReason reason)
+    {
+        if (!AutoplayEnabled)
+            return false;
+        // Only a genuinely finished track flows into autoplay. User skips on an empty
+        // queue, Previous, and playback errors all keep today's stop behavior — and a
+        // queue drained by removals never advances by itself, so it can't land here.
+        if (reason is not (QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix))
+            return false;
+        // Defensive: both repeat modes are handled before the exhaustion branch; if
+        // that ever changes, autoplay must still never fight a repeat wrap.
+        if (RepeatMode != RepeatMode.Off)
+            return false;
+        var seed = CurrentTrack; // the just-ended track (already prepended to History)
+        if (seed == null)
+            return false;
+
+        // No immediate repeats: skip everything just played (History) and everything
+        // autoplay already picked this session.
+        var exclude = new HashSet<Guid>(_autoplayPickedIds) { seed.Id };
+        foreach (var t in History)
+            exclude.Add(t.Id);
+
+        var picks = _autoplayService.PickSimilar(seed, _library.Tracks, AutoplayBatchSize, exclude);
+        if (picks.Count == 0)
+        {
+            // Candidate pool exhausted for this run — allow reuse: start a fresh cycle
+            // that only refuses to replay the seed itself back-to-back.
+            _autoplayPickedIds.Clear();
+            picks = _autoplayService.PickSimilar(
+                seed, _library.Tracks, AutoplayBatchSize, new HashSet<Guid> { seed.Id });
+            if (picks.Count == 0)
+                return false;
+        }
+
+        foreach (var t in picks)
+            _autoplayPickedIds.Add(t.Id);
+
+        DebugLogger.Info(
+            DebugLogger.Category.Queue,
+            "Autoplay.Continue",
+            $"seed={seed.Title}, genre={seed.Genre}, picked={picks.Count}, reason={reason}");
+
+        MarkQueueChanged();
+        if (picks.Count > 1)
+        {
+            _suppressHasContentNotify = true;
+            try
+            {
+                for (int i = 1; i < picks.Count; i++)
+                    UpNext.Add(picks[i]);
+            }
+            finally
+            {
+                _suppressHasContentNotify = false;
+                OnPropertyChanged(nameof(HasContent));
+            }
+        }
+        PlayTrack(picks[0]);
+        return true;
     }
 
     /// <summary>
@@ -1910,7 +2015,8 @@ public partial class PlayerViewModel : ViewModelBase
         _naturalEndFallbackTimer = null;
     }
 
-    private bool TryAdvanceForAutoMix(TimeSpan position, TimeSpan duration)
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal bool TryAdvanceForAutoMix(TimeSpan position, TimeSpan duration)
     {
         if (AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.Off ||
             _autoMixAdvanceQueued ||
@@ -1951,24 +2057,30 @@ public partial class PlayerViewModel : ViewModelBase
         if (fadeStart < TimeSpan.Zero)
             fadeStart = TimeSpan.Zero;
 
-        if (position < fadeStart)
+        // A seek can land directly inside the fade window without ever crossing the
+        // approach band; without a prepared snapshot the validator below would cancel
+        // on every tick and the track would end with no transition at all.
+        var preloadLead = TimeSpan.FromSeconds(Math.Clamp(plan.Duration.TotalSeconds + 2, 3, 8));
+        if (position >= fadeStart - preloadLead && _autoMixPreparedTrackId != nextTrack.Id)
         {
-            var preloadLead = TimeSpan.FromSeconds(Math.Clamp(plan.Duration.TotalSeconds + 2, 3, 8));
-            if (position >= fadeStart - preloadLead && _autoMixPreparedTrackId != nextTrack.Id)
-            {
-                _autoMixPreparedTrackId = nextTrack.Id;
-                _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
-                    nextTrack.Id,
-                    nextTrack.FilePath,
-                    _queueVersion,
-                    IsShuffleEnabled,
-                    RepeatMode,
-                    AutoMixTransitionMode,
-                    _audioPlayer.CurrentSessionId);
-                _audioPlayer.PrepareNext(nextTrack.FilePath, (long)plan.NextTrackStartPosition.TotalMilliseconds);
-            }
-            return false;
+            _autoMixPreparedTrackId = nextTrack.Id;
+            _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
+                nextTrack.Id,
+                nextTrack.FilePath,
+                _queueVersion,
+                IsShuffleEnabled,
+                RepeatMode,
+                AutoMixTransitionMode,
+                _audioPlayer.CurrentSessionId);
+            _audioPlayer.PrepareNext(nextTrack.FilePath, (long)plan.NextTrackStartPosition.TotalMilliseconds);
+            // Prepared late (already inside the window): give the async prepare a
+            // tick of head start rather than committing against a cold standby.
+            if (position >= fadeStart)
+                return false;
         }
+
+        if (position < fadeStart)
+            return false;
 
         var remaining = transitionEnd - position;
         var overlapBlend = AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.AutoMix;
@@ -2202,12 +2314,18 @@ public partial class PlayerViewModel : ViewModelBase
     private void OnPlaybackError(object? sender, string message)
     {
         DebugLogger.Error(DebugLogger.Category.Playback, "PlaybackError", $"msg={message}, track={CurrentTrack?.Title}");
+        // DebugLogger is the dev-only ring (off by default) — the session log
+        // must carry playback errors too, or Copy Logs shows nothing for the
+        // single most-reported failure class.
+        DebugLog.Write("Audio", $"Playback error: {message} — track: {CurrentTrack?.Title ?? "(none)"}");
         Dispatcher.UIThread.Post(() =>
         {
             if (++_consecutivePlaybackErrors >= MaxConsecutivePlaybackErrors)
             {
                 DebugLogger.Error(DebugLogger.Category.Playback, "PlaybackError.CascadeStop",
                     $"{_consecutivePlaybackErrors} consecutive playback errors — stopping instead of skipping");
+                DebugLog.Write("Audio",
+                    $"{_consecutivePlaybackErrors} consecutive playback errors — stopping playback");
                 _consecutivePlaybackErrors = 0;
                 StopAndClear();
                 return;

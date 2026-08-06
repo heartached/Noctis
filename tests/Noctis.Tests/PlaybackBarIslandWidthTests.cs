@@ -96,4 +96,59 @@ public class PlaybackBarIslandWidthTests
             win.Close();
         }
     }
+
+    [AvaloniaFact]
+    public void StoredUserResize_IsEstablishedInstantlyOnTheMainWindowBar()
+    {
+        var player = MakePlayer();
+        // Simulates SettingsViewModel hydrating a persisted resize at startup.
+        player.PlaybackBarIslandWidth = 720;
+
+        var bar = new PlaybackBarView { DataContext = player, CompactWhenLyricsPageActive = false };
+        var win = new Window { Width = 900, Height = 200, Content = bar };
+        try
+        {
+            win.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            // Same establishing-write rule as the compact mount: the stored width must
+            // be in place before any render tick, never animated into.
+            Assert.Equal(720, Island(bar).Width);
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void NarrowUserResize_HidesTrackInfo_AndWideningRestoresIt()
+    {
+        var player = MakePlayer();
+        player.PlaybackBarIslandWidth = 420; // below the 500px compact-shape threshold
+
+        var bar = new PlaybackBarView { DataContext = player, CompactWhenLyricsPageActive = false };
+        var win = new Window { Width = 900, Height = 200, Content = bar };
+        try
+        {
+            win.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            var trackInfo = bar.FindControl<Grid>("TrackInfoPanel");
+            Assert.NotNull(trackInfo);
+            Assert.Equal(420, Island(bar).Width);
+            Assert.False(trackInfo!.IsVisible);
+
+            // Back to the stock width: the full layout returns.
+            player.PlaybackBarIslandWidth = IslandBaseWidth;
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(IslandBaseWidth, Island(bar).Width);
+            Assert.True(trackInfo.IsVisible);
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
 }

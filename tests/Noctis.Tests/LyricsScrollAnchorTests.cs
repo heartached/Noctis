@@ -67,4 +67,24 @@ public class LyricsScrollAnchorTests
         var offset = LyricsScrollAnchor.ComputeAnchorOffset(600, LineHeight, 0, 0);
         Assert.Equal(630, offset, 3);
     }
+
+    [Fact]
+    public void CustomAnchorRatioPlacesTheLineCenterAtThatFraction()
+    {
+        // The page passes its own ratios (fullscreen focus rides near center): with 0.50,
+        // line 10's center (600 + 30) must land 50% down the viewport (200px), so the
+        // offset is 630 - 200.
+        var offset = LyricsScrollAnchor.ComputeAnchorOffset(600, LineHeight, Viewport, Extent, 0.50);
+        Assert.Equal(600 - Viewport * 0.50 + 30, offset, 3);
+    }
+
+    [Fact]
+    public void OmittedRatioMatchesTheSharedDefault()
+    {
+        // Callers that omit the ratio (the panel) must keep the historical 22% anchor
+        // exactly; the page passes its own extent-space ratios explicitly.
+        var implicitDefault = LyricsScrollAnchor.ComputeAnchorOffset(600, LineHeight, Viewport, Extent);
+        var explicitDefault = LyricsScrollAnchor.ComputeAnchorOffset(600, LineHeight, Viewport, Extent, 0.22);
+        Assert.Equal(explicitDefault, implicitDefault, 3);
+    }
 }

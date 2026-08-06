@@ -124,11 +124,15 @@ public partial class PlaylistView : UserControl
                 UpdateRowIndexVisuals(item);
     }
 
-    private void UpdateRowIndexVisuals(ListBoxItem item)
+    /// <param name="knownIndex">Index supplied by ContainerPrepared. Pass -1 to look it
+    /// up: <see cref="ItemsControl.IndexFromContainer"/> is NOT yet valid while that
+    /// event is being raised, but is fine once the container is registered.</param>
+    /// <returns>true when the row's template was realized and the stamp applied.</returns>
+    private bool UpdateRowIndexVisuals(ListBoxItem item, int knownIndex = -1)
     {
-        if (DataContext is not PlaylistViewModel vm) return;
-        var index = TrackList.IndexFromContainer(item);
-        if (index < 0 || index >= vm.Tracks.Count) return;
+        if (DataContext is not PlaylistViewModel vm) return false;
+        var index = knownIndex >= 0 ? knownIndex : TrackList.IndexFromContainer(item);
+        if (index < 0 || index >= vm.Tracks.Count) return false;
 
         var descendants = item.GetVisualDescendants().ToList();
 
@@ -145,32 +149,35 @@ public partial class PlaylistView : UserControl
 
         var albumBtn = descendants.OfType<Button>()
             .FirstOrDefault(b => b.Classes.Contains("album-btn"));
-        if (albumBtn != null)
-            albumBtn.Opacity = sameAsPrevious ? 0.4 : 1.0;
+        // Class, not a local Opacity value: a local set beats every style, so the
+        // :pointerover rule that un-dims the link could never win against it.
+        albumBtn?.Classes.Set("repeat-dim", sameAsPrevious);
 
         // Zebra stripe parity (the row Border paints it now, not the ListBoxItem)
         var rowBody = descendants.OfType<Border>()
             .FirstOrDefault(b => b.Classes.Contains("row-body"));
         rowBody?.Classes.Set("even", index % 2 == 1);
 
-        UpdateAlbumRunHeader(descendants, vm, index, album, isRunStart: !sameAsPrevious);
+        return UpdateAlbumRunHeader(descendants, vm, index, album, isRunStart: !sameAsPrevious);
     }
 
     /// <summary>Shows "ALBUM · N TRACKS" above the first row of each consecutive
     /// same-album run, mirroring the approved mockup. Hidden while a filter is
     /// active (the filtered list no longer reflects real runs).</summary>
-    private static void UpdateAlbumRunHeader(List<Avalonia.Visual> descendants,
+    /// <returns>false when the row's template has not been realized yet, so the caller
+    /// can retry rather than leave the header unstamped.</returns>
+    private static bool UpdateAlbumRunHeader(List<Avalonia.Visual> descendants,
         PlaylistViewModel vm, int index, string album, bool isRunStart)
     {
         var header = descendants.OfType<StackPanel>()
             .FirstOrDefault(p => p.Classes.Contains("album-run-header"));
-        if (header == null) return;
+        if (header == null) return false;
 
         var show = isRunStart
                    && !string.IsNullOrEmpty(album)
                    && string.IsNullOrWhiteSpace(vm.SearchText);
         header.IsVisible = show;
-        if (!show) return;
+        if (!show) return true;
 
         // Tighter gap for the very first header; breathing room between runs.
         header.Margin = index == 0 ? new Thickness(8, 4, 8, 6) : new Thickness(8, 18, 8, 6);
@@ -190,6 +197,8 @@ public partial class PlaylistView : UserControl
             .FirstOrDefault(t => t.Classes.Contains("run-count"));
         if (countText != null)
             countText.Text = $"·  {runLength} TRACK{(runLength == 1 ? "" : "S")}";
+
+        return true;
     }
 
     // ── Inline title rename ──
@@ -415,8 +424,26 @@ public partial class PlaylistView : UserControl
         {
             WireTrackItem(item);
             MultiSelectHelper.SyncContainerVisual(item, _selectedTracks);
-            // Template children don't exist yet at prepare time; stamp after layout.
-            Dispatcher.UIThread.Post(() => UpdateRowIndexVisuals(item), DispatcherPriority.Loaded);
+
+            // Stamp BEFORE the row is first measured. The album-run header changes the
+            // row's height, so deciding it a dispatcher cycle later (this used to post
+            // at DispatcherPriority.Loaded) re-heights a row that was already drawn and
+            // shoves every row below it — measured at 29px of content movement on 68 of
+            // 149 scroll steps, which is the scroll stutter. See
+            // PlaylistRowStampGeometryTests.ContentJump_AcrossHeaderModes.
+            //
+            // Template children genuinely don't exist at prepare time, so realize them
+            // up front. e.Index is authoritative here: IndexFromContainer is not yet
+            // valid while this event is being raised.
+            item.ApplyTemplate();
+            item.Presenter?.UpdateChild();
+            if (!UpdateRowIndexVisuals(item, e.Index))
+            {
+                // Template still not realized — fall back to the old timing so a row
+                // can never end up unstamped (stale index/zebra/run header).
+                Dispatcher.UIThread.Post(
+                    () => UpdateRowIndexVisuals(item, e.Index), DispatcherPriority.Loaded);
+            }
         }
     }
 
@@ -432,6 +459,53 @@ public partial class PlaylistView : UserControl
             item.RemoveHandler(PointerReleasedEvent, OnTrackRowPointerReleased);
             item.RemoveHandler(PointerCaptureLostEvent, OnTrackRowPointerCaptureLost);
         }
+    }
+
+    /// <summary>
+    /// Gives the row title an explicit width budget so it can ellipsize.
+    ///
+    /// The title cell packs title + explicit badge + NEW badge into Auto columns so the
+    /// badges hug the end of the title. Auto measures with infinite width, so the title
+    /// would otherwise report its full text width and paint over the Album column
+    /// (issue #30). Same approach as LibrarySongsView.OnTitleCellLayoutUpdated: hand the
+    /// title whatever the cell has left once the visible badges have taken their share.
+    /// </summary>
+    /// <summary>Child lookups for <see cref="OnTitleCellLayoutUpdated"/>, resolved once
+    /// per cell and stashed in Tag: LayoutUpdated fires after EVERY window layout pass,
+    /// and a template cell's children never change (recycling reuses the same Grid).</summary>
+    private sealed record TitleCellChildren(TextBlock Title, Border[] Badges);
+
+    private static void OnTitleCellLayoutUpdated(object? sender, EventArgs e)
+    {
+        if (sender is not Grid titleCell)
+            return;
+
+        if (titleCell.Tag is not TitleCellChildren children)
+        {
+            var title = titleCell.Children.OfType<TextBlock>().FirstOrDefault();
+            if (title == null)
+                return;
+
+            // Every other child of this cell is a badge Border.
+            children = new TitleCellChildren(title, titleCell.Children.OfType<Border>().ToArray());
+            titleCell.Tag = children;
+        }
+
+        // Each badge reserves its own width (plus margin) from the title's budget
+        // only while it is actually shown.
+        var reservedWidth = 0.0;
+        foreach (var badge in children.Badges)
+        {
+            if (!badge.IsVisible)
+                continue;
+            var width = badge.Bounds.Width > 0 ? badge.Bounds.Width : badge.DesiredSize.Width;
+            reservedWidth += width + badge.Margin.Left + badge.Margin.Right;
+        }
+
+        var maxTitleWidth = Math.Max(0, titleCell.Bounds.Width - reservedWidth);
+        // Threshold keeps this from re-entering layout forever on sub-pixel churn.
+        if (Math.Abs(children.Title.MaxWidth - maxTitleWidth) > 0.5)
+            children.Title.MaxWidth = maxTitleWidth;
     }
 
     private void OnTrackItemContextRequested(object? sender, ContextRequestedEventArgs e)

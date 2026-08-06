@@ -84,12 +84,20 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             _refreshDebounce.Stop();
             Refresh();
         };
-        _libraryUpdatedHandler = (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(() =>
+        // Rebuild only while Home is the current view: hidden views just mark dirty
+        // and catch up once on activation, like the other library view models.
+        // FavoritesChanged rides the same 500 ms debounce — a heart click used to
+        // trigger an immediate full rebuild.
+        _libraryUpdatedHandler = (_, _) => { _isDirty = true; if (_isActive) Dispatcher.UIThread.Post(() =>
         {
             _refreshDebounce.Stop();
             _refreshDebounce.Start();
         }); };
-        _favoritesChangedHandler = (_, _) => { _isDirty = true; Dispatcher.UIThread.Post(Refresh); };
+        _favoritesChangedHandler = (_, _) => { _isDirty = true; if (_isActive) Dispatcher.UIThread.Post(() =>
+        {
+            _refreshDebounce.Stop();
+            _refreshDebounce.Start();
+        }); };
         _library.LibraryUpdated += _libraryUpdatedHandler;
         _library.FavoritesChanged += _favoritesChangedHandler;
     }
@@ -115,6 +123,27 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             }
         });
     }
+
+    /// <summary>
+    /// Set by MainWindowViewModel when Home becomes (or stops being) the current view.
+    /// Mirrors LibrarySongsViewModel.IsActive: gates event-driven rebuilds while
+    /// hidden, and catches up on activation (no-op when nothing changed).
+    /// </summary>
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive == value) return;
+            _isActive = value;
+            // Covers back-navigation paths that swap CurrentView without a Refresh call.
+            if (value) Refresh();
+        }
+    }
+
+    // True at construction: Home is the startup view, and UpdateSectionActiveFlags
+    // only runs on the first navigation/modal change.
+    private bool _isActive = true;
 
     /// <summary>Forces the next Refresh() call to rebuild even if data hasn't changed.</summary>
     public void MarkDirty() => _isDirty = true;
@@ -246,9 +275,34 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             return tracks.Count >= HomeRowsBuilder.MinRowItems ? tracks : new List<Track>();
         }
 
-        TimeRotationTracks.ReplaceAll(Resolve(timeIds));
-        HeavyRotationTracks.ReplaceAll(Resolve(heavyIds));
-        RediscoveredTracks.ReplaceAll(Resolve(rediscoveredIds));
+        // These rows rebuild on every Home visit (clock + play log move without the
+        // library dirtying), so skip the Reset when the resolved tracks are unchanged —
+        // each Reset re-materializes every container in the row, felt as a stutter on
+        // each visit on slow renderers (issue #31).
+        ReplaceRowIfChanged(TimeRotationTracks, Resolve(timeIds));
+        ReplaceRowIfChanged(HeavyRotationTracks, Resolve(heavyIds));
+        ReplaceRowIfChanged(RediscoveredTracks, Resolve(rediscoveredIds));
+    }
+
+    /// <summary>
+    /// Replaces the row only when membership or order actually changed. Reference
+    /// equality on purpose: a rescan rebuilds Track instances with the same Id but
+    /// fresh metadata, and an Id-based skip would leave the row bound to stale
+    /// objects. Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// </summary>
+    internal static void ReplaceRowIfChanged(BulkObservableCollection<Track> row, IReadOnlyList<Track> next)
+    {
+        if (row.Count == next.Count)
+        {
+            var same = true;
+            for (int i = 0; i < next.Count; i++)
+            {
+                if (!ReferenceEquals(row[i], next[i])) { same = false; break; }
+            }
+            if (same) return;
+        }
+
+        row.ReplaceAll(next);
     }
 
     /// <summary>Plays a track from one of the time-aware rows, queueing the rest of its row.</summary>
@@ -369,7 +423,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         track.IsFavorite = !track.IsFavorite;
         await _library.SaveTrackUserStateAsync(new[] { track });
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(new[] { track });
     }
 
     [RelayCommand]
@@ -523,7 +577,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             }
         }
         await _library.SaveTrackUserStateAsync(changed);
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(changed);
         CtrlSelectedAlbums.Clear();
     }
 

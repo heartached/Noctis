@@ -7,17 +7,58 @@
              x:DataType="vm:QueueViewModel"
              Background="{DynamicResource AppMainBackground}">
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                  VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="16">
+    <UserControl.Styles>
+        <!-- Apple-Music-style press feel for the Up Next shuffle/repeat toggles —
+             mirrors the playback bar's transport-btn class (press dip to 0.85 over
+             0.18s CubicEaseOut, no hover grow). Declared locally so it overrides the
+             global Button hover scale(1.045) / pressed scale(0.96): styles closer to
+             the control apply last and win. The Background transition keeps the
+             stock Fluent hover fade these buttons already had (a local Transitions
+             setter replaces the global one wholesale). Never animate RenderTransform
+             here with a keyframe Animation — that crashes at startup; Transitions
+             only. -->
+        <Style Selector="Button.queue-toggle-btn">
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                    <BrushTransition Property="Background" Duration="0:0:0.06">
+                        <BrushTransition.Easing>
+                            <CubicEaseOut/>
+                        </BrushTransition.Easing>
+                    </BrushTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.queue-toggle-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.queue-toggle-btn:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.85)"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- Grid, not ScrollViewer+StackPanel: a page-level ScrollViewer measures the
+         Up Next ListBox at infinite height, so its VirtualizingStackPanel realizes
+         a row for every queued track at once. The star row gives the ListBox a
+         finite viewport so virtualization actually works; History (capped at 50)
+         scrolls within its own MaxHeight-bounded region. -->
+    <Grid Margin="16" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
 
             <!-- Now Playing section -->
             <TextBlock Text="Now Playing"
+                       Grid.Row="0"
                        FontSize="24"
                        FontWeight="Bold"
                        Margin="0,0,0,12" />
 
-            <Border Padding="12"
+            <Border Grid.Row="1"
+                    Padding="12"
                     CornerRadius="8"
                     Background="{DynamicResource SystemControlBackgroundListLowBrush}"
                     Margin="0,0,0,24"
@@ -61,13 +102,14 @@
             </Border>
 
             <TextBlock Text="No track playing"
+                       Grid.Row="2"
                        FontSize="14"
                        Opacity="0.4"
                        Margin="0,0,0,24"
                        IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNull}}" />
 
             <!-- Up Next section -->
-            <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,8">
+            <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,8">
                 <!-- Title + Shuffle/Repeat toggles. These live here (not in the slim Home
                      playback bar) so set-once controls stay out of the bar's way. -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -75,31 +117,55 @@
                                FontSize="18"
                                FontWeight="SemiBold"
                                VerticalAlignment="Center" />
+                    <!-- Shuffle/Repeat active state, Apple-Music style: accent-tinted
+                         glyph over a soft rounded accent wash. The wash Border reuses
+                         AccentColorBrush (kept in sync with Settings by App.SetAccent)
+                         and knocks it back via Border.Opacity, so no separate
+                         translucent brush resource is needed. Fixed 27x23 replaces the
+                         old Padding="6,4" — identical footprint, but the Panel now
+                         fills the button so the wash can cover it. -->
                     <Button Command="{Binding Player.ToggleShuffleCommand}"
-                            Background="Transparent" BorderThickness="0" Padding="6,4"
+                            Classes="queue-toggle-btn"
+                            Background="Transparent" BorderThickness="0" Padding="0"
+                            Width="27" Height="23"
                             Cursor="Hand" VerticalAlignment="Center"
                             ToolTip.Tip="Shuffle">
-                        <Panel>
+                        <Panel Width="27" Height="23">
+                            <Border CornerRadius="6"
+                                    Background="{DynamicResource AccentColorBrush}"
+                                    Opacity="0.18"
+                                    IsVisible="{Binding Player.IsShuffleEnabled}" />
                             <PathIcon Data="{StaticResource ShuffleIcon}" Width="15" Height="15"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"
                                       Opacity="0.55"
                                       IsVisible="{Binding !Player.IsShuffleEnabled}" />
                             <PathIcon Data="{StaticResource ShuffleIcon}" Width="15" Height="15"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"
                                       Foreground="{DynamicResource AccentColorBrush}"
                                       IsVisible="{Binding Player.IsShuffleEnabled}" />
                         </Panel>
                     </Button>
                     <Button Command="{Binding Player.CycleRepeatCommand}"
-                            Background="Transparent" BorderThickness="0" Padding="6,4"
+                            Classes="queue-toggle-btn"
+                            Background="Transparent" BorderThickness="0" Padding="0"
+                            Width="27" Height="23"
                             Cursor="Hand" VerticalAlignment="Center"
                             ToolTip.Tip="Repeat">
-                        <Panel>
+                        <Panel Width="27" Height="23">
+                            <Border CornerRadius="6"
+                                    Background="{DynamicResource AccentColorBrush}"
+                                    Opacity="0.18"
+                                    IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:RepeatMode.Off}}" />
                             <PathIcon Data="{StaticResource RepeatAllIcon}" Width="15" Height="15"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"
                                       Opacity="0.55"
                                       IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}" />
                             <PathIcon Data="{StaticResource RepeatAllIcon}" Width="15" Height="15"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"
                                       Foreground="{DynamicResource AccentColorBrush}"
                                       IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}" />
                             <PathIcon Data="{StaticResource RepeatOneIcon}" Width="15" Height="15"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"
                                       Foreground="{DynamicResource AccentColorBrush}"
                                       IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}" />
                         </Panel>
@@ -151,7 +217,8 @@
             </Grid>
 
 
-            <ListBox Classes="track-list"
+            <ListBox Grid.Row="4"
+                     Classes="track-list"
                      ItemsSource="{Binding UpNext}"
                      Margin="0,0,0,24">
                 <ListBox.ItemTemplate>
@@ -193,13 +260,16 @@
 
             <!-- History section -->
             <TextBlock Text="History"
+                       Grid.Row="5"
                        FontSize="18"
                        FontWeight="SemiBold"
                        Margin="0,0,0,8"
                        IsVisible="{Binding !!History.Count}" />
 
-            <ListBox Classes="track-list"
+            <ListBox Grid.Row="6"
+                     Classes="track-list"
                      ItemsSource="{Binding History}"
+                     MaxHeight="240"
                      IsVisible="{Binding !!History.Count}"
                      Opacity="0.6">
                 <ListBox.ItemTemplate>
@@ -239,7 +309,6 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-        </StackPanel>
-    </ScrollViewer>
+    </Grid>
 
 </UserControl>

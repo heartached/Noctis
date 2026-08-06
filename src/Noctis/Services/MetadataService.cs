@@ -198,7 +198,7 @@ public class MetadataService : IMetadataService
 
             // Pull the embedded cover from the already-parsed tag (no extra I/O) so a
             // scan can cache album art inline instead of re-opening every file later.
-            embeddedArt = SelectBestEmbeddedPicture(file.Tag.Pictures);
+            embeddedArt = UseEmbeddedArtwork ? SelectBestEmbeddedPicture(file.Tag.Pictures) : null;
 
             return track;
         }
@@ -257,15 +257,18 @@ public class MetadataService : IMetadataService
 
     public byte[]? ExtractAlbumArt(string filePath)
     {
-        // 1. Try embedded artwork first (most reliable).
+        // 1. Try embedded artwork first (most reliable), unless disabled in Settings.
         // Prefer FrontCover if present; within each bucket pick largest payload.
         var namesAnAlbum = false;
         try
         {
             using var file = TagLib.File.Create(filePath);
-            var bestEmbedded = SelectBestEmbeddedPicture(file.Tag.Pictures);
-            if (bestEmbedded != null)
-                return bestEmbedded;
+            if (UseEmbeddedArtwork)
+            {
+                var bestEmbedded = SelectBestEmbeddedPicture(file.Tag.Pictures);
+                if (bestEmbedded != null)
+                    return bestEmbedded;
+            }
             namesAnAlbum = Track.IsRealAlbumName(file.Tag.Album);
         }
         catch
@@ -956,43 +959,110 @@ public class MetadataService : IMetadataService
     }
 
     /// <summary>
+    /// Mirrors <see cref="Models.AppSettings.MergeFeaturedFromTitles"/> so the static
+    /// enrichment path (scan, Navidrome sync, migrations) can honor the toggle without
+    /// threading settings through every call site. Set on startup by LibraryService and
+    /// kept current by SettingsViewModel when the user flips the switch.
+    /// </summary>
+    internal static volatile bool MergeFeaturedFromTitles = true;
+
+    /// <summary>
+    /// Mirrors <see cref="Models.AppSettings.UseEmbeddedArtwork"/> so every artwork
+    /// extraction path (scan, import, backfill, externally opened files) can honor the
+    /// toggle without threading settings through every call site. Set on startup by
+    /// LibraryService and kept current by SettingsViewModel when the user flips it.
+    /// </summary>
+    internal static volatile bool UseEmbeddedArtwork = true;
+
+    /// <summary>
     /// If the title contains "feat."/"ft." artists not already present in the artist field,
     /// merge them in so collaboration tracks always show the full artist credit.
     /// </summary>
     internal static string EnrichArtistFromTitle(string artist, string title)
     {
-        if (string.IsNullOrWhiteSpace(title))
+        if (!MergeFeaturedFromTitles)
             return artist;
 
-        // Extract "feat. X" / "ft. X" / "featuring X" from parentheses or brackets
-        var match = Regex.Match(title,
-            @"[\(\[]\s*(?:feat\.?|ft\.?|featuring)\s+(.+?)[\)\]]",
-            RegexOptions.IgnoreCase);
-        if (!match.Success)
-            return artist;
-
-        var featuredRaw = match.Groups[1].Value.Trim();
-        if (string.IsNullOrEmpty(featuredRaw))
-            return artist;
-
-        // Split featured part by common separators
-        var featNames = Regex.Split(featuredRaw, @"\s*(?:,|;|&|\band\b)\s*", RegexOptions.IgnoreCase)
-            .Select(s => s.Trim())
-            .Where(s => !string.IsNullOrWhiteSpace(s))
-            .ToArray();
-
+        var featNames = ExtractFeaturedNamesFromTitle(title);
         if (featNames.Length == 0)
             return artist;
 
-        // Find featured artists not already mentioned in the artist string
+        // Find featured artists not already mentioned in the artist string. Whole-word
+        // containment: a credited "Maxwell" must not swallow a featured "Max".
         var missing = featNames
-            .Where(f => artist.IndexOf(f, StringComparison.OrdinalIgnoreCase) < 0)
+            .Where(f => !ContainsArtistName(artist, f))
             .ToArray();
 
         if (missing.Length == 0)
             return artist;
 
         return artist + " & " + string.Join(" & ", missing);
+    }
+
+    /// <summary>
+    /// Extracts featured-artist names from a "(feat. X)" / "[ft. X &amp; Y]" style title
+    /// segment. Empty when the title carries no such credit.
+    /// </summary>
+    internal static string[] ExtractFeaturedNamesFromTitle(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return Array.Empty<string>();
+
+        // Extract "feat. X" / "ft. X" / "featuring X" from parentheses or brackets
+        var match = Regex.Match(title,
+            @"[\(\[]\s*(?:feat\.?|ft\.?|featuring)\s+(.+?)[\)\]]",
+            RegexOptions.IgnoreCase);
+        if (!match.Success)
+            return Array.Empty<string>();
+
+        var featuredRaw = match.Groups[1].Value.Trim();
+        if (string.IsNullOrEmpty(featuredRaw))
+            return Array.Empty<string>();
+
+        // Split featured part by common separators
+        return Regex.Split(featuredRaw, @"\s*(?:,|;|&|\band\b)\s*", RegexOptions.IgnoreCase)
+            .Select(s => s.Trim())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Whole-word, case-insensitive containment. Character scan instead of a regex so
+    /// the per-name pattern doesn't thrash the Regex cache during large scans.
+    /// Underscore counts as a word character (so "Max_B" does not credit "Max").
+    /// </summary>
+    private static bool ContainsArtistName(string artist, string name)
+    {
+        static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c == '_';
+
+        var idx = 0;
+        while ((idx = artist.IndexOf(name, idx, StringComparison.OrdinalIgnoreCase)) >= 0)
+        {
+            var boundaryBefore = idx == 0 || !IsWordChar(artist[idx - 1]);
+            var end = idx + name.Length;
+            var boundaryAfter = end >= artist.Length || !IsWordChar(artist[end]);
+            if (boundaryBefore && boundaryAfter)
+                return true;
+            idx++;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// True when this track's artist may carry a credit that
+    /// <see cref="EnrichArtistFromTitle"/> merged in from the title: the title names
+    /// featured artists and at least one appears in the artist string. Deliberately a
+    /// loose substring match — a superset of every containment rule enrichment has ever
+    /// used — so the un-merge pass never skips a track an older build enriched; a false
+    /// positive only costs a tag re-read that restores the same value.
+    /// </summary>
+    internal static bool MayHaveMergedFeaturedCredit(string artist, string title)
+    {
+        if (string.IsNullOrWhiteSpace(artist))
+            return false;
+
+        return ExtractFeaturedNamesFromTitle(title)
+            .Any(f => artist.IndexOf(f, StringComparison.OrdinalIgnoreCase) >= 0);
     }
 
     private static string[] SplitArtistList(string value)

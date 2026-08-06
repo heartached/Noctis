@@ -132,10 +132,10 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private bool _hasAnimatedArtworkSearchResults;
     [ObservableProperty] private bool _isAnimatedArtworkSearchOpen;
     [ObservableProperty] private string _animatedSearchStatus = string.Empty;
-    // Optional Apple Music URL / album ID the user can paste to bypass iTunes
-    // free-text search when it fails to surface an album (e.g. Bad Bunny's
-    // "nadie sabe..." is reachable by /lookup?id= but not by /search).
-    [ObservableProperty] private string _animatedSearchUrlInput = string.Empty;
+    // What the user typed into the animated-artwork box: an album name to search for
+    // instead of the loaded track's tags, or an Apple Music URL / album ID to go
+    // straight to one album. Empty means "use this track's metadata".
+    [ObservableProperty] private string _animatedSearchInput = string.Empty;
     // Path to a small variant downloaded only to drive the live preview inside
     // the search popup. Cleared/replaced on every search; deleted when no longer used.
     [ObservableProperty] private string? _animatedPreviewPath;
@@ -379,17 +379,136 @@ public partial class MetadataViewModel : ViewModelBase
         _multiSelect = multiSelect;
 
         LoadFromTrack();
-        LoadFileInfo();
-        LoadArtwork();
+        // Cheap path-derived File-tab fields so the window isn't blank while
+        // InitializeAsync loads the rest. Copyright must be seeded before any
+        // Save (SaveInternalAsync writes it back to the track unconditionally).
+        FileName = Path.GetFileName(_track.FilePath);
+        FileLocation = _track.FilePath;
+        FullFilePath = _track.FilePath;
+        FolderName = Path.GetDirectoryName(_track.FilePath) ?? string.Empty;
+        Copyright = _track.Copyright;
         LoadAnimatedCover();
-        LoadAdvancedFields();
 
         if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
             LoadAlbumScopedOverrides();
 
         if (_multiSelect)
             RebuildRenamePreview();
+
+        CaptureLoadedTagSignatures();
     }
+
+    /// <summary>
+    /// Loads everything that opens or decodes files — two TagLib parses (file info,
+    /// advanced tags) and the cached-cover read + decode — off the UI thread. Awaited
+    /// before the window is shown so artwork and tag fields are already populated on
+    /// open; the ctor only sets in-memory state. Every file read inside is individually
+    /// guarded (ReadFileInfo catches internally, the rest are try/catch'd here), so
+    /// this never throws into the open path.
+    /// </summary>
+    public async Task InitializeAsync()
+    {
+        var (info, artwork, advanced) = await Task.Run(() =>
+        {
+            var fileInfo = _metadata.ReadFileInfo(_track.FilePath);
+
+            // Multi-select can span albums; don't show one album's art as if shared.
+            Bitmap? artworkBitmap = null;
+            if (!_multiSelect)
+            {
+                var artPath = _persistence.GetArtworkPath(_track.AlbumId);
+
+                // The persisted cache file is the source of truth for "does this album
+                // have a cover in Noctis." If the user removed it, cachedData is null
+                // on purpose. We must not silently fall back to extracting from the
+                // audio file's embedded tag here — every track in the album still has
+                // its own embedded copy, and WriteAlbumArt() during Remove can fail
+                // silently for any one of them (file locked, AV, etc.), causing the
+                // removed cover to come right back. Library scans/imports handle
+                // initial extraction-to-cache; the dialog must not re-do that work.
+                byte[]? cachedData = null;
+                if (File.Exists(artPath))
+                {
+                    try { cachedData = File.ReadAllBytes(artPath); } catch { }
+                }
+
+                if (cachedData != null && cachedData.Length > 0)
+                {
+                    try
+                    {
+                        // Decode at display size — the preview renders at ~240px; a
+                        // full-res `new Bitmap` of a 3000x3000 cover costs ~36 MB.
+                        using var ms = new MemoryStream(cachedData);
+                        artworkBitmap = Bitmap.DecodeToWidth(ms, 512);
+                    }
+                    catch { }
+                }
+            }
+
+            AdvancedTagIO.AdvancedFields? advancedFields = null;
+            if (!_albumScoped)
+            {
+                try { advancedFields = AdvancedTagIO.ReadAll(_track.FilePath); }
+                catch { /* Non-fatal — advanced fields are best-effort */ }
+            }
+
+            return (fileInfo, artworkBitmap, advancedFields);
+        });
+
+        ApplyFileInfo(info);
+        ApplyArtwork(artwork);
+        if (advanced != null)
+            ApplyAdvancedFields(advanced);
+    }
+
+    // What each track's tags looked like when the dialog opened, so Save can tell whether a
+    // file actually needs rewriting. Save used to call WriteTrackMetadata on every album
+    // track unconditionally: saving an animated cover — a separate sidecar that never touches
+    // the audio tags — rewrote every FLAC on the album, and the one the player held open
+    // failed, reporting "Couldn't write tags" for an edit that needed no tag write at all.
+    private readonly Dictionary<Track, TagState> _loadedTagSignatures = new();
+
+    private void CaptureLoadedTagSignatures()
+    {
+        _loadedTagSignatures[_track] = ComputeTagState(_track);
+        foreach (var t in _albumTracks ?? Enumerable.Empty<Track>())
+            _loadedTagSignatures[t] = ComputeTagState(t);
+    }
+
+    /// <summary>
+    /// True when <paramref name="track"/>'s tag-bearing fields differ from what they were when
+    /// the dialog opened. A track with no snapshot is treated as changed, so an unexpected
+    /// path errs towards writing rather than silently dropping an edit.
+    /// </summary>
+    private bool NeedsTagWrite(Track track)
+        => !_loadedTagSignatures.TryGetValue(track, out var loaded) ||
+           loaded != ComputeTagState(track);
+
+    /// <summary>
+    /// Every field <see cref="IMetadataService.WriteTrackMetadata"/> puts in the file, and only
+    /// those. Journal-only state (play count, skip-when-shuffling, start/stop, volume, EQ) is
+    /// deliberately absent: changing it must not trigger a file rewrite. Rating and disliked
+    /// ARE here, because they are written into the tag.
+    ///
+    /// A record rather than a joined string: structural equality needs no separator, so no
+    /// field value can collide with one.
+    /// </summary>
+    private sealed record TagState(
+        string? Title, string? Artist, string? AlbumArtist, string? Album, string? Genre,
+        string? Composer, int TrackNumber, int TrackCount, int DiscNumber, int DiscCount,
+        int Bpm, int Year, string? Lyrics, string? Comment, string? Grouping, string? Copyright,
+        bool IsCompilation, bool ShowComposerInAllViews, bool UseWorkAndMovement,
+        string? WorkName, string? MovementName, int MovementNumber, int MovementCount,
+        int Rating, bool IsDisliked, string ReleaseTypeOverride);
+
+    private static TagState ComputeTagState(Track t) => new(
+        t.Title, t.Artist, t.AlbumArtist, t.Album, t.Genre, t.Composer,
+        t.TrackNumber, t.TrackCount, t.DiscNumber, t.DiscCount, t.Bpm, t.Year,
+        t.Lyrics, t.Comment, t.Grouping, t.Copyright,
+        t.IsCompilation, t.ShowComposerInAllViews, t.UseWorkAndMovement,
+        t.WorkName, t.MovementName, t.MovementNumber, t.MovementCount,
+        t.Rating, t.IsDisliked,
+        t.IsReleaseTypeOverridden ? t.ReleaseType.ToString() : string.Empty);
 
     // ── Search metadata (tag lookup → before/after review) ──────────────────
     // One button matches the track (or every track of an album) via
@@ -929,17 +1048,10 @@ public partial class MetadataViewModel : ViewModelBase
         SelectedEqPreset = string.IsNullOrEmpty(_track.EqPreset) ? "None" : _track.EqPreset;
     }
 
-    private void LoadFileInfo()
+    private void ApplyFileInfo(AudioFileInfo? info)
     {
-        var info = _metadata.ReadFileInfo(_track.FilePath);
         if (info == null)
-        {
-            FileName = Path.GetFileName(_track.FilePath);
-            FileLocation = _track.FilePath;
-            FullFilePath = _track.FilePath;
-            FolderName = Path.GetDirectoryName(_track.FilePath) ?? string.Empty;
-            return;
-        }
+            return; // ctor already seeded the path-derived fallback fields
 
         FileName = info.FileName;
         FileFormat = info.FileFormat;
@@ -956,7 +1068,6 @@ public partial class MetadataViewModel : ViewModelBase
         FileLocation = info.FilePath;
         FullFilePath = info.FilePath;
         FolderName = Path.GetDirectoryName(info.FilePath) ?? string.Empty;
-        Copyright = _track.Copyright;
     }
 
     private static string FormatCodecForFileTab(string codec)
@@ -972,44 +1083,13 @@ public partial class MetadataViewModel : ViewModelBase
             : normalized;
     }
 
-    private void LoadArtwork()
+    private void ApplyArtwork(Bitmap? artwork)
     {
-        // Multi-select can span albums; don't show one album's art as if shared.
-        if (_multiSelect) { HasArtwork = false; return; }
-
-        var artPath = _persistence.GetArtworkPath(_track.AlbumId);
-
-        byte[]? cachedData = null;
-        if (File.Exists(artPath))
-        {
-            try { cachedData = File.ReadAllBytes(artPath); } catch { }
-        }
-
-        // The persisted cache file is the source of truth for "does this album
-        // have a cover in Noctis." If the user removed it, cachedData is null
-        // on purpose. We must not silently fall back to extracting from the
-        // audio file's embedded tag here — every track in the album still has
-        // its own embedded copy, and WriteAlbumArt() during Remove can fail
-        // silently for any one of them (file locked, AV, etc.), causing the
-        // removed cover to come right back. Library scans/imports handle
-        // initial extraction-to-cache; the dialog must not re-do that work.
-        byte[]? preferredData = cachedData;
-        if (preferredData == null || preferredData.Length == 0)
-        {
-            HasArtwork = false;
-            return;
-        }
-
-        try
-        {
-            using var ms = new MemoryStream(preferredData);
-            ArtworkPreview = new Bitmap(ms);
-            HasArtwork = true;
-        }
-        catch
-        {
-            HasArtwork = false;
-        }
+        if (artwork == null) return;
+        // Don't clobber an artwork add/remove the user made while the load was in flight.
+        if (_newArtworkData != null || _artworkRemoved) return;
+        ArtworkPreview = artwork;
+        HasArtwork = true;
     }
 
     private static byte[]? SelectPreferredArtworkData(byte[]? cachedData, byte[]? extractedData)
@@ -1259,34 +1339,34 @@ public partial class MetadataViewModel : ViewModelBase
         {
             var variants = new List<ITunesArtworkService.AnimatedArtworkVariant>();
 
-            // Manual fallback: if the user pasted an Apple Music URL or album ID,
-            // resolve it directly via /lookup and skip free-text search.
-            if (TryExtractAppleAlbumId(AnimatedSearchUrlInput, out var pastedId))
+            // Manual override: a pasted Apple Music URL or album ID names the album outright,
+            // so it skips search on both sources.
+            if (TryExtractAppleAlbumId(AnimatedSearchInput, out var pastedId))
             {
-                var candidate = await _itunes.LookupAlbumByIdAsync(pastedId);
-                if (candidate == null)
-                {
-                    AnimatedSearchStatus = "Album ID not found on iTunes.";
-                    return;
-                }
-                variants.AddRange(await _itunes.SearchAnimatedArtworkVariantsAsync(candidate.ViewUrl));
+                var candidate = _itunes == null ? null : await _itunes.LookupAlbumByIdAsync(pastedId);
+                if (candidate != null)
+                    variants.AddRange(await _itunes!.SearchAnimatedArtworkVariantsAsync(candidate.ViewUrl));
             }
             else
             {
-                var artist = !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
-                var album = GetArtworkSearchAlbumTerm();
-                var results = await _itunes.SearchAlbumsAsync(artist, album, limit: 3);
-                if (results.Count == 0)
-                {
-                    AnimatedSearchStatus = "No matching album on iTunes.";
-                    return;
-                }
+                // A typed album name steers the search away from the loaded track's tags.
+                // The artist is then unknown, and IsLikelySameAlbum falls back to matching on
+                // title alone — which is what the user asked for by typing it.
+                var typed = (AnimatedSearchInput ?? string.Empty).Trim();
+                var manual = typed.Length > 0;
+                var trackArtist = !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
+                var album = manual ? typed : GetArtworkSearchAlbumTerm();
+                // A typed name is the whole query, so there is no artist to corroborate with
+                // and the match falls back to the title alone. That alone would hand over a
+                // karaoke record: typing "YHLQMDLG" matches a cover act's identically titled
+                // album just as well as Bad Bunny's. The track's artist can't be a requirement
+                // (the user may be searching for someone else's album entirely), so it is
+                // passed as a preference that only orders equally-titled matches.
+                var artist = manual ? string.Empty : trackArtist;
 
-                foreach (var r in results)
-                {
-                    variants.AddRange(await _itunes.SearchAnimatedArtworkVariantsAsync(r.ViewUrl));
-                    if (variants.Count > 0) break;
-                }
+                variants.AddRange(await SearchAppleMusicVariantsAsync(album, artist, trackArtist));
+                if (variants.Count == 0)
+                    variants.AddRange(await SearchITunesVariantsAsync(album, artist, trackArtist));
             }
 
             foreach (var variant in variants)
@@ -1295,7 +1375,9 @@ public partial class MetadataViewModel : ViewModelBase
             HasAnimatedArtworkSearchResults = AnimatedArtworkSearchResults.Count > 0;
             if (!HasAnimatedArtworkSearchResults)
             {
-                AnimatedSearchStatus = "Animated cover art is not available.";
+                // Deliberately source-agnostic: which catalogue was consulted, and how many,
+                // is Noctis's business — the user only needs to know there is nothing to offer.
+                AnimatedSearchStatus = "No animated artwork found.";
                 return;
             }
 
@@ -1318,16 +1400,94 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
+    // ── Animated-artwork sources, in fall-through order ───────────────────────
+    // 1. The Apple Music catalogue, via its web search page. 2. The iTunes Search API.
+    // Both end at the same album-page scrape; only the way the album is found differs.
+    // iTunes stays as the second source because its index has holes — it finds nothing for
+    // albums like Bad Bunny's "YHLQMDLG" — but it is a plain JSON API, so it keeps answering
+    // if the web page's markup shifts under the first one.
+
+    private async Task<IReadOnlyList<ITunesArtworkService.AnimatedArtworkVariant>> SearchAppleMusicVariantsAsync(
+        string album, string artist, string preferArtist)
+    {
+        if (_itunes == null || string.IsNullOrWhiteSpace(album))
+            return Array.Empty<ITunesArtworkService.AnimatedArtworkVariant>();
+
+        var results = await _itunes.SearchAppleMusicAlbumsAsync(artist, album);
+        return await FirstMatchingVariantsAsync(results, album, artist, preferArtist);
+    }
+
+    // 0 sorts ahead of 1: candidates by the artist we already know about win ties. Only a
+    // tiebreak — a list with no such candidate is left in the source's own ranked order.
+    private static int PreferredArtistRank(string? candidateArtist, string? preferArtist)
+    {
+        if (string.IsNullOrWhiteSpace(preferArtist) || string.IsNullOrWhiteSpace(candidateArtist))
+            return 1;
+
+        return ITunesArtworkService.IsLikelySameArtist(candidateArtist, preferArtist) ? 0 : 1;
+    }
+
+    private async Task<IReadOnlyList<ITunesArtworkService.AnimatedArtworkVariant>> SearchITunesVariantsAsync(
+        string album, string artist, string preferArtist)
+    {
+        if (_itunes == null)
+            return Array.Empty<ITunesArtworkService.AnimatedArtworkVariant>();
+
+        // Ask for a wider list than we intend to open: ranking puts the right album first
+        // only when the title is distinctive, and self-titled albums sit behind a wall of
+        // karaoke and cover records.
+        var results = await _itunes.SearchAlbumsAsync(artist, album, limit: 8);
+        return await FirstMatchingVariantsAsync(results, album, artist, preferArtist);
+    }
+
+    /// <summary>
+    /// Opens candidates in order and returns the first album that actually has a loop.
+    /// Ranking orders candidates but never rejects one, so taking the first that happened to
+    /// have a video handed people another album's cover — searching Drake's "Nothing Was the
+    /// Same" offered Take Care's loop. Only candidates that really are this album are opened.
+    /// </summary>
+    private async Task<IReadOnlyList<ITunesArtworkService.AnimatedArtworkVariant>> FirstMatchingVariantsAsync(
+        IReadOnlyList<ITunesArtworkService.ArtworkCandidate> results,
+        string album, string artist, string preferArtist)
+    {
+        foreach (var r in results
+                     .Where(r => ITunesArtworkService.IsLikelySameAlbum(
+                         r.CollectionName, r.ArtistName, album, artist))
+                     .OrderBy(r => PreferredArtistRank(r.ArtistName, preferArtist)))
+        {
+            var variants = await _itunes!.SearchAnimatedArtworkVariantsAsync(r.ViewUrl);
+            if (variants.Count > 0)
+                return variants;
+        }
+
+        return Array.Empty<ITunesArtworkService.AnimatedArtworkVariant>();
+    }
+
     // Pulls a numeric album ID from a pasted Apple Music URL or a bare ID.
     // Accepts:  music.apple.com/us/album/<slug>/1710982865[?...]
     //           https://music.apple.com/.../id1710982865
     //           1710982865
-    private static bool TryExtractAppleAlbumId(string? input, out long id)
+    //
+    // The box doubles as an album-name field, so this has to be a real classification. The
+    // old rule took any 6+ digit run *anywhere* in the input, which would read a typed album
+    // name that happens to contain a long number as an ID and search for the wrong thing.
+    internal static bool TryExtractAppleAlbumId(string? input, out long id)
     {
         id = 0;
         if (string.IsNullOrWhiteSpace(input)) return false;
 
-        var match = System.Text.RegularExpressions.Regex.Match(input.Trim(), @"\d{6,}");
+        var trimmed = input.Trim();
+
+        // A bare ID: nothing but digits.
+        if (trimmed.All(char.IsAsciiDigit))
+            return trimmed.Length >= 6 && long.TryParse(trimmed, out id);
+
+        // Otherwise it only counts as an ID if it is actually an Apple Music link.
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) ||
+            !uri.Host.EndsWith("apple.com", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var match = System.Text.RegularExpressions.Regex.Match(trimmed, @"\d{6,}");
         return match.Success && long.TryParse(match.Value, out id);
     }
 
@@ -1848,9 +2008,13 @@ public partial class MetadataViewModel : ViewModelBase
         // edit then silently vanished on the next rescan.
         var failedWrites = new List<string>();
 
+        // Only files whose tags actually changed. Rewriting the rest is not merely wasted
+        // work: the audio file the player holds open cannot be written at all, so an
+        // unconditional pass made an animated-cover or rating save fail on the playing track
+        // and report an error for an edit that never needed to touch it.
         if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
         {
-            var tagWriteTargets = _albumTracks.ToList();
+            var tagWriteTargets = _albumTracks.Where(NeedsTagWrite).ToList();
             await Task.Run(() =>
             {
                 foreach (var t in tagWriteTargets)
@@ -1858,7 +2022,7 @@ public partial class MetadataViewModel : ViewModelBase
                         lock (failedWrites) failedWrites.Add(Path.GetFileName(t.FilePath));
             });
         }
-        else
+        else if (NeedsTagWrite(_track))
         {
             var ok = await Task.Run(() => _metadata.WriteTrackMetadata(_track));
             if (!ok) failedWrites.Add(Path.GetFileName(_track.FilePath));
@@ -1894,7 +2058,7 @@ public partial class MetadataViewModel : ViewModelBase
             if (!string.IsNullOrWhiteSpace(_track.SyncedLyrics))
                 await File.WriteAllTextAsync(lrcPath, _track.SyncedLyrics);
             else if (SyncedLyricsWereRemoved && File.Exists(lrcPath))
-                Helpers.RecycleBin.TryMoveToTrash(lrcPath);
+                await Task.Run(() => Helpers.RecycleBin.TryMoveToTrash(lrcPath));
         }
         catch { /* Best effort — sidecar write is non-fatal */ }
 
@@ -1909,7 +2073,7 @@ public partial class MetadataViewModel : ViewModelBase
             if (!string.IsNullOrWhiteSpace(_track.Lyrics) && (plainChanged || File.Exists(txtPath)))
                 await File.WriteAllTextAsync(txtPath, _track.Lyrics);
             else if (PlainLyricsWereRemoved && File.Exists(txtPath))
-                Helpers.RecycleBin.TryMoveToTrash(txtPath);
+                await Task.Run(() => Helpers.RecycleBin.TryMoveToTrash(txtPath));
         }
         catch { /* Best effort — sidecar write is non-fatal */ }
 
@@ -2151,12 +2315,10 @@ public partial class MetadataViewModel : ViewModelBase
 
     // ── Advanced Details ──
 
-    private void LoadAdvancedFields()
+    private void ApplyAdvancedFields(AdvancedTagIO.AdvancedFields fields)
     {
-        if (_albumScoped) return;
         try
         {
-            var fields = AdvancedTagIO.ReadAll(_track.FilePath);
             _originalAdvancedFields = fields;
 
             TitleSort = fields.TitleSort;

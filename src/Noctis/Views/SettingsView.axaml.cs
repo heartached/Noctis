@@ -209,16 +209,21 @@ public partial class SettingsView : UserControl
             var ext = System.IO.Path.GetExtension(sourcePath);
             var target = System.IO.Path.Combine(dir, "avatar" + ext);
 
-            // Remove stale avatars with a different extension so only one file is kept.
-            foreach (var existing in System.IO.Directory.EnumerateFiles(dir, "avatar.*"))
+            // Task.Run: the filter admits large animated GIFs/WebPs (no size cap) and
+            // the source may sit on a slow share — a synchronous copy froze the window.
+            await Task.Run(() =>
             {
-                if (!string.Equals(existing, target, StringComparison.OrdinalIgnoreCase))
+                // Remove stale avatars with a different extension so only one file is kept.
+                foreach (var existing in System.IO.Directory.EnumerateFiles(dir, "avatar.*"))
                 {
-                    try { System.IO.File.Delete(existing); } catch { }
+                    if (!string.Equals(existing, target, StringComparison.OrdinalIgnoreCase))
+                    {
+                        try { System.IO.File.Delete(existing); } catch { }
+                    }
                 }
-            }
 
-            System.IO.File.Copy(sourcePath, target, overwrite: true);
+                System.IO.File.Copy(sourcePath, target, overwrite: true);
+            });
             vm.ProfileAvatarPath = target;
         }
         catch (Exception ex)

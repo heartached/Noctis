@@ -25,6 +25,10 @@ public class FreshInstallDefaultsTests
 
         // ReplayGain does nothing until files carry REPLAYGAIN_* tags.
         Assert.Equal("Off", Fresh.ReplayGainMode);
+
+        // Autoplay keeps playing past the end of the queue — continuing playback
+        // the user didn't queue is opt-in.
+        Assert.False(Fresh.AutoplayEnabled);
     }
 
     [Fact]
@@ -54,6 +58,7 @@ public class FreshInstallDefaultsTests
         // Finding the user's music, though, is the whole point.
         Assert.True(Fresh.ScanOnStartup);
         Assert.True(Fresh.WatchFoldersEnabled);
+        Assert.True(Fresh.UseEmbeddedArtwork);
     }
 
     [Fact]
@@ -80,10 +85,18 @@ public class FreshInstallDefaultsTests
         Assert.Equal("Gray", Fresh.Theme);
         Assert.Equal("Crimson", Fresh.AccentPresetName);
         Assert.Equal("#E74856", Fresh.AccentColorHex);
+        // Animated artwork is the only Appearance extra that ships on; liquid glass,
+        // flowing lyrics, fullscreen focus and join-split-words are all opt-in.
         Assert.True(Fresh.EnableAnimatedCovers);
-        Assert.True(Fresh.LyricsFlowingLightEnabled);
+        Assert.False(Fresh.LiquidGlassEnabled);
+        Assert.False(Fresh.LyricsFlowingLightEnabled);
+        Assert.False(Fresh.LyricsFullScreenFocusEnabled);
+        Assert.False(Fresh.LyricsJoinSplitWords);
         Assert.Equal(0.4, Fresh.PlaybackBarBackgroundOpacity);
         Assert.True(Fresh.GaplessPlaybackEnabled);
+        // Songs rows ship with album art thumbnails (issue #23); the column chooser
+        // can switch them off for the compact text-only look.
+        Assert.True(Fresh.ShowArtworkColumn);
     }
 
     [Fact]

@@ -1,0 +1,284 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             xmlns:ctrl="using:Noctis.Controls"
+             x:Class="Noctis.Views.ServerView"
+             x:DataType="vm:ServerViewModel"
+             Focusable="True"
+             Background="{DynamicResource AppMainBackground}">
+
+    <Grid Margin="12,8,2,8">
+
+        <!-- Empty state: no server configured -->
+        <StackPanel IsVisible="{Binding !IsConfigured}"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Spacing="10" MaxWidth="420">
+            <TextBlock Text="No server connected"
+                       FontSize="20" FontWeight="SemiBold"
+                       HorizontalAlignment="Center"/>
+            <TextBlock Text="Connect a Jellyfin or Subsonic-compatible server (Navidrome, Airsonic, Gonic…) in Settings → Integrations to stream its music here."
+                       FontSize="13" Opacity="0.6" TextWrapping="Wrap"
+                       TextAlignment="Center"/>
+        </StackPanel>
+
+        <!-- ── Albums grid ── -->
+        <Grid IsVisible="{Binding ShowAlbumGrid}" RowDefinitions="Auto,*">
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="10,2,0,10">
+                <TextBlock Text="{Binding ServerLabel}" FontSize="12" Opacity="0.5" VerticalAlignment="Center"/>
+                <TextBlock Text="Loading…" FontSize="12" Opacity="0.5" VerticalAlignment="Center"
+                           IsVisible="{Binding IsLoading}"/>
+            </StackPanel>
+
+            <!-- Outer ListBox virtualizes rows, inner UniformGrid lays out 5 tiles per
+                 row (same pattern as the local Albums page) — a page ScrollViewer with
+                 a WrapPanel realized every loaded tile at once as pages accumulated. -->
+            <ListBox Grid.Row="1"
+                     ItemsSource="{Binding AlbumRows}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     Padding="0,0,10,115"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     SelectionMode="Single"
+                     AutoScrollToSelectedItem="False">
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Focusable" Value="False" />
+                    </Style>
+                </ListBox.Styles>
+                <ListBox.DataTemplates>
+                    <DataTemplate DataType="vm:ServerAlbumRow">
+                        <ItemsControl ItemsSource="{Binding Tiles}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="5" Rows="1" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ServerAlbumTileViewModel">
+                                    <Button Classes="album-tile"
+                                            Focusable="False"
+                                            Margin="2" Padding="8"
+                                            Width="188"
+                                            VerticalAlignment="Top"
+                                            Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).OpenServerAlbumCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Button.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Play"
+                                                          Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlayServerAlbumCommand}"
+                                                          CommandParameter="{Binding}"/>
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                        <StackPanel Spacing="6">
+                                            <Border Width="164" Height="164" CornerRadius="6" ClipToBounds="True" Background="#1AFFFFFF">
+                                                <Panel>
+                                                    <TextBlock Text="&#x266A;" FontSize="40" Opacity="0.15"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                                    <!-- Async artwork: cache hits instant, misses load on background thread -->
+                                                    <ctrl:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                                      DecodeWidth="512"
+                                                                      Stretch="UniformToFill"
+                                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                      IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                </Panel>
+                                            </Border>
+                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" MaxWidth="164"/>
+                                            <TextBlock Text="{Binding Artist}" FontSize="12" Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis" MaxWidth="164" Margin="0,-4,0,0"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </DataTemplate>
+
+                    <!-- Footer sentinel: status line + load-more scroll with the grid -->
+                    <DataTemplate DataType="vm:ServerGridFooter">
+                        <StackPanel>
+                            <TextBlock Text="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).StatusText}"
+                                       FontSize="13" Opacity="0.6" Margin="10,16,0,0"
+                                       IsVisible="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+                            <Button Content="Load more albums"
+                                    Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).LoadMoreAlbumsCommand}"
+                                    IsVisible="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).HasMoreAlbums}"
+                                    IsEnabled="{Binding !$parent[UserControl].((vm:ServerViewModel)DataContext).IsLoadingMore}"
+                                    HorizontalAlignment="Center"
+                                    Padding="18,8" CornerRadius="999" Cursor="Hand"
+                                    Margin="0,16,0,0"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.DataTemplates>
+            </ListBox>
+        </Grid>
+
+        <!-- ── Album detail ── -->
+        <Grid IsVisible="{Binding ShowAlbumDetail}" RowDefinitions="Auto,*">
+            <StackPanel Grid.Row="0" Spacing="12" Margin="10,2,10,12">
+                <Button Content="‹ Albums"
+                        Command="{Binding CloseServerAlbumCommand}"
+                        Padding="12,6" CornerRadius="999" Cursor="Hand"
+                        HorizontalAlignment="Left"/>
+                <Grid ColumnDefinitions="Auto,*">
+                    <Border Grid.Column="0" Width="140" Height="140" CornerRadius="8" ClipToBounds="True" Background="#1AFFFFFF">
+                        <Panel>
+                            <TextBlock Text="&#x266A;" FontSize="36" Opacity="0.15"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <ctrl:CachedImage SourcePath="{Binding OpenAlbum.ArtworkPath}"
+                                              DecodeWidth="512"
+                                              Stretch="UniformToFill"
+                                              RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                        </Panel>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6" Margin="18,0,0,0">
+                        <TextBlock Text="{Binding OpenAlbum.Name}" FontSize="24" FontWeight="Bold"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding OpenAlbumMeta}" FontSize="13" Opacity="0.6"/>
+                        <Button Content="Play"
+                                Command="{Binding PlayAlbumFromDetailCommand}"
+                                Padding="22,8" CornerRadius="999" Cursor="Hand"
+                                HorizontalAlignment="Left" Margin="0,6,0,0">
+                            <Button.Template>
+                                <ControlTemplate>
+                                    <ContentPresenter Background="{DynamicResource AccentColorBrush}"
+                                                      Foreground="{DynamicResource AccentForegroundBrush}"
+                                                      CornerRadius="999"
+                                                      Padding="22,8"
+                                                      FontSize="13"
+                                                      FontWeight="SemiBold"
+                                                      Content="{TemplateBinding Content}"/>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+                <TextBlock Text="Loading…" FontSize="12" Opacity="0.5" IsVisible="{Binding IsLoading}"/>
+                <TextBlock Text="{Binding StatusText}" FontSize="12" Opacity="0.6"
+                           IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            </StackPanel>
+
+            <ListBox Grid.Row="1" Classes="track-list"
+                     ItemsSource="{Binding AlbumTracks}"
+                     Padding="0,0,10,115"
+                     Background="Transparent" BorderThickness="0"
+                     DoubleTapped="OnAlbumTrackDoubleTapped">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="m:Track">
+                        <Grid ColumnDefinitions="32,*,Auto" Margin="6,4">
+                            <Grid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Play"
+                                              Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlayAlbumTrackCommand}"
+                                              CommandParameter="{Binding}"/>
+                                    <MenuItem Header="Play Next"
+                                              Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlayTrackNextCommand}"
+                                              CommandParameter="{Binding}"/>
+                                    <MenuItem Header="Add to Queue"
+                                              Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).AddTrackToQueueCommand}"
+                                              CommandParameter="{Binding}"/>
+                                </ContextMenu>
+                            </Grid.ContextMenu>
+                            <TextBlock Grid.Column="0" Text="{Binding TrackNumber}" FontSize="13" Opacity="0.45"
+                                       VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center" Margin="4,0,8,0">
+                                <TextBlock Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Artist}" FontSize="12" Opacity="0.55" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="2" Text="{Binding DurationFormatted}" FontSize="13" Opacity="0.5"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+        <!-- ── Search results ── -->
+        <ScrollViewer IsVisible="{Binding ShowSearchResults}" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="10,2,10,115" Spacing="8">
+                <TextBlock Text="No results on this server." FontSize="13" Opacity="0.6"
+                           IsVisible="{Binding SearchCameUpEmpty}"/>
+
+                <TextBlock Text="Albums" FontSize="17" FontWeight="SemiBold"
+                           IsVisible="{Binding HasSearchAlbums}"/>
+                <ItemsControl ItemsSource="{Binding SearchAlbums}" IsVisible="{Binding HasSearchAlbums}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ServerAlbumTileViewModel">
+                            <Button Classes="album-tile"
+                                    Focusable="False"
+                                    Margin="2" Padding="8"
+                                    Width="150"
+                                    VerticalAlignment="Top"
+                                    Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).OpenServerAlbumCommand}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Spacing="6">
+                                    <Border Width="126" Height="126" CornerRadius="6" ClipToBounds="True" Background="#1AFFFFFF">
+                                        <Panel>
+                                            <TextBlock Text="&#x266A;" FontSize="32" Opacity="0.15"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                            <ctrl:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                              DecodeWidth="512"
+                                                              Stretch="UniformToFill"
+                                                              RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                              IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                        </Panel>
+                                    </Border>
+                                    <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="126"/>
+                                    <TextBlock Text="{Binding Artist}" FontSize="11" Opacity="0.55"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="126" Margin="0,-4,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="Songs" FontSize="17" FontWeight="SemiBold" Margin="0,8,0,0"
+                           IsVisible="{Binding HasSearchTracks}"/>
+                <ListBox Classes="track-list"
+                         ItemsSource="{Binding SearchTracks}"
+                         IsVisible="{Binding HasSearchTracks}"
+                         Background="Transparent" BorderThickness="0"
+                         DoubleTapped="OnSearchTrackDoubleTapped">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="m:Track">
+                            <Grid ColumnDefinitions="*,Auto" Margin="6,4">
+                                <Grid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Play"
+                                                  Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlaySearchTrackCommand}"
+                                                  CommandParameter="{Binding}"/>
+                                        <MenuItem Header="Play Next"
+                                                  Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).PlayTrackNextCommand}"
+                                                  CommandParameter="{Binding}"/>
+                                        <MenuItem Header="Add to Queue"
+                                                  Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).AddTrackToQueueCommand}"
+                                                  CommandParameter="{Binding}"/>
+                                    </ContextMenu>
+                                </Grid.ContextMenu>
+                                <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center" Margin="0,0,8,0">
+                                    <TextBlock Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{Binding Artist}" FontSize="12" Opacity="0.55" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="—" FontSize="12" Opacity="0.35"/>
+                                        <TextBlock Text="{Binding Album}" FontSize="12" Opacity="0.45" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="{Binding DurationFormatted}" FontSize="13" Opacity="0.5"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

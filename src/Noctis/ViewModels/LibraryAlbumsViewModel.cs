@@ -27,6 +27,15 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private DispatcherTimer? _searchDebounce;
     private int _rebuildGeneration;
     private bool _isDirty = true;
+    private EventHandler? _viewStateLoadedHandler;
+
+    /// <summary>Guards the startup adoption of the persisted sort so echoing it back into
+    /// settings doesn't queue a pointless disk write.</summary>
+    private bool _adoptingPersistedState;
+
+    /// <summary>Set while mode and direction are changed together, so the grid rebuilds
+    /// once for the pair rather than once per property.</summary>
+    private bool _suspendSortRebuild;
 
     private const int ColumnsPerRow = 5;
     private const double TileTextHeight = 64;
@@ -56,16 +65,30 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Active quality filter: "" (off), "lossless", or "hires".</summary>
     [ObservableProperty] private string _qualityFilter = string.Empty;
 
-    /// <summary>Grid sort: "default" (artist/recent floats), "dateadded", or "mostplayed".</summary>
+    /// <summary>Grid sort: "default" (artist/recent floats), "title", "dateadded",
+    /// "mostplayed", "albumartist", or "year".</summary>
     [ObservableProperty] private string _albumSortMode = "default";
+
+    /// <summary>Sort direction. Ignored by "default", which has its own recent-import
+    /// float rather than a single ordering key.</summary>
+    [ObservableProperty] private bool _albumSortAscending = true;
 
     /// <summary>Label for the sort dropdown button.</summary>
     public string AlbumSortLabel => AlbumSortMode switch
     {
+        "title" => "Title",
         "dateadded" => "Recently added",
         "mostplayed" => "Most played",
+        "albumartist" => "Album Artist",
+        "year" => "Year",
         _ => "Default",
     };
+
+    /// <summary>Whether the direction controls apply to the current mode.</summary>
+    public bool AlbumSortDirectionEnabled => AlbumSortMode != "default";
+
+    /// <summary>Checkmark helpers for the sort dropdown.</summary>
+    public bool AlbumSortDescending => !AlbumSortAscending;
 
     /// <summary>Label for the release-type dropdown button.</summary>
     public string ReleaseTypeFilterLabel => ReleaseTypeFilter switch
@@ -97,7 +120,16 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     partial void OnAlbumSortModeChanged(string value)
     {
         OnPropertyChanged(nameof(AlbumSortLabel));
-        RebuildFilteredRows();
+        OnPropertyChanged(nameof(AlbumSortDirectionEnabled));
+        if (!_adoptingPersistedState) _settings.AlbumSortMode = value;
+        if (!_suspendSortRebuild) RebuildFilteredRows();
+    }
+
+    partial void OnAlbumSortAscendingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(AlbumSortDescending));
+        if (!_adoptingPersistedState) _settings.AlbumSortAscending = value;
+        if (!_suspendSortRebuild) RebuildFilteredRows();
     }
 
     /// <summary>Toggles a quality chip; clicking the active chip clears the filter.</summary>
@@ -108,8 +140,68 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         QualityFilter = chip.Key == QualityFilter ? string.Empty : chip.Key;
     }
 
+    /// <summary>
+    /// Sets the grid sort from the dropdown: a mode key, or "ascending"/"descending" for
+    /// the direction. Switching mode adopts that mode's natural direction — picking
+    /// "Recently added" should mean newest first, not whichever way the previous mode ran.
+    /// </summary>
     [RelayCommand]
-    private void SetAlbumSort(string mode) => AlbumSortMode = mode;
+    private void SetAlbumSort(string mode)
+    {
+        switch (mode)
+        {
+            case "ascending":
+                AlbumSortAscending = true;
+                return;
+            case "descending":
+                AlbumSortAscending = false;
+                return;
+        }
+
+        if (AlbumSortMode == mode) return;
+
+        // Mode and direction change together; hold the rebuild so the grid is rebuilt
+        // once for the pair instead of once per property.
+        _suspendSortRebuild = true;
+        try
+        {
+            AlbumSortAscending = !IsDescendingByDefault(mode);
+            AlbumSortMode = mode;
+        }
+        finally
+        {
+            _suspendSortRebuild = false;
+        }
+
+        RebuildFilteredRows();
+    }
+
+    /// <summary>
+    /// Modes whose natural reading is "most/newest first": a user picking Year or
+    /// Recently added means latest, not 1954.
+    /// </summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static bool IsDescendingByDefault(string sortMode) =>
+        sortMode is "dateadded" or "mostplayed" or "year";
+
+    /// <summary>Applies the grid sort persisted from the previous session.</summary>
+    private void AdoptPersistedSort()
+    {
+        _adoptingPersistedState = true;
+        _suspendSortRebuild = true;
+        try
+        {
+            AlbumSortMode = _settings.AlbumSortMode;
+            AlbumSortAscending = _settings.AlbumSortAscending;
+        }
+        finally
+        {
+            _suspendSortRebuild = false;
+            _adoptingPersistedState = false;
+        }
+
+        RebuildFilteredRows();
+    }
 
     /// <summary>Sets the release-type filter from a dropdown key ("all" clears it).</summary>
     [RelayCommand]
@@ -147,8 +239,12 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>Albums currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<Album> CtrlSelectedAlbums { get; set; } = new();
 
-    /// <summary>Filtered albums grouped into rows for the virtualized grid.</summary>
-    public BulkObservableCollection<AlbumRow> FilteredAlbumRows { get; } = new();
+    /// <summary>
+    /// Filtered albums grouped into rows for the virtualized grid. Mixed row types:
+    /// <see cref="AlbumRow"/> for album tiles, plus <see cref="ArtistSectionHeader"/> and
+    /// <see cref="ArtistSongsRow"/> when an artist page interleaves its Songs section.
+    /// </summary>
+    public BulkObservableCollection<object> FilteredAlbumRows { get; } = new();
 
     /// <summary>Fires when the user wants to open an album's detail view.</summary>
     public event EventHandler<Album>? AlbumOpened;
@@ -164,15 +260,23 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         _settings = settings;
 
         // Rebuild the grid when the "collapse album editions" setting is toggled.
+        // Dirty-only while hidden (which includes sitting beneath the Settings
+        // modal the toggle lives in) — the catch-up Refresh on activation rebuilds.
         _settingsPropertyChangedHandler = (_, e) =>
         {
             if (e.PropertyName == nameof(SettingsViewModel.CollapseAlbumEditions))
             {
                 _isDirty = true;
-                Dispatcher.UIThread.Post(() => RebuildFilteredRows());
+                if (_isActive)
+                    Dispatcher.UIThread.Post(() => RebuildFilteredRows());
             }
         };
         _settings.PropertyChanged += _settingsPropertyChangedHandler;
+
+        // Settings load asynchronously and finish after this view model is built, so the
+        // persisted sort is adopted when it lands rather than read here.
+        _viewStateLoadedHandler = (_, _) => AdoptPersistedSort();
+        _settings.ViewStateLoaded += _viewStateLoadedHandler;
 
         ReleaseTypeChips = new ObservableCollection<ReleaseTypeChip>
         {
@@ -286,7 +390,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // rows on first paint — otherwise the grid flashes the previous (unfiltered)
         // album list for a frame before the async rebuild's UI post lands.
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
@@ -331,7 +435,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         OnPropertyChanged(nameof(HasActiveFilter));
 
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
@@ -346,6 +450,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var releaseTypeFilter = ReleaseTypeFilter;
         var qualityFilter = QualityFilter;
         var sortMode = AlbumSortMode;
+        var sortAscending = AlbumSortAscending;
         var library = refreshFromLibrary ? _library : null;
 
         ThreadPool.QueueUserWorkItem(_ =>
@@ -354,7 +459,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             if (library != null)
                 albums = library.Albums.ToList();
 
-            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter, qualityFilter, sortMode);
+            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter, qualityFilter, sortMode, sortAscending);
 
             // Only apply if no newer rebuild was requested. A superseded library
             // reload must re-mark dirty: the newer request may have captured the
@@ -377,9 +482,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         });
     }
 
-    private List<AlbumRow> BuildFilteredRows(
+    private List<object> BuildFilteredRows(
         List<Album> allAlbums, string artistFilter, string searchFilter, int columnsPerRow,
-        ReleaseType? releaseTypeFilter = null, string qualityFilter = "", string sortMode = "default")
+        ReleaseType? releaseTypeFilter = null, string qualityFilter = "", string sortMode = "default",
+        bool sortAscending = true)
     {
         var filtered = allAlbums.AsEnumerable();
 
@@ -421,10 +527,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             var q = searchFilter.Trim();
             var qNoSpaces = RemoveWhitespace(q);
             filtered = filtered.Where(a =>
-                MatchesSearch(a.Name, q, qNoSpaces) ||
-                MatchesSearch(a.Artist, q, qNoSpaces) ||
-                a.Tracks.Any(t => MatchesSearch(t.Title, q, qNoSpaces) ||
-                                  MatchesSearch(t.Artist, q, qNoSpaces)));
+                MatchesSearch(a.Name, a.SearchNameKey, q, qNoSpaces) ||
+                MatchesSearch(a.Artist, a.SearchArtistKey, q, qNoSpaces) ||
+                a.Tracks.Any(t => MatchesSearch(t.Title, t.SearchTitleKey, q, qNoSpaces) ||
+                                  MatchesSearch(t.Artist, t.SearchArtistKey, q, qNoSpaces)));
 
             // In artist discographies, show the artist's own releases before feature appearances.
             filtered = filtered
@@ -447,20 +553,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // float) when no artist/search filter narrows the grid.
         if (sortMode != "default" && string.IsNullOrEmpty(artistFilter) && string.IsNullOrWhiteSpace(searchFilter))
         {
-            filtered = sortMode switch
-            {
-                "dateadded" => filtered.OrderByDescending(a =>
-                    a.Tracks.Count > 0 ? a.Tracks.Max(t => t.DateAdded) : DateTime.MinValue),
-                "mostplayed" => filtered.OrderByDescending(a => a.Tracks.Sum(t => (long)t.PlayCount))
-                    .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
-                _ => filtered,
-            };
+            filtered = ApplySortMode(filtered, sortMode, sortAscending);
 
             IEnumerable<Album> sortedAlbums = filtered;
             if (_settings.CollapseAlbumEditions)
                 sortedAlbums = CollapseEditions(sortedAlbums);
 
-            return GroupIntoRows(sortedAlbums, columnsPerRow);
+            // Sort modes only apply outside artist pages, so no songs section here.
+            return GroupIntoRows(sortedAlbums, columnsPerRow).Cast<object>().ToList();
         }
 
         // Float newly added albums to the top when not searching/filtering.
@@ -499,7 +599,124 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (_settings.CollapseAlbumEditions && string.IsNullOrWhiteSpace(searchFilter))
             ordered = CollapseEditions(ordered);
 
-        return GroupIntoRows(ordered, columnsPerRow);
+        var albumRows = GroupIntoRows(ordered, columnsPerRow);
+
+        // Artist pages interleave a Songs section above the discography so tracks whose
+        // albums are credited to someone else (compilation appearances, features, typo'd
+        // credits) are still reachable — without it an artist minted from track credits
+        // alone opens to a permanently empty page. Chip filters are album-level, so the
+        // section is omitted while one narrows the grid.
+        if (!string.IsNullOrEmpty(artistFilter) && !releaseTypeFilter.HasValue && qualityFilter.Length == 0)
+            return ComposeArtistRows(albumRows, allAlbums, artistFilter, searchFilter);
+
+        return albumRows.Cast<object>().ToList();
+    }
+
+    /// <summary>
+    /// Orders the grid for an explicit sort mode ("title", "dateadded", "mostplayed",
+    /// "albumartist", "year"); any other mode returns the input unchanged.
+    /// <para>
+    /// <paramref name="ascending"/> flips the primary key only — tie-breakers stay
+    /// ascending, so reversing "Most played" still lists equally-played albums A→Z
+    /// rather than shuffling them into reverse alphabetical order.
+    /// </para>
+    /// </summary>
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
+    internal static IEnumerable<Album> ApplySortMode(IEnumerable<Album> albums, string sortMode, bool ascending) =>
+        sortMode switch
+        {
+            // Straight alphabetical by album title — what Apple Music's Albums view does,
+            // and the one ordering the grid was missing (issue #33).
+            "title" => (ascending
+                    ? albums.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
+                    : albums.OrderByDescending(a => a.Name, StringComparer.OrdinalIgnoreCase))
+                .ThenBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(a => a.Year),
+            "dateadded" => ascending
+                ? albums.OrderBy(a => a.Tracks.Count > 0 ? a.Tracks.Max(t => t.DateAdded) : DateTime.MinValue)
+                : albums.OrderByDescending(a => a.Tracks.Count > 0 ? a.Tracks.Max(t => t.DateAdded) : DateTime.MinValue),
+            "mostplayed" => (ascending
+                    ? albums.OrderBy(a => a.Tracks.Sum(t => (long)t.PlayCount))
+                    : albums.OrderByDescending(a => a.Tracks.Sum(t => (long)t.PlayCount)))
+                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
+            // Album Artist/Year (Apple Music/MusicBee): artists A→Z, each artist's
+            // releases in chronological order. Album.Artist is the album artist.
+            "albumartist" => (ascending
+                    ? albums.OrderBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
+                    : albums.OrderByDescending(a => a.Artist, StringComparer.OrdinalIgnoreCase))
+                .ThenBy(a => a.Year)
+                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
+            // Descending by default so newest releases lead; unknown years (0) sink
+            // to the bottom there, and lead when the direction is flipped.
+            "year" => (ascending
+                    ? albums.OrderBy(a => a.Year)
+                    : albums.OrderByDescending(a => a.Year))
+                .ThenBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
+            _ => albums,
+        };
+
+    private const int SongsPerRow = 3;
+
+    /// <summary>
+    /// Ranked pills shown on an artist page with albums; artists with no matching
+    /// albums show their full song list instead (that page is otherwise empty).
+    /// </summary>
+    private const int MaxArtistSongs = 9;
+
+    /// <summary>
+    /// Prepends the artist's ranked Songs section (Home "Most Listened To" pill rows)
+    /// to the album grid rows, with section headers when both sections are present.
+    /// </summary>
+    private static List<object> ComposeArtistRows(
+        List<AlbumRow> albumRows, List<Album> allAlbums, string artistFilter, string searchFilter)
+    {
+        // Match on the full track credit (tokenised), so feature appearances count as
+        // "associated with" — but tokens compare exactly, keeping near-duplicate artist
+        // spellings (e.g. a quoted variant) on their own separate pages.
+        IEnumerable<Track> tracks = allAlbums
+            .SelectMany(a => a.Tracks)
+            .Where(t => ContainsArtistToken(t.Artist, artistFilter));
+
+        if (!string.IsNullOrWhiteSpace(searchFilter))
+        {
+            var q = searchFilter.Trim();
+            var qNoSpaces = RemoveWhitespace(q);
+            tracks = tracks.Where(t => MatchesSearch(t.Title, t.SearchTitleKey, q, qNoSpaces));
+        }
+
+        var orderedSongs = tracks
+            .OrderByDescending(t => t.PlayCount)
+            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (orderedSongs.Count == 0)
+            return albumRows.Cast<object>().ToList();
+
+        var capped = albumRows.Count > 0 && orderedSongs.Count > MaxArtistSongs;
+        if (capped)
+            orderedSongs = orderedSongs.Take(MaxArtistSongs).ToList();
+
+        var rows = new List<object>
+        {
+            new ArtistSectionHeader { Title = capped ? "Top Songs" : "Songs" },
+        };
+
+        for (var i = 0; i < orderedSongs.Count; i += SongsPerRow)
+        {
+            rows.Add(new ArtistSongsRow
+            {
+                Songs = orderedSongs
+                    .Skip(i).Take(SongsPerRow)
+                    .Select((t, j) => new TopSongRow { Track = t, Rank = i + j + 1 })
+                    .ToList(),
+            });
+        }
+
+        if (albumRows.Count > 0)
+            rows.Add(new ArtistSectionHeader { Title = "Albums" });
+        rows.AddRange(albumRows);
+        return rows;
     }
 
     /// <summary>Groups albums into fixed-width rows for the virtualized grid.</summary>
@@ -640,20 +857,110 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         _player.ReplaceQueueAndPlay(shuffled, 0);
     }
 
-    /// <summary>Collects all tracks from the currently displayed albums.</summary>
+    /// <summary>
+    /// Collects all tracks from the currently displayed rows: the Songs section first
+    /// (loose tracks an artist page surfaces), then album tracks, de-duplicated so a
+    /// song pill whose track also sits in a displayed album isn't queued twice.
+    /// </summary>
     private List<Track> GetAllFilteredTracks()
     {
         var tracks = new List<Track>();
+        var seen = new HashSet<Guid>();
         foreach (var row in FilteredAlbumRows)
         {
-            foreach (var album in row.Albums)
+            switch (row)
             {
-                if (album.Tracks != null)
-                    tracks.AddRange(album.Tracks);
+                case ArtistSongsRow songsRow:
+                    foreach (var song in songsRow.Songs)
+                        if (seen.Add(song.Track.Id))
+                            tracks.Add(song.Track);
+                    break;
+                case AlbumRow albumRow:
+                    foreach (var album in albumRow.Albums)
+                        foreach (var track in album.Tracks ?? new())
+                            if (seen.Add(track.Id))
+                                tracks.Add(track);
+                    break;
             }
         }
         return tracks;
     }
+
+    /// <summary>The artist page's Songs section in display (rank) order.</summary>
+    private List<Track> GetArtistSongsInOrder() => FilteredAlbumRows
+        .OfType<ArtistSongsRow>()
+        .SelectMany(r => r.Songs)
+        .Select(s => s.Track)
+        .ToList();
+
+    // ── Track-level commands for the artist page's Songs section ──
+
+    [RelayCommand]
+    private void PlayArtistSong(Track track)
+    {
+        var songs = GetArtistSongsInOrder();
+        if (songs.Count == 0) return;
+        var index = songs.IndexOf(track);
+        _player.ReplaceQueueAndPlay(songs, index < 0 ? 0 : index);
+    }
+
+    [RelayCommand]
+    private void ShuffleArtistSongs()
+    {
+        var songs = GetArtistSongsInOrder();
+        if (songs.Count == 0) return;
+        var shuffled = Helpers.ShuffleHelper.WeightedShuffle(songs);
+        _player.ReplaceQueueAndPlay(shuffled, 0);
+    }
+
+    [RelayCommand]
+    private void PlayNextTrack(Track track) => _player.AddNext(track);
+
+    [RelayCommand]
+    private void AddTrackToQueue(Track track) => _player.AddToQueue(track);
+
+    [RelayCommand]
+    private async Task AddTrackToNewPlaylist(Track track)
+    {
+        await _sidebar.CreatePlaylistWithTrackAsync(track);
+    }
+
+    [RelayCommand]
+    private async Task ToggleTrackFavorite(Track track)
+    {
+        track.IsFavorite = !track.IsFavorite;
+        await _library.SaveTrackUserStateAsync(new[] { track });
+        _library.NotifyFavoritesChanged(new[] { track });
+    }
+
+    [RelayCommand]
+    private async Task OpenTrackMetadata(Track track)
+    {
+        await MetadataHelper.OpenMetadataWindow(track);
+    }
+
+    [RelayCommand]
+    private void SearchLyricsTrack(Track track)
+    {
+        _searchLyricsAction?.Invoke(track);
+    }
+
+    [RelayCommand]
+    private void ShowInExplorerTrack(Track track)
+    {
+        if (track == null || !File.Exists(track.FilePath)) return;
+        Helpers.PlatformHelper.ShowInFileManager(track.FilePath);
+    }
+
+    [RelayCommand]
+    private async Task RemoveTrackFromLibrary(Track track)
+    {
+        if (track == null) return;
+        await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, new List<Track> { track });
+    }
+
+    private Action<Track>? _searchLyricsAction;
+    public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
 
     [RelayCommand]
     private void PlayNext(Album album)
@@ -706,7 +1013,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             }
         }
         await _library.SaveTrackUserStateAsync(changed);
-        _library.NotifyFavoritesChanged();
+        _library.NotifyFavoritesChanged(changed);
         CtrlSelectedAlbums.Clear();
     }
 
@@ -780,7 +1087,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         CtrlSelectedAlbums.Clear();
     }
 
-    private static bool MatchesSearch(string? source, string query, string queryNoSpaces)
+    // sourceKey is the cached SearchText.Normalize key (Album.SearchNameKey,
+    // Track.SearchTitleKey etc.). Match and rank used to re-normalize every album and
+    // track string per keystroke — hundreds of thousands of throwaway strings at scale.
+    // The cached key is allocation-free here; see LibrarySongsViewModel for the pattern.
+    private static bool MatchesSearch(string? source, string sourceKey, string query, string queryNoSpaces)
     {
         if (string.IsNullOrWhiteSpace(source))
             return false;
@@ -789,7 +1100,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (source.Contains(query, StringComparison.OrdinalIgnoreCase))
             return true;
 
-        if (RemoveWhitespace(source).Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
+        if (sourceKey.Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
             return true;
 
         // Word-level match: every word in the query must appear somewhere in the source
@@ -812,40 +1123,41 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
     private static int GetAlbumSearchRank(Album album, string query, string queryNoSpaces)
     {
-        var nameRank = RankMatch(album.Name, query, queryNoSpaces);
-        var artistRank = RankMatch(album.Artist, query, queryNoSpaces);
+        var nameRank = RankMatch(album.Name, album.SearchNameKey, query, queryNoSpaces);
+        var artistRank = RankMatch(album.Artist, album.SearchArtistKey, query, queryNoSpaces);
         // Also check individual track artists so featured-artist albums rank properly
         var trackArtistRank = album.Tracks.Count == 0
             ? 1000
-            : album.Tracks.Min(t => RankMatch(t.Artist, query, queryNoSpaces));
+            : album.Tracks.Min(t => RankMatch(t.Artist, t.SearchArtistKey, query, queryNoSpaces));
         var trackTitleRank = album.Tracks.Count == 0
             ? 1000
-            : album.Tracks.Min(t => RankMatch(t.Title, query, queryNoSpaces));
+            : album.Tracks.Min(t => RankMatch(t.Title, t.SearchTitleKey, query, queryNoSpaces));
 
         // Artist matches rank equally to name matches for proper grouping
         return Math.Min(nameRank, Math.Min(artistRank, Math.Min(trackArtistRank + 5, trackTitleRank + 40)));
     }
 
-    private static int RankMatch(string? source, string query, string queryNoSpaces)
+    private static int RankMatch(string? source, string sourceKey, string query, string queryNoSpaces)
     {
         if (string.IsNullOrWhiteSpace(source))
             return 1000;
 
+        // Normalize strips whitespace, so the cached key equals the old
+        // RemoveWhitespace(source.Trim()) result without the per-call allocations.
         var normalized = source.Trim();
-        var normalizedNoSpaces = RemoveWhitespace(normalized);
 
         if (string.Equals(normalized, query, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(normalizedNoSpaces, queryNoSpaces, StringComparison.OrdinalIgnoreCase))
+            string.Equals(sourceKey, queryNoSpaces, StringComparison.OrdinalIgnoreCase))
             return 0;
 
         if (normalized.StartsWith(query, StringComparison.OrdinalIgnoreCase) ||
-            normalizedNoSpaces.StartsWith(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
+            sourceKey.StartsWith(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
             return 1;
 
         if (normalized.Contains(query, StringComparison.OrdinalIgnoreCase))
             return 2;
 
-        if (normalizedNoSpaces.Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
+        if (sourceKey.Contains(queryNoSpaces, StringComparison.OrdinalIgnoreCase))
             return 3;
 
         // Word-level match: all query words found in source
@@ -926,6 +1238,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     public void Dispose()
     {
         _settings.PropertyChanged -= _settingsPropertyChangedHandler;
+        if (_viewStateLoadedHandler != null)
+        {
+            _settings.ViewStateLoaded -= _viewStateLoadedHandler;
+            _viewStateLoadedHandler = null;
+        }
         if (_searchDebounce != null)
         {
             _searchDebounce.Stop();
