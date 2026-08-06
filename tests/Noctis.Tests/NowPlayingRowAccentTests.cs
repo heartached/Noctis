@@ -14,16 +14,26 @@ namespace Noctis.Tests;
 /// <summary>
 /// The now-playing track row used to be tinted from the current artwork's vibrant colour,
 /// which ignored the accent the user picked in Settings. It now follows the accent, with a
-/// foreground driven by the THEME — white on dark themes, black on light ones — not by the
-/// accent's own luminance.
+/// foreground driven by the THEME — white on dark themes, black on light ones — rather than
+/// by the accent's own luminance.
 ///
-/// This is a deliberate design choice, made after seeing both on screen: a solid accent band
-/// with constant text reads better than text that flips colour per accent. The accepted
-/// trade-off is that contrast is NOT guaranteed — a pale accent leaves row text near 1.7:1.
-/// Do not "fix" this back to a luminance-derived foreground.
+/// That constant is a deliberate design choice, made after seeing both on screen: a solid
+/// accent band with constant text reads better than text that flips colour per accent. Do not
+/// "fix" it into a plain luminance-derived foreground; most accents must keep the theme colour.
+///
+/// It is not, however, unconditional any more. It originally was, and the accepted trade-off
+/// ("contrast is NOT guaranteed") turned out to have a floor below which the row stopped being
+/// a design choice and became a bug: on a pale accent — the Dark theme's silver, a white or
+/// pastel custom accent — white-on-near-white rendered the row as a blank white bar with no
+/// visible title, time or EQ bars. So the theme constant now holds only while it clears 3:1
+/// against the band, and below that the row falls back to whichever of black/white contrasts.
+/// The accents where the constant reads are unaffected.
 /// </summary>
 public class NowPlayingRowAccentTests
 {
+    /// <summary>The floor App.SetAccent applies before it abandons the theme constant.</summary>
+    private const double ContrastFloor = 3.0;
+
     [AvaloniaTheory]
     [InlineData("#FFFFFF")] // white
     [InlineData("#FFAFC0")] // pale pink — the case that motivated this
@@ -39,18 +49,15 @@ public class NowPlayingRowAccentTests
     }
 
     /// <summary>
-    /// Dark themes get WHITE row text, whatever the accent — including the pale accents
-    /// where white lands near 1.7:1. That is the accepted trade-off, not an oversight.
+    /// Dark themes keep WHITE row text for every accent white can actually be read on — which
+    /// is the normal case, and includes accents white is merely unexciting on. The constant is
+    /// not chasing maximum contrast, only clearing the floor.
     /// </summary>
     [AvaloniaTheory]
-    [InlineData("#FFFFFF")] // white
-    [InlineData("#FFAFC0")] // pale pink — white here is ~1.7:1, deliberately
-    [InlineData("#E74856")] // stock accent
-    [InlineData("#4CAF50")] // mid green
-    [InlineData("#FFD966")] // yellow
+    [InlineData("#E74856")] // stock accent — white lands 3.85:1
     [InlineData("#0D47A1")] // deep blue
     [InlineData("#000000")] // black
-    public void DarkTheme_RowText_IsAlwaysWhite(string hex)
+    public void DarkTheme_RowText_KeepsTheThemeWhite_WhereWhiteReads(string hex)
     {
         AccentTestHarness.WithAccent(hex, ThemeVariant.Dark, () =>
         {
@@ -58,16 +65,34 @@ public class NowPlayingRowAccentTests
         });
     }
 
-    /// <summary>Light themes get BLACK row text, whatever the accent.</summary>
+    /// <summary>
+    /// The bug this floor exists for: a pale accent on a dark theme is still a near-white
+    /// band, and the theme's white text disappeared into it — the row rendered as a blank
+    /// bar. These accents must flip to black instead.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData("#FFFFFF")] // white — white-on-white, 1.0:1
+    [InlineData("#E8E8E8")] // the Dark theme's silver accent — the reported case
+    [InlineData("#FFAFC0")] // pale pink — white here is 1.7:1
+    [InlineData("#FFD966")] // yellow
+    [InlineData("#4CAF50")] // mid green — 2.5:1, under the floor
+    public void DarkTheme_RowText_FlipsToBlack_WhenWhiteWouldVanish(string hex)
+    {
+        AccentTestHarness.WithAccent(hex, ThemeVariant.Dark, () =>
+        {
+            Assert.Equal(Colors.Black, AccentTestHarness.ResourceColor("NowPlayingRowForegroundBrush"));
+        });
+    }
+
+    /// <summary>Light themes keep BLACK row text on everything but a genuinely dark accent.</summary>
     [AvaloniaTheory]
     [InlineData("#FFFFFF")]
+    [InlineData("#E8E8E8")]
     [InlineData("#FFAFC0")]
     [InlineData("#E74856")]
     [InlineData("#4CAF50")]
     [InlineData("#FFD966")]
-    [InlineData("#0D47A1")]
-    [InlineData("#000000")]
-    public void LightTheme_RowText_IsAlwaysBlack(string hex)
+    public void LightTheme_RowText_KeepsTheThemeBlack_WhereBlackReads(string hex)
     {
         AccentTestHarness.WithAccent(hex, ThemeVariant.Light, () =>
         {
@@ -75,39 +100,81 @@ public class NowPlayingRowAccentTests
         });
     }
 
-    /// <summary>
-    /// The row foreground must NOT track the accent's luminance. Pale pink and deep blue sit
-    /// at opposite ends (Y 0.557 vs 0.064); under the previous luminance rule they resolved to
-    /// black and white respectively. On one theme they must now agree. This is the guard
-    /// against someone reintroducing a contrast-derived foreground.
-    /// </summary>
-    [AvaloniaFact]
-    public void RowText_DoesNotVaryWithAccentLuminance()
+    /// <summary>The mirror case: black on a dark accent band is the same defect.</summary>
+    [AvaloniaTheory]
+    [InlineData("#0D47A1")] // deep blue — black lands 2.3:1
+    [InlineData("#000000")] // black-on-black, 1.0:1
+    public void LightTheme_RowText_FlipsToWhite_WhenBlackWouldVanish(string hex)
     {
-        Color pale = default, deep = default;
-        AccentTestHarness.WithAccent("#FFAFC0", ThemeVariant.Dark,
-            () => pale = AccentTestHarness.ResourceColor("NowPlayingRowForegroundBrush"));
-        AccentTestHarness.WithAccent("#0D47A1", ThemeVariant.Dark,
-            () => deep = AccentTestHarness.ResourceColor("NowPlayingRowForegroundBrush"));
+        AccentTestHarness.WithAccent(hex, ThemeVariant.Light, () =>
+        {
+            Assert.Equal(Colors.White, AccentTestHarness.ResourceColor("NowPlayingRowForegroundBrush"));
+        });
+    }
 
-        Assert.Equal(pale, deep);
-        Assert.Equal(Colors.White, pale);
+    /// <summary>
+    /// The property that matters, stated once over the whole accent range and both themes:
+    /// the row text is always legible on the row fill. Whatever the constant does, no accent
+    /// may put the row back under the floor.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData("#FFFFFF")]
+    [InlineData("#E8E8E8")]
+    [InlineData("#FFAFC0")]
+    [InlineData("#FFD966")]
+    [InlineData("#4CAF50")]
+    [InlineData("#12C76F")]
+    [InlineData("#E74856")]
+    [InlineData("#0D47A1")]
+    [InlineData("#000000")]
+    public void RowText_ClearsTheContrastFloor_OnEveryAccent(string hex)
+    {
+        foreach (var variant in new[] { ThemeVariant.Dark, ThemeVariant.Light })
+        {
+            AccentTestHarness.WithAccent(hex, variant, () =>
+            {
+                var fill = AccentTestHarness.ResourceColor("NowPlayingRowBrush");
+                var text = AccentTestHarness.ResourceColor("NowPlayingRowForegroundBrush");
+                Assert.True(Contrast(text, fill) >= ContrastFloor,
+                    $"{variant} row text {text} on accent {hex} is {Contrast(text, fill):F2}:1");
+            });
+        }
     }
 
     /// <summary>
     /// The row foreground is its own resource, not a reuse of the accent-pill foreground.
-    /// AccentForegroundBrush comes from GetReadableForeground, which is luminance-derived and
-    /// tuned for small glyphs; on a white accent it returns black while the dark-theme row
-    /// stays white. They must not be collapsed into one key.
+    /// AccentForegroundBrush comes from GetReadableForeground, which biases toward white and is
+    /// tuned for small glyphs; the row prefers the theme constant and only then the strongest
+    /// contrast. Mid green on a light theme separates them: the pill takes white, the row keeps
+    /// the theme's black. They must not be collapsed into one key.
     /// </summary>
     [AvaloniaFact]
     public void RowForeground_IsDistinctFromTheAccentPillForeground()
     {
-        AccentTestHarness.WithAccent("#FFFFFF", ThemeVariant.Dark, () =>
+        AccentTestHarness.WithAccent("#4CAF50", ThemeVariant.Light, () =>
         {
-            Assert.Equal(Colors.White, AccentTestHarness.ResourceColor("NowPlayingRowForegroundBrush"));
-            Assert.Equal(Colors.Black, AccentTestHarness.ResourceColor("AccentForegroundBrush"));
+            Assert.Equal(Colors.Black, AccentTestHarness.ResourceColor("NowPlayingRowForegroundBrush"));
+            Assert.Equal(Colors.White, AccentTestHarness.ResourceColor("AccentForegroundBrush"));
         });
+    }
+
+    /// <summary>WCAG contrast ratio, mirroring App's own helper so the tests stay independent of it.</summary>
+    private static double Contrast(Color a, Color b)
+    {
+        static double Relative(Color c)
+        {
+            static double Linear(byte channel)
+            {
+                var value = channel / 255d;
+                return value <= 0.03928 ? value / 12.92 : Math.Pow((value + 0.055) / 1.055, 2.4);
+            }
+
+            return 0.2126 * Linear(c.R) + 0.7152 * Linear(c.G) + 0.0722 * Linear(c.B);
+        }
+
+        var la = Relative(a);
+        var lb = Relative(b);
+        return (Math.Max(la, lb) + 0.05) / (Math.Min(la, lb) + 0.05);
     }
 
     /// <summary>
@@ -141,10 +208,13 @@ public class NowPlayingRowAccentTests
         Assert.True(
             app.Resources.TryGetResource("NowPlayingRowForegroundBrush", ThemeVariant.Dark, out var fg),
             "NowPlayingRowForegroundBrush missing from Application.Resources after SetAccent");
-        // Probed under the Dark variant above, so the foreground is white for every accent.
-        // Deliberately no contrast assertion here: the foreground is theme-driven, and a pale
-        // accent like #FFAFC0 lands near 1.7:1 by design.
-        Assert.Equal(Colors.White, AccentTestHarness.ColorOf(fg as IBrush));
+        // Which colour it lands on is the theme-constant-plus-floor rule the tests above pin.
+        // What this one adds is that the value reaching a real consumer is the overlay's and
+        // not a shadowed App.axaml literal, so assert the property that would break if it were:
+        // a stale literal cannot stay legible across all three accents.
+        Assert.True(
+            Contrast(AccentTestHarness.ColorOf(fg as IBrush), Color.Parse(hex)) >= ContrastFloor,
+            $"row text on accent {hex} did not come from the accent overlay");
     }
 
     /// <summary>

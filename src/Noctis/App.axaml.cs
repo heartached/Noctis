@@ -370,9 +370,19 @@ public partial class App : Application
         // black on light ones. Deliberately theme-driven rather than derived from the
         // accent's own luminance — flipping per-accent made the row read as mismatched
         // against the rest of the list, and a solid accent band with constant text is what
-        // the design targets. The trade-off is accepted: a pale accent leaves the text
-        // around 1.7:1, so contrast is NOT guaranteed here.
-        var nowPlayingRowForeground = isLightTheme ? Colors.Black : Colors.White;
+        // the design targets.
+        //
+        // The one thing that outranks that consistency is being able to read the row at all.
+        // The constant was previously unconditional, which put white text on a near-white
+        // band whenever the accent was pale (the Dark theme's silver, a white or pastel
+        // custom accent) and left the row rendering as a blank bar. So the constant holds
+        // only while it clears a 3:1 floor against the band; below that the row takes
+        // whichever of black/white actually contrasts. Every accent that reads either way
+        // keeps the theme colour, so this changes nothing for the common ones.
+        var themeRowForeground = isLightTheme ? Colors.Black : Colors.White;
+        var nowPlayingRowForeground = ContrastRatio(themeRowForeground, color) >= 3.0
+            ? themeRowForeground
+            : HighestContrastForeground(color);
         // Outline around accent-filled pills. Only meaningful when the accent fill
         // would be indistinguishable from the page background — in practice that's
         // a white / very-light accent on the Light theme. In every other case the
@@ -498,6 +508,26 @@ public partial class App : Application
         color = default;
         if (string.IsNullOrWhiteSpace(hex)) return false;
         try { color = Color.Parse(hex.Trim()); return true; }
+    /// <summary>WCAG contrast ratio between two opaque colours (1.0 = identical, 21.0 = black on white).</summary>
+    private static double ContrastRatio(Color a, Color b)
+    {
+        var la = Luminance(a);
+        var lb = Luminance(b);
+        var hi = Math.Max(la, lb);
+        var lo = Math.Min(la, lb);
+        return (hi + 0.05) / (lo + 0.05);
+    }
+
+    /// <summary>
+    /// Black or white, whichever is more legible on <paramref name="background"/>. Unlike
+    /// GetReadableForeground — which is tuned for small glyphs and biases toward white — this
+    /// makes no aesthetic choice; it is the last-resort pick for a large filled band.
+    /// </summary>
+    private static Color HighestContrastForeground(Color background) =>
+        ContrastRatio(Colors.Black, background) >= ContrastRatio(Colors.White, background)
+            ? Colors.Black
+            : Colors.White;
+
         catch { return false; }
     }
 }

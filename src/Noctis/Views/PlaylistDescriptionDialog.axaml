@@ -20,7 +20,7 @@
          read as the same surface; the labels carry playlist info instead of album tags. -->
     <Window.Styles>
         <Style Selector="Border.playlist-desc-fact">
-            <Setter Property="Background" Value="#14FFFFFF" />
+            <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
             <Setter Property="CornerRadius" Value="10" />
             <Setter Property="Padding" Value="12,9" />
         </Style>
@@ -28,12 +28,13 @@
             <Setter Property="FontSize" Value="10" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="LetterSpacing" Value="1.2" />
-            <Setter Property="Foreground" Value="#8AFFFFFF" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="Opacity" Value="0.54" />
         </Style>
         <Style Selector="TextBlock.playlist-desc-fact-value">
             <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
     </Window.Styles>
