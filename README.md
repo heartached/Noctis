@@ -130,7 +130,7 @@ Both ship with everything they need, so there is nothing else to install.
 - [x] Updates itself from GitHub releases
 
 <p align="center">
-  <img src="docs/images/discord.png" width="240" alt="Discord Rich Presence" />
+  <img src="docs/images/discord.png" width="380" alt="Discord Rich Presence" />
 </p>
 
 ---
