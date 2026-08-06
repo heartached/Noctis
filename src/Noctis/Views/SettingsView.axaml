@@ -1719,7 +1719,12 @@
             <Border Classes="setting-card" IsVisible="{Binding IsLiquidGlassSupported}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
-                        <TextBlock Text="Liquid Glass" FontSize="15" FontWeight="SemiBold"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Liquid Glass" FontSize="15" FontWeight="SemiBold"/>
+                            <Border Classes="beta-badge">
+                                <TextBlock Classes="beta-badge-text" Text="BETA"/>
+                            </Border>
+                        </StackPanel>
                         <TextBlock Text="Frost the window with translucent, blurred glass surfaces."
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
@@ -1827,7 +1832,12 @@
                 <StackPanel Spacing="14">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
-                            <TextBlock Text="Song Transitions" FontSize="15" FontWeight="SemiBold"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Song Transitions" FontSize="15" FontWeight="SemiBold"/>
+                                <Border Classes="beta-badge">
+                                    <TextBlock Classes="beta-badge-text" Text="BETA"/>
+                                </Border>
+                            </StackPanel>
                             <TextBlock Text="Songs blend smoothly into each other. Albums still play without transitions."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                             <TextBlock Text="Unavailable while Exclusive Mode is on."

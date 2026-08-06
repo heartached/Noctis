@@ -307,6 +307,24 @@
     <Style Selector="ComboBox /template/ ContentPresenter">
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Margin" Value="0,1,0,0" />
+    <!-- "BETA" tag sitting next to a settings-row title. Non-interactive marker, so it
+         uses the neutral chip fill rather than the accent — the accent in this app means
+         "active control", which a status tag is not. -->
+    <Style Selector="Border.beta-badge">
+        <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="7,2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="TextBlock.beta-badge-text">
+        <Setter Property="FontSize" Value="9" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="0.8" />
+        <Setter Property="Opacity" Value="0.7" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
     </Style>
 
     <Style Selector="ComboBoxItem /template/ ContentPresenter">
