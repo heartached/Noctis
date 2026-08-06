@@ -532,6 +532,18 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>True while the status line shows a failure — drives the red status styling.</summary>
     [ObservableProperty] private bool _hasMediaServerError;
 
+    /// <summary>Switching preset starts a fresh form: stale credentials for another
+    /// server would only produce a confusing failed connect.</summary>
+    partial void OnMediaServerTypeChanged(string value)
+    {
+        if (!_settingsLoaded || IsMediaServerConnected) return;
+        MediaServerUrl = string.Empty;
+        MediaServerUsername = string.Empty;
+        MediaServerPassword = string.Empty;
+        MediaServerStatusText = "Not connected";
+        HasMediaServerError = false;
+    }
+
     /// <summary>The persisted server connection while connected; null otherwise.</summary>
     private SourceConnection? _mediaServerConnection;
 

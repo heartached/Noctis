@@ -2456,9 +2456,11 @@
 
                             <!-- Connection form (hidden while connected): labeled 2×2 grid,
                                  Enter in any field submits. -->
+                            <!-- Fixed width so long input scrolls inside the boxes instead of
+                                 growing them (left-aligned grids size star columns to content). -->
                             <Grid IsVisible="{Binding !IsMediaServerConnected}"
                                   ColumnDefinitions="*,12,*" RowDefinitions="Auto,Auto"
-                                  MaxWidth="560" HorizontalAlignment="Left" Margin="-2,10,0,0">
+                                  Width="560" HorizontalAlignment="Left" Margin="-2,10,0,0">
                                 <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4" Margin="0,0,0,10">
                                     <TextBlock Classes="server-field-label" Text="SERVER TYPE"/>
                                     <Border Classes="server-pill-shell">
