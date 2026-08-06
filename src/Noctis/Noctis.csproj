@@ -106,7 +106,7 @@
          bundles SQLite < 3.50.2 and shipped e_sqlite3.dll in every release. This
          explicit reference wins over the transitive pin without moving off the 8.0.x
          Microsoft.Data.Sqlite line. Verify with a vulnerable/transitive package audit. -->
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.4" />
     <!-- Windows DPAPI: scrobbler tokens encrypted at rest in settings.json (runtime-guarded, no-op elsewhere) -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
