@@ -2980,12 +2980,33 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// there is no per-frame cost for line-only lyrics or paused playback; the 100ms
     /// sync timer restarts it when a word-synced line becomes active again.
     /// </summary>
+    // The word clock rides the main window's render loop. While the mini player's
+    // lyrics form is the visible surface, the main window is hidden and pumps no
+    // frames — the mini player registers itself as the frame source instead.
+    private Avalonia.Controls.TopLevel? _wordClockHostOverride;
+
+    /// <summary>Alternative TopLevel to drive the word clock (the mini player's lyrics
+    /// form); null falls back to the main window.</summary>
+    public void SetWordClockHost(Avalonia.Controls.TopLevel? host)
+    {
+        _wordClockHostOverride = host;
+        if (host != null)
+            UpdateWordClockSubscription();
+    }
+
+    private Avalonia.Controls.TopLevel? GetWordClockHost()
+    {
+        if (_wordClockHostOverride != null) return _wordClockHostOverride;
+        return Application.Current?.ApplicationLifetime is
+            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+    }
+
     private void UpdateWordClockSubscription()
     {
         if (!WantsWordClock || _wordClockRunning) return;
-        if (Application.Current?.ApplicationLifetime is not
-            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            || desktop.MainWindow is not { } topLevel) return;
+        if (GetWordClockHost() is not { } topLevel) return;
 
         _wordClockRunning = true;
         topLevel.RequestAnimationFrame(OnWordClockFrame);
@@ -3029,9 +3050,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // the _wordClockRunning flag prevents a second concurrent loop.
         UpdateActiveLine(GetPlaybackPosition());
 
-        if (Application.Current?.ApplicationLifetime is
-            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow is { } topLevel)
+        if (GetWordClockHost() is { } topLevel)
         {
             topLevel.RequestAnimationFrame(OnWordClockFrame);
         }

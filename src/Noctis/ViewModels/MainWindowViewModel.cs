@@ -114,6 +114,21 @@ public partial class MainWindowViewModel : ViewModelBase
     public SettingsViewModel Settings { get; }
     public LyricsViewModel Lyrics => _lyricsVm;
 
+    private MiniPlayerViewModel? _miniPlayerVm;
+
+    /// <summary>
+    /// The mini player's ViewModel (shares the always-alive player/lyrics/settings VMs
+    /// and the library for its search layer). A single cached instance: it subscribes
+    /// to the queue/lyrics collections, so per-open instances would pin themselves via
+    /// those handlers. Each open starts with the drawer layers closed.
+    /// </summary>
+    public MiniPlayerViewModel CreateMiniPlayerViewModel()
+    {
+        _miniPlayerVm ??= new MiniPlayerViewModel(Player, _lyricsVm, Settings, _library);
+        _miniPlayerVm.Drawer = MiniDrawer.None;
+        return _miniPlayerVm;
+    }
+
     // ── Content area ──
 
     /// <summary>The ViewModel currently displayed in the main content area (Zone C).</summary>

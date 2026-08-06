@@ -59,14 +59,16 @@ public partial class MainWindow : Window
 
         if (DataContext is not MainWindowViewModel vm) return;
 
-        _miniPlayer = new MiniPlayerWindow { DataContext = vm.Player };
-        // The mini player's DataContext is the PlayerViewModel, which has no view of
-        // Settings, so the animated-cover gate is bound here (live, so toggling the
-        // setting while the mini player is open takes effect immediately).
-        _miniPlayer.AnimatedArt.Bind(
-            Noctis.Controls.AnimatedCoverImage.IsActiveProperty,
-            new Avalonia.Data.Binding(nameof(SettingsViewModel.EnableAnimatedCovers)) { Source = vm.Settings });
+        var miniVm = vm.CreateMiniPlayerViewModel();
+        _miniPlayer = new MiniPlayerWindow { DataContext = miniVm };
         _miniPlayer.Closed += OnMiniPlayerClosed;
+
+        // Always open as the compact bar (Apple Music-style widget); resizing from
+        // there morphs it into the other forms.
+        var (barWidth, barHeight) = MiniPlayerViewModel.CanonicalSize(MiniPlayerForm.Bar);
+        _miniPlayer.Width = barWidth;
+        _miniPlayer.Height = barHeight;
+        miniVm.UpdateFromSize(barWidth, barHeight);
 
         // Place it near the top-right of the screen the main window is on.
         var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
