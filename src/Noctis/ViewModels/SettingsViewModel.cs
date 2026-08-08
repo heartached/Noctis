@@ -402,6 +402,9 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
+    /// <summary>Bound straight to the mini player card's fill brush (no player plumbing —
+    /// the mini player's view model exposes this view model directly).</summary>
+    [ObservableProperty] private double _miniPlayerBackgroundOpacity = 0.55;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
     /// <summary>Liquid Glass needs OS blur-behind (Acrylic/Mica/vibrancy). On Linux/X11
     /// none of those exist and the hint would degrade to a plain see-through window
@@ -968,6 +971,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumSortMode = _settings.AlbumSortMode;
             AlbumSortAscending = _settings.AlbumSortAscending;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
+            MiniPlayerBackgroundOpacity = Math.Clamp(_settings.MiniPlayerBackgroundOpacity, 0, 1);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             LiquidGlassEnabled = _settings.LiquidGlassEnabled;
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
@@ -1165,6 +1169,29 @@ public partial class SettingsViewModel : ViewModelBase
     /// in future is preserved automatically, rather than silently reverting until someone
     /// remembers to extend a hand-written list.
     /// </summary>
+    /// <summary>
+    /// Window geometry is the one group of fields the merge must NOT pull back from disk.
+    /// It is written straight onto <see cref="_settings"/> by the windows themselves
+    /// (MainWindow.CaptureWindowPlacement, MiniPlayerWindow's move/resize capture) rather
+    /// than by a view-model property, so <see cref="SyncToSettings"/> has nothing to
+    /// re-apply afterwards — the merge simply restored the app-start values and the save
+    /// wrote those back. That silently defeated geometry persistence entirely: the
+    /// window's size and position never survived a restart. Nothing outside this process
+    /// writes these keys, so the in-memory value is always the newer one.
+    /// </summary>
+    private static readonly HashSet<string> ProcessOwnedPlacementKeys = new(StringComparer.Ordinal)
+    {
+        nameof(AppSettings.WindowWidth),
+        nameof(AppSettings.WindowHeight),
+        nameof(AppSettings.WindowX),
+        nameof(AppSettings.WindowY),
+        nameof(AppSettings.MainWindowState),
+        nameof(AppSettings.MiniPlayerWidth),
+        nameof(AppSettings.MiniPlayerHeight),
+        nameof(AppSettings.MiniPlayerX),
+        nameof(AppSettings.MiniPlayerY),
+    };
+
     private async Task MergeExternalSettingChangesAsync()
     {
         try
@@ -1176,6 +1203,7 @@ public partial class SettingsViewModel : ViewModelBase
                          System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
             {
                 if (!prop.CanRead || !prop.CanWrite) continue;
+                if (ProcessOwnedPlacementKeys.Contains(prop.Name)) continue;
                 prop.SetValue(_settings, prop.GetValue(onDisk));
             }
         }
@@ -1277,6 +1305,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumSortMode = AlbumSortMode;
         _settings.AlbumSortAscending = AlbumSortAscending;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        _settings.MiniPlayerBackgroundOpacity = Math.Clamp(MiniPlayerBackgroundOpacity, 0, 1);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.LiquidGlassEnabled = LiquidGlassEnabled;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
@@ -1354,6 +1383,28 @@ public partial class SettingsViewModel : ViewModelBase
     public void SetPlaybackBarWidth(double width)
     {
         _playbackBarWidth = _settings.PlaybackBarWidth = width;
+        QueueSettingsSave();
+    }
+
+    /// <summary>
+    /// Stores the mini player's current size (DIPs) and screen position (pixels) so the
+    /// next open restores it. Called from the window's move/resize handlers rather than
+    /// only on close: the mini player can be torn down by the main window shutting down,
+    /// which saves before it gets there, and the debounce collapses a whole drag into one
+    /// trailing write. See <see cref="ProcessOwnedPlacementKeys"/> for why these survive
+    /// the on-disk merge.
+    /// </summary>
+    public void SetMiniPlayerPlacement(double width, double height, double x, double y)
+    {
+        if (!double.IsFinite(width) || !double.IsFinite(height) ||
+            !double.IsFinite(x) || !double.IsFinite(y) ||
+            width <= 0 || height <= 0)
+            return;
+
+        _settings.MiniPlayerWidth = width;
+        _settings.MiniPlayerHeight = height;
+        _settings.MiniPlayerX = x;
+        _settings.MiniPlayerY = y;
         QueueSettingsSave();
     }
 
@@ -2014,6 +2065,20 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         ApplyPlayerSettings();
+        if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
+    }
+
+    partial void OnMiniPlayerBackgroundOpacityChanged(double value)
+    {
+        var clamped = double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0.55;
+        if (clamped != value)
+        {
+            MiniPlayerBackgroundOpacity = clamped;
+            return;
+        }
+
+        // No Apply* step: the mini player's card binds this property directly, so the
+        // change is live. Slider-driven, so the write is debounced like the bar's.
         if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
     }
 
@@ -3682,6 +3747,7 @@ public partial class SettingsViewModel : ViewModelBase
             FfmpegPath = defaultSettings.FfmpegPath;
             ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
             PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;
+            MiniPlayerBackgroundOpacity = defaultSettings.MiniPlayerBackgroundOpacity;
             // Playback-bar width: clear the pending session value, or SyncToSettings
             // would re-persist the pre-reset width over the freshly defaulted file
             // (the ApplyPlayerSettings call below pushes the default to the bar).

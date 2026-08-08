@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private TaskbarIntegrationService? _taskbar;
     private SmtcService? _smtc;
     private MprisService? _mpris;
+    private MacNowPlayingService? _macNowPlaying;
     private TrayIcon? _trayIcon;
     private bool _exitRequestedFromTray;
     private EventHandler<string>? _themeChangedHandler;
@@ -63,27 +64,56 @@ public partial class MainWindow : Window
         _miniPlayer = new MiniPlayerWindow { DataContext = miniVm };
         _miniPlayer.Closed += OnMiniPlayerClosed;
 
-        // Always open as the compact bar (Apple Music-style widget); resizing from
-        // there morphs it into the other forms.
-        var (barWidth, barHeight) = MiniPlayerViewModel.CanonicalSize(MiniPlayerForm.Bar);
-        _miniPlayer.Width = barWidth;
-        _miniPlayer.Height = barHeight;
-        miniVm.UpdateFromSize(barWidth, barHeight);
-
-        // Place it near the top-right of the screen the main window is on.
-        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
-        if (screen != null)
-        {
-            var area = screen.WorkingArea;
-            var scale = screen.Scaling;
-            var width = (int)(_miniPlayer.Width * scale);
-            _miniPlayer.Position = new PixelPoint(
-                area.X + area.Width - width - (int)(24 * scale),
-                area.Y + (int)(24 * scale));
-        }
+        RestoreMiniPlayerPlacement(_miniPlayer, miniVm, vm.Settings.GetSettings());
 
         _miniPlayer.Show();
         Hide();
+    }
+
+    /// <summary>
+    /// Restores the mini player's last size and position. Falls back to the compact bar
+    /// at the top-right of the screen the main window is on — for a first open, and for a
+    /// stored position that no longer lands on a connected screen (the mini player has no
+    /// title bar and cannot be dragged back from off-screen).
+    /// </summary>
+    private void RestoreMiniPlayerPlacement(
+        MiniPlayerWindow mini, MiniPlayerViewModel miniVm, AppSettings settings)
+    {
+        var (width, height) = MiniPlayerViewModel.CanonicalSize(MiniPlayerForm.Bar);
+
+        // The form follows the size, so a restored size also restores the layout the user
+        // left it in (card, tall, lyrics split, …), not just the dimensions.
+        if (settings.MiniPlayerWidth is { } savedW && settings.MiniPlayerHeight is { } savedH
+            && double.IsFinite(savedW) && double.IsFinite(savedH))
+        {
+            width = Math.Clamp(savedW, mini.MinWidth, mini.MaxWidth);
+            height = Math.Clamp(savedH, mini.MinHeight, mini.MaxHeight);
+        }
+
+        mini.Width = width;
+        mini.Height = height;
+        miniVm.UpdateFromSize(width, height);
+
+        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        var scale = screen?.Scaling ?? 1.0;
+
+        if (settings.MiniPlayerX is { } savedX && settings.MiniPlayerY is { } savedY
+            && double.IsFinite(savedX) && double.IsFinite(savedY))
+        {
+            var restored = new PixelPoint((int)Math.Round(savedX), (int)Math.Round(savedY));
+            if (IsPositionOnAScreen(restored, width * scale, height * scale))
+            {
+                mini.Position = restored;
+                return;
+            }
+        }
+
+        if (screen == null) return;
+
+        var area = screen.WorkingArea;
+        mini.Position = new PixelPoint(
+            area.X + area.Width - (int)(width * scale) - (int)(24 * scale),
+            area.Y + (int)(24 * scale));
     }
 
     private void OnMiniPlayerClosed(object? sender, System.EventArgs e)
@@ -331,6 +361,8 @@ public partial class MainWindow : Window
                 InitializeTrayIcon(vm);
                 _smtc = new SmtcService(vm.Player, TryGetPlatformHandle()?.Handle ?? IntPtr.Zero);
                 _mpris = MprisService.TryStart(vm.Player);
+                _macNowPlaying = MacNowPlayingService.TryStart(vm.Player);
+                InitializeMacMenuBar(vm);
                 Services.StartupTrace.Mark("tray-smtc-mpris-ready");
 
                 // Launched at login with "start minimized to tray" on (encoded in the
@@ -661,6 +693,61 @@ public partial class MainWindow : Window
         }
     }
 
+    // ── macOS menu bar ──
+
+    /// <summary>
+    /// Builds the macOS menu bar (issue #38). Without this Avalonia exports only its
+    /// default app menu, so the bar showed a bare "Avalonia Application" entry with no
+    /// options. App-level items land inside the bold app menu (Avalonia appends the
+    /// standard Hide/Quit entries itself); the window-level menu contributes the
+    /// Playback menu next to it. No-op off macOS — Windows/Linux use the in-app UI.
+    /// </summary>
+    private void InitializeMacMenuBar(MainWindowViewModel vm)
+    {
+        if (!OperatingSystem.IsMacOS()) return;
+
+        try
+        {
+            var appMenu = new NativeMenu();
+            var settings = new NativeMenuItem("Settings…")
+            {
+                Gesture = new KeyGesture(Key.OemComma, KeyModifiers.Meta),
+            };
+            settings.Click += (_, _) => vm.OpenSettingsCommand.Execute(null);
+            appMenu.Items.Add(settings);
+            NativeMenu.SetMenu(Application.Current!, appMenu);
+
+            // Gestures mirror Music.app (⌘→ next, ⌘← previous).
+            var playback = new NativeMenu();
+
+            var playPause = new NativeMenuItem("Play / Pause");
+            playPause.Click += (_, _) => vm.Player.PlayPauseCommand.Execute(null);
+            playback.Items.Add(playPause);
+
+            var next = new NativeMenuItem("Next Track")
+            {
+                Gesture = new KeyGesture(Key.Right, KeyModifiers.Meta),
+            };
+            next.Click += (_, _) => vm.Player.NextCommand.Execute(null);
+            playback.Items.Add(next);
+
+            var previous = new NativeMenuItem("Previous Track")
+            {
+                Gesture = new KeyGesture(Key.Left, KeyModifiers.Meta),
+            };
+            previous.Click += (_, _) => vm.Player.PreviousCommand.Execute(null);
+            playback.Items.Add(previous);
+
+            var windowMenu = new NativeMenu();
+            windowMenu.Items.Add(new NativeMenuItem("Playback") { Menu = playback });
+            NativeMenu.SetMenu(this, windowMenu);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.UI, "MacMenu.Init", ex.Message);
+        }
+    }
+
     // ── System tray ──
 
     private void InitializeTrayIcon(MainWindowViewModel vm)
@@ -851,6 +938,8 @@ public partial class MainWindow : Window
         _smtc = null;
         _mpris?.Dispose();
         _mpris = null;
+        _macNowPlaying?.Dispose();
+        _macNowPlaying = null;
         if (_trayIcon != null)
         {
             _trayIcon.IsVisible = false;

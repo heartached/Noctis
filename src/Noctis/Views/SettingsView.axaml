@@ -1813,6 +1813,29 @@
                 </StackPanel>
             </Border>
 
+            <!-- Mini player opacity -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Mini Player Opacity" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="How much of your desktop shows through the mini player's glass."
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Slider Grid.Column="0"
+                                Classes="accent-slider"
+                                Minimum="0" Maximum="1"
+                                Value="{Binding MiniPlayerBackgroundOpacity, Mode=TwoWay}"
+                                VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding MiniPlayerBackgroundOpacity, StringFormat='{}{0:P0}'}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center"
+                                   MinWidth="44" TextAlignment="Right" Margin="12,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════ -->

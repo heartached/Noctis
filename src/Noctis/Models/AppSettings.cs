@@ -89,6 +89,17 @@ public class AppSettings
     public double WindowY { get; set; } = 100;
     public string MainWindowState { get; set; } = "Normal";
 
+    /// <summary>
+    /// Mini player size (DIPs) and screen position (pixels), reapplied every time it is
+    /// reopened so it comes back where it was left instead of the top-right corner.
+    /// Null until the mini player has been opened once — that's what selects the
+    /// first-run placement, so these stay nullable rather than carrying magic defaults.
+    /// </summary>
+    public double? MiniPlayerWidth { get; set; }
+    public double? MiniPlayerHeight { get; set; }
+    public double? MiniPlayerX { get; set; }
+    public double? MiniPlayerY { get; set; }
+
     // ── Playback settings ──
 
     /// <summary>Whether crossfade between tracks is enabled.</summary>
@@ -208,6 +219,12 @@ public class AppSettings
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
     /// original #66 alpha glass look.</summary>
     public double PlaybackBarBackgroundOpacity { get; set; } = 0.4;
+
+    /// <summary>Opacity of the mini player card's glass fill (0 = fully transparent,
+    /// 1 = solid). Background only — the artwork wash, sheen and contents are unaffected.
+    /// Default 0.55 leaves the desktop clearly readable through the card while keeping
+    /// white text legible over a bright wallpaper.</summary>
+    public double MiniPlayerBackgroundOpacity { get; set; } = 0.55;
 
     /// <summary>User-chosen width of the floating playback bar island, set by dragging its
     /// edges (double-click a grip resets). 590 is the classic full layout; 340 is the
@@ -397,6 +414,10 @@ public class AppSettings
         ReplayGainPreampDb = Math.Clamp(ReplayGainPreampDb, -12, 12);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
+        // IsFinite first: Math.Clamp propagates NaN, and NaN here would erase the card fill.
+        MiniPlayerBackgroundOpacity = double.IsFinite(MiniPlayerBackgroundOpacity)
+            ? Math.Clamp(MiniPlayerBackgroundOpacity, 0, 1)
+            : 0.55;
         // IsFinite first: Math.Clamp propagates NaN, and a NaN width would wedge the bar.
         PlaybackBarWidth = double.IsFinite(PlaybackBarWidth)
             ? Math.Clamp(PlaybackBarWidth, 340, 4096)

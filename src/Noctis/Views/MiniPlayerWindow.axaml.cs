@@ -106,19 +106,21 @@ public partial class MiniPlayerWindow : Window
         // clip geometries in sync with the (now resizable) window.
         RootPanel.SizeChanged += (_, e) =>
         {
+            // Radius = RootBorder.CornerRadius - BorderThickness, so the clip follows the
+            // inside of the stroke.
             RootPanel.Clip = new RectangleGeometry(
-                new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 23, 23);
+                new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 27, 27);
             DrawerSheet.MaxHeight = Math.Max(120, e.NewSize.Height * 0.62);
         };
         LargeArtClip.SizeChanged += (_, e) =>
         {
             LargeArtClip.Clip = new RectangleGeometry(
-                new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 14, 14);
+                new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 16, 16);
         };
         LyricsArtClip.SizeChanged += (_, e) =>
         {
             LyricsArtClip.Clip = new RectangleGeometry(
-                new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 14, 14);
+                new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 16, 16);
         };
 
         // WrapPanel word lines must wrap at the visible width — the scroller's padding
@@ -130,7 +132,15 @@ public partial class MiniPlayerWindow : Window
 
         // The form follows the window size; ClientSize covers both live resize drags
         // and programmatic jumps (menu → Lyrics).
-        Resized += (_, _) => Vm?.UpdateFromSize(ClientSize.Width, ClientSize.Height);
+        Resized += (_, _) =>
+        {
+            Vm?.UpdateFromSize(ClientSize.Width, ClientSize.Height);
+            CapturePlacement();
+        };
+
+        // Drag-move and resize both need persisting, and neither is covered by close:
+        // the main window shutting down closes this window *after* it has already saved.
+        PositionChanged += (_, _) => CapturePlacement();
 
         DataContextChanged += (_, _) => HookViewModel();
 
@@ -145,7 +155,31 @@ public partial class MiniPlayerWindow : Window
             UpdateLyricsSurfaceRegistration();
             if (Vm?.IsLyricsForm == true)
                 OnEnteredLyricsForm();
+
+            // Only trust Position/ClientSize once the platform window exists; before that
+            // they are the pre-realize values and would overwrite a good stored placement.
+            _placementTrackable = true;
         };
+    }
+
+    // ── Placement persistence ────────────────────────────────
+
+    /// <summary>
+    /// False until <see cref="Window.Opened"/>, so the restore that MainWindow applies
+    /// before Show() isn't immediately overwritten by a pre-realize resize event.
+    /// </summary>
+    private bool _placementTrackable;
+
+    /// <summary>
+    /// Hands the current geometry to the settings view model, which debounces the write.
+    /// Size is in DIPs and position in screen pixels — the same units MainWindow restores
+    /// them in.
+    /// </summary>
+    private void CapturePlacement()
+    {
+        if (!_placementTrackable) return;
+        Vm?.Settings.SetMiniPlayerPlacement(
+            ClientSize.Width, ClientSize.Height, Position.X, Position.Y);
     }
 
     // ── ViewModel wiring ─────────────────────────────────────
@@ -207,6 +241,9 @@ public partial class MiniPlayerWindow : Window
         {
             e.Cancel = true;
             _closeAnimationDone = true;
+            // Last good geometry, before teardown can report anything odd.
+            CapturePlacement();
+            _placementTrackable = false;
             RootBorder.Opacity = 0;
             RootBorder.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(0.92)");
             Avalonia.Threading.DispatcherTimer.RunOnce(Close, TimeSpan.FromMilliseconds(CloseAnimationMs));

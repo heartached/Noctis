@@ -209,7 +209,7 @@ dotnet publish src/Noctis/Noctis.csproj -c Release -r linux-arm64 --self-contain
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=heartached/Noctis&type=Date)](https://star-history.com/#heartached/Noctis&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=heartached/Noctis&type=Date)](https://star-history.dera.page/#heartached/Noctis&Date)
 
 ---
 
