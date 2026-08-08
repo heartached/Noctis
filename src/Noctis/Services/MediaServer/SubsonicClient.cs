@@ -226,10 +226,11 @@ public sealed class SubsonicClient : IMediaServerClient
         {
             throw;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // DNS/refused/timeout/oversize — all surface as "couldn't reach".
-            return (null, MediaServerError.Unreachable, "Couldn't reach the server. Check the URL and that the server is running.");
+            // DNS/refused/TLS/timeout/oversize — classified for the status line.
+            var fail = MediaServerConnectResult.FromTransportException(ex);
+            return (null, fail.Error, fail.Message);
         }
 
         JsonDocument? doc = null;

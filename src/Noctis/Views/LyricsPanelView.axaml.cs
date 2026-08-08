@@ -9,6 +9,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -109,6 +110,17 @@ public partial class LyricsPanelView : UserControl
     // re-anchor itself rides the existing ActiveLyricLines handler below.
 
     private bool _lyricsSwapInProgress;
+
+    /// <summary>
+    /// Closes the panel by clearing the flag on the main VM, which drives the
+    /// wrapper's width animation — the same close path the Escape key takes.
+    /// </summary>
+    private void OnCloseClick(object? sender, RoutedEventArgs e)
+    {
+        var mainWindow = this.FindLogicalAncestorOfType<MainWindow>();
+        if (mainWindow?.DataContext is MainWindowViewModel mainVm)
+            mainVm.IsLyricsPanelOpen = false;
+    }
 
     private void OnLyricsSwapPending(object? sender, EventArgs e)
     {
