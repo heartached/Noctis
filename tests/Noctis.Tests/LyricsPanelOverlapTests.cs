@@ -191,6 +191,84 @@ public class LyricsPanelOverlapTests
         }
     }
 
+    private static Button? GetCloseChip(LyricsPanelView view) =>
+        view.GetVisualDescendants().OfType<Button>()
+            .FirstOrDefault(b => b.Classes.Contains("panel-close"));
+
+    private static Grid? GetPanelRoot(LyricsPanelView view) =>
+        view.GetVisualDescendants().OfType<Grid>()
+            .FirstOrDefault(g => g.Classes.Contains("panel-root"));
+
+    /// <summary>
+    /// The close chip rests invisible and is revealed by a pointer anywhere in the
+    /// panel. The reveal is a descendant pseudo-class selector, which fails silently
+    /// when it doesn't match — leaving the only in-panel way out permanently hidden.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task CloseChip_HiddenAtRest_RevealsOnPanelHover()
+    {
+        var (_, view, win) = await Mount(12);
+        try
+        {
+            var chip = GetCloseChip(view);
+            var root = GetPanelRoot(view);
+            Assert.NotNull(chip);
+            Assert.NotNull(root);
+
+            // Settle past the opacity transition before sampling the rest state.
+            await Pump(300);
+            _output.WriteLine($"rest opacity={chip!.Opacity:F2}");
+            Assert.True(chip.Opacity < 0.05, $"chip should rest invisible, was {chip.Opacity:F2}");
+
+            ((IPseudoClasses)root!.Classes).Set(":pointerover", true);
+            await Pump(400);
+            _output.WriteLine($"hover opacity={chip.Opacity:F2}");
+            Assert.True(chip.Opacity > 0.95,
+                $"hovering the panel did not reveal the close chip (opacity {chip.Opacity:F2}) — " +
+                "the 'Grid.panel-root:pointerover Button.panel-close' selector no longer matches");
+
+            ((IPseudoClasses)root.Classes).Set(":pointerover", false);
+            await Pump(400);
+            _output.WriteLine($"unhover opacity={chip.Opacity:F2}");
+            Assert.True(chip.Opacity < 0.05, "chip should hide again once the pointer leaves");
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
+
+    /// <summary>
+    /// The chip sits in the panel's top-right gutter. The wrapper hosting the panel
+    /// clips to a 16px corner radius, so an under-inset chip would render clipped.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task CloseChip_SitsInTopRightClearOfTheCornerRadius()
+    {
+        var (_, view, win) = await Mount(12);
+        try
+        {
+            var chip = GetCloseChip(view);
+            var root = GetPanelRoot(view);
+            Assert.NotNull(chip);
+            Assert.NotNull(root);
+
+            var b = chip!.Bounds;
+            var insetTop = b.Y;
+            var insetRight = root!.Bounds.Width - b.Right;
+            _output.WriteLine($"chip bounds={b}, insetTop={insetTop:F1}, insetRight={insetRight:F1}");
+
+            Assert.True(b.Width > 0 && b.Height > 0, "chip never got a layout box");
+            Assert.True(insetTop >= 8, $"chip too close to the top edge ({insetTop:F1}px) — the 16px corner clips it");
+            Assert.True(insetRight >= 8, $"chip too close to the right edge ({insetRight:F1}px) — the 16px corner clips it");
+            Assert.True(b.X > root.Bounds.Width / 2, "chip should sit in the right half of the panel");
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
+
     [AvaloniaFact]
     public async Task LargeJump_NeverOverlapsLines_AndSettlesClean()
     {

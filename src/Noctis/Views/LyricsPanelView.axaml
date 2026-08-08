@@ -190,9 +190,54 @@
                 </Animation>
             </Style.Animations>
         </Style>
+
+        <!-- Close chip. Neutral frosted disc rather than an accent pill: it
+             dismisses the panel, it doesn't act on the music. Rest state is set
+             HERE and not as a local value on the Button — local values outrank
+             style triggers in Avalonia, so an inline Opacity="0" would make the
+             :pointerover reveal below a no-op. -->
+        <Style Selector="Button.panel-close">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="RenderTransform" Value="scale(0.88)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.16" Easing="CubicEaseOut"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.panel-close /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#28FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#59FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="14"/>
+        </Style>
+        <!-- Revealed by the pointer anywhere in the panel. Keyboard focus reveals
+             it too — tabbing to an invisible control would otherwise be a dead end. -->
+        <Style Selector="Grid.panel-root:pointerover Button.panel-close">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.panel-close:focus">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.panel-close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#3DFFFFFF"/>
+        </Style>
+        <!-- Declared after the reveal rules so the press scale wins while both match. -->
+        <Style Selector="Button.panel-close:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#4FFFFFFF"/>
+        </Style>
+        <Style Selector="Button.panel-close:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.94)"/>
+        </Style>
     </UserControl.Styles>
 
-    <Grid>
+    <!-- Classed so the close chip's reveal can key off a pointer anywhere in the
+         panel; a bare UserControl selector wouldn't match (Avalonia type selectors
+         are exact-type, and this is LyricsPanelView). -->
+    <Grid Classes="panel-root">
         <!-- Background mirrors the lyrics page: FullBackgroundBrush carries the
              solid/gradient modes; artwork mode layers the heavily-blurred cover
              with the same dark scrim so lyrics stay readable. -->
@@ -414,5 +459,28 @@
                 </StackPanel>
             </ScrollViewer>
         </Border>
+
+        <!-- Last child so it paints above the lyric flow and its glow spill
+             (PanelLyricsHost runs with ClipToBounds=False). The 12px inset clears
+             the wrapper's 16px corner radius, which clips to bounds. -->
+        <Button Classes="panel-close"
+                Click="OnCloseClick"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,12,12,0"
+                Width="28"
+                Height="28"
+                Padding="0"
+                CornerRadius="14"
+                Cursor="Hand"
+                ToolTip.Tip="Close lyrics panel">
+            <Path Data="M 0,0 L 9,9 M 9,0 L 0,9"
+                  Stroke="White"
+                  StrokeThickness="1.6"
+                  StrokeLineCap="Round"
+                  Stretch="None"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"/>
+        </Button>
     </Grid>
 </UserControl>
