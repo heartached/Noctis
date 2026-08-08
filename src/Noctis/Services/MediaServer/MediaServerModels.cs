@@ -1,3 +1,5 @@
+using System.Net.Http;
+
 namespace Noctis.Services.MediaServer;
 
 /// <summary>Album summary as listed by a media server (not a library Album).</summary>
@@ -44,6 +46,30 @@ public sealed class MediaServerConnectResult
 
     public static MediaServerConnectResult Fail(MediaServerError error, string message) =>
         new() { Success = false, Error = error, Message = message };
+
+    /// <summary>
+    /// Classifies a transport-layer failure (thrown before any HTTP status existed)
+    /// for the Settings status line. DNS, refused, TLS and timeout all used to
+    /// collapse into one generic "couldn't reach" — indistinguishable for support:
+    /// a missing DNS record, a wrong port and a self-signed certificate each need
+    /// a different fix on the user's side.
+    /// </summary>
+    public static MediaServerConnectResult FromTransportException(Exception ex)
+    {
+        var message = ex switch
+        {
+            HttpRequestException { HttpRequestError: HttpRequestError.NameResolutionError } =>
+                "Server address not found. Check the URL (and that this machine can resolve it).",
+            HttpRequestException { HttpRequestError: HttpRequestError.ConnectionError } =>
+                "The server refused the connection. Check the port and that the server is running.",
+            HttpRequestException { HttpRequestError: HttpRequestError.SecureConnectionError } =>
+                "Secure connection failed. The server may not support https, or its certificate isn't trusted.",
+            OperationCanceledException =>
+                "The server didn't respond. Check the address and that the server is running.",
+            _ => "Couldn't reach the server. Check the URL and that the server is running."
+        };
+        return Fail(MediaServerError.Unreachable, message);
+    }
 }
 
 /// <summary>Server-side search hits, split by kind.</summary>

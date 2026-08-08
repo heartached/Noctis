@@ -383,6 +383,58 @@ public class MediaServerClientTests
         Assert.Equal(expected, MediaServerUrl.TryNormalizeBase(input, out _, out _));
     }
 
+    // ── Transport-failure classification (DNS vs refused vs TLS vs timeout) ──
+
+    [Theory]
+    [InlineData(HttpRequestError.NameResolutionError, "address not found")]
+    [InlineData(HttpRequestError.ConnectionError, "refused the connection")]
+    [InlineData(HttpRequestError.SecureConnectionError, "Secure connection failed")]
+    public async Task Jellyfin_Connect_TransportFailure_NamesTheCause(HttpRequestError kind, string expectedFragment)
+    {
+        var handler = new StubHttpMessageHandler(_ => throw new HttpRequestException(kind));
+        var client = new JellyfinClient(new HttpClient(handler));
+        var connection = new SourceConnection { BaseUriOrPath = "https://jf.example.com", Username = "demo", Type = SourceType.Jellyfin };
+
+        var result = await client.ConnectAsync(connection, "pw");
+
+        Assert.False(result.Success);
+        Assert.Equal(MediaServerError.Unreachable, result.Error);
+        Assert.Contains(expectedFragment, result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Jellyfin_Connect_ClientTimeout_SaysServerDidNotRespond()
+    {
+        // HttpClient's own timeout surfaces as TaskCanceledException with the
+        // caller's token NOT cancelled — must not be swallowed as the generic
+        // "couldn't reach" nor rethrown as a user cancel.
+        var handler = new StubHttpMessageHandler(_ =>
+            throw new TaskCanceledException("timed out", new TimeoutException()));
+        var client = new JellyfinClient(new HttpClient(handler));
+        var connection = new SourceConnection { BaseUriOrPath = "https://jf.example.com", Username = "demo", Type = SourceType.Jellyfin };
+
+        var result = await client.ConnectAsync(connection, "pw");
+
+        Assert.False(result.Success);
+        Assert.Equal(MediaServerError.Unreachable, result.Error);
+        Assert.Contains("didn't respond", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Subsonic_Connect_DnsFailure_NamesTheCause()
+    {
+        var handler = new StubHttpMessageHandler(_ =>
+            throw new HttpRequestException(HttpRequestError.NameResolutionError));
+        var client = new SubsonicClient(new HttpClient(handler));
+        var connection = new SourceConnection { BaseUriOrPath = "https://music.example.com", Username = "demo" };
+
+        var result = await client.ConnectAsync(connection, "sesame");
+
+        Assert.False(result.Success);
+        Assert.Equal(MediaServerError.Unreachable, result.Error);
+        Assert.Contains("address not found", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     // ── Artwork download bounds ──
 
     [Fact]

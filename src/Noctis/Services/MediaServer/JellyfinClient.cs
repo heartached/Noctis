@@ -58,10 +58,9 @@ public sealed class JellyfinClient : IMediaServerClient
         {
             throw;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return MediaServerConnectResult.Fail(MediaServerError.Unreachable,
-                "Couldn't reach the server. Check the URL and that the server is running.");
+            return MediaServerConnectResult.FromTransportException(ex);
         }
 
         if (status is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
