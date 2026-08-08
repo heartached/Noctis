@@ -2040,9 +2040,15 @@ public partial class MetadataViewModel : ViewModelBase
             // Routed through the metadata service's atomic path: AdvancedTagIO.WriteAll
             // does an in-place file.Save(), which on macOS/Linux corrupts the player's
             // open read of the track being tagged (the "audio silently stops on save"
-            // bug) and is not crash-safe anywhere.
-            if (!await Task.Run(() => _metadata.WriteAdvancedFields(advPath, advFields, originalAdv)))
-                failedWrites.Add(Path.GetFileName(advPath));
+            // bug) and is not crash-safe anywhere. Skipped when nothing changed: the
+            // atomic path still copies and rename-replaces the whole file, and doing
+            // that to the PLAYING track on every save (e.g. an animated-artwork-only
+            // save) yanks the file out from under LibVLC's open read for nothing.
+            if (!AdvancedTagIO.FieldsEqual(advFields, originalAdv))
+            {
+                if (!await Task.Run(() => _metadata.WriteAdvancedFields(advPath, advFields, originalAdv)))
+                    failedWrites.Add(Path.GetFileName(advPath));
+            }
 
             // Sync advisory → IsExplicit for immediate badge update
             _track.IsExplicit = advFields.ItunesAdvisory == 1;

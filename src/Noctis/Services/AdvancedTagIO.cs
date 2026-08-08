@@ -99,6 +99,34 @@ internal static class AdvancedTagIO
         public List<KeyValuePair<string, string>> CustomTags { get; set; } = new();
     }
 
+    /// <summary>
+    /// True when two field sets carry the same values. The record's synthesized
+    /// equality compares <see cref="AdvancedFields.CustomTags"/> by reference, and
+    /// the editor builds a fresh list on every save, so `==` never reports a match
+    /// against the set read from disk.
+    /// </summary>
+    public static bool FieldsEqual(AdvancedFields? a, AdvancedFields? b)
+    {
+        if (ReferenceEquals(a, b)) return true;
+        if (a is null || b is null) return false;
+
+        // Scalars go through the record's own equality so fields added later are
+        // covered automatically; CustomTags is pinned to one shared instance first
+        // so it can't decide the comparison by reference.
+        var pinned = new List<KeyValuePair<string, string>>();
+        if (a with { CustomTags = pinned } != b with { CustomTags = pinned })
+            return false;
+
+        var x = a.CustomTags;
+        var y = b.CustomTags;
+        if (ReferenceEquals(x, y)) return true;
+        if (x is null || y is null || x.Count != y.Count) return false;
+        for (var i = 0; i < x.Count; i++)
+            if (x[i].Key != y[i].Key || x[i].Value != y[i].Value)
+                return false;
+        return true;
+    }
+
     // ══════════════════════════════════════════════════════════════
     //  READ
     // ══════════════════════════════════════════════════════════════

@@ -180,7 +180,10 @@ public static class MetadataHelper
             // Live-apply volume adjust and EQ preset when the edited track is currently playing.
             if (main.Player.CurrentTrack != track) return;
             var audio = App.Services!.GetRequiredService<IAudioPlayer>();
-            audio.VolumeAdjust = track.VolumeAdjust;
+            // Unchanged saves (e.g. artwork-only) skip the write: the setter feeds the
+            // volume machinery that a concurrent gapless handoff is contending with.
+            if (audio.VolumeAdjust != track.VolumeAdjust)
+                audio.VolumeAdjust = track.VolumeAdjust;
             main.Settings.ApplyEqPresetByName(
                 string.IsNullOrEmpty(track.EqPreset) ? null : track.EqPreset);
         };
