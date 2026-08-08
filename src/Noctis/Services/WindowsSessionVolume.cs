@@ -41,6 +41,14 @@ internal sealed class WindowsSessionVolume
     // this process). Null until audio is flowing / between resolves.
     private ISimpleAudioVolume? _activeVolume;
     private long _resolvedTicks;
+    // Whether the held session was in the Active (rendering) state at resolve
+    // time. A matched-but-idle pick is a valid write target, but the track-start
+    // reassert must not treat it as proof the LIVE session got the level.
+    private volatile bool _heldActive;
+
+    /// <summary>True when the session the last <see cref="SetLevel"/> wrote to was
+    /// resolved as the ACTIVE (currently-rendering) session, not a stale idle one.</summary>
+    public bool HoldsActiveSession => _heldActive;
 
     public static WindowsSessionVolume? TryCreate()
     {
@@ -187,6 +195,7 @@ internal sealed class WindowsSessionVolume
 
                         _activeVolume = chosen;
                         heldActive = chosenActive;
+                        _heldActive = chosenActive;
                         _resolvedTicks = Environment.TickCount64;
                     }
                     finally
@@ -243,6 +252,7 @@ internal sealed class WindowsSessionVolume
 
     private void ReleaseActive()
     {
+        _heldActive = false;
         if (_activeVolume == null) return;
         TryRelease(_activeVolume);
         _activeVolume = null;

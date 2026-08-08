@@ -758,16 +758,39 @@ public class VlcAudioPlayer : IAudioPlayer
     /// Wraps every write to a MediaPlayer.Volume with a one-shot Interlocked guard so
     /// the ViewModel's MediaPlayer.VolumeChanged callback can't reenter the public
     /// Volume setter and chain rapid writes. Concurrent reentrant calls fall through
-    /// silently — the outer call is the one that actually writes.
+    /// silently — the outer call is the one that actually writes. Returns false when
+    /// the write was dropped by the guard.
     /// </summary>
-    private void SetPlayerVolumeGuarded(MediaPlayer player, int value)
+    private bool SetPlayerVolumeGuarded(MediaPlayer player, int value)
     {
         var clamped = Math.Clamp(value, 0, 100);
         if (Interlocked.CompareExchange(ref _applyingVolume, 1, 0) != 0)
-            return; // reentrant write from VolumeChanged echo — drop it
+            return false; // reentrant write from VolumeChanged echo — drop it
         try { player.Volume = clamped; }
         catch { /* player disposed / transitioning */ }
         finally { Interlocked.Exchange(ref _applyingVolume, 0); }
+        return true;
+    }
+
+    /// <summary>
+    /// A volume write that must not be lost. The guard above drops concurrent
+    /// writers silently — correct for VolumeChanged echoes, but the handoff writes
+    /// that un-park a standby player from its parked volume 0 are contended at
+    /// exactly that moment (ramp ticks, the metadata-save VolumeAdjust write), and
+    /// a dropped un-park leaves the entire next track silent until a manual skip
+    /// rebuilds the session. Waits out the other writer instead; a property write
+    /// holds the guard for microseconds. Never called from a VolumeChanged frame,
+    /// so it cannot wait on its own thread.
+    /// </summary>
+    private void SetPlayerVolumeInsistent(MediaPlayer player, int value)
+    {
+        for (var tries = 0; tries < 50; tries++)
+        {
+            if (SetPlayerVolumeGuarded(player, value)) return;
+            Thread.Sleep(1);
+        }
+        DebugLogger.Warn(DebugLogger.Category.Playback, "Volume.GuardContended",
+            $"insistent volume write still dropped after 50 retries; value={value}");
     }
 
     private void ScheduleVolumeWrite(int target)
@@ -2277,8 +2300,10 @@ public class VlcAudioPlayer : IAudioPlayer
             // Gapless handoff starts the incoming track at the user's current level
             // right away; the crossfade starts it silent and fades it in. Opening at
             // the level (not full) is what stops the OS-session path from blipping to
-            // 100% on every track change — see GetSessionOpenVolume.
-            SetPlayerVolumeGuarded(_standbyPlayer, instantHandoff ? GetSessionOpenVolume() : 0);
+            // 100% on every track change — see GetSessionOpenVolume. Insistent: the
+            // standby is parked at 0 from PrepareNext, so this write getting dropped
+            // by the guard means the whole incoming track opens silent.
+            SetPlayerVolumeInsistent(_standbyPlayer, instantHandoff ? GetSessionOpenVolume() : 0);
             _standbyPlayer.Mute = _player.Mute;
 
             var preparedAgeMs = (DateTime.UtcNow.Ticks - Interlocked.Read(ref _standbyPreparedTicksUtc)) / TimeSpan.TicksPerMillisecond;
@@ -2339,7 +2364,7 @@ public class VlcAudioPlayer : IAudioPlayer
             var finalVolume = GetSessionOpenVolume();
             if (cancel.IsCancellationRequested || _disposed)
             {
-                SetPlayerVolumeGuarded(_player, finalVolume);
+                SetPlayerVolumeInsistent(_player, finalVolume);
                 // Cancel may have no follow-up Play(): disarm the transition guard so
                 // the volume setters aren't swallowed until the next track change.
                 _transitionInFlight = false;
@@ -2350,7 +2375,7 @@ public class VlcAudioPlayer : IAudioPlayer
             var outgoingPlayer = _player;
             var outgoingMedia = _currentMedia;
             _player = _standbyPlayer;
-            SetPlayerVolumeGuarded(_player, finalVolume);
+            SetPlayerVolumeInsistent(_player, finalVolume);
             _currentMedia = _standbyMedia;
             _standbyPlayer = outgoingPlayer;
             _standbyMedia = null;
@@ -3039,11 +3064,21 @@ public class VlcAudioPlayer : IAudioPlayer
             // cached session so we re-resolve to the new active one (no accumulation).
             _sessionVolume.Invalidate();
             // The session is created a few ms after Play(); poll quickly so the
-            // user level lands almost immediately instead of a 100% blip.
-            for (var waited = 0; waited < 600; waited += 20)
+            // user level lands almost immediately instead of a 100% blip. Only a
+            // write that landed on the ACTIVE (rendering) session ends the loop:
+            // during a handoff the just-stopped outgoing session can still be the
+            // resolver's pick, and stopping at that success left the incoming
+            // session at whatever level VLC opened it with — 0 when the un-park
+            // write was lost, i.e. a whole track of "plays but no audio" until a
+            // manual skip rebuilt the session. Re-resolve each round so the
+            // incoming is picked up the moment it appears; the repeated writes
+            // all carry the same level, so they're inaudible. Window is generous
+            // because the session can surface late under save/artwork I/O load.
+            for (var waited = 0; waited < 1500; waited += 20)
             {
                 if (_disposed || sessionId != CurrentSessionId) return;
-                if (ReapplySessionVolume()) return;
+                if (ReapplySessionVolume() && _sessionVolume.HoldsActiveSession) return;
+                _sessionVolume.Invalidate();
                 Thread.Sleep(20);
             }
         });
