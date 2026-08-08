@@ -4,6 +4,7 @@
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:views="using:Noctis.Views"
              x:Class="Noctis.App"
+             Name="Noctis"
              RequestedThemeVariant="Dark">
 
     <!-- Custom Font Support Section

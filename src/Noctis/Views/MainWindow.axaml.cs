@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private TaskbarIntegrationService? _taskbar;
     private SmtcService? _smtc;
     private MprisService? _mpris;
+    private MacNowPlayingService? _macNowPlaying;
     private TrayIcon? _trayIcon;
     private bool _exitRequestedFromTray;
     private EventHandler<string>? _themeChangedHandler;
@@ -331,6 +332,8 @@ public partial class MainWindow : Window
                 InitializeTrayIcon(vm);
                 _smtc = new SmtcService(vm.Player, TryGetPlatformHandle()?.Handle ?? IntPtr.Zero);
                 _mpris = MprisService.TryStart(vm.Player);
+                _macNowPlaying = MacNowPlayingService.TryStart(vm.Player);
+                InitializeMacMenuBar(vm);
                 Services.StartupTrace.Mark("tray-smtc-mpris-ready");
 
                 // Launched at login with "start minimized to tray" on (encoded in the
@@ -661,6 +664,61 @@ public partial class MainWindow : Window
         }
     }
 
+    // ── macOS menu bar ──
+
+    /// <summary>
+    /// Builds the macOS menu bar (issue #38). Without this Avalonia exports only its
+    /// default app menu, so the bar showed a bare "Avalonia Application" entry with no
+    /// options. App-level items land inside the bold app menu (Avalonia appends the
+    /// standard Hide/Quit entries itself); the window-level menu contributes the
+    /// Playback menu next to it. No-op off macOS — Windows/Linux use the in-app UI.
+    /// </summary>
+    private void InitializeMacMenuBar(MainWindowViewModel vm)
+    {
+        if (!OperatingSystem.IsMacOS()) return;
+
+        try
+        {
+            var appMenu = new NativeMenu();
+            var settings = new NativeMenuItem("Settings…")
+            {
+                Gesture = new KeyGesture(Key.OemComma, KeyModifiers.Meta),
+            };
+            settings.Click += (_, _) => vm.OpenSettingsCommand.Execute(null);
+            appMenu.Items.Add(settings);
+            NativeMenu.SetMenu(Application.Current!, appMenu);
+
+            // Gestures mirror Music.app (⌘→ next, ⌘← previous).
+            var playback = new NativeMenu();
+
+            var playPause = new NativeMenuItem("Play / Pause");
+            playPause.Click += (_, _) => vm.Player.PlayPauseCommand.Execute(null);
+            playback.Items.Add(playPause);
+
+            var next = new NativeMenuItem("Next Track")
+            {
+                Gesture = new KeyGesture(Key.Right, KeyModifiers.Meta),
+            };
+            next.Click += (_, _) => vm.Player.NextCommand.Execute(null);
+            playback.Items.Add(next);
+
+            var previous = new NativeMenuItem("Previous Track")
+            {
+                Gesture = new KeyGesture(Key.Left, KeyModifiers.Meta),
+            };
+            previous.Click += (_, _) => vm.Player.PreviousCommand.Execute(null);
+            playback.Items.Add(previous);
+
+            var windowMenu = new NativeMenu();
+            windowMenu.Items.Add(new NativeMenuItem("Playback") { Menu = playback });
+            NativeMenu.SetMenu(this, windowMenu);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.UI, "MacMenu.Init", ex.Message);
+        }
+    }
+
     // ── System tray ──
 
     private void InitializeTrayIcon(MainWindowViewModel vm)
@@ -851,6 +909,8 @@ public partial class MainWindow : Window
         _smtc = null;
         _mpris?.Dispose();
         _mpris = null;
+        _macNowPlaying?.Dispose();
+        _macNowPlaying = null;
         if (_trayIcon != null)
         {
             _trayIcon.IsVisible = false;
