@@ -64,27 +64,56 @@ public partial class MainWindow : Window
         _miniPlayer = new MiniPlayerWindow { DataContext = miniVm };
         _miniPlayer.Closed += OnMiniPlayerClosed;
 
-        // Always open as the compact bar (Apple Music-style widget); resizing from
-        // there morphs it into the other forms.
-        var (barWidth, barHeight) = MiniPlayerViewModel.CanonicalSize(MiniPlayerForm.Bar);
-        _miniPlayer.Width = barWidth;
-        _miniPlayer.Height = barHeight;
-        miniVm.UpdateFromSize(barWidth, barHeight);
-
-        // Place it near the top-right of the screen the main window is on.
-        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
-        if (screen != null)
-        {
-            var area = screen.WorkingArea;
-            var scale = screen.Scaling;
-            var width = (int)(_miniPlayer.Width * scale);
-            _miniPlayer.Position = new PixelPoint(
-                area.X + area.Width - width - (int)(24 * scale),
-                area.Y + (int)(24 * scale));
-        }
+        RestoreMiniPlayerPlacement(_miniPlayer, miniVm, vm.Settings.GetSettings());
 
         _miniPlayer.Show();
         Hide();
+    }
+
+    /// <summary>
+    /// Restores the mini player's last size and position. Falls back to the compact bar
+    /// at the top-right of the screen the main window is on — for a first open, and for a
+    /// stored position that no longer lands on a connected screen (the mini player has no
+    /// title bar and cannot be dragged back from off-screen).
+    /// </summary>
+    private void RestoreMiniPlayerPlacement(
+        MiniPlayerWindow mini, MiniPlayerViewModel miniVm, AppSettings settings)
+    {
+        var (width, height) = MiniPlayerViewModel.CanonicalSize(MiniPlayerForm.Bar);
+
+        // The form follows the size, so a restored size also restores the layout the user
+        // left it in (card, tall, lyrics split, …), not just the dimensions.
+        if (settings.MiniPlayerWidth is { } savedW && settings.MiniPlayerHeight is { } savedH
+            && double.IsFinite(savedW) && double.IsFinite(savedH))
+        {
+            width = Math.Clamp(savedW, mini.MinWidth, mini.MaxWidth);
+            height = Math.Clamp(savedH, mini.MinHeight, mini.MaxHeight);
+        }
+
+        mini.Width = width;
+        mini.Height = height;
+        miniVm.UpdateFromSize(width, height);
+
+        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        var scale = screen?.Scaling ?? 1.0;
+
+        if (settings.MiniPlayerX is { } savedX && settings.MiniPlayerY is { } savedY
+            && double.IsFinite(savedX) && double.IsFinite(savedY))
+        {
+            var restored = new PixelPoint((int)Math.Round(savedX), (int)Math.Round(savedY));
+            if (IsPositionOnAScreen(restored, width * scale, height * scale))
+            {
+                mini.Position = restored;
+                return;
+            }
+        }
+
+        if (screen == null) return;
+
+        var area = screen.WorkingArea;
+        mini.Position = new PixelPoint(
+            area.X + area.Width - (int)(width * scale) - (int)(24 * scale),
+            area.Y + (int)(24 * scale));
     }
 
     private void OnMiniPlayerClosed(object? sender, System.EventArgs e)
