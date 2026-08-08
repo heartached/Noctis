@@ -206,6 +206,18 @@
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
 
+        <!-- Explicit badge. Always hosted as the title marquee's InlineContent (never a
+             sibling in a horizontal StackPanel): the marquee subtracts the badge's width
+             from its viewport, so a long title trims/scrolls instead of pushing the badge
+             out from under the infinite-width StackPanel measure and over the heart. -->
+        <Style Selector="Border.mini-explicit">
+            <Setter Property="Background" Value="#59FFFFFF"/>
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="Padding" Value="4,0"/>
+            <Setter Property="Height" Value="14"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
         <!-- Drawer / search result rows -->
         <Style Selector="Border.mini-row">
             <Setter Property="Background" Value="Transparent"/>
@@ -384,13 +396,52 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
 
-        <!-- In the bar form the close button sits over the art thumb, so it only
-             fades in while the pointer is over the window (Liqoria-style). -->
-        <Style Selector="Button.mini-close.hover-only">
+        <!-- Close button: invisible until the pointer enters the window, so the card
+             carries no chrome at rest (the reference widget has none at all). Staying
+             hit-testable while transparent costs nothing — the pointer can only reach it
+             from inside the window, which is exactly when it has faded in. The fade comes
+             from mini-transport's opacity transition. -->
+        <Style Selector="Button.mini-close">
             <Setter Property="Opacity" Value="0"/>
         </Style>
-        <Style Selector="Panel#RootPanel:pointerover Button.mini-close.hover-only">
+        <!-- Anchored to RootBorder, not RootPanel: RootPanel has no Background, so it is
+             not hit-testable and an empty patch of card would leave the button hidden —
+             it would have appeared only while hovering another control. RootBorder carries
+             the card fill and wraps everything, so it is pointer-over anywhere on the card. -->
+        <Style Selector="Border#RootBorder:pointerover Button.mini-close">
+            <Setter Property="Opacity" Value="0.75"/>
+        </Style>
+        <Style Selector="Border#RootBorder:pointerover Button.mini-close:pointerover">
             <Setter Property="Opacity" Value="1"/>
+        </Style>
+
+        <!-- Favourite pop, mirroring the global PathIcon.heart-pop. A local copy because
+             that selector is an exact-type match on PathIcon and the mini player draws its
+             glyphs as Viewbox/Canvas/Path (a 24×24 canvas centres the glyph predictably;
+             PathIcon scales the geometry's own bounds, which left the heart's off-centre
+             bounding box visibly low and right inside the button). -->
+        <Style Selector="Viewbox.mini-heart-pop">
+            <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Viewbox.mini-heart-pop[IsVisible=False]">
+            <Setter Property="RenderTransform" Value="scale(0.7)"/>
+            <Setter Property="Opacity" Value="0"/>
         </Style>
     </Window.Styles>
 
@@ -401,17 +452,26 @@
          clip is a slightly smaller rounded rect, so a child fill left a bare arc at
          each corner between the fill and the stroke — the fill must follow the same
          rounded outline the stroke draws. -->
+    <!-- Genuinely translucent: the fill's alpha is the "Mini Player Opacity" setting, so
+         the desktop reads through the card (per-pixel alpha, see the TransparencyLevelHint
+         note in code-behind). The blur behind it can't be an OS backdrop — acrylic paints
+         the whole window rect and brought back black corners outside the rounded card —
+         so the depth comes from the blurred-artwork wash under a light frost instead.
+         Brush-level Opacity (as on the playback bar's island) rather than Border.Opacity:
+         the latter would fade the card's contents along with the fill. -->
     <Border x:Name="RootBorder"
-            CornerRadius="24"
+            CornerRadius="28"
             ClipToBounds="True"
-            BorderBrush="#66FFFFFF"
+            BorderBrush="#8CFFFFFF"
             BorderThickness="1"
-            Background="#EB101016"
             UseLayoutRounding="True"
             Opacity="0"
             RenderTransform="scale(0.92)"
             RenderTransformOrigin="50%,50%"
             PointerPressed="OnRootPointerPressed">
+        <Border.Background>
+            <SolidColorBrush Color="#0B0B11" Opacity="{Binding Settings.MiniPlayerBackgroundOpacity}"/>
+        </Border.Background>
         <Border.Transitions>
             <Transitions>
                 <DoubleTransition Property="Opacity" Duration="0:0:0.16"/>
@@ -438,24 +498,37 @@
                                   SourcePath="{Binding Player.CurrentArtPath}"
                                   ClearOnSourceChange="False"
                                   Stretch="UniformToFill"
-                                  Opacity="0.45"
+                                  Opacity="0.42"
                                   IsHitTestVisible="False"
                                   IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                 <controls:CachedImage.Effect>
-                    <BlurEffect Radius="70"/>
+                    <BlurEffect Radius="80"/>
                 </controls:CachedImage.Effect>
             </controls:CachedImage>
 
-            <!-- L3: contrast scrim over the wash -->
-            <Border Background="#38000000" IsHitTestVisible="False"/>
+            <!-- L3: contrast scrim over the wash. Kept light — every point of alpha here
+                 is see-through the card loses. -->
+            <Border Background="#1A000000" IsHitTestVisible="False"/>
 
             <!-- L4: glass sheen — diagonal highlight fading out mid-card -->
             <Border IsHitTestVisible="False">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0%,0%" EndPoint="70%,100%">
-                        <GradientStop Offset="0" Color="#2EFFFFFF"/>
-                        <GradientStop Offset="0.35" Color="#0DFFFFFF"/>
+                        <GradientStop Offset="0" Color="#3DFFFFFF"/>
+                        <GradientStop Offset="0.35" Color="#12FFFFFF"/>
                         <GradientStop Offset="0.7" Color="#00FFFFFF"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <!-- L5: top specular — the bright hairline along the upper edge that reads as
+                 the lit rim of a glass slab. Clipped to the rounded outline by RootPanel. -->
+            <Border Height="1" VerticalAlignment="Top" IsHitTestVisible="False">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                        <GradientStop Offset="0" Color="#00FFFFFF"/>
+                        <GradientStop Offset="0.5" Color="#59FFFFFF"/>
+                        <GradientStop Offset="1" Color="#00FFFFFF"/>
                     </LinearGradientBrush>
                 </Border.Background>
             </Border>
@@ -478,9 +551,10 @@
                 <Border Classes="icon-overlay" Background="#66000000">
                     <Panel>
                         <Button Classes="mini-transport" Width="26" Height="26"
-                                HorizontalAlignment="Left" VerticalAlignment="Top"
+                                HorizontalAlignment="Right" VerticalAlignment="Top"
                                 Margin="8"
                                 ToolTip.Tip="Back to full view"
+                                ToolTip.Placement="Left"
                                 Click="OnCloseClick">
                             <PathIcon Data="{StaticResource DismissIcon}" Width="12" Height="12" Foreground="White"/>
                         </Button>
@@ -511,36 +585,38 @@
             <Grid x:Name="BarFormRoot" IsVisible="{Binding IsBarForm}"
                   Margin="14,12,14,10" RowDefinitions="*,Auto,Auto">
                 <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-                    <Border Grid.Column="0" Width="48" Height="48" CornerRadius="10" VerticalAlignment="Center">
+                    <!-- 60 is the largest thumb that still fits row 0 at the bar form's
+                         minimum height (140): 140 - 22 margins - 18 seek - 38 transport. -->
+                    <Border Grid.Column="0" Width="60" Height="60" CornerRadius="13" VerticalAlignment="Center">
                         <Panel>
                             <Panel.Clip>
-                                <RectangleGeometry Rect="0,0,48,48" RadiusX="10" RadiusY="10"/>
+                                <RectangleGeometry Rect="0,0,60,60" RadiusX="13" RadiusY="13"/>
                             </Panel.Clip>
                             <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
-                                                  DecodeWidth="256" Width="48" Height="48"
+                                                  DecodeWidth="256" Width="60" Height="60"
                                                   Stretch="UniformToFill"/>
-                            <TextBlock Text="♪" FontSize="20" Opacity="0.2" Foreground="White"
+                            <TextBlock Text="♪" FontSize="24" Opacity="0.2" Foreground="White"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                        IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
                         </Panel>
                     </Border>
-                    <StackPanel Grid.Column="1" x:Name="BarInfoHost" VerticalAlignment="Center" Margin="12,0" Spacing="1">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
-                                                       FontSize="14" FontWeight="SemiBold"
-                                                       Foreground="White"
-                                                       MaxDisplayWidth="{Binding #BarInfoHost.Bounds.Width}"
-                                                       HorizontalAlignment="Left"
-                                                       IsMiniPlayer="True"/>
-                            <Border Background="#59FFFFFF" CornerRadius="2" Padding="4,0" Height="14"
-                                    VerticalAlignment="Center"
-                                    IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                    ToolTip.Tip="Explicit">
-                                <TextBlock Text="E" FontSize="9" FontWeight="Bold"
-                                           VerticalAlignment="Center" TextAlignment="Center"
-                                           Foreground="Black"/>
-                            </Border>
-                        </StackPanel>
+                    <StackPanel Grid.Column="1" x:Name="BarInfoHost" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
+                        <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
+                                                   FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="White"
+                                                   MaxDisplayWidth="{Binding #BarInfoHost.Bounds.Width}"
+                                                   HorizontalAlignment="Left"
+                                                   IsMiniPlayer="True">
+                            <controls:MarqueeTextBlock.InlineContent>
+                                <Border Classes="mini-explicit"
+                                        IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
+                                        ToolTip.Tip="Explicit">
+                                    <TextBlock Text="E" FontSize="9" FontWeight="Bold"
+                                               VerticalAlignment="Center" TextAlignment="Center"
+                                               Foreground="Black"/>
+                                </Border>
+                            </controls:MarqueeTextBlock.InlineContent>
+                        </controls:MarqueeTextBlock>
                         <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
                                                    FontSize="12"
                                                    Foreground="#B3FFFFFF"
@@ -550,21 +626,31 @@
                                                    IsForAlbum="True"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <Button Classes="mini-transport glass-circle" Width="32" Height="32"
+                        <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                 Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                 ToolTip.Tip="Favorites">
                             <Panel>
-                                <PathIcon Data="{StaticResource HeartFillIcon}" Width="15" Height="15"
-                                          Foreground="#D9FFFFFF"
-                                          IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
-                                <PathIcon Data="{StaticResource HeartFillIcon}" Classes="heart-pop"
-                                          Width="15" Height="15" Foreground="#E74856"
-                                          IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
+                                <Viewbox Width="14" Height="14"
+                                         IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="#D9FFFFFF" Data="{StaticResource HeartFillIcon}"/>
+                                    </Canvas>
+                                </Viewbox>
+                                <Viewbox Width="14" Height="14" Classes="mini-heart-pop"
+                                         IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="#E74856" Data="{StaticResource HeartFillIcon}"/>
+                                    </Canvas>
+                                </Viewbox>
                             </Panel>
                         </Button>
-                        <Button Classes="mini-transport glass-circle" Width="32" Height="32"
+                        <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                 ToolTip.Tip="More" Click="OnMoreMenuClick">
-                            <PathIcon Data="{StaticResource MoreDotsIcon}" Width="16" Height="16" Foreground="#D9FFFFFF"/>
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="#D9FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
+                                </Canvas>
+                            </Viewbox>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -662,37 +748,37 @@
             <Grid x:Name="CardFormRoot" IsVisible="{Binding IsCardForm}"
                   Margin="16,14,16,12" RowDefinitions="Auto,Auto,Auto,Auto,*">
                 <!-- Art thumb + info + "…" -->
-                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,26,0,0">
-                    <Border Grid.Column="0" Width="60" Height="60" CornerRadius="12" VerticalAlignment="Center">
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,20,0,0">
+                    <Border Grid.Column="0" Width="72" Height="72" CornerRadius="16" VerticalAlignment="Center">
                         <Panel>
                             <Panel.Clip>
-                                <RectangleGeometry Rect="0,0,60,60" RadiusX="12" RadiusY="12"/>
+                                <RectangleGeometry Rect="0,0,72,72" RadiusX="16" RadiusY="16"/>
                             </Panel.Clip>
                             <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
-                                                  DecodeWidth="256" Width="60" Height="60"
+                                                  DecodeWidth="256" Width="72" Height="72"
                                                   Stretch="UniformToFill"/>
-                            <TextBlock Text="♪" FontSize="24" Opacity="0.2" Foreground="White"
+                            <TextBlock Text="♪" FontSize="30" Opacity="0.2" Foreground="White"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                        IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
                         </Panel>
                     </Border>
-                    <StackPanel Grid.Column="1" x:Name="CardInfoHost" VerticalAlignment="Center" Margin="12,0,4,0" Spacing="1">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
-                                                       FontSize="15" FontWeight="Bold"
-                                                       Foreground="White"
-                                                       MaxDisplayWidth="{Binding #CardInfoHost.Bounds.Width}"
-                                                       HorizontalAlignment="Left"
-                                                       IsMiniPlayer="True"/>
-                            <Border Background="#59FFFFFF" CornerRadius="2" Padding="4,0" Height="14"
-                                    VerticalAlignment="Center"
-                                    IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                    ToolTip.Tip="Explicit">
-                                <TextBlock Text="E" FontSize="9" FontWeight="Bold"
-                                           VerticalAlignment="Center" TextAlignment="Center"
-                                           Foreground="Black"/>
-                            </Border>
-                        </StackPanel>
+                    <StackPanel Grid.Column="1" x:Name="CardInfoHost" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
+                        <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
+                                                   FontSize="15" FontWeight="Bold"
+                                                   Foreground="White"
+                                                   MaxDisplayWidth="{Binding #CardInfoHost.Bounds.Width}"
+                                                   HorizontalAlignment="Left"
+                                                   IsMiniPlayer="True">
+                            <controls:MarqueeTextBlock.InlineContent>
+                                <Border Classes="mini-explicit"
+                                        IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
+                                        ToolTip.Tip="Explicit">
+                                    <TextBlock Text="E" FontSize="9" FontWeight="Bold"
+                                               VerticalAlignment="Center" TextAlignment="Center"
+                                               Foreground="Black"/>
+                                </Border>
+                            </controls:MarqueeTextBlock.InlineContent>
+                        </controls:MarqueeTextBlock>
                         <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
                                                    FontSize="13"
                                                    Foreground="#B3FFFFFF"
@@ -703,21 +789,31 @@
                     </StackPanel>
                     <!-- Liqoria/Apple Music pairing: heart + "…" side by side in glass discs -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <Button Classes="mini-transport glass-circle" Width="32" Height="32"
+                        <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                 Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                 ToolTip.Tip="Favorites">
                             <Panel>
-                                <PathIcon Data="{StaticResource HeartFillIcon}" Width="15" Height="15"
-                                          Foreground="#D9FFFFFF"
-                                          IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
-                                <PathIcon Data="{StaticResource HeartFillIcon}" Classes="heart-pop"
-                                          Width="15" Height="15" Foreground="#E74856"
-                                          IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
+                                <Viewbox Width="14" Height="14"
+                                         IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="#D9FFFFFF" Data="{StaticResource HeartFillIcon}"/>
+                                    </Canvas>
+                                </Viewbox>
+                                <Viewbox Width="14" Height="14" Classes="mini-heart-pop"
+                                         IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="#E74856" Data="{StaticResource HeartFillIcon}"/>
+                                    </Canvas>
+                                </Viewbox>
                             </Panel>
                         </Button>
-                        <Button Classes="mini-transport glass-circle" Width="32" Height="32"
+                        <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                 ToolTip.Tip="More" Click="OnMoreMenuClick">
-                            <PathIcon Data="{StaticResource MoreDotsIcon}" Width="16" Height="16" Foreground="#D9FFFFFF"/>
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="#D9FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
+                                </Canvas>
+                            </Viewbox>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -866,41 +962,51 @@
                 </Panel>
 
                 <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="2,10,0,0">
-                    <StackPanel Grid.Column="0" x:Name="LargeInfoHost" VerticalAlignment="Center" Spacing="1">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
-                                                       FontSize="15" FontWeight="Bold" Foreground="White"
-                                                       MaxDisplayWidth="{Binding #LargeInfoHost.Bounds.Width}"
-                                                       HorizontalAlignment="Left" IsMiniPlayer="True"/>
-                            <Border Background="#59FFFFFF" CornerRadius="2" Padding="4,0" Height="14"
-                                    VerticalAlignment="Center"
-                                    IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                    ToolTip.Tip="Explicit">
-                                <TextBlock Text="E" FontSize="9" FontWeight="Bold"
-                                           VerticalAlignment="Center" TextAlignment="Center" Foreground="Black"/>
-                            </Border>
-                        </StackPanel>
+                    <StackPanel Grid.Column="0" x:Name="LargeInfoHost" VerticalAlignment="Center" Margin="0,0,8,0" Spacing="1">
+                        <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
+                                                   FontSize="15" FontWeight="Bold" Foreground="White"
+                                                   MaxDisplayWidth="{Binding #LargeInfoHost.Bounds.Width}"
+                                                   HorizontalAlignment="Left" IsMiniPlayer="True">
+                            <controls:MarqueeTextBlock.InlineContent>
+                                <Border Classes="mini-explicit"
+                                        IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
+                                        ToolTip.Tip="Explicit">
+                                    <TextBlock Text="E" FontSize="9" FontWeight="Bold"
+                                               VerticalAlignment="Center" TextAlignment="Center" Foreground="Black"/>
+                                </Border>
+                            </controls:MarqueeTextBlock.InlineContent>
+                        </controls:MarqueeTextBlock>
                         <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
                                                    FontSize="13" Foreground="#B3FFFFFF"
                                                    MaxDisplayWidth="{Binding #LargeInfoHost.Bounds.Width}"
                                                    HorizontalAlignment="Left" IsMiniPlayer="True" IsForAlbum="True"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <Button Classes="mini-transport glass-circle" Width="32" Height="32"
+                        <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                 Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                 ToolTip.Tip="Favorites">
                             <Panel>
-                                <PathIcon Data="{StaticResource HeartFillIcon}" Width="15" Height="15"
-                                          Foreground="#D9FFFFFF"
-                                          IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
-                                <PathIcon Data="{StaticResource HeartFillIcon}" Classes="heart-pop"
-                                          Width="15" Height="15" Foreground="#E74856"
-                                          IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
+                                <Viewbox Width="14" Height="14"
+                                         IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="#D9FFFFFF" Data="{StaticResource HeartFillIcon}"/>
+                                    </Canvas>
+                                </Viewbox>
+                                <Viewbox Width="14" Height="14" Classes="mini-heart-pop"
+                                         IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="#E74856" Data="{StaticResource HeartFillIcon}"/>
+                                    </Canvas>
+                                </Viewbox>
                             </Panel>
                         </Button>
-                        <Button Classes="mini-transport glass-circle" Width="32" Height="32"
+                        <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                 ToolTip.Tip="More" Click="OnMoreMenuClick">
-                            <PathIcon Data="{StaticResource MoreDotsIcon}" Width="16" Height="16" Foreground="#D9FFFFFF"/>
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="#D9FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
+                                </Canvas>
+                            </Viewbox>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -1030,8 +1136,11 @@
             <Grid x:Name="LyricsFormRoot" IsVisible="{Binding IsLyricsForm}"
                   Margin="16,14,10,12" ColumnDefinitions="5*,7*">
                 <!-- Left: art panel with the controls stacked underneath -->
+                <!-- The close button moved to the top-right (over the lyrics column), so
+                     the art column no longer reserves a strip for it and the artwork
+                     grows into that space. -->
                 <Grid Grid.Column="0" MinWidth="190" MaxWidth="320"
-                      RowDefinitions="*,Auto,Auto,Auto" Margin="0,28,8,0">
+                      RowDefinitions="*,Auto,Auto,Auto" Margin="0,6,8,0">
                     <!-- Fills its slot; the rounded clip follows the size (code-behind) -->
                     <Panel Grid.Row="0" x:Name="LyricsArtClip" Margin="0,0,0,8">
                         <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
@@ -1048,42 +1157,52 @@
                     </Panel>
 
                     <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="2,4,0,0">
-                        <StackPanel Grid.Column="0" x:Name="LyricsInfoHost" Spacing="1" VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
-                                                           FontSize="14" FontWeight="Bold" Foreground="White"
-                                                           MaxDisplayWidth="{Binding #LyricsInfoHost.Bounds.Width}"
-                                                           HorizontalAlignment="Left" IsMiniPlayer="True"/>
-                                <Border Background="#59FFFFFF" CornerRadius="2" Padding="4,0" Height="14"
-                                        VerticalAlignment="Center"
-                                        IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                        ToolTip.Tip="Explicit">
-                                    <TextBlock Text="E" FontSize="9" FontWeight="Bold"
-                                               VerticalAlignment="Center" TextAlignment="Center"
-                                               Foreground="Black"/>
-                                </Border>
-                            </StackPanel>
+                        <StackPanel Grid.Column="0" x:Name="LyricsInfoHost" Spacing="1" VerticalAlignment="Center" Margin="0,0,6,0">
+                            <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
+                                                       FontSize="14" FontWeight="Bold" Foreground="White"
+                                                       MaxDisplayWidth="{Binding #LyricsInfoHost.Bounds.Width}"
+                                                       HorizontalAlignment="Left" IsMiniPlayer="True">
+                                <controls:MarqueeTextBlock.InlineContent>
+                                    <Border Classes="mini-explicit"
+                                            IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
+                                            ToolTip.Tip="Explicit">
+                                        <TextBlock Text="E" FontSize="9" FontWeight="Bold"
+                                                   VerticalAlignment="Center" TextAlignment="Center"
+                                                   Foreground="Black"/>
+                                    </Border>
+                                </controls:MarqueeTextBlock.InlineContent>
+                            </controls:MarqueeTextBlock>
                             <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
                                                        FontSize="12" Foreground="#B3FFFFFF"
                                                        MaxDisplayWidth="{Binding #LyricsInfoHost.Bounds.Width}"
                                                        HorizontalAlignment="Left" IsMiniPlayer="True" IsForAlbum="True"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <Button Classes="mini-transport glass-circle" Width="30" Height="30"
+                            <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                     Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                     ToolTip.Tip="Favorites">
                                 <Panel>
-                                    <PathIcon Data="{StaticResource HeartFillIcon}" Width="14" Height="14"
-                                              Foreground="#D9FFFFFF"
-                                              IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
-                                    <PathIcon Data="{StaticResource HeartFillIcon}" Classes="heart-pop"
-                                              Width="14" Height="14" Foreground="#E74856"
-                                              IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
+                                    <Viewbox Width="14" Height="14"
+                                             IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Fill="#D9FFFFFF" Data="{StaticResource HeartFillIcon}"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                    <Viewbox Width="14" Height="14" Classes="mini-heart-pop"
+                                             IsVisible="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Fill="#E74856" Data="{StaticResource HeartFillIcon}"/>
+                                        </Canvas>
+                                    </Viewbox>
                                 </Panel>
                             </Button>
-                            <Button Classes="mini-transport glass-circle" Width="30" Height="30"
+                            <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                     ToolTip.Tip="More" Click="OnMoreMenuClick">
-                                <PathIcon Data="{StaticResource MoreDotsIcon}" Width="15" Height="15" Foreground="#D9FFFFFF"/>
+                                <Viewbox Width="15" Height="15">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="#D9FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
+                                    </Canvas>
+                                </Viewbox>
                             </Button>
                         </StackPanel>
                     </Grid>
@@ -1309,8 +1428,8 @@
                     VerticalAlignment="Bottom"
                     IsVisible="False"
                     Opacity="0"
-                    Background="#E615151B"
-                    BorderBrush="#26FFFFFF"
+                    Background="#B313131A"
+                    BorderBrush="#33FFFFFF"
                     BorderThickness="0,1,0,0"
                     Padding="12,10,12,12">
                 <Border.RenderTransform>
@@ -1473,17 +1592,24 @@
                 </Panel>
             </Border>
 
-            <!-- ── Close (returns to the main window), above every form. The icon
+            <!-- ── Close (returns to the main window), above every form. Pinned to the
+                 top-RIGHT corner: on the left it sat on top of the artwork (and its
+                 tooltip covered it). Every form keeps the artwork left-aligned, so the
+                 right corner is the one spot that stays clear at every size. The icon
                  form hides this and hosts its own copy inside the hover overlay. ── -->
             <Button Classes="mini-transport mini-close"
-                    Classes.hover-only="{Binding IsBarForm}"
-                    Width="30" Height="30"
-                    HorizontalAlignment="Left" VerticalAlignment="Top"
-                    Margin="10"
+                    Width="24" Height="24"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Margin="7"
                     IsVisible="{Binding !IsIconForm}"
                     ToolTip.Tip="Back to full view"
+                    ToolTip.Placement="Left"
                     Click="OnCloseClick">
-                <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" Foreground="White"/>
+                <Viewbox Width="11" Height="11">
+                    <Canvas Width="24" Height="24">
+                        <Path Fill="#D9FFFFFF" Data="{StaticResource DismissIcon}"/>
+                    </Canvas>
+                </Viewbox>
             </Button>
 
             <!-- ── "…" menu popup (shared by every form's more-button). A custom
