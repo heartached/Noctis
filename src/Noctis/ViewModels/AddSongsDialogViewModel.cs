@@ -26,6 +26,9 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     private readonly List<Guid> _selectionOrder = new();
     private List<Track> _shuffledPicks = new();
 
+    /// <summary>Every track the current query matches, before the row cap is applied.</summary>
+    private List<Track> _matches = new();
+
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private int _selectedCount;
 
@@ -38,13 +41,28 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     public bool HasSelection => _selected.Count > 0;
     public string AddButtonText => _selected.Count > 0 ? $"Add {_selected.Count}" : "Add";
 
-    /// <summary>Rows the user can actually tick (tracks already in the playlist can't).</summary>
-    private IEnumerable<AddSongItem> SelectableResults => Results.Where(r => !r.IsInPlaylist);
+    /// <summary>
+    /// How many tracks the query matches, ignoring the row cap. At most MaxResults rows
+    /// are rendered, but every count the user reads — this notice, select-all, the Add
+    /// button — speaks for the whole match set: 113 songs by one band rendered as
+    /// "Add 100" with nothing saying 13 were missing, and read as a playlist limit.
+    /// </summary>
+    public int MatchCount => _matches.Count;
+    public bool IsTruncated => _matches.Count > Results.Count;
+    public string TruncationNotice => $"showing {Results.Count} of {_matches.Count} matches";
+
+    /// <summary>Tracks the user can actually tick (ones already in the playlist can't).</summary>
+    private IEnumerable<Track> SelectableMatches => _matches.Where(t => !_alreadyInPlaylist.Contains(t.Id));
 
     /// <summary>Drives the select-all button: hidden when there is nothing to tick.</summary>
-    public bool HasSelectableResults => SelectableResults.Any();
-    public bool AreAllResultsSelected => HasSelectableResults && SelectableResults.All(r => r.IsSelected);
-    public string SelectAllText => AreAllResultsSelected ? "Deselect all" : "Select all";
+    public bool HasSelectableResults => SelectableMatches.Any();
+    public bool AreAllResultsSelected => HasSelectableResults && SelectableMatches.All(t => _selected.Contains(t.Id));
+
+    /// <summary>Names the count only when it exceeds what is on screen — otherwise
+    /// "Select all" already means the visible rows.</summary>
+    public string SelectAllText => AreAllResultsSelected
+        ? "Deselect all"
+        : IsTruncated ? $"Select all {SelectableMatches.Count()}" : "Select all";
 
     /// <summary>Fires with the chosen tracks when the user confirms.</summary>
     public event EventHandler<IReadOnlyList<Track>>? SongsChosen;
@@ -61,10 +79,12 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     }
 
     // Debounced. RefreshResults filters the whole library on the UI thread, and
-    // MatchesSearch normalizes title/artist/album per track — Take(MaxResults) only
-    // short-circuits once enough matches are found, so a narrow query scanned all 50,000
-    // tracks per keystroke while the user was still typing. Every other search surface
-    // in the app already debounces (Songs/Albums/Artists 250ms, top bar 300ms).
+    // MatchesSearch normalizes title/artist/album per track, so a query scanned all
+    // 50,000 tracks per keystroke while the user was still typing. Every other search
+    // surface in the app already debounces (Songs/Albums/Artists 250ms, top bar 300ms).
+    // The scan is now unconditional — reporting an exact match count rules out the
+    // Take(MaxResults) short-circuit, which only helped broad queries anyway — so the
+    // debounce carries the cost that the cap used to soften.
     private const int SearchDebounceMs = 250;
     private CancellationTokenSource? _searchDebounceCts;
 
@@ -110,11 +130,11 @@ public partial class AddSongsDialogViewModel : ViewModelBase
         Results.Clear();
 
         var query = (SearchText ?? string.Empty).Trim();
-        var source = query.Length > 0
-            ? _library.Where(t => PlaylistViewModel.MatchesSearch(t, query)).Take(MaxResults)
+        _matches = query.Length > 0
+            ? _library.Where(t => PlaylistViewModel.MatchesSearch(t, query)).ToList()
             : _shuffledPicks;
 
-        foreach (var track in source)
+        foreach (var track in _matches.Take(MaxResults))
         {
             Results.Add(new AddSongItem(track)
             {
@@ -126,6 +146,9 @@ public partial class AddSongsDialogViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsShuffleMode));
         OnPropertyChanged(nameof(ShowPrompt));
         OnPropertyChanged(nameof(ShowNoResults));
+        OnPropertyChanged(nameof(MatchCount));
+        OnPropertyChanged(nameof(IsTruncated));
+        OnPropertyChanged(nameof(TruncationNotice));
         OnPropertyChanged(nameof(HasSelectableResults));
         OnPropertyChanged(nameof(AreAllResultsSelected));
         OnPropertyChanged(nameof(SelectAllText));
@@ -152,35 +175,38 @@ public partial class AddSongsDialogViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Ticks every row currently on screen, or clears them when they are all already
-    /// ticked. Scoped to the visible results (not the whole library) so it stays
-    /// predictable: what you see is what gets added.
+    /// Ticks every track the query matches, or clears them when they are all already
+    /// ticked. Scoped to the matches rather than the rendered rows — the row cap is a
+    /// display budget, and stopping at it silently dropped the songs past row 100.
+    /// The button names the count whenever the two differ, so the wider reach is never
+    /// a surprise.
     /// </summary>
     [RelayCommand]
     private void ToggleSelectAll()
     {
-        var selectable = SelectableResults.ToList();
+        var selectable = SelectableMatches.ToList();
         if (selectable.Count == 0) return;
 
-        if (selectable.All(r => r.IsSelected))
+        if (selectable.All(t => _selected.Contains(t.Id)))
         {
-            foreach (var item in selectable)
+            foreach (var track in selectable)
             {
-                _selected.Remove(item.Track.Id);
-                _selectionOrder.Remove(item.Track.Id);
-                item.IsSelected = false;
+                _selected.Remove(track.Id);
+                _selectionOrder.Remove(track.Id);
             }
         }
         else
         {
-            // Append in display order, keeping the tick-order contract Add() relies on.
-            foreach (var item in selectable.Where(r => !r.IsSelected))
+            // Append in match order, keeping the tick-order contract Add() relies on.
+            foreach (var track in selectable)
             {
-                if (_selected.Add(item.Track.Id))
-                    _selectionOrder.Add(item.Track.Id);
-                item.IsSelected = true;
+                if (_selected.Add(track.Id))
+                    _selectionOrder.Add(track.Id);
             }
         }
+
+        foreach (var row in Results)
+            row.IsSelected = _selected.Contains(row.Track.Id);
 
         RaiseSelectionChanged();
     }

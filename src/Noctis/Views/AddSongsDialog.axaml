@@ -109,6 +109,17 @@
                                        VerticalAlignment="Center" />
                         </Button>
                     </Grid>
+
+                    <!-- Row cap notice. The list renders at most 100 rows; without this
+                         the songs past row 100 simply weren't there, and the Add count
+                         read as a playlist limit. Select all still covers every match. -->
+                    <TextBlock Text="{Binding TruncationNotice}"
+                               IsVisible="{Binding IsTruncated}"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Opacity="0.55"
+                               LetterSpacing="0.5"
+                               VerticalAlignment="Center" />
                 </StackPanel>
 
                 <!-- Footer: Cancel / Add -->
