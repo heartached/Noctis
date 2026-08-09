@@ -122,6 +122,8 @@ public static class SmartPlaylistEvaluator
         SmartPlaylistSortBy.Title => "Title",
         SmartPlaylistSortBy.Artist => "Artist",
         SmartPlaylistSortBy.Random => "Random",
+        SmartPlaylistSortBy.ReleaseDateOldest => "Oldest Release",
+        SmartPlaylistSortBy.ReleaseDateNewest => "Newest Release",
         _ => sort.ToString()
     };
 
@@ -244,7 +246,23 @@ public static class SmartPlaylistEvaluator
             SmartPlaylistSortBy.RecentlyPlayed => tracks.OrderByDescending(t => t.LastPlayed ?? DateTime.MinValue),
             SmartPlaylistSortBy.Title => tracks.OrderBy(t => t.Title, StringComparer.OrdinalIgnoreCase),
             SmartPlaylistSortBy.Artist => tracks.OrderBy(t => t.Artist, StringComparer.OrdinalIgnoreCase),
+            // Undated tracks last either way — Year 0 means untagged, so an ascending
+            // sort would otherwise fill an "oldest 25" list with files that have no year.
+            SmartPlaylistSortBy.ReleaseDateOldest => tracks
+                .OrderBy(t => t.Year <= 0).ThenBy(ReleaseKey),
+            SmartPlaylistSortBy.ReleaseDateNewest => tracks
+                .OrderBy(t => t.Year <= 0).ThenByDescending(ReleaseKey),
             _ => tracks
         };
     }
+
+    /// <summary>
+    /// Release instant for sorting: the tagged date when it parses, otherwise the start
+    /// of the tagged year. Mirrors PlaylistViewModel's release-date sort so a smart
+    /// playlist and the view it opens in agree on what "oldest" means.
+    /// </summary>
+    private static DateTime ReleaseKey(Track track) =>
+        Track.TryParseReleaseDate(track.ReleaseDate, out var exact) ? exact
+        : track.Year > 0 ? new DateTime(track.Year, 1, 1)
+        : DateTime.MinValue;
 }

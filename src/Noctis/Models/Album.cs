@@ -248,22 +248,9 @@ public class Album : ObservableObject
     {
         // Try to get a full date from the first track that has a RELEASETIME value
         var releaseDate = Tracks?.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.ReleaseDate))?.ReleaseDate;
-        if (!string.IsNullOrWhiteSpace(releaseDate))
-        {
-            if (DateTime.TryParse(releaseDate, System.Globalization.CultureInfo.InvariantCulture,
-                System.Globalization.DateTimeStyles.None, out var dt))
-            {
-                return dt.ToString(format, System.Globalization.CultureInfo.InvariantCulture);
-            }
-            // Try parsing date-only formats like "2024/11/29" or "2024-11-29"
-            var cleaned = releaseDate.Replace('/', '-');
-            if (DateTime.TryParseExact(cleaned, new[] { "yyyy-MM-dd", "yyyy-M-d", "dd-MM-yyyy", "MM-dd-yyyy" },
-                System.Globalization.CultureInfo.InvariantCulture,
-                System.Globalization.DateTimeStyles.None, out var dt2))
-            {
-                return dt2.ToString(format, System.Globalization.CultureInfo.InvariantCulture);
-            }
-        }
+        if (Track.TryParseReleaseDate(releaseDate, out var parsed))
+            return parsed.ToString(format, System.Globalization.CultureInfo.InvariantCulture);
+
         // Fall back to year only
         return Year > 0 ? Year.ToString() : string.Empty;
     }

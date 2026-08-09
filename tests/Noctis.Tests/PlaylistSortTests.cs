@@ -50,4 +50,77 @@ public class PlaylistSortTests
         var result = PlaylistViewModel.SortTracks(Sample(), PlaylistSortMode.RecentlyAdded);
         Assert.Equal(new[] { "Apple", "Banana", "Cherry" }, result.Select(t => t.Title));
     }
+
+    // ── release date ─────────────────────────────────────────────────
+    //
+    // Requested for following how a band evolved, so the ordering has to hold
+    // inside an album too: year, then the finer release date when two albums
+    // share a year, then album, disc and track number.
+
+    private static List<Track> Discography() => new()
+    {
+        new() { Title = "Later B",  Album = "Later",  Year = 2014, ReleaseDate = "2014-10-27", TrackNumber = 2 },
+        new() { Title = "Early",    Album = "Early",  Year = 2009, ReleaseDate = "2009-05-01", TrackNumber = 1 },
+        new() { Title = "Later A",  Album = "Later",  Year = 2014, ReleaseDate = "2014-10-27", TrackNumber = 1 },
+        new() { Title = "Spring",   Album = "Spring", Year = 2014, ReleaseDate = "2014-01-05", TrackNumber = 1 },
+    };
+
+    [Fact]
+    public void SortTracks_ReleaseDateOldest_RunsOldestToNewestInTrackOrder()
+    {
+        var result = PlaylistViewModel.SortTracks(Discography(), PlaylistSortMode.ReleaseDateOldest);
+        Assert.Equal(new[] { "Early", "Spring", "Later A", "Later B" }, result.Select(t => t.Title));
+    }
+
+    [Fact]
+    public void SortTracks_ReleaseDateNewest_FlipsAlbumsButNotTracksWithinThem()
+    {
+        var result = PlaylistViewModel.SortTracks(Discography(), PlaylistSortMode.ReleaseDateNewest);
+        Assert.Equal(new[] { "Later A", "Later B", "Spring", "Early" }, result.Select(t => t.Title));
+    }
+
+    [Fact]
+    public void SortTracks_SameYear_BreaksTheTieOnTheFullReleaseDate()
+    {
+        // Album order deliberately contradicts date order, so a tie broken on the
+        // album name instead of the date would fail this.
+        var tracks = new List<Track>
+        {
+            new() { Title = "December", Album = "A", Year = 2014, ReleaseDate = "2014-12-01" },
+            new() { Title = "January",  Album = "B", Year = 2014, ReleaseDate = "2014-01-05" },
+        };
+
+        var result = PlaylistViewModel.SortTracks(tracks, PlaylistSortMode.ReleaseDateOldest);
+        Assert.Equal(new[] { "January", "December" }, result.Select(t => t.Title));
+    }
+
+    [Fact]
+    public void SortTracks_UnparseableReleaseDate_FallsBackToTheYear()
+    {
+        var tracks = new List<Track>
+        {
+            new() { Title = "Newer", Album = "B", Year = 2014, ReleaseDate = "sometime in 2014" },
+            new() { Title = "Older", Album = "A", Year = 2009, ReleaseDate = "no idea" },
+        };
+
+        var result = PlaylistViewModel.SortTracks(tracks, PlaylistSortMode.ReleaseDateOldest);
+        Assert.Equal(new[] { "Older", "Newer" }, result.Select(t => t.Title));
+    }
+
+    [Theory]
+    [InlineData(PlaylistSortMode.ReleaseDateOldest)]
+    [InlineData(PlaylistSortMode.ReleaseDateNewest)]
+    public void SortTracks_UntaggedYear_SinksToTheEndInBothDirections(PlaylistSortMode mode)
+    {
+        // Year 0 means "not tagged", not "year zero" — ascending order would otherwise
+        // open the list with every untagged track.
+        var tracks = new List<Track>
+        {
+            new() { Title = "Untagged", Album = "A", Year = 0 },
+            new() { Title = "Tagged",   Album = "B", Year = 2009, ReleaseDate = "2009-05-01" },
+        };
+
+        var result = PlaylistViewModel.SortTracks(tracks, mode);
+        Assert.Equal("Untagged", result[^1].Title);
+    }
 }
