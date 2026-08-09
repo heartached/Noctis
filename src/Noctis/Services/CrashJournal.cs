@@ -177,16 +177,28 @@ public static class CrashJournal
                 _preservedBlockLoaded = true;
                 try
                 {
-                    var newest = _dataRoot == null
-                        ? null
-                        : Directory.GetFiles(_dataRoot, PreservedPrefix + "*.log")
-                            .Select(Path.GetFileName)
-                            .OrderByDescending(n => n, StringComparer.Ordinal)
-                            .FirstOrDefault();
-                    _preservedBlock = newest == null
-                        ? null
-                        : BuildPreservedBlock(newest!,
-                            File.ReadAllText(Path.Combine(_dataRoot!, newest!)));
+                    _preservedBlock = null;
+                    if (_dataRoot != null)
+                    {
+                        foreach (var name in Directory.GetFiles(_dataRoot, PreservedPrefix + "*.log")
+                                     .Select(Path.GetFileName)
+                                     .OrderByDescending(n => n, StringComparer.Ordinal))
+                        {
+                            var path = Path.Combine(_dataRoot, name!);
+                            var content = File.ReadAllText(path);
+                            if (!ShouldSurfacePreserved(content))
+                            {
+                                // Preserved in error (see ShouldSurfacePreserved): drop it
+                                // so it cannot resurface, and fall through to the
+                                // next-newest — which may be a real crash.
+                                try { File.Delete(path); }
+                                catch { /* it just stays hidden instead */ }
+                                continue;
+                            }
+                            _preservedBlock = BuildPreservedBlock(name!, content);
+                            break;
+                        }
+                    }
                 }
                 catch
                 {
@@ -292,6 +304,21 @@ public static class CrashJournal
 
         return SessionEnd.Killed;
     }
+
+    /// <summary>
+    /// Whether a preserved file's content still reads as a bad ending.
+    ///
+    /// Preservation is decided once, when the file is renamed at startup — but the
+    /// content can keep changing after that. On Linux and macOS .NET's FileShare is
+    /// advisory, so an overlapping launch (an updater relaunch racing the outgoing
+    /// process, or the mutex-held-but-pipe-dead fallback in Program.Main) renames a
+    /// journal whose owner still holds the fd, and that owner then writes its clean
+    /// marker into the renamed file. The result was a preserved "crash log" whose
+    /// own last line said the session ended cleanly, under a banner claiming it did
+    /// not. The content is the later, better evidence — so it is re-read here.
+    /// </summary>
+    public static bool ShouldSurfacePreserved(string? content)
+        => Classify(content) != SessionEnd.Clean;
 
     /// <summary>
     /// Which preserved files to delete so only the newest <paramref name="keep"/>

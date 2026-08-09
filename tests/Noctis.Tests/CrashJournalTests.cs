@@ -73,6 +73,29 @@ public class CrashJournalTests
         Assert.Equal(CrashJournal.SessionEnd.Crashed, CrashJournal.Classify(content));
     }
 
+    // ── surfacing a preserved file ───────────────────────────────────
+
+    [Fact]
+    public void Surface_PreservedFileThatEndsClean_IsNotSurfaced()
+    {
+        // The preservation decision is made once, at rename time, and the file
+        // keeps being written afterwards: on Linux the outgoing process can
+        // still hold the fd (FileShare is advisory there), so the journal an
+        // updater-relaunch renamed to crashlog-* gains its clean marker AFTER
+        // the move. Re-reading the content is the only honest verdict.
+        var content = "Noctis 1.3.9\n[05:37:58] [Updater] Update found: v1.4.0\n" + Clean + "\n";
+        Assert.False(CrashJournal.ShouldSurfacePreserved(content));
+    }
+
+    [Fact]
+    public void Surface_KilledSession_IsSurfaced()
+        => Assert.True(CrashJournal.ShouldSurfacePreserved("[21:06:41] [Startup] fine\n"));
+
+    [Fact]
+    public void Surface_CrashedSession_IsSurfaced()
+        => Assert.True(CrashJournal.ShouldSurfacePreserved(
+            "=== FATAL: Program.Main ===\nSystem.Exception: boom\n"));
+
     // ── retention pruning ────────────────────────────────────────────
 
     [Fact]
