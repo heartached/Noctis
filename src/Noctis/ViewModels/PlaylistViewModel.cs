@@ -65,6 +65,8 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         PlaylistSortMode.Album => "Album",
         PlaylistSortMode.Duration => "Duration",
         PlaylistSortMode.RecentlyAdded => "Recently Added",
+        PlaylistSortMode.ReleaseDateOldest => "Release Date (Oldest)",
+        PlaylistSortMode.ReleaseDateNewest => "Release Date (Newest)",
         _ => "Manual"
     };
 
@@ -253,9 +255,34 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
                                             .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList(),
             PlaylistSortMode.Duration => tracks.OrderBy(t => t.Duration).ToList(),
             PlaylistSortMode.RecentlyAdded => tracks.OrderByDescending(t => t.DateAdded).ToList(),
+            // Album/disc/track stay ascending in both: flipping to newest-first
+            // reverses the discography, not the running order inside each record.
+            PlaylistSortMode.ReleaseDateOldest => tracks
+                .OrderBy(IsUndated).ThenBy(ReleaseKey)
+                .ThenBy(t => t.Album, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList(),
+            PlaylistSortMode.ReleaseDateNewest => tracks
+                .OrderBy(IsUndated).ThenByDescending(ReleaseKey)
+                .ThenBy(t => t.Album, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList(),
             _ => tracks
         };
     }
+
+    /// <summary>Year 0 means "never tagged", not "year zero" — those sink to the end
+    /// either way instead of opening the oldest-first list.</summary>
+    private static bool IsUndated(Track track) => track.Year <= 0;
+
+    /// <summary>
+    /// Release instant for sorting: the tagged date when it parses, otherwise the start
+    /// of the tagged year. Two albums from the same year order by the finer date, and a
+    /// file with only a year still lands among its contemporaries.
+    /// </summary>
+    private static DateTime ReleaseKey(Track track) =>
+        Track.TryParseReleaseDate(track.ReleaseDate, out var exact) ? exact
+        : track.Year > 0 ? new DateTime(track.Year, 1, 1)
+        : DateTime.MinValue;
+
 
     public void ApplyFilter(string query)
     {
@@ -853,7 +880,13 @@ public enum PlaylistSortMode
     Artist,
     Album,
     Duration,
-    RecentlyAdded
+    RecentlyAdded,
+
+    // Two modes rather than one plus a direction toggle: playlist sort has no
+    // direction control (each mode carries its own, like RecentlyAdded), and
+    // "old to new" / "new to old" is the whole point of the request.
+    ReleaseDateOldest,
+    ReleaseDateNewest
 }
 
 public partial class PlaylistFeaturedArtist : ObservableObject

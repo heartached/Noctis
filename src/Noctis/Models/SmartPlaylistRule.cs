@@ -55,7 +55,9 @@ public enum SmartPlaylistSortBy
     RecentlyPlayed,
     Title,
     Artist,
-    Random
+    Random,
+    ReleaseDateOldest,
+    ReleaseDateNewest
 }
 
 /// <summary>A single filter rule in a smart playlist.</summary>

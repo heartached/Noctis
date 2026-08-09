@@ -107,6 +107,92 @@ public class AddSongsSelectAllTests
         Assert.Equal("Deselect all", vm.SelectAllText);
     }
 
+    // ── truncated searches ───────────────────────────────────────────
+    //
+    // The list renders at most MaxResults (100) rows. A user with 113 songs by one
+    // band saw "Add 100", no notice that 13 were missing, and concluded playlists
+    // were capped at 100. The row cap stays (it is a UI-thread perf guard), but the
+    // count and select-all must speak for every match, not just the rendered ones.
+
+    private static Track[] Band(int count) =>
+        Enumerable.Range(1, count).Select(i => Make($"Brites {i:000}")).ToArray();
+
+    [Fact]
+    public async Task Search_WithMoreMatchesThanFit_ReportsTheFullCount()
+    {
+        var vm = MakeVm(Band(113));
+
+        vm.SearchText = "Brites";
+        await WaitForResultsAsync(vm, expected: 100);
+
+        Assert.Equal(113, vm.MatchCount);
+        Assert.True(vm.IsTruncated);
+        Assert.Contains("100", vm.TruncationNotice);
+        Assert.Contains("113", vm.TruncationNotice);
+    }
+
+    [Fact]
+    public async Task ToggleSelectAll_WithTruncatedResults_SelectsEveryMatch()
+    {
+        var vm = MakeVm(Band(113));
+
+        vm.SearchText = "Brites";
+        await WaitForResultsAsync(vm, expected: 100);
+        vm.ToggleSelectAllCommand.Execute(null);
+
+        Assert.Equal(113, vm.SelectedCount);
+        Assert.Equal("Add 113", vm.AddButtonText);
+
+        IReadOnlyList<Track>? chosen = null;
+        vm.SongsChosen += (_, tracks) => chosen = tracks;
+        vm.AddCommand.Execute(null);
+        Assert.Equal(113, chosen!.Count);
+    }
+
+    [Fact]
+    public async Task SelectAllLabel_WhenTruncated_NamesTheFullCount()
+    {
+        var vm = MakeVm(Band(113));
+
+        vm.SearchText = "Brites";
+        await WaitForResultsAsync(vm, expected: 100);
+
+        // "Select all" alone would read as "select the 100 I can see".
+        Assert.Equal("Select all 113", vm.SelectAllText);
+
+        vm.ToggleSelectAllCommand.Execute(null);
+        Assert.Equal("Deselect all", vm.SelectAllText);
+    }
+
+    [Fact]
+    public async Task TickingEveryVisibleRow_WithMatchesLeftOver_IsNotSelectAll()
+    {
+        // The 100 on screen are all ticked but 13 matches are not — the button must
+        // still offer the rest instead of flipping to "Deselect all".
+        var vm = MakeVm(Band(113));
+
+        vm.SearchText = "Brites";
+        await WaitForResultsAsync(vm, expected: 100);
+        foreach (var row in vm.Results.ToList())
+            vm.ToggleSelectCommand.Execute(row);
+
+        Assert.Equal(100, vm.SelectedCount);
+        Assert.False(vm.AreAllResultsSelected);
+        Assert.Equal("Select all 113", vm.SelectAllText);
+    }
+
+    [Fact]
+    public async Task Search_ThatFits_ShowsNoTruncationNotice()
+    {
+        var vm = MakeVm(Band(12));
+
+        vm.SearchText = "Brites";
+        await WaitForResultsAsync(vm, expected: 12);
+
+        Assert.False(vm.IsTruncated);
+        Assert.Equal("Select all", vm.SelectAllText);
+    }
+
     [Fact]
     public void SelectAllHidden_WhenNothingIsSelectable()
     {

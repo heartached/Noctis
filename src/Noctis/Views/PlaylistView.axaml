@@ -555,6 +555,8 @@
                                 <MenuItem Header="Album" Command="{Binding SetSortCommand}" CommandParameter="Album" />
                                 <MenuItem Header="Duration" Command="{Binding SetSortCommand}" CommandParameter="Duration" />
                                 <MenuItem Header="Recently Added" Command="{Binding SetSortCommand}" CommandParameter="RecentlyAdded" />
+                                <MenuItem Header="Release Date (Oldest)" Command="{Binding SetSortCommand}" CommandParameter="ReleaseDateOldest" />
+                                <MenuItem Header="Release Date (Newest)" Command="{Binding SetSortCommand}" CommandParameter="ReleaseDateNewest" />
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>

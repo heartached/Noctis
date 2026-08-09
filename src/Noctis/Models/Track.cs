@@ -76,6 +76,29 @@ public partial class Track : ObservableObject
     /// <summary>Full release date string from RELEASETIME/TDRL tag (e.g., "2014-10-27" or "2014-10-27T00:00:00Z").</summary>
     public string ReleaseDate { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Parses a <see cref="ReleaseDate"/> tag value. Taggers write these several ways
+    /// ("2014-10-27", an ISO timestamp, or slash-separated), and plenty of files carry
+    /// none at all — so callers get a bool and decide the fallback themselves. Shared by
+    /// the album page's formatted date and the playlist release-date sort, which have to
+    /// agree on what a given tag means.
+    /// </summary>
+    public static bool TryParseReleaseDate(string? value, out DateTime date)
+    {
+        date = default;
+        if (string.IsNullOrWhiteSpace(value)) return false;
+
+        if (DateTime.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out date))
+            return true;
+
+        // Date-only formats like "2024/11/29" that TryParse rejects.
+        return DateTime.TryParseExact(value.Replace('/', '-'),
+            new[] { "yyyy-MM-dd", "yyyy-M-d", "dd-MM-yyyy", "MM-dd-yyyy" },
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out date);
+    }
+
     /// <summary>Track duration as reported by TagLib#.</summary>
     public TimeSpan Duration { get; set; }
 
