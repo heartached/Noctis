@@ -3,14 +3,22 @@ namespace Noctis.Services.Loon;
 // ── Server → Client messages ──
 
 /// <summary>
-/// The subset of the relay's Constraints this client acts on. It also advertises
-/// accepted_content_types and cache_duration; both are skipped, because every response is
-/// re-encoded to JPEG (always in the accepted set) and the relay owns its own caching.
+/// The subset of the relay's Constraints this client acts on. accepted_content_types is
+/// skipped, because every response is re-encoded to JPEG (always in the accepted set).
 /// </summary>
 internal sealed class Constraints
 {
     public ulong ChunkSize { get; init; }
     public ulong MaxContentSize { get; init; }
+
+    /// <summary>
+    /// Seconds the relay is willing to advertise in Cache-Control, and the ceiling it applies
+    /// to our ContentHeader.max_cache_duration. Zero means the relay does no caching at all
+    /// and stamps every response "no-store". This used to be skipped on the belief that "the
+    /// relay owns its own caching" — it does not: a loon server caches nothing itself, and
+    /// this value's only effect is the Cache-Control header it hands the fetching client.
+    /// </summary>
+    public uint CacheDuration { get; init; }
 }
 
 internal sealed class HelloMessage
@@ -129,6 +137,7 @@ internal static class LoonMessageCodec
     private static Constraints DecodeConstraints(LoonProtobuf.ProtoReader r)
     {
         ulong chunkSize = 0, maxSize = 0;
+        uint cacheDuration = 0;
 
         while (r.HasMore)
         {
@@ -137,7 +146,8 @@ internal static class LoonMessageCodec
             {
                 case 1: chunkSize = r.ReadUInt64(); break;
                 case 2: maxSize = r.ReadUInt64(); break;
-                default: r.Skip(w); break;   // accepted_content_types, cache_duration
+                case 4: cacheDuration = r.ReadUInt32(); break;
+                default: r.Skip(w); break;   // accepted_content_types
             }
         }
 
@@ -145,6 +155,7 @@ internal static class LoonMessageCodec
         {
             ChunkSize = chunkSize,
             MaxContentSize = maxSize,
+            CacheDuration = cacheDuration,
         };
     }
 
@@ -227,7 +238,16 @@ internal static class LoonMessageCodec
     }
 
     /// <summary>Encodes a ContentHeader wrapped in ClientMessage.</summary>
-    public static byte[] EncodeContentHeader(ulong requestId, string contentType, ulong contentSize)
+    /// <param name="maxCacheDuration">
+    /// Seconds this response may be cached, sent as ContentHeader.max_cache_duration.
+    /// Omitting it is <b>not</b> neutral: the relay treats a missing field exactly like zero
+    /// and stamps the response "Cache-Control: no-store", which forbids Discord's media proxy
+    /// from keeping the image — so every profile-card view refetches the cover across the
+    /// relay and back up this machine's uplink. Pass null only when the bytes genuinely must
+    /// not be cached, or when the relay advertised no caching support.
+    /// </param>
+    public static byte[] EncodeContentHeader(
+        ulong requestId, string contentType, ulong contentSize, uint? maxCacheDuration)
     {
         var w = new LoonProtobuf.ProtoWriter();
         w.WriteSubMessageField(2, inner => // ClientMessage.content_header = field 2
@@ -235,6 +255,8 @@ internal static class LoonMessageCodec
             inner.WriteVarintField(1, requestId);       // request_id
             inner.WriteStringField(2, contentType);     // content_type
             inner.WriteVarintField(3, contentSize);     // content_size
+            if (maxCacheDuration is { } seconds)
+                inner.WriteVarintField(4, seconds);     // max_cache_duration
         });
         return w.ToArray();
     }

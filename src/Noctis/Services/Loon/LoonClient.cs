@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text;
@@ -13,6 +15,7 @@ namespace Noctis.Services.Loon;
 public sealed class LoonClient : IDisposable
 {
     private readonly string _artworkDirectory;
+    private readonly HttpClient? _http;
     private ClientWebSocket? _ws;
     private CancellationTokenSource? _cts;
     private Task? _receiveTask;
@@ -23,6 +26,7 @@ public sealed class LoonClient : IDisposable
     private byte[]? _secret;
     private ulong _chunkSize;
     private ulong _maxContentSize;
+    private uint _cacheDuration;
 
     private volatile bool _connected;
     private volatile bool _disposed;
@@ -62,9 +66,23 @@ public sealed class LoonClient : IDisposable
     private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(8);
     private static readonly TimeSpan RequestGateWait = TimeSpan.FromSeconds(5);
 
-    public LoonClient(string artworkDirectory)
+    /// <summary>
+    /// How long a served cover may be cached, requested in every ContentHeader. Leaving this
+    /// unset is what made Discord's media proxy refetch the image on every single profile-card
+    /// view — the relay reads a missing field as zero and answers "Cache-Control: no-store".
+    /// An hour comfortably covers a listening session, and the relay silently caps it to its
+    /// own configured cache_duration. Safe against edited covers because the minted URL is
+    /// versioned by the bytes on disk — see <see cref="ArtworkVersion"/>.
+    /// </summary>
+    private const uint DesiredCacheSeconds = 3600;
+
+    /// <param name="http">
+    /// Used only to warm the relay's cache with the client's own URLs. Null disables warming.
+    /// </param>
+    public LoonClient(string artworkDirectory, HttpClient? http = null)
     {
         _artworkDirectory = artworkDirectory;
+        _http = http;
     }
 
     /// <summary>
@@ -143,20 +161,131 @@ public sealed class LoonClient : IDisposable
                 "No cover for Discord: artwork sits outside the served folder " +
                 $"({Path.GetDirectoryName(localArtworkPath)}).", null);
 
-        // Build the thumbnail now, off the caller's thread. This runs on a track change, and
-        // Discord's proxy resolves the URL a second or more later, so the ~250-300ms decode
-        // lands entirely in that gap instead of inside the request handler where the relay
-        // and Discord are both blocked waiting on it.
-        var prewarmPath = localArtworkPath;
-        _ = Task.Run(() => GetOrBuildThumbnail(prewarmPath));
-
         var fileName = Path.GetFileName(localArtworkPath);
-        var path = $"artwork/{fileName}";
+        var path = $"artwork/{ArtworkVersion(localArtworkPath)}/{fileName}";
         var hash = ComputeHmac(_clientId, path, _secret);
+        var url = $"{_baseUrl}/{_clientId}/{hash}/{path}";
 
-        return ReportArtworkOutcome(
-            $"Handed Discord a cover URL for {fileName}.", $"{_baseUrl}/{_clientId}/{hash}/{path}");
+        // Build the thumbnail and push it to the relay now, off the caller's thread. This runs
+        // on a track change, and Discord's proxy resolves the URL a second or more later, so
+        // both land in that gap instead of inside the request handler where the relay and
+        // Discord are blocked waiting on them.
+        var prewarmPath = localArtworkPath;
+        _ = Task.Run(() => PrewarmAsync(prewarmPath, url));
+
+        return ReportArtworkOutcome($"Handed Discord a cover URL for {fileName}.", url);
     }
+
+    /// <summary>
+    /// Decodes the cover, then asks the relay for it so the cache in front of the relay holds
+    /// the bytes before Discord ever asks.
+    /// </summary>
+    private async Task PrewarmAsync(string localArtworkPath, string url)
+    {
+        // Sequential on purpose. The warm request makes the relay ask this client for exactly
+        // these bytes, so running the two in parallel would have both miss the thumbnail cache
+        // and pay the ~250-300ms decode twice.
+        if (GetOrBuildThumbnail(localArtworkPath) == null) return;
+        await WarmRelayCacheAsync(url).ConfigureAwait(false);
+    }
+
+    // ── Relay cache warming ──
+
+    /// <summary>Bounds a warm request; it is an optimisation and must never linger.</summary>
+    private static readonly TimeSpan WarmTimeout = TimeSpan.FromSeconds(20);
+
+    /// <summary>
+    /// Whether a warm response has been inspected yet, and what it said. A loon server stores
+    /// nothing itself — a cache has to be deployed in front of it — so against a relay without
+    /// one, warming would upload every cover twice for no benefit at all. Probe once per
+    /// connection, then stop if there is nothing there to warm.
+    /// </summary>
+    private volatile bool _warmProbed;
+    private volatile bool _warmUnsupported;
+
+    /// <summary>
+    /// Fetches this client's own freshly minted URL, so the relay pulls the cover up now —
+    /// while the track is starting — instead of when a Discord viewer first renders the card.
+    /// loon cannot push content ahead of a request (upstream issue #27 is still open), so a
+    /// self-request is the only way to get the upload off the render path. Best effort
+    /// throughout: every failure here just leaves the previous behaviour in place.
+    /// </summary>
+    private async Task WarmRelayCacheAsync(string url)
+    {
+        if (_http == null || _warmUnsupported || !_connected) return;
+
+        try
+        {
+            using var cts = new CancellationTokenSource(WarmTimeout);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+            // The shared client defaults to Accept: application/json, which is not what this
+            // endpoint serves.
+            request.Headers.Accept.Clear();
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("image/jpeg"));
+
+            using var response = await _http
+                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token)
+                .ConfigureAwait(false);
+
+            // The body has to be drained: the relay only finishes streaming the content, and
+            // the cache only commits the entry, once the response is read to the end.
+            await response.Content.CopyToAsync(Stream.Null, cts.Token).ConfigureAwait(false);
+
+            if (_warmProbed) return;
+            _warmProbed = true;
+
+            if (!response.Headers.Contains("Cache-Status"))
+            {
+                _warmUnsupported = true;
+                Debug.WriteLine("[Loon] Relay answered without cache headers — disabling warm requests.");
+                DebugLog.Write("Loon",
+                    "The artwork relay has no cache in front of it, so covers are fetched on demand.");
+            }
+            else
+            {
+                Debug.WriteLine($"[Loon] Warm ok, relay cache present ({(int)response.StatusCode}).");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Timed out or shutting down — Discord's own fetch still works.
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Loon] Cache warm failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// A stamp of the bytes currently on disk, used as a path segment so that editing a cover
+    /// mints a different URL. The file name alone is "{albumId}.jpg", which is stable for the
+    /// life of the album: now that responses carry a real max_cache_duration, Discord would
+    /// otherwise keep serving the superseded image for the rest of the cache window. Same
+    /// identity the thumbnail cache keys on (see <see cref="ThumbnailKey"/>).
+    /// Falls back to a constant when the file cannot be stat'd — the URL still resolves, it
+    /// just isn't versioned.
+    /// </summary>
+    private static string ArtworkVersion(string localArtworkPath)
+    {
+        try
+        {
+            var file = new FileInfo(localArtworkPath);
+            return $"{file.Length:x}-{file.LastWriteTimeUtc.Ticks:x}";
+        }
+        catch
+        {
+            return "v0";
+        }
+    }
+
+    /// <summary>
+    /// Seconds to ask for in ContentHeader.max_cache_duration, capped by what the relay
+    /// advertised in its Hello. Null when the relay does no caching, in which case the field
+    /// is left off rather than sent as a value the relay would only floor to zero anyway.
+    /// </summary>
+    private uint? RequestedCacheSeconds
+        => _cacheDuration == 0 ? null : Math.Min(DesiredCacheSeconds, _cacheDuration);
 
     /// <summary>Last line written by <see cref="ReportArtworkOutcome"/>, to suppress repeats.</summary>
     private string? _lastArtworkOutcome;
@@ -267,6 +396,7 @@ public sealed class LoonClient : IDisposable
             _secret = hello.ConnectionSecret;
             _chunkSize = hello.Constraints.ChunkSize;
             _maxContentSize = hello.Constraints.MaxContentSize;
+            _cacheDuration = hello.Constraints.CacheDuration;
         }
         catch
         {
@@ -278,9 +408,21 @@ public sealed class LoonClient : IDisposable
 
         _ws = ws;
         _connected = true;
-        Debug.WriteLine($"[Loon] Connected: clientId={_clientId}, chunkSize={_chunkSize}");
+        Debug.WriteLine(
+            $"[Loon] Connected: clientId={_clientId}, chunkSize={_chunkSize}, cacheDuration={_cacheDuration}s");
         DebugLog.Write("Loon", $"Connected to the artwork relay as {_clientId}.");
+
+        // Worth surfacing: with no relay-side caching every profile-card view in Discord
+        // refetches the cover across the relay from this machine, which reads as a slow
+        // fade-in on the card. Nothing the client can do about it but say so.
+        if (_cacheDuration == 0)
+            DebugLog.Write("Loon",
+                "The artwork relay reports no caching support, so Discord must refetch each cover every time it is shown.");
         _lastArtworkOutcome = null;   // a new clientId is a new story; don't suppress the next line
+
+        // Re-probe for a cache in front of the relay: this may be a different relay entirely.
+        _warmProbed = false;
+        _warmUnsupported = false;
 
         try { Reconnected?.Invoke(); }
         catch (Exception ex) { Debug.WriteLine($"[Loon] Reconnected handler threw: {ex.Message}"); }
@@ -427,15 +569,28 @@ public sealed class LoonClient : IDisposable
     /// when the request escapes <paramref name="artworkDirectory"/> (path traversal).
     /// The relay controls the request string, so callers must reject a null result rather
     /// than read an arbitrary file off the local disk.
+    /// Accepts exactly the two shapes this client mints: "artwork/{version}/{file}", and the
+    /// older "artwork/{file}" — URLs of that shape can still be sitting in Discord's cache
+    /// after an upgrade. The version segment is a cache-buster with no counterpart on disk,
+    /// so only the final segment names the file.
     /// </summary>
     internal static string? ResolveArtworkPath(string artworkDirectory, string requestPath)
     {
         if (string.IsNullOrEmpty(requestPath)) return null;
+        if (!requestPath.StartsWith("artwork/", StringComparison.Ordinal)) return null;
 
-        var fileName = requestPath.StartsWith("artwork/", StringComparison.Ordinal)
-            ? requestPath["artwork/".Length..]
-            : requestPath;
+        var rest = requestPath["artwork/".Length..];
+
+        // Reject dot segments outright. The final containment check below would catch an
+        // actual escape anyway, but stripping the version segment means a "../" prefix would
+        // otherwise be silently discarded rather than refused, and a request that tries to
+        // climb out should be answered as the hostile thing it is.
+        if (rest.Contains("..", StringComparison.Ordinal)) return null;
+
+        var slash = rest.IndexOf('/');
+        var fileName = slash < 0 ? rest : rest[(slash + 1)..];
         if (string.IsNullOrEmpty(fileName)) return null;
+        if (fileName.Contains('/')) return null;   // deeper than anything this client mints
 
         var root = Path.GetFullPath(artworkDirectory);
         string fullPath;
@@ -502,7 +657,8 @@ public sealed class LoonClient : IDisposable
             }
 
             // Send ContentHeader
-            if (!await SendAsync(ws, LoonMessageCodec.EncodeContentHeader(request.Id, contentType, contentSize), ct))
+            if (!await SendAsync(ws, LoonMessageCodec.EncodeContentHeader(
+                    request.Id, contentType, contentSize, RequestedCacheSeconds), ct))
                 return;
 
             // Send ContentChunks
