@@ -33,6 +33,9 @@ public class VlcAudioPlayer : IAudioPlayer
     // Brief volume fade-in after an in-place seek so the buffer-flush discontinuity
     // (audible as a click on every platform) is masked. This long, on the seek worker.
     private const int SeekFadeMs = 20;
+    // Step size for FadePlayerVolumeFadeIn — fine enough that a 20ms seek fade still
+    // gets several steps.
+    private const int FadeInStepMs = 4;
     // Track-start fade-in on the native output (macOS/Linux) to mask the cold-device
     // clip — the first buffers are dropped while the audio device spins up.
     private const int TrackStartFadeMs = 40;
@@ -168,6 +171,21 @@ public class VlcAudioPlayer : IAudioPlayer
     private readonly object _devBridgeLock = new();
     private string? _devBridgeLastMsg;
     private long _devBridgeLastTicks;
+
+    // Pre-error context ring. Whatever levels VLC emits land here in memory (no I/O)
+    // and the last DevBridgeRingSize are flushed to the session log when an Error
+    // arrives, recovering two things the plain bridge throws away: sub-second ordering
+    // (the session log stamps only to the second, so a dropout cluster arrives
+    // unordered) and the un-collapsed run of warnings before the error, which is what
+    // separates a one-off from a spiral. NOTE: at the default verbosity VLC emits only
+    // warnings and errors to the callback, so the Debug-level mmdevice underrun /
+    // demux-timing chatter that would settle input-vs-output starvation still needs
+    // NOCTIS_VLC_LOG=1 (which adds --verbose=2 at construction).
+    private const int DevBridgeRingSize = 40;
+    private const int DevBridgeContextCooldownSec = 60;
+    private readonly string?[] _devBridgeRing = new string?[DevBridgeRingSize];
+    private int _devBridgeRingNext;
+    private long _devBridgeLastContextTicks;
 
     // Serializes Play/Stop operations so rapid track switching
     // (e.g. spamming Next) doesn't overlap Stop+Play calls.
@@ -1035,25 +1053,79 @@ public class VlcAudioPlayer : IAudioPlayer
     /// <summary>
     /// Fades the player volume from silence up to <paramref name="toVolume"/> over
     /// <paramref name="durationMs"/>, masking an audio-output discontinuity (the
-    /// click after an in-place seek, or the cold-device drop at track start). Bails
-    /// the instant a Play() swaps the track (<paramref name="expectedMedia"/> no
-    /// longer current) so it can never fight PlayInternal's own volume set for the
+    /// click after an in-place seek, or the cold-device drop at track start). Stops
+    /// stepping the instant a Play() swaps the track (<paramref name="expectedMedia"/>
+    /// no longer current) so it can never fight PlayInternal's own ramp for the
     /// incoming track. Uses fine ~4ms steps — distinct from
     /// <see cref="FadePlayerVolumeBlocking"/>, whose 35ms crossfade steps are far too
     /// coarse for a sub-frame fade. Native / per-player volume path only.
+    ///
+    /// The landing write is insistent and happens on EVERY exit path including the
+    /// bail — see <see cref="RunVolumeFadeIn"/> for why.
     /// </summary>
     private void FadePlayerVolumeFadeIn(int toVolume, int durationMs, Media? expectedMedia)
     {
-        const int stepMs = 4;
-        var steps = Math.Max(1, durationMs / stepMs);
-        for (var i = 1; i <= steps; i++)
+        RunVolumeFadeIn(
+            toVolume,
+            durationMs,
+            FadeInStepMs,
+            () => !_disposed && ReferenceEquals(_currentMedia, expectedMedia),
+            v => SetPlayerVolumeGuarded(_player, v),
+            v => { if (!_disposed) SetPlayerVolumeInsistent(_player, v); },
+            () => Thread.Sleep(FadeInStepMs));
+    }
+
+    /// <summary>
+    /// The step schedule of <see cref="FadePlayerVolumeFadeIn"/>, with the player
+    /// writes injected so the landing guarantee is testable without LibVLC.
+    ///
+    /// On the native path (macOS/Linux — no OS-session handle, no callback sink)
+    /// this fade is the ONLY thing that un-parks MediaPlayer.Volume from the 0 its
+    /// caller just wrote, and nothing else ever re-asserts it:
+    /// ScheduleSessionVolumeReassert returns immediately while _sessionVolume is
+    /// null, and ScheduleMuteIntentReassert only touches Mute. So a run that ends
+    /// below <paramref name="toVolume"/> leaves the track quiet — or, if it stopped
+    /// before its first step, completely silent — for the rest of its duration,
+    /// until the user forces a new track. That is the "plays but no audio, skip
+    /// forward then back and it works" report: PlayInternal recomputes the volume
+    /// from GetTargetVlcVolume() on the next track, which heals it.
+    ///
+    /// Two ways the old loop ended low, both fixed here:
+    ///   * it bailed with a bare return, stranding the player at the partial step it
+    ///     had reached (0 when the very first check failed). A seek worker racing a
+    ///     track change hits exactly this: the worker parks the volume, the media
+    ///     reference then changes under it, and the fade that was supposed to give
+    ///     the volume back walks away. Landing on <paramref name="toVolume"/> is safe
+    ///     even when an incoming track's own fade is in flight — both call sites now
+    ///     target GetTargetVlcVolume(), so the two are converging on the same value.
+    ///   * its final step used the droppable guarded write, which returns false and
+    ///     writes nothing under contention (a ramp tick, the metadata VolumeAdjust
+    ///     write). That left the player one step short — and while the post-seek
+    ///     restore was read live off MediaPlayer.Volume, each short run became the
+    ///     next seek's ceiling, so scrubbing ratcheted the volume down to nothing.
+    /// </summary>
+    /// <param name="shouldContinue">False once the track swapped or we are disposing.</param>
+    /// <param name="step">Droppable guarded write, for the intermediate steps.</param>
+    /// <param name="land">Insistent write; must not be lost.</param>
+    public static void RunVolumeFadeIn(
+        int toVolume, int durationMs, int stepMs,
+        Func<bool> shouldContinue, Action<int> step, Action<int> land, Action sleep)
+    {
+        var steps = Math.Max(1, durationMs / Math.Max(1, stepMs));
+
+        for (var i = 1; i < steps; i++)
         {
-            if (_disposed || !ReferenceEquals(_currentMedia, expectedMedia))
+            if (!shouldContinue())
+            {
+                land(toVolume);
                 return;
-            SetPlayerVolumeGuarded(_player, toVolume * i / steps);
-            if (i < steps)
-                Thread.Sleep(stepMs);
+            }
+            step(toVolume * i / steps);
+            sleep();
         }
+
+        // The target itself never rides a droppable write.
+        land(toVolume);
     }
 
     /// <summary>
@@ -3416,7 +3488,12 @@ public class VlcAudioPlayer : IAudioPlayer
         if (tickPrevTicks != 0 && !_isPaused && _currentMedia != null)
         {
             var gapMs = (tickNowTicks - tickPrevTicks) / TimeSpan.TicksPerMillisecond;
-            if (gapMs is > 750 and < 10_000)
+            // Was "> 750 and < 10_000", which straddled the evidence on both sides: a
+            // dropout costing ~1s of clock can stall well under 750ms, and the upper
+            // bound silently discarded the long freezes that most need reporting.
+            // 250ms is still 2.5x the 100ms cadence, so ordinary scheduling jitter
+            // stays quiet.
+            if (gapMs > 250)
             {
                 DebugLogger.Info(DebugLogger.Category.Playback, "PositionTimer.Stall", $"gapMs={gapMs}");
                 // Also mirrored into the dev-mode session log: this marker next to
@@ -3640,7 +3717,15 @@ public class VlcAudioPlayer : IAudioPlayer
                         // timing is unchanged; the fade-in bails if a Play() swaps the
                         // track so it never fights PlayInternal's volume set.
                         var mediaAtSeek = _currentMedia;
-                        var restoreVol = _player.Volume;
+                        // The user's intended level, NOT the live _player.Volume. A
+                        // scrub applies one fade per coalesced seek, so reading the
+                        // player back made every run the next run's ceiling: a seek
+                        // landing inside the previous fade (or inside PlayInternal's
+                        // 40ms track-start fade) captured a partial value — 0 at the
+                        // worst moment — and restored to that permanently. Same source
+                        // PlayInternal uses for targetVolume, so a seek can no longer
+                        // drift the track away from the slider.
+                        var restoreVol = GetTargetVlcVolume();
                         SetPlayerVolumeGuarded(_player, 0);
                         _player.Time = targetMs;
                         FadePlayerVolumeFadeIn(restoreVol, SeekFadeMs, mediaAtSeek);
@@ -3870,19 +3955,60 @@ public class VlcAudioPlayer : IAudioPlayer
 
     private void OnVlcLogForBridge(object? sender, LogEventArgs e)
     {
-        if (e.Level is not (LogLevel.Warning or LogLevel.Error)) return;
         var msg = $"{e.Level} {e.Module}: {e.Message}";
-        // Collapse identical repeats within 2s — a stutter spiral can emit the
-        // same "playback too late" line many times per second, which would
-        // flush the bounded session log.
         var now = Stopwatch.GetTimestamp();
+
+        // Runs on the VLC thread that emitted the line, so everything under this lock
+        // must stay allocation-light and I/O-free — blocking here blocks a demux or
+        // aout thread, which is the very stall we are trying to catch.
+        string[]? context = null;
         lock (_devBridgeLock)
         {
-            if (msg == _devBridgeLastMsg && now - _devBridgeLastTicks < Stopwatch.Frequency * 2) return;
+            _devBridgeRing[_devBridgeRingNext] = $"{DateTime.Now:HH:mm:ss.fff} {msg}";
+            _devBridgeRingNext = (_devBridgeRingNext + 1) % DevBridgeRingSize;
+
+            if (e.Level == LogLevel.Error &&
+                (_devBridgeLastContextTicks == 0 ||
+                 now - _devBridgeLastContextTicks > Stopwatch.Frequency * DevBridgeContextCooldownSec))
+            {
+                _devBridgeLastContextTicks = now;
+                context = SnapshotDevBridgeRingLocked();
+            }
+
+            if (e.Level is not (LogLevel.Warning or LogLevel.Error)) return;
+
+            // Collapse identical repeats within 2s — a stutter spiral can emit the
+            // same "playback too late" line many times per second, which would
+            // flush the bounded session log. An Error that carries context is never
+            // collapsed: dropping it would strand the ring dump with no cause line.
+            if (context == null && msg == _devBridgeLastMsg &&
+                now - _devBridgeLastTicks < Stopwatch.Frequency * 2) return;
             _devBridgeLastMsg = msg;
             _devBridgeLastTicks = now;
         }
+
         DebugLog.Write("VLC", msg);
+
+        // Cooldown-limited, so a spiral dumps the ring once rather than per error.
+        if (context != null)
+        {
+            DebugLog.Write("VLC", $"── last {context.Length} engine lines before the error ──");
+            foreach (var line in context)
+                DebugLog.Write("VLC", "  " + line);
+            DebugLog.Write("VLC", "── end context ──");
+        }
+    }
+
+    /// <summary>Ring contents oldest-first. Caller holds <c>_devBridgeLock</c>.</summary>
+    private string[] SnapshotDevBridgeRingLocked()
+    {
+        var ordered = new List<string>(DevBridgeRingSize);
+        for (var i = 0; i < DevBridgeRingSize; i++)
+        {
+            var line = _devBridgeRing[(_devBridgeRingNext + i) % DevBridgeRingSize];
+            if (line != null) ordered.Add(line);
+        }
+        return ordered.ToArray();
     }
 
     private void WriteVlcDiag(string line)

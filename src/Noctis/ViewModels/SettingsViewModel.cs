@@ -348,6 +348,25 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnAlbumSortModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumSortAscendingChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
 
+    // ── Home section collapse state ──
+    //
+    // Same arrangement as the Songs/Albums view state above: persisted UI state, not a
+    // Settings toggle. HomeViewModel reads and writes these through this view model.
+
+    [ObservableProperty] private bool _homeTopSongsExpanded = true;
+    [ObservableProperty] private bool _homeTopArtistsExpanded = true;
+    [ObservableProperty] private bool _homeRecentlyPlayedExpanded = true;
+    [ObservableProperty] private bool _homeTimeRotationExpanded = true;
+    [ObservableProperty] private bool _homeHeavyRotationExpanded = true;
+    [ObservableProperty] private bool _homeRediscoveredExpanded = true;
+
+    partial void OnHomeTopSongsExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeTopArtistsExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeRecentlyPlayedExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeTimeRotationExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeHeavyRotationExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnHomeRediscoveredExpandedChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+
     // ── Web remote ──
 
     private WebRemoteServer? _webRemote;
@@ -970,6 +989,12 @@ public partial class SettingsViewModel : ViewModelBase
             SongsShowOnlyFavorites = _settings.SongsShowOnlyFavorites;
             AlbumSortMode = _settings.AlbumSortMode;
             AlbumSortAscending = _settings.AlbumSortAscending;
+            HomeTopSongsExpanded = _settings.HomeTopSongsExpanded;
+            HomeTopArtistsExpanded = _settings.HomeTopArtistsExpanded;
+            HomeRecentlyPlayedExpanded = _settings.HomeRecentlyPlayedExpanded;
+            HomeTimeRotationExpanded = _settings.HomeTimeRotationExpanded;
+            HomeHeavyRotationExpanded = _settings.HomeHeavyRotationExpanded;
+            HomeRediscoveredExpanded = _settings.HomeRediscoveredExpanded;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             MiniPlayerBackgroundOpacity = Math.Clamp(_settings.MiniPlayerBackgroundOpacity, 0, 1);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
@@ -1304,6 +1329,12 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SongsShowOnlyFavorites = SongsShowOnlyFavorites;
         _settings.AlbumSortMode = AlbumSortMode;
         _settings.AlbumSortAscending = AlbumSortAscending;
+        _settings.HomeTopSongsExpanded = HomeTopSongsExpanded;
+        _settings.HomeTopArtistsExpanded = HomeTopArtistsExpanded;
+        _settings.HomeRecentlyPlayedExpanded = HomeRecentlyPlayedExpanded;
+        _settings.HomeTimeRotationExpanded = HomeTimeRotationExpanded;
+        _settings.HomeHeavyRotationExpanded = HomeHeavyRotationExpanded;
+        _settings.HomeRediscoveredExpanded = HomeRediscoveredExpanded;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.MiniPlayerBackgroundOpacity = Math.Clamp(MiniPlayerBackgroundOpacity, 0, 1);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
@@ -4178,6 +4209,15 @@ public partial class SettingsViewModel : ViewModelBase
 
         if (value)
         {
+            // Dev mode used to enable the VLC bridge but leave DebugLogger off, so
+            // every Playback/KeepAlive/SessionVolume entry was a no-op in the one log
+            // users actually send — a device change mid-dropout left no trace at all.
+            // Only ever turned on here: the debug panel enables it independently and
+            // deliberately keeps it on after closing, so switching dev mode off must
+            // not silently kill logging someone else asked for.
+            DebugLogger.IsEnabled = true;
+            DebugLogger.MirrorPlaybackToSessionLog = true;
+
             PreservedCrashBanner = CrashJournal.PreservedBanner;
             DevLogText = ComposeDevLogText();
             _ = RefreshReleasesAsync();

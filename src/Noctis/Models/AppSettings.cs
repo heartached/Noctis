@@ -215,6 +215,29 @@ public class AppSettings
     /// starts in its natural direction (see LibraryAlbumsViewModel.IsDescendingByDefault).</summary>
     public bool AlbumSortAscending { get; set; } = true;
 
+    // ── Home section collapse state ──
+    // Every Home section can be folded away to its header, so the page can be cut down
+    // to only the rows the user currently cares about. All default to expanded — the
+    // pre-feature layout — so an existing install sees no change until it collapses one.
+
+    /// <summary>Whether Home's "Most Listened To" section shows its rows.</summary>
+    public bool HomeTopSongsExpanded { get; set; } = true;
+
+    /// <summary>Whether Home's "Top Artists" section shows its rows.</summary>
+    public bool HomeTopArtistsExpanded { get; set; } = true;
+
+    /// <summary>Whether Home's "Recently Played" section shows its rows.</summary>
+    public bool HomeRecentlyPlayedExpanded { get; set; } = true;
+
+    /// <summary>Whether Home's time-of-day rotation section shows its rows.</summary>
+    public bool HomeTimeRotationExpanded { get; set; } = true;
+
+    /// <summary>Whether Home's "Heavy rotation" section shows its rows.</summary>
+    public bool HomeHeavyRotationExpanded { get; set; } = true;
+
+    /// <summary>Whether Home's "Recently rediscovered" section shows its rows.</summary>
+    public bool HomeRediscoveredExpanded { get; set; } = true;
+
     /// <summary>Opacity of the playback bar's glass fill (0 = fully transparent, 1 = solid).
     /// Controls only the background, not the bar's text/controls. Default 0.4 matches the
     /// original #66 alpha glass look.</summary>
