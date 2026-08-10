@@ -33,6 +33,9 @@ public class VlcAudioPlayer : IAudioPlayer
     // Brief volume fade-in after an in-place seek so the buffer-flush discontinuity
     // (audible as a click on every platform) is masked. This long, on the seek worker.
     private const int SeekFadeMs = 20;
+    // Step size for FadePlayerVolumeFadeIn — fine enough that a 20ms seek fade still
+    // gets several steps.
+    private const int FadeInStepMs = 4;
     // Track-start fade-in on the native output (macOS/Linux) to mask the cold-device
     // clip — the first buffers are dropped while the audio device spins up.
     private const int TrackStartFadeMs = 40;
@@ -1035,25 +1038,79 @@ public class VlcAudioPlayer : IAudioPlayer
     /// <summary>
     /// Fades the player volume from silence up to <paramref name="toVolume"/> over
     /// <paramref name="durationMs"/>, masking an audio-output discontinuity (the
-    /// click after an in-place seek, or the cold-device drop at track start). Bails
-    /// the instant a Play() swaps the track (<paramref name="expectedMedia"/> no
-    /// longer current) so it can never fight PlayInternal's own volume set for the
+    /// click after an in-place seek, or the cold-device drop at track start). Stops
+    /// stepping the instant a Play() swaps the track (<paramref name="expectedMedia"/>
+    /// no longer current) so it can never fight PlayInternal's own ramp for the
     /// incoming track. Uses fine ~4ms steps — distinct from
     /// <see cref="FadePlayerVolumeBlocking"/>, whose 35ms crossfade steps are far too
     /// coarse for a sub-frame fade. Native / per-player volume path only.
+    ///
+    /// The landing write is insistent and happens on EVERY exit path including the
+    /// bail — see <see cref="RunVolumeFadeIn"/> for why.
     /// </summary>
     private void FadePlayerVolumeFadeIn(int toVolume, int durationMs, Media? expectedMedia)
     {
-        const int stepMs = 4;
-        var steps = Math.Max(1, durationMs / stepMs);
-        for (var i = 1; i <= steps; i++)
+        RunVolumeFadeIn(
+            toVolume,
+            durationMs,
+            FadeInStepMs,
+            () => !_disposed && ReferenceEquals(_currentMedia, expectedMedia),
+            v => SetPlayerVolumeGuarded(_player, v),
+            v => { if (!_disposed) SetPlayerVolumeInsistent(_player, v); },
+            () => Thread.Sleep(FadeInStepMs));
+    }
+
+    /// <summary>
+    /// The step schedule of <see cref="FadePlayerVolumeFadeIn"/>, with the player
+    /// writes injected so the landing guarantee is testable without LibVLC.
+    ///
+    /// On the native path (macOS/Linux — no OS-session handle, no callback sink)
+    /// this fade is the ONLY thing that un-parks MediaPlayer.Volume from the 0 its
+    /// caller just wrote, and nothing else ever re-asserts it:
+    /// ScheduleSessionVolumeReassert returns immediately while _sessionVolume is
+    /// null, and ScheduleMuteIntentReassert only touches Mute. So a run that ends
+    /// below <paramref name="toVolume"/> leaves the track quiet — or, if it stopped
+    /// before its first step, completely silent — for the rest of its duration,
+    /// until the user forces a new track. That is the "plays but no audio, skip
+    /// forward then back and it works" report: PlayInternal recomputes the volume
+    /// from GetTargetVlcVolume() on the next track, which heals it.
+    ///
+    /// Two ways the old loop ended low, both fixed here:
+    ///   * it bailed with a bare return, stranding the player at the partial step it
+    ///     had reached (0 when the very first check failed). A seek worker racing a
+    ///     track change hits exactly this: the worker parks the volume, the media
+    ///     reference then changes under it, and the fade that was supposed to give
+    ///     the volume back walks away. Landing on <paramref name="toVolume"/> is safe
+    ///     even when an incoming track's own fade is in flight — both call sites now
+    ///     target GetTargetVlcVolume(), so the two are converging on the same value.
+    ///   * its final step used the droppable guarded write, which returns false and
+    ///     writes nothing under contention (a ramp tick, the metadata VolumeAdjust
+    ///     write). That left the player one step short — and while the post-seek
+    ///     restore was read live off MediaPlayer.Volume, each short run became the
+    ///     next seek's ceiling, so scrubbing ratcheted the volume down to nothing.
+    /// </summary>
+    /// <param name="shouldContinue">False once the track swapped or we are disposing.</param>
+    /// <param name="step">Droppable guarded write, for the intermediate steps.</param>
+    /// <param name="land">Insistent write; must not be lost.</param>
+    public static void RunVolumeFadeIn(
+        int toVolume, int durationMs, int stepMs,
+        Func<bool> shouldContinue, Action<int> step, Action<int> land, Action sleep)
+    {
+        var steps = Math.Max(1, durationMs / Math.Max(1, stepMs));
+
+        for (var i = 1; i < steps; i++)
         {
-            if (_disposed || !ReferenceEquals(_currentMedia, expectedMedia))
+            if (!shouldContinue())
+            {
+                land(toVolume);
                 return;
-            SetPlayerVolumeGuarded(_player, toVolume * i / steps);
-            if (i < steps)
-                Thread.Sleep(stepMs);
+            }
+            step(toVolume * i / steps);
+            sleep();
         }
+
+        // The target itself never rides a droppable write.
+        land(toVolume);
     }
 
     /// <summary>
@@ -3640,7 +3697,15 @@ public class VlcAudioPlayer : IAudioPlayer
                         // timing is unchanged; the fade-in bails if a Play() swaps the
                         // track so it never fights PlayInternal's volume set.
                         var mediaAtSeek = _currentMedia;
-                        var restoreVol = _player.Volume;
+                        // The user's intended level, NOT the live _player.Volume. A
+                        // scrub applies one fade per coalesced seek, so reading the
+                        // player back made every run the next run's ceiling: a seek
+                        // landing inside the previous fade (or inside PlayInternal's
+                        // 40ms track-start fade) captured a partial value — 0 at the
+                        // worst moment — and restored to that permanently. Same source
+                        // PlayInternal uses for targetVolume, so a seek can no longer
+                        // drift the track away from the slider.
+                        var restoreVol = GetTargetVlcVolume();
                         SetPlayerVolumeGuarded(_player, 0);
                         _player.Time = targetMs;
                         FadePlayerVolumeFadeIn(restoreVol, SeekFadeMs, mediaAtSeek);
