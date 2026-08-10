@@ -1,0 +1,117 @@
+---
+/**
+ * Breadth in one glance — every name at full weight, set in caps by the CSS.
+ * Formats are from the app README's "Plays everything" line.
+ */
+const lossless = ['FLAC', 'ALAC', 'WAV', 'AIFF', 'APE', 'WavPack'];
+const lossy = ['MP3', 'AAC', 'OGG', 'Opus', 'WMA', 'M4A'];
+
+const track = [...lossless, ...lossy];
+
+/**
+ * How many identical tracks are laid end to end.
+ *
+ * Every track translates left by exactly its OWN width, so at the end of a
+ * cycle the content only reaches (COPIES - 1) x trackWidth. With the two tracks
+ * this used to render, that is one track width — narrower than most desktop
+ * viewports, so the strip ran out of formats and the tail of every loop was
+ * blank. Five copies puts the trailing edge at four track widths (~5,800px at
+ * these labels), which clears any display this will meet.
+ *
+ * Six copies puts the trailing edge at five track widths — about 6,000px at
+ * these labels — which clears a 5K display with the mask fade to spare.
+ *
+ * Only the first is real content; the rest are hidden from assistive tech.
+ */
+const COPIES = 6;
+---
+
+<section class="marquee" aria-label="Supported audio formats">
+  <div class="marquee__viewport">
+    {
+      Array.from({ length: COPIES }, (_, copy) => (
+        <ul class="marquee__track" aria-hidden={copy > 0 ? 'true' : undefined}>
+          {track.map((name) => (
+            <li class="marquee__item mono">{name}</li>
+          ))}
+        </ul>
+      ))
+    }
+  </div>
+</section>
+
+<style>
+  .marquee {
+    position: relative;
+    padding-block: var(--s-6);
+    border-block: 1px solid var(--line);
+    background: var(--bg-0);
+  }
+
+  .marquee__viewport {
+    display: flex;
+    width: 100%;
+    overflow: hidden;
+    /* Edges dissolve rather than cut, so the strip reads as continuous. */
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0,
+      #000 12%,
+      #000 88%,
+      transparent 100%
+    );
+  }
+
+  .marquee__track {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: clamp(2rem, 4vw, 3.5rem);
+    /* The start padding must be zeroed explicitly: the base reset clears
+       margins only, and the UA's 40px list padding was what opened a double
+       gap at every seam between copies. The end padding matches the item gap
+       so the seam is invisible. */
+    padding-inline: 0 clamp(2rem, 4vw, 3.5rem);
+    margin: 0;
+    list-style: none;
+  }
+
+  .marquee__item {
+    font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    /* Caps here, not in the data — "WavPack" stays readable to assistive
+       tech while rendering as WAVPACK. */
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--ink-0);
+  }
+
+  /* No hover pause. The strip is a decorative breadth cue, not a control — the
+     names are all visible in the same second either way, and stopping dead
+     under the pointer just read as the animation breaking. */
+  @media (prefers-reduced-motion: no-preference) {
+    .marquee__track {
+      animation: marquee-scroll 42s linear infinite;
+    }
+  }
+
+  @keyframes marquee-scroll {
+    to {
+      transform: translateX(-100%);
+    }
+  }
+
+  /* With motion off the strip is a static, readable list — the duplicate track
+     would just be a repeat, so it goes. */
+  @media (prefers-reduced-motion: reduce) {
+    .marquee__viewport {
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .marquee__track[aria-hidden='true'] {
+      display: none;
+    }
+  }
+</style>

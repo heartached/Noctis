@@ -1,0 +1,29 @@
+{
+  "name": "noctis-site",
+  "type": "module",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Marketing site for Noctis, an open source lossless desktop music player.",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "node scripts/fetch-release.mjs && node scripts/fetch-changelog.mjs && astro build && node scripts/csp-hashes.mjs",
+    "build:fast": "astro build && node scripts/csp-hashes.mjs",
+    "preview": "astro preview",
+    "sync:release": "node scripts/fetch-release.mjs",
+    "sync:changelog": "node scripts/fetch-changelog.mjs",
+    "sync:images": "node scripts/process-images.mjs",
+    "sync:fonts": "node scripts/fetch-fonts.mjs",
+    "sync:og": "python scripts/make-og.py",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^7.1.4"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.3"
+  },
+  "overrides": {
+    "sharp": "^0.35.3"
+  }
+}

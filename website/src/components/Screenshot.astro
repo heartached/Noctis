@@ -1,0 +1,46 @@
+---
+import images from '../data/images.json';
+
+/**
+ * AVIF with a WebP fallback, 1x + 2x, always with intrinsic width/height
+ * so nothing shifts while it loads.
+ */
+interface Props {
+  name: keyof typeof images;
+  /** Override the manifest alt when context makes a different description better. */
+  alt?: string;
+  /** The hero shot is the LCP element: eager + high priority. Everything else is lazy. */
+  eager?: boolean;
+  sizes?: string;
+  class?: string;
+}
+
+const { name, alt, eager = false, sizes = '100vw', class: className } = Astro.props;
+
+const img = images[name] as {
+  alt: string;
+  width: number;
+  height: number;
+  avif: { src: string; width: number }[];
+  webp: { src: string; width: number }[];
+};
+
+if (!img) throw new Error(`Screenshot "${String(name)}" is not in the image manifest.`);
+
+const srcset = (set: { src: string; width: number }[]) =>
+  set.map((v) => `${v.src} ${v.width}w`).join(', ');
+---
+
+<picture class={className}>
+  <source type="image/avif" srcset={srcset(img.avif)} sizes={sizes} />
+  <source type="image/webp" srcset={srcset(img.webp)} sizes={sizes} />
+  <img
+    src={img.webp[0].src}
+    width={img.width}
+    height={img.height}
+    alt={alt ?? img.alt}
+    loading={eager ? 'eager' : 'lazy'}
+    decoding="async"
+    fetchpriority={eager ? 'high' : 'auto'}
+  />
+</picture>

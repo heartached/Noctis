@@ -1,0 +1,240 @@
+---
+/**
+ * A live CSS recreation of the app's word-timed lyric highlight, reprising the
+ * sweep used on the hero headline.
+ *
+ * The lines below are written for this page, not taken from a song — the site
+ * should not republish copyrighted lyrics to demonstrate a lyrics feature.
+ * They read like a chorus but belong to no song.
+ *
+ * Honest framing: Noctis shows word-level timing when the SOURCE provides it
+ * (enhanced LRC, .lyricsfile, .ttml). Line-level timing is the common case.
+ */
+const lines = [
+  'Stayed up with the stereo low',
+  'every line lands right on time',
+  'the chorus knows the words by now',
+  'and the last one is mine',
+];
+
+const STEP = 2.6; // seconds each line holds focus
+const TOTAL = (lines.length * STEP).toFixed(1);
+---
+
+<div class="ly" id="lyrics">
+
+  <div class="container ly__grid">
+    <div class="ly__copy" data-reveal>
+      <h3 class="h3">Time-synced lyrics</h3>
+      <p class="lede">
+        Each line lights up as it is sung, down to the word when the lyrics carry the timing.
+      </p>
+    </div>
+
+    <div class="ly__stage" data-reveal>
+      <div class="ly__panel" aria-hidden="true">
+        <div class="ly__viewport">
+          <ol class="ly__lines" style={`--step:${STEP}s; --total:${TOTAL}s`}>
+            {
+              lines.map((line, i) => (
+                <li class="ly__line" style={`--i:${i}`}>
+                  <span>{line}</span>
+                </li>
+              ))
+            }
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Second half of Showcase.astro. The section padding belongs to the parent;
+     this only owns the space between itself and the Cover Flow rail above. */
+  .ly {
+    position: relative;
+    overflow: clip;
+    margin-top: clamp(3rem, 6vw, 5rem);
+  }
+
+  .ly__grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+    gap: clamp(2.5rem, 5vw, 5rem);
+    align-items: center;
+  }
+
+  .h3 {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-weight: 700;
+    font-size: var(--step-2);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .ly__copy .lede {
+    margin-top: var(--s-3);
+  }
+
+  /* --- The panel ---------------------------------------------------------- */
+
+  .ly__panel {
+    padding: clamp(1.75rem, 4vw, 3rem);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: color-mix(in srgb, var(--bg-1) 82%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* The font size lives on the viewport so its em-based height below measures
+     the same rows the list is built from. */
+  .ly__viewport {
+    font-size: clamp(1.35rem, 2.6vw, 2rem);
+  }
+
+  .ly__lines {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Rows are padded, not gapped: equal-height rows are what lets the scroll
+     keyframes step by exact quarters of the list. One row = 1.2em line +
+     2 × 0.55em padding = 2.3em. Assumes every line stays on a single row. */
+  .ly__line {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    padding-block: 0.55em;
+    color: var(--ink-0);
+    /* Resting state: legible. Neighbours are softened statically rather than
+       by animating a filter. */
+    opacity: 0.3;
+  }
+
+  .ly__line:nth-child(odd) {
+    filter: blur(0.4px);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* A two-row window over the list; under reduced motion the whole list
+       simply shows, static. */
+    .ly__viewport {
+      height: 4.6em;
+      overflow: hidden;
+    }
+
+    /* The scroll itself. Percentages are quarters because there are FOUR
+       lines — keep in step with the array above. The list stops at -50% so
+       the final line sings from the bottom row, then the loop restart is the
+       snap back to the top. */
+    .ly__lines {
+      animation: ly-scroll var(--total) linear infinite;
+    }
+
+    /* Delay = (i × step) − total: negative (so every line is already
+       mid-animation at load, never in its unstyled pre-delay state) but
+       ordered FORWARD — line i peaks in slot i. The old −i × step ran the
+       highlight backwards through the list, which the scroll made obvious. */
+    .ly__line {
+      animation: ly-focus var(--total) linear infinite;
+      animation-delay: calc(var(--i) * var(--step) - var(--total));
+    }
+
+    /* The sweep itself — the same device as the hero's accent word. */
+    .ly__line > span {
+      background-image: linear-gradient(
+        90deg,
+        var(--accent-500) 0 50%,
+        currentColor 50% 100%
+      );
+      background-size: 200% 100%;
+      background-repeat: no-repeat;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: ly-sweep var(--total) linear infinite;
+      animation-delay: calc(var(--i) * var(--step) - var(--total));
+    }
+
+    .ly:not(:has(.ly__panel)) .ly__line,
+    .ly[data-paused] .ly__lines,
+    .ly[data-paused] .ly__line,
+    .ly[data-paused] .ly__line > span {
+      animation-play-state: paused;
+    }
+  }
+
+  @keyframes ly-scroll {
+    0%, 21% {
+      transform: translateY(0);
+    }
+    25%, 46% {
+      transform: translateY(-25%);
+    }
+    50%, 100% {
+      transform: translateY(-50%);
+    }
+  }
+
+  /* Each line holds focus for one slot of the loop. */
+  @keyframes ly-focus {
+    0% {
+      opacity: 1;
+    }
+    24% {
+      opacity: 1;
+    }
+    30% {
+      opacity: 0.3;
+    }
+    100% {
+      opacity: 0.3;
+    }
+  }
+
+  @keyframes ly-sweep {
+    0% {
+      background-position: 100% 0;
+    }
+    20% {
+      background-position: 0 0;
+    }
+    100% {
+      background-position: 0 0;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .ly__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  // Stop the loop repainting while the section is off screen.
+  const section = document.querySelector('.ly');
+
+  if (section && 'IntersectionObserver' in window) {
+    section.setAttribute('data-paused', '');
+    new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) section.removeAttribute('data-paused');
+          else section.setAttribute('data-paused', '');
+        }
+      },
+      { threshold: 0.15 }
+    ).observe(section);
+  }
+</script>

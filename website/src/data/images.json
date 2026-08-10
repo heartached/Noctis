@@ -1,0 +1,410 @@
+{
+  "home": {
+    "alt": "The Noctis home screen showing recently played albums and the playback bar.",
+    "role": "hero",
+    "width": 1280,
+    "height": 828,
+    "avif": [
+      {
+        "src": "/shots/home-1280.avif",
+        "width": 1280,
+        "height": 828,
+        "bytes": 88014
+      },
+      {
+        "src": "/shots/home-1927.avif",
+        "width": 1927,
+        "height": 1247,
+        "bytes": 151988
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/home-1280.webp",
+        "width": 1280,
+        "height": 828,
+        "bytes": 99940
+      },
+      {
+        "src": "/shots/home-1927.webp",
+        "width": 1927,
+        "height": 1247,
+        "bytes": 176794
+      }
+    ]
+  },
+  "lyrics-fullscreen": {
+    "alt": "Full-screen synced lyrics with the active line highlighted over an album-tinted background.",
+    "role": "showcase",
+    "width": 1100,
+    "height": 593,
+    "avif": [
+      {
+        "src": "/shots/lyrics-fullscreen-1100.avif",
+        "width": 1100,
+        "height": 593,
+        "bytes": 30641
+      },
+      {
+        "src": "/shots/lyrics-fullscreen-2200.avif",
+        "width": 2200,
+        "height": 1186,
+        "bytes": 63229
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/lyrics-fullscreen-1100.webp",
+        "width": 1100,
+        "height": 593,
+        "bytes": 40588
+      },
+      {
+        "src": "/shots/lyrics-fullscreen-2200.webp",
+        "width": 2200,
+        "height": 1186,
+        "bytes": 91236
+      }
+    ]
+  },
+  "cover-flow": {
+    "alt": "Cover Flow browsing, with album covers fanned in 3D around a centred album.",
+    "role": "showcase",
+    "width": 1100,
+    "height": 593,
+    "avif": [
+      {
+        "src": "/shots/cover-flow-1100.avif",
+        "width": 1100,
+        "height": 593,
+        "bytes": 35917
+      },
+      {
+        "src": "/shots/cover-flow-2200.avif",
+        "width": 2200,
+        "height": 1186,
+        "bytes": 96098
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/cover-flow-1100.webp",
+        "width": 1100,
+        "height": 593,
+        "bytes": 43956
+      },
+      {
+        "src": "/shots/cover-flow-2200.webp",
+        "width": 2200,
+        "height": 1186,
+        "bytes": 125744
+      }
+    ]
+  },
+  "albums-grid": {
+    "alt": "The album grid with the release-type filter open, narrowing to singles.",
+    "role": "showcase",
+    "width": 1100,
+    "height": 612,
+    "avif": [
+      {
+        "src": "/shots/albums-grid-1100.avif",
+        "width": 1100,
+        "height": 612,
+        "bytes": 90536
+      },
+      {
+        "src": "/shots/albums-grid-1858.avif",
+        "width": 1858,
+        "height": 1034,
+        "bytes": 180574
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/albums-grid-1100.webp",
+        "width": 1100,
+        "height": 612,
+        "bytes": 105776
+      },
+      {
+        "src": "/shots/albums-grid-1858.webp",
+        "width": 1858,
+        "height": 1034,
+        "bytes": 226936
+      }
+    ]
+  },
+  "lyrics-panel": {
+    "alt": "An album page with the lyrics panel open alongside the track list.",
+    "role": "showcase",
+    "width": 1100,
+    "height": 593,
+    "avif": [
+      {
+        "src": "/shots/lyrics-panel-1100.avif",
+        "width": 1100,
+        "height": 593,
+        "bytes": 30564
+      },
+      {
+        "src": "/shots/lyrics-panel-2200.avif",
+        "width": 2200,
+        "height": 1186,
+        "bytes": 77966
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/lyrics-panel-1100.webp",
+        "width": 1100,
+        "height": 593,
+        "bytes": 36548
+      },
+      {
+        "src": "/shots/lyrics-panel-2200.webp",
+        "width": 2200,
+        "height": 1186,
+        "bytes": 93860
+      }
+    ]
+  },
+  "settings-appearance": {
+    "alt": "The appearance settings, showing theme choices and the custom accent colour picker.",
+    "role": "card",
+    "width": 640,
+    "height": 256,
+    "avif": [
+      {
+        "src": "/shots/settings-appearance-640.avif",
+        "width": 640,
+        "height": 256,
+        "bytes": 12264
+      },
+      {
+        "src": "/shots/settings-appearance-1280.avif",
+        "width": 1280,
+        "height": 512,
+        "bytes": 27278
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/settings-appearance-640.webp",
+        "width": 640,
+        "height": 256,
+        "bytes": 14620
+      },
+      {
+        "src": "/shots/settings-appearance-1280.webp",
+        "width": 1280,
+        "height": 512,
+        "bytes": 34874
+      }
+    ]
+  },
+  "settings-eq": {
+    "alt": "The parametric equaliser with its frequency response curve and presets.",
+    "role": "card",
+    "width": 640,
+    "height": 345,
+    "avif": [
+      {
+        "src": "/shots/settings-eq-640.avif",
+        "width": 640,
+        "height": 345,
+        "bytes": 10251
+      },
+      {
+        "src": "/shots/settings-eq-1280.avif",
+        "width": 1280,
+        "height": 690,
+        "bytes": 30702
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/settings-eq-640.webp",
+        "width": 640,
+        "height": 345,
+        "bytes": 13450
+      },
+      {
+        "src": "/shots/settings-eq-1280.webp",
+        "width": 1280,
+        "height": 690,
+        "bytes": 38100
+      }
+    ]
+  },
+  "songs-hires": {
+    "alt": "The tag editor open over the songs list, with every metadata field editable.",
+    "role": "card",
+    "width": 640,
+    "height": 485,
+    "avif": [
+      {
+        "src": "/shots/songs-hires-640.avif",
+        "width": 640,
+        "height": 485,
+        "bytes": 18556
+      },
+      {
+        "src": "/shots/songs-hires-1280.avif",
+        "width": 1280,
+        "height": 970,
+        "bytes": 49196
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/songs-hires-640.webp",
+        "width": 640,
+        "height": 485,
+        "bytes": 18488
+      },
+      {
+        "src": "/shots/songs-hires-1280.webp",
+        "width": 1280,
+        "height": 970,
+        "bytes": 50032
+      }
+    ]
+  },
+  "album-detail": {
+    "alt": "An album page with cover art, description and track list.",
+    "role": "card",
+    "width": 640,
+    "height": 345,
+    "avif": [
+      {
+        "src": "/shots/album-detail-640.avif",
+        "width": 640,
+        "height": 345,
+        "bytes": 9527
+      },
+      {
+        "src": "/shots/album-detail-1280.avif",
+        "width": 1280,
+        "height": 690,
+        "bytes": 33203
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/album-detail-640.webp",
+        "width": 640,
+        "height": 345,
+        "bytes": 12046
+      },
+      {
+        "src": "/shots/album-detail-1280.webp",
+        "width": 1280,
+        "height": 690,
+        "bytes": 36646
+      }
+    ]
+  },
+  "artist-page": {
+    "alt": "An artist page with a header image, biography and discography.",
+    "role": "card",
+    "width": 640,
+    "height": 345,
+    "avif": [
+      {
+        "src": "/shots/artist-page-640.avif",
+        "width": 640,
+        "height": 345,
+        "bytes": 66005
+      },
+      {
+        "src": "/shots/artist-page-1280.avif",
+        "width": 1280,
+        "height": 690,
+        "bytes": 183320
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/artist-page-640.webp",
+        "width": 640,
+        "height": 345,
+        "bytes": 67594
+      },
+      {
+        "src": "/shots/artist-page-1280.webp",
+        "width": 1280,
+        "height": 690,
+        "bytes": 200116
+      }
+    ]
+  },
+  "artists-grid": {
+    "alt": "The artists grid with circular artist images.",
+    "role": "card",
+    "width": 640,
+    "height": 345,
+    "avif": [
+      {
+        "src": "/shots/artists-grid-640.avif",
+        "width": 640,
+        "height": 345,
+        "bytes": 31385
+      },
+      {
+        "src": "/shots/artists-grid-1280.avif",
+        "width": 1280,
+        "height": 690,
+        "bytes": 93832
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/artists-grid-640.webp",
+        "width": 640,
+        "height": 345,
+        "bytes": 33442
+      },
+      {
+        "src": "/shots/artists-grid-1280.webp",
+        "width": 1280,
+        "height": 690,
+        "bytes": 98186
+      }
+    ]
+  },
+  "queue-popup": {
+    "alt": "The play queue popup, showing what is playing next.",
+    "role": "card",
+    "width": 640,
+    "height": 345,
+    "avif": [
+      {
+        "src": "/shots/queue-popup-640.avif",
+        "width": 640,
+        "height": 345,
+        "bytes": 14526
+      },
+      {
+        "src": "/shots/queue-popup-1280.avif",
+        "width": 1280,
+        "height": 690,
+        "bytes": 51122
+      }
+    ],
+    "webp": [
+      {
+        "src": "/shots/queue-popup-640.webp",
+        "width": 640,
+        "height": 345,
+        "bytes": 17250
+      },
+      {
+        "src": "/shots/queue-popup-1280.webp",
+        "width": 1280,
+        "height": 690,
+        "bytes": 52980
+      }
+    ]
+  }
+}

@@ -1,0 +1,336 @@
+---
+/**
+ * Commands are transcribed from the app README's Install section, which is the
+ * source of truth. Homebrew and AUR are deliberately absent — Noctis does not
+ * publish to them, and inventing an install command that fails is worse than
+ * omitting it.
+ */
+const managers = [
+  { name: 'winget', command: 'winget install heartached.Noctis' },
+  {
+    name: 'Scoop',
+    command: 'scoop bucket add noctis https://github.com/heartached/scoop-bucket\nscoop install noctis',
+  },
+  { name: 'Chocolatey', command: 'choco install noctis' },
+];
+---
+
+<div class="pm" id="pm">
+  <button
+    class="btn btn--ghost btn--lg pm__trigger"
+    id="pm-trigger"
+    type="button"
+    popovertarget="pm-menu"
+    aria-label="Show package manager install commands"
+  >
+    Package managers
+    <svg class="pm__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="m6 9 6 6 6-6"></path>
+    </svg>
+  </button>
+
+  <div class="pm__menu" id="pm-menu" popover>
+    {/* One manager at a time, picked by a radio segmented control — the same
+        CSS-only pattern as the comparison tabs, thumb and all. Radios first,
+        so the :checked ~ selectors below can reach both the tab bar and the
+        bodies. Arrow keys switch tabs natively. */}
+    {
+      managers.map((_, i) => (
+        <input class="pm__radio visually-hidden" type="radio" name="pm-tab" id={`pm-tab-${i}`} checked={i === 0} />
+      ))
+    }
+
+    <div class="pm__tabs">
+      {
+        managers.map((m, i) => (
+          <label class="pm__tab" for={`pm-tab-${i}`}>
+            {m.name}
+          </label>
+        ))
+      }
+    </div>
+
+    {
+      managers.map((m, i) => (
+        <div class="pm__body" data-pm={i}>
+          {/* One pill per command line, so Scoop's two-step install reads as
+              two commands instead of one wrapped blob. The copy button still
+              carries the full multi-line command. */}
+          <div class="pm__cmd">
+            {m.command.split('\n').map((line) => (
+              <code class="pm__line mono">{line}</code>
+            ))}
+          </div>
+          <button class="pm__copy" type="button" data-copy={m.command} aria-label={`Copy the ${m.name} install command`}>
+            <svg class="pm__ico-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="9" y="9" width="11" height="11" rx="2" />
+              <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+            </svg>
+            <svg class="pm__ico-done" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m5 13 4 4L19 7" />
+            </svg>
+          </button>
+        </div>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  .pm {
+    position: relative;
+    display: inline-flex;
+    /* Anchor positioning where it exists; the .pm wrapper is the fallback. */
+    anchor-name: --pm-anchor;
+  }
+
+  .pm__chev {
+    width: 18px;
+    height: 18px;
+    transition: transform var(--t-fast) var(--ease);
+  }
+
+  .pm__trigger[aria-expanded='true'] .pm__chev {
+    transform: rotate(180deg);
+  }
+
+  .pm__menu {
+    position: absolute;
+    inset: auto;
+    margin: 0;
+    padding: var(--s-2);
+    width: min(340px, calc(100vw - 2 * var(--gutter)));
+    border: 1px solid var(--line);
+    /* Echoes the pill trigger above it rather than the square card radius. */
+    border-radius: 22px;
+    background: var(--bg-1);
+    box-shadow: var(--shadow-card);
+    color: var(--ink-0);
+    overflow: visible;
+  }
+
+  /* Fallback for engines that ship popover without anchor positioning
+     (Safari 17/18). A top-layer popover resolves `position: absolute` against
+     the initial containing block, NOT against .pm — measured: `top: 100%` put
+     the menu 1551px below the trigger, and dropping `top` entirely pinned it
+     to viewport 0. So there is no percentage offset that attaches it to the
+     button. A centred fixed sheet is unambiguous, always on screen, and needs
+     no scripting. Anchor-capable engines get the attached dropdown below. */
+  .pm__menu:popover-open {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+  }
+
+  @supports (position-anchor: --pm-anchor) {
+    .pm__menu {
+      position-anchor: --pm-anchor;
+      position-area: bottom;
+      margin-top: 10px;
+      position-try-fallbacks: flip-block, flip-inline;
+    }
+
+    /* Must also undo `position: fixed` from the fallback, or the anchored
+       menu detaches and floats near the viewport centre. */
+    .pm__menu:popover-open {
+      position: absolute;
+      top: auto;
+      left: auto;
+      translate: none;
+    }
+  }
+
+  /* Entry/exit. @starting-style gives the popover something to animate from.
+     Open and close share --t-base and the same path — it rises and fades in,
+     and sinks and fades out along the identical curve in reverse. */
+  .pm__menu {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+    transition:
+      opacity var(--t-base) var(--ease),
+      transform var(--t-base) var(--ease),
+      overlay var(--t-base) allow-discrete,
+      display var(--t-base) allow-discrete;
+  }
+
+  .pm__menu:popover-open {
+    opacity: 1;
+    transform: none;
+  }
+
+  @starting-style {
+    .pm__menu:popover-open {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.96);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pm__menu {
+      transition: none;
+      transform: none;
+    }
+  }
+
+  /* --- The manager tabs ---------------------------------------------------
+     Equal columns and a half-track thumb, exactly like the comparison tabs —
+     with three options the thumb is a third and translates by whole widths. */
+
+  .pm__tabs {
+    position: relative;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    padding: 3px;
+    border-radius: var(--r-pill);
+    background: var(--bg-2);
+    text-align: left;
+  }
+
+  .pm__tabs::before {
+    content: '';
+    position: absolute;
+    inset-block: 3px;
+    inset-inline-start: 3px;
+    width: calc((100% - 6px) / 3);
+    border-radius: var(--r-pill);
+    background: var(--accent-500);
+    box-shadow: 0 2px 8px var(--accent-glow);
+  }
+
+  #pm-tab-1:checked ~ .pm__tabs::before {
+    transform: translateX(100%);
+  }
+
+  #pm-tab-2:checked ~ .pm__tabs::before {
+    transform: translateX(200%);
+  }
+
+  .pm__tab {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding-inline: var(--s-3);
+    border-radius: var(--r-pill);
+    color: var(--ink-1);
+    font-size: var(--step--2);
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color var(--t-base) var(--ease);
+  }
+
+  #pm-tab-0:checked ~ .pm__tabs .pm__tab[for='pm-tab-0'],
+  #pm-tab-1:checked ~ .pm__tabs .pm__tab[for='pm-tab-1'],
+  #pm-tab-2:checked ~ .pm__tabs .pm__tab[for='pm-tab-2'] {
+    color: var(--on-accent);
+  }
+
+  /* The radios are visually hidden, so their focus ring paints on the label. */
+  #pm-tab-0:focus-visible ~ .pm__tabs .pm__tab[for='pm-tab-0'],
+  #pm-tab-1:focus-visible ~ .pm__tabs .pm__tab[for='pm-tab-1'],
+  #pm-tab-2:focus-visible ~ .pm__tabs .pm__tab[for='pm-tab-2'] {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .pm__tabs::before {
+      transition: transform var(--t-base) cubic-bezier(0.34, 1.45, 0.5, 1);
+    }
+  }
+
+  /* --- The active manager's command ---------------------------------------- */
+
+  .pm__body {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding: var(--s-3) var(--s-2) var(--s-1);
+    text-align: left;
+  }
+
+  #pm-tab-0:checked ~ .pm__body[data-pm='0'],
+  #pm-tab-1:checked ~ .pm__body[data-pm='1'],
+  #pm-tab-2:checked ~ .pm__body[data-pm='2'] {
+    display: flex;
+  }
+
+  .pm__copy {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    color: var(--ink-1);
+    transition:
+      color var(--t-instant) var(--ease),
+      border-color var(--t-instant) var(--ease),
+      background-color var(--t-instant) var(--ease);
+  }
+
+  .pm__copy:hover {
+    color: var(--on-accent);
+    background: var(--accent-500);
+    border-color: var(--accent-500);
+  }
+
+  .pm__copy svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .pm__ico-done {
+    display: none;
+  }
+
+  .pm__copy[data-copied] .pm__ico-copy {
+    display: none;
+  }
+
+  .pm__copy[data-copied] .pm__ico-done {
+    display: block;
+    color: var(--accent-text);
+  }
+
+  .pm__copy[data-copied]:hover .pm__ico-done {
+    color: var(--on-accent);
+  }
+
+  .pm__cmd {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s-1);
+    min-width: 0;
+  }
+
+  /* Quiet chips: the border went — three bordered pills inside a bordered row
+     inside a bordered menu was most of the clutter. */
+  .pm__line {
+    max-width: 100%;
+    padding: 4px 10px;
+    border-radius: var(--r-nested);
+    background: var(--bg-0);
+    color: var(--ink-1);
+    font-size: 0.75rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 640px) {
+    .pm {
+      width: 100%;
+    }
+    .pm__trigger {
+      width: 100%;
+    }
+  }
+</style>

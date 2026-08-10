@@ -1,0 +1,31 @@
+---
+/**
+ * The Noctis mark, traced from src/Noctis/Assets/Icons/Noctis Logo Clean.png.
+ * Inline so it costs no request and stays crisp at every size.
+ * Verified against the original raster with scripts/verify-logo.mjs.
+ */
+interface Props {
+  size?: number;
+  class?: string;
+}
+const { size = 34, class: className } = Astro.props;
+---
+
+<svg
+  class={className}
+  width={size}
+  height={size}
+  viewBox="0 0 2000 2000"
+  fill="none"
+  aria-hidden="true"
+  focusable="false"
+>
+  <circle cx="1000" cy="1000" r="1000" fill="#E74856"></circle>
+  <g fill="#fff">
+    <path d="M690 866 L690 593.5 A48 48 0 0 1 728.8 546.4 L1417.5 412.1 A55 55 0 0 1 1462 448.7 L1462 715.6 Z"></path>
+    <rect x="690" y="560" width="132" height="731"></rect>
+    <rect x="1329" y="410" width="133" height="879"></rect>
+    <ellipse cx="601.5" cy="1291" rx="220" ry="180"></ellipse>
+    <ellipse cx="1241.5" cy="1289" rx="220.5" ry="180"></ellipse>
+  </g>
+</svg>

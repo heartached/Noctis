@@ -1,0 +1,292 @@
+---
+import Logo from './Logo.astro';
+import BrandIcon from './BrandIcon.astro';
+import { links } from '../config/site';
+
+/* Resolved when the site is built, not when it is viewed — this is a static
+   page, so a client-side clock would be the only way to keep it truly current
+   and that is not worth a script for a copyright line. Rebuilding rolls it. */
+const year = new Date().getFullYear();
+
+/**
+ * The footer. Every destination here is a real, live URL from
+ * src/config/site.ts — nothing is invented, nothing is a placeholder.
+ *
+ */
+
+/* The install commands that used to sit here are gone, not lost: the hero's
+   "Package managers" popover carries the same three, and its Scoop entry
+   includes the bucket-add line this column linked out for. Two copies of a
+   command list is one more than can be kept correct. See PackageManagers.astro.
+
+   One column, not the old NOCTIS/MORE pair: GitHub and Discord moved into the
+   brand block's icon row, and what remained was two lists of two that shared
+   no real taxonomy. Everything left is a destination the icons don't cover.
+
+   Anchors carry the leading slash so the footer keeps working from /og and any
+   future sub-page — same convention as the header nav. */
+const exploreLinks = [
+  { label: 'Downloads', href: '/#download' },
+  { label: 'Changelog', href: '/changelog' },
+  { label: 'Releases', href: links.releases, external: true },
+  { label: 'Report a Bug', href: links.issues, external: true },
+];
+
+/* The same trio as the header actions — GitHub, Discord, Buy Me a Coffee —
+   in the quiet circular form; the header already carries the loud versions. */
+const social = [
+  { brand: 'github', href: links.repo, label: 'Noctis on GitHub' },
+  { brand: 'discord', href: links.discord, label: 'Join the Noctis Discord' },
+  { brand: 'buymeacoffee', href: links.support, label: 'Support Noctis on Buy Me a Coffee' },
+] as const;
+---
+
+<footer class="ft">
+  <div class="container">
+    <div class="ft__cols">
+      <div class="ft__about">
+        <a class="ft__brand" href="/" aria-label="Noctis — home">
+          <Logo size={26} />
+          <span class="ft__wordmark">Noctis</span>
+        </a>
+        <p class="ft__tagline">
+          A modern lossless music player built on Avalonia with rich library features.
+        </p>
+        <div class="ft__social">
+          {
+            social.map((item) => (
+              <a
+                class={`icon-btn icon-btn--${item.brand}`}
+                href={item.href}
+                target="_blank"
+                rel="noopener"
+                aria-label={item.label}
+              >
+                <BrandIcon brand={item.brand} />
+              </a>
+            ))
+          }
+        </div>
+      </div>
+
+      <nav class="ft__col" aria-labelledby="ft-explore">
+        <h2 class="eyebrow ft__head" id="ft-explore">Explore</h2>
+        <ul class="ft__list">
+          {
+            exploreLinks.map((item) => (
+              <li>
+                <a
+                  class="ft__link"
+                  href={item.href}
+                  {...(item.external ? { target: '_blank', rel: 'noopener' } : {})}
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+    </div>
+
+    <div class="ft__base">
+      <p class="ft__copy">© {year} Noctis · Open source under the MIT License.</p>
+      <p class="ft__sign">Yours Truly, heartached.</p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  /* ==========================================================================
+     Footer
+     ========================================================================== */
+
+  .ft {
+    position: relative;
+    border-top: 1px solid var(--line);
+    background: var(--bg-1);
+    padding-block-start: var(--s-7);
+    /* Added, not max()'d: this is the last element on the page, so the home
+       indicator would otherwise sit on top of the colophon. */
+    padding-block-end: calc(var(--s-7) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* The brand block leads and takes the slack; the single link column sits to
+     the right of it. Previously two sparse columns whose contents now live in
+     the brand block's icon row. */
+  .ft__cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+    gap: var(--s-7) var(--s-6);
+  }
+
+  .ft__about {
+    max-width: 34ch;
+  }
+
+  .ft__social {
+    display: flex;
+    gap: var(--s-3);
+    margin-top: var(--s-5);
+  }
+
+  /* Filled with each vendor's colour the way their kits use it — as a ground
+     under the mark, never as the mark itself. GitHub specifies no colour at
+     all, so its circle inverts with the theme (ink ground, paper mark), which
+     is exactly the invertocat treatment. Hovers darken the fill in place; the
+     base .icon-btn:hover accent repaint is overridden because red under the
+     octocat or the cup is nobody's brand. */
+  .ft__social .icon-btn {
+    border-color: transparent;
+  }
+
+  .ft__social .icon-btn--github {
+    background: var(--ink-0);
+    color: var(--bg-0);
+  }
+
+  .ft__social .icon-btn--github:hover {
+    background: color-mix(in srgb, var(--ink-0) 82%, var(--bg-0));
+    color: var(--bg-0);
+    border-color: transparent;
+  }
+
+  .ft__social .icon-btn--discord {
+    background: #5865f2;
+    color: #fff;
+  }
+
+  .ft__social .icon-btn--discord:hover {
+    background: #4752c4;
+    color: #fff;
+    border-color: transparent;
+  }
+
+  .ft__social .icon-btn--buymeacoffee {
+    background: #ffdd00;
+    color: #0d0c22;
+  }
+
+  .ft__social .icon-btn--buymeacoffee:hover {
+    background: #f2ce00;
+    color: #0d0c22;
+    border-color: transparent;
+  }
+
+  .ft__tagline {
+    margin-top: var(--s-4);
+    font-size: var(--step--1);
+    line-height: 1.6;
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+
+  .ft__head {
+    margin-bottom: var(--s-4);
+  }
+
+  .ft__list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ft__link {
+    display: inline-flex;
+    align-items: center;
+    /* 44px minimum touch target — the rows are the smallest hit areas here. */
+    min-height: 44px;
+    color: var(--ink-1);
+    font-size: var(--step--1);
+    text-decoration: none;
+    transition: color var(--t-instant) var(--ease);
+  }
+
+  /* A mouse does not need a 44px row, and four of them stacked at that height
+     stretched each list to ~180px of mostly air — which is what made the
+     columns read as sprawl. Tightened only where the pointer is accurate; a
+     touch device still gets the full target from the rule above. */
+  @media (pointer: fine) {
+    .ft__link {
+      min-height: 34px;
+    }
+  }
+
+  .ft__link:hover {
+    color: var(--ink-0);
+  }
+
+  /* --- Brand --------------------------------------------------------------- */
+
+  .ft__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: 44px;
+    text-decoration: none;
+  }
+
+  .ft__wordmark {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+  }
+
+  /* --- Colophon ------------------------------------------------------------ */
+
+  /* The theme switch lives in the sticky header only — it is on screen at
+     every scroll position, so a second copy down here would be redundant. */
+  .ft__base {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-3) var(--s-5);
+    /* Follows the columns directly now that the brand row is gone, so it
+       carries the separation that row used to provide. */
+    margin-top: var(--s-7);
+  }
+
+  .ft__copy {
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+
+  /* A signature, so it is set like one. Bricolage Grotesque has no italic and
+     the body face is upright-only, so both would be synthetically slanted here;
+     a real serif italic is the honest way to get this voice, and it is the one
+     place on the site that speaks in the first person. */
+  .ft__sign {
+    font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+    font-style: italic;
+    font-size: var(--step--1);
+    color: var(--ink-1);
+  }
+
+  /* --- Responsive ---------------------------------------------------------- */
+
+  @media (max-width: 760px) {
+    /* The brand block takes its own row and the link column follows under it,
+       rather than the brand being squeezed into half the width. */
+    .ft__cols {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--s-6);
+    }
+
+    .ft__about {
+      max-width: 52ch;
+    }
+  }
+
+  @media (max-width: 420px) {
+    /* Stacked at this width, so the signature reads as a following line rather
+       than as a column pushed hard to the right. */
+    .ft__base {
+      justify-content: flex-start;
+    }
+  }
+</style>

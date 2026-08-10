@@ -1,0 +1,254 @@
+/* ==========================================================================
+   Design tokens
+   One accent. Neutrals do the work; the accent marks the action.
+   Ramp derived from #E74856 in OKLCH — see scripts/accent-ramp.mjs.
+   ========================================================================== */
+
+:root {
+  /* --- Accent ------------------------------------------------------------ */
+  --accent-hue: 19.93;
+  --accent-chroma: 0.1947;
+
+  --accent-50: oklch(0.96 0.03 var(--accent-hue));
+  --accent-100: oklch(0.9 0.06 var(--accent-hue));
+  --accent-300: oklch(0.76 0.14 var(--accent-hue));
+  --accent-500: #e74856; /* canonical brand */
+  --accent-600: oklch(0.56 var(--accent-chroma) var(--accent-hue));
+  --accent-700: oklch(0.46 var(--accent-chroma) var(--accent-hue));
+  --accent-glow: oklch(0.6304 var(--accent-chroma) var(--accent-hue) / 0.35);
+
+  /* Accent at a value that clears 4.5:1 on the current page background.
+     Overridden per theme — never use --accent-500 for small text. */
+  --accent-text: var(--accent-500);
+  --on-accent: #fff;
+
+  /* --- Type ---------------------------------------------------------------
+     Bricolage Grotesque sets everything with a voice — headlines, card titles,
+     the wordmark. Hanken Grotesk sets everything that has to be read rather
+     than noticed. JetBrains Mono carries numbers, commands and labels.
+
+     Neither brand face has a true italic. Emphasis is the accent colour plus
+     the width axis (--wdth-tight), which is a deliberate swap, not a gap. */
+  --font-display: 'Bricolage Grotesque', 'Helvetica Neue', system-ui, sans-serif;
+  --font-body: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Ignored outright by any renderer that did not get the variable axes, so
+     this degrades to plain normal-width text rather than to a broken layout. */
+  --wdth-tight: 'wdth' 82;
+
+  --step-display: clamp(2.75rem, 7vw, 6.5rem);
+  --step-3: clamp(2rem, 4vw, 3.25rem);
+  --step-2: clamp(1.5rem, 2.4vw, 2rem);
+  --step-1: clamp(1.2rem, 1.4vw, 1.4rem);
+  /* Hanken Grotesk runs a shade smaller on the body than Inter did at the same
+     px, so the base step is nudged up to hold the same measured x-height. */
+  --step-0: clamp(1.02rem, 0.4vw + 0.92rem, 1.18rem);
+  --step--1: 0.8375rem;
+  --step--2: 0.76rem;
+
+  /* --- Space ------------------------------------------------------------- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --s-9: 96px;
+  --s-10: 128px;
+  --s-11: 160px;
+
+  /* Was clamp(5rem, 10vw, 10rem). Nine sections at 160px top AND bottom put
+     nearly three full viewports of pure air into the scroll. Tightened here
+     once rather than overridden section by section. */
+  --section-pad: clamp(3.25rem, 6.5vw, 6.5rem);
+  --gutter: clamp(1.25rem, 4vw, 2.5rem);
+  --max-w: 1200px;
+  --max-prose: 68ch;
+  --header-h: 68px;
+
+  /* --- Shape ------------------------------------------------------------- */
+  --r-pill: 999px;
+  --r-card: 20px;
+  --r-nested: 14px;
+
+  /* --- Motion ------------------------------------------------------------ */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+  --t-instant: 120ms;
+  --t-fast: 180ms;
+  --t-base: 240ms;
+  --t-slow: 520ms;
+}
+
+/* ==========================================================================
+   Dark theme — the default
+   ========================================================================== */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* The neutrals carry a few degrees of blue rather than sitting on pure grey.
+     The app is called Noctis; a flat neutral black reads as "no colour chosen",
+     a cool one reads as night. Small enough that nothing looks blue — big
+     enough that the red accent lands on a complement instead of on grey.
+     Every ink below was re-measured against the new --bg-0. */
+  --bg-0: #07080c;
+  --bg-1: #0c0e14;
+  --bg-2: #13151d;
+  --line: #1e2129;
+
+  --ink-0: #f2f3f7; /* 18.05:1 */
+  --ink-1: #a9a8b2; /* 8.51:1 */
+  /* --ink-2 carries real text (eyebrows, versions, install commands), so it has
+     to clear 4.5:1 in its own right — it is not a decorative grey. */
+  --ink-2: #7b7a84; /* 4.73:1 */
+
+  /* #E74856 on #07080C = 5.16:1 — clears body text. */
+  --accent-text: var(--accent-500);
+
+  /* "Live/current" green, used by the hero's release badge. Decorative — it
+     only ever paints a dot, never text — but it still gets a per-theme value:
+     this one is far too bright to sit on warm paper. */
+  --ok: #3fb950;
+
+  --grain-opacity: 0.03;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px -12px rgb(0 0 0 / 0.7);
+  --shadow-window: 0 2px 8px rgb(0 0 0 / 0.4), 0 40px 90px -30px rgb(0 0 0 / 0.9);
+}
+
+/* ==========================================================================
+   Light theme
+
+   The palette is declared once as --l-*. Two selectors then map it: the
+   explicit [data-theme='light'], and the no-JS prefers-color-scheme fallback.
+   A media query cannot join a selector list, so the mapping is unavoidably
+   written twice — but the VALUES are single-source, which is what actually
+   drifts. (It already did: the fallback block kept a stale --ink-2 that failed
+   contrast after the main block was corrected.)
+   ========================================================================== */
+
+:root {
+  /* The light theme runs the other way on purpose: warm paper against the cool
+     night of the dark theme, so the two are recognisably the same brand seen
+     under different light rather than one palette inverted. */
+  --l-bg-0: #faf9f7; /* warm off-white, never pure #FFF */
+  --l-bg-1: #ffffff;
+  --l-bg-2: #f1efec;
+  --l-line: #e4e0da;
+
+  --l-ink-0: #14110f; /* 18.06:1 */
+  --l-ink-1: #524c46; /* 8.15:1 */
+  /* Carries real text, so it clears AA in its own right. See the dark note. */
+  --l-ink-2: #76706a; /* 4.71:1 */
+
+  /* Deeper than the dark theme's green so it reads as green rather than as
+     glare against #FAF9F7. */
+  --l-ok: #1a7f37;
+
+  --l-shadow-card: 0 1px 2px rgb(20 17 15 / 0.04), 0 12px 32px -14px rgb(20 17 15 / 0.14);
+  --l-shadow-window: 0 2px 8px rgb(20 17 15 / 0.06), 0 40px 90px -34px rgb(20 17 15 / 0.28);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg-0: var(--l-bg-0);
+  --bg-1: var(--l-bg-1);
+  --bg-2: var(--l-bg-2);
+  --line: var(--l-line);
+
+  --ink-0: var(--l-ink-0);
+  --ink-1: var(--l-ink-1);
+  --ink-2: var(--l-ink-2);
+  --ok: var(--l-ok);
+
+  /* #E74856 on #FBFAF8 is only 3.69:1. accent-600 = 4.94:1. */
+  --accent-text: var(--accent-600);
+
+  --grain-opacity: 0;
+  --shadow-card: var(--l-shadow-card);
+  --shadow-window: var(--l-shadow-window);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+
+    --bg-0: var(--l-bg-0);
+    --bg-1: var(--l-bg-1);
+    --bg-2: var(--l-bg-2);
+    --line: var(--l-line);
+
+    --ink-0: var(--l-ink-0);
+    --ink-1: var(--l-ink-1);
+    --ink-2: var(--l-ink-2);
+    --ok: var(--l-ok);
+
+    --accent-text: var(--accent-600);
+
+    --grain-opacity: 0;
+    --shadow-card: var(--l-shadow-card);
+    --shadow-window: var(--l-shadow-window);
+  }
+}
+
+/* ==========================================================================
+   Section band
+   Alternating sections sit on one SOLID band colour — no accent wash, no
+   per-section hue rotation. On paper the band is #A2D4E3 exactly; at night
+   it is the same blue-cyan hue taken down to the dark theme's register, so
+   both themes keep the rhythm without a pastel field glaring out of a dark
+   page.
+   ========================================================================== */
+
+/* --surface always holds the section's own background colour, so anything that
+   needs an opaque fill inside it — a sticky table head, a group row — can
+   match the section instead of repainting --bg-0 and banding against it. */
+:root {
+  --surface: var(--bg-0);
+  /* Deep enough to sit in the dark register, saturated enough to read as
+     BLUE rather than as a smudge of grey — the previous #0f1c24 was too
+     close to the page black to look deliberate. */
+  --band: #132836;
+}
+
+:root[data-theme='light'] {
+  --band: #a2d4e3;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --band: #a2d4e3;
+  }
+}
+
+/* The chrome inks are remapped ON the band: the page's warm greys were
+   measured against the page backgrounds and both drift and fail contrast on
+   a blue field. Dark values sit here (dark is the default); the two light
+   selectors below carry the light remap. Every ink-2 value clears 4.5:1 on
+   its band. */
+[data-tint] {
+  --surface: var(--band);
+  --line: #26414f;
+  --bg-2: #1a3140;
+  --ink-2: #93a5b1;
+  background-color: var(--surface);
+}
+
+:root[data-theme='light'] [data-tint] {
+  --line: #8ab7c8;
+  --bg-2: #c9e2eb;
+  --ink-2: #3d5560;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) [data-tint] {
+    --line: #8ab7c8;
+    --bg-2: #c9e2eb;
+    --ink-2: #3d5560;
+  }
+}
