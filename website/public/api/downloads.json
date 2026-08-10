@@ -1,8 +1,8 @@
 {
-  "total": 5058,
+  "total": 5066,
   "byRelease": {
-    "v1.4.3": 11,
-    "v1.4.2": 84,
+    "v1.4.3": 18,
+    "v1.4.2": 85,
     "v1.4.1": 137,
     "v1.4.0": 147,
     "v1.3.9": 115,
@@ -58,7 +58,7 @@
       "name": "Noctis-v1.4.3-Setup.exe",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.4.3/Noctis-v1.4.3-Setup.exe",
       "size": 122877726,
-      "downloads": 4
+      "downloads": 7
     },
     "windowsPortable": {
       "name": "Noctis-windows-x64.zip",
@@ -82,13 +82,13 @@
       "name": "Noctis-x86_64.AppImage",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.4.3/Noctis-x86_64.AppImage",
       "size": 168987128,
-      "downloads": 2
+      "downloads": 3
     },
     "linuxArm": {
       "name": "Noctis-linux-arm64.tar.gz",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.4.3/Noctis-linux-arm64.tar.gz",
       "size": 98437920,
-      "downloads": 0
+      "downloads": 1
     },
     "linuxTar": {
       "name": "Noctis-linux-x64.tar.gz",
@@ -100,7 +100,7 @@
       "name": "SHA256SUMS",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.4.3/SHA256SUMS",
       "size": 803,
-      "downloads": 4
+      "downloads": 6
     }
   },
   "sizes": {
@@ -113,6 +113,6 @@
     "linuxTar": "101 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-08-10T20:26:27.366Z",
+  "updatedAt": "2026-08-10T21:22:48.401Z",
   "degraded": false
 }
