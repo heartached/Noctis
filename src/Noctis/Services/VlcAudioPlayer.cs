@@ -172,6 +172,21 @@ public class VlcAudioPlayer : IAudioPlayer
     private string? _devBridgeLastMsg;
     private long _devBridgeLastTicks;
 
+    // Pre-error context ring. Whatever levels VLC emits land here in memory (no I/O)
+    // and the last DevBridgeRingSize are flushed to the session log when an Error
+    // arrives, recovering two things the plain bridge throws away: sub-second ordering
+    // (the session log stamps only to the second, so a dropout cluster arrives
+    // unordered) and the un-collapsed run of warnings before the error, which is what
+    // separates a one-off from a spiral. NOTE: at the default verbosity VLC emits only
+    // warnings and errors to the callback, so the Debug-level mmdevice underrun /
+    // demux-timing chatter that would settle input-vs-output starvation still needs
+    // NOCTIS_VLC_LOG=1 (which adds --verbose=2 at construction).
+    private const int DevBridgeRingSize = 40;
+    private const int DevBridgeContextCooldownSec = 60;
+    private readonly string?[] _devBridgeRing = new string?[DevBridgeRingSize];
+    private int _devBridgeRingNext;
+    private long _devBridgeLastContextTicks;
+
     // Serializes Play/Stop operations so rapid track switching
     // (e.g. spamming Next) doesn't overlap Stop+Play calls.
     private readonly SemaphoreSlim _playbackLock = new(1, 1);
@@ -3473,7 +3488,12 @@ public class VlcAudioPlayer : IAudioPlayer
         if (tickPrevTicks != 0 && !_isPaused && _currentMedia != null)
         {
             var gapMs = (tickNowTicks - tickPrevTicks) / TimeSpan.TicksPerMillisecond;
-            if (gapMs is > 750 and < 10_000)
+            // Was "> 750 and < 10_000", which straddled the evidence on both sides: a
+            // dropout costing ~1s of clock can stall well under 750ms, and the upper
+            // bound silently discarded the long freezes that most need reporting.
+            // 250ms is still 2.5x the 100ms cadence, so ordinary scheduling jitter
+            // stays quiet.
+            if (gapMs > 250)
             {
                 DebugLogger.Info(DebugLogger.Category.Playback, "PositionTimer.Stall", $"gapMs={gapMs}");
                 // Also mirrored into the dev-mode session log: this marker next to
@@ -3935,19 +3955,60 @@ public class VlcAudioPlayer : IAudioPlayer
 
     private void OnVlcLogForBridge(object? sender, LogEventArgs e)
     {
-        if (e.Level is not (LogLevel.Warning or LogLevel.Error)) return;
         var msg = $"{e.Level} {e.Module}: {e.Message}";
-        // Collapse identical repeats within 2s — a stutter spiral can emit the
-        // same "playback too late" line many times per second, which would
-        // flush the bounded session log.
         var now = Stopwatch.GetTimestamp();
+
+        // Runs on the VLC thread that emitted the line, so everything under this lock
+        // must stay allocation-light and I/O-free — blocking here blocks a demux or
+        // aout thread, which is the very stall we are trying to catch.
+        string[]? context = null;
         lock (_devBridgeLock)
         {
-            if (msg == _devBridgeLastMsg && now - _devBridgeLastTicks < Stopwatch.Frequency * 2) return;
+            _devBridgeRing[_devBridgeRingNext] = $"{DateTime.Now:HH:mm:ss.fff} {msg}";
+            _devBridgeRingNext = (_devBridgeRingNext + 1) % DevBridgeRingSize;
+
+            if (e.Level == LogLevel.Error &&
+                (_devBridgeLastContextTicks == 0 ||
+                 now - _devBridgeLastContextTicks > Stopwatch.Frequency * DevBridgeContextCooldownSec))
+            {
+                _devBridgeLastContextTicks = now;
+                context = SnapshotDevBridgeRingLocked();
+            }
+
+            if (e.Level is not (LogLevel.Warning or LogLevel.Error)) return;
+
+            // Collapse identical repeats within 2s — a stutter spiral can emit the
+            // same "playback too late" line many times per second, which would
+            // flush the bounded session log. An Error that carries context is never
+            // collapsed: dropping it would strand the ring dump with no cause line.
+            if (context == null && msg == _devBridgeLastMsg &&
+                now - _devBridgeLastTicks < Stopwatch.Frequency * 2) return;
             _devBridgeLastMsg = msg;
             _devBridgeLastTicks = now;
         }
+
         DebugLog.Write("VLC", msg);
+
+        // Cooldown-limited, so a spiral dumps the ring once rather than per error.
+        if (context != null)
+        {
+            DebugLog.Write("VLC", $"── last {context.Length} engine lines before the error ──");
+            foreach (var line in context)
+                DebugLog.Write("VLC", "  " + line);
+            DebugLog.Write("VLC", "── end context ──");
+        }
+    }
+
+    /// <summary>Ring contents oldest-first. Caller holds <c>_devBridgeLock</c>.</summary>
+    private string[] SnapshotDevBridgeRingLocked()
+    {
+        var ordered = new List<string>(DevBridgeRingSize);
+        for (var i = 0; i < DevBridgeRingSize; i++)
+        {
+            var line = _devBridgeRing[(_devBridgeRingNext + i) % DevBridgeRingSize];
+            if (line != null) ordered.Add(line);
+        }
+        return ordered.ToArray();
     }
 
     private void WriteVlcDiag(string line)

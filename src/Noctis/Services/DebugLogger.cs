@@ -25,6 +25,24 @@ public static class DebugLogger
     /// <summary>Master switch. When false, Log() is a no-op.</summary>
     public static bool IsEnabled { get; set; }
 
+    /// <summary>
+    /// Mirrors <see cref="Category.Playback"/> entries into <see cref="DebugLog"/>, the
+    /// session log behind Settings → Developer Mode → "Copy Logs".
+    /// <para>
+    /// Without this, entries here reached only the in-app debug panel, so a bug report
+    /// carrying a full session log still had no record of device changes, keep-alive
+    /// errors or session-volume resolution — the audio-dropout evidence. Playback only:
+    /// the other categories are UI chatter that would flush DebugLog's 500-line ring.
+    /// </para>
+    /// </summary>
+    public static bool MirrorPlaybackToSessionLog { get; set; }
+
+    /// <summary>Actions that already write to <see cref="DebugLog"/> at their call site
+    /// (they must be recorded even when this logger is off), so mirroring them would
+    /// double every line.</summary>
+    private static readonly HashSet<string> SessionLogSelfWriters =
+        new(StringComparer.Ordinal) { "PositionTimer.Stall" };
+
     /// <summary>Also write to System.Diagnostics.Debug output.</summary>
     public static bool MirrorToDebugOutput { get; set; }
 #if DEBUG
@@ -49,6 +67,13 @@ public static class DebugLogger
         {
             var meta = metadata != null ? $" | {metadata}" : "";
             System.Diagnostics.Debug.WriteLine($"[DBG:{category}:{level}] {action}{meta}");
+        }
+
+        if (MirrorPlaybackToSessionLog && category == Category.Playback &&
+            !SessionLogSelfWriters.Contains(action))
+        {
+            var meta = metadata != null ? $" | {metadata}" : "";
+            DebugLog.Write("Playback", level == Level.Info ? $"{action}{meta}" : $"{level}: {action}{meta}");
         }
 
         EntryAdded?.Invoke(entry);

@@ -4209,6 +4209,15 @@ public partial class SettingsViewModel : ViewModelBase
 
         if (value)
         {
+            // Dev mode used to enable the VLC bridge but leave DebugLogger off, so
+            // every Playback/KeepAlive/SessionVolume entry was a no-op in the one log
+            // users actually send — a device change mid-dropout left no trace at all.
+            // Only ever turned on here: the debug panel enables it independently and
+            // deliberately keeps it on after closing, so switching dev mode off must
+            // not silently kill logging someone else asked for.
+            DebugLogger.IsEnabled = true;
+            DebugLogger.MirrorPlaybackToSessionLog = true;
+
             PreservedCrashBanner = CrashJournal.PreservedBanner;
             DevLogText = ComposeDevLogText();
             _ = RefreshReleasesAsync();
