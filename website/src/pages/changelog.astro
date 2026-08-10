@@ -1,0 +1,454 @@
+---
+import Base from '../layouts/Base.astro';
+import Community from '../components/Community.astro';
+import BrandIcon from '../components/BrandIcon.astro';
+import { links } from '../config/site';
+import changelog from '../data/changelog.json';
+
+/**
+ * Every stable release, newest first, rendered from src/data/changelog.json —
+ * written by scripts/fetch-changelog.mjs at build time and refreshed by the
+ * workflow that fires on `release: published`. Nothing here calls GitHub at
+ * runtime and nothing is hand-maintained: publishing a release is the only
+ * step, and this page follows within about a minute.
+ *
+ * Bullet text arrives as plain strings and is interpolated as text, never as
+ * markup. That is deliberate — release bodies are remote input and the site
+ * ships a hash-based CSP.
+ */
+const { releases } = changelog as {
+  releases: {
+    tag: string;
+    version: string;
+    publishedAt: string;
+    url: string;
+    sections: { title: string | null; items: string[] }[];
+  }[];
+};
+
+/* Fixed to UTC so the rendered date can't shift with the build machine's zone. */
+const dateFmt = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+const monthFmt = new Intl.DateTimeFormat('en-US', {
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+const total = releases.reduce(
+  (n, r) => n + r.sections.reduce((m, s) => m + s.items.length, 0),
+  0
+);
+
+/* Oldest release, for the "since <month>" in the lede. */
+const first = releases.at(-1);
+
+/**
+ * Hand-written copy for releases that shipped without notes. The parser has
+ * nothing to show for them, and "No release notes" is a poor thing to end a
+ * page on — v1.0.0 is the start of the whole project, not a gap in the record.
+ *
+ * Keyed by tag, so an entry here only ever applies to the release it names.
+ */
+const PROLOGUE: Record<string, { title: string; body: string }> = {
+  'v1.0.0': {
+    title: 'The beginning of Noctis',
+    body: 'The first public build. Everything on this page started here.',
+  },
+};
+---
+
+<Base
+  title="Noctis · Changelog"
+  description="Every Noctis release, with the new features, improvements and bug fixes that shipped in each one. Generated from the GitHub releases."
+  path="/changelog"
+>
+  <section class="section cl" aria-labelledby="cl-title">
+    <div class="container">
+      <header class="cl__head">
+        <h1 class="display" id="cl-title">Changelog</h1>
+        <p class="lede cl__lede">
+          Every fix, every feature, in the order it shipped. That’s {releases.length} releases and{' '}
+          {total.toLocaleString('en-US')} changes{
+            first && ` since ${monthFmt.format(new Date(first.publishedAt))}`
+          }.
+        </p>
+      </header>
+
+      <ol class="cl__list" role="list">
+        {
+          releases.map((r) => (
+            <li class="cl__entry">
+              <div class="cl__rail">
+                <a
+                  class="cl__pill mono"
+                  href={r.url}
+                  target="_blank"
+                  rel="noopener"
+                  aria-label={`Release ${r.tag} on GitHub`}
+                >
+                  {r.version}
+                </a>
+                <time class="cl__date" datetime={r.publishedAt}>
+                  {dateFmt.format(new Date(r.publishedAt))}
+                </time>
+              </div>
+
+              <div class="cl__body">
+                {/* The id lives on the heading so a #v1.4.2 link lands on the
+                    version rather than a wrapper above it. */}
+                <h2 class="cl__version" id={r.tag}>
+                  <a class="cl__anchor" href={`#${r.tag}`}>{r.version}</a>
+                </h2>
+
+                {r.sections.length === 0 ? (
+                  PROLOGUE[r.tag] ? (
+                    <div class="cl__prologue">
+                      <p class="cl__prologue-title">{PROLOGUE[r.tag].title}</p>
+                      <p class="cl__prologue-body">{PROLOGUE[r.tag].body}</p>
+                    </div>
+                  ) : (
+                    <p class="cl__none">
+                      No release notes.{' '}
+                      <a href={r.url} target="_blank" rel="noopener">
+                        View on GitHub
+                      </a>
+                    </p>
+                  )
+                ) : (
+                  r.sections.map((s) => (
+                    <div class="cl__group">
+                      {s.title && <h3 class="cl__kind">{s.title}</h3>}
+                      <ul class="cl__items">
+                        {s.items.map((item) => (
+                          <li>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))
+                )}
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+
+      <p class="cl__foot">
+        <a class="btn cl__gh" href={links.releases} target="_blank" rel="noopener">
+          <BrandIcon brand="github" />
+          Every release, on GitHub
+        </a>
+      </p>
+    </div>
+  </section>
+
+  {/* 41 releases is a long way down, and the nav is at the top. Hidden until
+      the page heading has scrolled away, so it never covers content on a
+      screen that has not moved yet. */}
+  <a class="totop" href="#cl-title" data-to-top aria-label="Back to top">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 19V5M6 11l6-6 6 6" />
+    </svg>
+  </a>
+
+  <Community slot="footer" />
+</Base>
+
+<style>
+  /* The last entry, the GitHub button and the footer were stacking three full
+     rests on top of each other. The page ends on one. */
+  .cl {
+    padding-bottom: var(--s-8);
+  }
+
+  .cl__head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: var(--s-10);
+  }
+
+  .cl__lede {
+    margin-top: var(--s-5);
+    max-width: 52ch;
+    /* Two lines with a count in them: balance stops the second line from
+       ending up as a stray "41". */
+    text-wrap: balance;
+  }
+
+  .cl__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    /* Narrower than the page: 1131 bullets at full container width would set
+       lines far past a comfortable measure. */
+    max-width: 62rem;
+    margin-inline: auto;
+  }
+
+  /* Rail and body. The rail is a fixed column so every version pill lands on
+     the same x however long the version string gets. */
+  .cl__entry {
+    display: grid;
+    grid-template-columns: 8rem 1fr;
+    gap: var(--s-7);
+    padding-block: var(--s-8);
+    border-top: 1px solid var(--line);
+  }
+
+  .cl__entry:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .cl__entry:last-child {
+    padding-bottom: var(--s-5);
+  }
+
+  /* Sticky so the version and date stay with you through a release that runs
+     to eighty lines — the point of the rail is knowing which one you're in. */
+  .cl__rail {
+    position: sticky;
+    top: calc(var(--header-h) + var(--s-5));
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s-4);
+  }
+
+  .cl__pill {
+    padding: var(--s-1) var(--s-3);
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--accent-500) 14%, transparent);
+    color: var(--accent-text);
+    font-size: var(--step--1);
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+      background-color var(--t-instant) var(--ease),
+      color var(--t-instant) var(--ease);
+  }
+
+  .cl__pill:hover {
+    background: var(--accent-500);
+    color: var(--on-accent);
+  }
+
+  .cl__date {
+    color: var(--ink-2);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cl__version {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-weight: 700;
+    font-size: var(--step-2);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--s-6);
+  }
+
+  /* A permalink that doesn't announce itself as one — no underline at rest,
+     the accent on hover, and the whole version is the target. */
+  .cl__anchor {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .cl__anchor:hover {
+    color: var(--accent-text);
+  }
+
+  .cl__group + .cl__group {
+    margin-top: var(--s-6);
+  }
+
+  .cl__kind {
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: var(--s-3);
+  }
+
+  .cl__items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    margin: 0;
+    padding-inline-start: var(--s-5);
+    color: var(--ink-1);
+    /* The list sits inside an <ol> item, so the UA's nested-list rule would
+       hand it hollow circles. These are top-level changes, not sub-points. */
+    list-style-type: disc;
+  }
+
+  .cl__items li {
+    /* Long entries wrap often; a slightly tighter leading keeps a 12-item list
+       reading as one block rather than a stack of paragraphs. */
+    line-height: 1.5;
+    text-wrap: pretty;
+  }
+
+  .cl__items li::marker {
+    color: var(--ink-2);
+  }
+
+  .cl__none {
+    color: var(--ink-2);
+  }
+
+  /* v1.0.0 shipped without notes. Rather than an apology for missing data, it
+     gets the one piece of hand-written copy on the page — it is the bottom of
+     the scroll and the start of the project. */
+  .cl__prologue-title {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-size: var(--step-1);
+    letter-spacing: -0.02em;
+    margin-bottom: var(--s-2);
+  }
+
+  .cl__prologue-body {
+    color: var(--ink-1);
+    max-width: 52ch;
+    text-wrap: pretty;
+  }
+
+  .cl__foot {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--s-7);
+  }
+
+  /* --- Back to top -------------------------------------------------------- */
+
+  /* Under the header's z-index, over everything else. `visibility` rather than
+     opacity alone so the hidden state is also out of the tab order. */
+  .totop {
+    position: fixed;
+    z-index: 90;
+    inset-block-end: max(var(--s-5), env(safe-area-inset-bottom));
+    inset-inline-end: max(var(--s-5), env(safe-area-inset-right));
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--bg-1) 82%, transparent);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: 0 6px 22px color-mix(in srgb, #000 26%, transparent);
+    color: var(--ink-1);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+  }
+
+  .totop svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .totop[data-on] {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+
+  .totop:hover {
+    color: var(--on-accent);
+    background: var(--accent-500);
+    border-color: var(--accent-500);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .totop {
+      transition:
+        opacity var(--t-base) var(--ease),
+        transform var(--t-base) var(--ease),
+        visibility var(--t-base) var(--ease),
+        color var(--t-instant) var(--ease),
+        background-color var(--t-instant) var(--ease),
+        border-color var(--t-instant) var(--ease);
+    }
+
+    .totop:hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  /* GitHub's mark is specified monochrome on a solid field: black on light,
+     white on dark. Driving the fill from --ink-0 and the mark from --bg-0 gets
+     both from one rule — a black pill on the light theme, a white one on the
+     dark theme — and the pill can never sink into the page behind it the way a
+     fixed GitHub black did at #07080c. */
+  .cl__gh {
+    --btn-bg: var(--ink-0);
+    --btn-fg: var(--bg-0);
+    --btn-bd: transparent;
+  }
+
+  .cl__gh:hover {
+    --btn-bg: color-mix(in srgb, var(--ink-0) 88%, var(--bg-0));
+  }
+
+  .cl__gh :global(svg) {
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
+
+  @media (max-width: 720px) {
+    /* The rail stops being a column and becomes a header line: pill and date
+       side by side above the changes, with no sticky behaviour to fight the
+       small viewport. */
+    .cl__entry {
+      grid-template-columns: 1fr;
+      gap: var(--s-5);
+      padding-block: var(--s-8);
+    }
+
+    .cl__rail {
+      position: static;
+      flex-direction: row;
+      align-items: baseline;
+      gap: var(--s-3);
+    }
+
+    .cl__version {
+      margin-bottom: var(--s-5);
+    }
+  }
+</style>
+
+{/*
+  Reveal is driven by an observer on the page heading rather than a scroll
+  listener: no work on any frame where nothing crossed the edge.
+
+  Not the scroll-timeline trick the header uses. iOS Safari reports support for
+  `animation-timeline: scroll(root)` and then never runs it, which the header
+  can absorb by resting in its settled state — a button that defaults to
+  invisible could not, and would simply never appear on an iPhone.
+*/}
+<script>
+  const btn = document.querySelector<HTMLElement>('[data-to-top]');
+  const head = document.querySelector('.cl__head');
+
+  if (btn && head) {
+    new IntersectionObserver(([entry]) => {
+      btn.toggleAttribute('data-on', !entry.isIntersecting);
+    }).observe(head);
+  }
+</script>

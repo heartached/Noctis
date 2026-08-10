@@ -1,0 +1,379 @@
+---
+import Screenshot from './Screenshot.astro';
+import PackageManagers from './PackageManagers.astro';
+import PlatformIcon from './PlatformIcon.astro';
+import { links } from '../config/site';
+import { assetUrl, downloadsFormatted, versionLabel, release } from '../lib/release';
+
+/**
+ * The primary CTA is rendered once per platform and the non-matching two are
+ * removed by CSS off a `data-os` attribute set before first paint. Correct
+ * label with zero layout shift, and with JS disabled the Windows build is
+ * offered — the majority case.
+ */
+const ctas = [
+  { os: 'windows', label: 'Windows', href: assetUrl('windowsInstaller') },
+  { os: 'macos', label: 'macOS', href: assetUrl('macosArm') },
+  { os: 'linux', label: 'Linux', href: assetUrl('linuxAppImage') },
+] as const;
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero__grid container">
+    <div class="hero__copy">
+      {/* Replaces the "Open source / MIT / v1.3.5" run-on. The version is the
+          only part of that line that changes and the only part worth clicking,
+          so it is the whole badge now — licence and source live in the footer
+          and one scroll down respectively. */}
+      <a
+        class="verpill hero-in"
+        style="--i:0"
+        href={release.latestUrl}
+        target="_blank"
+        rel="noopener"
+        data-release-link
+      >
+        <span class="verpill__dot" aria-hidden="true"></span>
+        <span class="verpill__ver mono" data-release-version>{versionLabel ?? 'Latest'}</span>
+        <span class="verpill__tag">latest release</span>
+        <svg class="verpill__arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      </a>
+
+      <h1 class="display hero__title" id="hero-title">
+        <span class="reveal-line" style="--line-i:0"><span>A music player</span></span>
+        <span class="reveal-line" style="--line-i:1"><span>that respects</span></span>
+        <span class="reveal-line" style="--line-i:2"><span>what’s <em>yours</em>.</span></span>
+      </h1>
+
+      <div class="hero__cta hero-in" style="--i:1">
+        {
+          ctas.map((c) => (
+            <a class="btn btn--primary btn--lg hero__dl" data-os-cta={c.os} href={c.href}>
+              <PlatformIcon os={c.os} />
+              Download for {c.label}
+            </a>
+          ))
+        }
+
+        <PackageManagers />
+      </div>
+
+      <p class="hero__sub hero-in" style="--i:2">
+        {
+          downloadsFormatted && (
+            <>
+              <span class="mono hero__count" data-download-total={release.total}>
+                {downloadsFormatted}
+              </span>
+              <span class="mono hero__sub-label">downloads</span>
+              <span class="hero__sub-sep" aria-hidden="true">·</span>
+            </>
+          )
+        }
+        <a class="hero__repo mono" href={links.repo} target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"
+            ><path
+              d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.3-1.8-1.3-1.8-1.1-.7 0-.7 0-.7 1.2 0 1.9 1.2 1.9 1.2 1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2 0-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.7 18 5 18 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z"
+            ></path></svg
+          >
+          Source on GitHub
+        </a>
+      </p>
+    </div>
+
+    <div class="hero__stage">
+      <div class="hero__window rise">
+        <div class="hero__chrome" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <Screenshot
+          name="home"
+          eager
+          sizes="(min-width: 1100px) 900px, 100vw"
+          class="hero__shot"
+        />
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    padding-block: clamp(3rem, 7vw, 6.5rem) clamp(3.5rem, 8vw, 7rem);
+    overflow: clip;
+  }
+
+  .hero__grid {
+    position: relative;
+    display: grid;
+    /* Copy column takes the larger share: it has to hold a 3-line display
+       headline and a two-button CTA row on one line. */
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(2.5rem, 4.5vw, 4.5rem);
+  }
+
+  /* --- Copy column -------------------------------------------------------- */
+
+  /* --- Version badge ------------------------------------------------------ */
+
+  /* Block-level and shrink-wrapped, not inline-flex: .hero__copy is a plain
+     block, so an inline badge would sit on a text baseline and carry half a
+     line of descender space under it that margin-bottom could not account for. */
+  .verpill {
+    display: flex;
+    width: fit-content;
+    align-items: center;
+    gap: var(--s-2);
+    margin-bottom: var(--s-6);
+    padding: 6px 10px 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--bg-2) 70%, transparent);
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+      border-color var(--t-instant) var(--ease),
+      background-color var(--t-instant) var(--ease);
+  }
+
+  .verpill:hover {
+    border-color: color-mix(in srgb, var(--ok) 45%, var(--line));
+    background: color-mix(in srgb, var(--bg-2) 100%, transparent);
+  }
+
+  /* Sized in em so the ring scales with the badge rather than drifting. */
+  .verpill__dot {
+    width: 0.5em;
+    height: 0.5em;
+    flex: none;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent);
+  }
+
+  .verpill__ver {
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--ink-0);
+    letter-spacing: -0.01em;
+  }
+
+  .verpill__tag {
+    font-size: var(--step--2);
+    color: var(--ink-2);
+  }
+
+  .verpill__arw {
+    width: 13px;
+    height: 13px;
+    color: var(--ink-2);
+    transition: transform var(--t-base) var(--ease);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .verpill:hover .verpill__arw {
+      transform: translateX(2px);
+    }
+
+    /* Slow, low-amplitude — a release badge should read as live, not as an
+       alert. Only the ring animates; the dot itself stays put. */
+    .verpill__dot {
+      animation: verpill-breathe 2.8s var(--ease) infinite;
+    }
+  }
+
+  @keyframes verpill-breathe {
+    0%,
+    100% {
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent);
+    }
+    50% {
+      box-shadow: 0 0 0 5px color-mix(in srgb, var(--ok) 6%, transparent);
+    }
+  }
+
+  @media (max-width: 520px) {
+    .verpill__tag {
+      display: none;
+    }
+  }
+
+  .hero__title {
+    /* Ragged right, hard left, with authored line breaks. Scaled to the COPY
+       COLUMN, not the viewport — the global --step-display is tuned for a
+       full-width centred headline and overflows badly at this width. */
+    font-size: clamp(2.4rem, 5vw, 4.75rem);
+    max-width: none;
+    /* The lede that used to separate the headline from the buttons is gone, so
+       the headline now owns that space itself. */
+    margin-bottom: var(--s-7);
+  }
+
+  .hero__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+  }
+
+  /* Trimmed from the global --btn--lg inline padding so the primary and the
+     package-manager trigger share one row at 1280px and up. */
+  .hero__cta :global(.btn--lg) {
+    padding-inline: var(--s-6);
+  }
+
+  .hero__dl {
+    display: none;
+    /* Up from the 20px base: the platform marks are narrow next to 1.05rem
+       text, so the download CTA carries a slightly larger glyph. */
+    --btn-icon: 23px;
+  }
+
+  /* Only the detected platform's button stays in the DOM tree that matters —
+     display:none also keeps the other two out of the accessibility tree. */
+  :global(html:not([data-os])) .hero__dl[data-os-cta='windows'],
+  :global(html[data-os='windows']) .hero__dl[data-os-cta='windows'],
+  :global(html[data-os='macos']) .hero__dl[data-os-cta='macos'],
+  :global(html[data-os='linux']) .hero__dl[data-os-cta='linux'] {
+    display: inline-flex;
+  }
+
+  .hero__sub {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6ch;
+    margin-top: var(--s-6);
+    font-size: var(--step--1);
+  }
+
+  .hero__count {
+    color: var(--accent-text);
+    font-weight: 600;
+  }
+
+  .hero__sub-label,
+  .hero__sub-sep {
+    color: var(--ink-2);
+  }
+
+  .hero__sub-sep {
+    margin-inline: 0.4ch;
+  }
+
+  .hero__repo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6ch;
+    color: var(--ink-2);
+    text-decoration: none;
+    transition: color var(--t-instant) var(--ease);
+  }
+
+  .hero__repo svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .hero__repo:hover {
+    color: var(--ink-0);
+  }
+
+  /* --- Window column ------------------------------------------------------ */
+
+  .hero__stage {
+    position: relative;
+    perspective: 1600px;
+  }
+
+  /* Wider than its column and pushed past the gutter, so the library runs off
+     the edge of the page the way it runs off the edge of the app. */
+  .hero__window {
+    position: relative;
+    width: 132%;
+    border: 1px solid var(--line);
+    border-top-color: color-mix(in srgb, var(--ink-0) 14%, var(--line));
+    border-radius: var(--r-card);
+    background: var(--bg-1);
+    box-shadow: var(--shadow-window);
+    overflow: hidden;
+    transform-origin: left center;
+    rotate: -1.4deg;
+  }
+
+  .hero__chrome {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px var(--s-4);
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-2);
+  }
+
+  .hero__chrome span {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--line);
+  }
+
+  .hero__window :global(.hero__shot img) {
+    width: 100%;
+    height: auto;
+  }
+
+  /* --- Responsive --------------------------------------------------------- */
+
+  /* Below this the copy column is too narrow to hold the CTA row on one line,
+     and a single column gives both the headline and the window more room. */
+  @media (max-width: 1180px) {
+    .hero__grid {
+      grid-template-columns: 1fr;
+      gap: clamp(2.5rem, 7vw, 4rem);
+    }
+
+    .hero__window {
+      width: 100%;
+      rotate: 0deg;
+      transform-origin: center;
+    }
+
+    .hero__title {
+      text-wrap: balance;
+    }
+  }
+
+  @media (max-width: 640px) {
+    /* Single column on a phone reads as a poster: everything on the centre
+       axis, including the app window — the desktop right-edge bleed just
+       looked cropped at this size. */
+    .hero__copy {
+      text-align: center;
+    }
+
+    .verpill {
+      margin-inline: auto;
+    }
+
+    .hero__title {
+      font-size: clamp(2.5rem, 9.5vw, 3.5rem);
+      text-wrap: nowrap;
+    }
+
+    .hero__cta {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .hero__cta > :global(*) {
+      width: 100%;
+    }
+
+    .hero__sub {
+      justify-content: center;
+    }
+  }
+</style>

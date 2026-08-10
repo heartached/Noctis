@@ -1,0 +1,34 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from '../components/Hero.astro';
+import FormatMarquee from '../components/FormatMarquee.astro';
+import Showcase from '../components/Showcase.astro';
+import Features from '../components/Features.astro';
+import AudioChain from '../components/AudioChain.astro';
+import Compare from '../components/Compare.astro';
+import Download from '../components/Download.astro';
+import Community from '../components/Community.astro';
+
+/**
+ * Six sections and a footer, down from nine.
+ *
+ * Cover Flow and Lyrics merged into Showcase. Tints alternate one section on,
+ * one off — every second band picking up a little accent is the rhythm; two in
+ * a row is a gradient.
+ */
+---
+
+<Base
+  title="Noctis · A music player that respects what’s yours"
+  description="Noctis is an open source lossless music player for Windows, macOS and Linux. Gapless playback, synced lyrics, Cover Flow and full theming, with no telemetry and no analytics."
+  path="/"
+>
+  <Hero />
+  <FormatMarquee />
+  <Showcase />
+  <Features />
+  <AudioChain />
+  <Compare />
+  <Download />
+  <Community slot="footer" />
+</Base>

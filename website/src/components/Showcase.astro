@@ -1,0 +1,29 @@
+---
+import CoverFlow from './CoverFlow.astro';
+import Lyrics from './Lyrics.astro';
+
+/**
+ * The cover shelf and the lyric highlight, under one section.
+ *
+ * No visible section header: the shelf's own one-line caption is all the
+ * introduction the strip needs, and the eyebrow/h2/lede stack above it read
+ * as three headings for one image. The h2 stays in the DOM visually hidden so
+ * the section keeps its accessible name and the document outline holds.
+ */
+---
+
+<section class="section showcase" id="showcase" aria-labelledby="showcase-title" data-tint="2">
+  <h2 class="visually-hidden" id="showcase-title">Made to be looked at</h2>
+
+  <CoverFlow />
+  <Lyrics />
+</section>
+
+<style>
+  .showcase {
+    /* The rail bleeds past the gutter and the lyric bloom is a blurred radial
+       twice the width of its column; both need clipping at the section, not at
+       the block, or they scroll the page sideways. */
+    overflow: clip;
+  }
+</style>

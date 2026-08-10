@@ -1,0 +1,147 @@
+---
+import covers from '../data/covers.json';
+
+/**
+ * The cover shelf: a slow, always-moving strip of small album covers drifting
+ * RIGHT, in the style of the format marquee below the hero.
+ *
+ * This replaced the interactive Cover Flow recreation (scroll-snap rail with
+ * arrows and captions). The strip is decorative breadth — the covers are the
+ * content, so they carry no labels; titles live in each image's alt text.
+ *
+ * Marquee mechanics are FormatMarquee.astro's, mirrored: identical tracks laid
+ * end to end, each animating by exactly its own width. Drifting right means
+ * running -100% -> 0, so the strip must EXTEND LEFT of the viewport at every
+ * moment of the cycle; (COPIES - 1) track widths of trailing content covers
+ * any display this will meet at ~2,900px per track of 17 covers.
+ */
+const items = covers as {
+  slug: string;
+  title: string;
+  artist: string;
+  width: number;
+  height: number;
+  avif: { src: string; width: number }[];
+  webp: { src: string; width: number }[];
+}[];
+
+const srcset = (set: { src: string; width: number }[]) =>
+  set.map((v) => `${v.src} ${v.width}w`).join(', ');
+
+const COPIES = 3;
+---
+
+<div class="cf" id="coverflow">
+  <p class="cf__caption eyebrow">A library that looks as good as it sounds</p>
+
+  <div class="cf__viewport">
+    {
+      Array.from({ length: COPIES }, (_, copy) => (
+        <ul class="cf__track" role="list" aria-hidden={copy > 0 ? 'true' : undefined}>
+          {items.map((c) => (
+            <li class="cf__item">
+              <picture>
+                <source type="image/avif" srcset={srcset(c.avif)} sizes="(max-width: 640px) 30vw, 148px" />
+                <source type="image/webp" srcset={srcset(c.webp)} sizes="(max-width: 640px) 30vw, 148px" />
+                <img
+                  src={c.webp[0].src}
+                  width={c.width}
+                  height={c.height}
+                  alt={copy === 0 ? `${c.title} by ${c.artist}` : ''}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+            </li>
+          ))}
+        </ul>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  .cf {
+    overflow: clip;
+  }
+
+  .cf__caption {
+    margin-bottom: clamp(var(--s-6), 4vw, var(--s-7));
+    text-align: center;
+  }
+
+  .cf__viewport {
+    display: flex;
+    width: 100%;
+    overflow: hidden;
+    /* Edges dissolve rather than cut, same as the format marquee. */
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0,
+      #000 8%,
+      #000 92%,
+      transparent 100%
+    );
+  }
+
+  .cf__track {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: clamp(1rem, 2vw, 1.5rem);
+    /* End padding matches the gap so the seam between copies is invisible;
+       start padding is zeroed against the UA's 40px list default. */
+    padding-inline: 0 clamp(1rem, 2vw, 1.5rem);
+    margin: 0;
+    list-style: none;
+  }
+
+  .cf__item {
+    flex: none;
+    width: clamp(104px, 11vw, 148px);
+  }
+
+  .cf__item picture {
+    display: block;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+  }
+
+  .cf__item img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
+  }
+
+  /* Slow drift to the RIGHT — about half the format marquee's pace, so the
+     covers read as a shelf gliding past rather than a ticker. */
+  @media (prefers-reduced-motion: no-preference) {
+    .cf__track {
+      animation: cf-drift 70s linear infinite;
+    }
+  }
+
+  @keyframes cf-drift {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+
+  /* With motion off the strip is a static, hand-scrollable row — the clones
+     would just repeat it, so they go. */
+  @media (prefers-reduced-motion: reduce) {
+    .cf__viewport {
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .cf__track[aria-hidden='true'] {
+      display: none;
+    }
+  }
+</style>

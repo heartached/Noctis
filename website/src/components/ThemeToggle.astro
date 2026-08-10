@@ -1,0 +1,180 @@
+---
+/**
+ * Theme switch, shared by the header and the footer.
+ *
+ * Replaces the old single-glyph icon button. A track carrying both destinations
+ * with a knob that slides between them reads as a control with two states,
+ * where one swapping glyph read as a button whose meaning you had to infer —
+ * and the old one showed the theme you would switch TO, which half of people
+ * read as the theme they were already in.
+ *
+ * STATE COMES FROM THE DOM, NOT FROM JS. The knob position is selected off
+ * html[data-theme], which Base.astro's boot script sets before first paint, so
+ * the switch is never briefly in the wrong position on load. The script only
+ * mirrors that state into aria-checked; see src/scripts/site.ts.
+ *
+ * `data-theme-toggle` is the hook the script binds to. It is an attribute
+ * rather than an id because this component renders twice per page.
+ */
+interface Props {
+  /** Distinguishes the two instances for aria-labelledby-free labelling. */
+  id?: string;
+}
+
+const { id } = Astro.props;
+---
+
+<button
+  class="tsw"
+  type="button"
+  role="switch"
+  aria-checked="false"
+  aria-label="Switch colour theme"
+  data-theme-toggle
+  id={id}
+>
+  <span class="tsw__track">
+    <span class="tsw__glyphs" aria-hidden="true">
+      <svg class="tsw__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4.25"></circle>
+        <path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4l1.4-1.4M18 6l1.4-1.4"></path>
+      </svg>
+      <svg class="tsw__ico" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+      </svg>
+    </span>
+    <span class="tsw__knob" aria-hidden="true"></span>
+  </span>
+</button>
+
+<style>
+  .tsw {
+    display: inline-flex;
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+  }
+
+  .tsw:focus-visible {
+    outline: 2px solid var(--accent-500);
+    outline-offset: 3px;
+  }
+
+  /* 40px to match the height every other control in the header row is on —
+     at 34px the switch sat inset from the line and read as a stray object. */
+  .tsw__track {
+    position: relative;
+    display: grid;
+    align-items: center;
+    width: 68px;
+    height: 40px;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    background: var(--bg-2);
+  }
+
+  /* Both glyphs are always present and always lit — the knob is what marks the
+     current side, so neither needs to fade. They sit above the knob so the one
+     the knob is under reads on the accent fill. */
+  .tsw__glyphs {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    place-items: center;
+    height: 100%;
+  }
+
+  .tsw__ico {
+    width: 16px;
+    height: 16px;
+    transition:
+      color var(--t-base) var(--ease),
+      transform var(--t-base) var(--ease);
+  }
+
+  /* The knob is 50% of the padded track, so translateX(100%) lands it exactly
+     on the second cell without hardcoding a pixel offset. */
+  .tsw__knob {
+    position: absolute;
+    z-index: 0;
+    top: 3px;
+    left: 3px;
+    width: calc((100% - 6px) / 2);
+    height: calc(100% - 6px);
+    border-radius: var(--r-pill);
+    background: var(--accent-500);
+    box-shadow: 0 2px 8px var(--accent-glow);
+  }
+
+  /* --- State ------------------------------------------------------------- */
+
+  /* Dark is the default when no attribute has been written yet, so it must match
+     the :not() case as well or the knob starts on the wrong side. */
+  :global(html[data-theme='dark']) .tsw__knob,
+  :global(html:not([data-theme='light'])) .tsw__knob {
+    transform: translateX(100%);
+  }
+
+  :global(html[data-theme='light']) .tsw__knob {
+    transform: translateX(0);
+  }
+
+  /* Whichever glyph the knob sits under takes the accent's foreground. */
+  :global(html[data-theme='light']) .tsw__ico:first-child,
+  :global(html[data-theme='dark']) .tsw__ico:last-child,
+  :global(html:not([data-theme='light'])) .tsw__ico:last-child {
+    color: var(--on-accent);
+  }
+
+  :global(html[data-theme='light']) .tsw__ico:last-child,
+  :global(html[data-theme='dark']) .tsw__ico:first-child,
+  :global(html:not([data-theme='light'])) .tsw__ico:first-child {
+    color: var(--ink-2);
+  }
+
+  .tsw:hover .tsw__track {
+    border-color: color-mix(in srgb, var(--accent-500) 45%, var(--line));
+  }
+
+  /* --- Motion ------------------------------------------------------------- */
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* A little overshoot at the end of the travel — the knob settles rather
+       than stopping dead, which is what makes the throw read as physical.
+       Kept at --t-base: any longer and the switch reads as lagging behind
+       the click rather than answering it. */
+    .tsw__knob {
+      transition: transform var(--t-base) cubic-bezier(0.34, 1.45, 0.5, 1);
+    }
+
+    /* The press stretches the knob along its travel, so pressing and throwing
+       read as one gesture.
+     *
+     * This is scaleX from an edge rather than an animated `width` on purpose.
+     * Widening the element would make the resting `translateX(100%)` resolve
+     * against the NEW width — the dark-side knob would land 7px further right
+     * every press and hang over the end of the track. A percentage translate
+     * always resolves against the untransformed border box, so scaling cannot
+     * feed back into the offset. transform-origin then decides which way the
+     * stretch goes: away from the wall the knob is parked against. */
+    .tsw:active .tsw__knob {
+      transform-origin: left center;
+      transform: scaleX(1.24);
+    }
+
+    :global(html[data-theme='dark']) .tsw:active .tsw__knob,
+    :global(html:not([data-theme='light'])) .tsw:active .tsw__knob {
+      transform-origin: right center;
+      transform: translateX(100%) scaleX(1.24);
+    }
+
+    .tsw:hover .tsw__ico {
+      transform: scale(1.08);
+    }
+  }
+</style>

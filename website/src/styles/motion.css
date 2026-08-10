@@ -1,0 +1,243 @@
+/* ==========================================================================
+   Motion
+   Rules, without exception:
+     - transform and opacity only
+     - no ad hoc durations, only the tokens
+     - reduced motion is a first-class layout, not a degraded one
+     - without scroll-driven timeline support, elements sit in their FINAL
+       state, never their initial hidden one
+   ========================================================================== */
+
+/* --- 1. Hero headline reveal --------------------------------------------- */
+
+.reveal-line {
+  display: block;
+  overflow: hidden;
+  /* Descenders would otherwise be clipped by the overflow mask. */
+  padding-block-end: 0.12em;
+  margin-block-end: -0.12em;
+}
+
+.reveal-line > span {
+  display: block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-line > span {
+    animation: line-rise var(--t-slow) var(--ease) backwards;
+    animation-delay: calc(var(--line-i, 0) * 80ms);
+  }
+}
+
+@keyframes line-rise {
+  from {
+    transform: translateY(105%);
+    opacity: 0;
+  }
+}
+
+/* --- The signature: the accent word fills like a lyric ------------------- --
+
+   Noctis highlights lyrics word by word as they are sung. The headline uses
+   the same gradient-through-text sweep, so the first thing the page does is
+   the thing the app is known for. Reprised in the lyrics section.
+
+   The resting colour is a plain, opaque `color`. The transparent-text
+   treatment is layered on only where background-clip is supported AND motion
+   is welcome — if either is missing the word simply sits in accent, never
+   invisible. */
+
+.display em {
+  color: var(--accent-text);
+}
+
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  @media (prefers-reduced-motion: no-preference) {
+    .display em {
+      background-image: linear-gradient(
+        90deg,
+        var(--accent-500) 0 50%,
+        color-mix(in srgb, var(--ink-2) 70%, transparent) 50% 100%
+      );
+      background-size: 200% 100%;
+      background-repeat: no-repeat;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: lyric-sweep 1100ms var(--ease-out) 520ms both;
+    }
+  }
+}
+
+@keyframes lyric-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+/* Hero supporting content trails the last headline line rather than racing it. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-in {
+    animation: fade-up var(--t-slow) var(--ease) backwards;
+    animation-delay: calc(360ms + var(--i, 0) * 80ms);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* --- 2. Hero screenshot rise --------------------------------------------- */
+
+/* The hero window sits beside the headline, inside the first viewport, so a
+   view() timeline would resolve to its end state before anyone saw it move.
+   It rises on load instead, on the same clock as the copy. Sections further
+   down use [data-reveal], which IS scroll-driven. */
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise-in 900ms var(--ease) 220ms backwards;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(38px) scale(0.96) rotateX(6deg);
+  }
+}
+
+/* Screenshots that appear further down the page do use the scroll timeline. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .rise-on-scroll {
+      transform-origin: center top;
+      animation: rise-in-scroll linear both;
+      animation-timeline: view();
+      animation-range: entry 15% cover 42%;
+    }
+  }
+}
+
+@keyframes rise-in-scroll {
+  from {
+    transform: translateY(48px) scale(0.95) rotateX(6deg);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* --- 3. Scroll progress -------------------------------------------------- */
+
+.scroll-progress {
+  position: absolute;
+  inset-block-end: -1px;
+  inset-inline: 0;
+  height: 2px;
+  background: var(--accent-500);
+  transform-origin: left center;
+  transform: scaleX(0);
+  z-index: 3;
+}
+
+@supports (animation-timeline: scroll(root)) {
+  .scroll-progress {
+    animation: progress linear both;
+    animation-timeline: scroll(root);
+  }
+}
+
+@keyframes progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* --- 4. Section reveals -------------------------------------------------- */
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    [data-reveal] {
+      animation: fade-up var(--t-base) var(--ease) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 35%;
+    }
+
+    /* Stagger children, capped at six steps so long lists never crawl. */
+    [data-reveal-group] > *:nth-child(1) { animation-delay: 0ms; }
+    [data-reveal-group] > *:nth-child(2) { animation-delay: 60ms; }
+    [data-reveal-group] > *:nth-child(3) { animation-delay: 120ms; }
+    [data-reveal-group] > *:nth-child(4) { animation-delay: 180ms; }
+    [data-reveal-group] > *:nth-child(5) { animation-delay: 240ms; }
+    [data-reveal-group] > *:nth-child(n + 6) { animation-delay: 300ms; }
+  }
+}
+
+/* --- 5. Theme toggle wipe ------------------------------------------------ */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
+}
+
+html[data-vt-theme]::view-transition-new(root) {
+  animation: theme-wipe var(--t-slow) var(--ease);
+}
+
+@keyframes theme-wipe {
+  from {
+    clip-path: circle(0% at var(--vt-x, 50%) var(--vt-y, 0%));
+  }
+  to {
+    clip-path: circle(150% at var(--vt-x, 50%) var(--vt-y, 0%));
+  }
+}
+
+/* The clicked switch gets its own group (named from site.ts for just the
+   transition), rendered above the root wipe with the snapshot animations
+   dropped — ::view-transition-new is a LIVE capture, so the knob's own
+   transition plays the moment the theme commits instead of sitting frozen
+   inside the root snapshot until the wipe finishes. */
+::view-transition-old(theme-toggle),
+::view-transition-new(theme-toggle) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* Engines without View Transitions get a straight cross-fade instead of the
+   wipe. data-theme-fade is set by site.ts only for the moment of the switch,
+   so the blanket transition never lingers past it. */
+html[data-theme-fade],
+html[data-theme-fade] *,
+html[data-theme-fade] *::before,
+html[data-theme-fade] *::after {
+  transition:
+    background-color var(--t-base) var(--ease),
+    border-color var(--t-base) var(--ease),
+    color var(--t-base) var(--ease) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-vt-theme]::view-transition-new(root),
+  html[data-vt-theme]::view-transition-old(root) {
+    animation: none;
+  }
+}

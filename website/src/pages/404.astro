@@ -1,0 +1,66 @@
+---
+import Base from '../layouts/Base.astro';
+import Community from '../components/Community.astro';
+---
+
+<Base
+  title="Noctis · Page not found"
+  description="This page doesn't exist. Head back to the Noctis home page to download the player or browse its features."
+  path="/404"
+>
+  <section class="nf section" aria-labelledby="nf-title">
+    <div class="container nf__inner">
+      <p class="eyebrow nf__code">404 · off the record</p>
+      <h1 class="display nf__title" id="nf-title">This track doesn’t <em>exist</em>.</h1>
+      <p class="lede nf__lede">
+        The page you’re after was moved, renamed, or never made it onto the album.
+      </p>
+      <div class="nf__cta">
+        <a class="btn btn--primary btn--lg" href="/">Back to the music</a>
+        <a class="btn btn--ghost btn--lg" href="/#download">Download Noctis</a>
+      </div>
+    </div>
+  </section>
+
+  <Community slot="footer" />
+</Base>
+
+<style>
+  .nf {
+    display: grid;
+    place-items: center;
+    min-height: calc(100svh - var(--header-h) - var(--section-pad));
+  }
+
+  .nf__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .nf__code {
+    margin-bottom: var(--s-5);
+  }
+
+  .nf__lede {
+    margin-top: var(--s-5);
+    max-width: 44ch;
+  }
+
+  .nf__cta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--s-3);
+    margin-top: var(--s-7);
+  }
+
+  @media (max-width: 640px) {
+    .nf__cta {
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+    }
+  }
+</style>

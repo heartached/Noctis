@@ -1,0 +1,422 @@
+---
+import Screenshot from './Screenshot.astro';
+
+/**
+ * The bento. Four cards earn a picture — the ones you have to see to believe —
+ * and the long tail runs underneath as one-line facts. Nothing here is a
+ * roadmap item: every card is something the app already does.
+ *
+ * The screenshot cards crop into a detail rather than showing another whole
+ * window; the hero already did the whole window. Crops are declared per card
+ * as --focus (transform-origin) and --zoom, so the framing lives next to the
+ * copy it illustrates.
+ */
+
+const shotSizes = '(min-width: 1024px) 900px, (min-width: 768px) 90vw, 100vw';
+
+/**
+ * The converter gets a drawn diagram rather than a screenshot — the point is
+ * many-in, one-out, which a settings pane does not show.
+ *
+ * NOTE: this card replaced a "Remote sources — Navidrome, SMB, WebDAV" card.
+ * Those connectors exist in the source but no shipped UI can create a source
+ * connection (AppSettings.SourceConnections is never written) and the WebDAV
+ * one is a stub. See src/data/verified-claims.md. Do not reinstate it.
+ */
+const convertsFrom = ['FLAC', 'WAV', 'AIFF'];
+
+/**
+ * Six, not twelve — two clean rows at desktop.
+ *
+ * Everything cut was either already carried by a large card above (batch
+ * converter, bulk edits) or table stakes nobody chooses a player for (drag and
+ * drop, favourites). A grid that lists everything the app can do reads as a
+ * feature dump; six reads as a selection, and it is half the scroll.
+ */
+/* No per-card eyebrow labels: "Rules" above "Smart playlists" restated the
+   title in fewer letters. The titles carry the cards on their own. */
+const small = [
+  {
+    title: 'Smart playlists',
+    text: 'Set the rules once and the playlist keeps itself current.',
+  },
+  {
+    title: 'Duplicate finder',
+    text: 'Finds the same song twice and lets you keep the better file.',
+  },
+  {
+    title: 'File organiser',
+    text: 'Renames and refiles your music from the tags it already has.',
+  },
+  {
+    title: 'Command palette',
+    text: 'One shortcut, then type your way to any view or action.',
+  },
+  {
+    title: 'Watched folders',
+    text: 'Point Noctis at a folder and new files appear on their own.',
+  },
+  {
+    title: 'Listening stats',
+    text: 'Counts what you actually played, with a monthly and yearly Wrap.',
+  },
+];
+---
+
+<section class="section" id="features" aria-labelledby="features-title">
+  <div class="container">
+    <header class="feat__head" data-reveal>
+      <h2 class="h2" id="features-title">Built for big libraries</h2>
+      <p class="lede feat__lede">
+        Everything you see here comes built in. No plugins, no accounts, no paid tier.
+      </p>
+    </header>
+
+    <div class="bento" data-reveal-group>
+      <article class="card card--lg" data-reveal>
+        <div class="card__body">
+          <h3 class="card__title">Library that scales</h3>
+          <p class="card__text">
+            Songs, albums, artists and folders, with the album view filtered down to singles
+            or EPs in a click.
+          </p>
+        </div>
+        <div class="card__media" style="--focus: 50% 10%; --zoom: 1">
+          <Screenshot name="albums-grid" class="card__shot" sizes={shotSizes} />
+        </div>
+      </article>
+
+      <article class="card card--lg" data-reveal>
+        <div class="card__body">
+          <h3 class="card__title">Make it yours</h3>
+          <p class="card__text">
+            Themes and accent colours out of the box, plus an editor for when none of them fit.
+          </p>
+        </div>
+        {/* Source is pre-cropped to the card's own 5/2 — no framing needed. */}
+        <div class="card__media" style="--focus: 50% 50%; --zoom: 1">
+          <Screenshot name="settings-appearance" class="card__shot" sizes={shotSizes} />
+        </div>
+      </article>
+
+      <article class="card card--lg" data-reveal>
+        <div class="card__body">
+          <h3 class="card__title">Every tag, editable</h3>
+          <p class="card__text">
+            Fix any field on any track, and read bit depth and sample rate straight from the list.
+          </p>
+        </div>
+        <div class="card__media" style="--focus: 50% 15%; --zoom: 1">
+          <Screenshot name="songs-hires" class="card__shot" sizes={shotSizes} />
+        </div>
+      </article>
+
+      <article class="card card--lg" data-reveal>
+        <div class="card__body">
+          <h3 class="card__title">Convert in batches</h3>
+          <p class="card__text">
+            Eleven output formats, with bitrate, tags and artwork carried across.
+          </p>
+        </div>
+        <div class="card__media card__media--wire">
+          {/* Decorative: every name in it is already in the sentence above. */}
+          <div class="wire" aria-hidden="true">
+            <ul class="wire__sources">
+              {convertsFrom.map((r) => <li class="wire__source mono">{r}</li>)}
+            </ul>
+            <div class="wire__link"></div>
+            <div class="wire__hub">
+              <span class="wire__dot"></span>
+              <span class="mono">Opus</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      {
+        small.map((f) => (
+          <article class="card card--sm" data-reveal>
+            <div class="card__body">
+              <h3 class="card__title">{f.title}</h3>
+              <p class="card__text">{f.text}</p>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .feat__head {
+    max-width: 40ch;
+    margin-bottom: clamp(2.5rem, 5vw, var(--s-8));
+  }
+
+  .feat__lede {
+    margin-top: var(--s-5);
+  }
+
+  /* --- The grid ------------------------------------------------------------
+     One column on phones. Four columns from 768px, six from 1024px, so the
+     large cards sit two to a row and the small ones tighten to three. */
+
+  .bento {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-4);
+  }
+
+  @media (min-width: 768px) {
+    .bento {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .card--lg,
+    .card--sm {
+      grid-column: span 2;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .bento {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .card--lg {
+      grid-column: span 3;
+    }
+
+    .card--sm {
+      grid-column: span 2;
+    }
+  }
+
+  /* --- Cards ---------------------------------------------------------------
+     Each card is its own container, so a card that lands in a wide cell gets
+     more padding and a bigger heading without a viewport breakpoint knowing
+     anything about the grid it happens to be in. */
+
+  .card {
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--bg-1);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+
+  .card--sm {
+    background: var(--bg-2);
+  }
+
+  .card__body {
+    padding: var(--s-5);
+  }
+
+  .card--lg .card__body {
+    padding-bottom: 0;
+  }
+
+  .card__title {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-size: var(--step-0);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .card--lg .card__title {
+    font-size: var(--step-1);
+  }
+
+  .card__text {
+    margin-top: var(--s-3);
+    color: var(--ink-1);
+    font-size: var(--step--1);
+    line-height: 1.55;
+    max-width: 46ch;
+    text-wrap: pretty;
+  }
+
+  @container (min-width: 26rem) {
+    .card__body {
+      padding: var(--s-6);
+    }
+
+    .card--lg .card__body {
+      padding-bottom: 0;
+    }
+
+    .card--lg .card__title {
+      font-size: var(--step-2);
+    }
+
+    .card__text {
+      font-size: var(--step-0);
+    }
+  }
+
+  /* --- Media well ---------------------------------------------------------- */
+
+  .card__media {
+    position: relative;
+    /* Grows into whatever height a taller neighbour in the row forces, so no
+       card ends on a band of empty background. */
+    flex: 1 1 auto;
+    margin: 0 var(--s-5) var(--s-5);
+    aspect-ratio: 5 / 3;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--r-nested);
+    background: var(--bg-2);
+  }
+
+  @container (min-width: 26rem) {
+    .card__media {
+      margin: 0 var(--s-6) var(--s-6);
+      /* Was 2/1. These are crops, not whole windows — the extra band of height
+         showed more of the same texture and cost 120px of page scroll. */
+      aspect-ratio: 5 / 2;
+    }
+  }
+
+  /* The crop: cover positioned on the point that matters, then an optional
+     static zoom about the same point. At --zoom: 1 the sources are already
+     cropped to the subject, so object-position does all the framing. */
+  .card__media :global(.card__shot) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .card__media :global(.card__shot img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--focus, 50% 50%);
+    transform: scale(var(--zoom, 1.5));
+    transform-origin: var(--focus, 50% 50%);
+  }
+
+  /* --- Remote sources diagram ---------------------------------------------- */
+
+  .card__media--wire {
+    --wire-w: clamp(20px, 6cqw, 40px);
+    display: grid;
+    place-items: center;
+    padding: var(--s-4);
+  }
+
+  .wire {
+    display: grid;
+    /* The connector column takes the slack, so the spine and the stubs meet
+       whatever the card is wide enough to give them. */
+    grid-template-columns: minmax(0, auto) minmax(var(--wire-w), 1fr) minmax(0, auto);
+    align-items: center;
+    width: 100%;
+    max-width: 26rem;
+  }
+
+  /* Below ~24rem of card the three columns cannot hold two nowrap labels plus a
+     connector, and the overflow is silently clipped by the card. Stack instead:
+     sources above, connector hidden, hub below. */
+  @container (max-width: 24rem) {
+    .wire {
+      grid-template-columns: minmax(0, 1fr);
+      justify-items: center;
+      gap: var(--s-4);
+    }
+
+    .wire__link {
+      display: none;
+    }
+  }
+
+  .wire__sources {
+    display: grid;
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .wire__source {
+    position: relative;
+    padding: var(--s-2) var(--s-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    background: var(--bg-1);
+    color: var(--ink-1);
+    font-size: var(--step--2);
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* Stub from each pill out to the spine. */
+  .wire__source::after {
+    content: '';
+    position: absolute;
+    inset-inline-start: 100%;
+    inset-block-start: 50%;
+    width: calc(var(--wire-w) / 2);
+    height: 1px;
+    background: var(--line);
+  }
+
+  .wire__link {
+    position: relative;
+    align-self: stretch;
+  }
+
+  /* Vertical spine, ending at the centres of the first and last pill. */
+  .wire__link::before {
+    content: '';
+    position: absolute;
+    inset-block: 14.5%;
+    inset-inline-start: calc(var(--wire-w) / 2);
+    width: 1px;
+    background: var(--line);
+  }
+
+  /* Spine across to the player. */
+  .wire__link::after {
+    content: '';
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline: calc(var(--wire-w) / 2) 0;
+    height: 1px;
+    background: var(--line);
+  }
+
+  .wire__hub {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    padding: var(--s-3) var(--s-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-nested);
+    background: var(--bg-1);
+    box-shadow: var(--shadow-card);
+    color: var(--ink-0);
+    font-size: var(--step--2);
+    white-space: nowrap;
+  }
+
+  .wire__dot {
+    width: 7px;
+    height: 7px;
+    flex: none;
+    border-radius: 50%;
+    /* --accent-text, not --accent-500: at 7px this is the smallest mark on the
+       page, and accent-500 only clears 3.69:1 on the light surface it sits on. */
+    background: var(--accent-text);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+  }
+</style>

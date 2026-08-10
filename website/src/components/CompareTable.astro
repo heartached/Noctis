@@ -1,0 +1,440 @@
+---
+import AppMark from './AppMark.astro';
+import type { AppId } from './AppMark.astro';
+
+/**
+ * Shared renderer for both comparison blocks.
+ *
+ * A cell is either a boolean (rendered as a filled/hollow circle) or a short
+ * string. Strings render as mono text with an <abbr> carrying the reason —
+ * "partial" with no explanation reads as a dodge; "partial" with a one-line
+ * justification reads as confidence.
+ */
+export interface Group {
+  heading: string;
+  rows: Row[];
+}
+
+export interface Row {
+  label: string;
+  /** One value per column, in column order. */
+  values: (boolean | { text: string; title: string })[];
+}
+
+interface Props {
+  caption: string;
+  columns: { name: string; sub?: string; highlight?: boolean; app?: AppId }[];
+  groups: Group[];
+  id: string;
+}
+
+const { caption, columns, groups, id } = Astro.props;
+---
+
+<div class="cmp__scroll">
+  <table class="cmp" id={id} style={`--cmp-cols:${columns.length}`}>
+    <caption class="visually-hidden">{caption}</caption>
+
+    <thead>
+      <tr>
+        <th scope="col" class="cmp__corner">
+          <span class="visually-hidden">Feature</span>
+        </th>
+        {
+          columns.map((c) => (
+            <th scope="col" class="cmp__col" data-highlight={c.highlight ? '' : undefined}>
+              {c.app && (
+                <span class="cmp__col-mark">
+                  <AppMark app={c.app} />
+                </span>
+              )}
+              <span class="cmp__col-name">{c.name}</span>
+              {c.sub && <span class="cmp__col-sub mono">{c.sub}</span>}
+            </th>
+          ))
+        }
+      </tr>
+    </thead>
+
+    {
+      groups.map((g, gi) => (
+        <tbody>
+          <tr class="cmp__grouprow">
+            <th scope="colgroup" colspan={columns.length + 1} class="cmp__group">
+              <span class="eyebrow">{g.heading}</span>
+            </th>
+          </tr>
+
+          {g.rows.map((row, ri) => (
+            <tr>
+              <th scope="row" class="cmp__rowhead">
+                {row.label}
+              </th>
+              {row.values.map((v, i) => (
+                <td class="cmp__cell" data-highlight={columns[i]?.highlight ? '' : undefined}>
+                  {typeof v === 'boolean' ? (
+                    <span class={`mark ${v ? 'mark--yes' : 'mark--no'}`} role="img" aria-label={v ? 'Yes' : 'No'}>
+                      {v ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="m5 13 4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+                          <path d="M7 7l10 10M17 7L7 17" />
+                        </svg>
+                      )}
+                    </span>
+                  ) : (
+                    /* Not <abbr title>. The native tooltip's ~1–2s hover delay
+                       is set by the browser and cannot be shortened from CSS or
+                       JS, which is why these felt broken. This is a real
+                       element, so it appears on the first frame. */
+                    <span class="tip">
+                      <span
+                        class="cmp__partial mono tip__trigger"
+                        tabindex="0"
+                        aria-describedby={`${id}-t${gi}-${ri}-${i}`}
+                      >
+                        {v.text}
+                      </span>
+                      <span class="tip__bubble" role="tooltip" id={`${id}-t${gi}-${ri}-${i}`}>
+                        {v.title}
+                      </span>
+                    </span>
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      ))
+    }
+  </table>
+</div>
+
+<style>
+  .cmp__scroll {
+    width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    /* Signals more content to the right without a scrollbar. */
+    mask-image: linear-gradient(90deg, #000 0, #000 94%, transparent 100%);
+  }
+
+  @media (min-width: 900px) {
+    .cmp__scroll {
+      mask-image: none;
+      overflow-x: visible;
+    }
+  }
+
+  /* Geometry is stated, not inferred.
+   *
+   * With `table-layout: auto` the browser hands every spare pixel to the column
+   * with the most text — the row labels — so on a wide viewport the label
+   * column ballooned to roughly twice the width its text needed and opened a
+   * ~240px trench between the labels and the first result. Fixed layout plus a
+   * declared corner width splits the remainder evenly across the data columns
+   * instead.
+   *
+   * The max-width is what removes the empty space rather than redistributing
+   * it: the table grows to what its columns actually need and then stops, so
+   * the three-column streaming table sits compact under its heading instead of
+   * stretching 3 columns across 1120px. Both tables still start at the same
+   * left edge as the section heading, so they read as a set. */
+  .cmp {
+    --cmp-corner: clamp(180px, 26%, 300px);
+    width: 100%;
+    min-width: calc(180px + var(--cmp-cols) * 116px);
+    max-width: calc(300px + var(--cmp-cols) * 168px);
+    /* Centred once max-width caps it. Left-aligned, the three-column streaming
+       table parked against the gutter and left ~300px of nothing beside it. */
+    margin-inline: auto;
+    border-collapse: collapse;
+    table-layout: fixed;
+    text-align: left;
+  }
+
+  /* --- Head --------------------------------------------------------------- */
+
+  .cmp thead th {
+    position: sticky;
+    top: var(--header-h);
+    z-index: 2;
+    /* Inherit the section's tint rather than repainting --bg-0, which would
+       band the sticky head and the group rows against the surrounding table. */
+    background: var(--surface);
+    padding: var(--s-4) var(--s-3);
+    vertical-align: bottom;
+    font-weight: 600;
+  }
+
+  /* No width: under fixed layout the unclaimed columns divide what the corner
+     leaves, which is exactly the even split this table wants. */
+  .cmp__col {
+    text-align: center;
+  }
+
+  /* No plate. These are real app icons with their own shapes and their own
+     colour — boxing each one in a rounded grey square made the row read as
+     placeholders, and put a red-tinted chip around the Noctis mark that looked
+     like an error state. They sit bare on the surface instead. */
+  .cmp__col-mark {
+    display: grid;
+    place-items: center;
+    height: 32px;
+    margin-bottom: var(--s-2);
+    color: var(--ink-0);
+  }
+
+  .cmp__col-mark :global(svg),
+  .cmp__col-mark :global(img) {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* App names take the display face — they are the table's only headline-
+     weight content, and the body face at table sizes read as spreadsheet. */
+  .cmp__col-name {
+    display: block;
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-size: var(--step-0);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .cmp__col-sub {
+    display: block;
+    margin-top: 2px;
+    font-size: var(--step--2);
+    font-weight: 400;
+    color: var(--ink-2);
+  }
+
+  /* The Noctis column is tinted top to bottom. No accent rule on top: the
+     2px cap floated between the heading and the icons like a stray divider —
+     the tint alone marks the column. */
+  .cmp__col[data-highlight],
+  .cmp__cell[data-highlight] {
+    /* Mixed from --surface, not --bg-0, so the highlight reads the same amount
+       lighter whatever tint the enclosing section carries. */
+    background: color-mix(in srgb, var(--surface) 91%, var(--accent-500));
+  }
+
+  .cmp__col[data-highlight] {
+    border-top-left-radius: var(--r-nested);
+    border-top-right-radius: var(--r-nested);
+  }
+
+  .cmp__col[data-highlight] .cmp__col-name {
+    font-weight: 700;
+  }
+
+  .cmp__corner {
+    width: var(--cmp-corner);
+  }
+
+  /* --- Body --------------------------------------------------------------- */
+
+  .cmp__group {
+    padding: var(--s-6) var(--s-3) var(--s-2);
+    background: var(--surface);
+    font-weight: 400;
+  }
+
+  .cmp tbody tr:not(.cmp__grouprow):hover th,
+  .cmp tbody tr:not(.cmp__grouprow):hover td {
+    background: color-mix(in srgb, var(--ink-0) 4%, transparent);
+  }
+
+  .cmp tbody tr:not(.cmp__grouprow):hover .cmp__cell[data-highlight] {
+    background: color-mix(in srgb, var(--surface) 86%, var(--accent-500));
+  }
+
+  /* Thirty rows across the two tables, so the row box is where the section's
+     height actually lives — s-4 top and bottom cost about 250px of scroll for
+     no gain in legibility at this line-height. */
+  /* Labels WRAP inside the corner column. nowrap let long labels overflow
+     their fixed-layout cell and paint straight over the first data column on
+     phones — the text has to stay inside the width the table granted it. */
+  .cmp__rowhead {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    padding: var(--s-3) var(--s-3);
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    /* A hairline seam so cells sliding under the pinned labels read as
+       passing behind them, not colliding. */
+    box-shadow: inset -1px 0 0 var(--line);
+    font-weight: 450;
+    font-size: var(--step--1);
+    color: var(--ink-0);
+  }
+
+  @media (min-width: 900px) {
+    .cmp__rowhead {
+      position: static;
+      box-shadow: none;
+    }
+  }
+
+  /* Tighter geometry so the two-column tables fit a phone without scrolling;
+     the three-column one still scrolls behind the pinned labels. */
+  @media (max-width: 560px) {
+    .cmp {
+      --cmp-corner: clamp(132px, 40%, 180px);
+      min-width: calc(132px + var(--cmp-cols) * 102px);
+    }
+  }
+
+  .cmp__cell {
+    padding: var(--s-3) var(--s-3);
+    border-top: 1px solid var(--line);
+    text-align: center;
+  }
+
+  .cmp__grouprow th {
+    border-top: 0;
+  }
+
+  /* The tinted Noctis column opened with rounded caps at the head; the last
+     row closes it the same way, so the highlight reads as one shaped column
+     rather than a stripe that runs off the table's edge. */
+  .cmp tbody:last-of-type tr:last-child .cmp__cell[data-highlight] {
+    border-bottom-left-radius: var(--r-nested);
+    border-bottom-right-radius: var(--r-nested);
+  }
+
+  /* --- Marks -------------------------------------------------------------- */
+
+  .mark {
+    display: inline-grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+  }
+
+  .mark svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  .mark--yes {
+    background: var(--accent-500);
+    color: var(--on-accent);
+  }
+
+  .mark--no {
+    background: var(--bg-2);
+    color: var(--ink-2);
+  }
+
+  .cmp__partial {
+    font-size: var(--step--2);
+    color: var(--ink-1);
+    text-decoration: underline dotted;
+    text-underline-offset: 0.25em;
+    cursor: help;
+  }
+
+  /* --- Tooltip ------------------------------------------------------------ */
+
+  .tip {
+    position: relative;
+    display: inline-block;
+  }
+
+  /* Lifted over the sticky thead (z-index 2) and the sticky row heads (1),
+     which would otherwise paint over a bubble opening from the top row. */
+  .tip:hover,
+  .tip:focus-within {
+    z-index: 20;
+  }
+
+  .tip__trigger:focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  .tip__bubble {
+    position: absolute;
+    bottom: calc(100% + 9px);
+    left: 50%;
+    z-index: 20;
+    translate: -50% 0;
+    width: max-content;
+    max-width: 250px;
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--r-nested);
+    background: var(--ink-0);
+    color: var(--bg-0);
+    font-size: var(--step--2);
+    font-weight: 450;
+    line-height: 1.45;
+    text-align: left;
+    text-wrap: pretty;
+    letter-spacing: 0;
+    box-shadow: var(--shadow-card);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* The caret, drawn as a rotated corner of the same fill. */
+  .tip__bubble::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    width: 9px;
+    height: 9px;
+    background: inherit;
+    translate: -50% -5px;
+    rotate: 45deg;
+    border-radius: 2px;
+  }
+
+  .tip__trigger:hover ~ .tip__bubble,
+  .tip__trigger:focus-visible ~ .tip__bubble {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* 90ms is a fade, not a delay — it starts on the frame the pointer lands.
+       `visibility` is deliberately in the transition: it flips to visible
+       immediately on show and holds until the fade finishes on hide. */
+    .tip__bubble {
+      transition:
+        opacity 90ms var(--ease-out),
+        visibility 90ms;
+    }
+  }
+
+  /* --- Reveal ------------------------------------------------------------- */
+
+  /* ≥900px only — the breakpoint where .cmp__scroll stops being a scroll
+     container. Below it view() resolves to .cmp__scroll, not the viewport,
+     and that scroller never moves on its block axis, so the timeline freezes
+     wherever it stands: marks near the bottom of the table stayed stuck
+     mid-pop — shrunken, or at scale(0) an empty cell. */
+  @supports (animation-timeline: view()) {
+    @media (min-width: 900px) and (prefers-reduced-motion: no-preference) {
+      .mark {
+        animation: mark-pop var(--t-base) var(--ease) both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 18%;
+      }
+    }
+  }
+
+  @keyframes mark-pop {
+    from {
+      transform: scale(0);
+    }
+  }
+</style>

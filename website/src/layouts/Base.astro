@@ -1,0 +1,143 @@
+---
+import '../styles/fonts.css';
+import '../styles/tokens.css';
+import '../styles/base.css';
+import '../styles/motion.css';
+
+import Header from '../components/Header.astro';
+import { site, links, REPO } from '../config/site';
+import { release } from '../lib/release';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Path-only, joined against site.url. */
+  path?: string;
+}
+
+const { title, description, path = '/' } = Astro.props;
+const canonical = new URL(path, site.url).href;
+const ogImage = new URL('/og-image.png', site.url).href;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: site.name,
+  applicationCategory: 'MultimediaApplication',
+  applicationSubCategory: 'Music Player',
+  operatingSystem: 'Windows 10, Windows 11, macOS 12, Linux',
+  description,
+  url: site.url,
+  image: new URL('/icons/icon-512.png', site.url).href,
+  screenshot: new URL('/shots/home-1280.webp', site.url).href,
+  downloadUrl: release.latestUrl,
+  softwareVersion: release.latestVersion ?? undefined,
+  license: links.license,
+  isAccessibleForFree: true,
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  author: { '@type': 'Person', name: 'heartached', url: `https://github.com/${REPO.split('/')[0]}` },
+  codeRepository: links.repo,
+  programmingLanguage: 'C#',
+};
+
+/* downloadUrl and softwareVersion come from the GitHub release tag via
+   fetch-release.mjs — remote data. JSON.stringify leaves `<` intact, so a
+   hostile tag name could otherwise close this script element mid-document. */
+const jsonLdSafe = JSON.stringify(jsonLd)
+  .replace(/</g, '\\u003c')
+  .replace(/>/g, '\\u003e')
+  .replace(/&/g, '\\u0026');
+
+/**
+ * Runs before first paint so neither the theme nor the platform-specific
+ * download label ever flashes the wrong value.
+ */
+const bootScript = `(function(){var d=document.documentElement;try{var t=localStorage.getItem('noctis-theme');d.dataset.theme=(t==='light'||t==='dark')?t:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark')}catch(e){d.dataset.theme='dark'}
+var p=((navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'').toLowerCase(),u=navigator.userAgent.toLowerCase(),os='windows';
+if(p.indexOf('mac')>-1||/iphone|ipad/.test(u))os='macos';else if(p.indexOf('linux')>-1&&u.indexOf('android')<0)os='linux';
+d.dataset.os=os})();`;
+---
+
+<!doctype html>
+<html lang={site.locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <meta name="theme-color" content="#07080C" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#FAF9F7" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="dark light" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Noctis — a music player that respects what’s yours. Open source, lossless and local, for Windows, macOS and Linux." />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content="Noctis — a music player that respects what’s yours. Open source, lossless and local, for Windows, macOS and Linux." />
+
+    <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/icons/favicon-48.png" sizes="48x48" type="image/png" />
+    <link rel="icon" href="/icons/icon-512.png" sizes="512x512" type="image/png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    {/* The three faces that paint above the fold — the hero's version badge
+        and download counter are set in Mono. */}
+    <link
+      rel="preload"
+      href="/fonts/bricolage-grotesque-latin-var.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/hanken-grotesk-latin-var.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/jetbrains-mono-latin-var.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <script is:inline set:html={bootScript} />
+    <script type="application/ld+json" is:inline set:html={jsonLdSafe} />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="grain" aria-hidden="true"></div>
+
+    <Header />
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <slot name="footer" />
+
+    <p class="visually-hidden" id="live-region" role="status" aria-live="polite"></p>
+
+    <script>
+      import '../scripts/site';
+    </script>
+  </body>
+</html>

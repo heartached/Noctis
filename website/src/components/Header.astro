@@ -1,0 +1,536 @@
+---
+import Logo from './Logo.astro';
+import BrandIcon from './BrandIcon.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import { links } from '../config/site';
+
+const nav = [
+  { label: 'Features', href: '/#features' },
+  { label: 'Compare', href: '/#compare' },
+  { label: 'Downloads', href: '/#download' },
+  { label: 'Changelog', href: '/changelog' },
+];
+---
+
+<header class="hdr" id="site-header">
+  <div class="hdr__inner">
+    <a class="brand" href="/" aria-label="Noctis — home">
+      <Logo size={32} />
+      <span class="brand__name">Noctis</span>
+    </a>
+
+    <nav class="hdr__nav" aria-label="Primary">
+      {
+        nav.map((item) => (
+          <a
+            class="hdr__link"
+            href={item.href}
+            {...(item.external ? { target: '_blank', rel: 'noopener' } : {})}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="hdr__actions">
+      <a
+        class="support-btn"
+        href={links.support}
+        target="_blank"
+        rel="noopener"
+        aria-label="Support Noctis on Buy Me a Coffee"
+      >
+        <BrandIcon brand="buymeacoffee" />
+        <span class="support-btn__label">Support</span>
+      </a>
+
+      {/* aria-label stays even with visible text: on narrow screens the label
+          span hides and the pill collapses back to an icon. */}
+      <a
+        class="discord-btn"
+        href={links.discord}
+        target="_blank"
+        rel="noopener"
+        aria-label="Join the Noctis Discord"
+      >
+        <BrandIcon brand="discord" />
+        <span class="discord-btn__label">Join Discord</span>
+      </a>
+
+      <a
+        class="icon-btn icon-btn--github"
+        href={links.repo}
+        target="_blank"
+        rel="noopener"
+        aria-label="Noctis on GitHub"
+      >
+        <BrandIcon brand="github" />
+      </a>
+
+      <ThemeToggle />
+
+      <button
+        class="icon-btn hdr__burger"
+        id="menu-btn"
+        type="button"
+        aria-label="Open menu"
+        aria-expanded="false"
+        aria-controls="mobile-menu"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M4 7h16M4 12h16M4 17h16"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="scroll-progress" aria-hidden="true"></div>
+</header>
+
+<div class="sheet" id="mobile-menu" hidden>
+  <div class="sheet__backdrop" data-close-menu></div>
+  <nav class="sheet__panel" aria-label="Menu">
+    <button class="icon-btn sheet__close" type="button" aria-label="Close menu" data-close-menu>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18"></path>
+      </svg>
+    </button>
+    {
+      nav.map((item) => (
+        <a
+          class="sheet__link"
+          href={item.href}
+          {...(item.external ? { target: '_blank', rel: 'noopener' } : {})}
+        >
+          {item.label}
+        </a>
+      ))
+    }
+
+    {/* On phones the header keeps only the burger; the actions live here. */}
+    <div class="sheet__foot">
+      <a
+        class="sheet__action sheet__action--support"
+        href={links.support}
+        target="_blank"
+        rel="noopener"
+      >
+        <BrandIcon brand="buymeacoffee" />
+        Buy me a coffee
+      </a>
+      <a
+        class="sheet__action sheet__action--discord"
+        href={links.discord}
+        target="_blank"
+        rel="noopener"
+      >
+        <BrandIcon brand="discord" />
+        Join Discord
+      </a>
+      <a class="sheet__action sheet__action--github" href={links.repo} target="_blank" rel="noopener">
+        <BrandIcon brand="github" />
+        Source on GitHub
+      </a>
+      <div class="sheet__theme">
+        <span class="sheet__theme-label">Theme</span>
+        <ThemeToggle />
+      </div>
+    </div>
+  </nav>
+</div>
+
+<style>
+  .hdr {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    padding-block: var(--s-3);
+    padding-top: max(var(--s-3), env(safe-area-inset-top));
+  }
+
+  /* The scrolled state rides on a pseudo-element's opacity so the transition
+     stays on the compositor — no background-color or backdrop-filter tween. */
+  .hdr::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--bg-0) 72%, transparent);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border-bottom: 1px solid var(--line);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @supports (animation-timeline: scroll(root)) {
+    .hdr::before {
+      animation: hdr-settle linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 40px;
+    }
+  }
+
+  /* Without scroll-timeline support the bar is simply always solid, which is
+     a correct resting state rather than a broken one. */
+  @supports not (animation-timeline: scroll(root)) {
+    .hdr::before {
+      opacity: 1;
+    }
+  }
+
+  @keyframes hdr-settle {
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Full-bleed, not .container: the brand parks at the left screen edge and
+     the actions at the right, with only the page gutter holding them off the
+     glass. The nav is centred on the VIEWPORT, not on the space the brand and
+     actions leave over — absolute centring keeps it optically dead-centre
+     however wide either side is. */
+  .hdr__inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--s-5);
+    padding-inline: var(--gutter);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-3);
+    text-decoration: none;
+    flex: none;
+  }
+
+  .brand__name {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-size: 1.3rem;
+    letter-spacing: -0.02em;
+  }
+
+  .hdr__nav {
+    display: flex;
+    gap: var(--s-2);
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .hdr__link {
+    padding: var(--s-2) var(--s-4);
+    border-radius: var(--r-pill);
+    color: var(--ink-1);
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition:
+      color var(--t-instant) var(--ease),
+      background-color var(--t-instant) var(--ease);
+  }
+
+  .hdr__link:hover {
+    color: var(--ink-0);
+    background: color-mix(in srgb, var(--ink-0) 6%, transparent);
+  }
+
+  .hdr__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    flex: none;
+    margin-inline-start: auto;
+  }
+
+  /* Support, Discord and GitHub are all places to go; the theme switch is a
+     control. One step more air in front of it splits the row into those two
+     groups instead of leaving four objects evenly scattered. */
+  .hdr__actions :global([data-theme-toggle]) {
+    margin-inline-start: var(--s-2);
+  }
+
+  /* Filled, like the Support and Discord pills beside it and like the same
+     button in the footer. GitHub's mark is specified monochrome, so the fill
+     takes the theme's ink and the mark reverses out of it: black on light,
+     white on dark. */
+  .icon-btn--github {
+    background: var(--ink-0);
+    color: var(--bg-0);
+    border-color: transparent;
+  }
+
+  .icon-btn--github:hover {
+    background: color-mix(in srgb, var(--ink-0) 82%, var(--bg-0));
+    color: var(--bg-0);
+    border-color: transparent;
+  }
+
+  /* Buy Me a Coffee's own yellow, used the one way their kit allows it: as a
+     button fill under a near-black cup and label. Same logic as the Discord
+     pill — the vendor's brand colour makes the ask legible at a glance. */
+  .support-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    min-height: 40px;
+    padding-inline: var(--s-4);
+    border-radius: var(--r-pill);
+    background: #ffdd00;
+    color: #0d0c22;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    text-decoration: none;
+    transition:
+      background-color var(--t-instant) var(--ease),
+      transform var(--t-base) var(--ease);
+  }
+
+  .support-btn :global(svg) {
+    width: 18px;
+    height: 18px;
+    flex: none;
+  }
+
+  .support-btn:hover {
+    background: #f2ce00;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .support-btn:hover {
+      transform: scale(1.03);
+    }
+  }
+
+  /* Discord's own blurple, filled, so the invite reads as a call to action
+     rather than another monochrome icon. The logo takes currentColor and so
+     goes white on the fill. */
+  .discord-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    min-height: 40px;
+    padding-inline: var(--s-4);
+    border-radius: var(--r-pill);
+    background: #5865f2;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    text-decoration: none;
+    transition:
+      background-color var(--t-instant) var(--ease),
+      transform var(--t-base) var(--ease);
+  }
+
+  .discord-btn :global(svg) {
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
+
+  .discord-btn:hover {
+    background: #4752c4;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .discord-btn:hover {
+      transform: scale(1.03);
+    }
+  }
+
+  .hdr__burger {
+    display: none;
+  }
+
+  /* --- Mobile sheet ------------------------------------------------------ */
+
+  .sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+  }
+
+  .sheet__backdrop {
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--bg-0) 60%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+  }
+
+  .sheet__panel {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: min(320px, 84vw);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding: var(--s-5);
+    padding-top: max(var(--s-5), env(safe-area-inset-top));
+    padding-bottom: max(var(--s-5), env(safe-area-inset-bottom));
+    background: var(--bg-1);
+    border-inline-start: 1px solid var(--line);
+    transform: translateX(100%);
+    overflow-y: auto;
+  }
+
+  .sheet__close {
+    align-self: flex-end;
+    margin-bottom: var(--s-4);
+  }
+
+  .sheet__link {
+    padding: var(--s-4);
+    border-radius: var(--r-nested);
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    min-height: 44px;
+  }
+
+  .sheet__link:hover {
+    background: var(--bg-2);
+    color: var(--accent-text);
+  }
+
+  /* The header actions, relocated. The Discord pill keeps its blurple CTA
+     identity; GitHub takes the quiet bordered form; the theme row pairs a
+     label with the same switch the header carries on desktop. */
+  .sheet__foot {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    margin-top: auto;
+    padding-top: var(--s-5);
+    border-top: 1px solid var(--line);
+  }
+
+  .sheet__action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    min-height: 48px;
+    border-radius: var(--r-pill);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+  }
+
+  .sheet__action :global(svg) {
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
+
+  .sheet__action--support {
+    background: #ffdd00;
+    color: #0d0c22;
+  }
+
+  .sheet__action--support:hover {
+    background: #f2ce00;
+  }
+
+  .sheet__action--discord {
+    background: #5865f2;
+    color: #fff;
+  }
+
+  .sheet__action--discord:hover {
+    background: #4752c4;
+  }
+
+  .sheet__action--github {
+    border: 1px solid var(--line);
+    color: var(--ink-0);
+  }
+
+  .sheet__action--github:hover {
+    background: var(--bg-2);
+  }
+
+  .sheet__theme {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    padding-inline: var(--s-2);
+  }
+
+  .sheet__theme-label {
+    font-size: var(--step--1);
+    font-weight: 500;
+    color: var(--ink-1);
+  }
+
+  .sheet[data-open] .sheet__backdrop {
+    opacity: 1;
+  }
+
+  .sheet[data-open] .sheet__panel {
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .sheet__backdrop {
+      transition: opacity var(--t-base) var(--ease);
+    }
+    .sheet__panel {
+      transition: transform var(--t-base) var(--ease);
+    }
+  }
+
+  @media (max-width: 900px) {
+    .hdr__nav {
+      display: none;
+    }
+    .hdr__burger {
+      display: inline-grid;
+    }
+
+    /* iOS Safari reports scroll(root) support but the timeline never runs on
+       this sticky header, leaving the glass at opacity 0 over scrolled
+       content. Phones simply keep the settled state full-time. */
+    .hdr::before {
+      animation: none;
+      opacity: 1;
+    }
+
+    /* Only the burger stays in the bar — the other actions move into the
+       sheet — and the brand takes the true centre, wordmark included. */
+    .support-btn,
+    .discord-btn,
+    .icon-btn--github,
+    .hdr__actions :global([data-theme-toggle]) {
+      display: none;
+    }
+
+    .brand {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+  }
+
+  @media (min-width: 901px) {
+    .sheet {
+      display: none;
+    }
+  }
+</style>

@@ -1,0 +1,371 @@
+---
+/**
+ * The signal path. The SVG is decorative (aria-hidden) — the <ol> beneath it
+ * is the accessible content and the visual fallback below 760px, where a
+ * 1100-unit-wide diagram would render its labels at four pixels. From 760px
+ * the <ol> is visually hidden rather than restyled as a breadcrumb: on screen
+ * it would only repeat the diagram word for word.
+ *
+ * Every stage here is verified against the app SOURCE, not the README — see
+ * src/data/verified-claims.md. LibVLC decodes, ReplayGain levels, the EQ is
+ * parametric (never "10-band"), and exclusive output is Windows-only, a
+ * qualifier that is load-bearing and so is carried in the diagram, the list
+ * AND the fact row.
+ */
+
+/* --- Diagram geometry ----------------------------------------------------
+   Laid out in code rather than by hand so a label change cannot silently
+   overflow its box. Node widths are derived from the label; x positions
+   accumulate. Every number below is a viewBox user unit, not a CSS pixel. */
+const GAP = 92;
+const NODE_Y = 22;
+const NODE_H = 68;
+const MID = NODE_Y + NODE_H / 2; // the spine, and the lane the pulse travels
+const LABEL_Y = 49;
+const HINT_Y = 70;
+const RAIL_H = 112;
+
+const stages = [
+  { name: 'File', hint: 'ON DISK', qualifier: null },
+  { name: 'Decode', hint: 'LIBVLC', qualifier: 'LibVLC' },
+  { name: 'ReplayGain', hint: 'LEVELLING', qualifier: null },
+  { name: 'Parametric EQ', hint: 'PRESETS', qualifier: null },
+  { name: 'Exclusive output', hint: 'WINDOWS ONLY', qualifier: 'Windows only' },
+];
+
+let cursor = 0;
+const nodes = stages.map((s) => {
+  /* 8.4u/char is Inter 600 at 15u measured across these five labels; the 150u
+     floor stops the short names collapsing into stubs. */
+  const w = Math.max(150, Math.round(s.name.length * 8.4 + 44));
+  const node = { ...s, x: cursor, w, cx: cursor + w / 2 };
+  cursor += w + GAP;
+  return node;
+});
+const RAIL_W = cursor - GAP;
+
+/* Chevron at the centre of each gap. */
+const arrows = nodes.slice(0, -1).map((n) => n.x + n.w + GAP / 2);
+
+const facts = [
+  {
+    /* Deliberately NOT "bit-perfect". Verified in source: LibVLC 3.x's audio
+       callback delivers 16-bit PCM, so anything above 16 bits is truncated
+       before it reaches the exclusive sink, and the claim also breaks at any
+       volume below 100. What IS true is the sample rate and the mixer bypass.
+       The README's "live signal-path badge" is also dropped — it is computed in
+       PlayerViewModel but bound by no XAML, so nothing renders it. */
+    label: 'Exclusive output',
+    note: 'Windows only. Bypasses the system mixer and opens your device at the track’s own rate; 16-bit sources pass through untouched.',
+  },
+  { label: 'Gapless playback', note: 'One album side, no seam between tracks.' },
+  { label: 'Crossfade and AutoMix', note: 'Blend one track into the next, by hand or automatically.' },
+  /* ReplayGain and the parametric EQ are not repeated here — the diagram
+     already names both stages, hints included. */
+];
+---
+
+<section class="section audio" id="audio" aria-labelledby="audio-title" data-tint="4">
+  <div class="container">
+    <header class="audio__head" data-reveal>
+      <h2 class="h2" id="audio-title">See the whole chain</h2>
+      <p class="lede">
+        Five stages sit between the file on your disk and your output device.
+      </p>
+    </header>
+
+    <figure class="rail" data-reveal>
+      <svg
+        class="rail__svg"
+        viewBox={`0 0 ${RAIL_W} ${RAIL_H}`}
+        width={RAIL_W}
+        height={RAIL_H}
+        style={`--rail-w:${RAIL_W}px`}
+        aria-hidden="true"
+        focusable="false"
+      >
+        <line class="rail__spine" x1="0" y1={MID} x2={RAIL_W} y2={MID}></line>
+
+        {
+          arrows.map((gx) => (
+            <path
+              class="rail__arrow"
+              d={`M${gx - 4} ${MID - 5} L${gx + 3} ${MID} L${gx - 4} ${MID + 5}`}
+            />
+          ))
+        }
+
+        {
+          nodes.map((n) => (
+            <g class="rail__node">
+              <rect class="rail__box" x={n.x} y={NODE_Y} width={n.w} height={NODE_H} rx="14" />
+              {/* No whitespace inside <text>: xml:space="default" trimming is
+                  inconsistent enough that a stray space can shift a
+                  text-anchor="middle" label off centre. */}
+              <text class="rail__name" x={n.cx} y={LABEL_Y} text-anchor="middle">{n.name}</text>
+              <text class="rail__hint" x={n.cx} y={HINT_Y} text-anchor="middle">{n.hint}</text>
+            </g>
+          ))
+        }
+
+        {
+          /* Drawn last so it reads as the signal lighting each stage as it
+             passes, rather than vanishing behind four fifths of the diagram.
+             The dot rides the clear band between the two label lines. */
+        }
+        <g class="rail__pulse">
+          <circle class="rail__halo" cx="0" cy={MID} r="11" />
+          <circle class="rail__dot" cx="0" cy={MID} r="4" />
+        </g>
+      </svg>
+
+      <figcaption class="rail__legend">
+        <ol class="rail__steps">
+          {
+            stages.map((s, i) => (
+              <li class="rail__step">
+                <span class="rail__n mono" aria-hidden="true">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <span class="rail__step-name">{s.name}</span>
+                {s.qualifier && <span class="rail__step-q mono">{s.qualifier}</span>}
+              </li>
+            ))
+          }
+        </ol>
+      </figcaption>
+    </figure>
+
+    <ul class="facts" data-reveal-group>
+      {
+        facts.map((f) => (
+          <li class="fact" data-reveal>
+            <h3 class="fact__label mono">{f.label}</h3>
+            <p class="fact__note">{f.note}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  /* --- Header -------------------------------------------------------------- */
+
+  /* Centred, like the comparison and download heads: the diagram below is one
+     symmetric object, so the heading sits over its middle. */
+  .audio__head {
+    max-width: 46rem;
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .audio__head .lede {
+    margin-top: var(--s-5);
+    margin-inline: auto;
+  }
+
+  /* --- The diagram --------------------------------------------------------- */
+
+  .rail {
+    margin: clamp(2rem, 4vw, 3.25rem) 0 0;
+  }
+
+  /* Below this the viewBox scales the 15u labels under 10px. The <ol> already
+     carries every word, so the diagram simply steps aside. */
+  .rail__svg {
+    display: none;
+    width: 100%;
+    height: auto;
+  }
+
+  .rail__spine {
+    stroke: var(--ink-2);
+    stroke-width: 1.5;
+    opacity: 0.5;
+  }
+
+  .rail__arrow {
+    fill: none;
+    stroke: var(--ink-2);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.8;
+  }
+
+  .rail__box {
+    fill: var(--bg-1);
+    stroke: var(--line);
+    stroke-width: 1;
+  }
+
+  .rail__name {
+    fill: var(--ink-0);
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .rail__hint {
+    fill: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+  }
+
+  /* --- The pulse ----------------------------------------------------------- --
+
+     A time-based loop, not a scroll-driven one: the diagram is a steady state,
+     not a reveal. Pausing it off-screen would need a registered custom property
+     animated on a view() timeline to feed animation-play-state — a lot of
+     machinery for one 4-unit dot. It is kept slow and low-contrast instead,
+     which is the cheaper half of the same trade. */
+
+  .rail__halo {
+    fill: var(--accent-500);
+    opacity: 0.16;
+  }
+
+  .rail__dot {
+    fill: var(--accent-500);
+  }
+
+  /* No motion, no pulse — the path is legible without it. */
+  .rail__pulse {
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .rail__pulse {
+      animation: rail-pulse 7s linear infinite;
+    }
+  }
+
+  @keyframes rail-pulse {
+    0% {
+      transform: translateX(0);
+      opacity: 0;
+    }
+    6% {
+      opacity: 1;
+    }
+    74% {
+      opacity: 1;
+    }
+    80% {
+      transform: translateX(var(--rail-w));
+      opacity: 0;
+    }
+    /* Held, then reset across the loop boundary while invisible. */
+    100% {
+      transform: translateX(var(--rail-w));
+      opacity: 0;
+    }
+  }
+
+  /* --- The same path, as text ---------------------------------------------- */
+
+  .rail__steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--s-3);
+    /* On narrow screens the rule IS the diagram. */
+    padding-inline-start: var(--s-5);
+    border-inline-start: 1px solid var(--line);
+  }
+
+  .rail__step {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--s-3);
+    font-size: var(--step--1);
+    --dot: var(--line);
+  }
+
+  .rail__step::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: calc(var(--s-5) * -1);
+    top: 0.55em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--dot);
+    translate: -50% 0;
+  }
+
+  .rail__n {
+    font-size: var(--step--2);
+    color: var(--accent-text);
+  }
+
+  .rail__step-name {
+    color: var(--ink-0);
+    font-weight: 500;
+  }
+
+  .rail__step-q {
+    font-size: var(--step--2);
+    color: var(--ink-2);
+  }
+
+  @media (min-width: 760px) {
+    .rail__svg {
+      display: block;
+    }
+
+    /* Visually hidden, not display:none — screen readers still get the list
+       (the SVG is aria-hidden), the screen just stops saying it twice. */
+    .rail__steps {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+
+  /* --- Facts --------------------------------------------------------------- */
+
+  .facts {
+    list-style: none;
+    margin: clamp(2rem, 4vw, 3.25rem) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--s-6);
+    /* min() keeps the track from demanding 17rem inside a 280px column. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  }
+
+  .fact {
+    padding-top: var(--s-4);
+    border-top: 1px solid var(--line);
+  }
+
+  .fact__label {
+    font-size: var(--step--2);
+    font-weight: 500;
+    line-height: 1.45;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-0);
+  }
+
+  .fact__note {
+    margin-top: var(--s-2);
+    color: var(--ink-1);
+    font-size: var(--step--1);
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+</style>

@@ -1,0 +1,2086 @@
+{
+  "releases": [
+    {
+      "tag": "v1.4.3",
+      "version": "1.4.3",
+      "name": "v1.4.3",
+      "publishedAt": "2026-08-10T18:57:09Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.3",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added collapsible Home sections (all six fold to header)",
+            "Added animated section collapse/expand transitions",
+            "Added mini player search suggestions (random library slice)"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Developer Mode logging (DebugLogger now enabled)",
+            "Improved stall detection window",
+            "Improved crash diagnostics with pre-error context ring",
+            "Improved Linux compositor detection for transparency",
+            "Improved search clearing (immediate refill instead of debounce)"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed mini player Queue missing explicit badge",
+            "Fixed mini player menu unreadable in light theme",
+            "Fixed mini player dark wedges at corners on Linux",
+            "Fixed silent tracks on Linux/macOS"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.4.2",
+      "version": "1.4.2",
+      "name": "v1.4.2",
+      "publishedAt": "2026-08-10T04:06:56Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.2",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added sort playlists by release date",
+            "Added Oldest/Newest Release for smart playlists",
+            "Added mini player form morphing animations",
+            "Added Lossless/Hi-Res badge on mini player",
+            "Added full-bleed artwork on Large-icon form",
+            "Added full-bleed artwork on Lyrics form",
+            "Added Queue/Search/Volume expand downward",
+            "Added persistent Lyrics toggle in menu",
+            "Added Explicit badge on search results"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved mini player menu theming (follows app theme)",
+            "Improved mini player drawer styling (liquid glass)",
+            "Improved mini player corner badge design",
+            "Improved form transitions with easing",
+            "Improved window glide on form jumps",
+            "Improved Discord profile artwork caching",
+            "Improved artwork versioning for cache busting",
+            "Improved mini player layout consistency"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed false \"did not shut down cleanly\" banner",
+            "Fixed Add Songs picker hiding matches past 100",
+            "Fixed mini player menu completely dead",
+            "Fixed mini player menu drag bug",
+            "Fixed mini player close button overlapping resize",
+            "Fixed heart button misaligned in Bar form",
+            "Fixed heart glyph off-center in disc",
+            "Fixed frosted band not blurring properly",
+            "Fixed frost crop mismatched with artwork",
+            "Fixed dark wedges at menu corners",
+            "Fixed Lyrics view with no way out",
+            "Fixed Queue covering player instead of opening"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.4.1",
+      "version": "1.4.1",
+      "name": "v1.4.1",
+      "publishedAt": "2026-08-08T19:19:47Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.1",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added close button to lyrics side panel (hover-reveal)",
+            "Added macOS menu bar (Settings, Playback commands)",
+            "Added macOS Now Playing support (touch bar, Control Center, media keys)",
+            "Added Mini player size and position persistence",
+            "Added Mini Player Opacity slider in Settings"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved music server error messages (specific causes named)",
+            "Improved scroll motion frame-rate independence",
+            "Improved mini player card translucency and blur",
+            "Improved mini player artwork sizing",
+            "Improved mini player button styling and spacing"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed tracks occasionally playing with no audio until manually skipped",
+            "Fixed track-start volume reassert latching onto wrong session",
+            "Fixed saving metadata on playing track interrupting playback",
+            "Fixed favorite heart riding too high on multi-line rows",
+            "Fixed Explicit badge pushed out by long titles",
+            "Fixed close button overlapping artwork",
+            "Fixed close button and menu disc too close together",
+            "Fixed heart glyph off-center in its disc",
+            "Fixed window geometry never persisting on restart",
+            "Fixed wheel smooth-scroll velocity ripple",
+            "Fixed glide fighting scrollbar thumb during manual scroll"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.4.0",
+      "version": "1.4.0",
+      "name": "v1.4.0",
+      "publishedAt": "2026-08-06T23:52:13Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.0",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added BETA badges for Liquid Glass and Song Transitions",
+            "Added dedicated Close/Clear row in Queue popup",
+            "Added frosted buttons for Liquid Glass mode"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Music Server form layout (fixed width, better scrolling)",
+            "Improved server section header label",
+            "Improved empty-library message wording and positioning",
+            "Improved server type switching (clears form on change)"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed now-playing track row rendered as blank white bar",
+            "Fixed album and playlist description dialogs blank in light mode",
+            "Fixed Jellyfin \"Couldn't reach the server\" on bare addresses"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.3.9",
+      "version": "1.3.9",
+      "name": "v1.3.9",
+      "publishedAt": "2026-08-06T02:26:11Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.9",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Home search redirect to Songs",
+            "Added Fullscreen Lyrics Focus toggle",
+            "Added Sidebar auto-hide in fullscreen lyrics",
+            "Added Artist page Songs section (top songs)",
+            "Added Merge Featured Artists From Titles toggle",
+            "Added Dedicated Mini Player button",
+            "Added Settings Join Split Words toggle",
+            "Added ELRC multi-singer duet lyrics",
+            "Added Jellyfin and Navidrome streaming support",
+            "Added Artwork on Songs page with thumbnails",
+            "Added Explicit badge on suggested rail rows",
+            "Added Rebuilt mini player (resizable, multiple forms)",
+            "Added Mini player lyrics form with karaoke",
+            "Added Mini player library search",
+            "Added Mini player queue preview",
+            "Added Mini player volume controls",
+            "Added Mini player size-driven form morphing",
+            "Added Written By composer credits",
+            "Added Crash-surviving logs in Developer Mode",
+            "Added Latest release pill in version manager",
+            "Added Apple Music catalogue search for artwork",
+            "Added Typed album name search for artwork",
+            "Added Select all in Add Songs playlist picker",
+            "Added Rebuilt playlist description dialog",
+            "Added Rebuilt album description dialog",
+            "Added Explicit badge on playlist rows",
+            "Added Animated artwork scraper improvements"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved breathing room for cover/track-info block",
+            "Improved Focus-mode centering on lyrics page",
+            "Improved Apple-style seek slider behavior",
+            "Improved transport click animations",
+            "Improved shuffle/repeat active highlighting",
+            "Improved search pill morph animation",
+            "Improved Settings appearance tab UI",
+            "Improved Music Server settings form",
+            "Improved View Options sheet functionality",
+            "Improved Albums sort with A-Z option",
+            "Improved Lyrics auto-follow seek behavior",
+            "Improved Ctrl+F search pill toggle",
+            "Improved Metadata editor load timing",
+            "Improved Library performance for large collections",
+            "Improved Queue page virtualization",
+            "Improved Server albums grid virtualization",
+            "Improved EqVisualizer performance gating",
+            "Improved Lyrics timer efficiency",
+            "Improved favorite heart state sync",
+            "Improved crash logging and crash recovery",
+            "Improved music server error messages",
+            "Improved transport button press feedback",
+            "Improved mini player window sizing",
+            "Improved mini player button consistency"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed search pill floating over other apps on Linux",
+            "Fixed volume flyout floating over apps",
+            "Fixed orphaned search pill in Cover Flow",
+            "Fixed lyrics scroll-anchor coordinate bug",
+            "Fixed Spacebar stopped pausing after clicking",
+            "Fixed AutoMix never firing on near-end seeks",
+            "Fixed playlist scroll stutter",
+            "Fixed Songs row titles rendering misaligned",
+            "Fixed playlist titles overflowing into columns",
+            "Fixed Settings stall on navigation",
+            "Fixed Timestamp Lyrics tab lag",
+            "Fixed Home collection rebuilds on every visit",
+            "Fixed now-playing row not following accent color",
+            "Fixed EQ bars invisible in certain themes",
+            "Fixed album-detail view leak",
+            "Fixed Animated Artwork not finding albums",
+            "Fixed metadata editor tag write on playing track",
+            "Fixed Jellyfin token leak in debug logs",
+            "Fixed artwork downloads hanging on stalled server",
+            "Fixed Collapse Album Editions toggle lag",
+            "Fixed Settings toggle lag on Albums/Artists",
+            "Fixed lyrics back button disabled",
+            "Fixed Search pill sticky without text",
+            "Fixed AutoMix stranding volume state",
+            "Fixed track-end double-advance during crossfade",
+            "Fixed Pause not serialized through playback lock",
+            "Fixed duplicate stale comments"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.3.8",
+      "version": "1.3.8",
+      "name": "v1.3.8",
+      "publishedAt": "2026-07-31T00:17:55Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.8",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Buy Me a Coffee Sponsor button",
+            "Added SQLite journal for ratings/playcounts",
+            "Added lazy per-track lyrics store"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved karaoke sweep continuity across word boundaries",
+            "Improved held-note emphasis glow with bell envelope",
+            "Improved library.json file size",
+            "Improved memory usage",
+            "Improved view rebuild performance when hidden",
+            "Improved search key caching"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed wrong-song lyrics fetching",
+            "Fixed instrumental tracks showing wrong lyrics",
+            "Fixed Remove Lyrics not working after restart",
+            "Fixed try alternate choice not sticking",
+            "Fixed manual save clobbering existing files",
+            "Fixed offline showing wrong error message",
+            "Fixed Unknown Artist placeholder sent as query",
+            "Fixed sidecar/cache race conditions",
+            "Fixed slow-word stutter in karaoke",
+            "Fixed hard edge on CJK characters",
+            "Fixed held-note emphasis firing on almost every lyric",
+            "Fixed emphasis glow snapping and freezing"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.3.7",
+      "version": "1.3.7",
+      "name": "v1.3.7",
+      "publishedAt": "2026-07-30T20:25:56Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.7",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Flowing Lyrics Background toggle in Settings"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Folders view scrambled song order",
+            "Fixed subfolder ordering",
+            "Fixed lost folders upon restarting"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.3.6",
+      "version": "1.3.6",
+      "name": "v1.3.6",
+      "publishedAt": "2026-07-28T23:06:46Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.6",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Removed Tracks restore in Settings",
+            "Added WMA/ASF format support",
+            "Added raw AAC (ADTS) format support",
+            "Added OGA format support",
+            "Added flowing-light lyrics background",
+            "Added fullscreen mode (F11 toggle)"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved context menu entry renamed to \"Metadata\""
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Settings not persisting on restart",
+            "Fixed profile picture flashing red",
+            "Fixed Ratings/ReplayGain not written to WMA files",
+            "Fixed Recycle-Bin removal splitting albums",
+            "Fixed theme editor preview not matching real UI",
+            "Fixed volume flyout stuck-open bug"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.3.5",
+      "version": "1.3.5",
+      "name": "v1.3.5",
+      "publishedAt": "2026-07-26T02:01:32Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.5",
+      "sections": [
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved import pill notifications (now shows relocations)"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed dropped files stealing other albums' artwork",
+            "Fixed Move to Recycle Bin appearing to do nothing",
+            "Fixed dropped files being moved into album folders",
+            "Fixed wrong artwork never self-healing"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.3.4",
+      "version": "1.3.4",
+      "name": "v1.3.4",
+      "publishedAt": "2026-07-25T23:31:58Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.4",
+      "sections": [
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved fresh-install defaults",
+            "Improved Reset to Defaults consistency",
+            "Improved Exclusive Mode explanation in settings",
+            "Improved signal path display accuracy",
+            "Other bug fixes and Improvements"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Delete track jumping to artist page",
+            "Fixed drag-drop import silently losing files",
+            "Fixed lyrics scrolling at song end",
+            "Fixed Discord artwork showing placeholder",
+            "Fixed lyrics panel overlapping lines",
+            "Fixed external open tracks missing artwork",
+            "Fixed lyrics not following backward seeks",
+            "Fixed player bar pill shrinking on lyrics open",
+            "Fixed white accent making buttons unreadable",
+            "Fixed no fresh install showing Lossless badge",
+            "Fixed Bit-perfect badge never showing",
+            "Fixed ListenBrainz scrobbling toggle not enabling",
+            "Fixed Discord relay not republishing while paused"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.3.3",
+      "version": "1.3.3",
+      "name": "v1.3.3",
+      "publishedAt": "2026-07-25T01:41:19Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.3",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added app-wide smooth wheel scrolling",
+            "Added library.json corruption quarantine",
+            "Added settings.json corruption recovery",
+            "Added launch-at-login failure reporting",
+            "Added Clear Queue confirmation",
+            "Added LRC editor backup file",
+            "Added auto-follow pause on scrollbar drag/touch"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved library.json file size",
+            "Improved Statistics/Home/Wrap artist grouping consistency",
+            "Improved repeat/shuffle/mute persistence",
+            "Improved Escape closes topmost surface",
+            "Improved window position validation",
+            "Improved tray tooltip with current track",
+            "Improved Discord reconnect handling",
+            "Improved clip export cancellation with progress",
+            "Improved startup instrumentation"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Exclusive Mode crashes",
+            "Fixed audio dropout",
+            "Fixed lyrics page/panel track-change flicker",
+            "Fixed volume slider going dead",
+            "Fixed Exclusive Mode gain applied twice",
+            "Fixed queue popup dead on macOS/Linux",
+            "Fixed Repeat All dropping tracks past 50",
+            "Fixed Settings saves silently reverting",
+            "Fixed Reset Settings half-reset",
+            "Fixed Statistics tab always reading 0 playlists",
+            "Fixed corrupt settings.json overwriting itself",
+            "Fixed launch-at-login toggle staying ON",
+            "Fixed Clear Artwork Cache deleting everything",
+            "Fixed AutoMix stale seek offset",
+            "Fixed LRC editor replacing complete sidecars",
+            "Fixed Wrap freezing partial year as permanent record",
+            "Fixed Artist tab blocking on File.Exists",
+            "Fixed library handlers being un-unsubscribable",
+            "Fixed Tray/SMTC/MPRIS not existing until library loaded",
+            "Fixed start minimized showing window",
+            "Fixed single-instance mutex squatted",
+            "Fixed MPRIS not recovering from D-Bus restart",
+            "Fixed color picker fringing and caret issues",
+            "Fixed Home Top Artists showing placeholders",
+            "Fixed scroll stutter on wheel notches",
+            "Fixed offline music folder wiping library",
+            "Fixed AutoMix dropping tracks past 50",
+            "Fixed path-traversal in tag values",
+            "Fixed auto-organize racing issues",
+            "Fixed LRC sidecar deletion on transient load failure",
+            "Fixed playlist drag-drop off-by-one",
+            "Fixed M3U file:// decoding"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.3.2",
+      "version": "1.3.2",
+      "name": "v1.3.2",
+      "publishedAt": "2026-07-24T01:53:27Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.2",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Windows media flyout timeline",
+            "Added Open with Noctis file association",
+            "Added MPRIS Seeked signal support",
+            "Added Album tiles show release year",
+            "Added Year subtitles to More By Artist and Favorites",
+            "Added row hearts on fully-favorited albums",
+            "Added favorite heart fade-grow animation",
+            "Added Navidrome salted-token auth",
+            "Added remote-source password encryption",
+            "Added Loon relay security hardening",
+            "Added Updater hardening",
+            "Added Single-instance pipe ACL",
+            "Added OpenUrl scheme allowlist"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved fullscreen lyrics backdrop rendering",
+            "Improved player-bar lyrics button (instant open)",
+            "Improved Settings tab animation",
+            "Improved Metadata editor tab animation",
+            "Improved Lyrics intro dots",
+            "Improved library tab row styling",
+            "Improved favorite heart state sync"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Exclusive Mode dead silence",
+            "Fixed search pill floating over apps while minimized",
+            "Fixed fullscreen lyrics page low fps",
+            "Fixed Queue/history lost on every update",
+            "Fixed Folders view permanently stale",
+            "Fixed view leaks in multiple pages",
+            "Fixed batch metadata finder auto-applying low-confidence tags",
+            "Fixed native crash risk in audio player disposal",
+            "Fixed Repeat One trapping on same track",
+            "Fixed Un-shuffle re-queuing already-played tracks",
+            "Fixed Equalizer use-after-free",
+            "Fixed concurrent JSON saves corrupting library.json",
+            "Fixed removing tracks auto-trashing app files",
+            "Fixed Symlink/junction loops hanging library scans",
+            "Fixed artwork saves wiping back covers/booklets",
+            "Fixed offline cache truncating good files",
+            "Fixed stats View All Stats back arrow",
+            "Fixed View All Stats open flicker",
+            "Fixed startup crash",
+            "Fixed Top Artist circles clipped",
+            "Fixed Album favorites not reflected in Cover Flow/Collage",
+            "Fixed player-bar favorite not persisting",
+            "Fixed favorite hearts not updating in real time",
+            "Fixed Search lyrics auto-search",
+            "Fixed karaoke MP4 export sweep mismatching preview",
+            "Fixed M3U8 imports from VLC/foobar"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.3.1",
+      "version": "1.3.1",
+      "name": "v1.3.1",
+      "publishedAt": "2026-07-20T23:13:17Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.1",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added volume slider revamp (slimmer, drag bubble with %, wheel ±5%, unmute-on-adjust)",
+            "Added Home page revamp (ranked top-songs chart with drag-to-export)",
+            "Added Songs summary line (\"2,144 songs · 138 hours\") and quality filter chips",
+            "Added Folders header summary (\"2,144 items · 61.2 GB\")",
+            "Added Playlist page revamp (inline title rename, date added, album run headers, multi-select action bar, suggested songs rail)",
+            "Added cross-view Back/Forward navigation history",
+            "Added Synced Lyrics copy button in metadata editor",
+            "Added Queue popup revamp (larger art, fixed blur, clean header)",
+            "Added Custom Theme editor revamp (pill-style inputs, consolidated color card, live preview)",
+            "Added Apple Music-style background vocals/adlibs (TTML x-bg, ELRC parenthetical folding)",
+            "Added lyrics depth-of-field blur (neighbors 4px, far lines 10px)",
+            "Added Lyrics panel text size increase (20→25px)",
+            "Added Lyrics panel cascade stagger animation (synced with page)"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved lyrics panel animations to match full lyrics page",
+            "Improved lyrics panel spacing and layout (Apple Music style)",
+            "Improved Home hover polish (lift, play button, avatar ring)",
+            "Improved top bar organization across sections",
+            "Improved dialog animations and sizing",
+            "Improved Playlists view cleanup",
+            "Improved animated cover quality labels and error handling"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed seek audio dropout (now ducks to −12dB instead of muting)",
+            "Fixed session-volume hardening on restore failure",
+            "Fixed Developer Mode log box scrolling the page",
+            "Fixed static artwork flash before animated covers",
+            "Fixed Add Songs dialog long-title overflow",
+            "Fixed theme editor color swatch clipping on hover",
+            "Fixed theme editor invisible Dark/Light pills",
+            "Fixed ELRC line-change jump-then-pause",
+            "Fixed ELRC per-word start stall",
+            "Fixed TTML background-only paragraphs being dropped",
+            "Fixed ELRC last-word emphasis glow miscomputed",
+            "Fixed lyric sort instability (equal-timestamp lines reordering)",
+            "Fixed animated cover downloads silently failing (24MB cap misuse)",
+            "Fixed animated cover Remove/Replace doing nothing",
+            "Fixed animated cover looping over \"No track playing\"",
+            "Fixed volume percentage bubble clipping",
+            "Fixed player bar marquee gap",
+            "Fixed custom theme mode toggle flipping on click",
+            "Fixed saving non-active custom theme force-activating it",
+            "Fixed search pill floating over other apps when minimized",
+            "Fixed cross-view Back/Forward wiping navigation history",
+            "Fixed Queue popup double-click closing the panel"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.3.0",
+      "version": "1.3.0",
+      "name": "v1.3.0",
+      "publishedAt": "2026-07-17T02:44:14Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.0",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added persistent search pill (stays open while browsing)",
+            "Added Ctrl+F to open/refocus search from anywhere"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Watch Folders not removing deleted albums",
+            "Fixed playback error cascade and crash",
+            "Fixed macOS audio corruption",
+            "Fixed Synced Lyrics clipping in metadata editor"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.2.9",
+      "version": "1.2.9",
+      "name": "v1.2.9",
+      "publishedAt": "2026-07-15T23:49:50Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.9",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added folder search jump-to and highlight",
+            "Added file-readiness gate for Watch-Folders importer"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved folder search to keep track numbers",
+            "Improved album tile sizing in the More by Artist view"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed stale search in Folders tab",
+            "Fixed drop-imported tracks not appearing in Folders",
+            "Fixed folder selection lost after adding track",
+            "Fixed row-number clipping in Folders"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.2.8",
+      "version": "1.2.8",
+      "name": "v1.2.8",
+      "publishedAt": "2026-07-15T03:18:52Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.8",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added TTML lyrics support (.ttml sidecars with word/syllable timing)",
+            "Added Folder context menu in Folders tab (Play, Shuffle, Add to Queue, etc)",
+            "Added Developer Mode in Settings (version manager, debug logs)",
+            "Added Version Manager (fetch, view, install/rollback releases)",
+            "Added one-click release install and download",
+            "Added release warnings in version manager",
+            "Added Debug Logs service with export"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Albums and Quality filters UI",
+            "Improved Songs top bar button styling (ghost pill)",
+            "Improved sidebar search flyout animation",
+            "Improved Settings modal animation",
+            "Improved Metadata editor layout and styling",
+            "Improved Add to Playlist dialog animation and flow",
+            "Improved About tab (version copy, update button naming)",
+            "Improved Artwork search popup styling",
+            "Improved delete confirmation dialogs",
+            "Improved Artwork and Animated artwork tabs",
+            "Improved Folders page button hierarchy",
+            "Improved Lyrics page Search button styling",
+            "Improved Playlists \"New\" flyout layout",
+            "Improved Playlist creation dialog styling"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Albums section release-type and quality filters (converted to dropdowns)",
+            "Fixed ReplayGain Pre-amp slider disabled state",
+            "Fixed taskbar thumbnail toolbar icons invisible in Windows Light mode",
+            "Fixed seek-while-paused starting playback",
+            "Fixed MPRIS on Linux (property replies were malformed)",
+            "Fixed sidebar scrollbar appearing on Arch",
+            "Fixed Synced Lyrics toggle not showing visual change",
+            "Fixed Artwork search dropping correct albums",
+            "Fixed static-art flash for animated covers",
+            "Fixed lyrics scroll micro-stutter",
+            "Fixed Artists page press-drag highlight"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.2.7",
+      "version": "1.2.7",
+      "name": "v1.2.7",
+      "publishedAt": "2026-07-12T14:42:07Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.7",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added MPRIS support for Linux (hardware media keys, media widgets, playerctl)",
+            "Added Playlist export (.m3u8 format)",
+            "Added Playlist import (.m3u/.m3u8 support)"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved setting description for file tag rewrites (warns sync tools see changes)",
+            "Improved import dialog copy to mention M3U"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Linux \"starts muted\" issue",
+            "Fixed intermittent silent tracks on Linux"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.2.6",
+      "version": "1.2.6",
+      "name": "v1.2.6",
+      "publishedAt": "2026-07-11T20:33:51Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.6",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Folders view click-navigation (track title opens album, artist opens discography)",
+            "Added scroll-position restore in Folders"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved startup speed",
+            "Improved share card export quality",
+            "Improved share card artwork resolution",
+            "Improved share video encode quality",
+            "Improved share lyrics dialog status UI"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed natural-end fallback timer stall at track end",
+            "Fixed double-tap guard in Folders",
+            "Fixed long words cut off at right on lyrics page",
+            "Fixed grainy share card exports",
+            "Fixed hover highlight box on lyric lines"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.2.5",
+      "version": "1.2.5",
+      "name": "v1.2.5",
+      "publishedAt": "2026-07-11T01:32:39Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.5",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added two new share-card layouts selectable in Card options",
+            "Added .txt plain-lyrics sidecar to recycle bin on track removal"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved artwork color extraction (DeriveVibrantColor) — pixels vote into hue buckets, weighted by chroma, stays true to cover tone",
+            "Improved Auto color consistency — lyrics page Solid·Auto, share dialog Auto swatch, and rendered card now use exact same hex",
+            "Improved karaoke smoothness in share video — bumped 24 → 60 fps with JPEG compression for speed",
+            "Improved live preview repaint rate from 30 → 60 Hz",
+            "Improved social safe areas — 9:16 content centered in reels-safe band, 1:1 side padding widened for grid crop",
+            "Improved Share Lyrics dialog layout — background pills and swatch strip collapsed into Background dropdown",
+            "Improved Card options flyout with Layout row and expanded pill summary",
+            "Improved \"A\" swatch glyph centering with optical nudge"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Timestamp Lyrics tab silently losing first manual timing pass on plain-lyrics tracks",
+            "Fixed \"Reset\" play count applying instantly even on Cancel",
+            "Fixed multi-select rename-by-pattern orphaning .lrc/.txt lyric sidecars",
+            "Fixed start/stop time parsing bare numbers as days instead of seconds",
+            "Fixed ELRC karaoke last word of a line snapping to lit instead of sweeping (now bounded by the next line's start on start-tag-only lyrics)",
+            "Fixed animated artwork lag on all platforms (reverted frame-push throttle)",
+            "Fixed remove-tracks recycle failure when track is currently playing",
+            "Fixed drop import silently doing nothing when folder contains no audio files"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.2.4",
+      "version": "1.2.4",
+      "name": "v1.2.4",
+      "publishedAt": "2026-07-10T02:25:41Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.4",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added lyrics side panel rebuilt (Apple Music style, overlay on right)",
+            "Added word-by-word karaoke in side panel sharing lyrics page rendering",
+            "Added line-click seeking in lyrics panel",
+            "Added auto-follow in panel (pauses 4s on manual scroll)",
+            "Added panel toggle from playback bar menu",
+            "Added mutual exclusion between panel and queue popup",
+            "Added update-available badge in Settings About tab",
+            "Added update badge next to update button in About card",
+            "Added HttpSafety helper with byte caps for all external responses (4 MB text / 24 MB image / 256 MB animated)",
+            "Added raster magic-byte validation for downloaded artwork"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved lyrics panel type size (20px) and spacing",
+            "Improved distant lines visibility in panel (visible but de-focused)",
+            "Improved panel background to mirror lyrics page exactly (artwork or solid/gradient)",
+            "Improved songs search performance (query normalization hoisted)",
+            "Improved security hardening with external response validation",
+            "Improved code health (removed 328 lines of dead code)",
+            "Improved share-lyrics karaoke card parity with lyrics page (held-note glow, dim levels)"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed lyrics page broken on resize (narrow mode redesigned, content no longer clipped)",
+            "Fixed genre showing as leading dot when tag is missing",
+            "Fixed EQ visualizer frozen bars on recycled now-playing row",
+            "Fixed volume flyout border not drawing",
+            "Fixed theme editor hex labels in custom themes",
+            "Fixed locale bug on comma-decimal locales (French/German) in converters",
+            "Fixed E (explicit) badge tinted by now-playing highlight",
+            "Fixed lyrics page blank after tabbing back into app",
+            "Fixed next-track intro cut on gapless playback (Windows)",
+            "Fixed EQ bars freezing at track start",
+            "Fixed lyrics panel text clipping at right edge",
+            "Fixed empty \"gradient void\" at panel bottom",
+            "Fixed share-lyrics karaoke video preview letterbox (now hugs card aspect)",
+            "Fixed empty space inside share card with artwork background"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.2.3",
+      "version": "1.2.3",
+      "name": "v1.2.3",
+      "publishedAt": "2026-07-08T03:13:26Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.3",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added main player track title clickable to view album",
+            "Added live track population during library scan (progressive fill)",
+            "Added live album art during library scan",
+            "Added live scan counter showing current progress",
+            "Added DSD support (.dsf/.dff files with metadata)",
+            "Added \"Auto\" background in Share Lyrics color picker (derives from artwork)",
+            "Added card-options dropdown in Share Lyrics (1:1 / 9:16 · Auto / White / Black · Sync)",
+            "Added delete-from-disk on \"Remove from Library\" (Apple Music-style 3-way prompt)",
+            "Added per-platform trash support (Windows Recycle Bin, macOS Trash, Linux)",
+            "Added Spotify-style lyric share cards with vibrant background color",
+            "Added selectable lyric weight in share cards (semibold default)",
+            "Added scan checkpoint on exit / resume on next launch",
+            "Added DSD library support (.dff DSDIFF reader)",
+            "Added codec badges for lossy audio (AAC / MP3 / OPUS / OGG / WMA)",
+            "Added Windows media overlay (SMTC) integration with media keys support",
+            "Added Tray menu playback controls (Play/Pause, Next, Previous)",
+            "Added track numbers to Folders Section (right-aligned with perfect digit alignment)",
+            "Added Explicit \"E\" badge in Folders Section",
+            "Added animated EQ indicator on now-playing row in Folders",
+            "Added Collapse Album Editions setting",
+            "Added Player Bar Opacity slider in Settings",
+            "Added hover to expand sidebar toggle in Settings",
+            "Added Restore last played track on startup toggle",
+            "Added Back + Search icons to sidebar (relocated from top bar)",
+            "Added Search pill flyout animation",
+            "Added Now Playing track highlight in all views (accent red text)",
+            "Added right-click context menu for songs in Folders view",
+            "Added Folder expansion state preservation",
+            "Added Held-note emphasis (words sung ≥1s swell with soft glow)",
+            "Added Cascading scroll in lyrics (lines settle top-down)",
+            "Added Active-line zoom in word-synced lyrics",
+            "Added drag-drop import progress indicator with live status",
+            "Added real-time library fill-in during drop imports (~1.5s batches)",
+            "Added Karaoke word-sweep in Share Lyrics MP4 export",
+            "Added \"Karaoke video\" toggle in card-options",
+            "Added per-script font fallback for CJK lyrics on share cards",
+            "Added Esc key to deselect across all multi-select views"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved scrollbar styling and behavior across the app",
+            "Improved autoscroll with velocity physics (px/second, linear-to-quadratic curve)",
+            "Improved album edition handling and representative album selection",
+            "Improved playback bar readability with adjustable background opacity",
+            "Improved Settings integration for sidebar and album edition preferences",
+            "Improved code maintainability (consolidated album title normalization)",
+            "Improved UI dialog launching and removed duplicate implementations",
+            "Improved streaming file enumeration (no up-front .ToList(), progressive processing)",
+            "Improved scan parallelism (capped at min(ProcessorCount, 8) with env override)",
+            "Improved album art cache now exact-match and cheaper",
+            "Improved web remote request buffering",
+            "Improved metadata scanning speed (ffprobe hang prevention)",
+            "Improved memory growth (proper native memory reporting for album art)",
+            "Improved song search across all views",
+            "Improved UI startup load time (offloaded cache restore to background thread)",
+            "Improved side panel font zoom consistency on word-timed lyrics",
+            "Improved per-word lift and line lift animation",
+            "Improved album grid artwork sharpness (768px decode vs 512px)"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed playback being too quiet (EQ preamp issue from v1.2.2)",
+            "Fixed gapless playback volume blip between tracks",
+            "Fixed audio glitch when scrubbing during library scan",
+            "Fixed scan progress flooding the UI",
+            "Fixed library scan taking forever with lossy files",
+            "Fixed album art not showing until scan completed",
+            "Fixed app state not saving on exit (queue, history, scrobbles)",
+            "Fixed album art cache evicting wrong images",
+            "Fixed intermittent crashes when removing library tracks during refresh",
+            "Fixed potential crash on quit during track load",
+            "Fixed rating/artwork tag writes corrupting playback on macOS/Linux",
+            "Fixed duplicate-remover silently hiding files",
+            "Fixed seek bar/lyrics freezing after seeking during track transition",
+            "Fixed very short tracks stalling the queue",
+            "Fixed folder tree scrollbar jumping when selecting folders",
+            "Fixed EQ indicator color and positioning on now-playing row",
+            "Fixed SMTC session not registering on Windows",
+            "Fixed SMTC artwork not showing",
+            "Fixed app losing multi-selected albums when scrolling",
+            "Fixed context menus clipping off-screen at bottom",
+            "Fixed word-sweep stutter in lyrics (trailing whitespace issue)",
+            "Fixed held-note glow clipping in word-synced lyrics",
+            "Fixed text shearing on line-final words in lyrics",
+            "Fixed Esc key behavior (now clears selection consistently)",
+            "Fixed custom EQ dropping volume ~12 dB when boosted",
+            "Fixed ~1s audio cut when dragging/resetting EQ",
+            "Fixed split-second cut at start of next track (AutoMix cleanup)",
+            "Fixed CJK characters rendering as boxes in share cards",
+            "Fixed card-options flyout shifting left on toggle",
+            "Fixed albums showing placeholder art in grid but real art in detail",
+            "Fixed album tiles losing selection on scroll",
+            "Fixed import progress freezing the UI",
+            "Fixed dropped files losing folder artwork",
+            "Fixed per-play library save stalling UI",
+            "Fixed drag-drop import freezing the whole app",
+            "Fixed invisible wall clipping in lyrics view",
+            "Fixed phantom 1-star ratings on new imports",
+            "Fixed EQ visualizer freezing after pause",
+            "Fixed non-playing rows rendering unreadable when scrolled",
+            "Fixed previously-played track staying highlighted",
+            "Fixed now-playing track not visible in Folders view",
+            "Fixed RunLibraryScan no-opping when scan already active",
+            "Fixed removing a folder not dropping its tracks",
+            "Fixed memory explosion (18+ GB from SetEqualizer NRE loop)",
+            "Fixed Single Instance behavior (taskbar launch now surfaces existing window)",
+            "Fixed LastFm and ListenBrainz tokens stored as plain text",
+            "Fixed filename-based argument injection in ffprobe reader"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.2.2",
+      "version": "1.2.2",
+      "name": "v1.2.2",
+      "publishedAt": "2026-06-25T00:23:36Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.2",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added repeat controls to the playback bar",
+            "Added Mini Player volume controls with animated popout slider",
+            "Added Linux AppImage in-app update support",
+            "Added launch at login support for Windows, macOS, and Linux",
+            "Added optional start minimized to tray at login",
+            "Added macOS and Linux audio keep-alive support",
+            "Added metadata save loading indicator"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved animated artwork saving performance",
+            "Improved cross-platform update detection and installer selection",
+            "Improved audio keep-alive reliability across supported platforms",
+            "Improved metadata save feedback with loading indicators",
+            "Improved Mini Player volume controls and animations",
+            "Improved startup settings with launch at login and tray options"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed playback restarting when clicking empty areas of the seek bar",
+            "Fixed animated artwork causing the app to freeze while saving",
+            "Fixed macOS installer launch failures during updates",
+            "Fixed seek clicks and audio pops during playback",
+            "Fixed playback not resuming after seeking from the end of a track",
+            "Fixed brief full-volume playback when changing tracks",
+            "Fixed audio interruptions when saving metadata on macOS",
+            "Fixed AutoMix cleanup crashes",
+            "Fixed EQ Flat and Reset loudness inconsistencies",
+            "Fixed macOS album description overlay alignment",
+            "Fixed track-start audio clipping"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.2.1",
+      "version": "1.2.1",
+      "name": "v1.2.1",
+      "publishedAt": "2026-06-23T11:27:09Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.1",
+      "sections": [
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed a startup crash where the app failed to launch with a \"resource could not be found\" error, caused by case-mismatched icon references"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.2.0",
+      "version": "1.2.0",
+      "name": "v1.2.0",
+      "publishedAt": "2026-06-23T10:32:33Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.0",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Settings tabs for General, Appearance, Audio, Library, Integrations, and About",
+            "Added 5-star ratings and Not Liked support with metadata persistence",
+            "Added weighted shuffle that deprioritizes disliked tracks",
+            "Added a compact Mini Player with playback controls and always-on-top support",
+            "Added Mini Player text animation settings",
+            "Added listening statistics with Overview, Quality Report, and Play History tabs",
+            "Added persistent play history tracking",
+            "Added Appears On and Similar Artists sections",
+            "Added parametric equalizer with fully customizable EQ bands",
+            "Added WASAPI Exclusive Mode support",
+            "Added gapless playback",
+            "Added signal path and audio quality indicator",
+            "Added BPM and musical key analysis",
+            "Added Song Transitions settings with AutoMix and Crossfade modes",
+            "Added Track Radio for generating endless similar-track queues",
+            "Added smarter shuffle with recently-played track avoidance",
+            "Added Snooze for a Month support for tracks",
+            "Added continuous media folder watching with automatic library updates",
+            "Added automatic file organization tools with undo support",
+            "Added duplicate finder tools",
+            "Added metadata finder with AcoustID and MusicBrainz support",
+            "Added playlist import support for Exportify, TuneMyMusic, CSV, and JSON files",
+            "Added lyric snapshot share cards",
+            "Added Noctis Wrap listening recaps with share card exports",
+            "Added Ctrl+K command palette",
+            "Added playlist folders and starred playlists",
+            "Added sleep timer and Stop After Current Track support",
+            "Added system tray support",
+            "Added LAN web remote controls",
+            "Added time-aware Home recommendations",
+            "Added synced lyrics editing tools",
+            "Added Deezer metadata integration",
+            "Added Search Metadata workflow with review-before-apply support",
+            "Added timestamp lyrics editing tab in the metadata editor",
+            "Added enhanced word-by-word ELRC lyric support",
+            "Added Cover Collage mode with expanded layouts and animated artwork support",
+            "Added folder-drop playlist creation prompts",
+            "Added Add Songs dialog for playlists",
+            "Added sortable playlist views",
+            "Added metadata auto-matching and metadata review tools",
+            "Added Lyrics share card redesign with playback synchronization",
+            "Added active sleep timer indicators",
+            "Added Apple Music-style queue redesign",
+            "Added expanded Cover Collage layouts with up to 32 covers"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved playback bar layout and controls",
+            "Improved queue design and usability",
+            "Improved playlist detail page design and performance",
+            "Improved Home recommendations and content deduplication",
+            "Improved artist, album, playlist, and folder navigation workflows",
+            "Improved metadata editing workflows and review tools",
+            "Improved search performance and consistency across the library",
+            "Improved Cover Flow and Cover Collage experiences",
+            "Improved theme-aware menus, tooltips, and popups",
+            "Improved Mini Player visuals, controls, and animations",
+            "Improved Lyrics page readability and editing tools",
+            "Improved Settings organization, descriptions, and styling",
+            "Improved package manager update awareness and install-source handling",
+            "Removed the Listen Later feature",
+            "Removed the waveform seekbar feature",
+            "Removed the Artist Detail page",
+            "Removed obsolete metadata, playlist, and artist-related code paths"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed lyrics page resizing, scrolling, fullscreen, and animation issues",
+            "Fixed album and favorites ordering inconsistencies",
+            "Fixed Discord Rich Presence synchronization issues",
+            "Fixed animated artwork freezes and metadata save performance issues",
+            "Fixed multi-track metadata editing and album-wide metadata persistence issues",
+            "Fixed stale statistics and artist navigation issues",
+            "Fixed playlist drag-and-drop data loss when filters were active",
+            "Fixed metadata matching failures for deluxe and anniversary editions",
+            "Fixed search behavior for punctuation, accents, and special characters",
+            "Fixed updater issues across Windows, macOS, and package manager installs",
+            "Fixed library grouping issues for compilation albums",
+            "Fixed playlist search, sorting, and navigation issues",
+            "Fixed context menu inconsistencies across the app",
+            "Fixed ReplayGain, crossfade, and audio transition issues",
+            "Fixed Lyrics page crashes and active-line positioning issues",
+            "Fixed album artwork handling and representative artwork selection",
+            "Fixed multiple Settings persistence and UI issues"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.14",
+      "version": "1.1.14",
+      "name": "v1.1.14",
+      "publishedAt": "2026-06-03T15:18:43Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.14",
+      "sections": [
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Discord Rich Presence reliability during reconnects",
+            "Improved artwork caching behavior to prevent stale artwork from being reused after disconnects"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Discord Rich Presence not clearing immediately when disabled",
+            "Fixed cover artwork reverting to the Noctis logo during temporary artwork lookup failures",
+            "Fixed missing or stale Discord Rich Presence artwork after relay reconnections"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.13",
+      "version": "1.1.13",
+      "name": "v1.1.13",
+      "publishedAt": "2026-06-01T20:22:25Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.13",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Hover to expand sidebar toggle in Settings",
+            "Added app-wide middle-mouse autoscroll support",
+            "Added automatic dismissal for the Lyrics color picker",
+            "Added Collapse Album Editions setting",
+            "Added Player Bar Opacity slider in Settings"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved scrollbar styling and behavior across the app",
+            "Improved autoscroll speed, visuals, and indicator alignment",
+            "Improved album edition handling and representative album selection",
+            "Improved playback bar readability with adjustable background opacity",
+            "Improved Settings integration for sidebar behavior and album edition preferences",
+            "Improved code maintainability by consolidating album title normalization logic",
+            "Improved dialog launching logic and removed duplicate implementations"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed invisible context menus blocking input after closing",
+            "Fixed Favorites sidebar heart icon alignment",
+            "Fixed Scan ReplayGain menu labels in related album sections",
+            "Fixed readability issues on the Lyrics page with light album artwork",
+            "Fixed artist discographies incorrectly including featured appearances",
+            "Fixed scrollbar positioning in Songs, Artists, Playlists, Favorites, and Folders views",
+            "Fixed Settings scrollbar hover artifacts",
+            "Fixed Lyrics color picker staying open indefinitely",
+            "Fixed profile name field remaining focused after pressing Enter",
+            "Fixed album edition grouping for versioned releases"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.12",
+      "version": "1.1.12",
+      "name": "v1.1.12",
+      "publishedAt": "2026-06-01T03:04:06Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.12",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added inline validation and error messages for ListenBrainz authentication",
+            "Added click-away focus behavior for the ListenBrainz token field",
+            "Added multi-track metadata editing support across all major library views",
+            "Added Apple Music-style multi-select metadata editor with Mixed value support",
+            "Added Ctrl+A multi-select support in album track lists",
+            "Added rename-by-pattern support to the metadata editor",
+            "Added audio converter support for MP3, M4A, AAC, Opus, OGG, WMA, FLAC, ALAC, WAV, AIFF, and WavPack",
+            "Added bit-depth selection for supported lossless formats",
+            "Added option to import converted files back into the library",
+            "Added media kind editing support in Metadata Editor",
+            "Added ReplayGain scan status indicators for previously scanned tracks",
+            "Added real ffmpeg validation with version detection",
+            "Added Enter-to-validate support for ffmpeg paths",
+            "Added ReplayGain album actions to related album sections",
+            "Added update-available badge to the Settings sidebar icon",
+            "Added mouse back and forward navigation support",
+            "Added ListenBrainz integration and account management support",
+            "Added release type detection and filtering support for albums",
+            "Added release type override controls in Metadata Editor",
+            "Added hover-open submenu behavior for Sort By menus"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved audio converter metadata preservation",
+            "Improved artwork embedding support across formats",
+            "Improved MP4 ReplayGain support during playback",
+            "Improved ffmpeg status feedback and error reporting",
+            "Improved converter and ReplayGain dialog status messages",
+            "Improved dialog layouts, button labels, and dropdown styling",
+            "Improved queue, context menu, and options menu animations",
+            "Improved volume popup open and close animations",
+            "Improved playback bar and Lyrics page accent styling",
+            "Improved GitHub and Discord button styling in Settings",
+            "Improved Settings layout by moving About to the top",
+            "Improved album and playlist context menu actions",
+            "Removed beta badges from audio tools and release type features",
+            "Removed legacy metadata editor and playlist menu code"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Last.fm reconnect issues after cancelled authentication attempts",
+            "Fixed invisible EQ preset text when using light accent colors",
+            "Fixed ListenBrainz token field corner rendering issues",
+            "Fixed album metadata editing only updating a single track",
+            "Fixed album metadata opening the wrong editor mode",
+            "Fixed multi-selection persisting across navigation",
+            "Fixed multi-track metadata editing overwriting unchanged fields",
+            "Fixed Folders view not updating after media folder changes",
+            "Fixed artist name color inconsistencies on album pages",
+            "Fixed Genre and Equalizer dropdown mouse wheel scrolling",
+            "Fixed Album and Album Artist fields not showing Mixed values",
+            "Fixed lyrics not appearing in Metadata Editor tabs",
+            "Fixed artwork embedding during audio conversion",
+            "Fixed converter overwrite conflicts when source and destination match",
+            "Fixed Search Lyrics button visibility with light accent colors",
+            "Fixed ffmpeg status updates lagging behind path changes",
+            "Fixed Ctrl+A requiring an initial click before working",
+            "Fixed ReplayGain not applying on track start",
+            "Fixed ReplayGain tag writing issues across formats",
+            "Fixed incorrect ReplayGain loudness calculations",
+            "Fixed file-locking issues during ReplayGain scans",
+            "Fixed converter and scanner count reporting races",
+            "Fixed volume popup closing while dragging",
+            "Fixed context menu duplication during rapid clicks",
+            "Fixed player bar artist hover and click hit areas",
+            "Fixed filter pill hover clipping in Albums view",
+            "Fixed Scoop package publishing workflow",
+            "Fixed outdated Chocolatey package metadata and installer references"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.11",
+      "version": "1.1.11",
+      "name": "v1.1.11",
+      "publishedAt": "2026-05-28T22:57:22Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.11",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added optional pre-release update support in Settings",
+            "Added Include pre-release updates toggle to the Settings About section"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved library safety by preventing internal album list mutations"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed updater incorrectly skipping valid Windows installer releases",
+            "Fixed pre-release version tags not being detected correctly",
+            "Fixed threading race condition in the artist album index",
+            "Fixed stale storage size values after library scans"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.10",
+      "version": "1.1.10",
+      "name": "v1.1.10",
+      "publishedAt": "2026-05-27T19:33:33Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.10",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added temporary artwork folder size caching for faster Settings navigation",
+            "Added startup preloading for Songs, Albums, and Settings views",
+            "Added shared artwork caching across playback bar and album views"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Settings modal startup performance",
+            "Improved storage information loading responsiveness",
+            "Increased Skia GPU resource cache size for smoother album artwork rendering",
+            "Improved album detail loading performance with optimized track collection updates",
+            "Deferred related album and artist sections for faster initial album page rendering",
+            "Moved album artwork loading work off the UI thread",
+            "Improved artist album lookup performance with indexed library queries",
+            "Improved Settings library statistics calculation performance",
+            "Improved artwork loading consistency with unified decode sizes",
+            "Reduced hover and press animation durations across the app",
+            "Removed outline rings from accent-colored buttons where unnecessary"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed active lyric line clipping on long lyrics"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.9",
+      "version": "1.1.9",
+      "name": "v1.1.9",
+      "publishedAt": "2026-05-26T17:22:35Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.9",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added contrast-aware accent foreground support for better readability with light accent colors",
+            "Added Apple Music-style animated lyrics with per-word highlighting and smooth transitions",
+            "Added blur and scaling effects for synced lyrics",
+            "Added animated artwork-based lyrics page backgrounds",
+            "Added Artwork background mode alongside Solid and Gradient modes",
+            "Added Windows taskbar thumbnail toolbar controls for Shuffle and Favorite",
+            "Added hover-to-open submenu support across menus",
+            "Added batch metadata editor with multi-track editing support",
+            "Added rename-by-pattern support with live preview and conflict detection",
+            "Added audio converter with ffmpeg integration and format conversion support",
+            "Added ReplayGain scanner and playback support",
+            "Added ReplayGain settings and live volume adjustment support",
+            "Added release type detection and metadata support",
+            "Added ListenBrainz scrobbling integration",
+            "Added release-type sections to Artist Detail pages",
+            "Added release-type filtering in Library Albums view",
+            "Added release type override controls in Metadata Editor",
+            "Added ListenBrainz account integration in Settings",
+            "Added experimental feature badges across audio tools and metadata dialogs"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved accent-colored buttons, icons, toggles, and checkboxes across the app",
+            "Improved custom accent color picker layout and hover behavior in Settings",
+            "Improved queue popup readability and hover styling",
+            "Improved floating playback bar spacing across all major views",
+            "Improved album tile title layout consistency",
+            "Improved Lyrics panel layout, artist chip behavior, and readability",
+            "Improved Lyrics page background transitions and foreground readability",
+            "Improved Lossless badge icon styling",
+            "Improved taskbar toolbar icon visibility and consistency",
+            "Improved Lyrics panel alignment and spacing",
+            "Improved Favorites ordering so newly favorited items appear first",
+            "Improved playlist sorting and submenu hover behavior",
+            "Improved dialog layouts, button ordering, and pill-shaped controls",
+            "Improved Settings account card layouts and styling",
+            "Improved README feature list and documentation",
+            "Improved Bluetooth playback stability by restoring VLC cache defaults"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed invisible text and icons with light accent colors",
+            "Fixed queue popup text visibility in Light theme",
+            "Fixed content clipping behind the floating playback bar",
+            "Fixed album tile spacing inconsistencies",
+            "Fixed hover styling conflicts in queue rows",
+            "Fixed Lyrics page navigation flickering",
+            "Fixed unreadable Lyrics page timeline and metadata on light album covers",
+            "Fixed invisible labels in Lyrics background color picker",
+            "Fixed unreadable Remove Lyrics button styling in Metadata Editor",
+            "Fixed selection drift issues caused by recycled list containers",
+            "Fixed Search Lyrics button visibility with light accent colors",
+            "Fixed volume slider static and popping during drag"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.8",
+      "version": "1.1.8",
+      "name": "v1.1.8",
+      "publishedAt": "2026-05-21T17:26:59Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.8",
+      "sections": [
+        {
+          "title": "Improvements",
+          "items": [
+            "Bug fixes and improvements"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.7",
+      "version": "1.1.7",
+      "name": "v1.1.7",
+      "publishedAt": "2026-05-19T17:57:48Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.7",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Apple Music URL and album ID support for animated artwork search",
+            "Added Search Lyrics button in Metadata Editor for synced lyrics lookup",
+            "Added Join Discord button in Settings",
+            "Added Discord server badge to README"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Simplified Settings scan progress text",
+            "Improved equalizer application performance and responsiveness",
+            "Simplified all Back button labels for consistency",
+            "Improved playback bar persistence when leaving Lyrics page",
+            "Restored compact playback bar behavior on Lyrics page",
+            "Improved animated artwork URL input behavior after covers are added",
+            "Improved synced lyrics search status visibility"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Metadata Editor input borders in Light theme",
+            "Fixed stale album artwork and track info on Lyrics page after navigation",
+            "Fixed Lyrics page album navigation history behavior",
+            "Fixed Back navigation returning to incorrect pages from Lyrics view",
+            "Fixed View Album navigation consistency across playback controls",
+            "Fixed Lyrics button returning to incorrect pages",
+            "Fixed blank lyric flashes when returning to Lyrics page",
+            "Fixed playback bar shrinking behind Lyrics page",
+            "Fixed Lyrics page playback bar visibility state handling",
+            "Fixed equalizer dropdown shifting in Settings",
+            "Fixed Lyrics page View Album visual glitches",
+            "Fixed album-detail navigation state inconsistencies",
+            "Fixed delayed equalizer responsiveness during playback",
+            "Fixed 3-dot menu shifting on album-detail track rows",
+            "Fixed inconsistent timestamp spacing on Lyrics page",
+            "Fixed animated artwork preview clipping issues",
+            "Fixed README Home screenshot rendering on GitHub",
+            "Fixed Back button text clipping issues"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.6",
+      "version": "1.1.6",
+      "name": "v1.1.6",
+      "publishedAt": "2026-05-19T04:42:57Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.6",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added custom user themes with live preview and theme editor",
+            "Added reusable color picker with HSV spectrum, hue slider, and hex input",
+            "Added Apple Music-style Artist Detail pages",
+            "Added MusicBrainz artist biography integration with local caching",
+            "Added Performer metadata field support",
+            "Added iTunes artwork search with multiple resolution options",
+            "Added animated artwork search and download support from Apple Music",
+            "Added Top Artists section on Home page",
+            "Added unified Add to Playlist dialog across the app",
+            "Added Library and Cover Flow toggle support on playlist pages",
+            "Added drag-to-reorder support for queue and playlists",
+            "Added standalone lyrics timeline slider with draggable seek",
+            "Added compact controls-only layout for Lyrics page",
+            "Added curated accent color presets with custom picker support",
+            "Added customizable profile avatar and display name support"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Moved playback bar to bottom with floating glass-style design",
+            "Redesigned Queue popup with sticky behavior and improved controls",
+            "Redesigned Lyrics page playback bar and controls",
+            "Improved Settings page organization and descriptions",
+            "Improved animated artwork descriptions and controls",
+            "Improved album artwork decoding quality",
+            "Improved favorites overlay sizing and placement",
+            "Improved album detail action button styling",
+            "Improved Metadata Editor layout, sizing, and controls",
+            "Improved runtime accent theming across the app",
+            "Improved artist image lookup accuracy",
+            "Improved Top Artists aggregation and rendering",
+            "Improved app-wide menu hover theming",
+            "Redesigned Settings modal with Apple Music-style layout",
+            "Improved metadata tab overflow behavior and scrolling",
+            "Improved Queue popup styling and spacing",
+            "Improved Songs, Library, and Favorites action buttons",
+            "Improved Sort menu layout and active-state behavior",
+            "Improved Shuffle icon appearance",
+            "Improved playlist dialog layouts and button consistency",
+            "Improved playlist cover artwork quality",
+            "Improved playback island glass styling",
+            "Improved compact volume popup animations and layout",
+            "Redesigned Lyrics side panel header and background styling",
+            "Improved Lyrics scrolling smoothness and easing",
+            "Improved Folders view button styling",
+            "Improved Light theme accent contrast across the app",
+            "Improved custom theme preview cards and dialogs",
+            "Improved custom theme switching and accent handling",
+            "Standardized dialog button layouts across the app",
+            "Improved artwork search behavior and feedback",
+            "Improved playlist scrolling and typography",
+            "Removed Paper theme and related assets",
+            "Removed Album page tint setting and related UI",
+            "Removed Transition Mode and AutoMix UI",
+            "Removed legacy playlist menu helper logic",
+            "Removed playlist drag-to-file export behavior",
+            "Removed redundant Metadata window border wrapper"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed album artwork flickering during track switches",
+            "Fixed Ctrl+A select-all behavior outside Albums view",
+            "Fixed Artist Detail page rendering issues",
+            "Fixed semantic red colors being tinted by accent themes",
+            "Fixed Settings toggles not updating live with accent changes",
+            "Fixed Lyrics page accent colors not updating correctly",
+            "Fixed artist image fallback behavior",
+            "Fixed unwanted click zoom animations on artist rows",
+            "Fixed empty Home section headers appearing without content",
+            "Fixed iTunes advisory dropdown clipping issues",
+            "Fixed artwork search returning incorrect results",
+            "Fixed animated artwork search failures on HLS-only sources",
+            "Fixed animated artwork preview not clearing after removal",
+            "Fixed metadata tab hover styling inconsistencies",
+            "Fixed metadata popup dropdown styling inconsistencies",
+            "Fixed metadata tab strip clipping and overflow artifacts",
+            "Fixed startup crash caused by invalid Panel.ZIndex values",
+            "Fixed artist clicks opening incorrect views",
+            "Fixed artist grouping behavior with collaborations",
+            "Fixed missing Top Artists images and refresh issues",
+            "Fixed playlist toggle disappearing after tile navigation",
+            "Fixed Cover Flow restoring incorrect views",
+            "Fixed Light theme toggle text visibility on Lyrics page",
+            "Fixed EQ preset loading issues after restart",
+            "Fixed theme switching overriding active accent colors",
+            "Fixed animated artwork popup not closing correctly",
+            "Fixed removed artwork reappearing after saving",
+            "Fixed track duration showing as 0:00 on some files",
+            "Fixed Lyrics page playback bar clipping issues",
+            "Fixed automated menu placement inconsistencies",
+            "Fixed nested submenu corner radius mismatches"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.5",
+      "version": "1.1.5",
+      "name": "v1.1.5",
+      "publishedAt": "2026-05-11T05:14:34Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.5",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added package manager distribution support for Scoop, winget, and Chocolatey",
+            "Added animated artwork support with live preview in Metadata Editor",
+            "Added bitmap-rendered animated artwork playback for transparent windows and rounded corners",
+            "Added automated release publishing workflow for package managers"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved lyrics page album artwork quality on high DPI displays",
+            "Improved startup performance by removing unnecessary refreshes",
+            "Improved page loading with lazy-loaded content views",
+            "Improved animated artwork playback performance with shared LibVLC instance",
+            "Improved metadata popup tab overflow behavior and styling",
+            "Improved album and playlist description editing UI",
+            "Improved playback bar volume slider spacing and layout",
+            "Improved lyrics page volume slider animations",
+            "Improved Lyrics page playback bar actions and layout",
+            "Improved Metadata Editor lyrics tab layout",
+            "Improved More By Artist heading behavior",
+            "Improved explicit badge and favorite icon placement on Home page rows",
+            "Improved top player bar artist hover behavior",
+            "Simplified Search Lyrics button styling",
+            "Improved animated artwork preview layout in Metadata Editor",
+            "Improved animated artwork controls and preview sizing",
+            "Improved metadata popup scrolling and tab text behavior"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed animated artwork flickering and layout issues on album pages",
+            "Fixed animated artwork not updating after saving metadata",
+            "Fixed stray VLC popup windows during animated artwork playback",
+            "Fixed animated artwork preview flashing on tab switches",
+            "Fixed lyrics page volume slider and percentage label clipping",
+            "Fixed Album Detail page context menu behavior",
+            "Fixed metadata dialog tab strip overflow and underline rendering",
+            "Fixed metadata dialog live preview issues in transparent windows",
+            "Fixed album art animations only working during playback",
+            "Fixed context menu stuttering issues",
+            "Fixed Install & Restart updater behavior",
+            "Fixed top player bar Options menu jitter",
+            "Fixed Recently Played favorite badge logic",
+            "Fixed updater error handling and logging",
+            "Fixed macOS startup crash caused by Windows-only APIs",
+            "Fixed cross-platform update service behavior",
+            "Fixed blurry macOS dock icons",
+            "Fixed unsupported VLC arguments on macOS",
+            "Fixed macOS VLC plugin discovery and initialization issues",
+            "Fixed Linux libvlc loading issues",
+            "Fixed playback bar overlap issues",
+            "Fixed elapsed-time jump in compact player bar",
+            "Fixed player bar volume slider static noise",
+            "Fixed Songs section context menu positioning",
+            "Fixed hover and click animations on playback controls"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.4",
+      "version": "1.1.4",
+      "name": "v1.1.4",
+      "publishedAt": "2026-05-06T17:49:58Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.4",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added portable archives for all supported platforms",
+            "Added macOS portable .zip app bundle packaging",
+            "Added Linux x64 portable .tar.gz packaging"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed terminal window opening alongside Noctis on Windows"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.3",
+      "version": "1.1.3",
+      "name": "v1.1.3",
+      "publishedAt": "2026-05-06T01:07:18Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.3",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added portable archives alongside native installers for all supported platforms",
+            "Added macOS portable .zip app bundle packaging",
+            "Added Linux x64 portable .tar.gz packaging"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed terminal window opening alongside Noctis on Windows"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.2",
+      "version": "1.1.2",
+      "name": "v1.1.2",
+      "publishedAt": "2026-05-06T00:23:50Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.2",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added full macOS support for Apple Silicon and Intel devices",
+            "Added full Linux support for x64 and ARM64 systems",
+            "Added GitHub Actions CI builds for all supported platforms",
+            "Added native macOS .dmg packaging support",
+            "Added Linux AppImage packaging support",
+            "Added Linux ARM64 tarball packaging",
+            "Added favorite heart overlay to Recently Played section"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved startup performance by removing unnecessary refreshes",
+            "Improved page loading with lazy-loaded content views",
+            "Improved album detail metadata alignment",
+            "Improved EQ visualizer placement in album detail view",
+            "Improved cross-platform build and packaging workflow",
+            "Improved icon generation pipeline across platforms",
+            "Improved VLC error handling with platform-specific messages",
+            "Expanded platform helper support for Linux functionality",
+            "Updated project configuration for multi-platform runtime support",
+            "Updated README with macOS and Linux installation instructions",
+            "Improved CI workflow documentation"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed macOS VLC initialization and plugin detection issues",
+            "Fixed unsupported VLC arguments on macOS",
+            "Fixed Linux libvlc loading issues",
+            "Fixed playback bar overlap issues",
+            "Fixed macOS startup crash caused by Windows-only APIs",
+            "Fixed cross-platform update service behavior",
+            "Fixed blurry dock icons on macOS and Linux",
+            "Fixed Install & Restart updater behavior",
+            "Fixed updater error handling and logging",
+            "Fixed Recently Played favorite badge behavior",
+            "Fixed top player bar Options menu jitter",
+            "Fixed Songs section context menu positioning",
+            "Fixed context menu stuttering issues"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.1",
+      "version": "1.1.1",
+      "name": "v1.1.1",
+      "publishedAt": "2026-05-04T23:18:12Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.1",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added word-level karaoke lyrics with real-time highlighting",
+            "Added synced and plain lyrics toggle during playback",
+            "Added plain lyrics sidecar file support",
+            "Added Folders view for browsing library by folder hierarchy",
+            "Added global Cover Flow toggle accessible from any section",
+            "Added new Dark, Gray, Midnight, and Paper themes",
+            "Added advanced metadata editor with grouped sections and custom tags",
+            "Added Other Versions section on album pages",
+            "Added More By Artist section with dedicated page",
+            "Added featured artist profiles on playlist pages",
+            "Added per-track volume adjustment and EQ overrides",
+            "Added per-track start and stop time trimming",
+            "Added BPM, Work, and Movement metadata fields",
+            "Added Show Composer in All Views toggle",
+            "Added editable copyright metadata field",
+            "Added passive update notifications in Settings",
+            "Added custom pill-shaped sliders across the app",
+            "Added 2-line wrapping titles with inline explicit badges",
+            "Added smoother hover animations and faster interaction timings"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved lyrics synchronization performance",
+            "Improved LRCLIB caching behavior",
+            "Improved synced lyrics update cadence",
+            "Improved smooth scrolling behavior",
+            "Reduced page transition animation timings",
+            "Improved artwork prefetching during scrolling",
+            "Improved refresh synchronization to reduce UI flashing",
+            "Updated EQ visualizer with native renderer",
+            "Improved album section header alignment",
+            "Unified accent colors across the interface",
+            "Improved destructive action styling",
+            "Updated sidebar, menus, and dialogs with rounded pill styling",
+            "Improved ambient album tinting behavior",
+            "Refined playback island and top bar layout",
+            "Improved Lossless badge styling",
+            "Updated input field focus styling"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed track auto-advance reliability issues",
+            "Fixed stale playback callbacks causing incorrect queue advancing",
+            "Fixed album playback track ordering",
+            "Fixed volume slider static and playback update issues",
+            "Fixed audio output device switching",
+            "Fixed synced and plain lyrics toggle behavior",
+            "Fixed live lyrics reload behavior in Metadata Editor",
+            "Fixed synced to plain lyrics scroll mapping",
+            "Fixed plain and synced lyrics save separation",
+            "Fixed explicit advisory dropdown behavior",
+            "Fixed metadata styling inconsistencies",
+            "Fixed metadata file tab scrolling issues",
+            "Fixed album detail back navigation labels",
+            "Fixed scrolling teleporting and sidebar hover jumping",
+            "Fixed album and track title clipping issues",
+            "Fixed lyrics page volume slider clipping and layout shifting",
+            "Fixed top bar title clipping under action buttons",
+            "Fixed player bar artist text disappearing",
+            "Fixed context menu slowdowns and dead zones",
+            "Fixed album description editing behavior",
+            "Fixed album page tinting issues",
+            "Fixed artist discography ordering and scroll restoration",
+            "Fixed duplicated search highlighting text",
+            "Fixed Genre ComboBox scroll hijacking",
+            "Fixed confirmation dialog overlay coverage",
+            "Fixed theme migration persistence issues"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.0",
+      "version": "1.1.0",
+      "name": "v1.1.0",
+      "publishedAt": "2026-04-02T17:10:43Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.0",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added collapsible icon-only sidebar with hover expansion",
+            "Added side lyrics panel for synced lyrics alongside any view",
+            "Added dynamic ambient album color backgrounds",
+            "Added Cover Flow view with smoother navigation",
+            "Added multi-select support across library views",
+            "Added Ctrl+A select all and deselect support",
+            "Added bulk actions for tracks and playlists",
+            "Added drag-and-drop playlist reordering",
+            "Added drag-and-drop file and folder importing",
+            "Added in-app update system in Settings",
+            "Added smooth scrolling animations across views",
+            "Added playlist artwork collage thumbnails",
+            "Added real-time sidebar updates for favorites and playlists",
+            "Added animated now-playing equalizer indicators",
+            "Added immersive sidebar toggle in Lyrics view",
+            "Added full-window album and playlist description popups",
+            "Added animated page transitions",
+            "Added animated settings toggles",
+            "Added pill-shaped buttons, dialogs, and sliders",
+            "Added scrolling titles in Cover Flow view"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved navigation speed with cached views",
+            "Improved artwork loading performance",
+            "Improved library save efficiency",
+            "Improved search performance for large libraries",
+            "Reduced playback startup latency",
+            "Redesigned sidebar layout and playback bar spacing",
+            "Improved context menu spacing and compactness",
+            "Improved Settings page layout and styling",
+            "Improved album sorting behavior",
+            "Newly imported albums now appear at the top of the grid"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed startup crash when toggling lyrics panel",
+            "Fixed scrolling jumps and teleporting issues",
+            "Fixed player bar artist name disappearing after track changes",
+            "Fixed cover art flickering during playback",
+            "Fixed Remove from Library deleting entire albums",
+            "Fixed deleted tracks continuing playback after removal",
+            "Fixed deleted files reappearing after rescans",
+            "Fixed playlist context menu crashes",
+            "Fixed incorrect track targeting in context menus",
+            "Fixed Add to Playlist submenu delay",
+            "Fixed lyrics panel staying open after playback ended",
+            "Fixed multiple light mode UI inconsistencies",
+            "Fixed Reset Settings issues with locked files and playlists",
+            "Fixed artwork cache memory leaks"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.0.2",
+      "version": "1.0.2",
+      "name": "v1.0.2",
+      "publishedAt": "2026-03-20T22:14:04Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.0.2",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added text truncation for long track titles in menus",
+            "Added GitHub repository link to Settings"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Centered Favorites icon alignment in Songs view",
+            "Bug fixes and performance improvements"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed timeline flashing when skipping tracks",
+            "Fixed inconsistent volume changes during playback",
+            "Fixed playback bar overflow on smaller window sizes",
+            "Fixed inconsistent styling in Play menu items"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.0.1",
+      "version": "1.0.1",
+      "name": "v1.0.1",
+      "publishedAt": "2026-03-19T19:08:47Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.0.1",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added descriptions to Settings cards for better clarity",
+            "Added separator lines to the Settings page"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Simplified scan status messages",
+            "Updated Songs list 3-dot menu accent color",
+            "Improved Songs list spacing and column alignment",
+            "Bug fixes and performance improvements"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed player bar overlapping top bar buttons during window resize"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.0.0",
+      "version": "1.0.0",
+      "name": "v1.0.0",
+      "publishedAt": "2026-03-19T04:16:15Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.0.0",
+      "sections": []
+    }
+  ],
+  "updatedAt": "2026-08-10T19:14:31.116Z",
+  "degraded": false
+}
