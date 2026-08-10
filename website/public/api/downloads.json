@@ -1,9 +1,9 @@
 {
-  "total": 5068,
+  "total": 5071,
   "byRelease": {
-    "v1.4.3": 20,
+    "v1.4.3": 22,
     "v1.4.2": 85,
-    "v1.4.1": 137,
+    "v1.4.1": 138,
     "v1.4.0": 147,
     "v1.3.9": 115,
     "v1.3.8": 478,
@@ -58,7 +58,7 @@
       "name": "Noctis-v1.4.3-Setup.exe",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.4.3/Noctis-v1.4.3-Setup.exe",
       "size": 122877726,
-      "downloads": 7
+      "downloads": 9
     },
     "windowsPortable": {
       "name": "Noctis-windows-x64.zip",
@@ -113,6 +113,6 @@
     "linuxTar": "101 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-08-10T22:10:06.482Z",
+  "updatedAt": "2026-08-10T22:59:40.463Z",
   "degraded": false
 }
