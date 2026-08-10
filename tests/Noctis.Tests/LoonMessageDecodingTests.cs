@@ -86,6 +86,26 @@ public class LoonMessageDecodingTests
         Assert.Equal(64, msg.Hello.ConnectionSecret.Length);
         Assert.Equal(65536UL, msg.Hello.Constraints.ChunkSize);
         Assert.Equal(67108864UL, msg.Hello.Constraints.MaxContentSize);
+
+        // Trailing "20901C" of the captured frame: constraints field 4, varint 3600. The relay
+        // has been offering an hour of caching all along; the decoder used to skip the field
+        // and the client never asked for any, so every cover went out "no-store".
+        Assert.Equal(3600u, msg.Hello.Constraints.CacheDuration);
+    }
+
+    [Fact]
+    public void ContentHeaderCarriesMaxCacheDurationWhenAsked()
+    {
+        // Field 4 is the only thing that makes the relay emit "Cache-Control: max-age" instead
+        // of "no-store", and no-store is what forced Discord's media proxy to refetch the
+        // cover — across the relay, off this machine — on every profile-card view.
+        var withCache = LoonMessageCodec.EncodeContentHeader(1, "image/jpeg", 100, 3600);
+        Assert.Contains("20901C", Convert.ToHexString(withCache));
+
+        // Null means "omit", which the relay reads as zero. Costs exactly the 3 bytes.
+        var withoutCache = LoonMessageCodec.EncodeContentHeader(1, "image/jpeg", 100, null);
+        Assert.DoesNotContain("20901C", Convert.ToHexString(withoutCache));
+        Assert.Equal(withCache.Length - 3, withoutCache.Length);
     }
 
     [Fact]

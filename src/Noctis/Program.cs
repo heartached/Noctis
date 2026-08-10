@@ -258,7 +258,7 @@ internal class Program
         {
             var persistence = sp.GetRequiredService<IPersistenceService>();
             var artworkDir = Path.Combine(persistence.DataDirectory, "artwork");
-            return new LoonClient(artworkDir);
+            return new LoonClient(artworkDir, sp.GetRequiredService<HttpClient>());
         });
         services.AddSingleton<IDiscordPresenceService, DiscordPresenceService>();
         services.AddSingleton<ILastFmService, LastFmService>();

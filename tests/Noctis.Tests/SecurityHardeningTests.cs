@@ -94,12 +94,30 @@ public class SecurityHardeningTests
         Assert.EndsWith("abc123.jpg", resolved);
     }
 
+    [Fact]
+    public void ResolveArtworkPath_acceptsTheCacheBustingVersionSegment()
+    {
+        // Minted paths are "artwork/{version}/{file}" so an edited cover produces a different
+        // URL instead of hiding behind Discord's cache. The version has no counterpart on
+        // disk — only the final segment names a file.
+        var root = Path.Combine(Path.GetTempPath(), "noctis-art-test");
+        var resolved = LoonClient.ResolveArtworkPath(root, "artwork/1f4a-8ddc0f1e2a3b4c5/abc123.jpg");
+        Assert.NotNull(resolved);
+        Assert.Equal(Path.Combine(Path.GetFullPath(root), "abc123.jpg"), resolved);
+    }
+
     [Theory]
     [InlineData("artwork/../../escape.txt")]
     [InlineData("../escape.txt")]
     [InlineData("artwork/../../../../../../etc/passwd")]
     [InlineData("artwork/")]   // strips to empty
     [InlineData("")]
+    // Dot segments stay refused now that a leading segment is stripped as the version.
+    [InlineData("artwork/../escape.txt")]
+    [InlineData("artwork/1f4a-8ddc/../../escape.txt")]
+    // Deeper than anything this client mints, and prefix-less paths it never mints either.
+    [InlineData("artwork/1f4a-8ddc/nested/abc123.jpg")]
+    [InlineData("abc123.jpg")]
     public void ResolveArtworkPath_rejectsTraversalAndEmpty(string requestPath)
     {
         var root = Path.Combine(Path.GetTempPath(), "noctis-art-test");
