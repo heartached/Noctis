@@ -64,7 +64,7 @@ jobs:
       # Pinned to commit SHAs so a moved tag can't swap the action's code.
       # `ref: main` because release events check out the tag (detached HEAD),
       # where the commit step's push could never work.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
 
