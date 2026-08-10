@@ -299,7 +299,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (!configured && ReferenceEquals(CurrentView, _serverVm))
                 Navigate("home");
         };
-        _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService, playHistory);
+        _homeVm = new HomeViewModel(Player, library, Sidebar, artistImageService, playHistory, Settings);
         _songsVm = new LibrarySongsViewModel(library, Player, Sidebar, persistence, Settings);
         _albumsVm = new LibraryAlbumsViewModel(library, Player, Sidebar, Settings);
         // Keep the top-bar dropdown labels in sync with the Albums grid filters/sort.

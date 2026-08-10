@@ -20,6 +20,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private readonly SidebarViewModel _sidebar;
     private readonly ArtistImageService? _artistImages;
     private readonly IPlayHistoryService? _playHistory;
+    private readonly SettingsViewModel? _settings;
+    private bool _adoptingPersistedState;
     private readonly DispatcherTimer _refreshDebounce;
     private readonly EventHandler _libraryUpdatedHandler;
     private readonly EventHandler _favoritesChangedHandler;
@@ -59,6 +61,20 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty] private string _greeting = GetGreeting();
 
+    // ── Section collapse ──
+    //
+    // Each Home section can be folded away to its header so the page shows only what
+    // the user currently wants (requested by Luwi: "too much visual input"). The state
+    // round-trips through SettingsViewModel — the same route Songs/Albums view state
+    // takes — so a fold survives a restart. All start expanded, the pre-feature layout.
+
+    [ObservableProperty] private bool _isTopSongsExpanded = true;
+    [ObservableProperty] private bool _isTopArtistsExpanded = true;
+    [ObservableProperty] private bool _isRecentlyPlayedExpanded = true;
+    [ObservableProperty] private bool _isTimeRotationExpanded = true;
+    [ObservableProperty] private bool _isHeavyRotationExpanded = true;
+    [ObservableProperty] private bool _isRediscoveredExpanded = true;
+
     /// <summary>Fires when the user wants to open an album's detail view.</summary>
     public event EventHandler<Album>? AlbumOpened;
 
@@ -66,13 +82,17 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     public ObservableCollection<Playlist> Playlists => _sidebar.Playlists;
 
     public HomeViewModel(PlayerViewModel player, ILibraryService library, SidebarViewModel sidebar,
-        ArtistImageService? artistImages = null, IPlayHistoryService? playHistory = null)
+        ArtistImageService? artistImages = null, IPlayHistoryService? playHistory = null,
+        SettingsViewModel? settings = null)
     {
         _player = player;
         _library = library;
         _sidebar = sidebar;
         _artistImages = artistImages;
         _playHistory = playHistory;
+        _settings = settings;
+
+        AdoptPersistedSectionState();
 
         // Subscribe to track changes for real-time updates
         _player.TrackStarted += OnTrackStarted;
@@ -100,6 +120,77 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         }); };
         _library.LibraryUpdated += _libraryUpdatedHandler;
         _library.FavoritesChanged += _favoritesChangedHandler;
+    }
+
+    /// <summary>Applies the fold state persisted from the previous session.</summary>
+    private void AdoptPersistedSectionState()
+    {
+        if (_settings == null) return;
+
+        // The guard keeps the adopt pass from writing the values straight back out —
+        // harmless here, but it would queue a settings save on every startup.
+        _adoptingPersistedState = true;
+        try
+        {
+            IsTopSongsExpanded = _settings.HomeTopSongsExpanded;
+            IsTopArtistsExpanded = _settings.HomeTopArtistsExpanded;
+            IsRecentlyPlayedExpanded = _settings.HomeRecentlyPlayedExpanded;
+            IsTimeRotationExpanded = _settings.HomeTimeRotationExpanded;
+            IsHeavyRotationExpanded = _settings.HomeHeavyRotationExpanded;
+            IsRediscoveredExpanded = _settings.HomeRediscoveredExpanded;
+        }
+        finally
+        {
+            _adoptingPersistedState = false;
+        }
+    }
+
+    partial void OnIsTopSongsExpandedChanged(bool value)
+    {
+        if (_settings != null && !_adoptingPersistedState) _settings.HomeTopSongsExpanded = value;
+    }
+
+    partial void OnIsTopArtistsExpandedChanged(bool value)
+    {
+        if (_settings != null && !_adoptingPersistedState) _settings.HomeTopArtistsExpanded = value;
+    }
+
+    partial void OnIsRecentlyPlayedExpandedChanged(bool value)
+    {
+        if (_settings != null && !_adoptingPersistedState) _settings.HomeRecentlyPlayedExpanded = value;
+    }
+
+    partial void OnIsTimeRotationExpandedChanged(bool value)
+    {
+        if (_settings != null && !_adoptingPersistedState) _settings.HomeTimeRotationExpanded = value;
+    }
+
+    partial void OnIsHeavyRotationExpandedChanged(bool value)
+    {
+        if (_settings != null && !_adoptingPersistedState) _settings.HomeHeavyRotationExpanded = value;
+    }
+
+    partial void OnIsRediscoveredExpandedChanged(bool value)
+    {
+        if (_settings != null && !_adoptingPersistedState) _settings.HomeRediscoveredExpanded = value;
+    }
+
+    /// <summary>
+    /// Folds one Home section open or shut. Keyed by name rather than one command per
+    /// section so the header template stays a single reusable button.
+    /// </summary>
+    [RelayCommand]
+    private void ToggleSection(string? section)
+    {
+        switch (section)
+        {
+            case "TopSongs": IsTopSongsExpanded = !IsTopSongsExpanded; break;
+            case "TopArtists": IsTopArtistsExpanded = !IsTopArtistsExpanded; break;
+            case "RecentlyPlayed": IsRecentlyPlayedExpanded = !IsRecentlyPlayedExpanded; break;
+            case "TimeRotation": IsTimeRotationExpanded = !IsTimeRotationExpanded; break;
+            case "HeavyRotation": IsHeavyRotationExpanded = !IsHeavyRotationExpanded; break;
+            case "Rediscovered": IsRediscoveredExpanded = !IsRediscoveredExpanded; break;
+        }
     }
 
     private void OnTrackStarted(object? sender, Track track)
