@@ -154,4 +154,68 @@ public class MiniPlayerFormTests
         var tracks = new List<Track> { T("HEADLIGHTS", "Alex Warren") };
         Assert.Single(MiniPlayerViewModel.FilterTracks(tracks, "headlights", 10));
     }
+
+    // ── Empty-query suggestions ──────────────────────────────
+    // The search drawer opened onto a blank sheet because FilterTracks returns
+    // nothing for an empty query, so there was nothing to tap until the user
+    // typed. ShuffleSample fills that state with a random slice of the library.
+
+    private static List<Track> Library(int count)
+    {
+        var tracks = new List<Track>();
+        for (var i = 0; i < count; i++)
+            tracks.Add(T($"Track {i:D3}", "Artist"));
+        return tracks;
+    }
+
+    [Fact]
+    public void ShuffleSample_ReturnsLimitDistinctTracksFromALargeLibrary()
+    {
+        var sample = MiniPlayerViewModel.ShuffleSample(Library(500), 30, new Random(1));
+
+        Assert.Equal(30, sample.Count);
+        Assert.Equal(30, sample.Distinct().Count());
+    }
+
+    [Fact]
+    public void ShuffleSample_ReturnsEveryTrackWhenTheLibraryIsSmallerThanTheLimit()
+    {
+        var tracks = Library(4);
+
+        var sample = MiniPlayerViewModel.ShuffleSample(tracks, 30, new Random(1));
+
+        Assert.Equal(4, sample.Count);
+        Assert.Equal(tracks.OrderBy(t => t.Title), sample.OrderBy(t => t.Title));
+    }
+
+    [Fact]
+    public void ShuffleSample_EmptyLibraryReturnsEmpty()
+        => Assert.Empty(MiniPlayerViewModel.ShuffleSample(new List<Track>(), 30, new Random(1)));
+
+    [Fact]
+    public void ShuffleSample_PicksADifferentSetOnASecondOpen()
+    {
+        // "Already on shuffle" means a fresh spread each time the drawer opens —
+        // a stable slice (e.g. plain Take(30)) would defeat the point.
+        var tracks = Library(500);
+        var rng = new Random(7);
+
+        var first = MiniPlayerViewModel.ShuffleSample(tracks, 30, rng);
+        var second = MiniPlayerViewModel.ShuffleSample(tracks, 30, rng);
+
+        Assert.NotEqual(first, second);
+    }
+
+    [Fact]
+    public void ShuffleSample_DoesNotReorderTheCallersLibrary()
+    {
+        // _library.Tracks is the live library collection — sampling must not
+        // shuffle the user's Songs list as a side effect.
+        var tracks = Library(50);
+        var before = tracks.ToList();
+
+        MiniPlayerViewModel.ShuffleSample(tracks, 30, new Random(1));
+
+        Assert.Equal(before, tracks);
+    }
 }

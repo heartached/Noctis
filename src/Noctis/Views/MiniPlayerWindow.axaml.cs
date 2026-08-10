@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Noctis.Helpers;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
@@ -22,6 +23,10 @@ public partial class MiniPlayerWindow : Window
 {
     private const int CloseAnimationMs = 170;
     private bool _closeAnimationDone;
+
+    // Set when the window had to fall back to an opaque surface (no Linux compositor),
+    // in which case the card is squared off and must stay that way through resizes.
+    private bool _squareCard;
 
     // Matches the slowest drawer transition (0.18s) so it stays mapped long enough
     // for the fade-out + slide to finish before IsVisible flips to false.
@@ -64,14 +69,26 @@ public partial class MiniPlayerWindow : Window
         // window rect, which painted the transparent corners outside the rounded
         // card as black squares. The simulated glass layers in XAML carry the look.
         //
-        // Linux/X11: per-pixel transparency depends on a running compositor and
-        // Avalonia doesn't track compositor changes (AvaloniaUI/Avalonia#3300), so
-        // the surface can render as garbage/see-through instead (issue #26).
-        // Request an opaque window there and paint it in the card's own color.
-        if (OperatingSystem.IsLinux())
+        // Linux is the awkward case: per-pixel transparency needs a running compositor,
+        // and Avalonia's X11 backend doesn't track compositor changes
+        // (AvaloniaUI/Avalonia#3300), so without one the surface renders as
+        // garbage/see-through (issue #26). This used to go opaque on ALL of Linux, which
+        // fixed #26 but left every compositing desktop (KDE, GNOME, …) showing the
+        // window's square corners as dark wedges outside the r=28 card. So: ask whether
+        // there is actually a compositor, and only fall back when there isn't.
+        //
+        // NOCTIS_MINI_OPAQUE=1 forces the fallback, for a desktop where transparency
+        // still misbehaves (same escape-hatch convention as NOCTIS_SOFTWARE_RENDER).
+        var forceOpaque = Environment.GetEnvironmentVariable("NOCTIS_MINI_OPAQUE") == "1";
+        if (forceOpaque || (OperatingSystem.IsLinux() && !PlatformHelper.IsLinuxCompositorRunning()))
         {
             TransparencyLevelHint = new[] { WindowTransparencyLevel.None };
             Background = new SolidColorBrush(Color.Parse("#FF141418"));
+            // Square the card to match the window it can't see past. Rounding it here
+            // buys nothing — the corners outside the arc are opaque either way — and
+            // reads as a broken card rather than a deliberate one.
+            RootBorder.CornerRadius = new CornerRadius(0);
+            _squareCard = true;
         }
         else
         {
@@ -128,9 +145,12 @@ public partial class MiniPlayerWindow : Window
         RootPanel.SizeChanged += (_, e) =>
         {
             // Radius = RootBorder.CornerRadius - BorderThickness, so the clip follows the
-            // inside of the stroke.
+            // inside of the stroke. On the opaque fallback the card is squared off, so
+            // the clip has to square off with it or the glass layers would pull away
+            // from the corners the border now paints straight through.
+            var radius = _squareCard ? 0 : 26.5;
             RootPanel.Clip = new RectangleGeometry(
-                new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 26.5, 26.5);
+                new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), radius, radius);
             // No MaxHeight any more: the drawer no longer competes with the player for the
             // card's height, it adds its own (AnimateDrawer).
         };

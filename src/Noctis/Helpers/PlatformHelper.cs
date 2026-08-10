@@ -334,4 +334,65 @@ public static class PlatformHelper
             return null;
         }
     }
+
+    /// <summary>
+    /// True when the Linux session has a running compositor, i.e. when a window may ask
+    /// for per-pixel transparency and expect it to render. False everywhere else,
+    /// including on Windows and macOS — callers there have no reason to ask.
+    /// </summary>
+    /// <remarks>
+    /// Answered once per call site at window-creation time; Avalonia's X11 backend does
+    /// not track a compositor that starts or stops later (AvaloniaUI/Avalonia#3300), so
+    /// a window opened without one keeps its opaque fallback for its lifetime.
+    /// </remarks>
+    public static bool IsLinuxCompositorRunning()
+    {
+        if (!IsLinux) return false;
+
+        try
+        {
+            // Wayland has no un-composited mode — the compositor IS the display server.
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY")))
+                return true;
+
+            // X11: a compositing manager owns the _NET_WM_CM_S<screen> selection
+            // (EWMH). KWin, Mutter, picom and Xfwm's compositor all claim it; a bare
+            // WM leaves it unowned, which is precisely the case where an ARGB visual
+            // renders as garbage.
+            var display = XOpenDisplay(IntPtr.Zero);
+            if (display == IntPtr.Zero) return false;
+
+            try
+            {
+                var atom = XInternAtom(display, $"_NET_WM_CM_S{XDefaultScreen(display)}", true);
+                if (atom == IntPtr.Zero) return false;
+                return XGetSelectionOwner(display, atom) != IntPtr.Zero;
+            }
+            finally
+            {
+                XCloseDisplay(display);
+            }
+        }
+        catch
+        {
+            // No libX11, no display, headless CI — assume no compositor and let the
+            // caller take its opaque path.
+            return false;
+        }
+    }
+
+    [DllImport("libX11.so.6")]
+    private static extern IntPtr XOpenDisplay(IntPtr display);
+
+    [DllImport("libX11.so.6")]
+    private static extern int XCloseDisplay(IntPtr display);
+
+    [DllImport("libX11.so.6")]
+    private static extern int XDefaultScreen(IntPtr display);
+
+    [DllImport("libX11.so.6", CharSet = CharSet.Ansi)]
+    private static extern IntPtr XInternAtom(IntPtr display, string name, bool onlyIfExists);
+
+    [DllImport("libX11.so.6")]
+    private static extern IntPtr XGetSelectionOwner(IntPtr display, IntPtr atom);
 }

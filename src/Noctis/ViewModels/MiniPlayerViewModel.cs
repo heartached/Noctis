@@ -195,22 +195,69 @@ public partial class MiniPlayerViewModel : ViewModelBase
 
     private DispatcherTimer? _searchDebounce;
 
+    /// <summary>Rows the drawer shows, for both a query's hits and the empty-query shuffle.</summary>
+    private const int SearchResultCap = 30;
+
     [ObservableProperty] private string _searchQuery = string.Empty;
 
     public BulkObservableCollection<Track> SearchResults { get; } = new();
 
     partial void OnSearchQueryChanged(string value)
     {
-        // Debounce so per-keystroke filtering of a large library doesn't churn the UI.
         _searchDebounce?.Stop();
+
+        // Cleared back to empty: no filtering to debounce, and leaving the previous
+        // query's hits on screen for another 150ms reads as a stuck list. Drop
+        // straight back to a fresh shuffle.
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            _searchDebounce = null;
+            ShowShuffledSuggestions();
+            return;
+        }
+
+        // Debounce so per-keystroke filtering of a large library doesn't churn the UI.
         _searchDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
         _searchDebounce.Tick += (_, _) =>
         {
             _searchDebounce?.Stop();
             _searchDebounce = null;
-            SearchResults.ReplaceAll(FilterTracks(_library.Tracks, SearchQuery, 30));
+            SearchResults.ReplaceAll(FilterTracks(_library.Tracks, SearchQuery, SearchResultCap));
         };
         _searchDebounce.Start();
+    }
+
+    /// <summary>
+    /// Empty-query state: a random slice of the library so the drawer always opens
+    /// onto something tappable instead of a blank sheet.
+    /// </summary>
+    private void ShowShuffledSuggestions()
+        => SearchResults.ReplaceAll(ShuffleSample(_library.Tracks, SearchResultCap, Random.Shared));
+
+    /// <summary>
+    /// <paramref name="limit"/> tracks drawn at random from <paramref name="tracks"/>, or all
+    /// of them when the library is smaller. Partial Fisher–Yates over an index array: draws are
+    /// distinct, every track is equally likely, and the caller's collection — which is the live
+    /// <see cref="ILibraryService.Tracks"/> backing the Songs list — is never reordered.
+    /// </summary>
+    public static List<Track> ShuffleSample(IReadOnlyList<Track> tracks, int limit, Random rng)
+    {
+        var take = Math.Min(limit, tracks.Count);
+        if (take <= 0) return new List<Track>();
+
+        var indices = new int[tracks.Count];
+        for (var i = 0; i < indices.Length; i++)
+            indices[i] = i;
+
+        var sample = new List<Track>(take);
+        for (var i = 0; i < take; i++)
+        {
+            var pick = rng.Next(i, indices.Length);
+            (indices[i], indices[pick]) = (indices[pick], indices[i]);
+            sample.Add(tracks[indices[i]]);
+        }
+
+        return sample;
     }
 
     /// <summary>
@@ -278,6 +325,10 @@ public partial class MiniPlayerViewModel : ViewModelBase
     {
         if (value == MiniDrawer.Queue)
             RefreshQueuePreview();
+        // Reshuffle per open so the sheet isn't the same thirty rows every time.
+        // A live query survives a close/reopen, so only refill the empty state.
+        else if (value == MiniDrawer.Search && string.IsNullOrWhiteSpace(SearchQuery))
+            ShowShuffledSuggestions();
     }
 
     [RelayCommand]

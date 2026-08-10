@@ -1829,9 +1829,28 @@
                                                                               Stretch="UniformToFill"/>
                                                     </Panel>
                                                 </Border>
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0,6,0" Spacing="1">
-                                                    <TextBlock Text="{Binding TitleDisplay}" FontSize="13" FontWeight="SemiBold"
-                                                               Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                                <StackPanel Grid.Column="1" x:Name="QueueInfoHost"
+                                                            VerticalAlignment="Center" Margin="10,0,6,0" Spacing="1">
+                                                    <!-- Same badge-as-marquee-InlineContent arrangement the search
+                                                         results use, for the same reason (issue #30): a horizontal
+                                                         StackPanel measures at infinite width and a Grid parks the
+                                                         badge at the far end of the column instead of against the
+                                                         title. -->
+                                                    <controls:MarqueeTextBlock Text="{Binding TitleDisplay}"
+                                                                               FontSize="13" FontWeight="SemiBold"
+                                                                               Foreground="White"
+                                                                               MaxDisplayWidth="{Binding #QueueInfoHost.Bounds.Width}"
+                                                                               HorizontalAlignment="Left" IsMiniPlayer="True">
+                                                        <controls:MarqueeTextBlock.InlineContent>
+                                                            <Border Classes="mini-explicit"
+                                                                    IsVisible="{Binding IsExplicit, FallbackValue=False}"
+                                                                    ToolTip.Tip="Explicit">
+                                                                <TextBlock Text="E" FontSize="9" FontWeight="Bold"
+                                                                           VerticalAlignment="Center" TextAlignment="Center"
+                                                                           Foreground="Black"/>
+                                                            </Border>
+                                                        </controls:MarqueeTextBlock.InlineContent>
+                                                    </controls:MarqueeTextBlock>
                                                     <TextBlock Text="{Binding ArtistDisplay}" FontSize="11"
                                                                Foreground="#99FFFFFF" TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
@@ -1944,13 +1963,16 @@
                                 <!-- Same artwork the playback bar's queue button uses, so the two
                                      read as the same control. PathIcon glyphs made Queue and Lyrics
                                      nearly identical here — both were plain stacks of lines. -->
-                                <Border Width="14" Height="14" Background="#D9FFFFFF"
+                                <!-- Theme brush, not a white overlay: the card is painted in the
+                                     app's theme background, so a light theme left these icons and
+                                     labels white-on-pale and effectively unreadable. -->
+                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                         RenderOptions.BitmapInterpolationMode="HighQuality">
                                     <Border.OpacityMask>
                                         <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform"/>
                                     </Border.OpacityMask>
                                 </Border>
-                                <TextBlock Text="Queue" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                                <TextBlock Text="Queue" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- The large-icon form has its own always-visible volume bar -->
@@ -1958,13 +1980,13 @@
                                 Click="OnMenuItemClick"
                                 IsVisible="{Binding !IsLargeIconForm}">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Border Width="14" Height="14" Background="#D9FFFFFF"
+                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                         RenderOptions.BitmapInterpolationMode="HighQuality">
                                     <Border.OpacityMask>
                                         <ImageBrush Source="avares://Noctis/Assets/Icons/Volume%20ICON.png" Stretch="Uniform"/>
                                     </Border.OpacityMask>
                                 </Border>
-                                <TextBlock Text="Volume" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                                <TextBlock Text="Volume" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- Stays in the list while lyrics are open: it is the only way back
@@ -1972,13 +1994,13 @@
                         <Button Classes="mini-menu-item" Command="{Binding ToggleLyricsFormCommand}"
                                 Click="OnMenuItemClick">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Border Width="14" Height="14" Background="#D9FFFFFF"
+                                <Border Width="14" Height="14" Background="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                         RenderOptions.BitmapInterpolationMode="HighQuality">
                                     <Border.OpacityMask>
                                         <ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform"/>
                                     </Border.OpacityMask>
                                 </Border>
-                                <TextBlock Text="{Binding LyricsMenuLabel}" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding LyricsMenuLabel}" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- Was the corner badge. No OnMenuItemClick needed: closing the
@@ -1987,8 +2009,8 @@
                                 Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
                         <Button Classes="mini-menu-item" Click="OnCloseClick">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" Foreground="#D9FFFFFF"/>
-                                <TextBlock Text="Back to full view" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                                <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                <TextBlock Text="Back to full view" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
