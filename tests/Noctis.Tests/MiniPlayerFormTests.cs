@@ -39,6 +39,73 @@ public class MiniPlayerFormTests
     public void ComputeForm_DegenerateSizesFallBackToCard(double w, double h)
         => Assert.Equal(MiniPlayerForm.Card, MiniPlayerViewModel.ComputeForm(w, h));
 
+    // ── Hysteresis ───────────────────────────────────────────
+    // The form cross-fade restarts on every crossing, so a drag creeping along a
+    // threshold must not be able to flip-flop. Each form's own region is widened by the
+    // band; every other region shrinks by it.
+
+    private const double Band = 10;
+    private const double RatioBand = 0.06;
+
+    private static MiniPlayerForm Sticky(double w, double h, MiniPlayerForm current)
+        => MiniPlayerViewModel.ComputeForm(w, h, current, Band, RatioBand);
+
+    [Fact]
+    public void ComputeForm_WithoutCurrentForm_MatchesTheRawThresholds()
+    {
+        // The 2-arg overload must stay band-free, or every existing threshold moves.
+        Assert.Equal(MiniPlayerForm.Bar, MiniPlayerViewModel.ComputeForm(400, 210));
+        Assert.Equal(MiniPlayerForm.Card, MiniPlayerViewModel.ComputeForm(400, 211));
+    }
+
+    [Theory]
+    // Just past the Bar/Card line, still Bar because Bar is the current form.
+    [InlineData(400, 215, MiniPlayerForm.Bar, MiniPlayerForm.Bar)]
+    // Far enough past it to commit.
+    [InlineData(400, 225, MiniPlayerForm.Bar, MiniPlayerForm.Card)]
+    // Coming back the other way: Card holds until well below the line.
+    [InlineData(400, 205, MiniPlayerForm.Card, MiniPlayerForm.Card)]
+    [InlineData(400, 195, MiniPlayerForm.Card, MiniPlayerForm.Bar)]
+    // Lyrics keeps its split view a little past the shrink threshold.
+    [InlineData(535, 384, MiniPlayerForm.Lyrics, MiniPlayerForm.Lyrics)]
+    [InlineData(525, 384, MiniPlayerForm.Lyrics, MiniPlayerForm.Card)]
+    // ...but growing INTO lyrics needs to clear the line by the band.
+    [InlineData(545, 384, MiniPlayerForm.Card, MiniPlayerForm.Card)]
+    [InlineData(555, 384, MiniPlayerForm.Card, MiniPlayerForm.Lyrics)]
+    public void ComputeForm_HoldsTheCurrentFormInsideTheBand(
+        double w, double h, MiniPlayerForm current, MiniPlayerForm expected)
+        => Assert.Equal(expected, Sticky(w, h, current));
+
+    [Fact]
+    public void ComputeForm_BandStopsFlipFlopAcrossABoundary()
+    {
+        // Walk a slow drag back and forth across the Bar/Card line entirely inside the
+        // band. Without hysteresis this alternates every step and restarts the fade.
+        var form = MiniPlayerForm.Bar;
+        var switches = 0;
+        foreach (var h in new double[] { 208, 212, 209, 213, 207, 214, 211, 206 })
+        {
+            var next = Sticky(400, h, form);
+            if (next != form) switches++;
+            form = next;
+        }
+
+        Assert.Equal(0, switches);
+        Assert.Equal(MiniPlayerForm.Bar, form);
+    }
+
+    [Fact]
+    public void ComputeForm_BandStillLetsADeliberateDragThrough()
+    {
+        // A real drag well past the line must still commit — a dead band that never
+        // releases would be worse than no band at all.
+        var form = MiniPlayerForm.Bar;
+        foreach (var h in new double[] { 208, 214, 222, 240 })
+            form = Sticky(400, h, form);
+
+        Assert.Equal(MiniPlayerForm.Card, form);
+    }
+
     private static Track T(string title, string artist, string album = "") => new()
     {
         Title = title,

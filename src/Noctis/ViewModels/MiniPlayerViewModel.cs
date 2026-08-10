@@ -64,7 +64,8 @@ public partial class MiniPlayerViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIconForm), nameof(IsBarForm), nameof(IsCardForm),
-        nameof(IsLargeIconForm), nameof(IsLyricsForm), nameof(SupportsDrawer))]
+        nameof(IsLargeIconForm), nameof(IsLyricsForm), nameof(SupportsDrawer),
+        nameof(LyricsMenuLabel))]
     private MiniPlayerForm _form = MiniPlayerForm.Bar;
 
     public bool IsIconForm => Form == MiniPlayerForm.Icon;
@@ -76,26 +77,48 @@ public partial class MiniPlayerViewModel : ViewModelBase
     /// <summary>Bottom-sheet layers exist on every form with a "…" menu (not the tiny icon).</summary>
     public bool SupportsDrawer => Form is not MiniPlayerForm.Icon;
 
+    /// <summary>Dead-band applied to the current form's thresholds during a live resize, in
+    /// pixels and in aspect ratio. Without it a drag creeping along a boundary re-crosses it
+    /// every few pixels and the cross-fade restarts on each crossing.</summary>
+    private const double FormHysteresisPx = 10;
+    private const double FormHysteresisRatio = 0.06;
+
     /// <summary>
     /// Maps a window size to a form factor. Order matters: the tiny square wins first,
     /// then the short-and-wide bar, then the big split lyrics view, then tall cards.
     /// </summary>
     public static MiniPlayerForm ComputeForm(double width, double height)
+        => ComputeForm(width, height, null, 0, 0);
+
+    /// <summary>
+    /// Hysteresis overload. Every threshold moves in whichever direction KEEPS
+    /// <paramref name="current"/>: its own region grows by the band, every other region
+    /// shrinks by it. Pass a null current (or zero bands) for the raw thresholds.
+    /// </summary>
+    public static MiniPlayerForm ComputeForm(
+        double width, double height, MiniPlayerForm? current, double band, double ratioBand)
     {
         if (!double.IsFinite(width) || !double.IsFinite(height) || width <= 0 || height <= 0)
             return MiniPlayerForm.Card;
 
-        if (width <= 230 && height <= 260) return MiniPlayerForm.Icon;
-        if (height <= 210) return MiniPlayerForm.Bar;
-        if (width >= 540 && height >= 320) return MiniPlayerForm.Lyrics;
-        if (height / width >= 1.30) return MiniPlayerForm.LargeIcon;
+        var iconW = current == MiniPlayerForm.Icon ? 230 + band : 230 - band;
+        var iconH = current == MiniPlayerForm.Icon ? 260 + band : 260 - band;
+        var barH = current == MiniPlayerForm.Bar ? 210 + band : 210 - band;
+        var lyricsW = current == MiniPlayerForm.Lyrics ? 540 - band : 540 + band;
+        var lyricsH = current == MiniPlayerForm.Lyrics ? 320 - band : 320 + band;
+        var tallRatio = current == MiniPlayerForm.LargeIcon ? 1.30 - ratioBand : 1.30 + ratioBand;
+
+        if (width <= iconW && height <= iconH) return MiniPlayerForm.Icon;
+        if (height <= barH) return MiniPlayerForm.Bar;
+        if (width >= lyricsW && height >= lyricsH) return MiniPlayerForm.Lyrics;
+        if (height / width >= tallRatio) return MiniPlayerForm.LargeIcon;
         return MiniPlayerForm.Card;
     }
 
     /// <summary>Called by the window on every resize with the current client size.</summary>
     public void UpdateFromSize(double width, double height)
     {
-        var next = ComputeForm(width, height);
+        var next = ComputeForm(width, height, Form, FormHysteresisPx, FormHysteresisRatio);
         if (next == Form) return;
 
         Form = next;
@@ -118,8 +141,31 @@ public partial class MiniPlayerViewModel : ViewModelBase
     /// <summary>Raised when a menu action wants the window resized into a specific form.</summary>
     public event Action<MiniPlayerForm>? FormResizeRequested;
 
+    /// <summary>Form to return to when lyrics are dismissed. Only ever written on the way
+    /// in, so the split view always hands back the layout the user actually came from.</summary>
+    private MiniPlayerForm _formBeforeLyrics = MiniPlayerForm.Card;
+
+    /// <summary>The "…" menu keeps this item in the list while lyrics are open — it is the
+    /// only way back out — so its label has to say which direction it goes.</summary>
+    public string LyricsMenuLabel => IsLyricsForm ? "Hide Lyrics" : "Lyrics";
+
     [RelayCommand]
-    private void SwitchToLyricsForm() => FormResizeRequested?.Invoke(MiniPlayerForm.Lyrics);
+    private void ToggleLyricsForm()
+    {
+        if (IsLyricsForm)
+        {
+            // Icon has no "…" menu, so it can't be the form we came from; Lyrics itself
+            // would be a no-op. Card is the neutral fallback either way.
+            var back = _formBeforeLyrics is MiniPlayerForm.Lyrics or MiniPlayerForm.Icon
+                ? MiniPlayerForm.Card
+                : _formBeforeLyrics;
+            FormResizeRequested?.Invoke(back);
+            return;
+        }
+
+        _formBeforeLyrics = Form;
+        FormResizeRequested?.Invoke(MiniPlayerForm.Lyrics);
+    }
 
     // ── Bottom-sheet layers ──
 
@@ -209,10 +255,6 @@ public partial class MiniPlayerViewModel : ViewModelBase
         Player.AddNext(track);
         Player.NextCommand.Execute(null);
     }
-
-    /// <summary>Queue a search hit to play right after the current track.</summary>
-    [RelayCommand]
-    private void PlayResultNext(Track track) => Player.AddNext(track);
 
     // ── Queue layer ──
 

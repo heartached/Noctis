@@ -5,7 +5,6 @@
         xmlns:controls="using:Noctis.Controls"
         xmlns:conv="using:Noctis.Converters"
         xmlns:helpers="using:Noctis.Helpers"
-        xmlns:views="using:Noctis.Views"
         x:Class="Noctis.Views.MiniPlayerWindow"
         x:DataType="vm:MiniPlayerViewModel"
         Title="Noctis Mini Player"
@@ -19,6 +18,25 @@
         WindowStartupLocation="Manual">
 
     <Window.Resources>
+        <!-- Lossless waveform mark. Hoisted to a resource now that two forms (Card and
+             Large icon) draw the quality badge — kept local to this window rather than
+             pushed into Icons.axaml, which would mean rewriting the four other views
+             that inline the same path. -->
+        <StreamGeometry x:Key="LosslessWaveIcon">M8.184,0.35C9.944,0.35 10.703,3.296 11.338,5.238C11.673,3.842 11.497,3.542 11.857,3.542C11.99,3.542 12.126,3.633 12.126,3.798C12.126,3.809 12.123,3.839 12.117,3.883L12.091,4.058C12.02,4.522 11.845,5.494 11.654,6.144C13.198,10.191 14.345,4.861 14.474,3.772C14.493,3.615 14.612,3.542 14.731,3.542C14.891,3.542 15.022,3.662 14.997,3.843C14.72,5.605 14.295,8.35 12.547,8.35C11.582,8.35 11.04,7.595 10.611,6.73C9.54,4.626 9.047,1.093 7.997,1.093C7.66,1.093 7.411,1.444 7.394,1.444C7.362,1.444 7.337,1.301 7.023,0.909C7.322,0.567 7.734,0.35 8.184,0.35ZM2.458,0.354C5.211,0.354 5.456,7.618 7.014,7.618C7.197,7.618 7.394,7.507 7.61,7.256C7.729,7.458 7.851,7.638 7.978,7.796C7.667,8.151 7.28,8.35 6.795,8.35C5.054,8.349 4.306,5.434 3.663,3.466C3.511,4.097 3.432,4.669 3.402,4.925C3.382,5.088 3.263,5.163 3.143,5.163C3.009,5.163 2.874,5.071 2.874,4.908L2.874,4.908L2.877,4.87C2.966,4.223 3.146,3.243 3.347,2.56C3.079,1.858 2.745,1.091 2.252,1.091C1.257,1.091 0.687,3.591 0.527,4.925C0.508,5.088 0.388,5.163 0.268,5.163C0.135,5.163 0,5.071 0,4.908C0,4.896 0.001,4.883 0.002,4.87C0.283,2.836 0.808,0.354 2.458,0.354ZM5.315,0.35C5.809,0.35 6.339,0.608 6.797,1.211C6.822,1.241 7.078,1.639 7.159,1.777C8.277,3.802 8.818,7.627 9.881,7.627C10.065,7.627 10.264,7.513 10.484,7.256C10.604,7.458 10.726,7.638 10.852,7.796C10.542,8.15 10.155,8.35 9.67,8.35C6.933,8.349 6.636,1.09 5.128,1.09C4.788,1.09 4.536,1.444 4.519,1.444C4.487,1.444 4.462,1.301 4.148,0.909C4.455,0.558 4.87,0.35 5.315,0.35Z</StreamGeometry>
+        <!-- The frosted band, shared by the Large-icon and Lyrics forms so the two stay in
+             step. MiniFrostMask reveals the blurred artwork copy; MiniFrostScrim is the
+             contrast ramp over it. Both are measured, not eyeballed — see the notes at the
+             Large-icon form's L2/L3 layers before changing an offset. -->
+        <LinearGradientBrush x:Key="MiniFrostMask" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0.40" Color="#00000000"/>
+            <GradientStop Offset="0.54" Color="#8C000000"/>
+            <GradientStop Offset="0.64" Color="#FF000000"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="MiniFrostScrim" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0.40" Color="#00000000"/>
+            <GradientStop Offset="0.64" Color="#7A000000"/>
+            <GradientStop Offset="1" Color="#A0000000"/>
+        </LinearGradientBrush>
         <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect"/>
         <conv:ProgressToSweepForegroundConverter x:Key="ProgressToSweepFg"/>
         <conv:EmphasisGlowConverter x:Key="EmphasisGlow"/>
@@ -261,11 +279,13 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="CornerRadius" Value="8"/>
         </Style>
+        <!-- Theme brushes, not white overlays: the menu card is painted in the app's
+             theme background, which a light or custom theme can make pale. -->
         <Style Selector="Button.mini-menu-item:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
         </Style>
         <Style Selector="Button.mini-menu-item:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="#33FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}"/>
         </Style>
 
         <!-- Icon-form hover overlay fade -->
@@ -401,25 +421,56 @@
              hit-testable while transparent costs nothing — the pointer can only reach it
              from inside the window, which is exactly when it has faded in. The fade comes
              from mini-transport's opacity transition. -->
-        <Style Selector="Button.mini-close">
-            <Setter Property="Opacity" Value="0"/>
-        </Style>
-        <!-- Anchored to RootBorder, not RootPanel: RootPanel has no Background, so it is
-             not hit-testable and an empty patch of card would leave the button hidden —
-             it would have appeared only while hovering another control. RootBorder carries
-             the card fill and wraps everything, so it is pointer-over anywhere on the card. -->
-        <Style Selector="Border#RootBorder:pointerover Button.mini-close">
-            <Setter Property="Opacity" Value="0.75"/>
-        </Style>
-        <Style Selector="Border#RootBorder:pointerover Button.mini-close:pointerover">
-            <Setter Property="Opacity" Value="1"/>
-        </Style>
 
         <!-- Favourite pop, mirroring the global PathIcon.heart-pop. A local copy because
              that selector is an exact-type match on PathIcon and the mini player draws its
              glyphs as Viewbox/Canvas/Path (a 24×24 canvas centres the glyph predictably;
              PathIcon scales the geometry's own bounds, which left the heart's off-centre
              bounding box visibly low and right inside the button). -->
+        <!-- Form cross-fade. The five form layouts are siblings; morphing between them means
+             both being alive for the length of the fade, so their IsVisible is driven by
+             code-behind (SyncFormVisual) instead of a binding — a binding would collapse the
+             outgoing tree in the same frame and leave nothing to fade out. Hidden forms park
+             at opacity 0 / scale(1.03) so showing one is just "ease to rest".
+             TransformOperationsTransition, never a KeyFrame on RenderTransform: that crashes
+             at startup. -->
+        <!-- :is(Panel), not Panel or Grid: a bare ".form-root" has no type to resolve the
+             setter properties against, and a plain "Panel." selector is exact-type so it
+             would skip the four Grid roots. -->
+        <Style Selector=":is(Panel).form-root">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsVisible" Value="False"/>
+            <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+            <Setter Property="RenderTransform" Value="scale(1.03)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <!-- Optically centre the heart in its disc. The icon's bounding box is centred
+             already, but a heart carries its mass in the top lobes and tapers to a
+             point, so box-centring reads high: measured under Skia-headless, the ink's
+             centroid sits 0.84px above the disc centre, and +0.8px lands it dead on.
+             Layout rounding is the other half — it snaps the 14px glyph box half a
+             device pixel left/up at 125% and 150% scaling, which is the "it's a bit
+             left" tell. The disc keeps rounding (it stays crisp); only the glyph opts
+             out. Lives on the wrapping Panel so it composes with mini-heart-pop's
+             scale instead of fighting it for the RenderTransform slot. -->
+        <Style Selector="Panel.mini-heart-glyph">
+            <Setter Property="RenderTransform" Value="translateY(0.8px)"/>
+            <Setter Property="UseLayoutRounding" Value="False"/>
+        </Style>
         <Style Selector="Viewbox.mini-heart-pop">
             <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
             <Setter Property="RenderTransform" Value="scale(1)"/>
@@ -452,6 +503,11 @@
          clip is a slightly smaller rounded rect, so a child fill left a bare arc at
          each corner between the fill and the stroke — the fill must follow the same
          rounded outline the stroke draws. -->
+    <!-- 1.5px, not 1px: a 1-device-pixel stroke cannot resolve the corner arcs. Measured
+         under Skia at 100% and 125% scaling, the arc's brightness swings between 50% and
+         98% of the straight edges' as the curve crosses the pixel grid, so the corners
+         read as thin and broken while the flat sides stay solid. 1.5px is the first width
+         that renders the whole outline at one strength (1.25px is still broken at 100%). -->
     <!-- Genuinely translucent: the fill's alpha is the "Mini Player Opacity" setting, so
          the desktop reads through the card (per-pixel alpha, see the TransparencyLevelHint
          note in code-behind). The blur behind it can't be an OS backdrop — acrylic paints
@@ -459,11 +515,17 @@
          so the depth comes from the blurred-artwork wash under a light frost instead.
          Brush-level Opacity (as on the playback bar's island) rather than Border.Opacity:
          the latter would fade the card's contents along with the fill. -->
+    <!-- ClipToBounds is OFF so the close badge below can hang over the corner. Measured
+         under Skia: Border.ClipToBounds is NOT the rectangular clip it looks like — Border
+         rounds it by its own CornerRadius, so with it on the badge was sliced off dead on
+         the card's outline (nothing painted past r=28). Turning it off costs nothing here,
+         because RootPanel carries its own explicit rounded clip and is the only child that
+         paints card content. -->
     <Border x:Name="RootBorder"
             CornerRadius="28"
-            ClipToBounds="True"
+            ClipToBounds="False"
             BorderBrush="#8CFFFFFF"
-            BorderThickness="1"
+            BorderThickness="1.5"
             UseLayoutRounding="True"
             Opacity="0"
             RenderTransform="scale(0.92)"
@@ -483,8 +545,15 @@
             </Transitions>
         </Border.Transitions>
 
+        <!-- Wrapper so the close badge can be a SIBLING of RootPanel rather than a child
+             of it. RootPanel carries the rounded clip, so anything inside it is cut at the
+             card's outline; out here nothing clips but the window rect, which leaves the
+             transparent square corners free for the badge to hang into. -->
+        <Panel>
+
         <!-- RootPanel's rounded clip geometry is kept in sync with the window size by
-             code-behind (Border.ClipToBounds clips to the rectangular bounds only). -->
+             code-behind. With RootBorder's ClipToBounds off, this is now the ONLY thing
+             holding the artwork / glass layers to the rounded outline. -->
         <Panel x:Name="RootPanel">
 
             <!-- ── Glass stack (bottom → top) ─────────────────────────────── -->
@@ -533,8 +602,17 @@
                 </Border.Background>
             </Border>
 
+            <!-- Forms on top, drawer underneath — NOT stacked on top of each other. The
+                 drawer used to be a bottom-anchored sibling painted over whichever form was
+                 showing, which on the short Bar form put the queue straight over the title
+                 and transport. Now it owns its own row and the window grows to make space
+                 for it (see AnimateDrawer). The glass layers above stay outside this grid
+                 so the wash runs behind the drawer too and the card reads as one pane. -->
+            <Grid RowDefinitions="*,Auto">
+            <Panel Grid.Row="0">
+
             <!-- ── Form: Icon (tiny square — artwork only, hover controls) ── -->
-            <Grid x:Name="IconFormRoot" Background="Transparent" IsVisible="{Binding IsIconForm}">
+            <Grid x:Name="IconFormRoot" Classes="form-root" Background="Transparent">
                 <Panel x:Name="IconArtClip">
                     <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
                                           DecodeWidth="512"
@@ -582,7 +660,7 @@
             </Grid>
 
             <!-- ── Form: Bar (wide + short) ───────────────────────────────── -->
-            <Grid x:Name="BarFormRoot" IsVisible="{Binding IsBarForm}"
+            <Grid x:Name="BarFormRoot" Classes="form-root"
                   Margin="14,12,14,10" RowDefinitions="*,Auto,Auto">
                 <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                     <!-- 60 is the largest thumb that still fits row 0 at the bar form's
@@ -626,10 +704,12 @@
                                                    IsForAlbum="True"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <!-- Negative right margin offsets the heart without dragging "…" along. -->
                         <Button Classes="mini-transport glass-circle" Width="28" Height="28"
+                                Margin="4,0,-4,0"
                                 Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                 ToolTip.Tip="Favorites">
-                            <Panel>
+                            <Panel Classes="mini-heart-glyph">
                                 <Viewbox Width="14" Height="14"
                                          IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}">
                                     <Canvas Width="24" Height="24">
@@ -745,7 +825,7 @@
             </Grid>
 
             <!-- ── Form: Card (default vertical) ──────────────────────────── -->
-            <Grid x:Name="CardFormRoot" IsVisible="{Binding IsCardForm}"
+            <Grid x:Name="CardFormRoot" Classes="form-root"
                   Margin="16,14,16,12" RowDefinitions="Auto,Auto,Auto,Auto,*">
                 <!-- Art thumb + info + "…" -->
                 <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,20,0,0">
@@ -792,7 +872,7 @@
                         <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                 Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                 ToolTip.Tip="Favorites">
-                            <Panel>
+                            <Panel Classes="mini-heart-glyph">
                                 <Viewbox Width="14" Height="14"
                                          IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}">
                                     <Canvas Width="24" Height="24">
@@ -852,8 +932,7 @@
                         </StackPanel>
                     </ToolTip.Tip>
                     <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,0,0,1" Opacity="0.7">
-                        <Path Data="M8.184,0.35C9.944,0.35 10.703,3.296 11.338,5.238C11.673,3.842 11.497,3.542 11.857,3.542C11.99,3.542 12.126,3.633 12.126,3.798C12.126,3.809 12.123,3.839 12.117,3.883L12.091,4.058C12.02,4.522 11.845,5.494 11.654,6.144C13.198,10.191 14.345,4.861 14.474,3.772C14.493,3.615 14.612,3.542 14.731,3.542C14.891,3.542 15.022,3.662 14.997,3.843C14.72,5.605 14.295,8.35 12.547,8.35C11.582,8.35 11.04,7.595 10.611,6.73C9.54,4.626 9.047,1.093 7.997,1.093C7.66,1.093 7.411,1.444 7.394,1.444C7.362,1.444 7.337,1.301 7.023,0.909C7.322,0.567 7.734,0.35 8.184,0.35ZM2.458,0.354C5.211,0.354 5.456,7.618 7.014,7.618C7.197,7.618 7.394,7.507 7.61,7.256C7.729,7.458 7.851,7.638 7.978,7.796C7.667,8.151 7.28,8.35 6.795,8.35C5.054,8.349 4.306,5.434 3.663,3.466C3.511,4.097 3.432,4.669 3.402,4.925C3.382,5.088 3.263,5.163 3.143,5.163C3.009,5.163 2.874,5.071 2.874,4.908L2.874,4.908L2.877,4.87C2.966,4.223 3.146,3.243 3.347,2.56C3.079,1.858 2.745,1.091 2.252,1.091C1.257,1.091 0.687,3.591 0.527,4.925C0.508,5.088 0.388,5.163 0.268,5.163C0.135,5.163 0,5.071 0,4.908C0,4.896 0.001,4.883 0.002,4.87C0.283,2.836 0.808,0.354 2.458,0.354ZM5.315,0.35C5.809,0.35 6.339,0.608 6.797,1.211C6.822,1.241 7.078,1.639 7.159,1.777C8.277,3.802 8.818,7.627 9.881,7.627C10.065,7.627 10.264,7.513 10.484,7.256C10.604,7.458 10.726,7.638 10.852,7.796C10.542,8.15 10.155,8.35 9.67,8.35C6.933,8.349 6.636,1.09 5.128,1.09C4.788,1.09 4.536,1.444 4.519,1.444C4.487,1.444 4.462,1.301 4.148,0.909C4.455,0.558 4.87,0.35 5.315,0.35Z"
-                              Fill="White"/>
+                        <Path Data="{StaticResource LosslessWaveIcon}" Fill="White"/>
                     </Viewbox>
                     <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge, FallbackValue=''}"
                                FontSize="10" FontWeight="SemiBold"
@@ -945,9 +1024,22 @@
             </Grid>
 
             <!-- ── Form: Large icon (tall, artwork-dominant, volume bar) ──── -->
-            <Grid x:Name="LargeIconFormRoot" IsVisible="{Binding IsLargeIconForm}"
-                  Margin="16,14,16,12" RowDefinitions="*,Auto,Auto,Auto,Auto">
-                <Panel Grid.Row="0" x:Name="LargeArtClip" Margin="0,28,0,0">
+            <!-- Full bleed, Apple Music style: the artwork runs edge to edge and the
+                 controls float on a frosted band at the bottom. Layered as a Panel
+                 rather than stacked in Grid rows — the art is no longer a row, it is
+                 the backdrop everything else sits on. RootPanel's rounded clip is what
+                 rounds the artwork now, which is why LargeArtClip no longer gets its
+                 own 16px clip in code-behind. -->
+            <Panel x:Name="LargeIconFormRoot" Classes="form-root">
+
+                <!-- L1: the artwork, at full opacity. "Mini Player Opacity" deliberately
+                     does NOT apply here — it is documented as background-only ("the artwork
+                     wash, sheen and contents are unaffected") and it still governs the card
+                     fill and the glass wash. Running the cover through it as well was tried
+                     and reverted: at the 0.55 default it washed the whole card out, and
+                     since the frost is a copy of that same artwork, both the sharp top and
+                     the frosted bottom faded together — which left no visible band at all. -->
+                <Panel x:Name="LargeArtClip">
                     <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
                                           DecodeWidth="768"
                                           Stretch="UniformToFill"
@@ -961,7 +1053,57 @@
                                IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
                 </Panel>
 
-                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="2,10,0,0">
+                <!-- L2: the frosted band — a SECOND copy of the same artwork, blurred,
+                     revealed by a vertical opacity mask so the frost fades in down the
+                     card instead of starting at a hard line. The mask lives on the
+                     wrapper (not the image) so it masks the blur's *output*; on the
+                     image itself it would fight the effect for the same visual slot.
+                     The inner negative margin is the blur's bleed, and it is NOT optional:
+                     measured with an exactly-sized copy, the frost holds to 0.85 of the
+                     height and then collapses — residual detail climbs from 0.5 to 9.6 at
+                     the volume row, 32 near the edge and 53 at the very bottom, i.e. the
+                     sharp cover walks back in under the volume slider. The margin is
+                     asymmetric on purpose: a square cover on a portrait card is
+                     height-driven under UniformToFill, so widening is FREE (same scale,
+                     just reveals more source) while heightening zooms the crop away from
+                     L1's. -120/-60 holds the bottom edge (residual 0.3-0.7) at a 1.11x
+                     zoom, where a uniform -135 cost 1.52x for the same result.
+                     Deliberately the STATIC art even while an animated cover plays: at
+                     this radius the difference doesn't survive the blur, and a second
+                     video decode per frame very much would.
+                     Radius measured, not guessed: rendered against a hard stripe pattern,
+                     r=36 left 26% of the detail standing and r=60 left 11-20%. Only r=90
+                     reads as frost (4% at 100% scaling). Note BlurEffect.Radius is in
+                     DEVICE pixels, so the same radius blurs ~20% weaker at 125% scaling —
+                     hence the headroom. -->
+                <Panel IsHitTestVisible="False"
+                       OpacityMask="{StaticResource MiniFrostMask}"
+                       IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
+                                          DecodeWidth="768"
+                                          Stretch="UniformToFill"
+                                          Margin="-120,0,-120,-60"
+                                          RenderOptions.BitmapInterpolationMode="HighQuality">
+                        <controls:CachedImage.Effect>
+                            <BlurEffect Radius="90"/>
+                        </controls:CachedImage.Effect>
+                    </controls:CachedImage>
+                </Panel>
+
+                <!-- L3: contrast ramp. The frost alone does NOT guarantee readable text —
+                     a pale cover just blurs to a pale wash. Measured against a worst-case
+                     pale cover, white-on-frost came out at 3.0:1 with a light scrim; these
+                     stops put the title at 5.1:1 (100%) / 4.9:1 (125%), clearing the 4.5:1
+                     floor with margin, while staying lighter than the next step up so dark
+                     covers don't get crushed. Full frost lands at 0.64, just above where
+                     the controls start (~0.66 at the canonical 340x520). -->
+                <Border IsHitTestVisible="False" Background="{StaticResource MiniFrostScrim}"/>
+
+                <!-- L4: the controls, anchored to the bottom of the frosted band. -->
+                <Grid VerticalAlignment="Bottom" Margin="16,0,16,12"
+                      RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="2,0,0,0">
                     <StackPanel Grid.Column="0" x:Name="LargeInfoHost" VerticalAlignment="Center" Margin="0,0,8,0" Spacing="1">
                         <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
                                                    FontSize="15" FontWeight="Bold" Foreground="White"
@@ -985,7 +1127,7 @@
                         <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                 Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                 ToolTip.Tip="Favorites">
-                            <Panel>
+                            <Panel Classes="mini-heart-glyph">
                                 <Viewbox Width="14" Height="14"
                                          IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}">
                                     <Canvas Width="24" Height="24">
@@ -1011,7 +1153,7 @@
                     </StackPanel>
                 </Grid>
 
-                <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
                     <TextBlock Grid.Column="0" Text="{Binding Player.PositionText}"
                                FontSize="10" Foreground="#A0FFFFFF"
                                VerticalAlignment="Center" MinWidth="32"/>
@@ -1023,6 +1165,33 @@
                                FontSize="10" Foreground="#A0FFFFFF"
                                VerticalAlignment="Center" MinWidth="32" TextAlignment="Right"/>
                 </Grid>
+
+                <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
+                            HorizontalAlignment="Center"
+                            Background="Transparent"
+                            Margin="0,4,0,0"
+                            IsVisible="{Binding Player.CurrentTrack.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                    <ToolTip.Tip>
+                        <StackPanel Width="220" Spacing="4">
+                            <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
+                                       FontSize="13" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                            <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDetailedInfo}"
+                                       FontSize="12" Opacity="0.9"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDescription, FallbackValue=''}"
+                                       FontSize="11" TextWrapping="Wrap" Opacity="0.85" Margin="0,4,0,0"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                        </StackPanel>
+                    </ToolTip.Tip>
+                    <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,0,0,1" Opacity="0.7">
+                        <Path Data="{StaticResource LosslessWaveIcon}" Fill="White"/>
+                    </Viewbox>
+                    <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge, FallbackValue=''}"
+                               FontSize="10" FontWeight="SemiBold"
+                               Foreground="#B3FFFFFF" VerticalAlignment="Center"/>
+                </StackPanel>
 
                 <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
                     <Button Grid.Column="0" Classes="mini-transport" Width="36" Height="36"
@@ -1130,19 +1299,70 @@
                         </Canvas>
                     </Viewbox>
                 </Grid>
-            </Grid>
+
+                </Grid>
+            </Panel>
 
             <!-- ── Form: Lyrics (wide split view, Liqoria 1.5 layout) ─────── -->
-            <Grid x:Name="LyricsFormRoot" IsVisible="{Binding IsLyricsForm}"
-                  Margin="16,14,10,12" ColumnDefinitions="5*,7*">
-                <!-- Left: art panel with the controls stacked underneath -->
-                <!-- The close button moved to the top-right (over the lyrics column), so
-                     the art column no longer reserves a strip for it and the artwork
-                     grows into that space. -->
-                <Grid Grid.Column="0" MinWidth="190" MaxWidth="320"
-                      RowDefinitions="*,Auto,Auto,Auto" Margin="0,6,8,0">
-                    <!-- Fills its slot; the rounded clip follows the size (code-behind) -->
-                    <Panel Grid.Row="0" x:Name="LyricsArtClip" Margin="0,0,0,8">
+            <!-- The root carries NO margin any more: the art column bleeds to the window's
+                 left/top/bottom edges, so the insets moved onto the lyrics column. -->
+            <!-- The art column's width bounds live on the COLUMN, not on the panel inside
+                 it. On the panel they capped the panel while the column kept its full 5/12
+                 share, so on a wide window the panel centred itself in the slot and left a
+                 strip of bare card down each side of the artwork. On the column the cap
+                 shrinks the slot itself and the spare width goes to the lyrics. -->
+            <Grid x:Name="LyricsFormRoot" Classes="form-root">
+                <!-- Left: full-bleed artwork with the controls floating on a frosted band,
+                     same construction as the Large-icon form (see the notes there for why
+                     the mask sits on the wrapper and why the bleed margin is asymmetric).
+                     Rounded on the left by RootPanel's clip; its right edge is a straight
+                     seam against the lyrics column. -->
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="5*" MinWidth="190" MaxWidth="320"/>
+                    <ColumnDefinition Width="7*"/>
+                </Grid.ColumnDefinitions>
+
+                <Panel Grid.Column="0" x:Name="LyricsArtColumn">
+                    <!-- L1: frost backdrop — the blurred cover filling the WHOLE column at
+                         full strength, no mask. The sharp cover sits over its top, so what
+                         shows below the cover reads as the frost carrying on rather than
+                         bare glass. (The Large-icon form masks its frost instead, because
+                         there the sharp artwork runs the whole card and the frost has to
+                         fade in over it. Here the sharp artwork stops, so it doesn't.) -->
+                    <!-- Stretch is Fill, NOT UniformToFill: this copy has no sharp artwork
+                         to stay aligned with (the cover above it stops), and UniformToFill
+                         on a tall narrow column is height-driven, so it magnified a thin
+                         central sliver of the cover more and more as the window grew —
+                         the frost visibly churned while resizing. Fill always maps the
+                         WHOLE cover onto the column, so it is stable at any size and keeps
+                         the cover's real colours; the aspect distortion it introduces does
+                         not survive a 90px blur. -->
+                    <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
+                                          DecodeWidth="512"
+                                          Stretch="Fill"
+                                          Margin="-120,0,-120,-60"
+                                          IsHitTestVisible="False"
+                                          RenderOptions.BitmapInterpolationMode="HighQuality"
+                                          IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <controls:CachedImage.Effect>
+                            <BlurEffect Radius="90"/>
+                        </controls:CachedImage.Effect>
+                    </controls:CachedImage>
+
+                    <!-- L2: the cover itself — a full-width SQUARE pinned to the top, so a
+                         square cover lands whole instead of being cropped to a vertical
+                         slice by the tall column. Height tracks the COLUMN's width (not its
+                         own, which would be self-referential). Its bottom edge dissolves
+                         into the frost underneath rather than ending on a hard line. -->
+                    <Panel x:Name="LyricsArtClip"
+                           VerticalAlignment="Top"
+                           Height="{Binding #LyricsArtColumn.Bounds.Width}">
+                        <Panel.OpacityMask>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                                <GradientStop Offset="0.86" Color="#FF000000"/>
+                                <GradientStop Offset="1" Color="#00000000"/>
+                            </LinearGradientBrush>
+                        </Panel.OpacityMask>
                         <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
                                               DecodeWidth="512"
                                               Stretch="UniformToFill"
@@ -1156,7 +1376,12 @@
                                    IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
                     </Panel>
 
-                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="2,4,0,0">
+                    <Border IsHitTestVisible="False" Background="{StaticResource MiniFrostScrim}"/>
+
+                    <Grid VerticalAlignment="Bottom" Margin="12,0,12,10"
+                          RowDefinitions="Auto,Auto,Auto,Auto">
+
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="2,4,0,0">
                         <StackPanel Grid.Column="0" x:Name="LyricsInfoHost" Spacing="1" VerticalAlignment="Center" Margin="0,0,6,0">
                             <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
                                                        FontSize="14" FontWeight="Bold" Foreground="White"
@@ -1181,7 +1406,7 @@
                             <Button Classes="mini-transport glass-circle" Width="28" Height="28"
                                     Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
                                     ToolTip.Tip="Favorites">
-                                <Panel>
+                                <Panel Classes="mini-heart-glyph">
                                     <Viewbox Width="14" Height="14"
                                              IsVisible="{Binding !Player.CurrentTrack.IsFavorite, FallbackValue=False}">
                                         <Canvas Width="24" Height="24">
@@ -1207,10 +1432,37 @@
                         </StackPanel>
                     </Grid>
 
-                    <Slider Grid.Row="2" x:Name="LyricsSeekSlider" Classes="mini-seek"
+                    <Slider Grid.Row="1" x:Name="LyricsSeekSlider" Classes="mini-seek"
                             Minimum="0" Maximum="1" Focusable="False"
                             Value="{Binding Player.PositionFraction, Mode=TwoWay}"
                             Margin="0,4,0,0" VerticalAlignment="Center"/>
+
+                    <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
+                                HorizontalAlignment="Center"
+                                Background="Transparent"
+                                Margin="0,3,0,0"
+                                IsVisible="{Binding Player.CurrentTrack.AudioQualityBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}">
+                        <ToolTip.Tip>
+                            <StackPanel Width="220" Spacing="4">
+                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
+                                           FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDetailedInfo}"
+                                           FontSize="12" Opacity="0.9"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDescription, FallbackValue=''}"
+                                           FontSize="11" TextWrapping="Wrap" Opacity="0.85" Margin="0,4,0,0"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            </StackPanel>
+                        </ToolTip.Tip>
+                        <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,0,0,1" Opacity="0.7">
+                            <Path Data="{StaticResource LosslessWaveIcon}" Fill="White"/>
+                        </Viewbox>
+                        <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge, FallbackValue=''}"
+                                   FontSize="10" FontWeight="SemiBold"
+                                   Foreground="#B3FFFFFF" VerticalAlignment="Center"/>
+                    </StackPanel>
 
                     <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,2,0,0">
                         <Button Classes="mini-transport" Width="30" Height="30"
@@ -1286,10 +1538,13 @@
                             </Panel>
                         </Button>
                     </StackPanel>
-                </Grid>
 
-                <!-- Right: synced lyrics -->
-                <Panel Grid.Column="1" Margin="6,22,0,0">
+                    </Grid>
+                </Panel>
+
+                <!-- Right: synced lyrics. Carries the insets the form root used to apply,
+                     now that the root has none so the art column can bleed to the edges. -->
+                <Panel Grid.Column="1" Margin="14,36,10,12">
                     <ScrollViewer x:Name="LyricsScroll"
                                   HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Hidden">
@@ -1423,15 +1678,32 @@
                 </Panel>
             </Grid>
 
-            <!-- ── Drawer sheet (Search / Queue / Volume layers) ──────────── -->
+            </Panel>
+
+            <!-- ── Drawer sheet (Search / Queue / Volume layers) ──────────────
+                 Height is driven by code-behind in lockstep with the window height, so the
+                 player area above it never changes size while the card grows. Starts at 0.
+
+                 Liquid glass rather than a solid sheet: the fill is translucent enough that
+                 the blurred artwork wash behind RootPanel reads through it, and the top edge
+                 carries the same specular hairline as the card's own top rim (L5 above) so
+                 the seam looks lit rather than drawn. -->
             <Border x:Name="DrawerSheet"
-                    VerticalAlignment="Bottom"
+                    Grid.Row="1"
                     IsVisible="False"
                     Opacity="0"
-                    Background="#B313131A"
-                    BorderBrush="#33FFFFFF"
+                    Height="0"
+                    ClipToBounds="True"
+                    Background="#590B0B11"
                     BorderThickness="0,1,0,0"
                     Padding="12,10,12,12">
+                <Border.BorderBrush>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                        <GradientStop Offset="0" Color="#00FFFFFF"/>
+                        <GradientStop Offset="0.5" Color="#59FFFFFF"/>
+                        <GradientStop Offset="1" Color="#00FFFFFF"/>
+                    </LinearGradientBrush>
+                </Border.BorderBrush>
                 <Border.RenderTransform>
                     <TranslateTransform Y="14">
                         <TranslateTransform.Transitions>
@@ -1480,7 +1752,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="m:Track">
                                         <Border Classes="mini-row">
-                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
                                                 <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8">
                                                     <Panel>
                                                         <Panel.Clip>
@@ -1491,19 +1763,34 @@
                                                                               Stretch="UniformToFill"/>
                                                     </Panel>
                                                 </Border>
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0,6,0" Spacing="1">
-                                                    <TextBlock Text="{Binding TitleDisplay}" FontSize="13" FontWeight="SemiBold"
-                                                               Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                                <StackPanel Grid.Column="1" x:Name="ResultInfoHost"
+                                                            VerticalAlignment="Center" Margin="10,0,6,0" Spacing="1">
+                                                    <!-- Badge rides the title as marquee InlineContent, the same way every
+                                                         form does it. A Grid put the badge at the far end of the text
+                                                         column instead of against the title, and a horizontal StackPanel
+                                                         would measure at infinite width — killing the ellipsis and letting
+                                                         a long title shove the badge out (issue #30). The marquee subtracts
+                                                         the badge's width from its own viewport, so the title trims against
+                                                         the badge rather than through it. -->
+                                                    <controls:MarqueeTextBlock Text="{Binding TitleDisplay}"
+                                                                               FontSize="13" FontWeight="SemiBold"
+                                                                               Foreground="White"
+                                                                               MaxDisplayWidth="{Binding #ResultInfoHost.Bounds.Width}"
+                                                                               HorizontalAlignment="Left" IsMiniPlayer="True">
+                                                        <controls:MarqueeTextBlock.InlineContent>
+                                                            <Border Classes="mini-explicit"
+                                                                    IsVisible="{Binding IsExplicit, FallbackValue=False}"
+                                                                    ToolTip.Tip="Explicit">
+                                                                <TextBlock Text="E" FontSize="9" FontWeight="Bold"
+                                                                           VerticalAlignment="Center" TextAlignment="Center"
+                                                                           Foreground="Black"/>
+                                                            </Border>
+                                                        </controls:MarqueeTextBlock.InlineContent>
+                                                    </controls:MarqueeTextBlock>
                                                     <TextBlock Text="{Binding ArtistDisplay}" FontSize="11"
                                                                Foreground="#99FFFFFF" TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
                                                 <Button Grid.Column="2" Classes="mini-transport" Width="28" Height="28"
-                                                        Command="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).PlayResultNextCommand}"
-                                                        CommandParameter="{Binding}"
-                                                        ToolTip.Tip="Play Next">
-                                                    <PathIcon Data="{StaticResource AddIcon}" Width="13" Height="13" Foreground="#CCFFFFFF"/>
-                                                </Button>
-                                                <Button Grid.Column="3" Classes="mini-transport" Width="28" Height="28"
                                                         Command="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).PlaySearchResultCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="Play">
@@ -1591,26 +1878,7 @@
                     </Grid>
                 </Panel>
             </Border>
-
-            <!-- ── Close (returns to the main window), above every form. Pinned to the
-                 top-RIGHT corner: on the left it sat on top of the artwork (and its
-                 tooltip covered it). Every form keeps the artwork left-aligned, so the
-                 right corner is the one spot that stays clear at every size. The icon
-                 form hides this and hosts its own copy inside the hover overlay. ── -->
-            <Button Classes="mini-transport mini-close"
-                    Width="24" Height="24"
-                    HorizontalAlignment="Right" VerticalAlignment="Top"
-                    Margin="7"
-                    IsVisible="{Binding !IsIconForm}"
-                    ToolTip.Tip="Back to full view"
-                    ToolTip.Placement="Left"
-                    Click="OnCloseClick">
-                <Viewbox Width="11" Height="11">
-                    <Canvas Width="24" Height="24">
-                        <Path Fill="#D9FFFFFF" Data="{StaticResource DismissIcon}"/>
-                    </Canvas>
-                </Viewbox>
-            </Button>
+            </Grid>
 
             <!-- ── "…" menu popup (shared by every form's more-button). A custom
                  popup instead of a MenuFlyout so open/close play the same fade +
@@ -1624,17 +1892,30 @@
                    VerticalOffset="6"
                    IsLightDismissEnabled="False"
                    WindowManagerAddShadowHint="False">
+                <!-- Chrome follows the app's right-click menus (Styles.axaml's ContextMenu /
+                     MenuFlyoutPresenter): the active theme's sidebar background, radius 16,
+                     padding 6 — so a custom or light theme carries over here too. -->
                 <Border x:Name="MenuCard"
                         Width="176"
-                        Background="#F215151B"
-                        BorderBrush="#26FFFFFF"
+                        Background="{DynamicResource AppSidebarBackground}"
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                         BorderThickness="1"
-                        CornerRadius="14"
+                        CornerRadius="16"
                         Padding="6"
                         RenderTransformOrigin="50%,0%"
                         RenderTransform="scale(0.96)"
-                        Opacity="0"
-                        BoxShadow="0 8 24 0 #66000000">
+                        Opacity="0">
+                        <!-- No BoxShadow. A popup window is sized to its child's DESIRED
+                             size, which does not include a shadow, so the shadow was
+                             clipped to the card's own rect — and since the card is rounded,
+                             the only place it could still show was the four corner gaps
+                             between the rounded card and the square popup surface. That is
+                             exactly the dark wedge that appeared at each corner. Restoring
+                             a shadow means padding the popup's child so the surface is
+                             bigger than the card, then compensating the placement offsets
+                             in OnMoreMenuClick by the same padding; the window-manager
+                             shadow is not an option either, because it is drawn for the
+                             full popup rect and would not follow the open/close scale. -->
                     <Border.Transitions>
                         <Transitions>
                             <DoubleTransition Property="Opacity" Duration="0:0:0.18">
@@ -1653,14 +1934,22 @@
                         <Button Classes="mini-menu-item" Command="{Binding ToggleSearchDrawerCommand}"
                                 Click="OnMenuItemClick">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14" Foreground="#D9FFFFFF"/>
-                                <TextBlock Text="Search" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                                <PathIcon Data="{StaticResource SearchIcon}" Width="14" Height="14" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                <TextBlock Text="Search" FontSize="13" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <Button Classes="mini-menu-item" Command="{Binding ToggleQueueDrawerCommand}"
                                 Click="OnMenuItemClick">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <PathIcon Data="{StaticResource PlaylistsIcon}" Width="14" Height="14" Foreground="#D9FFFFFF"/>
+                                <!-- Same artwork the playback bar's queue button uses, so the two
+                                     read as the same control. PathIcon glyphs made Queue and Lyrics
+                                     nearly identical here — both were plain stacks of lines. -->
+                                <Border Width="14" Height="14" Background="#D9FFFFFF"
+                                        RenderOptions.BitmapInterpolationMode="HighQuality">
+                                    <Border.OpacityMask>
+                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Queue%20ICON.png" Stretch="Uniform"/>
+                                    </Border.OpacityMask>
+                                </Border>
                                 <TextBlock Text="Queue" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
@@ -1669,30 +1958,37 @@
                                 Click="OnMenuItemClick"
                                 IsVisible="{Binding !IsLargeIconForm}">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <PathIcon Data="{StaticResource SpeakerHighIcon}" Width="14" Height="14" Foreground="#D9FFFFFF"/>
+                                <Border Width="14" Height="14" Background="#D9FFFFFF"
+                                        RenderOptions.BitmapInterpolationMode="HighQuality">
+                                    <Border.OpacityMask>
+                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Volume%20ICON.png" Stretch="Uniform"/>
+                                    </Border.OpacityMask>
+                                </Border>
                                 <TextBlock Text="Volume" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
-                        <Button Classes="mini-menu-item" Command="{Binding SwitchToLyricsFormCommand}"
-                                Click="OnMenuItemClick"
-                                IsVisible="{Binding !IsLyricsForm}">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <PathIcon Data="{StaticResource LyricsIcon}" Width="14" Height="14" Foreground="#D9FFFFFF"/>
-                                <TextBlock Text="Lyrics" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                        <Border Height="1" Background="#26FFFFFF" Margin="4,4"/>
-                        <Button Classes="mini-menu-item" Command="{Binding Player.CycleRepeatCommand}"
+                        <!-- Stays in the list while lyrics are open: it is the only way back
+                             out of the split view, so hiding it stranded the user there. -->
+                        <Button Classes="mini-menu-item" Command="{Binding ToggleLyricsFormCommand}"
                                 Click="OnMenuItemClick">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Panel>
-                                    <PathIcon Data="{StaticResource RepeatAllIcon}" Width="14" Height="14" Foreground="#D9FFFFFF"
-                                              IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static m:RepeatMode.One}}"/>
-                                    <PathIcon Data="{StaticResource RepeatOneIcon}" Width="14" Height="14" Foreground="#D9FFFFFF"
-                                              IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}"/>
-                                </Panel>
-                                <TextBlock Text="{Binding Player.RepeatMode, Converter={x:Static views:MiniPlayerWindow.RepeatLabelConverter}}"
-                                           FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                                <Border Width="14" Height="14" Background="#D9FFFFFF"
+                                        RenderOptions.BitmapInterpolationMode="HighQuality">
+                                    <Border.OpacityMask>
+                                        <ImageBrush Source="avares://Noctis/Assets/Icons/Lyrics%20ICON.png" Stretch="Uniform"/>
+                                    </Border.OpacityMask>
+                                </Border>
+                                <TextBlock Text="{Binding LyricsMenuLabel}" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- Was the corner badge. No OnMenuItemClick needed: closing the
+                             window takes the popup with it. -->
+                        <Border Height="1" Margin="8,4"
+                                Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+                        <Button Classes="mini-menu-item" Click="OnCloseClick">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <PathIcon Data="{StaticResource DismissIcon}" Width="14" Height="14" Foreground="#D9FFFFFF"/>
+                                <TextBlock Text="Back to full view" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -1716,6 +2012,14 @@
                     Cursor="BottomLeftCorner" Tag="SouthWest" PointerPressed="OnResizeGripPressed"/>
             <Border Classes="resize-grip" Width="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                     Cursor="BottomRightCorner" Tag="SouthEast" PointerPressed="OnResizeGripPressed"/>
+        </Panel>
+
+        <!-- The corner close badge used to live here, outside RootPanel's rounded clip so
+             it could overhang the card's outline. It moved into the "…" menu as "Back to
+             full view". Two things came back with it: the NorthEast corner's diagonal
+             resize, which the badge had been sitting on top of, and the top-right corner
+             itself, which the artwork now runs into cleanly. The icon form is unaffected —
+             it never used this badge, it hosts its own close inside its hover overlay. -->
         </Panel>
     </Border>
 
