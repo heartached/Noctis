@@ -2328,6 +2328,17 @@ public class VlcAudioPlayer : IAudioPlayer
                 _engineStagedPath != null && _standbyMedia != null &&
                 string.Equals(_engineStagedPath, Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase))
             {
+                // Bookkeeping-only is valid ONLY when the outgoing input already hit
+                // EOF (decode-ahead). Taken mid-track (transition-mode advance at
+                // fadeStart, manual Next inside the staging window) the deferred
+                // Stop() below fires a flush on a LIVE segment: the ring is cleared
+                // but the segment never finishes, so the provider waits on it
+                // forever — permanent silence with a frozen timeline. Cut a live
+                // outgoing segment over to the staged one instead (Abandon also
+                // unblocks its writer before that Stop joins the decoder).
+                var outgoingSeg = Volatile.Read(ref _engineSegments[EngineSlotOf(_player)]);
+                if (outgoingSeg != null && !outgoingSeg.EndOfStream)
+                    outgoingSeg.Abandon();
                 var outgoingPlayer = _player;
                 var outgoingMedia = _currentMedia;
                 _player = _standbyPlayer;
@@ -3228,6 +3239,21 @@ public class VlcAudioPlayer : IAudioPlayer
                 if (_sessionVolume == null)
                 {
                     try { SetPlayerVolumeGuarded(inactivePlayer, 0); } catch { /* legacy per-player path */ }
+                }
+                // Engine: a still-live segment on this player must be finished before
+                // Stop() — the stop's flush clears the ring without ending the
+                // segment and the provider would wait on it forever. EOS'd segments
+                // are immune (EngineFlush ignores the teardown flush; the tail plays
+                // out of the ring untouched).
+                if (_gaplessEngine)
+                {
+                    try
+                    {
+                        var liveSeg = Volatile.Read(ref _engineSegments[EngineSlotOf(inactivePlayer)]);
+                        if (liveSeg != null && !liveSeg.EndOfStream)
+                            liveSeg.Abandon();
+                    }
+                    catch { /* engine not wired for this player */ }
                 }
                 try { inactivePlayer.Stop(); }
                 catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupStep", $"Stop: {ex.GetType().Name}: {ex.Message}"); }
