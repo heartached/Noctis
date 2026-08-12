@@ -197,4 +197,92 @@ public class GaplessSpliceCoreTests
         Assert.Equal(960, provider.Read(buffer, 0, 960));
         Assert.All(buffer, s => Assert.Equal(0f, s));
     }
+
+    [Fact]
+    public void Flush_RearmsThePrebufferGate()
+    {
+        // A seek reaches the segment as Flush(); rendering must then wait for the
+        // pre-buffer again instead of chopping the first trickle blocks against
+        // silence (the post-seek buzz) — the gate is per-fill, not once-per-life.
+        var provider = new GaplessSpliceProvider(8000, 1, startThresholdMs: 100); // gate = 800 samples
+        var seg = new GaplessTrackSegment(8000, 1, source: null);
+        provider.Enqueue(seg);
+
+        Assert.True(seg.Write(ConstantBlock(16384, 900)));
+        var buffer = new float[100];
+        provider.Read(buffer, 0, 100);
+        Assert.All(buffer, s => Assert.True(s > 0.4f, $"pre-flush sample was {s}"));
+
+        seg.Flush(0);
+        Assert.True(seg.Write(ConstantBlock(16384, 100))); // below the 800-sample gate
+
+        provider.Read(buffer, 0, 100);
+        Assert.All(buffer, s => Assert.Equal(0f, s)); // re-armed: held in silence
+
+        Assert.True(seg.Write(ConstantBlock(16384, 700))); // 800 buffered — gate opens
+        provider.Read(buffer, 0, 100);
+        Assert.All(buffer, s => Assert.True(s > 0.4f, $"post-refill sample was {s}"));
+    }
+
+    [Fact]
+    public void MidTrackUnderrun_HoldsSilenceUntilRefilled()
+    {
+        // After an underrun the provider must not consume each trickle block the
+        // instant it lands — that alternates audio/silence at the ~10ms read
+        // cadence (the ~100Hz chop buzz). Hold until ~50ms re-buffers, or EOS.
+        var provider = new GaplessSpliceProvider(8000, 1); // refill = 400 samples @ 8k mono
+        var seg = new GaplessTrackSegment(8000, 1, source: null);
+        provider.Enqueue(seg);
+
+        Assert.True(seg.Write(ConstantBlock(16384, 100)));
+        var buffer = new float[200];
+        provider.Read(buffer, 0, 200); // 100 audio + 100 silence pad = underrun
+
+        Assert.True(seg.Write(ConstantBlock(16384, 100))); // trickle, below refill
+        provider.Read(buffer, 0, 100);
+        Assert.All(buffer.Take(100), s => Assert.Equal(0f, s)); // still holding
+
+        Assert.True(seg.Write(ConstantBlock(16384, 400))); // 500 buffered ≥ 400
+        provider.Read(buffer, 0, 100);
+        Assert.All(buffer.Take(100), s => Assert.True(s > 0.4f, $"post-refill sample was {s}"));
+
+        // EOS releases the hold: play out what is left, don't wait for a refill.
+        var p2 = new GaplessSpliceProvider(8000, 1);
+        var tail = new GaplessTrackSegment(8000, 1, source: null);
+        p2.Enqueue(tail);
+        Assert.True(tail.Write(ConstantBlock(16384, 100)));
+        p2.Read(buffer, 0, 200);              // underrun arms the hold
+        Assert.True(tail.Write(ConstantBlock(16384, 50)));
+        tail.MarkEndOfStream();               // EOS bypasses the refill hold
+        p2.Read(buffer, 0, 50);
+        Assert.All(buffer.Take(50), s => Assert.True(s > 0.4f, $"tail sample was {s}"));
+    }
+
+    [Fact]
+    public void FadeIn_AppliedAfterSilence_NeverAtTheSpliceSeam()
+    {
+        // Segment heads can carry decoder warm-up garble; a short fade-in from
+        // SILENCE masks it at track start / post-seek. The gapless seam is by
+        // definition never preceded by silence, so it must stay bit-exact.
+        var provider = new GaplessSpliceProvider(8000, 1, startThresholdMs: 0, startFadeMs: 5); // 40-sample fade
+        var a = new GaplessTrackSegment(8000, 1, source: null);
+        var b = new GaplessTrackSegment(8000, 1, source: null);
+        provider.Enqueue(a);
+        provider.Enqueue(b);
+
+        Assert.True(a.Write(ConstantBlock(16384, 100)));  // ≈ +0.5f
+        a.MarkEndOfStream();
+        Assert.True(b.Write(ConstantBlock(-16384, 100))); // ≈ -0.5f
+        b.MarkEndOfStream();
+
+        var buffer = new float[200];
+        provider.Read(buffer, 0, 200);
+
+        // Cold start (provider was silent): A's head ramps 0 → full over 40 samples.
+        Assert.True(Math.Abs(buffer[0]) < 0.05f, $"first sample was {buffer[0]}");
+        Assert.True(buffer[20] > 0.15f && buffer[20] < 0.4f, $"mid-fade sample was {buffer[20]}");
+        Assert.True(buffer[60] > 0.45f, $"post-fade sample was {buffer[60]}");
+        // The seam is untouched: B starts at full level immediately.
+        Assert.True(buffer[100] < -0.45f, $"seam sample was {buffer[100]}");
+    }
 }

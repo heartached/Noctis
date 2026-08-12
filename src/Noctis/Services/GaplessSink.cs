@@ -43,7 +43,10 @@ public sealed class GaplessSink : IDisposable
         // 200ms pre-buffer before a FRESH segment renders (kills the input-start
         // buzz of chopping ramping delivery against silence); the gapless splice
         // is unaffected — a staged segment holds seconds and passes instantly.
-        Provider = new GaplessSpliceProvider(SampleRate, Channels, startThresholdMs: 200);
+        // 5ms fade-in whenever audio resumes after silence (start, post-seek,
+        // underrun recovery) masks decoder warm-up garble at segment heads; the
+        // seam is never preceded by silence, so true gapless stays bit-exact.
+        Provider = new GaplessSpliceProvider(SampleRate, Channels, startThresholdMs: 200, startFadeMs: 5);
         _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 50);
         _out.Init(new SampleToWaveProvider(Provider));
         // Render immediately and forever: the provider always returns full

@@ -168,6 +168,10 @@ public sealed class GaplessTrackSegment
             _count = 0;
             _consumedFrames = 0;
             _basePositionMs = Math.Max(0, newBasePositionMs);
+            // Re-arm the pre-buffer gate: post-seek delivery ramps exactly like
+            // input start, and a once-per-life gate let the first trickle blocks
+            // render against silence — the post-seek chop the gate exists to stop.
+            _started = false;
             Monitor.PulseAll(_gate);
         }
     }
@@ -220,11 +224,30 @@ public sealed class GaplessSpliceProvider : ISampleProvider
 
     private readonly int _startThresholdMs;
 
-    public GaplessSpliceProvider(int sinkRate, int sinkChannels, int startThresholdMs = 0)
+    // Underrun hysteresis: after a mid-track 0-read, hold silence until this much
+    // audio re-buffers instead of consuming each trickle block the instant it
+    // lands — instant consumption alternates audio/silence at the ~10ms read
+    // cadence, audible as a ~100Hz chop buzz. EOS/Abandon bypass the hold.
+    private const int UnderrunRefillMs = 50;
+    // Silence must run at least this long before the next audio fades in, so the
+    // resampler's few-sample seam zeros can never arm a fade at a gapless splice.
+    private const int FadeArmMs = 5;
+
+    private readonly int _startFadeSamples;
+    private readonly int _fadeArmSamples;
+    private int _silentSamples;        // contiguous silence emitted so far (render thread only)
+    private int _fadeRemaining;        // samples left of an in-progress fade-in
+    private int _refillSamplesNeeded;  // >0 while the underrun hold is armed
+
+    public GaplessSpliceProvider(int sinkRate, int sinkChannels, int startThresholdMs = 0, int startFadeMs = 0)
     {
         WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(
             Math.Clamp(sinkRate, 1000, 384000), Math.Clamp(sinkChannels, 1, 2));
         _startThresholdMs = Math.Clamp(startThresholdMs, 0, 2000);
+        _startFadeSamples = WaveFormat.SampleRate * WaveFormat.Channels * Math.Clamp(startFadeMs, 0, 100) / 1000;
+        _fadeArmSamples = WaveFormat.SampleRate * WaveFormat.Channels * FadeArmMs / 1000;
+        // Born silent: the very first audio the provider ever renders fades in.
+        _silentSamples = _fadeArmSamples;
     }
 
     public GaplessTrackSegment? ActiveSegment { get { lock (_gate) return _active; } }
@@ -281,6 +304,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                     {
                         _active = _pending.Dequeue();
                         _activeAdapted = Adapt(_active);
+                        _refillSamplesNeeded = 0; // fresh segment: the start gate governs
                     }
                     if (_active != null)
                         SegmentStarted?.Invoke(_active);
@@ -297,9 +321,28 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             if (!active.ReadyToRender(active.SampleRate * active.Channels * _startThresholdMs / 1000))
                 break;
 
+            // Underrun hysteresis: after a mid-track 0-read, keep padding until
+            // the segment re-buffers ~UnderrunRefillMs (EOS/Abandon play out).
+            if (_refillSamplesNeeded > 0)
+            {
+                if (active.BufferedSamples < _refillSamplesNeeded &&
+                    !active.EndOfStream && !active.Abandoned)
+                    break;
+                _refillSamplesNeeded = 0;
+            }
+
             var n = adapted.Read(buffer, offset + written, count - written);
             if (n > 0)
             {
+                // Fade in when audio resumes after audible silence (cold start,
+                // post-seek gate, underrun recovery) to mask decoder warm-up
+                // garble. A gapless seam is never preceded by silence (streak 0),
+                // so it stays bit-exact.
+                if (_startFadeSamples > 0 && _silentSamples >= _fadeArmSamples)
+                    _fadeRemaining = _startFadeSamples;
+                _silentSamples = 0;
+                if (_fadeRemaining > 0)
+                    ApplyFadeIn(buffer, offset + written, n);
                 written += n;
                 continue;
             }
@@ -309,11 +352,30 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             // yet) — pad THIS call with silence rather than busy-spinning the
             // render thread, but do not advance past an unfinished segment.
             if (!active.IsFinished)
+            {
+                _refillSamplesNeeded = WaveFormat.SampleRate * WaveFormat.Channels * UnderrunRefillMs / 1000;
                 break;
+            }
         }
 
-        Array.Clear(buffer, offset + written, count - written);
+        var padded = count - written;
+        if (padded > 0)
+        {
+            Array.Clear(buffer, offset + written, padded);
+            _silentSamples = (int)Math.Min((long)_silentSamples + padded, int.MaxValue / 2);
+        }
         return count;
+    }
+
+    // Linear per-sample ramp 0 → 1 across _startFadeSamples, resuming across
+    // Read calls via _fadeRemaining. Render thread only.
+    private void ApplyFadeIn(float[] buffer, int offset, int n)
+    {
+        var total = _startFadeSamples;
+        for (var i = 0; i < n && _fadeRemaining > 0; i++, _fadeRemaining--)
+        {
+            buffer[offset + i] *= (float)(total - _fadeRemaining) / total;
+        }
     }
 
     // Segment (native rate/ch) → sink format. The WDL resampler tail (a few
