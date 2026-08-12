@@ -2475,6 +2475,19 @@ public class VlcAudioPlayer : IAudioPlayer
             if (startPaused)
                 _currentMedia.AddOption(":start-paused");
 
+            // Start position (restore-resume / per-track start time / ended-seek
+            // restart): open the demuxer AT the position via :start-time instead
+            // of seeking after Play(). Play-from-0 + in-place SetTime fired a
+            // post-open seek on every restored play, and on VLC 3's WASAPI aout an
+            // in-place seek can wedge the output clock permanently ~600ms late
+            // ("playback too late" → up-sampling → "buffer too late: dropped",
+            // once per second until the aout is rebuilt) — the hi-res 96k→48k
+            // field report. Opening at the position never flushes, so that trigger
+            // disappears (and the engine's ring never holds pre-seek frames).
+            var pendingMs = Interlocked.Exchange(ref _pendingSeekMs, -1);
+            if (pendingMs > 0)
+                _currentMedia.AddOption(FormattableString.Invariant($":start-time={pendingMs / 1000.0:0.###}"));
+
             // Exclusive mode: open/reuse the device sink at this track's source
             // rate and pin the output format before the aout starts.
             if (_exclusiveModeEnabled && _wasapiOut == null && OperatingSystem.IsWindows())
@@ -2483,16 +2496,16 @@ public class VlcAudioPlayer : IAudioPlayer
             // 5. Start playback
             if (_gaplessEngine)
             {
-                // Seed the segment base with the pending seek (restore-resume,
+                // Seed the segment base with the start position (restore-resume,
                 // per-track start time, ended-restart): the engine's position is
-                // sink-derived (base + consumed), and the seek below reaches the
-                // segment as a flush that re-bases from _enginePendingBaseMs —
-                // which only Seek() used to set. Started mid-track with base 0,
-                // audio played from the saved position while the timeline counted
-                // up from 0:00 (and a later pause persisted that bogus position).
+                // sink-derived (base + consumed), and only Seek() used to set
+                // _enginePendingBaseMs. Started mid-track with base 0, audio
+                // played from the saved position while the timeline counted up
+                // from 0:00 (and a later pause persisted that bogus position).
                 // EngineBeginSegment stores the base in both the segment and
-                // _enginePendingBaseMs, so flush-fires and no-flush agree.
-                EngineBeginSegment(_player, Math.Max(0, Interlocked.Read(ref _pendingSeekMs)));
+                // _enginePendingBaseMs, so an input-open flush re-bases to the
+                // same value the :start-time open actually begins at.
+                EngineBeginSegment(_player, Math.Max(0, pendingMs));
                 // Pause parks the sink; a fresh play must un-park it (pause → pick
                 // a new track otherwise renders into a paused stream: silence with
                 // a moving timeline, track after track). Paused restarts stay
@@ -2563,14 +2576,7 @@ public class VlcAudioPlayer : IAudioPlayer
                     _player.SetEqualizer(_equalizer);
             }
 
-            // 6. Apply pending seek (start time / saved position) now that media is playing
-            var pendingMs = Interlocked.Exchange(ref _pendingSeekMs, -1);
-            if (pendingMs > 0)
-            {
-                _player.Time = pendingMs;
-            }
-
-            // 7. Start position timer and fire initial duration update after brief delay
+            // 6. Start position timer and fire initial duration update after brief delay
             // (paused restarts leave it stopped, exactly like Pause() does)
             if (!startPaused)
                 _positionTimer.Start();
