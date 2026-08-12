@@ -1,7 +1,7 @@
 {
-  "total": 5245,
+  "total": 5247,
   "byRelease": {
-    "v1.4.3": 151,
+    "v1.4.3": 153,
     "v1.4.2": 91,
     "v1.4.1": 141,
     "v1.4.0": 149,
@@ -51,14 +51,14 @@
   "latestUrl": "https://github.com/heartached/Noctis/releases/tag/v1.4.3",
   "publishedAt": "2026-08-10T18:57:09Z",
   "releaseCount": 44,
-  "stars": 179,
+  "stars": 180,
   "openIssues": 10,
   "assets": {
     "windowsInstaller": {
       "name": "Noctis-v1.4.3-Setup.exe",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.4.3/Noctis-v1.4.3-Setup.exe",
       "size": 122877726,
-      "downloads": 87
+      "downloads": 89
     },
     "windowsPortable": {
       "name": "Noctis-windows-x64.zip",
@@ -113,6 +113,6 @@
     "linuxTar": "101 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-08-12T04:29:16.720Z",
+  "updatedAt": "2026-08-12T06:02:07.639Z",
   "degraded": false
 }
