@@ -8,7 +8,7 @@
         x:Class="Noctis.Views.MiniPlayerWindow"
         x:DataType="vm:MiniPlayerViewModel"
         Title="Noctis Mini Player"
-        Width="420" Height="172"
+        Width="420" Height="188"
         MinWidth="160" MinHeight="140"
         MaxWidth="960" MaxHeight="840"
         CanResize="True"
@@ -38,6 +38,7 @@
             <GradientStop Offset="1" Color="#A0000000"/>
         </LinearGradientBrush>
         <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect"/>
+        <conv:PreBlurredArtworkConverter x:Key="PreBlurArt"/>
         <conv:ProgressToSweepForegroundConverter x:Key="ProgressToSweepFg"/>
         <conv:EmphasisGlowConverter x:Key="EmphasisGlow"/>
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
@@ -256,6 +257,26 @@
         </Style>
         <Style Selector="Button.mini-transport.glass-circle:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="#52FFFFFF"/>
+        </Style>
+
+        <!-- Time readouts fade in only while the pointer is over the card; the resting
+             glass stays clean. The "pointer-in" window class is set by code-behind on
+             the WINDOW's enter/leave, so moving between controls never blinks them.
+             Opacity (not IsVisible) keeps the row's layout stable. -->
+        <Style Selector="TextBlock.mini-time">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector=":is(Window).pointer-in TextBlock.mini-time">
+            <Setter Property="Opacity" Value="1"/>
         </Style>
 
         <!-- "…" popup menu rows -->
@@ -562,22 +583,11 @@
                  black squares. Per-pixel transparency + these layers (over the root
                  border's base fill) keep the rounded outline clean everywhere. -->
 
-            <!-- Liquid wash — the artwork itself, heavily blurred, tints the glass -->
-            <controls:CachedImage x:Name="ArtWash"
-                                  SourcePath="{Binding Player.CurrentArtPath}"
-                                  ClearOnSourceChange="False"
-                                  Stretch="UniformToFill"
-                                  Opacity="0.42"
-                                  IsHitTestVisible="False"
-                                  IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                <controls:CachedImage.Effect>
-                    <BlurEffect Radius="80"/>
-                </controls:CachedImage.Effect>
-            </controls:CachedImage>
-
-            <!-- L3: contrast scrim over the wash. Kept light — every point of alpha here
-                 is see-through the card loses. -->
-            <Border Background="#1A000000" IsHitTestVisible="False"/>
+            <!-- No artwork-wash layer (removed on request): the card's only ground is the
+                 root border's base fill at the user's opacity setting, so 0% is genuinely
+                 clear glass — the blurred-art tint that used to sit here kept a dark
+                 smudge visible even at 0%. The LargeIcon and Lyrics forms carry their own
+                 full-bleed artwork as part of their layouts, which is unaffected. -->
 
             <!-- L4: glass sheen — diagonal highlight fading out mid-card -->
             <Border IsHitTestVisible="False">
@@ -736,20 +746,20 @@
                 </Grid>
 
                 <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,2,0,0">
-                    <TextBlock Grid.Column="0" Text="{Binding Player.PositionText}"
+                    <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}"
                                FontSize="10" Foreground="#A0FFFFFF"
                                VerticalAlignment="Center" MinWidth="32"/>
                     <Slider Grid.Column="1" x:Name="BarSeekSlider" Classes="mini-seek"
                             Minimum="0" Maximum="1" Focusable="False"
                             Value="{Binding Player.PositionFraction, Mode=TwoWay}"
                             Margin="6,0" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" Text="{Binding Player.RemainingTimeText}"
+                    <TextBlock Grid.Column="2" Classes="mini-time" Text="{Binding Player.RemainingTimeText}"
                                FontSize="10" Foreground="#A0FFFFFF"
                                VerticalAlignment="Center" MinWidth="32" TextAlignment="Right"/>
                 </Grid>
 
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center">
-                    <Button Classes="mini-transport" Width="34" Height="34"
+                    <Button Classes="mini-transport glass-circle" Width="34" Height="34"
                             Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="Shuffle">
                         <Panel>
                             <Viewbox Width="18" Height="18" IsVisible="{Binding !Player.IsShuffleEnabled}">
@@ -798,7 +808,7 @@
                             </Canvas>
                         </Viewbox>
                     </Button>
-                    <Button Classes="mini-transport" Width="34" Height="34"
+                    <Button Classes="mini-transport glass-circle" Width="34" Height="34"
                             Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="Repeat">
                         <Panel>
                             <Viewbox Width="18" Height="18"
@@ -900,14 +910,14 @@
 
                 <!-- Seek + times -->
                 <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,10,0,0">
-                    <TextBlock Grid.Column="0" Text="{Binding Player.PositionText}"
+                    <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}"
                                FontSize="10" Foreground="#A0FFFFFF"
                                VerticalAlignment="Center" MinWidth="32"/>
                     <Slider Grid.Column="1" x:Name="SeekSlider" Classes="mini-seek"
                             Minimum="0" Maximum="1" Focusable="False"
                             Value="{Binding Player.PositionFraction, Mode=TwoWay}"
                             Margin="6,0" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" Text="{Binding Player.RemainingTimeText}"
+                    <TextBlock Grid.Column="2" Classes="mini-time" Text="{Binding Player.RemainingTimeText}"
                                FontSize="10" Foreground="#A0FFFFFF"
                                VerticalAlignment="Center" MinWidth="32" TextAlignment="Right"/>
                 </Grid>
@@ -941,7 +951,7 @@
 
                 <!-- Transport: shuffle | prev play next | heart (Liqoria order) -->
                 <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
-                    <Button Grid.Column="0" Classes="mini-transport" Width="36" Height="36"
+                    <Button Grid.Column="0" Classes="mini-transport glass-circle" Width="36" Height="36"
                             HorizontalAlignment="Left" VerticalAlignment="Center"
                             Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="Shuffle">
                         <Panel>
@@ -995,7 +1005,7 @@
                         </Button>
                     </StackPanel>
 
-                    <Button Grid.Column="2" Classes="mini-transport" Width="36" Height="36"
+                    <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="36" Height="36"
                             HorizontalAlignment="Right" VerticalAlignment="Center"
                             Command="{Binding Player.CycleRepeatCommand}"
                             ToolTip.Tip="Repeat">
@@ -1154,14 +1164,14 @@
                 </Grid>
 
                 <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
-                    <TextBlock Grid.Column="0" Text="{Binding Player.PositionText}"
+                    <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}"
                                FontSize="10" Foreground="#A0FFFFFF"
                                VerticalAlignment="Center" MinWidth="32"/>
                     <Slider Grid.Column="1" x:Name="LargeSeekSlider" Classes="mini-seek"
                             Minimum="0" Maximum="1" Focusable="False"
                             Value="{Binding Player.PositionFraction, Mode=TwoWay}"
                             Margin="6,0" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" Text="{Binding Player.RemainingTimeText}"
+                    <TextBlock Grid.Column="2" Classes="mini-time" Text="{Binding Player.RemainingTimeText}"
                                FontSize="10" Foreground="#A0FFFFFF"
                                VerticalAlignment="Center" MinWidth="32" TextAlignment="Right"/>
                 </Grid>
@@ -1194,7 +1204,7 @@
                 </StackPanel>
 
                 <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
-                    <Button Grid.Column="0" Classes="mini-transport" Width="36" Height="36"
+                    <Button Grid.Column="0" Classes="mini-transport glass-circle" Width="36" Height="36"
                             HorizontalAlignment="Left" VerticalAlignment="Center"
                             Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="Shuffle">
                         <Panel>
@@ -1246,7 +1256,7 @@
                         </Viewbox>
                     </Button>
                     </StackPanel>
-                    <Button Grid.Column="2" Classes="mini-transport" Width="36" Height="36"
+                    <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="36" Height="36"
                             HorizontalAlignment="Right" VerticalAlignment="Center"
                             Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="Repeat">
                         <Panel>
@@ -1322,47 +1332,21 @@
                     <ColumnDefinition Width="7*"/>
                 </Grid.ColumnDefinitions>
 
-                <Panel Grid.Column="0" x:Name="LyricsArtColumn">
-                    <!-- L1: frost backdrop — the blurred cover filling the WHOLE column at
-                         full strength, no mask. The sharp cover sits over its top, so what
-                         shows below the cover reads as the frost carrying on rather than
-                         bare glass. (The Large-icon form masks its frost instead, because
-                         there the sharp artwork runs the whole card and the frost has to
-                         fade in over it. Here the sharp artwork stops, so it doesn't.) -->
-                    <!-- Stretch is Fill, NOT UniformToFill: this copy has no sharp artwork
-                         to stay aligned with (the cover above it stops), and UniformToFill
-                         on a tall narrow column is height-driven, so it magnified a thin
-                         central sliver of the cover more and more as the window grew —
-                         the frost visibly churned while resizing. Fill always maps the
-                         WHOLE cover onto the column, so it is stable at any size and keeps
-                         the cover's real colours; the aspect distortion it introduces does
-                         not survive a 90px blur. -->
-                    <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
-                                          DecodeWidth="512"
-                                          Stretch="Fill"
-                                          Margin="-120,0,-120,-60"
-                                          IsHitTestVisible="False"
-                                          RenderOptions.BitmapInterpolationMode="HighQuality"
-                                          IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <controls:CachedImage.Effect>
-                            <BlurEffect Radius="90"/>
-                        </controls:CachedImage.Effect>
-                    </controls:CachedImage>
-
-                    <!-- L2: the cover itself — a full-width SQUARE pinned to the top, so a
-                         square cover lands whole instead of being cropped to a vertical
-                         slice by the tall column. Height tracks the COLUMN's width (not its
-                         own, which would be self-referential). Its bottom edge dissolves
-                         into the frost underneath rather than ending on a hard line. -->
-                    <Panel x:Name="LyricsArtClip"
-                           VerticalAlignment="Top"
-                           Height="{Binding #LyricsArtColumn.Bounds.Width}">
-                        <Panel.OpacityMask>
-                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                                <GradientStop Offset="0.86" Color="#FF000000"/>
-                                <GradientStop Offset="1" Color="#00000000"/>
-                            </LinearGradientBrush>
-                        </Panel.OpacityMask>
+                <!-- ClipToBounds: the frost bleed below overhangs the column by 120 DIP on
+                     BOTH sides (blur falloff must land outside the visible area). The left
+                     overhang dies at the window edge, but a Grid doesn't clip children to
+                     their cells — so without this rect clip the right overhang spilled
+                     120 DIP of bright, un-scrimmed colour under the lyrics. The rounded
+                     left corners still come from RootPanel's clip (clips intersect). -->
+                <Panel Grid.Column="0" x:Name="LyricsArtColumn" ClipToBounds="True">
+                    <!-- L1: the artwork, full-bleed — same construction as the Large-icon
+                         form. The sharp cover runs the whole column and the frost band
+                         fades in OVER it near the controls. (It used to be a square
+                         pinned to the top with a full-strength, differently-scaled blur
+                         filling the rest of the column — on short windows the square ran
+                         out mid-column and parked a hard-edged blur smudge above the
+                         transport buttons.) -->
+                    <Panel x:Name="LyricsArtClip">
                         <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
                                               DecodeWidth="512"
                                               Stretch="UniformToFill"
@@ -1374,6 +1358,24 @@
                         <TextBlock Text="♪" FontSize="42" Opacity="0.15" Foreground="White"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                    IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                    </Panel>
+
+                    <!-- L2: the frosted band — a blurred copy of the same crop, revealed by
+                         MiniFrostMask so the frost fades in down the card. Exactly the
+                         Large-icon recipe: see the notes there for the mask-on-wrapper
+                         rule, the asymmetric bleed margin and the measured radius. -->
+                    <Panel IsHitTestVisible="False"
+                           OpacityMask="{StaticResource MiniFrostMask}"
+                           IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
+                                              DecodeWidth="512"
+                                              Stretch="UniformToFill"
+                                              Margin="-120,0,-120,-60"
+                                              RenderOptions.BitmapInterpolationMode="HighQuality">
+                            <controls:CachedImage.Effect>
+                                <BlurEffect Radius="90"/>
+                            </controls:CachedImage.Effect>
+                        </controls:CachedImage>
                     </Panel>
 
                     <Border IsHitTestVisible="False" Background="{StaticResource MiniFrostScrim}"/>
@@ -1465,7 +1467,7 @@
                     </StackPanel>
 
                     <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,2,0,0">
-                        <Button Classes="mini-transport" Width="30" Height="30"
+                        <Button Classes="mini-transport glass-circle" Width="30" Height="30"
                                 Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="Shuffle">
                             <Panel>
                                 <Viewbox Width="16" Height="16" IsVisible="{Binding !Player.IsShuffleEnabled}">
@@ -1514,7 +1516,7 @@
                                 </Canvas>
                             </Viewbox>
                         </Button>
-                        <Button Classes="mini-transport" Width="30" Height="30"
+                        <Button Classes="mini-transport glass-circle" Width="30" Height="30"
                                 Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="Repeat">
                             <Panel>
                                 <Viewbox Width="16" Height="16"
@@ -1542,21 +1544,101 @@
                     </Grid>
                 </Panel>
 
+                <!-- Lyrics backdrop: the same construction as the lyrics PAGE's background
+                     (FullBackgroundBrush base for the solid/gradient color modes, the
+                     pre-blurred cover + dark scrim in artwork mode), so the lyrics never
+                     sit on bare card glass — at a low Mini Player Opacity white text over
+                     the desktop was unreadable. ClipToBounds: the pre-blur's 1.18 outward
+                     scale otherwise spills across the seam into the art column. The
+                     rounded right corners still come from RootPanel's clip. -->
+                <Panel Grid.Column="1" ClipToBounds="True" IsHitTestVisible="False"
+                       Background="{Binding Lyrics.FullBackgroundBrush}">
+                    <Panel IsVisible="{Binding Lyrics.IsColorModeArtwork}">
+                        <Image Source="{Binding Player.AlbumArt, Converter={StaticResource PreBlurArt}}"
+                               Stretch="UniformToFill"
+                               RenderOptions.BitmapInterpolationMode="HighQuality"
+                               IsVisible="{Binding Player.AlbumArt, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Image.RenderTransform>
+                                <ScaleTransform ScaleX="1.18" ScaleY="1.18"/>
+                            </Image.RenderTransform>
+                        </Image>
+                        <!-- Flowing-light layer (issue #22) — mini copy of the page's
+                             MeshBlobLayer, same default palette. Positions/opacity are
+                             driven by a code-behind timer that only runs while the
+                             Lyrics form + artwork mode + the setting are all active;
+                             stop colors are retinted in place when the VM re-derives
+                             the artwork palette. -->
+                        <Canvas x:Name="MiniMeshBlobLayer"
+                                ClipToBounds="True"
+                                IsHitTestVisible="False"
+                                IsVisible="{Binding Player.LyricsFlowingLightEnabled}">
+                            <Ellipse x:Name="MiniMeshBlob1">
+                                <Ellipse.Fill>
+                                    <RadialGradientBrush>
+                                        <GradientStop Color="#D83A1C71" Offset="0"/>
+                                        <GradientStop Color="#603A1C71" Offset="0.6"/>
+                                        <GradientStop Color="#003A1C71" Offset="1"/>
+                                    </RadialGradientBrush>
+                                </Ellipse.Fill>
+                            </Ellipse>
+                            <Ellipse x:Name="MiniMeshBlob2">
+                                <Ellipse.Fill>
+                                    <RadialGradientBrush>
+                                        <GradientStop Color="#D8D76D77" Offset="0"/>
+                                        <GradientStop Color="#60D76D77" Offset="0.6"/>
+                                        <GradientStop Color="#00D76D77" Offset="1"/>
+                                    </RadialGradientBrush>
+                                </Ellipse.Fill>
+                            </Ellipse>
+                            <Ellipse x:Name="MiniMeshBlob3">
+                                <Ellipse.Fill>
+                                    <RadialGradientBrush>
+                                        <GradientStop Color="#D8FFAF7B" Offset="0"/>
+                                        <GradientStop Color="#60FFAF7B" Offset="0.6"/>
+                                        <GradientStop Color="#00FFAF7B" Offset="1"/>
+                                    </RadialGradientBrush>
+                                </Ellipse.Fill>
+                            </Ellipse>
+                        </Canvas>
+                        <Rectangle Fill="#99000000"/>
+                    </Panel>
+                </Panel>
+
                 <!-- Right: synced lyrics. Carries the insets the form root used to apply,
-                     now that the root has none so the art column can bleed to the edges. -->
-                <Panel Grid.Column="1" Margin="14,36,10,12">
+                     now that the root has none so the art column can bleed to the edges.
+                     The OpacityMask feathers the flow at both edges (mirrors the lyrics
+                     page's LyricsContentHost): without it the ScrollContentPresenter's
+                     hard clip guillotined lines mid-glyph at the top instead of letting
+                     them fade out as they flow up. -->
+                <Panel Grid.Column="1" Margin="14,12,10,10">
+                    <Panel.OpacityMask>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                            <GradientStop Offset="0" Color="#00000000"/>
+                            <GradientStop Offset="0.09" Color="#C8000000"/>
+                            <GradientStop Offset="0.16" Color="#FF000000"/>
+                            <GradientStop Offset="0.86" Color="#FF000000"/>
+                            <GradientStop Offset="1" Color="#99000000"/>
+                        </LinearGradientBrush>
+                    </Panel.OpacityMask>
                     <ScrollViewer x:Name="LyricsScroll"
                                   HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Hidden">
-                        <StackPanel Margin="0,8,8,120">
+                        <!-- Margin = run-out padding, kept in sync with the viewport by
+                             code-behind (see LyricsScroll.SizeChanged): the first lines
+                             need headroom above them to reach the anchor — the offset
+                             clamp at 0 otherwise pins them against the top edge. -->
+                        <StackPanel x:Name="LyricsStack" Margin="0,8,8,120">
                             <!-- Mini copy of the lyrics panel's line presentation: plain text
                                  layer for line-timed lyrics, three-layer karaoke word cells
                                  (glow / dimmed base / gradient sweep) for word-timed (ELRC/TTML)
                                  lines, background vocals row, and intro dots. MaxWidth is kept
                                  in sync with the scroller by code-behind so WrapPanel lines
                                  never run under the right edge. -->
+                            <!-- FontSize is the pre-first-measure value only: code-behind
+                                 rescales it with the viewport (LyricsScroll.SizeChanged),
+                                 the same way the page derives its 46px from the window. -->
                             <ItemsControl x:Name="LyricsItems" ItemsSource="{Binding Lyrics.ActiveLyricLines}"
-                                          FontSize="17"
+                                          FontSize="21"
                                           MaxWidth="340"
                                           ClipToBounds="False"
                                           HorizontalAlignment="Left">
@@ -1684,17 +1766,18 @@
                  Height is driven by code-behind in lockstep with the window height, so the
                  player area above it never changes size while the card grows. Starts at 0.
 
-                 Liquid glass rather than a solid sheet: the fill is translucent enough that
-                 the blurred artwork wash behind RootPanel reads through it, and the top edge
-                 carries the same specular hairline as the card's own top rim (L5 above) so
-                 the seam looks lit rather than drawn. -->
+                 No fill of its own: the drawer sits directly on the card's base glass
+                 (RootBorder's fill at the user's opacity setting), so it stays exactly as
+                 transparent as the player above it. The top edge carries the same specular
+                 hairline as the card's own top rim (L5 above) so the seam looks lit rather
+                 than drawn. -->
             <Border x:Name="DrawerSheet"
                     Grid.Row="1"
                     IsVisible="False"
                     Opacity="0"
                     Height="0"
                     ClipToBounds="True"
-                    Background="#590B0B11"
+                    Background="Transparent"
                     BorderThickness="0,1,0,0"
                     Padding="12,10,12,12">
                 <Border.BorderBrush>
@@ -1790,11 +1873,15 @@
                                                     <TextBlock Text="{Binding ArtistDisplay}" FontSize="11"
                                                                Foreground="#99FFFFFF" TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
-                                                <Button Grid.Column="2" Classes="mini-transport" Width="28" Height="28"
+                                                <!-- glass-circle: persistent disc so the row reads as a button, not a
+                                                     floating glyph. The 1px right nudge is optical centring — a play
+                                                     triangle's mass sits left of its bbox centre (same convention as
+                                                     the chevron nudges elsewhere). -->
+                                                <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="28" Height="28"
                                                         Command="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).PlaySearchResultCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="Play">
-                                                    <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Foreground="White"/>
+                                                    <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Margin="1,0,0,0" Foreground="White"/>
                                                 </Button>
                                             </Grid>
                                         </Border>
@@ -1854,11 +1941,12 @@
                                                     <TextBlock Text="{Binding ArtistDisplay}" FontSize="11"
                                                                Foreground="#99FFFFFF" TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
-                                                <Button Grid.Column="2" Classes="mini-transport" Width="28" Height="28"
+                                                <!-- Same persistent disc + optical nudge as the search-result row. -->
+                                                <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="28" Height="28"
                                                         Command="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).PlayFromQueueCommand}"
                                                         CommandParameter="{Binding}"
                                                         ToolTip.Tip="Play">
-                                                    <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Foreground="White"/>
+                                                    <PathIcon Data="{StaticResource PlaySolidIcon}" Width="13" Height="13" Margin="1,0,0,0" Foreground="White"/>
                                                 </Button>
                                             </Grid>
                                         </Border>
