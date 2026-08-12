@@ -1,7 +1,7 @@
 {
-  "total": 5259,
+  "total": 5260,
   "byRelease": {
-    "v1.4.3": 164,
+    "v1.4.3": 165,
     "v1.4.2": 91,
     "v1.4.1": 142,
     "v1.4.0": 149,
@@ -82,7 +82,7 @@
       "name": "Noctis-x86_64.AppImage",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.4.3/Noctis-x86_64.AppImage",
       "size": 168987128,
-      "downloads": 15
+      "downloads": 16
     },
     "linuxArm": {
       "name": "Noctis-linux-arm64.tar.gz",
@@ -113,6 +113,6 @@
     "linuxTar": "101 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-08-12T14:46:23.653Z",
+  "updatedAt": "2026-08-12T16:40:38.218Z",
   "degraded": false
 }
