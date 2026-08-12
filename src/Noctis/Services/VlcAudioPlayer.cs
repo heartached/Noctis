@@ -2353,6 +2353,10 @@ public class VlcAudioPlayer : IAudioPlayer
                 ResetEndReachedPending();
                 _transitionInFlight = false;
                 _isPaused = false;
+                // A pause parks the sink (the ring holds seconds); a play through
+                // the splice path must un-park it or the new track renders into a
+                // paused stream — silence with a moving timeline.
+                _gaplessSink?.Resume();
                 Interlocked.Exchange(ref _pendingSeekMs, -1);
                 _positionTimer.Start();
                 DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.Spliced", $"path={Path.GetFileName(filePath)}");
@@ -2471,7 +2475,15 @@ public class VlcAudioPlayer : IAudioPlayer
 
             // 5. Start playback
             if (_gaplessEngine)
+            {
                 EngineBeginSegment(_player, 0);
+                // Pause parks the sink; a fresh play must un-park it (pause → pick
+                // a new track otherwise renders into a paused stream: silence with
+                // a moving timeline, track after track). Paused restarts stay
+                // parked — Resume() un-parks when the user actually resumes.
+                if (!startPaused)
+                    _gaplessSink?.Resume();
+            }
             Interlocked.Exchange(ref _lastPlayStartTicksUtc, DateTime.UtcNow.Ticks);
             _player.Play(_currentMedia);
             if (startPaused)
