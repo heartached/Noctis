@@ -1,7 +1,7 @@
 {
-  "total": 5258,
+  "total": 5259,
   "byRelease": {
-    "v1.4.3": 163,
+    "v1.4.3": 164,
     "v1.4.2": 91,
     "v1.4.1": 142,
     "v1.4.0": 149,
@@ -70,7 +70,7 @@
       "name": "Noctis-osx-arm64.dmg",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.4.3/Noctis-osx-arm64.dmg",
       "size": 167588540,
-      "downloads": 3
+      "downloads": 4
     },
     "macosIntel": {
       "name": "Noctis-osx-x64.dmg",
@@ -113,6 +113,6 @@
     "linuxTar": "101 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-08-12T13:37:25.304Z",
+  "updatedAt": "2026-08-12T14:46:23.653Z",
   "degraded": false
 }
