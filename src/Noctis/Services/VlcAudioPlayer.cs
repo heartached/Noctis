@@ -2476,7 +2476,16 @@ public class VlcAudioPlayer : IAudioPlayer
             // 5. Start playback
             if (_gaplessEngine)
             {
-                EngineBeginSegment(_player, 0);
+                // Seed the segment base with the pending seek (restore-resume,
+                // per-track start time, ended-restart): the engine's position is
+                // sink-derived (base + consumed), and the seek below reaches the
+                // segment as a flush that re-bases from _enginePendingBaseMs —
+                // which only Seek() used to set. Started mid-track with base 0,
+                // audio played from the saved position while the timeline counted
+                // up from 0:00 (and a later pause persisted that bogus position).
+                // EngineBeginSegment stores the base in both the segment and
+                // _enginePendingBaseMs, so flush-fires and no-flush agree.
+                EngineBeginSegment(_player, Math.Max(0, Interlocked.Read(ref _pendingSeekMs)));
                 // Pause parks the sink; a fresh play must un-park it (pause → pick
                 // a new track otherwise renders into a paused stream: silence with
                 // a moving timeline, track after track). Paused restarts stay
