@@ -51,7 +51,7 @@
   "latestUrl": "https://github.com/heartached/Noctis/releases/tag/v1.4.3",
   "publishedAt": "2026-08-10T18:57:09Z",
   "releaseCount": 44,
-  "stars": 180,
+  "stars": 181,
   "openIssues": 10,
   "assets": {
     "windowsInstaller": {
@@ -113,6 +113,6 @@
     "linuxTar": "101 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-08-12T11:12:51.695Z",
+  "updatedAt": "2026-08-12T12:02:49.615Z",
   "degraded": false
 }
