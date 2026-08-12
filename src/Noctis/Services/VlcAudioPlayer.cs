@@ -1861,7 +1861,14 @@ public class VlcAudioPlayer : IAudioPlayer
     private int ApplyReplayGainScalar(int curvedVolume)
     {
         if (Math.Abs(_replayGainScalar - 1.0) < 0.0001) return curvedVolume;
-        var scaled = (int)Math.Round(curvedVolume * _replayGainScalar);
+        // _replayGainScalar is an AMPLITUDE ratio (10^(dB/20)), but every consumer
+        // of this value is mapped to amplitude through the mmdevice cubic taper
+        // afterwards (CurvedVolumeToLevelMilli / WasapiGainLevel cube ÷100, the
+        // player-volume paths are re-cubed by the aout) — multiplying it in here
+        // raw meant the cube applied scalar³: every ReplayGain dB landed ×3, so a
+        // −8.4 dB loudness tag wrote the session to 0.055 (mixer row "5") instead
+        // of 0.38. Fold in the CUBE ROOT so the taper yields exactly scalar×.
+        var scaled = (int)Math.Round(curvedVolume * Math.Cbrt(_replayGainScalar));
         return Math.Clamp(scaled, 0, 100);
     }
 
