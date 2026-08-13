@@ -162,6 +162,10 @@ public class VlcAudioPlayer : IAudioPlayer
     private readonly MediaPlayer[] _enginePlayers = new MediaPlayer[2];
     private readonly GaplessTrackSegment?[] _engineSegments = new GaplessTrackSegment?[2];
     private readonly long[] _enginePendingBaseMs = new long[2];
+    // Diagnostics: expected pts of the next amem block per slot (µs); 0 = head
+    // block pending. A jump between consecutive blocks means VLC dropped audio
+    // upstream and the hole is butt-spliced into the ring.
+    private readonly long[] _engineExpectedPts = new long[2];
     private readonly MediaPlayer.LibVLCAudioPlayCb?[] _enginePlayCbs = new MediaPlayer.LibVLCAudioPlayCb?[2];
     private readonly MediaPlayer.LibVLCAudioPauseCb?[] _enginePauseCbs = new MediaPlayer.LibVLCAudioPauseCb?[2];
     private readonly MediaPlayer.LibVLCAudioResumeCb?[] _engineResumeCbs = new MediaPlayer.LibVLCAudioResumeCb?[2];
@@ -640,7 +644,7 @@ public class VlcAudioPlayer : IAudioPlayer
                     for (var slot = 0; slot < 2; slot++)
                     {
                         var s = slot;
-                        _enginePlayCbs[s] = (data, samples, count, pts) => EnginePlay(s, samples, count);
+                        _enginePlayCbs[s] = (data, samples, count, pts) => EnginePlay(s, samples, count, pts);
                         _enginePauseCbs[s] = (data, pts) => { };
                         _engineResumeCbs[s] = (data, pts) => { };
                         _engineFlushCbs[s] = (data, pts) => EngineFlush(s);
@@ -3469,7 +3473,7 @@ public class VlcAudioPlayer : IAudioPlayer
 
     // ── Splice-engine callbacks (per-player closures; libvlc threads — never throw) ──
 
-    private void EnginePlay(int slot, IntPtr samples, uint count)
+    private void EnginePlay(int slot, IntPtr samples, uint count, long pts)
     {
         try
         {
@@ -3483,6 +3487,28 @@ public class VlcAudioPlayer : IAudioPlayer
             try
             {
                 Marshal.Copy(samples, buf, 0, sampleCount);
+
+                // Diagnostics: a pts jump between consecutive blocks = VLC
+                // dropped/skipped audio upstream; the legacy aout re-times over
+                // such holes, the splice ring butt-joins them. Head blocks log
+                // their peak so decoder warm-up garble is visible in the field.
+                var expectedPts = _engineExpectedPts[slot];
+                if (expectedPts > 0 && Math.Abs(pts - expectedPts) > 20_000)
+                    DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.PtsGap",
+                        $"slot={slot}, gapMs={(pts - expectedPts) / 1000.0:0.#}, frames={count}");
+                if (expectedPts == 0)
+                {
+                    var peak = 0;
+                    for (var i = 0; i < sampleCount; i++)
+                    {
+                        var v = Math.Abs((int)buf[i]);
+                        if (v > peak) peak = v;
+                    }
+                    DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.SegHead",
+                        $"slot={slot}, pts={pts}, frames={count}, peak={peak}");
+                }
+                _engineExpectedPts[slot] = pts + (long)count * 1_000_000 / sink.SampleRate;
+
                 // Blocks when the ring is full (back-pressures this player's
                 // decoder); returns false when abandoned — just drop the block.
                 seg.Write(buf.AsSpan(0, sampleCount));
@@ -3499,6 +3525,7 @@ public class VlcAudioPlayer : IAudioPlayer
     {
         try
         {
+            _engineExpectedPts[slot] = 0; // pts continuity ends at any flush
             var seg = Volatile.Read(ref _engineSegments[slot]);
             // VLC also flushes at input teardown AFTER drain; clearing then
             // would eat the un-played tail mid-splice. A drained segment is
@@ -3542,6 +3569,7 @@ public class VlcAudioPlayer : IAudioPlayer
         if (sink == null) return;
         var slot = EngineSlotOf(player);
         Interlocked.Exchange(ref _enginePendingBaseMs[slot], Math.Max(0, basePositionMs));
+        _engineExpectedPts[slot] = 0; // fresh input: next block is a head block
         var seg = new GaplessTrackSegment(
             sink.SampleRate, sink.Channels, slot, capacitySeconds: 20, Math.Max(0, basePositionMs));
         Volatile.Write(ref _engineSegments[slot], seg);
