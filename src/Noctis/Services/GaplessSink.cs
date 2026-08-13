@@ -68,12 +68,18 @@ public sealed class GaplessSink : IDisposable
                 DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.TapFailed", ex.Message);
             }
         }
-        // Always-on stall probe: the render thread is MANAGED — a GC pause or
-        // scheduler stall freezes it, the 50ms device buffer underruns, and the
-        // glitch is audible in the air but invisible to any PCM tap. Logging
-        // inter-read gaps turns those into session-log lines with timestamps.
+        // Always-on stall probe: the render thread is MANAGED — a scheduler
+        // stall freezes it, the device buffer underruns, and the glitch is
+        // audible in the air but invisible to any PCM tap. Logging inter-read
+        // gaps turns those into session-log lines with timestamps. It also
+        // boosts the render thread on first read (see StallProbe).
         renderSource = new StallProbe(renderSource);
-        _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 50);
+        // 200ms buffer: field logs showed 47ms read gaps while IDLE — NAudio's
+        // render thread runs at normal priority (no MMCSS, unlike VLC's native
+        // aout), so UI/decoder/artwork bursts preempt it for tens of ms and a
+        // 50ms buffer ran dry at exactly the busy moments (track click, seek):
+        // the transition buzz the engine had and the legacy path didn't.
+        _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 200);
         _out.Init(new SampleToWaveProvider(renderSource));
         // Render immediately and forever: the provider always returns full
         // buffers (silence when idle), so the stream never stops between
@@ -143,14 +149,19 @@ public sealed class GaplessSink : IDisposable
         }
     }
 
-    // Logs render-thread starvation: WasapiOut (event sync, 50ms buffer) reads
-    // roughly every 25ms; a gap past the buffer depth means the device ran dry
-    // and the air got a glitch no PCM capture can show. The log write itself
-    // runs on the render thread, but only after the damage is already done.
+    // Runs ON the render thread. First read: boost the thread the way VLC's
+    // native aout is boosted — highest CLR priority plus MMCSS "Pro Audio" —
+    // so UI/decoder/artwork bursts can't preempt rendering into an underrun.
+    // Afterwards: log any read gap that eats a meaningful share of the buffer;
+    // the log write also runs here, but only after the damage is already done.
     private sealed class StallProbe : ISampleProvider
     {
+        [System.Runtime.InteropServices.DllImport("avrt.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        private static extern IntPtr AvSetMmThreadCharacteristics(string taskName, ref uint taskIndex);
+
         private readonly ISampleProvider _inner;
         private long _lastReadTick;
+        private bool _boosted;
         public WaveFormat WaveFormat => _inner.WaveFormat;
 
         public StallProbe(ISampleProvider inner)
@@ -160,10 +171,24 @@ public sealed class GaplessSink : IDisposable
 
         public int Read(float[] buffer, int offset, int count)
         {
+            if (!_boosted)
+            {
+                _boosted = true;
+                try
+                {
+                    System.Threading.Thread.CurrentThread.Priority = System.Threading.ThreadPriority.Highest;
+                    uint taskIndex = 0;
+                    var handle = AvSetMmThreadCharacteristics("Pro Audio", ref taskIndex);
+                    DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.RenderBoost",
+                        $"mmcss={(handle != IntPtr.Zero ? "ok" : "failed")}");
+                }
+                catch { /* boost is best-effort */ }
+            }
+
             var now = Environment.TickCount64;
             var last = _lastReadTick;
             _lastReadTick = now;
-            if (last != 0 && now - last > 45)
+            if (last != 0 && now - last > 120)
             {
                 try
                 {
