@@ -238,6 +238,8 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     private int _silentSamples;        // contiguous silence emitted so far (render thread only)
     private int _fadeRemaining;        // samples left of an in-progress fade-in
     private int _refillSamplesNeeded;  // >0 while the underrun hold is armed
+    private readonly float[] _lastFrame = new float[2]; // last emitted frame, for the cut declick
+    private int _declickRemaining;     // samples left of an in-progress cut ramp-to-zero
 
     public GaplessSpliceProvider(int sinkRate, int sinkChannels, int startThresholdMs = 0, int startFadeMs = 0)
     {
@@ -344,6 +346,13 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                 if (_fadeRemaining > 0)
                     ApplyFadeIn(buffer, offset + written, n);
                 written += n;
+                // Remember the tail frame for the cut declick; audio resuming
+                // cancels any ramp still pending from a previous cut.
+                _declickRemaining = 0;
+                var tailCh = WaveFormat.Channels;
+                if (n >= tailCh)
+                    for (var c = 0; c < tailCh; c++)
+                        _lastFrame[c] = buffer[offset + written - tailCh + c];
                 continue;
             }
 
@@ -361,7 +370,25 @@ public sealed class GaplessSpliceProvider : ISampleProvider
         var padded = count - written;
         if (padded > 0)
         {
-            Array.Clear(buffer, offset + written, padded);
+            var pos = offset + written;
+            Array.Clear(buffer, pos, padded);
+            // Declick a hard cut: a seek flush / abandon stops LIVE audio inside
+            // a stream that never stops, so there is no OS stream-stop ramp to
+            // hide the edge — an instant step to zero is an audible click/buzz.
+            // Ramp the pad from the last emitted frame down to silence instead.
+            // Natural seams never pad, so true gapless is untouched.
+            if (_startFadeSamples > 0 && _silentSamples == 0)
+                _declickRemaining = _startFadeSamples;
+            if (_declickRemaining > 0)
+            {
+                var ch = WaveFormat.Channels;
+                var run = Math.Min(_declickRemaining, padded);
+                for (var i = 0; i < run; i++)
+                {
+                    buffer[pos + i] = _lastFrame[i % ch] * ((float)_declickRemaining / _startFadeSamples);
+                    _declickRemaining--;
+                }
+            }
             _silentSamples = (int)Math.Min((long)_silentSamples + padded, int.MaxValue / 2);
         }
         return count;

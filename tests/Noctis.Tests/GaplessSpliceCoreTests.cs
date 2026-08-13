@@ -259,6 +259,29 @@ public class GaplessSpliceCoreTests
     }
 
     [Fact]
+    public void HardCut_RampsToSilence_InsteadOfStepping()
+    {
+        // A seek flush or track-change abandon cuts LIVE audio inside a stream
+        // that never stops, so there is no OS stream-stop ramp to hide the edge:
+        // an instant step to zero is an audible click/buzz on every cut. The pad
+        // after cut audio must start as a short ramp from the last frame to zero.
+        var provider = new GaplessSpliceProvider(8000, 1, startThresholdMs: 0, startFadeMs: 5); // 40-sample ramp
+        var seg = new GaplessTrackSegment(8000, 1, source: null);
+        provider.Enqueue(seg);
+        Assert.True(seg.Write(ConstantBlock(16384, 100))); // ≈ +0.5f steady
+        var buffer = new float[200];
+        provider.Read(buffer, 0, 100); // consume all 100 — ends mid-waveform at ~0.5
+
+        seg.Abandon(); // hard cut (same shape as a seek flush / EngineClearAll)
+
+        provider.Read(buffer, 0, 100);
+        Assert.True(buffer[0] > 0.3f, $"cut sample[0] was {buffer[0]} (instant step to zero)");
+        Assert.True(buffer[10] > buffer[30], $"ramp not descending: [10]={buffer[10]} [30]={buffer[30]}");
+        Assert.True(Math.Abs(buffer[45]) < 0.02f, $"post-ramp sample was {buffer[45]}");
+        Assert.All(buffer.Skip(60).Take(40), s => Assert.Equal(0f, s));
+    }
+
+    [Fact]
     public void FadeIn_AppliedAfterSilence_NeverAtTheSpliceSeam()
     {
         // Segment heads can carry decoder warm-up garble; a short fade-in from
