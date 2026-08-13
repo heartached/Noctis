@@ -68,6 +68,11 @@ public sealed class GaplessSink : IDisposable
                 DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.TapFailed", ex.Message);
             }
         }
+        // Always-on stall probe: the render thread is MANAGED — a GC pause or
+        // scheduler stall freezes it, the 50ms device buffer underruns, and the
+        // glitch is audible in the air but invisible to any PCM tap. Logging
+        // inter-read gaps turns those into session-log lines with timestamps.
+        renderSource = new StallProbe(renderSource);
         _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 50);
         _out.Init(new SampleToWaveProvider(renderSource));
         // Render immediately and forever: the provider always returns full
@@ -96,12 +101,14 @@ public sealed class GaplessSink : IDisposable
 
     // Tee for the diagnostic tap: forwards renders and appends them to the WAV,
     // flushing about once a second so the file stays readable even if the app
-    // is killed instead of closed.
+    // is killed instead of closed. TapClock lines anchor file-time to wall-time.
     private sealed class TapProvider : ISampleProvider
     {
         private readonly ISampleProvider _inner;
         private readonly WaveFileWriter _writer;
         private int _sinceFlush;
+        private long _totalSamples;
+        private long _sinceClock;
         public WaveFormat WaveFormat => _inner.WaveFormat;
 
         public TapProvider(ISampleProvider inner, WaveFileWriter writer)
@@ -117,14 +124,55 @@ public sealed class GaplessSink : IDisposable
             {
                 _writer.WriteSamples(buffer, offset, n);
                 _sinceFlush += n;
+                _totalSamples += n;
+                _sinceClock += n;
                 if (_sinceFlush >= WaveFormat.SampleRate)
                 {
                     _writer.Flush();
                     _sinceFlush = 0;
                 }
+                if (_sinceClock >= (long)WaveFormat.SampleRate * WaveFormat.Channels * 10)
+                {
+                    _sinceClock = 0;
+                    DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.TapClock",
+                        $"fileMs={_totalSamples * 1000 / ((long)WaveFormat.SampleRate * WaveFormat.Channels)}");
+                }
             }
             catch { /* diagnostic only */ }
             return n;
+        }
+    }
+
+    // Logs render-thread starvation: WasapiOut (event sync, 50ms buffer) reads
+    // roughly every 25ms; a gap past the buffer depth means the device ran dry
+    // and the air got a glitch no PCM capture can show. The log write itself
+    // runs on the render thread, but only after the damage is already done.
+    private sealed class StallProbe : ISampleProvider
+    {
+        private readonly ISampleProvider _inner;
+        private long _lastReadTick;
+        public WaveFormat WaveFormat => _inner.WaveFormat;
+
+        public StallProbe(ISampleProvider inner)
+        {
+            _inner = inner;
+        }
+
+        public int Read(float[] buffer, int offset, int count)
+        {
+            var now = Environment.TickCount64;
+            var last = _lastReadTick;
+            _lastReadTick = now;
+            if (last != 0 && now - last > 45)
+            {
+                try
+                {
+                    DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.RenderStall",
+                        $"gapMs={now - last}");
+                }
+                catch { /* diagnostic only */ }
+            }
+            return _inner.Read(buffer, offset, count);
         }
     }
 }

@@ -3904,27 +3904,6 @@ public class VlcAudioPlayer : IAudioPlayer
             return;
         }
 
-        // Engine: EVERY in-place seek makes VLC 3 deliver ~1-2s of scrambled
-        // PCM through amem (tap-verified: the click storm is already in the
-        // blocks VLC hands EnginePlay, with the ring passing them through
-        // faithfully; steady state and track changes are clean). Same disease
-        // as the start-region desync above, different costume. Reopen at the
-        // target instead — :start-time opens with a clean converter chain and
-        // no flush, the pre-buffer gate + fade-in mask the reopen, and total
-        // time-to-audio matches the in-place path's flush + re-armed gate.
-        if (_gaplessEngine && !string.IsNullOrEmpty(_currentMediaPath))
-        {
-            lock (_seekGate)
-            {
-                _latestSeekMs = -1;
-            }
-            _positionTimer.Stop();
-            Interlocked.Exchange(ref _pendingSeekMs, clampedMs > 0 ? clampedMs : -1);
-            _restartPausedRequest = _isPaused;
-            Play(_currentMediaPath);
-            return;
-        }
-
         // Stop the position timer before enqueuing the seek so the timer thread
         // cannot read _player.Time concurrently while the seek worker writes it.
         // The worker restarts the timer after the seek is applied.
