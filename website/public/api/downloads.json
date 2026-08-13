@@ -1,7 +1,7 @@
 {
-  "total": 5311,
+  "total": 5312,
   "byRelease": {
-    "v1.4.3": 181,
+    "v1.4.3": 182,
     "v1.4.2": 92,
     "v1.4.1": 143,
     "v1.4.0": 150,
@@ -64,7 +64,7 @@
       "name": "Noctis-windows-x64.zip",
       "url": "https://github.com/heartached/Noctis/releases/download/v1.4.3/Noctis-windows-x64.zip",
       "size": 228566822,
-      "downloads": 10
+      "downloads": 11
     },
     "macosArm": {
       "name": "Noctis-osx-arm64.dmg",
@@ -113,6 +113,6 @@
     "linuxTar": "101 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-08-13T04:32:40.947Z",
+  "updatedAt": "2026-08-13T06:03:16.457Z",
   "degraded": false
 }
