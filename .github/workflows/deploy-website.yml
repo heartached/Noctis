@@ -16,9 +16,8 @@ name: Deploy website
 # across repos with a PAT.
 
 on:
-  # The site must not wait for the next cron tick. This fires the moment a
-  # release is published or promoted out of pre-release, so a new stable
-  # version is live in about a minute instead of up to fifteen.
+  # Fires the moment a release is published or promoted out of pre-release,
+  # so a new stable version is live in about a minute.
   #
   # `published` also fires for PRE-releases — deliberate. The fetch scripts
   # ignore pre-releases when choosing `latest`, so such a run just rebuilds
@@ -26,13 +25,11 @@ on:
   release:
     types: [published, released, edited, deleted, unpublished]
 
-  schedule:
-    # Every 15 min, off the hour to avoid the scheduling crush. This tick only
-    # has to carry the DOWNLOAD COUNT — the version and the release notes
-    # arrive on the release event above. GitHub's floor is 5 minutes, but
-    # scheduled runs are queued best-effort and are routinely delayed or
-    # dropped under load, so a tighter cron buys less than it looks like.
-    - cron: '7,22,37,52 * * * *'
+  # No cron. A scheduled refresh used to run every 15 minutes to keep the
+  # download count fresh, but each tick committed "chore: refresh release
+  # data" and redeployed production, replacing any manually uploaded build.
+  # Download counts now refresh only on the events below; run the workflow
+  # by hand (workflow_dispatch) when a fresher count is wanted.
 
   workflow_dispatch:
 
