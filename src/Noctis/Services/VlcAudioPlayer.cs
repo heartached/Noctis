@@ -166,6 +166,9 @@ public class VlcAudioPlayer : IAudioPlayer
     // block pending. A jump between consecutive blocks means VLC dropped audio
     // upstream and the hole is butt-spliced into the ring.
     private readonly long[] _engineExpectedPts = new long[2];
+    private FileStream? _engineInTap; // NOCTIS_ENGINE_TAP input-side capture (raw s16le)
+    private readonly object _engineInTapLock = new();
+    private int _engineInTapSinceFlush;
     private readonly MediaPlayer.LibVLCAudioPlayCb?[] _enginePlayCbs = new MediaPlayer.LibVLCAudioPlayCb?[2];
     private readonly MediaPlayer.LibVLCAudioPauseCb?[] _enginePauseCbs = new MediaPlayer.LibVLCAudioPauseCb?[2];
     private readonly MediaPlayer.LibVLCAudioResumeCb?[] _engineResumeCbs = new MediaPlayer.LibVLCAudioResumeCb?[2];
@@ -659,6 +662,19 @@ public class VlcAudioPlayer : IAudioPlayer
                         DebugLogger.Category.Playback,
                         "GaplessEngine.Wired",
                         $"rate={_gaplessSink.SampleRate}, channels={_gaplessSink.Channels}");
+                    // NOCTIS_ENGINE_TAP: also capture what VLC DELIVERS (pre-ring),
+                    // so render-side glitches can be attributed upstream vs ours.
+                    // Raw s16le at sink rate/channels — headerless survives kill.
+                    if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NOCTIS_ENGINE_TAP")))
+                    {
+                        try
+                        {
+                            _engineInTap = new FileStream(
+                                Path.Combine(Path.GetTempPath(), "noctis-engine-in-tap.raw"),
+                                FileMode.Create, FileAccess.Write, FileShare.Read, 1 << 16);
+                        }
+                        catch { /* diagnostic only */ }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -3509,6 +3525,25 @@ public class VlcAudioPlayer : IAudioPlayer
                 }
                 _engineExpectedPts[slot] = pts + (long)count * 1_000_000 / sink.SampleRate;
 
+                if (_engineInTap is { } inTap)
+                {
+                    try
+                    {
+                        lock (_engineInTapLock)
+                        {
+                            inTap.Write(System.Runtime.InteropServices.MemoryMarshal.AsBytes(
+                                buf.AsSpan(0, sampleCount)));
+                            _engineInTapSinceFlush += sampleCount;
+                            if (_engineInTapSinceFlush >= sink.SampleRate)
+                            {
+                                inTap.Flush();
+                                _engineInTapSinceFlush = 0;
+                            }
+                        }
+                    }
+                    catch { /* diagnostic only */ }
+                }
+
                 // Blocks when the ring is full (back-pressures this player's
                 // decoder); returns false when abandoned — just drop the block.
                 seg.Write(buf.AsSpan(0, sampleCount));
@@ -3863,6 +3898,27 @@ public class VlcAudioPlayer : IAudioPlayer
             _positionTimer.Stop();
             // Apply the residual offset (e.g. drag to 0.4s) after the clean
             // restart; exact-zero restarts need no pending seek.
+            Interlocked.Exchange(ref _pendingSeekMs, clampedMs > 0 ? clampedMs : -1);
+            _restartPausedRequest = _isPaused;
+            Play(_currentMediaPath);
+            return;
+        }
+
+        // Engine: EVERY in-place seek makes VLC 3 deliver ~1-2s of scrambled
+        // PCM through amem (tap-verified: the click storm is already in the
+        // blocks VLC hands EnginePlay, with the ring passing them through
+        // faithfully; steady state and track changes are clean). Same disease
+        // as the start-region desync above, different costume. Reopen at the
+        // target instead — :start-time opens with a clean converter chain and
+        // no flush, the pre-buffer gate + fade-in mask the reopen, and total
+        // time-to-audio matches the in-place path's flush + re-armed gate.
+        if (_gaplessEngine && !string.IsNullOrEmpty(_currentMediaPath))
+        {
+            lock (_seekGate)
+            {
+                _latestSeekMs = -1;
+            }
+            _positionTimer.Stop();
             Interlocked.Exchange(ref _pendingSeekMs, clampedMs > 0 ? clampedMs : -1);
             _restartPausedRequest = _isPaused;
             Play(_currentMediaPath);
