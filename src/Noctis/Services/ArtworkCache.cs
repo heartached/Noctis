@@ -74,6 +74,40 @@ public static class ArtworkCache
     }
 
     /// <summary>
+    /// Cross-width fallback: returns a cached bitmap for this path decoded at ANY width,
+    /// or null when no width bucket holds it. No I/O, lock-free. Lets a surface whose
+    /// exact bucket missed (e.g. a 128px playlist thumb when only the 768px album-grid
+    /// decode exists) paint correct pixels immediately instead of blanking while the
+    /// exact-width decode runs. Preference: smallest cached width ≥ requested (sharp
+    /// downscale), else the largest cached width (least-blurry upscale).
+    /// </summary>
+    public static Bitmap? TryGetAnyWidth(string path, int decodeWidth)
+    {
+        var requested = NormalizeDecodeWidth(decodeWidth);
+        CacheEntry? atLeast = null, below = null;
+        int atLeastWidth = int.MaxValue, belowWidth = -1;
+        foreach (var width in _observedWidths.Keys)
+        {
+            if (width == requested || !Cache.TryGetValue($"{width}|{path}", out var entry))
+                continue;
+            if (width >= requested)
+            {
+                if (width < atLeastWidth) { atLeastWidth = width; atLeast = entry; }
+            }
+            else if (width > belowWidth)
+            {
+                belowWidth = width; below = entry;
+            }
+        }
+
+        var chosen = atLeast ?? below;
+        if (chosen == null)
+            return null;
+        Touch(chosen);
+        return chosen.Bitmap;
+    }
+
+    /// <summary>
     /// Stamps the entry with the current global access counter. Entries created later
     /// start with a much larger counter value, so merely incrementing an entry's own
     /// stamp by 1 per hit left old-but-hot entries (the on-screen art) sorting older
