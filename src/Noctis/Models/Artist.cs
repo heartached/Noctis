@@ -19,6 +19,11 @@ public class Artist
     /// </summary>
     public string? ImagePath { get; set; }
 
+    /// <summary>Favorite flag (GitHub #41): favorites sort to the top of the artists grid
+    /// and carry an accent star on the tile. Like ImagePath, deliberately NOT observable —
+    /// it is stamped during list builds and reflected by re-materializing the rows.</summary>
+    public bool IsFavorite { get; set; }
+
     public override string ToString() => Name;
 }
 
