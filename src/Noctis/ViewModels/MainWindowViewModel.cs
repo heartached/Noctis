@@ -345,7 +345,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 _foldersVm.Refresh();
             });
         };
-        _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
+        _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar, Settings);
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
         _statisticsVm = new StatisticsViewModel(library, playHistory);

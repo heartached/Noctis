@@ -16,6 +16,15 @@ namespace Noctis.Tests;
 /// </summary>
 public class SettingsToggleRebuildGatingTests
 {
+    private sealed class NoOpPlayHistoryService : Noctis.Services.IPlayHistoryService
+    {
+        public IReadOnlyList<PlayHistoryEvent> Events => Array.Empty<PlayHistoryEvent>();
+        public Task PreloadAsync() => Task.CompletedTask;
+        public void RecordPlay(Track track) { }
+        public void RecordSkip(Track track) { }
+        public Task FlushAsync() => Task.CompletedTask;
+    }
+
     /// <summary>Pumps the headless dispatcher until the condition holds (or the budget runs out).</summary>
     private static async Task PumpUntil(Func<bool> condition, int budgetMs = 5000)
     {
@@ -78,7 +87,8 @@ public class SettingsToggleRebuildGatingTests
         var player = new PlayerViewModel(
             new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
         var sidebar = new SidebarViewModel(persistence, lib);
-        var vm = new FavoritesViewModel(player, lib, persistence, sidebar);
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistoryService());
+        var vm = new FavoritesViewModel(player, lib, persistence, sidebar, settings);
 
         lib.RaiseLibraryUpdated();
         await PumpFor(100);

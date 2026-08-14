@@ -20,7 +20,7 @@
 
         <!-- Content area with overlay for empty state -->
         <Grid>
-            <!-- Favorite grid: outer ListBox virtualizes rows, inner UniformGrid lays out 5 columns per row -->
+            <!-- Favorite grid: outer ListBox virtualizes rows, inner UniformGrid lays out GridColumns per row -->
             <ListBox x:Name="FavoritesList"
                      ItemsSource="{Binding FavoriteItemRows}"
                      Background="Transparent"
@@ -40,7 +40,8 @@
                         <ItemsControl ItemsSource="{Binding Items}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <UniformGrid Columns="5" Rows="1" />
+                                    <!-- Column count mirrors the VM's row chunk size (cover-size setting) -->
+                                    <UniformGrid Columns="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).GridColumns}" Rows="1" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>

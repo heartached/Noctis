@@ -19,8 +19,8 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private readonly ILibraryService _library;
     private readonly IPersistenceService _persistence;
     private readonly SidebarViewModel _sidebar;
+    private readonly SettingsViewModel _settings;
 
-    private const int ColumnsPerRow = 5;
     private bool _isDirty = true;
     private string _currentFilter = string.Empty;
     private List<FavoriteItem> _allFavoriteItems = new();
@@ -30,6 +30,14 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
 
     [ObservableProperty] private double _tileArtworkSize = 180;
     [ObservableProperty] private string _searchText = string.Empty;
+
+    /// <summary>Covers per row, sharing the Albums grid's cover-size setting
+    /// (see <see cref="Helpers.AlbumGridMetrics"/>).</summary>
+    [ObservableProperty] private int _gridColumns = Helpers.AlbumGridMetrics.ClassicColumns;
+
+    /// <summary>Last usable width reported by the view, so a settings change can
+    /// recompute columns without waiting for a resize.</summary>
+    private double _lastUsableWidth;
 
     /// <summary>True when the library has no favorites at all (shows the onboarding hint).</summary>
     [ObservableProperty] private bool _showNoFavorites;
@@ -52,12 +60,24 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     /// <summary>Fires when the user wants to open an album detail view.</summary>
     public event EventHandler<Album>? AlbumOpened;
 
-    public FavoritesViewModel(PlayerViewModel player, ILibraryService library, IPersistenceService persistence, SidebarViewModel sidebar)
+    public FavoritesViewModel(PlayerViewModel player, ILibraryService library, IPersistenceService persistence, SidebarViewModel sidebar, SettingsViewModel settings)
     {
         _player = player;
         _library = library;
         _persistence = persistence;
         _sidebar = sidebar;
+        _settings = settings;
+
+        // Cover-size setting shared with the Albums grid: recompute columns from the
+        // last known width. UpdateGridMetrics no-ops before the view has ever measured
+        // and handles its own dirty/active gating when the column count changes.
+        _settingsPropertyChangedHandler = (_, e) =>
+        {
+            if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
+                or nameof(SettingsViewModel.AlbumTileTargetSize))
+                Dispatcher.UIThread.Post(() => UpdateGridMetrics(_lastUsableWidth));
+        };
+        _settings.PropertyChanged += _settingsPropertyChangedHandler;
 
         // Dispatch to UI thread since scan fires LibraryUpdated from a background thread.
         // Held in fields so Dispose can detach them; anonymous lambdas with no stored
@@ -73,6 +93,38 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
 
     private EventHandler? _libraryUpdatedHandler;
     private EventHandler? _favoritesChangedHandler;
+    private System.ComponentModel.PropertyChangedEventHandler? _settingsPropertyChangedHandler;
+
+    /// <summary>
+    /// Recomputes column count and tile size from the view's usable width and the
+    /// cover-size setting (mirrors <see cref="LibraryAlbumsViewModel.UpdateGridMetrics"/>).
+    /// Returns true when anything changed so the caller can preserve scroll.
+    /// </summary>
+    public bool UpdateGridMetrics(double usableWidth)
+    {
+        if (!double.IsFinite(usableWidth) || usableWidth <= 0)
+            return false;
+        _lastUsableWidth = usableWidth;
+
+        var columns = Helpers.AlbumGridMetrics.ComputeColumns(
+            usableWidth, _settings.AlbumTileSizeAuto, _settings.AlbumTileTargetSize);
+        var newSize = Helpers.AlbumGridMetrics.ComputeTileSize(usableWidth, columns);
+
+        var columnsChanged = columns != GridColumns;
+        if (!columnsChanged && Math.Abs(newSize - TileArtworkSize) < 0.5)
+            return false;
+
+        GridColumns = columns;
+        TileArtworkSize = newSize;
+        if (columnsChanged)
+        {
+            // Re-chunk rows now when visible; hidden views catch up via Refresh on activation.
+            _isDirty = true;
+            if (_isActive)
+                ApplyFilter(_currentFilter);
+        }
+        return true;
+    }
 
     /// <summary>
     /// Set by MainWindowViewModel when Favorites becomes (or stops being) the current
@@ -104,6 +156,11 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         {
             _library.FavoritesChanged -= _favoritesChangedHandler;
             _favoritesChangedHandler = null;
+        }
+        if (_settingsPropertyChangedHandler != null)
+        {
+            _settings.PropertyChanged -= _settingsPropertyChangedHandler;
+            _settingsPropertyChangedHandler = null;
         }
     }
 
@@ -189,14 +246,15 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         ShowNoResults = _allFavoriteItems.Count > 0 && visibleItems.Count == 0;
     }
 
-    private static List<FavoriteItemRow> BuildRows(IReadOnlyList<FavoriteItem> items)
+    private List<FavoriteItemRow> BuildRows(IReadOnlyList<FavoriteItem> items)
     {
+        var columns = GridColumns;
         var rows = new List<FavoriteItemRow>();
-        for (var i = 0; i < items.Count; i += ColumnsPerRow)
+        for (var i = 0; i < items.Count; i += columns)
         {
             rows.Add(new FavoriteItemRow
             {
-                Items = items.Skip(i).Take(ColumnsPerRow).ToList()
+                Items = items.Skip(i).Take(columns).ToList()
             });
         }
 

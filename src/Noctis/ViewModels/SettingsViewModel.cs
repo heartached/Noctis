@@ -423,7 +423,12 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;
     /// <summary>Bound straight to the mini player card's fill brush (no player plumbing —
     /// the mini player's view model exposes this view model directly).</summary>
-    [ObservableProperty] private double _miniPlayerBackgroundOpacity = 0.55;
+    [ObservableProperty] private double _miniPlayerBackgroundOpacity = 0.35;
+    /// <summary>Album cover sizing for the Albums/Favorites grids. Auto = classic five per
+    /// row; otherwise the grids derive their column count from the target size. The album
+    /// and favorites view models react through this view model's PropertyChanged.</summary>
+    [ObservableProperty] private bool _albumTileSizeAuto = true;
+    [ObservableProperty] private double _albumTileTargetSize = 220;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
     /// <summary>Liquid Glass needs OS blur-behind (Acrylic/Mica/vibrancy). On Linux/X11
     /// none of those exist and the hint would degrade to a plain see-through window
@@ -997,6 +1002,9 @@ public partial class SettingsViewModel : ViewModelBase
             HomeRediscoveredExpanded = _settings.HomeRediscoveredExpanded;
             PlaybackBarBackgroundOpacity = Math.Clamp(_settings.PlaybackBarBackgroundOpacity, 0, 1);
             MiniPlayerBackgroundOpacity = Math.Clamp(_settings.MiniPlayerBackgroundOpacity, 0, 1);
+            AlbumTileSizeAuto = _settings.AlbumTileSizeAuto;
+            AlbumTileTargetSize = Math.Clamp(_settings.AlbumTileTargetSize,
+                Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             LiquidGlassEnabled = _settings.LiquidGlassEnabled;
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
@@ -1337,6 +1345,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.HomeRediscoveredExpanded = HomeRediscoveredExpanded;
         _settings.PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         _settings.MiniPlayerBackgroundOpacity = Math.Clamp(MiniPlayerBackgroundOpacity, 0, 1);
+        _settings.AlbumTileSizeAuto = AlbumTileSizeAuto;
+        _settings.AlbumTileTargetSize = Math.Clamp(AlbumTileTargetSize,
+            Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.LiquidGlassEnabled = LiquidGlassEnabled;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
@@ -2101,7 +2112,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnMiniPlayerBackgroundOpacityChanged(double value)
     {
-        var clamped = double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0.55;
+        var clamped = double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0.35;
         if (clamped != value)
         {
             MiniPlayerBackgroundOpacity = clamped;
@@ -2117,6 +2128,27 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
+    }
+
+    partial void OnAlbumTileSizeAutoChanged(bool value)
+    {
+        // No Apply* step: the album/favorites view models watch this property.
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    partial void OnAlbumTileTargetSizeChanged(double value)
+    {
+        var clamped = double.IsFinite(value)
+            ? Math.Clamp(value, Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize)
+            : 220;
+        if (clamped != value)
+        {
+            AlbumTileTargetSize = clamped;
+            return;
+        }
+
+        // Slider-driven, so the write is debounced like the opacity sliders'.
+        if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
     }
 
     partial void OnMergeFeaturedFromTitlesChanged(bool value)
@@ -3779,6 +3811,8 @@ public partial class SettingsViewModel : ViewModelBase
             ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
             PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;
             MiniPlayerBackgroundOpacity = defaultSettings.MiniPlayerBackgroundOpacity;
+            AlbumTileSizeAuto = defaultSettings.AlbumTileSizeAuto;
+            AlbumTileTargetSize = defaultSettings.AlbumTileTargetSize;
             // Playback-bar width: clear the pending session value, or SyncToSettings
             // would re-persist the pre-reset width over the freshly defaulted file
             // (the ApplyPlayerSettings call below pushes the default to the bar).

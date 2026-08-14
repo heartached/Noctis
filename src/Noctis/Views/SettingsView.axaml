@@ -1748,6 +1748,43 @@
                 </Grid>
             </Border>
 
+            <!-- Album cover size (Albums / Favorites grids). Automatic = classic five per
+                 row; custom size derives the column count from the window width instead,
+                 so covers stay near the chosen size on ultrawide and small windows alike. -->
+            <Border Classes="setting-card">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Automatic Album Cover Size" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Fit five covers per row in the Albums and Favorites grids. Turn off to choose your own cover size for any window width."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding AlbumTileSizeAuto}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto"
+                          IsVisible="{Binding !AlbumTileSizeAuto}">
+                        <TextBlock Grid.Column="0" Text="Smaller"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        <Slider Grid.Column="1"
+                                Classes="accent-slider"
+                                Minimum="140" Maximum="320"
+                                Value="{Binding AlbumTileTargetSize, Mode=TwoWay}"
+                                VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="Larger"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        <TextBlock Grid.Column="3"
+                                   Text="{Binding AlbumTileTargetSize, StringFormat='{}{0:0} px'}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center"
+                                   MinWidth="52" TextAlignment="Right" Margin="12,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <!-- Flowing-light lyrics background (issue #22) -->
             <Border Classes="setting-card">
                 <Grid ColumnDefinitions="*,Auto">

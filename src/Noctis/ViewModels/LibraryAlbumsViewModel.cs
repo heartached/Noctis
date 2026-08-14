@@ -37,7 +37,6 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// once for the pair rather than once per property.</summary>
     private bool _suspendSortRebuild;
 
-    private const int ColumnsPerRow = 5;
     private const double TileTextHeight = 64;
 
     [ObservableProperty] private bool _isSearchVisible = false;
@@ -45,6 +44,47 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [ObservableProperty] private double _tileArtworkSize = 180;
     [ObservableProperty] private string _artistFilterName = string.Empty;
     public double TileRowHeight => TileArtworkSize + TileTextHeight;
+
+    /// <summary>Covers per row. Classic five in Automatic mode; otherwise derived from
+    /// the view width and the cover-size setting (see <see cref="AlbumGridMetrics"/>).
+    /// Bound by the row templates' UniformGrid and used as the row chunk size.</summary>
+    [ObservableProperty] private int _gridColumns = AlbumGridMetrics.ClassicColumns;
+
+    /// <summary>Last usable width reported by the view, so a settings change can
+    /// recompute columns without waiting for a resize.</summary>
+    private double _lastUsableWidth;
+
+    /// <summary>
+    /// Recomputes column count and tile size from the view's usable width and the
+    /// cover-size setting. Cheap when nothing changes; a column-count change re-chunks
+    /// the grid rows (deferred to activation while the view is hidden, like the other
+    /// settings-driven rebuilds). Returns true when anything changed so the caller can
+    /// preserve scroll.
+    /// </summary>
+    public bool UpdateGridMetrics(double usableWidth)
+    {
+        if (!double.IsFinite(usableWidth) || usableWidth <= 0)
+            return false;
+        _lastUsableWidth = usableWidth;
+
+        var columns = AlbumGridMetrics.ComputeColumns(
+            usableWidth, _settings.AlbumTileSizeAuto, _settings.AlbumTileTargetSize);
+        var newSize = AlbumGridMetrics.ComputeTileSize(usableWidth, columns);
+
+        var columnsChanged = columns != GridColumns;
+        if (!columnsChanged && Math.Abs(newSize - TileArtworkSize) < 0.5)
+            return false;
+
+        GridColumns = columns;
+        TileArtworkSize = newSize;
+        if (columnsChanged)
+        {
+            _isDirty = true;
+            if (_isActive)
+                RebuildFilteredRows();
+        }
+        return true;
+    }
 
     /// <summary>
     /// Active release-type chip filter. null = "All". Drives the chip strip
@@ -270,6 +310,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 if (_isActive)
                     Dispatcher.UIThread.Post(() => RebuildFilteredRows());
             }
+            // Cover-size setting: recompute columns from the last known width.
+            // UpdateGridMetrics no-ops before the view has ever measured and handles
+            // its own dirty/active gating when the column count changes.
+            else if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
+                     or nameof(SettingsViewModel.AlbumTileTargetSize))
+            {
+                Dispatcher.UIThread.Post(() => UpdateGridMetrics(_lastUsableWidth));
+            }
         };
         _settings.PropertyChanged += _settingsPropertyChangedHandler;
 
@@ -390,7 +438,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // rows on first paint — otherwise the grid flashes the previous (unfiltered)
         // album list for a frame before the async rebuild's UI post lands.
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, GridColumns, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
@@ -435,7 +483,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         OnPropertyChanged(nameof(HasActiveFilter));
 
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, ColumnsPerRow, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, GridColumns, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
@@ -446,7 +494,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var albums = _allAlbums;
         var artistFilter = ArtistFilterName;
         var searchFilter = _currentFilter;
-        var columns = ColumnsPerRow;
+        var columns = GridColumns;
         var releaseTypeFilter = ReleaseTypeFilter;
         var qualityFilter = QualityFilter;
         var sortMode = AlbumSortMode;
