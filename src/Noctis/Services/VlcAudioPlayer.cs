@@ -4330,13 +4330,18 @@ public class VlcAudioPlayer : IAudioPlayer
                     {
                         _player.Time = targetMs;
                     }
-                    else if (ActiveCallbackSink != null)
+                    else if (ActiveCallbackSink != null || _gaplessEngine)
                     {
                         // Exclusive Mode / WASAPI gain path: the sink owns gain and
                         // _player.Volume is pinned at 100. Touching the OS session here
                         // (which the branch below would do, since _sessionVolume is
                         // non-null by default on Windows) would duck the whole process
                         // session on top of the sink's own level. Just seek.
+                        // Gapless engine: the splice provider declicks + fades every
+                        // cut junction itself — the duck was masking a legacy VLC
+                        // flush click that no longer reaches the speakers, while its
+                        // -12dB dip (near-silence at low sliders) read as a pause on
+                        // every timeline click.
                         _player.Time = targetMs;
                     }
                     else if (_sessionVolume is { } sv)
