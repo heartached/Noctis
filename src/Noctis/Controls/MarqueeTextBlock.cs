@@ -37,7 +37,10 @@ public class MarqueeTextBlock : UserControl
 
     private const double OverflowThreshold = 1.0;
     private const double ScrollSpeed = 26.0;
-    private static readonly TimeSpan EdgePause = TimeSpan.FromMilliseconds(850);
+    /// <summary>How long the text rests at its start position between laps. The marquee
+    /// does a full loop (out the left edge, back in from the right), lands at the start,
+    /// holds for this long, then goes around again.</summary>
+    private static readonly TimeSpan RestPause = TimeSpan.FromSeconds(7);
 
     // ── Styled properties ──
 
@@ -167,13 +170,19 @@ public class MarqueeTextBlock : UserControl
     private readonly TranslateTransform _transform;
 
     // ── Animation state ──
+    // Frame-clock driven (TopLevel.RequestAnimationFrame), NOT a DispatcherTimer: a 16 ms
+    // timer defaults to Background priority (starved by any layout/render work) and beats
+    // against the ~16.7 ms vsync, so some frames got two steps and some none — visible
+    // stutter. Same migration the lyrics scroll and SmoothScrollBehavior already made.
 
-    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(16) };
-    private readonly Stopwatch _clock = new();
+    private bool _isRunning;
+    private bool _isFrameQueued;
+    private long _lastFrameTimestamp;
+    private int _lapGeneration;
     private double _overflow;
+    private double _textWidth;
+    private double _viewportWidth;
     private double _offset;
-    private int _direction = -1;
-    private double _pauseRemainingMs;
 
     public MarqueeTextBlock()
     {
@@ -201,7 +210,6 @@ public class MarqueeTextBlock : UserControl
 
         Content = _viewport;
 
-        _timer.Tick += OnTick;
         AttachedToVisualTree += OnAttached;
         DetachedFromVisualTree += OnDetached;
 
@@ -278,7 +286,7 @@ public class MarqueeTextBlock : UserControl
     private void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
     {
         GlobalSettingsChanged -= OnGlobalSettingsChanged;
-        StopTimer();
+        StopScrolling();
     }
 
     private void OnGlobalSettingsChanged(object? sender, EventArgs e) => ResetAndRecalc();
@@ -295,10 +303,8 @@ public class MarqueeTextBlock : UserControl
 
     private void ResetAndRecalc()
     {
-        StopTimer();
+        StopScrolling();
         _offset = 0;
-        _direction = -1;
-        _pauseRemainingMs = EdgePause.TotalMilliseconds;
         _transform.X = 0;
 
         if (VisualRoot != null)
@@ -316,6 +322,8 @@ public class MarqueeTextBlock : UserControl
         var textWidth = MeasureTextWidth();
         if (textWidth <= 0) return;
 
+        _textWidth = textWidth;
+        _viewportWidth = viewportWidth;
         _overflow = Math.Max(0, textWidth - viewportWidth);
 
         if (_overflow <= OverflowThreshold || !IsScrollEnabled)
@@ -336,61 +344,94 @@ public class MarqueeTextBlock : UserControl
         _textBlock.Width = double.NaN;
 
         _offset = 0;
-        _direction = -1;
-        _pauseRemainingMs = EdgePause.TotalMilliseconds;
         _transform.X = 0;
-        StartTimer();
+        ScheduleNextLap();
     }
 
-    private void StartTimer()
+    /// <summary>Rest at the start position, then start the next lap. A one-shot timer
+    /// rather than idling on the frame clock: re-requesting animation frames through a
+    /// 7-second hold would force continuous renders doing nothing.</summary>
+    private void ScheduleNextLap()
     {
-        if (_timer.IsEnabled || VisualRoot == null) return;
-        _clock.Restart();
-        _timer.Start();
+        var generation = ++_lapGeneration;
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (generation == _lapGeneration && VisualRoot != null)
+                StartScrolling();
+        }, RestPause);
     }
 
-    private void StopTimer()
+    private void StartScrolling()
     {
-        if (!_timer.IsEnabled) return;
-        _timer.Stop();
-        _clock.Reset();
+        if (_isRunning || VisualRoot == null) return;
+        _isRunning = true;
+        _lastFrameTimestamp = Stopwatch.GetTimestamp();
+        QueueNextFrame();
     }
 
-    private void OnTick(object? sender, EventArgs e)
+    private void StopScrolling()
     {
+        _isRunning = false;
+        _lapGeneration++; // cancels any pending between-laps resume
+    }
+
+    private void QueueNextFrame()
+    {
+        if (!_isRunning || _isFrameQueued) return;
+        if (TopLevel.GetTopLevel(this) is not { } topLevel)
+        {
+            StopScrolling();
+            return;
+        }
+        _isFrameQueued = true;
+        topLevel.RequestAnimationFrame(OnFrame);
+    }
+
+    private void OnFrame(TimeSpan frameTime)
+    {
+        _isFrameQueued = false;
+        if (!_isRunning) return;
+
         if (!IsScrollEnabled || _overflow <= OverflowThreshold || VisualRoot == null)
         {
-            StopTimer();
+            StopScrolling();
             ResetAndRecalc();
             return;
         }
 
-        var elapsedMs = _clock.Elapsed.TotalMilliseconds;
-        _clock.Restart();
-        if (elapsedMs <= 0) return;
-
-        if (_pauseRemainingMs > 0)
+        var now = Stopwatch.GetTimestamp();
+        // Real elapsed time, clamped so a stalled UI thread can't produce one giant jump.
+        var elapsedSeconds = Math.Min((now - _lastFrameTimestamp) / (double)Stopwatch.Frequency, 0.1);
+        _lastFrameTimestamp = now;
+        if (elapsedSeconds <= 0)
         {
-            _pauseRemainingMs = Math.Max(0, _pauseRemainingMs - elapsedMs);
+            QueueNextFrame();
             return;
         }
 
-        var next = _offset + (_direction * ScrollSpeed * elapsedMs / 1000.0);
-        if (_direction < 0 && next <= -_overflow)
+        // Full-loop marquee, no bounce: the text always travels left. Once its tail has
+        // cleared the viewport's left edge, wrap to just past the right edge so the head
+        // slides back in; landing on the start position ends the lap and rests there.
+        var next = _offset - ScrollSpeed * elapsedSeconds;
+
+        if (next <= -_textWidth)
         {
-            next = -_overflow;
-            _direction = 1;
-            _pauseRemainingMs = EdgePause.TotalMilliseconds;
+            next += _textWidth + _viewportWidth;
         }
-        else if (_direction > 0 && next >= 0)
+        else if (_offset > 0 && next <= 0)
         {
-            next = 0;
-            _direction = -1;
-            _pauseRemainingMs = EdgePause.TotalMilliseconds;
+            // Only a wrapped (incoming-from-the-right) pass can cross zero downward —
+            // the outbound pass STARTS at zero, so this never fires on the way out.
+            _offset = 0;
+            _transform.X = 0;
+            StopScrolling();
+            ScheduleNextLap();
+            return;
         }
 
         _offset = next;
         _transform.X = next;
+        QueueNextFrame();
     }
 
     private double MeasureTextWidth()

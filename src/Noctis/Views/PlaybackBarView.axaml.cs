@@ -34,14 +34,23 @@ public partial class PlaybackBarView : UserControl
     private const double TrackTitleScrollSpeed = 26.0;
     private const double TrackTitleBadgeSpacing = 6.0;
     private const double TrackTitleBadgeTrailingPadding = 8.0;
-    private static readonly TimeSpan TrackTitleEdgePause = TimeSpan.FromMilliseconds(850);
-    private readonly DispatcherTimer _trackTitleMarqueeTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
-    private readonly Stopwatch _trackTitleMarqueeClock = new();
+    /// <summary>Rest at the start position between laps — full loop out the left edge and
+    /// back in from the right, matching MarqueeTextBlock's behavior app-wide.</summary>
+    private static readonly TimeSpan TrackTitleRestPause = TimeSpan.FromSeconds(7);
+    // Frame-clock driven (TopLevel.RequestAnimationFrame), NOT a DispatcherTimer: a 16 ms
+    // timer defaults to Background priority (starved by layout/render work) and beats
+    // against the ~16.7 ms vsync — visible stutter. Same migration as MarqueeTextBlock,
+    // the lyrics scroll, and SmoothScrollBehavior.
+    private bool _marqueeRunning;
+    private bool _marqueeFrameQueued;
+    private long _marqueeLastTimestamp;
+    private int _marqueeResumeGeneration;
     private PlayerViewModel? _observedPlayerViewModel;
     private double _trackTitleOverflow;
+    private double _trackTitleTextWidth;
+    private double _trackTitleViewportWidth;
     private double _trackTitleOffset;
-    private int _trackTitleDirection = -1;
-    private double _trackTitlePauseRemainingMs = TrackTitleEdgePause.TotalMilliseconds;
+    private double _trackTitlePauseRemainingMs = TrackTitleRestPause.TotalMilliseconds;
     private bool _trackTitleUpdateScheduled;
     private bool _trackTitleResetPending;
     private const double SeekThumbSize = 12;
@@ -49,9 +58,10 @@ public partial class PlaybackBarView : UserControl
 
     // Artist name marquee state (syncs with title marquee via same timer)
     private double _artistNameOverflow;
+    private double _artistNameTextWidth;
+    private double _artistNameViewportWidth;
     private double _artistNameOffset;
-    private int _artistNameDirection = -1;
-    private double _artistNamePauseRemainingMs = TrackTitleEdgePause.TotalMilliseconds;
+    private double _artistNamePauseRemainingMs = TrackTitleRestPause.TotalMilliseconds;
     private bool _artistNameUpdateScheduled;
     private bool _artistNameResetPending;
 
@@ -115,7 +125,6 @@ public partial class PlaybackBarView : UserControl
         TrackTitleViewport.PropertyChanged += OnTrackTitleViewportPropertyChanged;
         ArtistNameTextBlock.PropertyChanged += OnArtistNameTextBlockPropertyChanged;
         ArtistNameViewport.PropertyChanged += OnArtistNameViewportPropertyChanged;
-        _trackTitleMarqueeTimer.Tick += OnTrackTitleMarqueeTick;
         AttachedToVisualTree += OnPlaybackBarAttachedToVisualTree;
         DetachedFromVisualTree += OnPlaybackBarDetachedFromVisualTree;
         DataContextChanged += OnPlaybackBarDataContextChanged;
@@ -286,6 +295,12 @@ public partial class PlaybackBarView : UserControl
         _trackTitleOverflow = hasOverflow && ExplicitBadge.IsVisible
             ? measuredOverflow + TrackTitleBadgeTrailingPadding
             : measuredOverflow;
+        // Loop geometry: the badge's trailing pad must clear the edge before the wrap,
+        // same reason it's added to the overflow above.
+        _trackTitleTextWidth = hasOverflow && ExplicitBadge.IsVisible
+            ? textWidth + TrackTitleBadgeTrailingPadding
+            : textWidth;
+        _trackTitleViewportWidth = viewportWidth;
         var shouldAnimate = vm.TrackTitleMarqueeEnabled && hasOverflow;
         if (!shouldAnimate)
         {
@@ -295,10 +310,11 @@ public partial class PlaybackBarView : UserControl
 
         SetTrackTitleWidth(double.NaN);
 
-        if (resetAnimation || _trackTitleOffset < -_trackTitleOverflow || _trackTitleOffset > 0)
+        // Keep the phase across benign re-measures; reset when asked or out of the
+        // loop's valid range (-textWidth, viewportWidth].
+        if (resetAnimation || _trackTitleOffset < -_trackTitleTextWidth || _trackTitleOffset > _trackTitleViewportWidth)
         {
-            _trackTitleDirection = -1;
-            _trackTitlePauseRemainingMs = TrackTitleEdgePause.TotalMilliseconds;
+            _trackTitlePauseRemainingMs = TrackTitleRestPause.TotalMilliseconds;
             SetTrackTitleOffset(0);
         }
 
@@ -320,29 +336,39 @@ public partial class PlaybackBarView : UserControl
     {
         // Opacity 0 means the bar is mounted but hidden behind the lyrics page; nothing
         // it animates can be seen, so a track change or a play/pause there must not
-        // restart the timer either.
-        if (_trackTitleMarqueeTimer.IsEnabled || VisualRoot == null || Opacity <= 0)
+        // restart the animation either.
+        if (_marqueeRunning || VisualRoot == null || Opacity <= 0)
             return;
 
-        _trackTitleMarqueeClock.Restart();
-        _trackTitleMarqueeTimer.Start();
+        _marqueeRunning = true;
+        _marqueeLastTimestamp = Stopwatch.GetTimestamp();
+        QueueMarqueeFrame();
     }
 
     private void StopTrackTitleMarqueeTimer()
     {
-        if (!_trackTitleMarqueeTimer.IsEnabled)
-            return;
+        _marqueeRunning = false;
+        _marqueeResumeGeneration++; // cancels any pending between-laps resume
+    }
 
-        _trackTitleMarqueeTimer.Stop();
-        _trackTitleMarqueeClock.Reset();
+    private void QueueMarqueeFrame()
+    {
+        if (!_marqueeRunning || _marqueeFrameQueued)
+            return;
+        if (TopLevel.GetTopLevel(this) is not { } topLevel)
+        {
+            StopTrackTitleMarqueeTimer();
+            return;
+        }
+        _marqueeFrameQueued = true;
+        topLevel.RequestAnimationFrame(OnMarqueeFrame);
     }
 
     private void ResetTrackTitleMarquee()
     {
         StopTrackTitleMarqueeTimer();
         _trackTitleOverflow = 0;
-        _trackTitleDirection = -1;
-        _trackTitlePauseRemainingMs = TrackTitleEdgePause.TotalMilliseconds;
+        _trackTitlePauseRemainingMs = TrackTitleRestPause.TotalMilliseconds;
         SetTrackTitleOffset(0);
     }
 
@@ -400,18 +426,22 @@ public partial class PlaybackBarView : UserControl
         return ExplicitBadge.DesiredSize.Width;
     }
 
-    private void OnTrackTitleMarqueeTick(object? sender, EventArgs e)
+    private void OnMarqueeFrame(TimeSpan frameTime)
     {
+        _marqueeFrameQueued = false;
+        if (!_marqueeRunning)
+            return;
+
         if (DataContext is not PlayerViewModel { State: PlaybackState.Playing, CurrentTrack: not null } vm)
         {
             StopTrackTitleMarqueeTimer();
             return;
         }
 
-        var elapsedMs = _trackTitleMarqueeClock.Elapsed.TotalMilliseconds;
-        _trackTitleMarqueeClock.Restart();
-        if (elapsedMs <= 0)
-            return;
+        var now = Stopwatch.GetTimestamp();
+        // Real elapsed time, clamped so a stalled UI thread can't produce one giant jump.
+        var elapsedMs = Math.Min((now - _marqueeLastTimestamp) * 1000.0 / Stopwatch.Frequency, 100);
+        _marqueeLastTimestamp = now;
 
         var titleActive = vm.TrackTitleMarqueeEnabled && _trackTitleOverflow > TrackTitleOverflowThreshold;
         var artistActive = vm.ArtistMarqueeEnabled && _artistNameOverflow > TrackTitleOverflowThreshold;
@@ -424,19 +454,50 @@ public partial class PlaybackBarView : UserControl
             return;
         }
 
-        // Tick title marquee
-        if (titleActive)
-            TickMarquee(elapsedMs, ref _trackTitleOffset, ref _trackTitleDirection,
-                ref _trackTitlePauseRemainingMs, _trackTitleOverflow, SetTrackTitleOffset);
+        if (elapsedMs > 0)
+        {
+            // Tick title marquee
+            if (titleActive)
+                TickMarquee(elapsedMs, _trackTitleOffset, ref _trackTitlePauseRemainingMs,
+                    _trackTitleTextWidth, _trackTitleViewportWidth, SetTrackTitleOffset);
 
-        // Tick artist marquee (same speed, independent phase)
-        if (artistActive)
-            TickMarquee(elapsedMs, ref _artistNameOffset, ref _artistNameDirection,
-                ref _artistNamePauseRemainingMs, _artistNameOverflow, SetArtistNameOffset);
+            // Tick artist marquee (same speed, independent phase)
+            if (artistActive)
+                TickMarquee(elapsedMs, _artistNameOffset, ref _artistNamePauseRemainingMs,
+                    _artistNameTextWidth, _artistNameViewportWidth, SetArtistNameOffset);
+        }
+
+        // While anything is mid-lap, ride the frame clock. When every active marquee is
+        // resting, sleep until the earliest rest expires instead of forcing continuous
+        // renders through a 7-second hold.
+        var wait = Math.Min(
+            titleActive ? _trackTitlePauseRemainingMs : double.PositiveInfinity,
+            artistActive ? _artistNamePauseRemainingMs : double.PositiveInfinity);
+        if (wait <= 0)
+        {
+            QueueMarqueeFrame();
+            return;
+        }
+
+        _marqueeRunning = false;
+        var generation = ++_marqueeResumeGeneration;
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (generation != _marqueeResumeGeneration)
+                return;
+            // Account for the slept time in BOTH rests — they have independent phases,
+            // and only the earliest one has necessarily expired.
+            _trackTitlePauseRemainingMs = Math.Max(0, _trackTitlePauseRemainingMs - wait);
+            _artistNamePauseRemainingMs = Math.Max(0, _artistNamePauseRemainingMs - wait);
+            StartTrackTitleMarqueeTimer();
+        }, TimeSpan.FromMilliseconds(wait));
     }
 
-    private void TickMarquee(double elapsedMs, ref double offset, ref int direction,
-        ref double pauseRemainingMs, double overflow, Action<double> setOffset)
+    /// <summary>Full-loop marquee step, matching MarqueeTextBlock: the text always travels
+    /// left; once its tail clears the viewport's left edge it wraps to just past the right
+    /// edge and slides back in; landing on the start position rests for RestPause.</summary>
+    private static void TickMarquee(double elapsedMs, double offset, ref double pauseRemainingMs,
+        double textWidth, double viewportWidth, Action<double> setOffset)
     {
         if (pauseRemainingMs > 0)
         {
@@ -444,18 +505,17 @@ public partial class PlaybackBarView : UserControl
             return;
         }
 
-        var nextOffset = offset + (direction * TrackTitleScrollSpeed * elapsedMs / 1000.0);
-        if (direction < 0 && nextOffset <= -overflow)
+        var nextOffset = offset - TrackTitleScrollSpeed * elapsedMs / 1000.0;
+        if (nextOffset <= -textWidth)
         {
-            nextOffset = -overflow;
-            direction = 1;
-            pauseRemainingMs = TrackTitleEdgePause.TotalMilliseconds;
+            nextOffset += textWidth + viewportWidth;
         }
-        else if (direction > 0 && nextOffset >= 0)
+        else if (offset > 0 && nextOffset <= 0)
         {
+            // Only a wrapped (incoming-from-the-right) pass crosses zero downward —
+            // the outbound pass STARTS at zero, so this never fires on the way out.
             nextOffset = 0;
-            direction = -1;
-            pauseRemainingMs = TrackTitleEdgePause.TotalMilliseconds;
+            pauseRemainingMs = TrackTitleRestPause.TotalMilliseconds;
         }
 
         setOffset(nextOffset);
@@ -525,6 +585,8 @@ public partial class PlaybackBarView : UserControl
             return;
 
         _artistNameOverflow = Math.Max(0, textWidth - viewportWidth);
+        _artistNameTextWidth = textWidth;
+        _artistNameViewportWidth = viewportWidth;
         var hasOverflow = _artistNameOverflow > TrackTitleOverflowThreshold;
         var shouldAnimate = vm.ArtistMarqueeEnabled && hasOverflow;
         if (!shouldAnimate)
@@ -535,10 +597,11 @@ public partial class PlaybackBarView : UserControl
 
         SetArtistNameWidth(double.NaN);
 
-        if (resetAnimation || _artistNameOffset < -_artistNameOverflow || _artistNameOffset > 0)
+        // Keep the phase across benign re-measures; reset when asked or out of the
+        // loop's valid range (-textWidth, viewportWidth].
+        if (resetAnimation || _artistNameOffset < -_artistNameTextWidth || _artistNameOffset > _artistNameViewportWidth)
         {
-            _artistNameDirection = -1;
-            _artistNamePauseRemainingMs = TrackTitleEdgePause.TotalMilliseconds;
+            _artistNamePauseRemainingMs = TrackTitleRestPause.TotalMilliseconds;
             SetArtistNameOffset(0);
         }
 
@@ -559,8 +622,7 @@ public partial class PlaybackBarView : UserControl
     private void ResetArtistNameMarquee()
     {
         _artistNameOverflow = 0;
-        _artistNameDirection = -1;
-        _artistNamePauseRemainingMs = TrackTitleEdgePause.TotalMilliseconds;
+        _artistNamePauseRemainingMs = TrackTitleRestPause.TotalMilliseconds;
         SetArtistNameOffset(0);
     }
 
