@@ -1320,6 +1320,17 @@ public partial class PlayerViewModel : ViewModelBase
         if (!_isSeeking) return; // already ended — prevent duplicate seeks
         _isSeeking = false;
 
+        // A committed seek cancels the player's prepared/staged next track
+        // (Seek → CancelPreparedNext), but this path never re-armed the prepare
+        // latch — so a seek inside the prepare window left the transition with
+        // "no prepared standby" and an audible cold fallback. Re-arm: the next
+        // position tick re-prepares (a no-op duplicate if the standby survived).
+        if (!_autoMixAdvanceQueued)
+        {
+            _autoMixPreparedTrackId = Guid.Empty;
+            _autoMixPreparedSnapshot = null;
+        }
+
         if (CurrentTrack == null || Duration <= TimeSpan.Zero)
             return;
 
@@ -2150,13 +2161,16 @@ public partial class PlayerViewModel : ViewModelBase
             false,
             _settings?.CrossfadeDuration ?? 6);
 
-    // Gapless timing: pre-decode the next track on the standby player well before
-    // the end, then advance just inside the final position tick so the handoff in
-    // VlcAudioPlayer starts the prepared player with no audible gap. The handoff
-    // lead must stay above one position-timer period (100ms) or the end can slip
-    // past us into the EndReached path.
+    // Gapless timing: pre-roll the next track on the standby player well before
+    // the end (input opened paused on its first frame), then advance ahead of the
+    // final position ticks; the handoff in VlcAudioPlayer holds the swap until the
+    // outgoing input actually ends and resumes the pre-rolled standby at that
+    // moment, so a larger lead only buys dispatch margin — it no longer trims the
+    // outgoing tail or starts the next track early. The lead must stay above one
+    // position-timer period (100ms) or the end can slip past us into the
+    // EndReached path; 0.5s also rides out a stalled tick (PositionTimer.Stall).
     private const double GaplessPrepareLeadSeconds = 8.0;
-    private const double GaplessHandoffLeadSeconds = 0.3;
+    private const double GaplessHandoffLeadSeconds = 0.5;
 
     // AutoMix overlap blend: both tracks play together through the crossover. The blend is
     // triggered AutoMixOverlapSeconds (plus a small margin so the old stops just before its

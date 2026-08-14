@@ -185,7 +185,40 @@ public class LyricsSearchEndToEndTests
     // ── Message precedence: instrumental > provider error > not found ──
 
     [AvaloniaFact]
-    public async Task ProviderError_NoOtherResults_ShowsConnectionMessage_NotNoLyricsFound()
+    public async Task AllProvidersErrored_ShowsConnectionMessage_NotNoLyricsFound()
+    {
+        var lrcLib = new StubLrcLib { GetImpl = _ => Task.FromException<LrcLibResult?>(ProviderError()) };
+        var netEase = new StubNetEase { Impl = () => Task.FromException<LrcLibResult?>(ProviderError()) };
+        var (vm, _, track) = Mount(lrcLib, netEase);
+
+        vm.SearchLyricsForTrack(track);
+        await PumpUntilAsync(SearchSettled(vm, lrcLib, netEase));
+
+        Assert.Equal("Search failed — check your internet connection.", vm.SearchFailedMessage);
+        Assert.True(vm.ShowSearchButton);
+        Assert.Empty(vm.LyricLines);
+    }
+
+    [AvaloniaFact]
+    public async Task NetEaseErrored_LrcLibAnsweredEmpty_ShowsNoLyricsFound()
+    {
+        // A provider that answered — even empty-handed — proves the connection
+        // works. Blaming the internet here made every LRCLIB miss read as a
+        // network failure whenever the other provider was down or unusable.
+        var lrcLib = new StubLrcLib(); // get null, search empty — a definitive answer
+        var netEase = new StubNetEase { Impl = () => Task.FromException<LrcLibResult?>(ProviderError()) };
+        var (vm, _, track) = Mount(lrcLib, netEase);
+
+        vm.SearchLyricsForTrack(track);
+        await PumpUntilAsync(SearchSettled(vm, lrcLib, netEase));
+
+        Assert.Equal("No Lyrics found.", vm.SearchFailedMessage);
+        Assert.True(vm.ShowSearchButton);
+        Assert.Empty(vm.LyricLines);
+    }
+
+    [AvaloniaFact]
+    public async Task LrcLibErrored_NetEaseAnsweredEmpty_ShowsNoLyricsFound()
     {
         var lrcLib = new StubLrcLib { GetImpl = _ => Task.FromException<LrcLibResult?>(ProviderError()) };
         var netEase = new StubNetEase(); // definitive miss
@@ -194,7 +227,7 @@ public class LyricsSearchEndToEndTests
         vm.SearchLyricsForTrack(track);
         await PumpUntilAsync(SearchSettled(vm, lrcLib, netEase));
 
-        Assert.Equal("Search failed — check your internet connection.", vm.SearchFailedMessage);
+        Assert.Equal("No Lyrics found.", vm.SearchFailedMessage);
         Assert.True(vm.ShowSearchButton);
         Assert.Empty(vm.LyricLines);
     }

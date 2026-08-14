@@ -77,9 +77,10 @@ public sealed class UpdateService
 
     /// <summary>
     /// True when the in-app installer is the right update mechanism: a Windows copy
-    /// installed by the Inno setup, a macOS .dmg build, or a Linux AppImage (which can
-    /// swap itself in place). False for Scoop / portable / tar.gz copies, where the
-    /// in-app installer would create a second, parallel install.
+    /// installed by the Inno setup, a macOS .dmg build, a Linux AppImage (which swaps
+    /// itself in place), or a user-writable Linux tar.gz copy (which extracts the new
+    /// build over itself). False for Scoop / Windows-portable / non-writable copies,
+    /// where the in-app installer would create a second, parallel install or fail.
     /// </summary>
     public static bool SupportsInAppUpdate => Source == InstallSource.Installed;
 
@@ -99,20 +100,41 @@ public sealed class UpdateService
         if (OperatingSystem.IsWindows())
             return ClassifyInstall(AppContext.BaseDirectory, TryGetInnoInstallLocation());
 
-        // Linux: only an AppImage launch can self-update (the updater swaps the single
-        // AppImage file, whose path the runtime exposes in $APPIMAGE). A tar.gz /
-        // manually-extracted copy has no single artifact to replace, so treat it as
-        // portable and steer the user to GitHub.
+        // Linux: an AppImage launch self-updates by swapping the single AppImage file
+        // (path exposed in $APPIMAGE). Everything else is a tar.gz / manually-extracted
+        // copy — the CI tarballs are flat archives of the publish folder, so the updater
+        // can extract the new build straight over BaseDirectory, provided this user can
+        // actually write there (an extract into e.g. /opt owned by root must keep
+        // steering to GitHub instead of failing the apply script halfway).
         if (OperatingSystem.IsLinux())
         {
             var appImage = Environment.GetEnvironmentVariable("APPIMAGE");
-            return !string.IsNullOrEmpty(appImage) && File.Exists(appImage)
+            if (!string.IsNullOrEmpty(appImage) && File.Exists(appImage))
+                return InstallSource.Installed;
+
+            return IsDirectoryWritable(AppContext.BaseDirectory)
                 ? InstallSource.Installed
                 : InstallSource.Portable;
         }
 
         // macOS .dmg drag-install always applies.
         return InstallSource.Installed;
+    }
+
+    /// <summary>Probes write access by creating (and auto-deleting) a zero-byte file —
+    /// permission bits alone can't answer this on Unix (ACLs, read-only mounts, sandboxes).</summary>
+    private static bool IsDirectoryWritable(string directory)
+    {
+        try
+        {
+            var probe = Path.Combine(directory, $".noctis-write-probe-{Guid.NewGuid():N}");
+            using (new FileStream(probe, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose)) { }
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -327,10 +349,11 @@ public sealed class UpdateService
     /// <summary>
     /// Picks the release asset the in-app updater can install on this platform:
     /// Windows gets the Inno Setup exe ("Noctis-Setup.exe"), macOS gets the
-    /// per-architecture disk image ("Noctis-osx-arm64.dmg"), and Linux x64 gets the
-    /// AppImage ("Noctis-x86_64.AppImage"), which the updater swaps in place. Linux
-    /// arm64 ships only a tar.gz (no AppImage), so no asset matches and the UI falls
-    /// back to pointing at the GitHub release page.
+    /// per-architecture disk image ("Noctis-osx-arm64.dmg"). Linux picks by how this
+    /// copy runs: an AppImage launch gets "Noctis-x86_64.AppImage" (swapped in place;
+    /// x64 only — CI packages no arm64 AppImage), any other launch gets the flat
+    /// per-architecture tarball ("Noctis-linux-x64.tar.gz" / "Noctis-linux-arm64.tar.gz")
+    /// that the updater extracts over the install directory.
     /// </summary>
     private static GitHubAsset? FindInstallerAsset(GitHubRelease release)
     {
@@ -355,15 +378,32 @@ public sealed class UpdateService
 
         if (OperatingSystem.IsLinux())
         {
-            // Only x64 ships a self-contained AppImage the updater can swap in place;
-            // arm64 ships a tar.gz only, so it falls back to the "visit GitHub" path.
-            if (RuntimeInformation.OSArchitecture != Architecture.X64)
+            // An AppImage launch updates by swapping the AppImage file (x64 is the only
+            // arch CI packages one for). Every other Linux copy updates by extracting
+            // the matching flat tarball over itself — which is also the only update
+            // path that exists on arm64.
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APPIMAGE")))
+            {
+                if (RuntimeInformation.OSArchitecture != Architecture.X64)
+                    return null;
+
+                // Pinned to the exact CI asset name so a future release shipping multiple
+                // AppImages can't ambiguously match the wrong one.
+                return release.Assets.FirstOrDefault(a =>
+                    string.Equals(a.Name, "Noctis-x86_64.AppImage", StringComparison.OrdinalIgnoreCase));
+            }
+
+            var tarball = RuntimeInformation.OSArchitecture switch
+            {
+                Architecture.X64 => "Noctis-linux-x64.tar.gz",
+                Architecture.Arm64 => "Noctis-linux-arm64.tar.gz",
+                _ => null
+            };
+            if (tarball is null)
                 return null;
 
-            // Pinned to the exact CI asset name so a future release shipping multiple
-            // AppImages can't ambiguously match the wrong one.
             return release.Assets.FirstOrDefault(a =>
-                string.Equals(a.Name, "Noctis-x86_64.AppImage", StringComparison.OrdinalIgnoreCase));
+                string.Equals(a.Name, tarball, StringComparison.OrdinalIgnoreCase));
         }
 
         return null;
@@ -378,6 +418,11 @@ public sealed class UpdateService
     /// (e.g. "SHA256SUMS" or "checksums.txt"). When present, the downloaded installer is
     /// verified against it before launch; when absent, the updater falls back to size-only.
     /// </summary>
+    /// <summary>Temp-file extension for the Linux download — must match what
+    /// FindInstallerAsset selected: AppImage when running as one, tarball otherwise.</summary>
+    private static string LinuxInstallerExtension()
+        => string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APPIMAGE")) ? ".tar.gz" : ".AppImage";
+
     private static GitHubAsset? FindChecksumsAsset(GitHubRelease release)
         => release.Assets?.FirstOrDefault(a =>
             a.Name != null &&
@@ -432,7 +477,7 @@ public sealed class UpdateService
         var runTag = Guid.NewGuid().ToString("N")[..8];
         var tempPath = destinationPath ?? Path.Combine(Path.GetTempPath(),
             OperatingSystem.IsMacOS() ? $"Noctis-Update-{runTag}.dmg"
-            : OperatingSystem.IsLinux() ? $"Noctis-Update-{runTag}.AppImage"
+            : OperatingSystem.IsLinux() ? $"Noctis-Update-{runTag}{LinuxInstallerExtension()}"
             : $"Noctis-Update-{runTag}-Setup.exe");
 
         try
@@ -585,28 +630,59 @@ public sealed class UpdateService
 
         if (OperatingSystem.IsLinux())
         {
+            // Single-quote paths for the shell, escaping any embedded single quotes.
+            static string Sh(string s) => "'" + s.Replace("'", "'\\''") + "'";
+            var pid = Environment.ProcessId;
+
             // AppImage self-update: the running file's absolute path is exposed in
             // $APPIMAGE. Replace it with the freshly downloaded (already size/SHA-256
             // verified) build and relaunch. A detached shell waits for THIS process to
             // exit first so the file isn't swapped mid-run — mirroring how the Windows
             // installer waits for the app to close before replacing it.
             var target = Environment.GetEnvironmentVariable("APPIMAGE");
-            if (string.IsNullOrEmpty(target) || !File.Exists(target))
+            if (!string.IsNullOrEmpty(target) && File.Exists(target))
             {
-                Debug.WriteLine("[UpdateService] Not running as an AppImage ($APPIMAGE unset); cannot self-update.");
+                try
+                {
+                    var script =
+                        $"while kill -0 {pid} 2>/dev/null; do sleep 0.2; done; " +
+                        $"mv -f {Sh(installerPath)} {Sh(target)} && chmod +x {Sh(target)} && " +
+                        $"nohup {Sh(target)} >/dev/null 2>&1 &";
+
+                    var proc = Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "/bin/sh",
+                        ArgumentList = { "-c", script },
+                        UseShellExecute = false
+                    });
+                    return proc is not null;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[UpdateService] LaunchInstaller (AppImage swap) failed: {ex.Message}");
+                    return false;
+                }
+            }
+
+            // Flat tar.gz install: extract the verified tarball straight over this copy
+            // once the process has exited, then relaunch the new binary. CI builds these
+            // archives with `tar -C publish/<rid> .`, so entries sit at the archive root
+            // and land directly in BaseDirectory. DetectSource has already probed the
+            // directory for write access before any UI offered this path.
+            var installDir = AppContext.BaseDirectory.TrimEnd('/');
+            var exe = Path.Combine(installDir, "Noctis");
+            if (!File.Exists(exe))
+            {
+                Debug.WriteLine("[UpdateService] tar.gz self-update: no Noctis binary beside this process; cannot self-update.");
                 return false;
             }
 
             try
             {
-                // Single-quote paths for the shell, escaping any embedded single quotes.
-                static string Sh(string s) => "'" + s.Replace("'", "'\\''") + "'";
-
-                var pid = Environment.ProcessId;
                 var script =
                     $"while kill -0 {pid} 2>/dev/null; do sleep 0.2; done; " +
-                    $"mv -f {Sh(installerPath)} {Sh(target)} && chmod +x {Sh(target)} && " +
-                    $"nohup {Sh(target)} >/dev/null 2>&1 &";
+                    $"tar -xzf {Sh(installerPath)} -C {Sh(installDir)} && rm -f {Sh(installerPath)} && " +
+                    $"chmod +x {Sh(exe)} && nohup {Sh(exe)} >/dev/null 2>&1 &";
 
                 var proc = Process.Start(new ProcessStartInfo
                 {
@@ -618,7 +694,7 @@ public sealed class UpdateService
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[UpdateService] LaunchInstaller (AppImage swap) failed: {ex.Message}");
+                Debug.WriteLine($"[UpdateService] LaunchInstaller (tar.gz extract) failed: {ex.Message}");
                 return false;
             }
         }

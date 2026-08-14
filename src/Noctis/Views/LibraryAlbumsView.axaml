@@ -31,7 +31,7 @@
 
         <!-- Content area with overlay for empty state -->
         <Grid>
-            <!-- Album grid: outer ListBox virtualizes rows, inner UniformGrid lays out 5 columns per row -->
+            <!-- Album grid: outer ListBox virtualizes rows, inner UniformGrid lays out GridColumns per row -->
             <ListBox x:Name="AlbumListBox"
                      ItemsSource="{Binding FilteredAlbumRows}"
                      Background="Transparent"
@@ -183,7 +183,8 @@
                                       Height="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TileRowHeight}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <UniformGrid Columns="5" Rows="1" />
+                                    <!-- Column count mirrors the VM's row chunk size (cover-size setting) -->
+                                    <UniformGrid Columns="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).GridColumns}" Rows="1" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>

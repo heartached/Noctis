@@ -117,20 +117,17 @@ public partial class FavoritesView : UserControl
         if (e.NewSize.Width <= 0 || DataContext is not FavoritesViewModel vm)
             return;
 
-        // DockPanel has Margin="12,8,12,8" → 24px horizontal margin
-        // Each tile has Margin="2" (4px horiz) + Button Padding="2" (4px horiz)
+        // DockPanel has Margin="12,8,12,8" → 24px horizontal margin.
+        // Column count and tile size (each tile carries 8px of margin+padding chrome)
+        // are computed in the view model, which folds in the cover-size setting.
         var usable = e.NewSize.Width - 24;
-        var tileContentWidth = usable / 5.0 - 8;
-        var newSize = Math.Max(80, tileContentWidth);
-
-        if (Math.Abs(newSize - vm.TileArtworkSize) < 0.5)
-            return;
 
         // Save and restore scroll position so sidebar hover doesn't reset scroll
         var sv = FavoritesList.FindDescendantOfType<ScrollViewer>();
         var savedY = sv?.Offset.Y ?? 0;
 
-        vm.TileArtworkSize = newSize;
+        if (!vm.UpdateGridMetrics(usable))
+            return;
 
         if (sv != null && savedY > 0)
         {

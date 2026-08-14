@@ -79,6 +79,19 @@ public class NetEaseService : INetEaseService
         response.EnsureSuccessStatusCode();
 
         var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
+
+        // For IPs outside mainland China this endpoint answers 200 with
+        // "abroad": true and "result" as an opaque encrypted hex STRING instead
+        // of the songs object. The provider answered — that is a definitive
+        // miss, not a transfer error.
+        using (var probe = JsonDocument.Parse(json))
+        {
+            if (probe.RootElement.ValueKind == JsonValueKind.Object &&
+                probe.RootElement.TryGetProperty("result", out var resultEl) &&
+                resultEl.ValueKind == JsonValueKind.String)
+                return null;
+        }
+
         var searchResult = JsonSerializer.Deserialize<NetEaseSearchResponse>(json);
 
         var songs = searchResult?.Result?.Songs;

@@ -19,6 +19,7 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     public const int ArtistsPerRow = 7;
 
     private readonly ILibraryService _library;
+    private readonly FavoriteArtistsService _favoriteArtists = new();
     private ArtistImageService? _artistImageService;
 
     private List<Artist> _allArtists = new();
@@ -91,6 +92,8 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         _isDirty = false;
 
         _allArtists = _library.Artists.ToList();
+        foreach (var artist in _allArtists)
+            artist.IsFavorite = _favoriteArtists.IsFavorite(artist.Name);
         ApplyFilter(_currentFilter);
 
         // Clearing ImagePath for portraits whose file has gone missing used to be a
@@ -181,6 +184,9 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
 
     private static List<ArtistRow> BuildRows(List<Artist> allArtists, string query)
     {
+        // Favorites float to the top, alphabetical among themselves (GitHub #41).
+        // Under a search they only break ties within the same match rank, so the
+        // relevance ordering stays intact.
         IEnumerable<Artist> filtered;
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -189,11 +195,14 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
             filtered = allArtists
                 .Where(a => MatchesSearch(a.Name, q, qNoSpaces))
                 .OrderBy(a => RankMatch(a.Name, q, qNoSpaces))
+                .ThenByDescending(a => a.IsFavorite)
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
         else
         {
-            filtered = allArtists.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
+            filtered = allArtists
+                .OrderByDescending(a => a.IsFavorite)
+                .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
 
         // Chunk into fixed-width rows so the outer ListBox can virtualize
@@ -242,6 +251,21 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     private void OpenArtist(Artist artist)
     {
         ArtistOpened?.Invoke(this, artist);
+    }
+
+    /// <summary>
+    /// Toggles the artist's favorite flag (GitHub #41): favorites float to the top of
+    /// the grid and carry an accent star. Persisted by name, then the rows rebuild so
+    /// the re-sort and the star land immediately.
+    /// </summary>
+    public void ToggleFavoriteArtist(Artist artist)
+    {
+        if (artist == null) return;
+
+        var favorite = !_favoriteArtists.IsFavorite(artist.Name);
+        _favoriteArtists.SetFavorite(artist.Name, favorite);
+        artist.IsFavorite = favorite;
+        ApplyFilter(_currentFilter);
     }
 
     /// <summary>

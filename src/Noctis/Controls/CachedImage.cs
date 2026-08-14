@@ -109,12 +109,21 @@ public class CachedImage : Image
 
         // Slow path: load on background thread to avoid blocking UI.
         //
+        // Before blanking, check whether ANY width bucket holds this artwork — a decode
+        // from another surface (album grid at 768, songs list at 256, …) is pixel-correct
+        // for this control too, just resampled. Painting it immediately removes the
+        // blank-then-pop flicker on surfaces whose own bucket is cold, e.g. the
+        // Add-to-Playlist thumbnails. The exact-width decode still runs and swaps in.
+        // This is safe for recycled list containers: the fallback is the NEW item's art.
+        var fallback = ArtworkCache.TryGetAnyWidth(path, decodeWidth);
+        if (fallback != null)
+            Source = fallback;
         // Keeping the previous Source visible avoids a placeholder flash on every track
         // switch — correct for the player's single cover, wrong for a virtualized list,
         // where a recycled container gets a new SourcePath and keeps rendering the
         // PREVIOUS item's art until the decode lands. Scrolling a large grid past the
         // cache budget therefore showed a trail of wrong covers.
-        if (ClearOnSourceChange)
+        else if (ClearOnSourceChange)
             Source = null;
 
         try

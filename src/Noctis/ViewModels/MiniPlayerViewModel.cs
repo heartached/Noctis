@@ -128,13 +128,16 @@ public partial class MiniPlayerViewModel : ViewModelBase
             Drawer = MiniDrawer.None;
     }
 
-    /// <summary>Canonical size for a form, used when a menu action jumps straight to it.</summary>
+    /// <summary>Canonical size for a form, used when a menu action jumps straight to it.
+    /// Proportions follow the iOS Live-Activity references: the Bar is chunkier than a
+    /// strip (~2.2:1) and the Lyrics split is closer to 1.55:1 so the flow gets more
+    /// vertical room. Each size must still land in its own form through ComputeForm.</summary>
     public static (double Width, double Height) CanonicalSize(MiniPlayerForm form) => form switch
     {
         MiniPlayerForm.Icon => (176, 176),
-        MiniPlayerForm.Bar => (420, 172),
+        MiniPlayerForm.Bar => (420, 188),
         MiniPlayerForm.LargeIcon => (340, 520),
-        MiniPlayerForm.Lyrics => (640, 384),
+        MiniPlayerForm.Lyrics => (640, 412),
         _ => (340, 432),
     };
 
