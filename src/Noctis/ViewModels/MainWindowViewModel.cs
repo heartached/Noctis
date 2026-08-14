@@ -345,7 +345,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 _foldersVm.Refresh();
             });
         };
-        _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar);
+        _favoritesVm = new FavoritesViewModel(Player, library, persistence, Sidebar, Settings);
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
         _statisticsVm = new StatisticsViewModel(library, playHistory);
@@ -1446,12 +1446,32 @@ public partial class MainWindowViewModel : ViewModelBase
     /// the sidebar only updates its own selection on direct clicks.</summary>
     private void SyncSidebarSelectionToHistoryEntry(NavigationEntry target)
     {
-        NavItem? item = target.View is PlaylistViewModel playlistView
-            ? Sidebar.PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistView.PlaylistId)
-            : Sidebar.NavItems.FirstOrDefault(n => n.Key == target.SectionKey)
-              ?? Sidebar.FavoritesItems.FirstOrDefault(n => n.Key == target.SectionKey);
+        // Detail views map to their conceptual section, not the section the user came
+        // from — an album page restored via Forward highlights Albums, mirroring
+        // HighlightSidebarSection in the direct-open paths.
+        NavItem? item = target.View switch
+        {
+            PlaylistViewModel playlistView => Sidebar.PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistView.PlaylistId),
+            AlbumDetailViewModel => Sidebar.NavItems.FirstOrDefault(n => n.Key == "albums"),
+            MoreByArtistViewModel => Sidebar.NavItems.FirstOrDefault(n => n.Key == "artists"),
+            _ when ReferenceEquals(target.View, _albumsVm) => Sidebar.NavItems.FirstOrDefault(n => n.Key == "albums"),
+            _ => Sidebar.NavItems.FirstOrDefault(n => n.Key == target.SectionKey)
+                 ?? Sidebar.FavoritesItems.FirstOrDefault(n => n.Key == target.SectionKey)
+        };
 
         // Views without a sidebar entry (queue, lyrics, …) keep the current highlight.
+        if (item != null)
+            Sidebar.SetSelectedNavItemSilently(item);
+    }
+
+    /// <summary>Moves the sidebar highlight to a section without navigating. Detail pages
+    /// (album detail, artist discography) conceptually live under Albums/Artists; leaving
+    /// the highlight on the origin section made the sidebar lie — and made escaping the
+    /// detail page via that section a dead same-item click (GitHub issue by Luwi).</summary>
+    private void HighlightSidebarSection(string key)
+    {
+        var item = Sidebar.NavItems.FirstOrDefault(n => n.Key == key)
+                ?? Sidebar.FavoritesItems.FirstOrDefault(n => n.Key == key);
         if (item != null)
             Sidebar.SetSelectedNavItemSilently(item);
     }
@@ -1853,6 +1873,12 @@ public partial class MainWindowViewModel : ViewModelBase
         detail.SetViewArtistAction(ViewArtistByName);
         detail.SetOpenFeaturedArtistsAction(OpenPlaylistFeaturedArtistsPage);
         CurrentView = detail;
+
+        // Highlight the playlist's own sidebar row (if it has one) so the origin
+        // section doesn't stay lit — same-item clicks there would be dead.
+        var row = Sidebar.PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlist.Id);
+        if (row != null)
+            Sidebar.SetSelectedNavItemSilently(row);
     }
 
     private void OnViewAlbumFromTrack(object? sender, Track track)
@@ -1893,6 +1919,7 @@ public partial class MainWindowViewModel : ViewModelBase
         detail.SetSearchLyricsAction(SearchLyricsForTrack);
         detail.SetOpenMoreByArtistAction(OpenMoreByArtistPage);
         CurrentView = detail;
+        HighlightSidebarSection("albums");
         TopBar.ShowAlbumDetailBackButton(GetCurrentAlbumDetailBackButtonText(), GoBackInHistoryCommand);
     }
 
@@ -1908,6 +1935,7 @@ public partial class MainWindowViewModel : ViewModelBase
         page.BackRequested += (_, _) => GoBackInHistory();
         page.AlbumOpened += (_, album) => OpenAlbumDetail(album);
         CurrentView = page;
+        HighlightSidebarSection("artists");
         TopBar.ShowArtistActions(page.ShuffleAllCommand, page.PlayAllCommand);
         RefreshBackButton();
     }
@@ -1921,6 +1949,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (!ReferenceEquals(CurrentView, _albumsVm))
             CurrentView = _albumsVm;
+        HighlightSidebarSection("artists");
 
         TopBar.ShowArtistActions(
             _albumsVm.ShuffleAllArtistTracksCommand,
@@ -2225,6 +2254,9 @@ public partial class MainWindowViewModel : ViewModelBase
         if (CurrentView == _statisticsVm) return "statistics";
         if (CurrentView == _serverVm) return "server";
         if (CurrentView == Settings) return "settings";
+        if (CurrentView is AlbumDetailViewModel) return "albums";
+        if (CurrentView is MoreByArtistViewModel) return "artists";
+        if (CurrentView is PlaylistViewModel) return "playlists";
         return "home";
     }
 

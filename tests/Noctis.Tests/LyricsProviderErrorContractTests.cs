@@ -152,4 +152,21 @@ public class LyricsProviderErrorContractTests
             Response(HttpStatusCode.OK, "not json"))));
         await Assert.ThrowsAsync<LyricsProviderException>(() => svc.SearchLyricsAsync("Artist", "Title", 200));
     }
+
+    [Fact]
+    public async Task NetEase_abroadEncryptedResult_isDefinitiveMiss_andCached()
+    {
+        // For IPs outside mainland China the search endpoint answers 200 with
+        // "abroad": true and "result" as an opaque encrypted hex STRING instead
+        // of the songs object. The provider is up and answering — treating the
+        // unusable payload as a transfer error turned every overseas search into
+        // a fake "check your internet connection" upstream.
+        var handler = new StubHandler(_ => Response(HttpStatusCode.OK,
+            "{\"result\":\"35b1748964af8a7c1d883e3a6f3c773b\",\"abroad\":true,\"code\":200}"));
+        var svc = new NetEaseService(new HttpClient(handler));
+
+        Assert.Null(await svc.SearchLyricsAsync("Artist", "Title", 200));
+        Assert.Null(await svc.SearchLyricsAsync("Artist", "Title", 200));
+        Assert.Equal(1, handler.RequestCount); // definitive miss → cached
+    }
 }

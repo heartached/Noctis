@@ -245,15 +245,27 @@ public class AppSettings
 
     /// <summary>Opacity of the mini player card's glass fill (0 = fully transparent,
     /// 1 = solid). Background only — the artwork wash, sheen and contents are unaffected.
-    /// Default 0.55 leaves the desktop clearly readable through the card while keeping
-    /// white text legible over a bright wallpaper.</summary>
-    public double MiniPlayerBackgroundOpacity { get; set; } = 0.55;
+    /// Default 0.35 keeps the card distinctly see-through (iOS Live-Activity glass);
+    /// the artwork wash and scrim layers carry text legibility over bright wallpapers.</summary>
+    public double MiniPlayerBackgroundOpacity { get; set; } = 0.35;
 
     /// <summary>User-chosen width of the floating playback bar island, set by dragging its
     /// edges (double-click a grip resets). 590 is the classic full layout; 340 is the
     /// smallest proven layout (the lyrics-page compact pill). The window clamps the upper
     /// end live, so only a sanity ceiling is stored.</summary>
     public double PlaybackBarWidth { get; set; } = 590;
+
+    /// <summary>Album cover sizing mode for the Albums/Favorites grids. True (default) keeps
+    /// the classic layout — five covers per row, covers scale with the window — so existing
+    /// installs look unchanged. False derives the column count from
+    /// <see cref="AlbumTileTargetSize"/> instead, so covers stay near the chosen size on any
+    /// window width (the ultrawide fix).</summary>
+    public bool AlbumTileSizeAuto { get; set; } = true;
+
+    /// <summary>Target artwork edge (px) for album covers when <see cref="AlbumTileSizeAuto"/>
+    /// is off. The grid picks however many columns land nearest this size and stretches tiles
+    /// to fill the row. 220 mirrors the classic five-per-row look at a typical window width.</summary>
+    public double AlbumTileTargetSize { get; set; } = 220;
 
     /// <summary>Whether the sidebar expands on hover (with its slide animation). When false the
     /// sidebar stays in the icon-only rail and never expands. Off by default: the rail should
@@ -440,7 +452,11 @@ public class AppSettings
         // IsFinite first: Math.Clamp propagates NaN, and NaN here would erase the card fill.
         MiniPlayerBackgroundOpacity = double.IsFinite(MiniPlayerBackgroundOpacity)
             ? Math.Clamp(MiniPlayerBackgroundOpacity, 0, 1)
-            : 0.55;
+            : 0.35;
+        // IsFinite first: a NaN target would poison the album-grid column math.
+        AlbumTileTargetSize = double.IsFinite(AlbumTileTargetSize)
+            ? Math.Clamp(AlbumTileTargetSize, Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize)
+            : 220;
         // IsFinite first: Math.Clamp propagates NaN, and a NaN width would wedge the bar.
         PlaybackBarWidth = double.IsFinite(PlaybackBarWidth)
             ? Math.Clamp(PlaybackBarWidth, 340, 4096)

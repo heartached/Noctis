@@ -75,6 +75,14 @@
                                             CommandParameter="{Binding}">
                                         <Button.ContextMenu>
                                             <ContextMenu DataContext="{Binding}">
+                                                <!-- Favorite toggle (GitHub #41). IsFavorite isn't observable;
+                                                     the rows re-materialize after every toggle, so the next
+                                                     open shows the right item — same deal as Remove Picture. -->
+                                                <MenuItem Header="Set as Favorite" Click="OnToggleFavoriteArtistClick"
+                                                          IsVisible="{Binding !IsFavorite}" />
+                                                <MenuItem Header="Remove from Favorites" Click="OnToggleFavoriteArtistClick"
+                                                          IsVisible="{Binding IsFavorite}" />
+                                                <Separator />
                                                 <MenuItem Header="Choose from File" Click="OnChangeArtistImageClick" />
                                                 <MenuItem Header="Find Picture Online" Click="OnSearchArtistImageClick" />
                                                 <MenuItem Header="Remove Picture" Classes="danger" Click="OnRemoveArtistImageClick"
@@ -83,25 +91,42 @@
                                         </Button.ContextMenu>
                                         <StackPanel Spacing="10" HorizontalAlignment="Center">
                                             <!-- Circular portrait with icon fallback -->
-                                            <Border Width="124" Height="124"
-                                                    CornerRadius="62"
-                                                    Background="#2E2E2E"
-                                                    ClipToBounds="True"
-                                                    HorizontalAlignment="Center">
-                                                <Panel>
-                                                    <PathIcon Data="{StaticResource ArtistsIcon}"
-                                                              Width="44"
-                                                              Height="44"
+                                            <Panel HorizontalAlignment="Center">
+                                                <Border Width="124" Height="124"
+                                                        CornerRadius="62"
+                                                        Background="#2E2E2E"
+                                                        ClipToBounds="True"
+                                                        HorizontalAlignment="Center">
+                                                    <Panel>
+                                                        <PathIcon Data="{StaticResource ArtistsIcon}"
+                                                                  Width="44"
+                                                                  Height="44"
+                                                                  HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"
+                                                                  Opacity="0.35" />
+                                                        <ctrl:CachedImage SourcePath="{Binding ImagePath}"
+                                                                          Stretch="UniformToFill"
+                                                                          Width="124"
+                                                                          Height="124"
+                                                                          IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                    </Panel>
+                                                </Border>
+                                                <!-- Favorite star (GitHub #41): accent-colored, riding the
+                                                     portrait's bottom-right rim. Sibling of the clipped circle,
+                                                     not a child, so the corner doesn't slice it; the dark disc
+                                                     keeps it readable over any photo. -->
+                                                <Border Width="26" Height="26" CornerRadius="13"
+                                                        Background="#D91E1E24"
+                                                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                        Margin="0,0,2,2"
+                                                        IsVisible="{Binding IsFavorite}">
+                                                    <PathIcon Data="{StaticResource StarIcon}"
+                                                              Width="15" Height="15"
+                                                              Foreground="{DynamicResource AccentColorBrush}"
                                                               HorizontalAlignment="Center"
-                                                              VerticalAlignment="Center"
-                                                              Opacity="0.35" />
-                                                    <ctrl:CachedImage SourcePath="{Binding ImagePath}"
-                                                                      Stretch="UniformToFill"
-                                                                      Width="124"
-                                                                      Height="124"
-                                                                      IsVisible="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                                </Panel>
-                                            </Border>
+                                                              VerticalAlignment="Center" />
+                                                </Border>
+                                            </Panel>
                                             <ctrl:HighlightTextBlock DisplayText="{Binding Name}"
                                                                      HighlightText="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).SearchText, FallbackValue=''}"
                                                                      FontSize="13"

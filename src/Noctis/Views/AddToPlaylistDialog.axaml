@@ -206,7 +206,10 @@
                                                               HorizontalAlignment="Center"
                                                               VerticalAlignment="Center"
                                                               IsVisible="{Binding ShowFallbackIcon}" />
+                                                    <!-- DecodeWidth 128 matches the sidebar's playlist thumbs so both
+                                                         surfaces share one warm cache bucket (36px render target). -->
                                                     <ctrl:CachedImage SourcePath="{Binding Art1}"
+                                                                      DecodeWidth="128"
                                                                       Stretch="UniformToFill"
                                                                       IsVisible="{Binding HasSingleArt}" />
                                                     <Grid RowDefinitions="*,*"
@@ -214,18 +217,23 @@
                                                           IsVisible="{Binding HasCollageArt}">
                                                         <ctrl:CachedImage Grid.Row="0" Grid.Column="0"
                                                                           SourcePath="{Binding Art1}"
+                                                                          DecodeWidth="128"
                                                                           Stretch="UniformToFill" />
                                                         <ctrl:CachedImage Grid.Row="0" Grid.Column="1"
                                                                           SourcePath="{Binding Art2}"
+                                                                          DecodeWidth="128"
                                                                           Stretch="UniformToFill" />
                                                         <ctrl:CachedImage Grid.Row="1" Grid.Column="0"
                                                                           SourcePath="{Binding Art3}"
+                                                                          DecodeWidth="128"
                                                                           Stretch="UniformToFill" />
                                                         <ctrl:CachedImage Grid.Row="1" Grid.Column="1"
                                                                           SourcePath="{Binding Art4}"
+                                                                          DecodeWidth="128"
                                                                           Stretch="UniformToFill" />
                                                     </Grid>
                                                     <ctrl:CachedImage SourcePath="{Binding CoverArtPath}"
+                                                                      DecodeWidth="128"
                                                                       Stretch="UniformToFill"
                                                                       IsVisible="{Binding HasCustomArt}" />
                                                 </Panel>

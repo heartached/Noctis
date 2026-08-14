@@ -405,8 +405,12 @@
                                                       VerticalAlignment="Center"
                                                       IsVisible="{Binding ShowFallbackIcon}" />
 
-                                            <!-- Layer 3: Single album art (only 1 unique art) -->
+                                            <!-- Layer 3: Single album art (only 1 unique art).
+                                                 DecodeWidth 128 (36px render target) — shared bucket with the
+                                                 Add-to-Playlist dialog thumbs, so the always-visible sidebar
+                                                 keeps that bucket warm and the dialog opens without a decode. -->
                                             <ctrl:CachedImage SourcePath="{Binding Art1}"
+                                                              DecodeWidth="128"
                                                               Stretch="UniformToFill"
                                                               IsVisible="{Binding HasSingleArt}" />
 
@@ -416,20 +420,25 @@
                                                   IsVisible="{Binding HasCollageArt}">
                                                 <ctrl:CachedImage Grid.Row="0" Grid.Column="0"
                                                                   SourcePath="{Binding Art1}"
+                                                                  DecodeWidth="128"
                                                                   Stretch="UniformToFill" />
                                                 <ctrl:CachedImage Grid.Row="0" Grid.Column="1"
                                                                   SourcePath="{Binding Art2}"
+                                                                  DecodeWidth="128"
                                                                   Stretch="UniformToFill" />
                                                 <ctrl:CachedImage Grid.Row="1" Grid.Column="0"
                                                                   SourcePath="{Binding Art3}"
+                                                                  DecodeWidth="128"
                                                                   Stretch="UniformToFill" />
                                                 <ctrl:CachedImage Grid.Row="1" Grid.Column="1"
                                                                   SourcePath="{Binding Art4}"
+                                                                  DecodeWidth="128"
                                                                   Stretch="UniformToFill" />
                                             </Grid>
 
                                             <!-- Layer 5: Custom cover art (highest priority, covers everything) -->
                                             <ctrl:CachedImage SourcePath="{Binding CoverArtPath}"
+                                                              DecodeWidth="128"
                                                               Stretch="UniformToFill"
                                                               IsVisible="{Binding HasCustomArt}" />
                                         </Panel>

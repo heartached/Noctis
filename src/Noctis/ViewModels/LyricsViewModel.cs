@@ -1114,11 +1114,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                     DebugLogger.Warn(DebugLogger.Category.Lyrics, "SearchLyrics:Instrumental");
                     SearchFailedMessage = "This track is instrumental.";
                 }
-                else if (lrcLibErrored || netEaseErrored)
+                else if ((!lrcLibEnabled || lrcLibErrored) && (!netEaseEnabled || netEaseErrored))
                 {
-                    // No provider produced results and at least one errored — an
-                    // offline user (or a provider outage serving 5xx) must not read
-                    // this as "this track has no lyrics".
+                    // EVERY enabled provider errored — plausibly an offline user (or
+                    // a blanket outage), which must not read as "this track has no
+                    // lyrics". If any provider answered — even empty-handed — the
+                    // connection demonstrably works and the miss branch below tells
+                    // the truth; one provider's outage must not dress every miss up
+                    // as a connectivity failure.
                     DebugLogger.Warn(DebugLogger.Category.Lyrics, "SearchLyrics:ProviderError");
                     SearchFailedMessage = "Search failed — check your internet connection.";
                 }
@@ -1130,8 +1133,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 ShowSearchButton = true;
             }
         }
-        catch
+        catch (Exception ex)
         {
+            // Unexpected — the provider tasks catch their own exceptions, so this
+            // is result handling/display blowing up, not the network.
+            DebugLogger.Warn(DebugLogger.Category.Lyrics, "SearchLyrics:Unhandled", ex.ToString());
             if (generation == _searchGeneration)
             {
                 LyricLines.Clear();

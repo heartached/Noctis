@@ -92,6 +92,13 @@ public partial class LibraryArtistsView : UserControl
             vm.RemoveArtistImage(artist);
     }
 
+    private void OnToggleFavoriteArtistClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control control || control.DataContext is not Artist artist) return;
+        if (DataContext is LibraryArtistsViewModel vm)
+            vm.ToggleFavoriteArtist(artist);
+    }
+
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_vm != null)

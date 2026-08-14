@@ -122,6 +122,12 @@ public partial class SidebarViewModel : ViewModelBase
             NavigationRequested?.Invoke(this, newValue.Key);
     }
 
+    /// <summary>Fires NavigationRequested for the already-selected item. The nav ListBoxes
+    /// only raise SelectionChanged when the selection actually changes, so a click on the
+    /// item that is already highlighted (e.g. Home while inside an album opened from Home)
+    /// never reaches OnSelectedNavItemChanged — the view routes those clicks here.</summary>
+    public void RequestNavigation(NavItem item) => NavigationRequested?.Invoke(this, item.Key);
+
     /// <summary>Collapses or expands a sidebar playlist folder and rebuilds the rows.
     /// Must never be called from inside a ListBox selection change (see above).</summary>
     public void ToggleFolderExpansion(string folderName)
