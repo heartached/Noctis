@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
@@ -74,12 +75,13 @@ public sealed class GaplessSink : IDisposable
         // gaps turns those into session-log lines with timestamps. It also
         // boosts the render thread on first read (see StallProbe).
         renderSource = new StallProbe(renderSource);
-        // 200ms buffer: field logs showed 47ms read gaps while IDLE — NAudio's
-        // render thread runs at normal priority (no MMCSS, unlike VLC's native
-        // aout), so UI/decoder/artwork bursts preempt it for tens of ms and a
-        // 50ms buffer ran dry at exactly the busy moments (track click, seek):
-        // the transition buzz the engine had and the legacy path didn't.
-        _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 200);
+        // 100ms buffer: enough margin for the 31-47ms scheduler-quantum stalls
+        // the field logs showed, while keeping click-to-ear latency low — at
+        // 200ms every timeline click played the OLD position for 200ms first,
+        // which read as a skip/pause. (The old "buzz at 50ms" was actually the
+        // Array.Clear pad bug, not buffer starvation; an underrun now renders a
+        // clean declicked pad, not stale audio.)
+        _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 100);
         _out.Init(new SampleToWaveProvider(renderSource));
         // Render immediately and forever: the provider always returns full
         // buffers (silence when idle), so the stream never stops between
@@ -123,9 +125,35 @@ public sealed class GaplessSink : IDisposable
             _writer = writer;
         }
 
+        private readonly ReplayDetector? _outDetector = ReplayDetector.CreateIfEnabled("Out");
+        // Sentinel canary: pre-fill the (WasapiOut-reused) buffer with an
+        // inaudible magic value before the provider fills it. Any surviving
+        // sentinel = the provider left that region unwritten — the previous
+        // period's stale samples would otherwise play again (the 10ms replay).
+        private const float GapSentinel = 3.0e-38f;
+        private long _lastGapLogTick;
+
         public int Read(float[] buffer, int offset, int count)
         {
+            for (var i = 0; i < count; i++) buffer[offset + i] = GapSentinel;
             var n = _inner.Read(buffer, offset, count);
+            var leaked = 0; var firstAt = -1;
+            for (var i = 0; i < count; i++)
+            {
+                if (buffer[offset + i] == GapSentinel)
+                {
+                    leaked++;
+                    if (firstAt < 0) firstAt = i;
+                    buffer[offset + i] = 0f; // don't play the canary
+                }
+            }
+            if (leaked > 0 && Environment.TickCount64 - _lastGapLogTick > 250)
+            {
+                _lastGapLogTick = Environment.TickCount64;
+                DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.GapLeak",
+                    $"samples={leaked}, firstAt={firstAt}, n={n}, offset={offset}, count={count}, bufLen={buffer.Length}");
+            }
+            _outDetector?.Observe(buffer, offset, n);
             try
             {
                 _writer.WriteSamples(buffer, offset, n);
@@ -185,15 +213,20 @@ public sealed class GaplessSink : IDisposable
                 catch { /* boost is best-effort */ }
             }
 
-            var now = Environment.TickCount64;
+            // Stopwatch, not TickCount64: the 15.6ms system tick cannot resolve a
+            // ~10ms read cadence (a "47ms" gap was a 3-tick quantization artifact).
+            // 25ms threshold: 2+ missed engine periods — the priority-inversion
+            // stalls behind the buzz are 31-47ms and were invisible at 120ms.
+            var now = Stopwatch.GetTimestamp();
             var last = _lastReadTick;
             _lastReadTick = now;
-            if (last != 0 && now - last > 120)
+            var gapMs = (now - last) * 1000.0 / Stopwatch.Frequency;
+            if (last != 0 && gapMs > 25)
             {
                 try
                 {
                     DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.RenderStall",
-                        $"gapMs={now - last}");
+                        $"gapMs={gapMs:F1}");
                 }
                 catch { /* diagnostic only */ }
             }

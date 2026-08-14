@@ -44,6 +44,8 @@ public sealed class GaplessTrackSegment
     private bool _endOfStream;
     private bool _abandoned;
     private bool _started;           // first samples handed to the render side
+    private bool _cutPending;        // a Flush cut live audio; renderer must declick the junction
+    private bool _flushRearmed;      // gate re-armed by a seek flush (warm decoder), not a cold start
     private long _consumedFrames;    // frames handed to the render side
     private long _basePositionMs;    // media position of the first frame after creation/flush
 
@@ -138,6 +140,7 @@ public sealed class GaplessTrackSegment
             if (toCopy > 0)
             {
                 _started = true;
+                _flushRearmed = false;
                 Monitor.PulseAll(_gate);
             }
             return toCopy;
@@ -172,7 +175,33 @@ public sealed class GaplessTrackSegment
             // input start, and a once-per-life gate let the first trickle blocks
             // render against silence — the post-seek chop the gate exists to stop.
             _started = false;
+            _cutPending = true;
+            _flushRearmed = true;
             Monitor.PulseAll(_gate);
+        }
+    }
+
+    /// <summary>True while the pre-buffer gate is re-armed by a Flush (seek)
+    /// rather than a fresh segment start: the decoder is already warm, so the
+    /// renderer may use a much shorter refill threshold than a cold start.</summary>
+    public bool GateRearmedByFlush
+    {
+        get { lock (_gate) return _flushRearmed; }
+    }
+
+    /// <summary>
+    /// One-shot: true if a <see cref="Flush"/> cut this segment since the last
+    /// render read. The ring can refill past the pre-buffer gate BEFORE the next
+    /// read arrives (likely at large device buffers), in which case the renderer
+    /// sees no silence at all — the cut is only observable through this flag.
+    /// </summary>
+    public bool ConsumeCut()
+    {
+        lock (_gate)
+        {
+            var cut = _cutPending;
+            _cutPending = false;
+            return cut;
         }
     }
 
@@ -203,6 +232,70 @@ public sealed class GaplessTrackSegment
 }
 
 /// <summary>
+/// Render-thread replay detector (diagnostic, NOCTIS_ENGINE_TAP-gated): hashes
+/// 96-sample windows (stride 48) of the observed stream and warns when a
+/// bit-exact non-silent window recurs within ~100ms — the field buzz signature
+/// (a ~10ms fragment of already-played audio rendered again at seeks/skips).
+/// Placed at two depths (raw ring output vs provider output) to bisect the
+/// layer that introduces the duplication.
+/// </summary>
+internal sealed class ReplayDetector
+{
+    private const int WindowSamples = 96;
+    private const int Stride = 48;
+    private const int MaxLagSamples = 9600; // 100ms @48k mono-sample count
+    private readonly string _label;
+    private readonly long[] _hashes = new long[512];
+    private readonly long[] _positions = new long[512];
+    private int _next;
+    private long _pos;
+    private long _lastLogTick;
+
+    private ReplayDetector(string label) => _label = label;
+
+    public static ReplayDetector? CreateIfEnabled(string label) =>
+        string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NOCTIS_ENGINE_TAP"))
+            ? null : new ReplayDetector(label);
+
+    public void Observe(float[] buffer, int offset, int n)
+    {
+        for (var i = 0; i + WindowSamples <= n; i += Stride)
+        {
+            long h = 1469598103934665603;
+            var silent = true;
+            for (var j = 0; j < WindowSamples; j++)
+            {
+                var v = buffer[offset + i + j];
+                if (v != 0f) silent = false;
+                h = (h ^ BitConverter.SingleToInt32Bits(v)) * 1099511628211;
+            }
+            var winPos = _pos + i;
+            if (!silent)
+            {
+                for (var k = 0; k < _hashes.Length; k++)
+                {
+                    if (_hashes[k] == h && winPos - _positions[k] is > 0 and <= MaxLagSamples)
+                    {
+                        var now = Environment.TickCount64;
+                        if (now - _lastLogTick > 250)
+                        {
+                            _lastLogTick = now;
+                            DebugLogger.Warn(DebugLogger.Category.Playback, $"GaplessEngine.Replay{_label}",
+                                $"lagMs={(winPos - _positions[k]) / 96.0:F1}, posSamples={winPos}");
+                        }
+                        break;
+                    }
+                }
+                _hashes[_next] = h;
+                _positions[_next] = winPos;
+                _next = (_next + 1) % _hashes.Length;
+            }
+        }
+        _pos += n;
+    }
+}
+
+/// <summary>
 /// The persistent render source: a FIFO of segments rendered back-to-back.
 /// The active→next boundary is crossed inside a single Read call, so no
 /// silence is ever inserted between tracks. Segments whose rate/channels
@@ -229,6 +322,10 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     // lands — instant consumption alternates audio/silence at the ~10ms read
     // cadence, audible as a ~100Hz chop buzz. EOS/Abandon bypass the hold.
     private const int UnderrunRefillMs = 50;
+    // Post-seek gate: the flush re-arms the pre-buffer, but the decoder is warm
+    // — 50ms of refill renders glitch-free where a cold start needs the full
+    // startThresholdMs. Anything longer is an audible pause per timeline click.
+    private const int FlushRearmThresholdMs = 50;
     // Silence must run at least this long before the next audio fades in, so the
     // resampler's few-sample seam zeros can never arm a fade at a gapless splice.
     private const int FadeArmMs = 5;
@@ -240,6 +337,11 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     private int _refillSamplesNeeded;  // >0 while the underrun hold is armed
     private readonly float[] _lastFrame = new float[2]; // last emitted frame, for the cut declick
     private int _declickRemaining;     // samples left of an in-progress cut ramp-to-zero
+    private bool _cutFadePending;      // a cut junction is due a fade-in regardless of silence streak (render thread only)
+    private volatile bool _pendingCutSignal; // cut raised off the render thread (Clear / abandon-swap)
+    private readonly ReplayDetector? _ringDetector = ReplayDetector.CreateIfEnabled("Ring"); // raw adapter output, pre-fade
+    private readonly bool _readTrace = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NOCTIS_ENGINE_TAP"));
+    private long _lastTraceTick;
 
     public GaplessSpliceProvider(int sinkRate, int sinkChannels, int startThresholdMs = 0, int startFadeMs = 0)
     {
@@ -268,6 +370,8 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     {
         lock (_gate)
         {
+            if (_active != null)
+                _pendingCutSignal = true; // live audio cut off the render thread
             _active?.Abandon();
             _active = null;
             _activeAdapted = null;
@@ -300,6 +404,11 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             {
                 if (_active == null || _active.IsFinished || _active.Abandoned)
                 {
+                    // A track-change abandon cuts LIVE audio (a natural end-of-
+                    // stream drain does not): the junction into whatever renders
+                    // next must declick+fade exactly like a seek flush.
+                    if (_active is { Abandoned: true })
+                        _pendingCutSignal = true;
                     _active = null;
                     _activeAdapted = null;
                     if (_pending.Count > 0)
@@ -318,9 +427,28 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             if (active == null || adapted == null)
                 break; // nothing to play — silence-fill below
 
+            // A cut (seek flush / track abandon / clear) may be followed by a
+            // refill that lands BEFORE this read — then no silence is ever
+            // rendered and the streak-based declick/fade below never engages,
+            // butt-splicing unrelated waveforms (an audible click). The cut
+            // event itself is the only reliable signal; consume it here, before
+            // the gate, so the pad path inherits the armed ramp when it holds.
+            var cutNow = active.ConsumeCut();
+            if (_pendingCutSignal) { _pendingCutSignal = false; cutNow = true; }
+            if (cutNow && _startFadeSamples > 0)
+            {
+                if (_silentSamples == 0)
+                    _declickRemaining = _startFadeSamples; // ramp the live tail
+                _cutFadePending = true;                    // and fade what follows
+            }
+
             // Pre-buffer gate: hold a fresh segment in silence until enough is
-            // staged for glitch-free rendering (see ReadyToRender).
-            if (!active.ReadyToRender(active.SampleRate * active.Channels * _startThresholdMs / 1000))
+            // staged for glitch-free rendering (see ReadyToRender). After a seek
+            // flush the decoder is warm and delivery is already ramped — use a
+            // short refill threshold there, or every timeline click pauses for
+            // the full cold-start pre-buffer.
+            var gateMs = active.GateRearmedByFlush ? FlushRearmThresholdMs : _startThresholdMs;
+            if (!active.ReadyToRender(active.SampleRate * active.Channels * gateMs / 1000))
                 break;
 
             // Underrun hysteresis: after a mid-track 0-read, keep padding until
@@ -333,15 +461,44 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                 _refillSamplesNeeded = 0;
             }
 
+            // The junction ramp of a fast-refill cut: play the last live frame
+            // down to zero BEFORE the first post-cut audio. (When the gate holds
+            // instead, the silence pad below runs this same ramp.)
+            if (_cutFadePending && _declickRemaining > 0)
+            {
+                var rampCh = WaveFormat.Channels;
+                var run = Math.Min(_declickRemaining, count - written);
+                for (var i = 0; i < run; i++)
+                {
+                    buffer[offset + written + i] =
+                        _lastFrame[i % rampCh] * ((float)_declickRemaining / _startFadeSamples);
+                    _declickRemaining--;
+                }
+                written += run;
+                if (_declickRemaining == 0)
+                {
+                    // The emitted tail is now zero; a later silence pad must not
+                    // ramp again from the stale pre-cut frame.
+                    _lastFrame[0] = 0f;
+                    _lastFrame[1] = 0f;
+                }
+                continue;
+            }
+
             var n = adapted.Read(buffer, offset + written, count - written);
             if (n > 0)
             {
+                _ringDetector?.Observe(buffer, offset + written, n);
                 // Fade in when audio resumes after audible silence (cold start,
-                // post-seek gate, underrun recovery) to mask decoder warm-up
-                // garble. A gapless seam is never preceded by silence (streak 0),
+                // post-seek gate, underrun recovery) or across a cut junction, to
+                // mask decoder warm-up garble and unrelated-waveform steps. A
+                // NATURAL gapless seam is neither (no silence streak, no cut),
                 // so it stays bit-exact.
-                if (_startFadeSamples > 0 && _silentSamples >= _fadeArmSamples)
+                if (_startFadeSamples > 0 && (_silentSamples >= _fadeArmSamples || _cutFadePending))
+                {
                     _fadeRemaining = _startFadeSamples;
+                    _cutFadePending = false;
+                }
                 _silentSamples = 0;
                 if (_fadeRemaining > 0)
                     ApplyFadeIn(buffer, offset + written, n);
@@ -371,7 +528,14 @@ public sealed class GaplessSpliceProvider : ISampleProvider
         if (padded > 0)
         {
             var pos = offset + written;
-            Array.Clear(buffer, pos, padded);
+            // NEVER Array.Clear here: the render buffer arrives as NAudio's
+            // WaveBuffer pun (a byte[] reinterpreted as float[]), and Array.Clear
+            // uses the array's RUNTIME type — it cleared `padded` BYTES (a quarter
+            // of the region), leaving the rest playing stale device-buffer audio:
+            // a ~10ms replay loop at every seek/track cut (the engine buzz).
+            // Element stores go through the static float[] type and are safe.
+            for (var i = 0; i < padded; i++)
+                buffer[pos + i] = 0f;
             // Declick a hard cut: a seek flush / abandon stops LIVE audio inside
             // a stream that never stops, so there is no OS stream-stop ramp to
             // hide the edge — an instant step to zero is an audible click/buzz.
@@ -390,6 +554,12 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                 }
             }
             _silentSamples = (int)Math.Min((long)_silentSamples + padded, int.MaxValue / 2);
+        }
+        if (_readTrace && Environment.TickCount64 - _lastTraceTick > 250)
+        {
+            _lastTraceTick = Environment.TickCount64;
+            DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.ReadTrace",
+                $"offset={offset}, count={count}, written={written}, padded={padded}, bufLen={buffer.Length}, declick={_declickRemaining}, fade={_fadeRemaining}, silent={_silentSamples}, active={(_active != null ? 1 : 0)}");
         }
         return count;
     }

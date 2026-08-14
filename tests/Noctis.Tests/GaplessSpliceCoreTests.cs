@@ -308,4 +308,192 @@ public class GaplessSpliceCoreTests
         // The seam is untouched: B starts at full level immediately.
         Assert.True(buffer[100] < -0.45f, $"seam sample was {buffer[100]}");
     }
+
+    [Fact]
+    public void SeekCut_WithInstantRefill_DoesNotButtSpliceUnrelatedAudio()
+    {
+        // A seek flush whose ring refills past the gate BEFORE the next render
+        // read must still declick + fade the junction. Pre-seek and post-seek
+        // waveforms are unrelated; butting them sample-to-sample is an audible
+        // click — and whether the choreography engages must not depend on the
+        // read-cadence race (at a 200ms device buffer the refill usually wins).
+        var provider = new GaplessSpliceProvider(8000, 1, startThresholdMs: 100, startFadeMs: 5);
+        var seg = new GaplessTrackSegment(8000, 1, source: null);
+        provider.Enqueue(seg);
+
+        Assert.True(seg.Write(ConstantBlock(16384, 900)));  // ≈ +0.5f, past the gate
+        var buffer = new float[400];
+        provider.Read(buffer, 0, 400);                       // live render, tail ≈ +0.5
+
+        seg.Flush(60_000);                                   // the seek cut...
+        Assert.True(seg.Write(ConstantBlock(-16384, 900)));  // ...refilled before any read
+
+        var post = new float[300];
+        provider.Read(post, 0, 300);
+
+        // Junction continuity: no step against the pre-cut tail, no step inside.
+        Assert.True(Math.Abs(post[0] - 0.5f) < 0.1f, $"junction stepped: tail 0.5 -> {post[0]}");
+        for (var i = 1; i < 200; i++)
+            Assert.True(Math.Abs(post[i] - post[i - 1]) < 0.1f,
+                $"step of {Math.Abs(post[i] - post[i - 1]):F3} at sample {i}");
+        // And the post-seek audio actually plays out within the read.
+        Assert.True(post[299] < -0.45f, $"expected post-seek audio, got {post[299]}");
+    }
+
+    [Fact]
+    public void TrackCut_AbandonWithStagedNext_DeclicksTheJunction()
+    {
+        // Clicking a new track mid-play abandons the live segment; when the next
+        // track is already staged past the gate, the junction crosses inside one
+        // read — it must ramp down and fade in, not butt two waveforms together.
+        var provider = new GaplessSpliceProvider(8000, 1, startThresholdMs: 100, startFadeMs: 5);
+        var a = new GaplessTrackSegment(8000, 1, source: null);
+        var b = new GaplessTrackSegment(8000, 1, source: null);
+        provider.Enqueue(a);
+
+        Assert.True(a.Write(ConstantBlock(16384, 900)));     // ≈ +0.5f
+        var buffer = new float[400];
+        provider.Read(buffer, 0, 400);                       // live render, tail ≈ +0.5
+
+        a.Abandon();                                         // the track-change cut...
+        provider.Enqueue(b);
+        Assert.True(b.Write(ConstantBlock(-16384, 900)));    // ...next staged past the gate
+
+        var post = new float[300];
+        provider.Read(post, 0, 300);
+
+        Assert.True(Math.Abs(post[0] - 0.5f) < 0.1f, $"junction stepped: tail 0.5 -> {post[0]}");
+        for (var i = 1; i < 200; i++)
+            Assert.True(Math.Abs(post[i] - post[i - 1]) < 0.1f,
+                $"step of {Math.Abs(post[i] - post[i - 1]):F3} at sample {i}");
+        Assert.True(post[299] < -0.45f, $"expected next-track audio, got {post[299]}");
+    }
+
+    [Fact]
+    public void SeekFlush_ReopensAtShortThreshold_NotFullPrebuffer()
+    {
+        // A fresh track legitimately pre-buffers 200ms, but after an in-place
+        // seek the decoder is already warm — holding the full pre-buffer again
+        // is an audible pause on every timeline click. Post-flush, ~50ms is
+        // enough to render glitch-free.
+        var provider = new GaplessSpliceProvider(8000, 1, startThresholdMs: 200, startFadeMs: 5);
+        var seg = new GaplessTrackSegment(8000, 1, source: null);
+        provider.Enqueue(seg);
+        Assert.True(seg.Write(ConstantBlock(16384, 1700))); // past the 1600-sample start gate
+        var buffer = new float[400];
+        provider.Read(buffer, 0, 400);                      // rendering live
+
+        seg.Flush(30_000);                                  // the seek
+        Assert.True(seg.Write(ConstantBlock(16384, 500)));  // ≥ 50ms (400), well below 200ms (1600)
+
+        provider.Read(buffer, 0, 400);
+        // Junction ramp + fade occupy the first ~80 samples; by the end of this
+        // 50ms read the post-seek audio must be flowing, not gated silence.
+        Assert.True(buffer[399] > 0.4f, $"still gated with 62ms buffered: {buffer[399]}");
+    }
+
+    [Fact]
+    public void FlushStorm_UnderConcurrentReads_NeverReplaysOutput()
+    {
+        // Field capture (2026-08-13): every seek/skip renders a ~10ms window of
+        // already-played audio again (2-5 back-to-back copies + zero holes) —
+        // the audible ~100Hz buzz. VLC's delivery has no duplicates, so the
+        // replay is born in this provider/ring under the real interleaving:
+        // one VLC aout thread doing [writes... Flush ...writes] while the
+        // render thread reads concurrently. Reproduce with a strictly
+        // increasing staircase; a bit-exact repeat of any non-silent 96-sample
+        // window within 100ms is a replay (fades/declicks scale samples, so
+        // designed ramps can never produce an exact duplicate).
+        var provider = new GaplessSpliceProvider(48000, 2, startThresholdMs: 200, startFadeMs: 5);
+        var seg = new GaplessTrackSegment(48000, 2, source: null, capacitySeconds: 20);
+        provider.Enqueue(seg);
+
+        // Every stereo FRAME encodes a globally unique index (L = high bits,
+        // R = low bits) — identical 96-sample windows cannot occur legitimately.
+        var frame = 0L;
+        short[] NextBlock(int samples)
+        {
+            var b = new short[samples];
+            for (var i = 0; i < samples; i += 2)
+            {
+                b[i] = (short)(((frame >> 15) & 0x7FFF) + 1);
+                b[i + 1] = (short)(frame & 0x7FFF);
+                frame++;
+            }
+            return b;
+        }
+
+        var stop = false;
+        var live = seg;
+        var swapGate = new object();
+        var writer = new Thread(() =>
+        {
+            var blocks = 0;
+            while (!Volatile.Read(ref stop))
+            {
+                GaplessTrackSegment target;
+                lock (swapGate) target = live;
+                if (!target.Write(NextBlock(10032), timeoutMs: 50)) continue;
+                if (++blocks % 7 == 0)
+                {
+                    if (blocks % 35 == 0)
+                    {
+                        // track click: abandon the live segment, stage the next
+                        // one past the gate before the render thread notices —
+                        // the field's skip-junction shape.
+                        var next = new GaplessTrackSegment(48000, 2, source: null, capacitySeconds: 20);
+                        next.Write(NextBlock(48000));
+                        provider.Enqueue(next);
+                        target.Abandon();
+                        lock (swapGate) live = next;
+                    }
+                    else
+                    {
+                        target.Flush(blocks * 10); // the seek cut, same thread as writes (VLC aout)
+                    }
+                }
+            }
+        });
+
+        seg.Write(NextBlock(48000)); // past the 200ms gate before rendering starts
+        writer.Start();
+
+        // Field cadence: WasapiOut pulls ~480 frames (960 samples) per ~10ms
+        // engine period — many writes/flushes land BETWEEN reads.
+        var output = new System.Collections.Generic.List<float>(4_000_000);
+        var buf = new float[960];
+        for (var reads = 0; reads < 800; reads++)
+        {
+            provider.Read(buf, 0, buf.Length);
+            output.AddRange(buf);
+            if (reads % 4 == 0) Thread.Sleep(1);
+        }
+        Volatile.Write(ref stop, true);
+        writer.Join();
+
+        // Replay detector: same non-silent 96-sample window twice within 9600
+        // samples (100ms). Hash then confirm bit-exact.
+        var seen = new System.Collections.Generic.Dictionary<long, int>();
+        for (var p = 0; p + 96 <= output.Count; p += 48)
+        {
+            long h = 17;
+            var silent = true;
+            for (var i = 0; i < 96; i++)
+            {
+                var v = output[p + i];
+                if (v != 0f) silent = false;
+                h = h * 31 + BitConverter.SingleToInt32Bits(v);
+            }
+            if (silent) continue;
+            if (seen.TryGetValue(h, out var prev) && p - prev <= 9600 && p != prev)
+            {
+                var equal = true;
+                for (var i = 0; i < 96 && equal; i++)
+                    equal = output[prev + i] == output[p + i];
+                Assert.False(equal,
+                    $"REPLAY: 96-sample window at {p} bit-equals window at {prev} (lag {(p - prev) / 96.0:F1}ms)");
+            }
+            seen[h] = p;
+        }
+    }
 }
