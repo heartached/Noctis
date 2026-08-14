@@ -22,6 +22,12 @@ public partial class SidebarView : UserControl
     public SidebarView()
     {
         InitializeComponent();
+        // A click on the already-selected row never raises SelectionChanged, so
+        // navigating back out of a detail page whose origin section is still
+        // highlighted (Home → album → click Home) was a dead click. Tunnel the
+        // press so we see it before the ListBoxItem commits the (same) selection.
+        foreach (var list in GetNavLists())
+            list.AddHandler(PointerPressedEvent, OnNavListPointerPressed, RoutingStrategies.Tunnel);
         DataContextChanged += OnDataContextChanged;
         DetachedFromVisualTree += (_, _) =>
         {
@@ -72,6 +78,20 @@ public partial class SidebarView : UserControl
             _topBarVm.SearchOpenRequested += OnSearchOpenRequested;
             _topBarVm.SearchCloseRequested += OnSearchCloseRequested;
         }
+    }
+
+    private void OnNavListPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not ListBox list || !e.GetCurrentPoint(list).Properties.IsLeftButtonPressed)
+            return;
+        // Only plain section rows re-navigate. Playlist rows build a fresh view per
+        // navigation (and folder headers only toggle), so re-firing those would stack
+        // duplicate history entries instead of escaping a detail page.
+        if (_vm?.SelectedNavItem is not { } current || current is PlaylistNavItem)
+            return;
+        var container = (e.Source as Visual)?.FindAncestorOfType<ListBoxItem>();
+        if (container?.DataContext is NavItem pressed && ReferenceEquals(pressed, current))
+            _vm.RequestNavigation(pressed);
     }
 
     private void OnNavListSelectionChanged(object? sender, SelectionChangedEventArgs e)
