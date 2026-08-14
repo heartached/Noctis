@@ -17,6 +17,7 @@ public static class SingleInstanceGuard
     private static readonly string PipeName = $"Noctis-Activate-{Environment.UserName}";
 
     private static Mutex? _mutex;
+    private static FileStream? _unixLock;
 
     // Payload cap for the activation pipe: it only ever carries a handful of
     // file paths from our own second launch.
@@ -35,6 +36,9 @@ public static class SingleInstanceGuard
     /// </summary>
     public static bool TryAcquire()
     {
+        if (!OperatingSystem.IsWindows())
+            return TryAcquireUnix();
+
         try
         {
             _mutex = new Mutex(initiallyOwned: true, MutexName, out var createdNew);
@@ -45,10 +49,53 @@ public static class SingleInstanceGuard
                 return false;
             }
         }
-        catch
+        catch (Exception ex)
         {
             // Mutex machinery unavailable (exotic platform/permissions) — fail
-            // open so the app still starts rather than refusing to launch.
+            // open so the app still starts rather than refusing to launch. Leave
+            // a trace: this path previously failed silently, so "two windows,
+            // no idea why" reports were undiagnosable.
+            Services.DebugLog.Write("SingleInstance",
+                $"mutex unavailable ({ex.GetType().Name}: {ex.Message}) — failing open");
+            return true;
+        }
+
+        StartActivationListener();
+        return true;
+    }
+
+    /// <summary>
+    /// Unix first-instance detection via an exclusive lock file in the per-user data
+    /// root. A named <see cref="Mutex"/> is the wrong tool here: .NET backs it with
+    /// shared memory under $TMPDIR/.dotnet/shm scoped by the Unix SESSION id, so a
+    /// terminal launch and a .desktop/autostart launch resolve to different files and
+    /// both believe they are the first instance — the "two Noctis windows" report from
+    /// Ubuntu. The data root is stable for the user across sessions (and dev/prod
+    /// copies keep separate roots via NOCTIS_DATA_DIR, which is correct — they have
+    /// separate windows on purpose). FileShare.None maps to an OS advisory lock that
+    /// dies with the process, so a crash can never wedge future launches.
+    /// </summary>
+    private static bool TryAcquireUnix()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.DataRoot);
+            var path = Path.Combine(AppPaths.DataRoot, ".instance.lock");
+            _unixLock = new FileStream(
+                path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        }
+        catch (IOException)
+        {
+            // Lock held — a live instance owns it (the OS releases it on any exit).
+            _unixLock = null;
+            return false;
+        }
+        catch (Exception ex)
+        {
+            // Data root unusable (read-only home, sandbox) — fail open so the app
+            // still starts, and leave a trace for "two windows" reports.
+            Services.DebugLog.Write("SingleInstance",
+                $"lock file unavailable ({ex.GetType().Name}: {ex.Message}) — failing open");
             return true;
         }
 
@@ -123,9 +170,19 @@ public static class SingleInstanceGuard
             }
             catch
             {
+                // A crashed previous instance leaves its Unix socket file behind, and
+                // binding the new server then fails with AddressAlreadyInUse — forever.
+                // We hold the instance lock, so no other legitimate listener can exist:
+                // the file is stale (or a squatter's) and deleting it lets the retry bind.
+                if (!OperatingSystem.IsWindows())
+                {
+                    try { File.Delete(Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + PipeName)); }
+                    catch { /* best effort — the retry below reports persistent failure */ }
+                }
+
                 // Persistent failure (e.g. another process squatting the pipe
                 // name) — retrying forever just burns a thread. Give up after a
-                // few attempts: the mutex still prevents duplicate instances,
+                // few attempts: the instance lock still prevents duplicates,
                 // only surface-window-on-second-launch degrades.
                 if (++consecutiveFailures >= 5)
                 {

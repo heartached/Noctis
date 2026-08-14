@@ -44,15 +44,15 @@ internal class Program
                     return;
 
                 // Nobody answered the activation pipe, so there is no live instance to
-                // surface — only something holding the mutex. That is either a hung
-                // Noctis or an unrelated process that got there first: the mutex name is
-                // a bare, guessable, un-ACL'd string, so any process in the session can
-                // claim it and permanently stop Noctis from launching. Exiting here meant
-                // the user double-clicked Noctis, waited two seconds, and nothing happened
-                // at all — no window, no error, no tray flash. Launch anyway.
+                // surface — only something holding the instance guard. That is either a
+                // hung Noctis or (Windows) an unrelated process that got there first: the
+                // mutex name is a bare, guessable, un-ACL'd string, so any process in the
+                // session can claim it and permanently stop Noctis from launching. Exiting
+                // here meant the user double-clicked Noctis, waited two seconds, and
+                // nothing happened at all — no window, no error, no tray flash. Launch anyway.
                 LogCrash("SingleInstance",
                     new InvalidOperationException(
-                        "Single-instance mutex is held but the activation pipe did not " +
+                        "Single-instance guard is held but the activation pipe did not " +
                         "answer — starting anyway."));
                 SingleInstanceGuard.StartActivationListener();
             }
