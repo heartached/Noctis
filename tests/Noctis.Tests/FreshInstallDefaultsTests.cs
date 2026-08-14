@@ -68,6 +68,8 @@ public class FreshInstallDefaultsTests
         Assert.False(Fresh.CloseToTray);
         Assert.False(Fresh.StartMinimizedToTray);
         Assert.False(Fresh.SidebarHoverExpand);
+        Assert.False(Fresh.SidebarAlwaysExpanded);
+        Assert.True(string.IsNullOrEmpty(Fresh.ExternalOpenAppPath));
         Assert.False(Fresh.WebRemoteEnabled);
         Assert.False(Fresh.DiscordRichPresenceEnabled);
         Assert.False(Fresh.DeveloperMode);

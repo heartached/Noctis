@@ -272,6 +272,16 @@ public class AppSettings
     /// not move unless the user asks it to.</summary>
     public bool SidebarHoverExpand { get; set; } = false;
 
+    /// <summary>Keeps the sidebar pinned open at its full width at all times, so the labels
+    /// stay readable without hovering. Overrides <see cref="SidebarHoverExpand"/> while on.
+    /// Off by default to preserve the compact icon rail.</summary>
+    public bool SidebarAlwaysExpanded { get; set; } = false;
+
+    /// <summary>Executable the "Open in …" track context-menu item launches with the audio
+    /// file (e.g. an audio editor or analyzer). Empty by default: on Windows the item falls
+    /// back to the native "Open with" picker; elsewhere it is hidden until a path is set.</summary>
+    public string ExternalOpenAppPath { get; set; } = "";
+
     /// <summary>Liquid Glass appearance: the main window renders on a translucent
     /// acrylic/blur backdrop (Apple Music-style frosted glass) and the structural
     /// surfaces (window background, sidebar, content panels) switch to translucent

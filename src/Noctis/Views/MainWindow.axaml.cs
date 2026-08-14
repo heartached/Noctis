@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private EventHandler<string>? _themeChangedHandler;
     private EventHandler<string>? _accentChangedHandler;
     private EventHandler<bool>? _liquidGlassChangedHandler;
+    private EventHandler<bool>? _sidebarAlwaysExpandedHandler;
     private EventHandler<Avalonia.Platform.PlatformColorValues>? _platformColorsChangedHandler;
     private ResourceDictionary? _liquidGlassOverlay;
     private bool _liquidGlassActive;
@@ -506,14 +507,17 @@ public partial class MainWindow : Window
                     }
                     if (e.PropertyName == nameof(MainWindowViewModel.IsSidebarHidden))
                     {
+                        // Un-hiding restores the pinned layout when "Keep sidebar expanded" is on.
+                        var pinned = !mainVm2.IsSidebarHidden && mainVm2.Settings.SidebarAlwaysExpanded;
                         if (_sidebarWrapper != null)
                         {
-                            _sidebarWrapper.Width = mainVm2.IsSidebarHidden ? 0 : 60;
+                            _sidebarWrapper.Width = mainVm2.IsSidebarHidden ? 0 : (pinned ? 220 : 60);
                             _sidebarWrapper.IsVisible = !mainVm2.IsSidebarHidden;
                         }
                         if (_rootPanel != null)
                         {
-                            _rootPanel.Margin = new Avalonia.Thickness(mainVm2.IsSidebarHidden ? 0 : 76, 0, 0, 0);
+                            _rootPanel.Margin = new Avalonia.Thickness(
+                                mainVm2.IsSidebarHidden ? 0 : (pinned ? 236 : 76), 0, 0, 0);
                             if (_rootPanel.RenderTransform is TranslateTransform t)
                                 t.X = 0;
                         }
@@ -526,10 +530,13 @@ public partial class MainWindow : Window
                 {
                     _sidebarWrapper.PropertyChanged += (_, e) =>
                     {
-                        if (e.Property == Border.IsPointerOverProperty && !vm.IsSidebarHidden)
+                        if (e.Property == Border.IsPointerOverProperty && !vm.IsSidebarHidden
+                            && !vm.Settings.SidebarAlwaysExpanded)
                         {
                             // Honor the "Hover to expand sidebar" preference: when disabled the
                             // rail stays icon-only and never expands (no slide animation).
+                            // While "Keep sidebar expanded" is on the pin handler owns the
+                            // layout and hovering must not touch it.
                             var expanded = _sidebarWrapper.IsPointerOver
                                            && vm.Settings.SidebarHoverExpand;
                             _sidebarWrapper.Width = expanded ? 220 : 60;
@@ -538,6 +545,31 @@ public partial class MainWindow : Window
                             vm.Sidebar.IsExpanded = expanded;
                         }
                     };
+
+                    // Pin/unpin immediately when the setting flips (and on startup once the
+                    // persisted value lands) — no pointer event will fire to do it for us.
+                    // Unlike the transient hover slide (a translate that pushes the right
+                    // edge off-screen), pinning reflows the content into the remaining
+                    // width via a real left margin so nothing gets cut off.
+                    _sidebarAlwaysExpandedHandler = (_, pinned) =>
+                    {
+                        if (_sidebarWrapper == null || vm.IsSidebarHidden) return;
+                        var expanded = pinned
+                                       || (_sidebarWrapper.IsPointerOver
+                                           && vm.Settings.SidebarHoverExpand);
+                        _sidebarWrapper.Width = expanded ? 220 : 60;
+                        if (_rootPanel != null)
+                        {
+                            _rootPanel.Margin = new Avalonia.Thickness(pinned ? 236 : 76, 0, 0, 0);
+                            if (_rootPanel.RenderTransform is TranslateTransform translate)
+                                translate.X = !pinned && expanded ? 160 : 0;
+                        }
+                        vm.Sidebar.IsExpanded = expanded;
+                    };
+                    vm.Settings.SidebarAlwaysExpandedChanged += _sidebarAlwaysExpandedHandler;
+                    // The settings load may have finished before this subscription existed,
+                    // so apply the current value once now (idempotent).
+                    _sidebarAlwaysExpandedHandler(vm.Settings, vm.Settings.SidebarAlwaysExpanded);
                 }
 
             }
@@ -961,6 +993,9 @@ public partial class MainWindow : Window
 
             if (_liquidGlassChangedHandler != null)
                 vm.Settings.LiquidGlassChanged -= _liquidGlassChangedHandler;
+
+            if (_sidebarAlwaysExpandedHandler != null)
+                vm.Settings.SidebarAlwaysExpandedChanged -= _sidebarAlwaysExpandedHandler;
 
             if (_playerPropertyChangedHandler != null)
                 vm.Player.PropertyChanged -= _playerPropertyChangedHandler;

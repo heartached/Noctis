@@ -430,6 +430,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _albumTileSizeAuto = true;
     [ObservableProperty] private double _albumTileTargetSize = 220;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
+    [ObservableProperty] private bool _sidebarAlwaysExpanded = false;
     /// <summary>Liquid Glass needs OS blur-behind (Acrylic/Mica/vibrancy). On Linux/X11
     /// none of those exist and the hint would degrade to a plain see-through window
     /// (issue #26), so the Settings card is hidden there (same pattern as
@@ -450,6 +451,8 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private string _ffmpegPath = string.Empty;
     [ObservableProperty] private string _ffmpegStatus = string.Empty;
+
+    [ObservableProperty] private string _externalOpenAppPath = string.Empty;
 
     public string[] ReplayGainModeOptions { get; } = { "Off", "Track", "Album", "Auto" };
     [ObservableProperty] private string _replayGainMode = "Off";
@@ -746,6 +749,10 @@ public partial class SettingsViewModel : ViewModelBase
     /// can switch its transparency hint, acrylic backdrop and surface brushes.</summary>
     public event EventHandler<bool>? LiquidGlassChanged;
 
+    /// <summary>Fires when "Keep sidebar expanded" changes so the main window can pin the
+    /// sidebar open (or collapse it back to the icon rail) immediately.</summary>
+    public event EventHandler<bool>? SidebarAlwaysExpandedChanged;
+
     /// <summary>Fires after a full settings reset so the shell can reload playlists, etc.</summary>
     public event EventHandler? SettingsReset;
 
@@ -1006,6 +1013,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumTileTargetSize = Math.Clamp(_settings.AlbumTileTargetSize,
                 Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
+            SidebarAlwaysExpanded = _settings.SidebarAlwaysExpanded;
             LiquidGlassEnabled = _settings.LiquidGlassEnabled;
             CollapseAlbumEditions = _settings.CollapseAlbumEditions;
             MergeFeaturedFromTitles = _settings.MergeFeaturedFromTitles;
@@ -1018,6 +1026,7 @@ public partial class SettingsViewModel : ViewModelBase
             MusicBrainzEnabled = _settings.MusicBrainzEnabled;
             FfmpegPath = _settings.FfmpegPath;
             RefreshFfmpegStatus();
+            ExternalOpenAppPath = _settings.ExternalOpenAppPath;
             ReplayGainMode = string.IsNullOrEmpty(_settings.ReplayGainMode) ? "Off" : _settings.ReplayGainMode;
             // The ±12 dB bounds were UI-only (SettingsView.axaml PreampSlider), so a
             // hand-edited or corrupt settings.json rendered a nonsense value on the slider.
@@ -1146,6 +1155,10 @@ public partial class SettingsViewModel : ViewModelBase
             // already fired during the load when the stored value was true; this
             // explicit (idempotent) invoke keeps the window consistent either way.
             LiquidGlassChanged?.Invoke(this, LiquidGlassEnabled);
+
+            // Same deal for the pinned sidebar: idempotent re-invoke so the window
+            // reflects the persisted state even if it subscribed after the load.
+            SidebarAlwaysExpandedChanged?.Invoke(this, SidebarAlwaysExpanded);
 
             // The Songs/Albums view models are constructed before this async load
             // finishes, so they start on hardcoded defaults. Tell them the persisted
@@ -1349,6 +1362,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumTileTargetSize = Math.Clamp(AlbumTileTargetSize,
             Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
+        _settings.SidebarAlwaysExpanded = SidebarAlwaysExpanded;
         _settings.LiquidGlassEnabled = LiquidGlassEnabled;
         _settings.CollapseAlbumEditions = CollapseAlbumEditions;
         _settings.MergeFeaturedFromTitles = MergeFeaturedFromTitles;
@@ -1356,6 +1370,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.DeezerEnabled = DeezerEnabled;
         _settings.MusicBrainzEnabled = MusicBrainzEnabled;
         _settings.FfmpegPath = FfmpegPath ?? string.Empty;
+        _settings.ExternalOpenAppPath = ExternalOpenAppPath ?? string.Empty;
         _settings.ReplayGainMode = ReplayGainMode ?? "Off";
         _settings.ReplayGainPreampDb = ReplayGainPreampDb;
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
@@ -2089,6 +2104,14 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnSidebarAlwaysExpandedChanged(bool value)
+    {
+        // Raised even while settings are loading so a persisted "on" pins the sidebar
+        // as soon as the value lands; the save itself stays gated on a finished load.
+        SidebarAlwaysExpandedChanged?.Invoke(this, value);
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnLiquidGlassEnabledChanged(bool value)
     {
         // Raised even while settings are loading so a persisted "on" is applied as
@@ -2466,6 +2489,34 @@ public partial class SettingsViewModel : ViewModelBase
         });
         if (picks.Count > 0)
             FfmpegPath = picks[0].Path.LocalPath;
+    }
+
+    partial void OnExternalOpenAppPathChanged(string value)
+    {
+        // Sync the live settings object immediately: the track context menu reads the
+        // path through GetSettings() on every open, so it must not lag behind the save.
+        _settings.ExternalOpenAppPath = value ?? string.Empty;
+        if (_suspendSettingPersistence) return;
+        QueueSettingsSave();
+    }
+
+    [RelayCommand]
+    private async Task BrowseExternalOpenAppAsync()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is not
+            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop) return;
+        if (desktop.MainWindow is not Avalonia.Controls.Window owner) return;
+
+        var top = Avalonia.Controls.TopLevel.GetTopLevel(owner);
+        if (top == null) return;
+
+        var picks = await top.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "Choose a program",
+            AllowMultiple = false,
+        });
+        if (picks.Count > 0)
+            ExternalOpenAppPath = picks[0].Path.LocalPath;
     }
 
     // ── Integration handlers ──
@@ -3808,6 +3859,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
             FfmpegPath = defaultSettings.FfmpegPath;
+            ExternalOpenAppPath = defaultSettings.ExternalOpenAppPath;
             ReplayGainPreampDb = defaultSettings.ReplayGainPreampDb;
             PlaybackBarBackgroundOpacity = defaultSettings.PlaybackBarBackgroundOpacity;
             MiniPlayerBackgroundOpacity = defaultSettings.MiniPlayerBackgroundOpacity;
@@ -3851,6 +3903,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerTitleMarqueeEnabled = true;
             MiniPlayerAlbumMarqueeEnabled = true;
             SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
+            SidebarAlwaysExpanded = defaultSettings.SidebarAlwaysExpanded;
             LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
 
             // Lyrics providers
