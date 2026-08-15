@@ -214,15 +214,20 @@
      BLUE rather than as a smudge of grey — the previous #0f1c24 was too
      close to the page black to look deliberate. */
   --band: #132836;
+  /* The band hue as TEXT, per theme like --accent-text: the pastel itself on
+     the dark page (12.45:1), taken down to 5.22:1-on-paper for light. */
+  --band-text: #a2d4e3;
 }
 
 :root[data-theme='light'] {
   --band: #a2d4e3;
+  --band-text: #2a7091;
 }
 
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
     --band: #a2d4e3;
+    --band-text: #2a7091;
   }
 }
 

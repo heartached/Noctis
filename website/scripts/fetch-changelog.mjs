@@ -203,16 +203,15 @@ try {
   }
 
   /**
-   * Stable releases only, newest first — the same rule fetch-release.mjs uses
-   * to pick `latest`, applied to the whole list. Drafts are unpublished and
-   * pre-releases are not what the site offers people, so neither belongs on a
-   * page that reads as the product's history.
+   * Every published release, newest first — pre-releases included, flagged so
+   * the page can badge them the way GitHub does. Only drafts are dropped:
+   * they are unpublished and have no place in the product's history.
    *
    * Sorted by published_at, not list order: /releases comes back by created_at,
    * which puts a long-drafted release in the wrong place.
    */
   const releases = all
-    .filter((r) => !r.draft && !r.prerelease && r.published_at)
+    .filter((r) => !r.draft && r.published_at)
     .sort((a, b) => new Date(b.published_at) - new Date(a.published_at))
     .map((r) => ({
       // Tag names flow into HTML and into element ids — plain version tokens only.
@@ -221,10 +220,11 @@ try {
       name: plain(r.name ?? '') || null,
       publishedAt: r.published_at,
       url: assertRepoUrl(r.html_url),
+      prerelease: Boolean(r.prerelease),
       sections: parseSections(r.body),
     }));
 
-  if (!releases.length) throw new Error('no published stable release found');
+  if (!releases.length) throw new Error('no published release found');
 
   payload = { releases, updatedAt: new Date().toISOString(), degraded: false };
 } catch (err) {

@@ -6,7 +6,7 @@ import { links } from '../config/site';
 import changelog from '../data/changelog.json';
 
 /**
- * Every stable release, newest first, rendered from src/data/changelog.json —
+ * Every published release, newest first, rendered from src/data/changelog.json —
  * written by scripts/fetch-changelog.mjs at build time and refreshed by the
  * workflow that fires on `release: published`. Nothing here calls GitHub at
  * runtime and nothing is hand-maintained: publishing a release is the only
@@ -22,6 +22,7 @@ const { releases } = changelog as {
     version: string;
     publishedAt: string;
     url: string;
+    prerelease: boolean;
     sections: { title: string | null; items: string[] }[];
   }[];
 };
@@ -104,6 +105,7 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
                     version rather than a wrapper above it. */}
                 <h2 class="cl__version" id={r.tag}>
                   <a class="cl__anchor" href={`#${r.tag}`}>{r.version}</a>
+                  {r.prerelease && <span class="cl__pre">Pre-release</span>}
                 </h2>
 
                 {r.sections.length === 0 ? (
@@ -223,11 +225,13 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
     gap: var(--s-4);
   }
 
+  /* The band cyan from the home page, not the accent: on this page the red
+     marks pre-releases, so the version pills take the other brand colour. */
   .cl__pill {
     padding: var(--s-1) var(--s-3);
     border-radius: var(--r-pill);
-    background: color-mix(in srgb, var(--accent-500) 14%, transparent);
-    color: var(--accent-text);
+    background: color-mix(in srgb, var(--band-text) 14%, transparent);
+    color: var(--band-text);
     font-size: var(--step--1);
     font-weight: 500;
     text-decoration: none;
@@ -238,8 +242,8 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
   }
 
   .cl__pill:hover {
-    background: var(--accent-500);
-    color: var(--on-accent);
+    background: var(--band-text);
+    color: var(--bg-0);
   }
 
   .cl__date {
@@ -267,6 +271,24 @@ const PROLOGUE: Record<string, { title: string; body: string }> = {
 
   .cl__anchor:hover {
     color: var(--accent-text);
+  }
+
+  /* GitHub marks these with a badge beside the version; same here, wearing
+     the accent treatment the version pills used to — red says "not the
+     regular thing" while the pills sit in the band cyan. */
+  .cl__pre {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: var(--s-3);
+    padding: var(--s-1) var(--s-3);
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--accent-500) 14%, transparent);
+    color: var(--accent-text);
+    font-family: var(--font-body);
+    font-size: var(--step--1);
+    font-weight: 500;
+    letter-spacing: 0;
+    white-space: nowrap;
   }
 
   .cl__group + .cl__group {

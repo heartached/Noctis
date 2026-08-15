@@ -97,11 +97,13 @@ a {
   color: var(--on-accent);
   font-weight: 600;
   text-decoration: none;
-  transform: translateY(-200%);
+  /* Hidden by clipping, not by an off-canvas offset: anything painted above
+     the document top is revealed by mobile rubber-band overscroll. */
+  clip-path: inset(50%);
 }
 
 .skip-link:focus-visible {
-  transform: translateY(0);
+  clip-path: none;
   outline-color: var(--ink-0);
 }
 
