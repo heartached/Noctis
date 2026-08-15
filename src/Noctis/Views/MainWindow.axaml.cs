@@ -1350,6 +1350,10 @@ public partial class MainWindow : Window
                 _ = vm.OpenCommandPaletteAsync();
                 e.Handled = true;
                 break;
+            // F2 mirrors F11: on some Linux desktops the F9–F12 range is captured by
+            // the DE/media layer and never reaches the app, so a low F-key is the
+            // only fullscreen shortcut those users can actually press.
+            case Key.F2:
             case Key.F11:
                 ToggleFullScreen();
                 e.Handled = true;
