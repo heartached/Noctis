@@ -6,6 +6,7 @@
       "name": "v1.4.5",
       "publishedAt": "2026-08-15T18:12:03Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.5",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -44,6 +45,7 @@
       "name": "v1.4.4",
       "publishedAt": "2026-08-14T03:30:32Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.4",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -95,6 +97,7 @@
       "name": "v1.4.3",
       "publishedAt": "2026-08-10T18:57:09Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.3",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -131,6 +134,7 @@
       "name": "v1.4.2",
       "publishedAt": "2026-08-10T04:06:56Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.2",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -184,6 +188,7 @@
       "name": "v1.4.1",
       "publishedAt": "2026-08-08T19:19:47Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.1",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -229,6 +234,7 @@
       "name": "v1.4.0",
       "publishedAt": "2026-08-06T23:52:13Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.0",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -263,6 +269,7 @@
       "name": "v1.3.9",
       "publishedAt": "2026-08-06T02:26:11Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.9",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -365,6 +372,7 @@
       "name": "v1.3.8",
       "publishedAt": "2026-07-31T00:17:55Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.8",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -410,6 +418,7 @@
       "name": "v1.3.7",
       "publishedAt": "2026-07-30T20:25:56Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.7",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -433,6 +442,7 @@
       "name": "v1.3.6",
       "publishedAt": "2026-07-28T23:06:46Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.6",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -470,6 +480,7 @@
       "name": "v1.3.5",
       "publishedAt": "2026-07-26T02:01:32Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.5",
+      "prerelease": false,
       "sections": [
         {
           "title": "Improvements",
@@ -494,6 +505,7 @@
       "name": "v1.3.4",
       "publishedAt": "2026-07-25T23:31:58Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.4",
+      "prerelease": false,
       "sections": [
         {
           "title": "Improvements",
@@ -531,6 +543,7 @@
       "name": "v1.3.3",
       "publishedAt": "2026-07-25T01:41:19Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.3",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -603,6 +616,7 @@
       "name": "v1.3.2",
       "publishedAt": "2026-07-24T01:53:27Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.2",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -673,6 +687,7 @@
       "name": "v1.3.1",
       "publishedAt": "2026-07-20T23:13:17Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.1",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -739,6 +754,7 @@
       "name": "v1.3.0",
       "publishedAt": "2026-07-17T02:44:14Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.3.0",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -764,6 +780,7 @@
       "name": "v1.2.9",
       "publishedAt": "2026-07-15T23:49:50Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.9",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -796,6 +813,7 @@
       "name": "v1.2.8",
       "publishedAt": "2026-07-15T03:18:52Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.8",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -852,6 +870,7 @@
       "name": "v1.2.7",
       "publishedAt": "2026-07-12T14:42:07Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.7",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -883,6 +902,7 @@
       "name": "v1.2.6",
       "publishedAt": "2026-07-11T20:33:51Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.6",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -919,6 +939,7 @@
       "name": "v1.2.5",
       "publishedAt": "2026-07-11T01:32:39Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.5",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -961,6 +982,7 @@
       "name": "v1.2.4",
       "publishedAt": "2026-07-10T02:25:41Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.4",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1016,6 +1038,7 @@
       "name": "v1.2.3",
       "publishedAt": "2026-07-08T03:13:26Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.3",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1142,6 +1165,7 @@
       "name": "v1.2.2",
       "publishedAt": "2026-06-25T00:23:36Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.2",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1190,6 +1214,7 @@
       "name": "v1.2.1",
       "publishedAt": "2026-06-23T11:27:09Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.1",
+      "prerelease": false,
       "sections": [
         {
           "title": "Bug Fixes",
@@ -1205,6 +1230,7 @@
       "name": "v1.2.0",
       "publishedAt": "2026-06-23T10:32:33Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.2.0",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1302,11 +1328,75 @@
       ]
     },
     {
+      "tag": "v1.1.16",
+      "version": "1.1.16",
+      "name": "v1.1.16",
+      "publishedAt": "2026-06-10T00:21:32Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.16",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added a silent audio keep-alive system to keep audio devices ready for playback",
+            "Added automatic keep-alive suspension after extended inactivity",
+            "Added automatic keep-alive resume when playback starts",
+            "Added audio troubleshooting environment overrides for keep-alive behavior"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed audio stuttering when starting playback after launching the app",
+            "Fixed volume controls affecting the keep-alive stream instead of active playback"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.1.15",
+      "version": "1.1.15",
+      "name": "v1.1.15",
+      "publishedAt": "2026-06-08T22:21:11Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.15",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added \"Noctis\" application name to the Windows Volume Mixer",
+            "Added optional diagnostic logging for LibVLC troubleshooting",
+            "Added configurable audio output testing through environment variables",
+            "Added support for custom LibVLC launch arguments for diagnostics",
+            "Added configurable audio caching override for testing and troubleshooting",
+            "Added startup diagnostics showing active VLC configuration and settings"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Bluetooth playback stability with increased audio buffering"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed playback stuttering when restarting tracks from the beginning",
+            "Fixed volume slider static and crackling during adjustment",
+            "Fixed startup issues caused by missing precompiled XAML resources",
+            "Fixed outdated project documentation references",
+            "Fixed Bluetooth audio stuttering and frame skipping during playback"
+          ]
+        }
+      ]
+    },
+    {
       "tag": "v1.1.14",
       "version": "1.1.14",
       "name": "v1.1.14",
       "publishedAt": "2026-06-03T15:18:43Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.14",
+      "prerelease": false,
       "sections": [
         {
           "title": "Improvements",
@@ -1331,6 +1421,7 @@
       "name": "v1.1.13",
       "publishedAt": "2026-06-01T20:22:25Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.13",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1377,6 +1468,7 @@
       "name": "v1.1.12",
       "publishedAt": "2026-06-01T03:04:06Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.12",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1463,6 +1555,7 @@
       "name": "v1.1.11",
       "publishedAt": "2026-05-28T22:57:22Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.11",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1494,6 +1587,7 @@
       "name": "v1.1.10",
       "publishedAt": "2026-05-27T19:33:33Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.10",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1533,6 +1627,7 @@
       "name": "v1.1.9",
       "publishedAt": "2026-05-26T17:22:35Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.9",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1604,6 +1699,7 @@
       "name": "v1.1.8",
       "publishedAt": "2026-05-21T17:26:59Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.8",
+      "prerelease": false,
       "sections": [
         {
           "title": "Improvements",
@@ -1619,6 +1715,7 @@
       "name": "v1.1.7",
       "publishedAt": "2026-05-19T17:57:48Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.7",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1672,6 +1769,7 @@
       "name": "v1.1.6",
       "publishedAt": "2026-05-19T04:42:57Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.6",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1780,6 +1878,7 @@
       "name": "v1.1.5",
       "publishedAt": "2026-05-11T05:14:34Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.5",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1850,6 +1949,7 @@
       "name": "v1.1.4",
       "publishedAt": "2026-05-06T17:49:58Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.4",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1873,6 +1973,7 @@
       "name": "v1.1.3",
       "publishedAt": "2026-05-06T01:07:18Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.3",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1896,6 +1997,7 @@
       "name": "v1.1.2",
       "publishedAt": "2026-05-06T00:23:50Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.2",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -1951,6 +2053,7 @@
       "name": "v1.1.1",
       "publishedAt": "2026-05-04T23:18:12Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.1",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -2036,6 +2139,7 @@
       "name": "v1.1.0",
       "publishedAt": "2026-04-02T17:10:43Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.1.0",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -2104,6 +2208,7 @@
       "name": "v1.0.2",
       "publishedAt": "2026-03-20T22:14:04Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.0.2",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -2136,6 +2241,7 @@
       "name": "v1.0.1",
       "publishedAt": "2026-03-19T19:08:47Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.0.1",
+      "prerelease": false,
       "sections": [
         {
           "title": "New Features",
@@ -2167,9 +2273,10 @@
       "name": "v1.0.0",
       "publishedAt": "2026-03-19T04:16:15Z",
       "url": "https://github.com/heartached/Noctis/releases/tag/v1.0.0",
+      "prerelease": false,
       "sections": []
     }
   ],
-  "updatedAt": "2026-08-15T19:35:11.331Z",
+  "updatedAt": "2026-08-15T19:45:48.502Z",
   "degraded": false
 }
