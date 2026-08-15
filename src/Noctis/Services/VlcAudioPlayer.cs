@@ -97,6 +97,8 @@ public class VlcAudioPlayer : IAudioPlayer
     private const int GaplessEndAlignTimeoutMs = 800;
     private const int GaplessEndAlignPollMs = 10;
     private const int GaplessUnpauseLeadMs = 40;
+    private const int PlayerVolumeReassertWindowMs = 2000;
+    private const int PlayerVolumeReassertTickMs = 50;
     private const double DualFadeHeadroom = 0.88;
     // AutoMix no-silence handoff: the incoming track fades in from this fraction of the
     // user level (not silence), so there's no audible gap the moment the outgoing stops.
@@ -1196,15 +1198,15 @@ public class VlcAudioPlayer : IAudioPlayer
     /// writes injected so the landing guarantee is testable without LibVLC.
     ///
     /// On the native path (macOS/Linux — no OS-session handle, no callback sink)
-    /// this fade is the ONLY thing that un-parks MediaPlayer.Volume from the 0 its
-    /// caller just wrote, and nothing else ever re-asserts it:
-    /// ScheduleSessionVolumeReassert returns immediately while _sessionVolume is
-    /// null, and ScheduleMuteIntentReassert only touches Mute. So a run that ends
-    /// below <paramref name="toVolume"/> leaves the track quiet — or, if it stopped
-    /// before its first step, completely silent — for the rest of its duration,
-    /// until the user forces a new track. That is the "plays but no audio, skip
-    /// forward then back and it works" report: PlayInternal recomputes the volume
-    /// from GetTargetVlcVolume() on the next track, which heals it.
+    /// this fade is what un-parks MediaPlayer.Volume from the 0 its caller just
+    /// wrote. <see cref="SchedulePlayerVolumeReassert"/> now backstops a lost
+    /// landing, but only within its post-track-start window and at its coarse
+    /// tick — a run that ends below <paramref name="toVolume"/> still leaves the
+    /// track quiet (or, if it stopped before its first step, silent) until the
+    /// net catches it, and before the net existed it lasted until the user forced
+    /// a new track. That is the "plays but no audio, skip forward then back and
+    /// it works" report: PlayInternal recomputes the volume from
+    /// GetTargetVlcVolume() on the next track, which heals it.
     ///
     /// Two ways the old loop ended low, both fixed here:
     ///   * it bailed with a bare return, stranding the player at the partial step it
@@ -2103,15 +2105,23 @@ public class VlcAudioPlayer : IAudioPlayer
                 _standbyStartPositionMs = startPositionMs;
                 Interlocked.Exchange(ref _standbyPreparedTicksUtc, DateTime.UtcNow.Ticks);
                 _standbyPrepared = true;
-                // Gapless (no crossfade) pre-rolls the standby below, so its volume
-                // write can go LIVE on the shared Windows session instead of being
-                // cached against a closed aout. Park it at the session-open level
-                // there, not 0 — a 0 that lands on (or is cached into) the shared
-                // session silences the CURRENT track, the exact failure mode of the
-                // old handoff zeroing (see QueueInactivePlayerCleanup). The paused
-                // pre-roll itself is what keeps the standby silent. All other paths
-                // keep the parked 0 (per-player volumes are independent, and a
-                // stopped standby's write stays cached until its aout opens).
+                // Gapless (no crossfade) pre-rolls the standby below: park it at
+                // the session-open level on EVERY path, never 0 — the paused
+                // pre-roll itself is what keeps the standby silent.
+                //  * Shared Windows session: a 0 that lands on (or is cached into)
+                //    the session silences the CURRENT track, the exact failure mode
+                //    of the old handoff zeroing (see QueueInactivePlayerCleanup).
+                //  * Per-player path (macOS/Linux): a parked 0 makes the whole next
+                //    track hang on the handoff's single un-park write — and that
+                //    write is silently lost when the long-idle standby has no live
+                //    aout (libvlc_audio_set_volume returns -1; LibVLCSharp discards
+                //    it). Pulse then opens the stream at the server's stream-restore
+                //    level for the app, which the handoff's outgoing zeroing just
+                //    taught 0 → the whole track plays silent (f7uh, Fedora 44 /
+                //    PipeWire, v1.4.4). Parked at the open level, a lost un-park is
+                //    merely stale by a few seconds of slider motion.
+                // Crossfade / parse-only prepares keep the parked 0: their handoff
+                // starts the incoming at 0 by design and fades it in live.
                 var preRoll = !_gaplessEngine && _gaplessEnabled && !_crossfadeEnabled;
                 // Insistent when pre-rolling: ReleasePreparedNext just cached a 0
                 // into the stopped standby, and if this re-park write is dropped by
@@ -2122,7 +2132,7 @@ public class VlcAudioPlayer : IAudioPlayer
                 // player volume is a software gain on the PCM — pin at 100.
                 if (_gaplessEngine)
                     SetPlayerVolumeInsistent(_standbyPlayer, 100);
-                else if (preRoll && _sessionVolume != null)
+                else if (preRoll)
                     SetPlayerVolumeInsistent(_standbyPlayer, GetSessionOpenVolume());
                 else
                     SetPlayerVolumeGuarded(_standbyPlayer, 0);
@@ -3705,7 +3715,15 @@ public class VlcAudioPlayer : IAudioPlayer
         // falls back to the shared NAudio sink, _sessionVolume is still non-null, so this
         // kept driving the process session on top of the sink's own gain — a third
         // attenuation stacked on the two in PlayInternal.
-        if (_sessionVolume == null || ActiveCallbackSink != null) return;
+        if (ActiveCallbackSink != null) return;
+        if (_sessionVolume == null)
+        {
+            // No OS-session handle (macOS/Linux): the same lost-open-volume failure
+            // exists on the per-player path, so run its own verify loop instead of
+            // silently skipping the net.
+            SchedulePlayerVolumeReassert(sessionId);
+            return;
+        }
         ThreadPool.QueueUserWorkItem(_ =>
         {
             // New output session on track start/swap — drop the previous track's
@@ -3730,6 +3748,70 @@ public class VlcAudioPlayer : IAudioPlayer
                 Thread.Sleep(20);
             }
         });
+    }
+
+    /// <summary>
+    /// Per-player (macOS/Linux) mirror of the session reassert above. On this path
+    /// MediaPlayer.Volume rides libvlc_audio_set_volume, which returns -1 — and
+    /// LibVLCSharp discards it — whenever the player has no live audio output:
+    /// exactly the state a long-idle pre-rolled standby is in while a gapless
+    /// handoff writes its un-park. A lost write there leaves pulse to open the new
+    /// stream at the server's stream-restore level for the app (0, because the
+    /// handoff zeroes the outgoing stream moments earlier), and with no session
+    /// handle nothing else ever corrects it — a whole track of "plays but no
+    /// audio" until a manual restart (f7uh, Fedora 44 / PipeWire, v1.4.4, the
+    /// post-82-minute-pause transition). Watch the readable volume for a short
+    /// window after every track start/swap and rewrite the target whenever they
+    /// disagree: a missing aout reads -1, a restore-clobbered stream reads the
+    /// imposed level (VLC's pulse module reports external sink-input changes back
+    /// — the same events the ViewModel's VolumeChanged echo rides), and a
+    /// same-value rewrite is inaudible. Ticks hold off while the slider ramp is
+    /// mid-glide; both converge on GetTargetVlcVolume so neither can strand the
+    /// other.
+    /// </summary>
+    private void SchedulePlayerVolumeReassert(long sessionId)
+    {
+        ThreadPool.QueueUserWorkItem(_ =>
+            RunPlayerVolumeReassert(
+                PlayerVolumeReassertWindowMs,
+                PlayerVolumeReassertTickMs,
+                () => !_disposed && sessionId == CurrentSessionId,
+                () => Volatile.Read(ref _rampWorkerActive) != 0,
+                GetTargetVlcVolume,
+                () => { try { return _player.Volume; } catch { return -1; } },
+                v => SetPlayerVolumeGuarded(_player, v),
+                () => Thread.Sleep(PlayerVolumeReassertTickMs)));
+    }
+
+    /// <summary>
+    /// The tick schedule of <see cref="SchedulePlayerVolumeReassert"/>, with the
+    /// player reads/writes injected so the correction guarantee is testable
+    /// without LibVLC (same seam style as <see cref="RunVolumeFadeIn"/>). The
+    /// target is re-read every tick (the user can move the slider inside the
+    /// window) and the loop keeps watching after agreement — the stream can
+    /// connect, and inherit the wrong level, ticks after the readback first
+    /// echoed the cached target.
+    /// </summary>
+    /// <param name="shouldContinue">False once the session changed or we are disposing.</param>
+    /// <param name="rampBusy">True while the slider ramp worker is gliding the volume.</param>
+    public static void RunPlayerVolumeReassert(
+        int windowMs, int tickMs,
+        Func<bool> shouldContinue, Func<bool> rampBusy,
+        Func<int> readTarget, Func<int> readVolume,
+        Action<int> write, Action sleep)
+    {
+        var ticks = Math.Max(1, windowMs / Math.Max(1, tickMs));
+        for (var i = 0; i < ticks; i++)
+        {
+            if (!shouldContinue()) return;
+            if (!rampBusy())
+            {
+                var target = readTarget();
+                if (readVolume() != target)
+                    write(target);
+            }
+            sleep();
+        }
     }
 
     public void Pause()
