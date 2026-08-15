@@ -1,0 +1,152 @@
+name: Deploy website
+
+# Builds website/ and uploads it to Cloudflare Pages.
+#
+# The site is a static Astro build: the version, the download links and the
+# whole changelog page are baked in at build time from website/public/api/
+# downloads.json and website/src/data/changelog.json. Nothing is fetched from
+# the browser, so a new release only reaches visitors when the site is rebuilt
+# and re-uploaded. That is what this workflow automates — before it existed the
+# rebuild was a manual `npm run build` plus a drag-drop into the Pages
+# dashboard, which is why the site could sit on an old version indefinitely.
+#
+# This lives in the app repo rather than beside the site because `on: release`
+# only observes releases in its own repository, and releases are published
+# here. A separate website repo would have to poll on a cron or be pinged
+# across repos with a PAT.
+
+on:
+  # Fires the moment a release is published or promoted out of pre-release,
+  # so a new stable version is live in about a minute.
+  #
+  # `published` also fires for PRE-releases — deliberate. The fetch scripts
+  # ignore pre-releases when choosing `latest`, so such a run just rebuilds
+  # the same content and redeploys it, which is harmless.
+  #
+  # Release events run the workflow file AS IT EXISTS AT THE TAGGED COMMIT,
+  # not the default branch's copy. Tags are cut from cross-platform, so this
+  # file must exist there too or the trigger silently never fires (which is
+  # exactly what happened for every release up to v1.4.5). Keep the copy on
+  # cross-platform identical to this one.
+  release:
+    types: [published, released, edited, deleted, unpublished]
+
+  # No cron. A scheduled refresh used to run every 15 minutes to keep the
+  # download count fresh, but each tick committed "chore: refresh release
+  # data" and redeployed production, replacing any manually uploaded build.
+  # Download counts now refresh only on the events below; run the workflow
+  # by hand (workflow_dispatch) when a fresher count is wanted.
+
+  workflow_dispatch:
+
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/deploy-website.yml'
+
+# Needed by the commit step below. Everything else here is read-only.
+permissions:
+  contents: write
+
+# Two deploys racing would upload two builds to the same Pages project and let
+# the loser land last. Queue them instead of cancelling: a superseded run still
+# carries a download-count refresh worth committing.
+concurrency:
+  group: deploy-website
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: website
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to commit SHAs so a moved tag can't swap the action's code.
+      # `ref: main` because release events check out the tag (detached HEAD),
+      # where the commit step's push could never work.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: website/.node-version
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fails the run loudly here rather than as an opaque wrangler error four
+      # steps later. The project name is a repo variable so all three pieces of
+      # Cloudflare config live together in Settings, not in this file.
+      - name: Check Cloudflare configuration
+        env:
+          PROJECT: ${{ vars.CF_PAGES_PROJECT }}
+        run: |
+          if [ -z "$PROJECT" ]; then
+            echo "::error::Repository variable CF_PAGES_PROJECT is not set."
+            echo "Set it to your Cloudflare Pages project name under"
+            echo "Settings -> Secrets and variables -> Actions -> Variables."
+            exit 1
+          fi
+
+      # GITHUB_TOKEN rather than an unauthenticated call: the runner shares an
+      # IP pool, and 60 requests/hour across all of GitHub Actions is not a
+      # budget these scripts can rely on.
+      - name: Fetch release data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/fetch-release.mjs
+
+      # Separate step so a parser change here shows up as its own failure
+      # instead of hiding inside the download-count run.
+      - name: Fetch changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/fetch-changelog.mjs
+
+      # Committed so the repo always holds a last-known-good copy: both fetch
+      # scripts fall back to the committed file when the API call fails, which
+      # keeps a degraded build shipping real data instead of an empty page.
+      #
+      # This push cannot loop. Commits made with GITHUB_TOKEN do not trigger
+      # further workflow runs, so the `push:` trigger above stays quiet.
+      - name: Commit refreshed data
+        env:
+          FILES: public/api/downloads.json src/data/changelog.json
+        run: |
+          if git diff --quiet -- $FILES; then
+            echo "no change"
+            exit 0
+          fi
+          # Authored as the repo owner, not github-actions[bot]: bot-authored
+          # commits put the bot on the repo's Contributors list. The push still
+          # uses GITHUB_TOKEN, so the no-retrigger guarantee above is unchanged.
+          git config user.name  "heartached"
+          git config user.email "172862528+heartached@users.noreply.github.com"
+          git add $FILES
+          git commit -m "chore: refresh release data"
+          git push
+
+      # build:fast, not build — the two fetch scripts already ran as their own
+      # steps above, and `build` would repeat both API calls for nothing.
+      # Rewrites the CSP inline-script hashes into dist/_headers as its last
+      # action, so dist/ is only ever deployed with hashes that match it.
+      - name: Build site
+        run: npm run build:fast
+
+      # --branch=main marks this a PRODUCTION deployment. It only does so if it
+      # matches the project's production branch (Pages project -> Settings ->
+      # Builds & deployments); against any other value Cloudflare files it as a
+      # preview and the custom domain keeps serving the previous build.
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: website
+          command: pages deploy dist --project-name=${{ vars.CF_PAGES_PROJECT }} --branch=main
