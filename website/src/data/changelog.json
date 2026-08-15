@@ -1,6 +1,95 @@
 {
   "releases": [
     {
+      "tag": "v1.4.5",
+      "version": "1.4.5",
+      "name": "v1.4.5",
+      "publishedAt": "2026-08-15T18:12:03Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.5",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Keep sidebar expanded toggle in Settings",
+            "Added Open File With for tracks (external app launch)",
+            "Added F2 as alternate fullscreen key",
+            "Added EQ preamp slider (−12..+6 dB)"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Add Songs selection circles styling",
+            "Improved middle-click autoscroll smoothness (frame-clock driven)",
+            "Improved hover-expand toggle grayed out when pin is on"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed pinned sidebar cutting off right side of views",
+            "Fixed ghost audio after quitting app",
+            "Fixed EQ custom adjust overshooting to 300% volume",
+            "Fixed audio dead after unplugging headphones/speaker",
+            "Fixed full volume after switching audio devices",
+            "Fixed Linux next track silent after long pause",
+            "Fixed middle-click autoscroll judder"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "v1.4.4",
+      "version": "1.4.4",
+      "name": "v1.4.4",
+      "publishedAt": "2026-08-14T03:30:32Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.4",
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added true-gapless splice engine (Windows, default on)",
+            "Added Favorite artists (sort to top, persist)",
+            "Added user-configurable album cover sizing",
+            "Added Lyrics pane backdrop effects (color mode, mesh blobs)"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved mini player transparency",
+            "Improved mini player canonical sizes (Bar, Lyrics)",
+            "Improved mini player time label visibility",
+            "Improved marquee wrap-around with rest period",
+            "Improved lyrics font scaling with window size",
+            "Improved search error messages (provider-specific)",
+            "Improved album grid column calculation for ultrawide"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Add to Playlist artwork flicker",
+            "Fixed can't click Home from album detail",
+            "Fixed Linux updates not working for tar.gz installs",
+            "Fixed two Noctis instances opening on Linux/macOS",
+            "Fixed mini player lyrics color band overhang",
+            "Fixed mini player lyrics lines cut off at top",
+            "Fixed mini player shake when opening drawers",
+            "Fixed mini player forgetting size after closing Lyrics",
+            "Fixed marquee stutter on multiple surfaces",
+            "Fixed engine transition buzz (buffer clearing bug)",
+            "Fixed butt-splice clicks at track cuts",
+            "Fixed seek skip/pause lag",
+            "Fixed Search failed message misleading on NetEase",
+            "Fixed NetEase encrypted response handling",
+            "Fixed resume seeking to wrong position",
+            "Fixed ReplayGain volume too low"
+          ]
+        }
+      ]
+    },
+    {
       "tag": "v1.4.3",
       "version": "1.4.3",
       "name": "v1.4.3",
@@ -2081,6 +2170,6 @@
       "sections": []
     }
   ],
-  "updatedAt": "2026-08-10T19:14:31.116Z",
+  "updatedAt": "2026-08-15T19:35:11.331Z",
   "degraded": false
 }
