@@ -1,6 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
@@ -14,14 +16,41 @@ namespace Noctis.Services;
 // single render read — zero inserted samples. The stream lives in the process
 // audio session, so the existing WindowsSessionVolume machinery keeps owning
 // the user's volume/mute unchanged.
+//
+// The stream does NOT survive its endpoint: unplugging the device (or moving
+// the app to another output in Windows' sound panel) kills WasapiOut's render
+// thread with AUDCLNT_E_DEVICE_INVALIDATED and nothing restarts it — VLC keeps
+// decoding into a sink nobody drains (field log: endless "buffer too late" +
+// PtsGap after KeepAlive.DeviceChanged, silence until app restart). The sink
+// therefore self-heals: PlaybackStopped-with-error and a default-device watch
+// both rebuild the output on the current default endpoint, reusing the same
+// provider chain (NAudio inserts a DMO resampler when the new device's mix
+// format differs, so the VLC-facing format stays fixed).
 public sealed class GaplessSink : IDisposable
 {
-    private readonly WasapiOut _out;
+    private readonly object _gate = new();
+    private WasapiOut _out;
+    private string? _deviceId; // endpoint the current output was opened against
     private readonly WaveFileWriter? _tap; // NOCTIS_ENGINE_TAP diagnostic capture
+    private readonly ISampleProvider _renderSource;
+    private readonly StallProbe _probe;
+    private readonly Timer _deviceWatch;
+    private volatile bool _desiredPlaying = true;
+    private volatile bool _disposed;
+    private int _rebuilding; // interlocked 0/1
+
+    private const int DeviceCheckIntervalMs = 2000;
 
     public GaplessSpliceProvider Provider { get; }
     public int SampleRate { get; }
     public int Channels { get; }
+
+    /// <summary>
+    /// Raised after the output was rebuilt on a (new) device. The fresh WASAPI
+    /// stream registers a brand-new audio session at Windows' default level —
+    /// the owner must re-assert the user volume or playback jumps to 100%.
+    /// </summary>
+    public event Action? Rebuilt;
 
     public static GaplessSink? TryCreate()
     {
@@ -43,6 +72,7 @@ public sealed class GaplessSink : IDisposable
         var mix = device.AudioClient.MixFormat;
         SampleRate = Math.Clamp(mix.SampleRate, 8000, 384000);
         Channels = mix.Channels >= 2 ? 2 : 1;
+        _deviceId = device.ID;
         // 200ms pre-buffer before a FRESH segment renders (kills the input-start
         // buzz of chopping ramping delivery against silence); the gapless splice
         // is unaffected — a staged segment holds seconds and passes instantly.
@@ -74,36 +104,178 @@ public sealed class GaplessSink : IDisposable
         // audible in the air but invisible to any PCM tap. Logging inter-read
         // gaps turns those into session-log lines with timestamps. It also
         // boosts the render thread on first read (see StallProbe).
-        renderSource = new StallProbe(renderSource);
-        // 100ms buffer: enough margin for the 31-47ms scheduler-quantum stalls
-        // the field logs showed, while keeping click-to-ear latency low — at
-        // 200ms every timeline click played the OLD position for 200ms first,
-        // which read as a skip/pause. (The old "buzz at 50ms" was actually the
-        // Array.Clear pad bug, not buffer starvation; an underrun now renders a
-        // clean declicked pad, not stale audio.)
-        _out = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 100);
-        _out.Init(new SampleToWaveProvider(renderSource));
+        _probe = new StallProbe(renderSource);
+        _renderSource = _probe;
+        _out = CreateOutput();
         // Render immediately and forever: the provider always returns full
         // buffers (silence when idle), so the stream never stops between
         // tracks — the property true gapless depends on.
         _out.Play();
+        // Never let the callback throw: an unhandled Timer exception kills the process.
+        _deviceWatch = new Timer(_ =>
+        {
+            try { CheckDefaultDevice(); } catch { /* next tick retries */ }
+        }, null, DeviceCheckIntervalMs, DeviceCheckIntervalMs);
+    }
+
+    // 100ms buffer: enough margin for the 31-47ms scheduler-quantum stalls
+    // the field logs showed, while keeping click-to-ear latency low — at
+    // 200ms every timeline click played the OLD position for 200ms first,
+    // which read as a skip/pause. (The old "buzz at 50ms" was actually the
+    // Array.Clear pad bug, not buffer starvation; an underrun now renders a
+    // clean declicked pad, not stale audio.)
+    private WasapiOut CreateOutput()
+    {
+        var wasapiOut = new WasapiOut(AudioClientShareMode.Shared, useEventSync: true, latency: 100);
+        try
+        {
+            wasapiOut.Init(new SampleToWaveProvider(_renderSource));
+        }
+        catch
+        {
+            try { wasapiOut.Dispose(); } catch { }
+            throw;
+        }
+        wasapiOut.PlaybackStopped += OnPlaybackStopped;
+        return wasapiOut;
+    }
+
+    // The render thread died. Without an exception it's our own Stop/Dispose;
+    // with one the endpoint is gone (unplug, per-app reroute, driver reset) —
+    // rebuild on whatever the default endpoint is now.
+    private void OnPlaybackStopped(object? sender, StoppedEventArgs e)
+    {
+        if (_disposed || e.Exception == null) return;
+        // A stopped event can arrive queued (sync-context post) after its
+        // output was already replaced — never rebuild a healthy sink over it.
+        WasapiOut current;
+        lock (_gate) current = _out;
+        if (!ReferenceEquals(sender, current)) return;
+        DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.DeviceLost",
+            $"{e.Exception.GetType().Name}: {e.Exception.Message}");
+        if (Interlocked.Exchange(ref _rebuilding, 1) == 0)
+            Task.Run(RebuildLoop);
+    }
+
+    // Default render endpoint moved while our stream is still alive on the old
+    // one (device switch in Windows with the old device still present). WASAPI
+    // streams never migrate on their own; VLC's native mmdevice aout follows
+    // the default, so the engine must too.
+    private void CheckDefaultDevice()
+    {
+        if (_disposed || Volatile.Read(ref _rebuilding) == 1) return;
+        string currentId;
+        try
+        {
+            using var enumerator = new MMDeviceEnumerator();
+            using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            currentId = device.ID;
+        }
+        catch
+        {
+            return; // no endpoint right now — the PlaybackStopped path owns recovery
+        }
+        string? boundId;
+        lock (_gate) boundId = _deviceId;
+        if (boundId == null || currentId == boundId) return;
+        DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.DeviceChanged");
+        if (Interlocked.Exchange(ref _rebuilding, 1) == 0)
+            Task.Run(RebuildLoop);
+    }
+
+    private void RebuildLoop()
+    {
+        try
+        {
+            WasapiOut oldOut;
+            lock (_gate) oldOut = _out;
+            oldOut.PlaybackStopped -= OnPlaybackStopped;
+            try { oldOut.Stop(); } catch { }
+            try { oldOut.Dispose(); } catch { }
+
+            var attempt = 0;
+            while (!_disposed)
+            {
+                attempt++;
+                WasapiOut? newOut = null;
+                try
+                {
+                    newOut = CreateOutput();
+                    string? id = null;
+                    try
+                    {
+                        using var enumerator = new MMDeviceEnumerator();
+                        using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+                        id = device.ID;
+                    }
+                    catch { /* watch just compares against null → no false trigger */ }
+                    // New render thread: re-apply priority + MMCSS on first read.
+                    _probe.RearmBoost();
+                    if (_desiredPlaying) newOut.Play();
+                    lock (_gate)
+                    {
+                        if (_disposed)
+                        {
+                            newOut.PlaybackStopped -= OnPlaybackStopped;
+                            try { newOut.Stop(); } catch { }
+                            try { newOut.Dispose(); } catch { }
+                            return;
+                        }
+                        _out = newOut;
+                        _deviceId = id;
+                    }
+                    DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.SinkRebuilt",
+                        $"attempt={attempt}, playing={_desiredPlaying}");
+                    try { Rebuilt?.Invoke(); } catch { /* subscriber's problem, not the sink's */ }
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    if (newOut != null)
+                    {
+                        newOut.PlaybackStopped -= OnPlaybackStopped;
+                        try { newOut.Dispose(); } catch { }
+                    }
+                    DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.SinkRebuildRetry",
+                        $"attempt={attempt}, {ex.GetType().Name}: {ex.Message}");
+                }
+                // 250ms → 4s backoff, then keep trying every 4s: "unplugged the
+                // only device" stays recoverable whenever one comes back.
+                Thread.Sleep(Math.Min(4000, 250 * (1 << Math.Min(attempt - 1, 4))));
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _rebuilding, 0);
+        }
     }
 
     public void Pause()
     {
-        try { _out.Pause(); } catch { /* device transitional */ }
+        _desiredPlaying = false;
+        WasapiOut current;
+        lock (_gate) current = _out;
+        try { current.Pause(); } catch { /* device transitional */ }
     }
 
     public void Resume()
     {
-        try { _out.Play(); } catch { /* device transitional */ }
+        _desiredPlaying = true;
+        WasapiOut current;
+        lock (_gate) current = _out;
+        try { current.Play(); } catch { /* device transitional */ }
     }
 
     public void Dispose()
     {
+        _disposed = true;
+        try { _deviceWatch.Dispose(); } catch { }
         try { Provider.Clear(); } catch { }
-        try { _out.Stop(); } catch { }
-        try { _out.Dispose(); } catch { }
+        WasapiOut current;
+        lock (_gate) current = _out;
+        current.PlaybackStopped -= OnPlaybackStopped;
+        try { current.Stop(); } catch { }
+        try { current.Dispose(); } catch { }
         try { _tap?.Dispose(); } catch { }
     }
 
@@ -195,6 +367,14 @@ public sealed class GaplessSink : IDisposable
         public StallProbe(ISampleProvider inner)
         {
             _inner = inner;
+        }
+
+        // The boost latches per render thread; a rebuilt WasapiOut spins up a
+        // fresh thread that must boost itself again on its first read.
+        public void RearmBoost()
+        {
+            _boosted = false;
+            _lastReadTick = 0; // don't count the dead-sink gap as a render stall
         }
 
         public int Read(float[] buffer, int offset, int count)

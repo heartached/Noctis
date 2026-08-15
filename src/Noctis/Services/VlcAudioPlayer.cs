@@ -640,6 +640,7 @@ public class VlcAudioPlayer : IAudioPlayer
             }
             else
             {
+                _gaplessSink.Rebuilt += OnGaplessSinkRebuilt;
                 _enginePlayers[0] = _player;
                 _enginePlayers[1] = _standbyPlayer;
                 try
@@ -3672,6 +3673,28 @@ public class VlcAudioPlayer : IAudioPlayer
                 }
                 catch { /* player transitioning */ }
                 Thread.Sleep(50);
+            }
+        });
+    }
+
+    /// <summary>
+    /// The gapless sink rebuilt its WASAPI stream (device unplug/switch): the
+    /// new stream's session opens at Windows' default level on the new device,
+    /// ignoring the user's volume until re-asserted — same 100%-blip mechanism
+    /// as a track-open, so run the same invalidate-and-poll reassert.
+    /// </summary>
+    private void OnGaplessSinkRebuilt()
+    {
+        if (_sessionVolume == null) return;
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            _sessionVolume.Invalidate();
+            for (var waited = 0; waited < 1500; waited += 20)
+            {
+                if (_disposed) return;
+                if (ReapplySessionVolume() && _sessionVolume.HoldsActiveSession) return;
+                _sessionVolume.Invalidate();
+                Thread.Sleep(20);
             }
         });
     }
