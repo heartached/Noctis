@@ -22,6 +22,12 @@ on:
   # `published` also fires for PRE-releases — deliberate. The fetch scripts
   # ignore pre-releases when choosing `latest`, so such a run just rebuilds
   # the same content and redeploys it, which is harmless.
+  #
+  # Release events run the workflow file AS IT EXISTS AT THE TAGGED COMMIT,
+  # not the default branch's copy. Tags are cut from cross-platform, so this
+  # file must exist there too or the trigger silently never fires (which is
+  # exactly what happened for every release up to v1.4.5). Keep the copy on
+  # cross-platform identical to this one.
   release:
     types: [published, released, edited, deleted, unpublished]
 
@@ -117,8 +123,11 @@ jobs:
             echo "no change"
             exit 0
           fi
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Authored as the repo owner, not github-actions[bot]: bot-authored
+          # commits put the bot on the repo's Contributors list. The push still
+          # uses GITHUB_TOKEN, so the no-retrigger guarantee above is unchanged.
+          git config user.name  "heartached"
+          git config user.email "172862528+heartached@users.noreply.github.com"
           git add $FILES
           git commit -m "chore: refresh release data"
           git push
