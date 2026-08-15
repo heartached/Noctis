@@ -5,12 +5,13 @@ namespace Noctis.Tests;
 
 /// <summary>
 /// The native (Linux/macOS) volume path parks MediaPlayer.Volume at 0 at every
-/// track start and before every in-place seek, and the fade-in is the ONLY thing
-/// that un-parks it — there is no periodic re-assert on that path
-/// (ScheduleSessionVolumeReassert returns immediately when _sessionVolume is null).
-/// So any run of the fade that ends below its target leaves the track quiet, or
-/// silent, for its whole duration until the user forces a new track. That is the
-/// "plays but no audio, skip forward then back and it works" report.
+/// track start and before every in-place seek, and the fade-in is what un-parks
+/// it. The per-player reassert (RunPlayerVolumeReassert, tested separately) now
+/// backstops a lost landing at its coarse tick, but the fade's own landing
+/// guarantee is still what keeps track starts click-free and immediate: any run
+/// that ends below its target leaves the track quiet, or silent, until the net
+/// catches it — and before the net existed, until the user forced a new track.
+/// That is the "plays but no audio, skip forward then back and it works" report.
 /// </summary>
 public class VlcVolumeFadeTests
 {

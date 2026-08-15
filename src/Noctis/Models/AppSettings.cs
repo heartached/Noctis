@@ -272,6 +272,16 @@ public class AppSettings
     /// not move unless the user asks it to.</summary>
     public bool SidebarHoverExpand { get; set; } = false;
 
+    /// <summary>Keeps the sidebar pinned open at its full width at all times, so the labels
+    /// stay readable without hovering. Overrides <see cref="SidebarHoverExpand"/> while on.
+    /// Off by default to preserve the compact icon rail.</summary>
+    public bool SidebarAlwaysExpanded { get; set; } = false;
+
+    /// <summary>Executable the "Open in …" track context-menu item launches with the audio
+    /// file (e.g. an audio editor or analyzer). Empty by default: on Windows the item falls
+    /// back to the native "Open with" picker; elsewhere it is hidden until a path is set.</summary>
+    public string ExternalOpenAppPath { get; set; } = "";
+
     /// <summary>Liquid Glass appearance: the main window renders on a translucent
     /// acrylic/blur backdrop (Apple Music-style frosted glass) and the structural
     /// surfaces (window background, sidebar, content panels) switch to translucent
@@ -320,6 +330,11 @@ public class AppSettings
     /// written before the parametric EQ existed — migrated from
     /// <see cref="EqualizerBands"/> on first load.</summary>
     public List<ParametricEqBand>? ParametricEqBands { get; set; }
+
+    /// <summary>EQ pre-amp in dB relative to native level (0 = unchanged). Applied
+    /// before the EQ curve, so a negative value creates the headroom that keeps
+    /// boosted bands from clipping — the post-mix volume slider cannot.</summary>
+    public double EqPreampDb { get; set; } = 0.0;
 
     // ── Integration settings ──
 
@@ -447,6 +462,7 @@ public class AppSettings
         // Below 1024 needs privileges on Unix; 65535 is the top of the port space.
         WebRemotePort = WebRemotePort is >= 1024 and <= 65535 ? WebRemotePort : 9420;
         ReplayGainPreampDb = Math.Clamp(ReplayGainPreampDb, -12, 12);
+        EqPreampDb = Math.Clamp(EqPreampDb, Services.ParametricEqMath.EqPreampMinDb, Services.ParametricEqMath.EqPreampMaxDb);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         // IsFinite first: Math.Clamp propagates NaN, and NaN here would erase the card fill.

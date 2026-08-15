@@ -734,6 +734,15 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    private void OpenWithExternalApp(Track track) => Helpers.ExternalOpenApp.Open(track);
+
+    /// <summary>Header/visibility for the "Open in …" menu item. XAML bindings read these
+    /// when the view loads; the label can lag a mid-session Settings change until the album
+    /// is reopened, but the command itself always reads the current setting.</summary>
+    public string ExternalOpenHeader => Helpers.ExternalOpenApp.MenuHeader;
+    public bool ExternalOpenVisible => Helpers.ExternalOpenApp.IsAvailable;
+
+    [RelayCommand]
     private void ShowAlbumInExplorer()
     {
         if (Tracks.Count == 0) return;

@@ -981,6 +981,17 @@
                     <TextBlock Text="SIDEBAR" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="Keep sidebar expanded" FontSize="13"/>
+                            <TextBlock Text="Pin the sidebar open at all times."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              IsChecked="{Binding SidebarAlwaysExpanded}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <!-- Hover-expand is moot while the sidebar is pinned open -->
+                    <Grid Classes="sub-setting" ColumnDefinitions="*,Auto" IsEnabled="{Binding !SidebarAlwaysExpanded}">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                             <TextBlock Text="Hover to expand sidebar" FontSize="13"/>
                             <TextBlock Text="Slide the sidebar open on hover."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
@@ -2075,6 +2086,27 @@
                         </Button>
                     </Grid>
 
+                    <!-- Pre-amp: level relative to native, applied before the curve.
+                         Negative values create the headroom that keeps boosted bands
+                         from clipping — the post-mix volume slider cannot. -->
+                    <Grid ColumnDefinitions="120,*,64,92,34" Margin="0,2,0,0">
+                        <TextBlock Grid.Column="0"
+                                   Text="Preamp"
+                                   FontSize="12" FontWeight="SemiBold" Opacity="0.85"
+                                   VerticalAlignment="Center"/>
+                        <Slider Grid.Column="1"
+                                Classes="accent-slider"
+                                Minimum="-12" Maximum="6"
+                                Value="{Binding EqPreampDb}"
+                                DoubleTapped="OnEqPreampSliderDoubleTapped"
+                                ToolTip.Tip="Level before the EQ — lower it if boosted bands distort. Double-tap to reset."
+                                Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding EqPreampDb, StringFormat='{}{0:+0.0;-0.0;0.0} dB'}"
+                                   FontSize="11" Opacity="0.7"
+                                   VerticalAlignment="Center" TextAlignment="Right"/>
+                    </Grid>
+
                     <!-- Parametric band rows: frequency / gain / Q per band -->
                     <StackPanel Spacing="0" Margin="0,4,0,0">
                         <Grid ColumnDefinitions="120,*,64,92,34" Margin="0,0,0,4">
@@ -2170,6 +2202,30 @@
                     <TextBlock Text="{Binding FfmpegStatus}"
                                FontSize="11" Opacity="0.6"
                                TextWrapping="Wrap"/>
+
+                    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.4" Margin="0,8,0,8"/>
+
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Open File With" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="Right-click a song → open its audio file in this program, e.g. an editor or analyzer. Leave blank to choose a program each time (Windows)."
+                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding ExternalOpenAppPath}"
+                                 Watermark="(not set)"
+                                 CornerRadius="999"
+                                 Padding="14,8"
+                                 BorderThickness="1.5"
+                                 MinHeight="0" />
+                        <Button Grid.Column="1"
+                                Content="Browse"
+                                Command="{Binding BrowseExternalOpenAppCommand}"
+                                Padding="14,8"
+                                CornerRadius="999"
+                                Margin="8,0,0,0"
+                                Cursor="Hand"/>
+                    </Grid>
 
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" Opacity="0.4" Margin="0,8,0,8"/>
 

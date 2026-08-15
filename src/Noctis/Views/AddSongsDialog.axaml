@@ -32,6 +32,23 @@
         <Style Selector="Button.add-song-row:disabled">
             <Setter Property="Opacity" Value="0.5" />
         </Style>
+
+        <!-- Selection circle: same recipe as CheckBox.metadata-pill-checkbox in Styles.axaml.
+             Brushes live in styles (not local values) so the .selected class can win. -->
+        <Style Selector="Border.selection-circle">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+        </Style>
+        <Style Selector="Border.selection-circle.selected">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <Style Selector="Button.add-song-row:pointerover Border.selection-circle">
+            <Setter Property="RenderTransform" Value="scale(1.06)" />
+        </Style>
+        <Style Selector="Button.add-song-row:pressed Border.selection-circle">
+            <Setter Property="RenderTransform" Value="scale(0.9)" />
+        </Style>
     </Window.Styles>
 
     <!-- Full-window dimmed overlay.
@@ -224,22 +241,39 @@
 
                                             <!-- Selection indicator -->
                                             <Border Grid.Column="2"
+                                                    Classes="selection-circle"
+                                                    Classes.selected="{Binding IsSelected}"
                                                     Width="22" Height="22"
                                                     CornerRadius="11"
                                                     BorderThickness="1.5"
-                                                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                                                    Background="Transparent"
                                                     VerticalAlignment="Center"
                                                     IsVisible="{Binding !IsInPlaylist}">
-                                                <Border IsVisible="{Binding IsSelected}"
-                                                        CornerRadius="11"
-                                                        Background="{DynamicResource AccentColorBrush}">
-                                                    <PathIcon Data="{StaticResource CheckmarkIcon}"
-                                                              Width="11" Height="11"
-                                                              Foreground="{DynamicResource AccentForegroundBrush}"
-                                                              HorizontalAlignment="Center"
-                                                              VerticalAlignment="Center" />
-                                                </Border>
+                                                <Border.Transitions>
+                                                    <Transitions>
+                                                        <BrushTransition Property="Background" Duration="0:0:0.18">
+                                                            <BrushTransition.Easing>
+                                                                <CubicEaseOut />
+                                                            </BrushTransition.Easing>
+                                                        </BrushTransition>
+                                                        <BrushTransition Property="BorderBrush" Duration="0:0:0.18">
+                                                            <BrushTransition.Easing>
+                                                                <CubicEaseOut />
+                                                            </BrushTransition.Easing>
+                                                        </BrushTransition>
+                                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                                                            <TransformOperationsTransition.Easing>
+                                                                <CubicEaseOut />
+                                                            </TransformOperationsTransition.Easing>
+                                                        </TransformOperationsTransition>
+                                                    </Transitions>
+                                                </Border.Transitions>
+                                                <Path Data="M 0 3.5 L 3 7 L 9 0"
+                                                      Stroke="{DynamicResource AccentForegroundBrush}"
+                                                      StrokeThickness="1.5"
+                                                      StrokeLineCap="Round"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      IsVisible="{Binding IsSelected}" />
                                             </Border>
                                         </Grid>
                                     </Button>

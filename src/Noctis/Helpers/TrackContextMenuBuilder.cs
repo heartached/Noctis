@@ -43,6 +43,7 @@ public sealed class TrackContextMenuBuilder
     public MenuItem ScanReplayGain { get; private set; } = null!;
     public MenuItem SearchLyrics { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
+    public MenuItem OpenWith { get; private set; } = null!;
     public MenuItem Remove { get; private set; } = null!;
 
     public ContextMenu Menu { get; private set; } = null!;
@@ -125,6 +126,13 @@ public sealed class TrackContextMenuBuilder
         ShowFolder = new MenuItem { Header = "Show Folder" };
         ShowFolder.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Folder%20ICON.png");
         items.Add(ShowFolder);
+
+        // "Open in <app>" / native Open-with picker. Header and visibility are
+        // refreshed in Bind() from the configured external app.
+        // placeholder icon: no dedicated open-with glyph in resources
+        OpenWith = new MenuItem { Header = "Open File With" };
+        OpenWith.Icon = CreatePngIcon("avares://Noctis/Assets/Icons/Metadata%20ICON.png");
+        items.Add(OpenWith);
 
         items.Add(new Separator());
 
@@ -251,6 +259,13 @@ public sealed class TrackContextMenuBuilder
 
         ShowFolder.Command = showInExplorerCommand;
         ShowFolder.CommandParameter = track;
+
+        // Self-contained: the action is a pure function of track + settings, so no view
+        // supplies a command. Re-read per open so Settings changes apply immediately.
+        OpenWith.Header = ExternalOpenApp.MenuHeader;
+        OpenWith.IsVisible = ExternalOpenApp.IsAvailable;
+        OpenWith.Command ??= new RelayCommand<Track>(ExternalOpenApp.Open);
+        OpenWith.CommandParameter = track;
 
         Remove.Command = removeCommand;
         Remove.CommandParameter = track;
