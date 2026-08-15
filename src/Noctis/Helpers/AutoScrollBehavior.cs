@@ -7,7 +7,6 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Path = Avalonia.Controls.Shapes.Path;
 
@@ -51,11 +50,12 @@ public static class AutoScrollBehavior
     private static TopLevel? _topLevel;
     private static OverlayLayer? _overlay;
     private static Control? _indicator;
-    private static DispatcherTimer? _timer;
     private static Point _anchor;
     private static double _pointerY;
     private static Cursor? _savedCursor;
     private static long _lastTickTimestamp;
+    private static bool _isRunning;
+    private static bool _isFrameQueued;
 
     static AutoScrollBehavior()
     {
@@ -142,17 +142,19 @@ public static class AutoScrollBehavior
         _savedCursor = scrollViewer.Cursor;
         scrollViewer.Cursor = new Cursor(StandardCursorType.SizeNorthSouth);
 
+        // Stepped by the compositor frame clock, same as SmoothScrollBehavior: a DispatcherTimer
+        // here ticked at background priority, and on heavy pages (the album grid realizing tile
+        // rows mid-scroll) starved ticks landed unevenly between rendered frames — the dt
+        // compensation kept the average speed right but each frame showed a different-sized
+        // jump. One write per rendered frame is what reads as smooth.
         _lastTickTimestamp = Stopwatch.GetTimestamp();
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        _timer.Tick += OnTick;
-        _timer.Start();
+        _isRunning = true;
+        QueueNextFrame();
     }
 
     private static void Stop()
     {
-        _timer?.Stop();
-        if (_timer != null) _timer.Tick -= OnTick;
-        _timer = null;
+        _isRunning = false;
 
         if (_topLevel != null)
         {
@@ -192,8 +194,12 @@ public static class AutoScrollBehavior
 
     private static void OnGlobalKeyDown(object? sender, KeyEventArgs e) => Stop();
 
-    private static void OnTick(object? sender, EventArgs e)
+    private static void OnFrame(TimeSpan frameTime)
     {
+        _isFrameQueued = false;
+        if (!_isRunning)
+            return;
+
         var sv = _scrollViewer;
         if (sv == null)
         {
@@ -201,7 +207,7 @@ public static class AutoScrollBehavior
             return;
         }
 
-        // Real elapsed time since the previous tick (DispatcherTimer isn't metronome-exact),
+        // Real elapsed time since the previous frame (frames aren't metronome-exact),
         // clamped so a stalled UI thread can't produce one giant jump.
         var now = Stopwatch.GetTimestamp();
         var dt = Math.Min((now - _lastTickTimestamp) / (double)Stopwatch.Frequency, 0.1);
@@ -209,15 +215,32 @@ public static class AutoScrollBehavior
 
         var delta = _pointerY - _anchor.Y;
         var magnitude = Math.Abs(delta) - DeadZone;
-        if (magnitude <= 0)
+        if (magnitude > 0)
+        {
+            var speed = Math.Min(MaxSpeed, magnitude * (LinearGain + magnitude * QuadraticGain));
+            var step = speed * dt * Math.Sign(delta);
+            var maxY = Math.Max(0, sv.Extent.Height - sv.Viewport.Height);
+            var nextY = Math.Clamp(sv.Offset.Y + step, 0, maxY);
+            if (Math.Abs(nextY - sv.Offset.Y) > 0.01)
+                sv.Offset = new Vector(sv.Offset.X, nextY);
+        }
+
+        QueueNextFrame();
+    }
+
+    private static void QueueNextFrame()
+    {
+        if (!_isRunning || _isFrameQueued)
             return;
 
-        var speed = Math.Min(MaxSpeed, magnitude * (LinearGain + magnitude * QuadraticGain));
-        var step = speed * dt * Math.Sign(delta);
-        var maxY = Math.Max(0, sv.Extent.Height - sv.Viewport.Height);
-        var nextY = Math.Clamp(sv.Offset.Y + step, 0, maxY);
-        if (Math.Abs(nextY - sv.Offset.Y) > 0.01)
-            sv.Offset = new Vector(sv.Offset.X, nextY);
+        if (_topLevel == null)
+        {
+            Stop();
+            return;
+        }
+
+        _isFrameQueued = true;
+        _topLevel.RequestAnimationFrame(OnFrame);
     }
 
     private static Control BuildIndicator()

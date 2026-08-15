@@ -287,6 +287,21 @@ public partial class PlayerViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Pause-only, for app shutdown. The shutdown saves run for up to a few seconds
+    /// after the window is gone, and the audio engine kept rendering through them —
+    /// the track audibly played on after the app "closed". Not PlayPause(): that
+    /// toggles, so an already-paused player would resume mid-shutdown. Pause (never
+    /// Stop) so CurrentTrack and Position survive into the queue snapshot.
+    /// </summary>
+    public void PauseForShutdown()
+    {
+        if (State != PlaybackState.Playing) return;
+        CancelAutoMixTransition("shutdown");
+        _audioPlayer.Pause();
+        State = PlaybackState.Paused;
+    }
+
     [RelayCommand]
     private void Next()
     {

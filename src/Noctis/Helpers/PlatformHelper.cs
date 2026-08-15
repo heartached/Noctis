@@ -61,6 +61,64 @@ public static class PlatformHelper
         }
     }
 
+    /// <summary>
+    /// Opens <paramref name="filePath"/> in the given application.
+    /// macOS .app bundles go through <c>open -a</c>; everything else is executed directly
+    /// with the file as its single argument.
+    /// </summary>
+    public static void OpenFileWith(string appPath, string filePath)
+    {
+        try
+        {
+            if (IsMacOS && appPath.EndsWith(".app", StringComparison.OrdinalIgnoreCase))
+            {
+                // ArgumentList — see ShowInFileManager.
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "open",
+                    ArgumentList = { "-a", appPath, filePath },
+                    UseShellExecute = false
+                });
+            }
+            else
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = appPath,
+                    ArgumentList = { filePath },
+                    UseShellExecute = false
+                });
+            }
+        }
+        catch
+        {
+            // Non-critical — external app launch is best-effort
+        }
+    }
+
+    /// <summary>
+    /// Shows the native Windows "Open with" program picker for the file. No-op elsewhere.
+    /// </summary>
+    public static void ShowOpenWithDialog(string filePath)
+    {
+        if (!IsWindows) return;
+        try
+        {
+            // OpenAs_RunDLL treats everything after the comma as one path, so the
+            // argument goes unquoted — quoting would become part of the path.
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "rundll32.exe",
+                Arguments = $"shell32.dll,OpenAs_RunDLL {filePath}",
+                UseShellExecute = false
+            });
+        }
+        catch
+        {
+            // Non-critical
+        }
+    }
+
     private static bool TryShowInLinuxFileManager(string filePath)
     {
         // Try the FileManager1 D-Bus interface first (works for nautilus, nemo, dolphin, thunar).

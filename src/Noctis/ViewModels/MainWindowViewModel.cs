@@ -725,6 +725,12 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public async Task ShutdownAsync()
     {
+        // Silence playback first. The saves below run for seconds after the window
+        // is already gone, and nothing else stops the audio engine before process
+        // exit — so the track audibly kept playing after the app "closed".
+        try { Player.PauseForShutdown(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Shutdown pause failed: {ex.Message}"); }
+
         // Stop any in-flight library scan and flush its progress to disk so the next
         // launch resumes where it left off instead of re-scanning from scratch.
         try { await _library.PauseActiveScanForShutdownAsync(TimeSpan.FromSeconds(5)); }
