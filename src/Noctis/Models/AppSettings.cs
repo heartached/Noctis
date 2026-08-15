@@ -331,6 +331,11 @@ public class AppSettings
     /// <see cref="EqualizerBands"/> on first load.</summary>
     public List<ParametricEqBand>? ParametricEqBands { get; set; }
 
+    /// <summary>EQ pre-amp in dB relative to native level (0 = unchanged). Applied
+    /// before the EQ curve, so a negative value creates the headroom that keeps
+    /// boosted bands from clipping — the post-mix volume slider cannot.</summary>
+    public double EqPreampDb { get; set; } = 0.0;
+
     // ── Integration settings ──
 
     /// <summary>Whether Discord Rich Presence is enabled.</summary>
@@ -457,6 +462,7 @@ public class AppSettings
         // Below 1024 needs privileges on Unix; 65535 is the top of the port space.
         WebRemotePort = WebRemotePort is >= 1024 and <= 65535 ? WebRemotePort : 9420;
         ReplayGainPreampDb = Math.Clamp(ReplayGainPreampDb, -12, 12);
+        EqPreampDb = Math.Clamp(EqPreampDb, Services.ParametricEqMath.EqPreampMinDb, Services.ParametricEqMath.EqPreampMaxDb);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlaybackBarBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
         // IsFinite first: Math.Clamp propagates NaN, and NaN here would erase the card fill.

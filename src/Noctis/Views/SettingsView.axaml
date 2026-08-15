@@ -2086,6 +2086,27 @@
                         </Button>
                     </Grid>
 
+                    <!-- Pre-amp: level relative to native, applied before the curve.
+                         Negative values create the headroom that keeps boosted bands
+                         from clipping — the post-mix volume slider cannot. -->
+                    <Grid ColumnDefinitions="120,*,64,92,34" Margin="0,2,0,0">
+                        <TextBlock Grid.Column="0"
+                                   Text="Preamp"
+                                   FontSize="12" FontWeight="SemiBold" Opacity="0.85"
+                                   VerticalAlignment="Center"/>
+                        <Slider Grid.Column="1"
+                                Classes="accent-slider"
+                                Minimum="-12" Maximum="6"
+                                Value="{Binding EqPreampDb}"
+                                DoubleTapped="OnEqPreampSliderDoubleTapped"
+                                ToolTip.Tip="Level before the EQ — lower it if boosted bands distort. Double-tap to reset."
+                                Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding EqPreampDb, StringFormat='{}{0:+0.0;-0.0;0.0} dB'}"
+                                   FontSize="11" Opacity="0.7"
+                                   VerticalAlignment="Center" TextAlignment="Right"/>
+                    </Grid>
+
                     <!-- Parametric band rows: frequency / gain / Q per band -->
                     <StackPanel Spacing="0" Margin="0,4,0,0">
                         <Grid ColumnDefinitions="120,*,64,92,34" Margin="0,0,0,4">

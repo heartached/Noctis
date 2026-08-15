@@ -260,6 +260,15 @@ public partial class SettingsView : UserControl
         }
     }
 
+    private void OnEqPreampSliderDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm)
+        {
+            vm.EqPreampDb = 0;
+            e.Handled = true;
+        }
+    }
+
     private void OnPreampSliderPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
         if (e.Property == Slider.ValueProperty ||

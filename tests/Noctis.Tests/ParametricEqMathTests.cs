@@ -94,9 +94,63 @@ public class ParametricEqMathTests
         for (var i = 0; i < 10; i++)
         {
             Assert.Equal(ParametricEqMath.GraphicBandFrequencies[i], bands[i].FrequencyHz);
-            Assert.Equal(legacy[i], bands[i].GainDb, 6);
             Assert.Equal(ParametricEqMath.DefaultQ, bands[i].Q);
         }
+        // The contract is the CURVE, not the slider values: mapping the bands
+        // back must reproduce the graphic gains at the graphic frequencies.
+        var roundTrip = ParametricEqMath.MapToGraphicBands(bands);
+        for (var i = 0; i < 10; i++)
+            Assert.Equal(legacy[i], roundTrip[i], 0.25f);
+    }
+
+    [Theory]
+    // VLC "Full bass" — adjacent boosted bass bands overlap the hardest.
+    [InlineData(new float[] { -8, 9.6f, 9.6f, 5.6f, 1.6f, -4, -8, -10.3f, -11.2f, -11.2f })]
+    // VLC "Rock" — boost/cut alternation plus the near-colocated 12/14/16 kHz cluster.
+    [InlineData(new float[] { 8, 4.8f, -5.6f, -8, -3.2f, 4, 8.8f, 11.2f, 11.2f, 11.2f })]
+    // VLC "Headphones".
+    [InlineData(new float[] { 4.8f, 11, 5.6f, -3.2f, -2.4f, 1.6f, 4.8f, 9.6f, 12, 12 })]
+    public void FromGraphicBands_RoundTrip_DoesNotOvershoot(float[] curve)
+    {
+        // Preset→Custom regression (Discord, 2026-08-14): loading a preset into
+        // the band editor and re-mapping it must reproduce the preset curve, not
+        // the sum of overlapping Q=1.41 filters — that overshot by up to +14 dB
+        // ("adjust one slider and the volume goes to 300%").
+        var roundTrip = ParametricEqMath.MapToGraphicBands(ParametricEqMath.FromGraphicBands(curve));
+        for (var i = 0; i < 10; i++)
+            Assert.Equal(curve[i], roundTrip[i], 0.25f);
+    }
+
+    [Fact]
+    public void ApplyUserPreamp_Zero_IsIdentity()
+    {
+        // Flat's zeroed preamp must survive untouched so the flat-bypass
+        // branch (no filter in the chain) still triggers.
+        Assert.Equal(0f, ParametricEqMath.ApplyUserPreamp(0f, 0.0));
+        Assert.Equal(ParametricEqMath.VlcEqUnityPreampDb,
+            ParametricEqMath.ApplyUserPreamp(ParametricEqMath.VlcEqUnityPreampDb, 0.0));
+    }
+
+    [Fact]
+    public void ApplyUserPreamp_OffsetsRelativeToNative()
+    {
+        // -6 dB user preamp on a unity curve = 6 dB under native.
+        Assert.Equal(ParametricEqMath.VlcEqUnityPreampDb - 6f,
+            ParametricEqMath.ApplyUserPreamp(ParametricEqMath.VlcEqUnityPreampDb, -6.0), 3f);
+        // Flat preset (preamp zeroed for the bypass) + user preamp: unity is
+        // restored first, so the net change is exactly the user's dB.
+        Assert.Equal(ParametricEqMath.VlcEqUnityPreampDb - 6f,
+            ParametricEqMath.ApplyUserPreamp(0f, -6.0), 3f);
+    }
+
+    [Fact]
+    public void ApplyUserPreamp_ClampsToVlcRangeAndUserBounds()
+    {
+        // User value beyond the UI bounds is clamped to them first.
+        Assert.Equal(ParametricEqMath.VlcEqUnityPreampDb + (float)ParametricEqMath.EqPreampMaxDb,
+            ParametricEqMath.ApplyUserPreamp(ParametricEqMath.VlcEqUnityPreampDb, 99.0), 3f);
+        // Resolved preamp never leaves VLC's -20..20.
+        Assert.Equal(-20f, ParametricEqMath.ApplyUserPreamp(-15f, -12.0));
     }
 
     [Fact]
@@ -114,7 +168,6 @@ public class ParametricEqMathTests
     {
         var legacy = new float[] { 99, -99, 0, 0, 0, 0, 0, 0, 0, 0 };
         var bands = ParametricEqMath.FromGraphicBands(legacy);
-        Assert.Equal(ParametricEqMath.MaxGainDb, bands[0].GainDb);
-        Assert.Equal(ParametricEqMath.MinGainDb, bands[1].GainDb);
+        Assert.All(bands, b => Assert.InRange(b.GainDb, ParametricEqMath.MinGainDb, ParametricEqMath.MaxGainDb));
     }
 }

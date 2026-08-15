@@ -497,6 +497,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _equalizerEnabled = true;
     [ObservableProperty] private int _selectedEqPresetIndex = 1; // 0 = Custom, 1 = Flat, 2+ = VLC preset
     [ObservableProperty] private string _selectedEqPresetName = "Flat";
+    /// <summary>EQ pre-amp in dB relative to native (0 = unchanged); rides presets and custom curves alike.</summary>
+    [ObservableProperty] private double _eqPreampDb;
 
     /// <summary>Preset names shown in the dropdown. The list stays stable so the open popup does not re-layout.</summary>
     public ObservableCollection<string> VisibleEqPresets { get; } = CreateDefaultVisiblePresets();
@@ -1042,6 +1044,7 @@ public partial class SettingsViewModel : ViewModelBase
             // Equalizer
             _suppressEqNotify = true;
             EqualizerEnabled = _settings.EqualizerEnabled;
+            EqPreampDb = Math.Clamp(_settings.EqPreampDb, ParametricEqMath.EqPreampMinDb, ParametricEqMath.EqPreampMaxDb);
             int loadedIdx = Math.Clamp(_settings.EqualizerPresetIndex + 1, 0, EqPresetNames.Length - 1);
             SelectedEqPresetIndex = loadedIdx;
             SelectedEqPresetName = EqPresetNames[loadedIdx];
@@ -1380,6 +1383,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ExclusiveAudioEnabled = ExclusiveAudioEnabled;
         _settings.NetEaseEnabled = NetEaseEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
+        _settings.EqPreampDb = EqPreampDb;
         _settings.EqualizerPresetIndex = SelectedEqPresetIndex - 1;
         _settings.ParametricEqBands = EqBands
             .Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q })
@@ -1535,7 +1539,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (SelectedEqPresetIndex > 0 &&
             TryGetVlcPresetCurve(SelectedEqPresetIndex - 1, out var presetBands, out var presetPreamp))
-            return (presetBands, presetPreamp);
+            return (presetBands, ParametricEqMath.ApplyUserPreamp(presetPreamp, EqPreampDb));
 
         // Custom curves ride VLC's EQ filter, which attenuates its input by
         // EQZ_IN_FACTOR (−12 dB); the unity preamp cancels that so the overall
@@ -1546,7 +1550,7 @@ public partial class SettingsViewModel : ViewModelBase
         // drag crosses flat.
         return (ParametricEqMath.MapToGraphicBands(
             EqBands.Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q })),
-            ParametricEqMath.VlcEqUnityPreampDb);
+            ParametricEqMath.ApplyUserPreamp(ParametricEqMath.VlcEqUnityPreampDb, EqPreampDb));
     }
 
     /// <summary>Maps the Song Transitions master toggle + style to the player's transition mode.</summary>
@@ -1612,7 +1616,7 @@ public partial class SettingsViewModel : ViewModelBase
             return;
         }
 
-        _audioPlayer?.SetAdvancedEqualizer(true, bands, preamp);
+        _audioPlayer?.SetAdvancedEqualizer(true, bands, ParametricEqMath.ApplyUserPreamp(preamp, EqPreampDb));
     }
 
     private void QueueEqualizerSave()
@@ -2912,6 +2916,13 @@ public partial class SettingsViewModel : ViewModelBase
         QueueEqualizerSave();
     }
 
+    partial void OnEqPreampDbChanged(double value)
+    {
+        if (_suppressEqNotify) return;
+        ApplyEqualizer();
+        QueueEqualizerSave();
+    }
+
     partial void OnSelectedEqPresetIndexChanged(int value)
     {
         if (_suppressEqNotify) return;
@@ -3004,6 +3015,7 @@ public partial class SettingsViewModel : ViewModelBase
         _suppressEqNotify = true;
         SelectedEqPresetIndex = 1; // "Flat"
         SelectedEqPresetName = "Flat";
+        EqPreampDb = 0;
         SyncCustomInVisiblePresets(false);
         SetEqBands(ParametricEqMath.FromGraphicBands(null));
         _suppressEqNotify = false;
@@ -3919,6 +3931,7 @@ public partial class SettingsViewModel : ViewModelBase
             EqualizerEnabled = true;
             SelectedEqPresetIndex = 1; // Flat
             SelectedEqPresetName = "Flat";
+            EqPreampDb = defaultSettings.EqPreampDb;
             SyncCustomInVisiblePresets(false);
             SetEqBands(ParametricEqMath.FromGraphicBands(null));
             _suppressEqNotify = false;
