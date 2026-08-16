@@ -76,6 +76,12 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         OnPropertyChanged(nameof(SortLabel));
         OnPropertyChanged(nameof(CanReorder));
         LoadTracks();
+
+        // This view-model is rebuilt on every navigation, so the pick has to live on
+        // the persisted playlist or it snaps back to Manual. ModifiedAt is left
+        // alone: a view preference is not a content edit.
+        _playlist.SortMode = value.ToString();
+        _ = _persistence.SavePlaylistsAsync(_sidebar.Playlists.ToList());
     }
 
     /// <summary>Empty-state flags: which overlay to show when the track list is empty.</summary>
@@ -192,6 +198,11 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         _isSmartPlaylist = playlist.IsSmartPlaylist;
         _playlistDescription = playlist.Description ?? string.Empty;
 
+        // Restore the persisted sort before the first load; the backing field is set
+        // directly so this doesn't trigger OnSortModeChanged's save round-trip.
+        if (Enum.TryParse<PlaylistSortMode>(playlist.SortMode, ignoreCase: true, out var savedSort))
+            _sortMode = savedSort;
+
         LoadTracks();
 
         // Track the currently playing song
@@ -255,15 +266,17 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
                                             .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList(),
             PlaylistSortMode.Duration => tracks.OrderBy(t => t.Duration).ToList(),
             PlaylistSortMode.RecentlyAdded => tracks.OrderByDescending(t => t.DateAdded).ToList(),
-            // Album/disc/track stay ascending in both: flipping to newest-first
-            // reverses the discography, not the running order inside each record.
+            // Disc/track stay ascending in both: flipping to newest-first reverses
+            // the discography, not the running order inside each record. The album
+            // tie-break DOES flip with the direction, so two albums sharing a
+            // release date mirror instead of both ending alphabetical.
             PlaylistSortMode.ReleaseDateOldest => tracks
                 .OrderBy(IsUndated).ThenBy(ReleaseKey)
                 .ThenBy(t => t.Album, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList(),
             PlaylistSortMode.ReleaseDateNewest => tracks
                 .OrderBy(IsUndated).ThenByDescending(ReleaseKey)
-                .ThenBy(t => t.Album, StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(t => t.Album, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList(),
             _ => tracks
         };

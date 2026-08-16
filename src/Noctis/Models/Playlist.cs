@@ -32,6 +32,11 @@ public class Playlist
     /// <summary>Sidebar folder name. Empty = not in a folder.</summary>
     public string Folder { get; set; } = string.Empty;
 
+    /// <summary>View sort for the playlist page, stored as a PlaylistSortMode enum name
+    /// ("Manual" = saved order). A string so the model stays decoupled from the
+    /// view-model enum; unknown values fall back to Manual at parse time.</summary>
+    public string SortMode { get; set; } = "Manual";
+
     /// <summary>Whether this is a smart (rule-based) playlist vs a manual playlist.</summary>
     public bool IsSmartPlaylist { get; set; }
 

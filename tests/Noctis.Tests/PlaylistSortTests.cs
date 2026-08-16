@@ -95,6 +95,26 @@ public class PlaylistSortTests
     }
 
     [Fact]
+    public void SortTracks_SameReleaseDateAcrossAlbums_NewestMirrorsTheAlbumOrder()
+    {
+        // Two different albums released the same day: the album-level order has to
+        // flip with the direction (Discord: newest-first ended "… 1 2" instead of
+        // "… 2 1"), while the running order inside each album stays ascending.
+        var tracks = new List<Track>
+        {
+            new() { Title = "A1", Album = "Alpha", Year = 2014, ReleaseDate = "2014-10-27", TrackNumber = 1 },
+            new() { Title = "A2", Album = "Alpha", Year = 2014, ReleaseDate = "2014-10-27", TrackNumber = 2 },
+            new() { Title = "B1", Album = "Beta",  Year = 2014, ReleaseDate = "2014-10-27", TrackNumber = 1 },
+        };
+
+        var oldest = PlaylistViewModel.SortTracks(tracks, PlaylistSortMode.ReleaseDateOldest);
+        Assert.Equal(new[] { "A1", "A2", "B1" }, oldest.Select(t => t.Title));
+
+        var newest = PlaylistViewModel.SortTracks(tracks, PlaylistSortMode.ReleaseDateNewest);
+        Assert.Equal(new[] { "B1", "A1", "A2" }, newest.Select(t => t.Title));
+    }
+
+    [Fact]
     public void SortTracks_UnparseableReleaseDate_FallsBackToTheYear()
     {
         var tracks = new List<Track>
