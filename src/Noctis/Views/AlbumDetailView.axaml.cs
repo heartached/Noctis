@@ -23,6 +23,14 @@ public partial class AlbumDetailView : UserControl
     // Multi-select tracked by Track (data) so it survives container recycling.
     private readonly HashSet<Track> _selectedTracks = new();
 
+    // One shared track menu for the whole page, bound to a row on open — the
+    // per-row XAML menus (context menu + 3-dot flyout, ~35 items and ~14 bitmap
+    // decodes per row) were the dominant cost of realizing this non-virtualized
+    // list: the shared Unknown-Album bucket froze the app for minutes and ran
+    // it out of memory at WAV-rip library scale. Same pattern as LibrarySongsView.
+    private TrackContextMenuBuilder? _menuBuilder;
+    private ListBoxItem? _menuOwnerItem;
+
     public AlbumDetailView()
     {
         InitializeComponent();
@@ -195,36 +203,104 @@ public partial class AlbumDetailView : UserControl
         }
     }
 
+    private ContextMenu GetOrCreateTrackMenu()
+    {
+        if (_menuBuilder != null) return _menuBuilder.Menu;
+
+        if (DataContext is not AlbumDetailViewModel) return new ContextMenu();
+
+        _menuBuilder = new TrackContextMenuBuilder();
+        return _menuBuilder.Build("Remove from Library", null, this);
+    }
+
+    private void BindTrackMenuToTrack(Track track)
+    {
+        GetOrCreateTrackMenu();
+        if (DataContext is not AlbumDetailViewModel vm || _menuBuilder == null) return;
+
+        _menuBuilder.Bind(
+            track,
+            playCommand: vm.PlayFromCommand,
+            shuffleCommand: vm.ShufflePlayCommand,
+            playNextCommand: vm.PlayNextCommand,
+            addToQueueCommand: vm.AddToQueueCommand,
+            addToPlaylistCommand: vm.AddToNewPlaylistCommand,
+            toggleFavoriteCommand: vm.ToggleFavoriteCommand,
+            openMetadataCommand: vm.OpenMetadataCommand,
+            searchLyricsCommand: vm.SearchLyricsCommand,
+            showInExplorerCommand: vm.ShowInExplorerCommand,
+            removeCommand: vm.RemoveFromLibraryCommand,
+            convertCommand: vm.ConvertTrackCommand,
+            scanReplayGainCommand: vm.ScanTrackReplayGainCommand,
+            startRadioCommand: vm.StartRadioCommand,
+            snoozeCommand: vm.SnoozeForMonthCommand);
+    }
+
+    private void DetachMenuFromOwner()
+    {
+        if (_menuOwnerItem != null)
+        {
+            _menuOwnerItem.ContextMenu = null;
+            _menuOwnerItem = null;
+        }
+        // Also detach from any button that previously owned the menu
+        if (_menuBuilder?.Menu?.Parent is Control parent)
+        {
+            parent.ContextMenu = null;
+        }
+    }
+
     private void OnTrackItemContextRequested(object? sender, ContextRequestedEventArgs e)
     {
         if (e.Handled) return;
         if (sender is not ListBoxItem item) return;
+        if (item.DataContext is not Track track) return;
 
         if (DataContext is AlbumDetailViewModel vm)
             vm.CtrlSelectedTracks = _selectedTracks.ToList();
 
-        Grid? grid = null;
-        foreach (var desc in item.GetVisualDescendants())
-        {
-            if (desc is Grid g && g.ContextMenu != null)
-            { grid = g; break; }
-        }
-        if (grid?.ContextMenu == null) return;
-        grid.ContextMenu.Open(grid);
+        BindTrackMenuToTrack(track);
+        var menu = GetOrCreateTrackMenu();
+        if (menu.IsOpen)
+            menu.Close();
+
+        DetachMenuFromOwner();
+        _menuOwnerItem = item;
+        item.ContextMenu = menu;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(item);
+        e.Handled = true;
+    }
+
+    private void OnTrackOptionsButtonClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn) return;
+        if (btn.Tag is not Track track) return;
+        if (DataContext is AlbumDetailViewModel vm)
+            vm.CtrlSelectedTracks = _selectedTracks.ToList();
+
+        BindTrackMenuToTrack(track);
+        var menu = GetOrCreateTrackMenu();
+
+        if (menu.IsOpen) { menu.Close(); return; }
+
+        // Detach from previous owner and attach to the button so Open() doesn't
+        // throw "Cannot show ContextMenu on a different control".
+        DetachMenuFromOwner();
+        btn.ContextMenu = menu;
+        _menuOwnerItem = null;
+
+        menu.Placement = PlacementMode.BottomEdgeAlignedRight;
+        menu.Open(btn);
         e.Handled = true;
     }
 
     // Close any menu still open from a previous rapid right-click so menus
     // don't stack on top of each other.
-    private void OnContextMenuOpening(object? sender, CancelEventArgs e)
-        => ContextMenuCoordinator.NotifyOpening(sender as ContextMenu);
-
     private void OnRelatedAlbumContextMenuOpening(object? sender, CancelEventArgs e)
         => ContextMenuCoordinator.NotifyOpening(sender as ContextMenu);
 
     private void OnAlbumFlyoutOpened(object? sender, EventArgs e) { }
-
-    private void OnTrackFlyoutOpened(object? sender, EventArgs e) { }
 
     private void OnOptionsFlyoutButtonPointerPressed(object? sender, PointerPressedEventArgs e)
         => OnTrackRowPointerPressed(e);
@@ -292,6 +368,10 @@ public partial class AlbumDetailView : UserControl
 
         // Drop any selection from the previous album so it doesn't carry over.
         _selectedTracks.Clear();
+
+        // Reset the shared track menu so it rebinds to the new VM's commands.
+        DetachMenuFromOwner();
+        _menuBuilder = null;
 
         CancelPendingScrollRestore();
 
