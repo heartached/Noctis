@@ -1,6 +1,39 @@
 {
   "releases": [
     {
+      "tag": "v1.4.6",
+      "version": "1.4.6",
+      "name": "v1.4.6",
+      "publishedAt": "2026-08-16T00:32:40Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.6",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Web Remote QR code in Settings",
+            "Added phone connection feedback status"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved QR code display with enlarge flyout",
+            "Improved Web Remote card layout (token hidden)",
+            "Improved connection status messaging"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed playlist sort reverting to Manual on navigation",
+            "Fixed release-date sort not mirroring on ties",
+            "Fixed wrong IP selected for local address detection"
+          ]
+        }
+      ]
+    },
+    {
       "tag": "v1.4.5",
       "version": "1.4.5",
       "name": "v1.4.5",
@@ -2277,6 +2310,6 @@
       "sections": []
     }
   ],
-  "updatedAt": "2026-08-15T19:45:48.502Z",
+  "updatedAt": "2026-08-16T00:33:30.557Z",
   "degraded": false
 }
