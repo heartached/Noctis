@@ -196,6 +196,12 @@ public class MetadataService : IMetadataService
 
             PopulateReleaseType(track, file);
 
+            // Untagged files (iTunes WAV rips most notably) fall back to the folder
+            // structure for artist/album and the "NN " filename prefix for the track
+            // number, instead of all merging into the shared Unknown-Album bucket.
+            // No-op when the tags are real.
+            Helpers.FolderMetadata.TryApplyToTrack(track, MusicRootFolders);
+
             // Pull the embedded cover from the already-parsed tag (no extra I/O) so a
             // scan can cache album art inline instead of re-opening every file later.
             embeddedArt = UseEmbeddedArtwork ? SelectBestEmbeddedPicture(file.Tag.Pictures) : null;
@@ -231,7 +237,7 @@ public class MetadataService : IMetadataService
                 ? Path.GetFileNameWithoutExtension(filePath)
                 : info.Title!;
 
-            return new Track
+            var track = new Track
             {
                 FilePath = filePath,
                 Title = title,
@@ -248,6 +254,9 @@ public class MetadataService : IMetadataService
                 Bitrate = NormalizeBitrate(0, fileInfo.Length, info.Duration),
                 Codec = "DSD"
             };
+            // Same folder/filename fallback as the TagLib path above.
+            Helpers.FolderMetadata.TryApplyToTrack(track, MusicRootFolders);
+            return track;
         }
         catch
         {
@@ -973,6 +982,14 @@ public class MetadataService : IMetadataService
     /// LibraryService and kept current by SettingsViewModel when the user flips it.
     /// </summary>
     internal static volatile bool UseEmbeddedArtwork = true;
+
+    /// <summary>
+    /// Configured library roots, mirrored by LibraryService before scans/imports so
+    /// folder-derived metadata fallback (untagged files) never credits a root
+    /// folder itself as an artist or album. Static for the same reason as
+    /// <see cref="UseEmbeddedArtwork"/>: read on scan worker threads.
+    /// </summary>
+    internal static volatile string[] MusicRootFolders = Array.Empty<string>();
 
     /// <summary>
     /// If the title contains "feat."/"ft." artists not already present in the artist field,
