@@ -44,11 +44,11 @@
 
   <!-- Avalonia UI -->
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.3.18" />
+    <PackageReference Include="Avalonia" Version="12.1.1" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.18" />
-    <PackageReference Include="Avalonia.Labs.Lottie" Version="11.3.1" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.18" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Labs.Lottie" Version="12.0.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.1" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.1" />
     <PackageReference Include="Avalonia.Diagnostics" Version="11.3.18" Condition="'$(Configuration)' == 'Debug'" />
     <!-- MPRIS media keys on Linux (MprisService). Same version Avalonia's
          FreeDesktop backend already ships transitively — no new vendor. -->
@@ -93,7 +93,7 @@
 
   <!-- Image color extraction (transitive dep of Avalonia.Skia, explicit for compile-time access) -->
   <ItemGroup>
-    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp" Version="3.119.3-preview.1.1" />
   </ItemGroup>
 
   <!-- JSON persistence. System.Text.Json needs no PackageReference on net10.0:
