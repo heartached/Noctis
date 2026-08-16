@@ -172,9 +172,20 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
                 {
                     if (running)
                     {
-                        if (_suspended ||
-                            (_idleStopMs > 0 &&
-                             Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks) > _idleStopMs))
+                        if (_suspended)
+                        {
+                            // Exclusive output is taking the endpoint: RELEASE the
+                            // client entirely instead of holding it open stopped. A
+                            // held-open client Stop/Start-whipsawed by mode churn
+                            // ended up wedged (Start → AUDCLNT_E_DEVICE_INVALIDATED)
+                            // and, while wedged, made the endpoint read as held —
+                            // the next exclusive open failed AUDCLNT_E_DEVICE_IN_USE
+                            // until this worker rebuilt (field repro 08-16).
+                            DebugLogger.Info(DebugLogger.Category.Playback, "KeepAlive.Suspended");
+                            break; // finally releases COM; the outer suspend gate waits
+                        }
+                        if (_idleStopMs > 0 &&
+                            Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks) > _idleStopMs)
                         {
                             // Park: stop the stream so the OS audio power request is
                             // released (allows system auto-sleep) and the endpoint may
@@ -215,7 +226,7 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
                             _wake.Reset();
                         if (_disposed) break;
                         if (_suspended)
-                            continue;
+                            break; // release the parked client too — see above
                         if (_idleStopMs > 0 &&
                             Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks) > _idleStopMs)
                             continue;
