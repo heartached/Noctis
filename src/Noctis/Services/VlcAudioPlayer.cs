@@ -1554,6 +1554,11 @@ public class VlcAudioPlayer : IAudioPlayer
         }
 
         var wasActive = _currentMedia != null && (_player.IsPlaying || _isPaused);
+        // Captured before the reset below: a PAUSED track must come back paused.
+        // The unconditional PlayInternal used to resume audible playback while
+        // the UI still said paused (field report: pause → toggle exclusive
+        // on/off → track plays).
+        var wasPaused = _isPaused;
         var resumePath = _currentMediaPath;
         long resumeMs = 0;
         if (wasActive)
@@ -1638,7 +1643,10 @@ public class VlcAudioPlayer : IAudioPlayer
         if (wasActive && !string.IsNullOrEmpty(resumePath) && File.Exists(resumePath))
         {
             Interlocked.Exchange(ref _pendingSeekMs, resumeMs > 1000 ? resumeMs : -1);
-            PlayInternal(resumePath);
+            // :start-paused + :start-time (the drag-to-start/Previous mechanism):
+            // the input reopens ON the resume frame but paused, so the mode
+            // switch never turns a paused track into audible playback.
+            PlayInternal(resumePath, startPaused: wasPaused);
         }
     }
 
