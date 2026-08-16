@@ -106,8 +106,17 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [ObservableProperty] private string _qualityFilter = string.Empty;
 
     /// <summary>Grid sort: "default" (artist/recent floats), "title", "dateadded",
-    /// "mostplayed", "albumartist", or "year".</summary>
+    /// "mostplayed", "albumartist", "year", or "random".</summary>
     [ObservableProperty] private string _albumSortMode = "default";
+
+    /// <summary>
+    /// Seed for the "random" sort (issue #45). The grid is rebuilt on every
+    /// filter keystroke and resize, so the shuffle must be a pure function of
+    /// this seed or the wall would visibly rearrange on each rebuild. Fresh per
+    /// launch (a persisted "random" mode deals a new order every session);
+    /// re-picking Random in the menu bumps it to deal a new order on demand.
+    /// </summary>
+    private int _randomSortSeed = Environment.TickCount;
 
     /// <summary>Sort direction. Ignored by "default", which has its own recent-import
     /// float rather than a single ordering key.</summary>
@@ -121,11 +130,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         "mostplayed" => "Most played",
         "albumartist" => "Album Artist",
         "year" => "Year",
+        "random" => "Random",
         _ => "Default",
     };
 
-    /// <summary>Whether the direction controls apply to the current mode.</summary>
-    public bool AlbumSortDirectionEnabled => AlbumSortMode != "default";
+    /// <summary>Whether the direction controls apply to the current mode.
+    /// "default" floats recent imports and "random" is a shuffle — neither has
+    /// a direction.</summary>
+    public bool AlbumSortDirectionEnabled => AlbumSortMode is not ("default" or "random");
 
     /// <summary>Checkmark helpers for the sort dropdown.</summary>
     public bool AlbumSortDescending => !AlbumSortAscending;
@@ -198,7 +210,17 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 return;
         }
 
-        if (AlbumSortMode == mode) return;
+        if (AlbumSortMode == mode)
+        {
+            // Re-picking Random deals a new order — the issue-#45 "give me one
+            // random album" gesture: tap Random again, take the first album.
+            if (mode == "random")
+            {
+                _randomSortSeed = Random.Shared.Next();
+                RebuildFilteredRows();
+            }
+            return;
+        }
 
         // Mode and direction change together; hold the rebuild so the grid is rebuilt
         // once for the pair instead of once per property.
@@ -601,7 +623,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // float) when no artist/search filter narrows the grid.
         if (sortMode != "default" && string.IsNullOrEmpty(artistFilter) && string.IsNullOrWhiteSpace(searchFilter))
         {
-            filtered = ApplySortMode(filtered, sortMode, sortAscending);
+            // Benign race: a mid-rebuild seed bump queues its own rebuild and the
+            // generation guard discards this one, so a torn read cannot stick.
+            filtered = ApplySortMode(filtered, sortMode, sortAscending, _randomSortSeed);
 
             IEnumerable<Album> sortedAlbums = filtered;
             if (_settings.CollapseAlbumEditions)
@@ -662,15 +686,16 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
     /// <summary>
     /// Orders the grid for an explicit sort mode ("title", "dateadded", "mostplayed",
-    /// "albumartist", "year"); any other mode returns the input unchanged.
+    /// "albumartist", "year", "random"); any other mode returns the input unchanged.
     /// <para>
     /// <paramref name="ascending"/> flips the primary key only — tie-breakers stay
     /// ascending, so reversing "Most played" still lists equally-played albums A→Z
-    /// rather than shuffling them into reverse alphabetical order.
+    /// rather than shuffling them into reverse alphabetical order. "random" ignores
+    /// it entirely and deals the seeded shuffle of <paramref name="randomSeed"/>.
     /// </para>
     /// </summary>
     /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
-    internal static IEnumerable<Album> ApplySortMode(IEnumerable<Album> albums, string sortMode, bool ascending) =>
+    internal static IEnumerable<Album> ApplySortMode(IEnumerable<Album> albums, string sortMode, bool ascending, int randomSeed = 0) =>
         sortMode switch
         {
             // Straight alphabetical by album title — what Apple Music's Albums view does,
@@ -701,8 +726,23 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                     : albums.OrderByDescending(a => a.Year))
                 .ThenBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase),
+            // Seeded Fisher–Yates: a stable function of the seed, so the order
+            // survives the rebuild-per-keystroke/resize churn (issue #45).
+            "random" => ShuffleBySeed(albums, randomSeed),
             _ => albums,
         };
+
+    private static List<Album> ShuffleBySeed(IEnumerable<Album> albums, int seed)
+    {
+        var list = albums.ToList();
+        var rng = new Random(seed);
+        for (var i = list.Count - 1; i > 0; i--)
+        {
+            var j = rng.Next(i + 1);
+            (list[i], list[j]) = (list[j], list[i]);
+        }
+        return list;
+    }
 
     private const int SongsPerRow = 3;
 

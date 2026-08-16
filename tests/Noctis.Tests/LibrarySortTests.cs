@@ -305,4 +305,67 @@ public class LibrarySortTests
         Assert.False(LibraryAlbumsViewModel.IsDescendingByDefault("albumartist"));
         Assert.False(LibraryAlbumsViewModel.IsDescendingByDefault("default"));
     }
+
+    // ── Albums: Random (issue #45) ──
+
+    private static List<Album> ManyAlbums(int count) =>
+        Enumerable.Range(0, count).Select(i => Alb($"A{i:00}", "Artist", 2000 + i)).ToList();
+
+    [Fact]
+    public void Albums_RandomMode_IsAPermutationOfTheInput()
+    {
+        var albums = ManyAlbums(30);
+
+        var result = LibraryAlbumsViewModel.ApplySortMode(albums, "random", ascending: true, randomSeed: 1234).ToList();
+
+        // Every album exactly once — shuffled, never lost or duplicated.
+        Assert.Equal(albums.Count, result.Count);
+        Assert.Equal(
+            albums.Select(a => a.Name).OrderBy(n => n),
+            result.Select(a => a.Name).OrderBy(n => n));
+    }
+
+    [Fact]
+    public void Albums_RandomMode_IsStableForTheSameSeed()
+    {
+        // The grid is rebuilt on every filter keystroke and resize; the order must
+        // be a pure function of the seed or the wall would visibly reshuffle.
+        var albums = ManyAlbums(30);
+
+        var first = LibraryAlbumsViewModel.ApplySortMode(albums, "random", ascending: true, randomSeed: 42).Select(a => a.Name).ToList();
+        var second = LibraryAlbumsViewModel.ApplySortMode(albums, "random", ascending: true, randomSeed: 42).Select(a => a.Name).ToList();
+
+        Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public void Albums_RandomMode_IgnoresTheDirectionFlag()
+    {
+        // Direction is meaningless for a shuffle (the controls are disabled in the
+        // menu); both flags must render the same order for one seed.
+        var albums = ManyAlbums(30);
+
+        var ascending = LibraryAlbumsViewModel.ApplySortMode(albums, "random", ascending: true, randomSeed: 7).Select(a => a.Name).ToList();
+        var descending = LibraryAlbumsViewModel.ApplySortMode(albums, "random", ascending: false, randomSeed: 7).Select(a => a.Name).ToList();
+
+        Assert.Equal(ascending, descending);
+    }
+
+    [Fact]
+    public void Albums_RandomMode_DifferentSeedsDealDifferentOrders()
+    {
+        var albums = ManyAlbums(30);
+        var input = albums.Select(a => a.Name).ToList();
+
+        // Re-picking Random bumps the seed — some seed among a handful must both
+        // differ from the input order and from another seed's order. (Any single
+        // fixed pair could in principle collide; five identity shuffles of 30
+        // albums cannot.)
+        var orders = Enumerable.Range(1, 5)
+            .Select(seed => LibraryAlbumsViewModel.ApplySortMode(albums, "random", ascending: true, randomSeed: seed).Select(a => a.Name).ToList())
+            .ToList();
+
+        Assert.Contains(orders, o => !o.SequenceEqual(input));
+        Assert.Contains(orders, o => !o.SequenceEqual(orders[0]));
+    }
 }
