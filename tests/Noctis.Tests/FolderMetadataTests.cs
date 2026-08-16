@@ -61,11 +61,13 @@ public class FolderMetadataTests
     public void OutsideAnyRoot_InfersFromStructure_ButNeverTheVolumeRoot()
     {
         // Drag-drop imports live outside configured roots; structure still counts,
-        // but a folder directly on the volume root has no artist above it.
+        // but a folder directly on the volume root has no artist above it. The
+        // shallow fixture sits on the primary volume: only a true filesystem root
+        // is parentless everywhere (D:\ has no name, but /mnt/other does).
         var deep = TestPaths.Other("Rips", "Artist", "Album", "01 Song.wav");
         Assert.Equal(("Artist", "Album"), FolderMetadata.InferArtistAlbum(deep, Roots));
 
-        var shallow = TestPaths.Other("LooseAlbum", "track.wav");
+        var shallow = TestPaths.Primary("LooseAlbum", "track.wav");
         Assert.Equal(((string?)null, "LooseAlbum"), FolderMetadata.InferArtistAlbum(shallow, Roots));
     }
 
