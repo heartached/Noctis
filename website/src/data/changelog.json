@@ -1,6 +1,43 @@
 {
   "releases": [
     {
+      "tag": "v1.4.7",
+      "version": "1.4.7",
+      "name": "v1.4.7",
+      "publishedAt": "2026-08-16T18:37:18Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.4.7",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added folder-derived metadata for untagged files",
+            "Added filename parsing for track number and title",
+            "Added v8 migration (one-time library heal on launch)",
+            "Added Random album sort option"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved album page streaming (first 200 rows instant, rest in background)"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Unknown Artist album crash (memory/freeze)",
+            "Fixed album page context menu duplication (memory overhead)",
+            "Fixed huge albums freezing app on load",
+            "Fixed Exclusive-mode pause static",
+            "Fixed keep-alive error spam",
+            "Fixed paused track audibly playing after exclusive toggle",
+            "Fixed toggle-spam audio death/glitching"
+          ]
+        }
+      ]
+    },
+    {
       "tag": "v1.4.6",
       "version": "1.4.6",
       "name": "v1.4.6",
@@ -2310,6 +2347,6 @@
       "sections": []
     }
   ],
-  "updatedAt": "2026-08-16T00:33:30.557Z",
+  "updatedAt": "2026-08-16T18:38:02.755Z",
   "degraded": false
 }
