@@ -115,6 +115,20 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
     {
         while (!_disposed)
         {
+            // Suspended (WASAPI exclusive output holds the endpoint): don't
+            // create a stream at all. Only the inner loop checked _suspended,
+            // so a worker that lost its client (creation error, device change,
+            // exclusive taking the device from the parked shared client)
+            // retried Initialize(SHARED) against the exclusively-held endpoint
+            // every ErrorRetryDelayMs — AUDCLNT_E_DEVICE_IN_USE (0x8889000A)
+            // KeepAlive.Error spam every 3s for the whole exclusive session
+            // (field log, 2026-08-16 exclusive-pause report).
+            if (_suspended)
+            {
+                if (_wake.Wait(1000)) _wake.Reset();
+                continue;
+            }
+
             var hadError = false;
             IMMDeviceEnumerator? enumerator = null;
             IMMDevice? device = null;
