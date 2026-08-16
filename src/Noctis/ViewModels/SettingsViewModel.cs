@@ -377,6 +377,78 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Display URL for the running remote, or empty when off.</summary>
     [ObservableProperty] private string _webRemoteUrl = string.Empty;
 
+    /// <summary>QR code for <see cref="WebRemoteUrl"/>, or null when the remote is off
+    /// or failed to start. Saves typing the address on the phone (Discord request).</summary>
+    [ObservableProperty] private Avalonia.Media.Imaging.Bitmap? _webRemoteQr;
+
+    /// <summary>Token-free URL for on-screen display. The full auth-bearing URL stays
+    /// off the card — a settings screenshot leaked a live token on Discord — and is
+    /// carried by the QR code, the copy button and the enlarge flyout instead
+    /// (same reasoning as DebugLog's no-auth-URLs rule).</summary>
+    [ObservableProperty] private string _webRemoteDisplayUrl = string.Empty;
+
+    /// <summary>True when the remote is enabled but the server threw on start —
+    /// drives the error row (WebRemoteUrl then holds the failure text).</summary>
+    [ObservableProperty] private bool _webRemoteStartFailed;
+
+    /// <summary>True briefly after the remote URL is copied — inline "Copied!".</summary>
+    [ObservableProperty] private bool _webRemoteUrlCopied;
+
+    /// <summary>True while a phone is actively using the remote — flips the card's
+    /// status line from "waiting" to "connected", so a scan that silently goes
+    /// nowhere (wrong network, firewall) is visible as a problem. The remote page
+    /// polls /api/status every 2 s while open, so requests going quiet means the
+    /// phone left: reverts after ~3 missed polls instead of latching forever.</summary>
+    [ObservableProperty] private bool _webRemotePhoneSeen;
+
+    /// <summary>Guard for the phone-seen quiet-window reset (same idiom as the search
+    /// generation counters): bumped on every authorized request, so only the reset
+    /// scheduled by the newest request may flip the flag back off.</summary>
+    private int _webRemotePhoneSeenGeneration;
+
+    private const int WebRemotePhoneQuietMs = 6500;
+
+    private void OnWebRemoteClientConnected()
+    {
+        WebRemotePhoneSeen = true;
+        var generation = ++_webRemotePhoneSeenGeneration;
+        _ = ResetWebRemotePhoneSeenAfterQuietAsync(generation);
+    }
+
+    private async Task ResetWebRemotePhoneSeenAfterQuietAsync(int generation)
+    {
+        await Task.Delay(WebRemotePhoneQuietMs);
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (generation == _webRemotePhoneSeenGeneration)
+                WebRemotePhoneSeen = false;
+        });
+    }
+
+    /// <summary>Copies the full remote URL (including the access key).</summary>
+    [RelayCommand]
+    private async Task CopyWebRemoteUrlAsync()
+    {
+        var clipboard = (Avalonia.Application.Current?.ApplicationLifetime
+            as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+            ?.MainWindow?.Clipboard;
+        if (clipboard is null) return;
+
+        try { await clipboard.SetTextAsync(WebRemoteUrl); } catch { return; }
+
+        WebRemoteUrlCopied = true;
+        await Task.Delay(1500);
+        WebRemoteUrlCopied = false;
+    }
+
+    private void SetWebRemoteQr(Avalonia.Media.Imaging.Bitmap? qr)
+    {
+        var old = WebRemoteQr;
+        WebRemoteQr = qr;
+        // Dispose after the swap so a bound Image never paints a disposed bitmap.
+        old?.Dispose();
+    }
+
     partial void OnWebRemoteEnabledChanged(bool value)
     {
         if (_settingsLoaded) _ = SaveAsync();
@@ -389,7 +461,12 @@ public partial class SettingsViewModel : ViewModelBase
         {
             try
             {
-                _webRemote ??= new WebRemoteServer(_player);
+                if (_webRemote == null)
+                {
+                    _webRemote = new WebRemoteServer(_player);
+                    _webRemote.ClientConnected += (_, _) =>
+                        Avalonia.Threading.Dispatcher.UIThread.Post(OnWebRemoteClientConnected);
+                }
                 if (!_webRemote.IsRunning)
                 {
                     try
@@ -407,10 +484,17 @@ public partial class SettingsViewModel : ViewModelBase
                 }
                 var ip = WebRemoteServer.GetLocalAddress() ?? "<this-pc-ip>";
                 WebRemoteUrl = $"http://{ip}:{_webRemote.Port}/?k={_webRemote.Token}";
+                WebRemoteDisplayUrl = $"http://{ip}:{_webRemote.Port}";
+                WebRemoteStartFailed = false;
+                WebRemotePhoneSeen = false;
+                SetWebRemoteQr(Helpers.QrCodeBitmap.TryRender(WebRemoteUrl));
             }
             catch (Exception ex)
             {
                 WebRemoteUrl = $"Failed to start: {ex.Message}";
+                WebRemoteDisplayUrl = string.Empty;
+                WebRemoteStartFailed = true;
+                SetWebRemoteQr(null);
                 DebugLogger.Error(DebugLogger.Category.Error, "WebRemote.StartFailed", ex.Message);
             }
         }
@@ -418,6 +502,11 @@ public partial class SettingsViewModel : ViewModelBase
         {
             _webRemote?.Stop();
             WebRemoteUrl = string.Empty;
+            WebRemoteDisplayUrl = string.Empty;
+            WebRemoteStartFailed = false;
+            _webRemotePhoneSeenGeneration++; // cancel any pending quiet-window reset
+            WebRemotePhoneSeen = false;
+            SetWebRemoteQr(null);
         }
     }
     [ObservableProperty] private double _playbackBarBackgroundOpacity = 0.4;

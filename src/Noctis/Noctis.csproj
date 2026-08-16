@@ -16,12 +16,12 @@
     <RootNamespace>Noctis</RootNamespace>
     <Product>Noctis</Product>
     <Company>Noctis</Company>
-    <Version>1.4.5</Version>
+    <Version>1.4.6</Version>
     <!-- Pre-release marker: numeric Version stays 1.1.16 (update checks + the
          displayed number are unchanged); the "-prerelease" SemVer suffix on the
          informational version is what lights the "Pre-release" badge in Settings.
          Remove this line (or drop the suffix) when cutting a stable release. -->
-    <InformationalVersion>1.4.5</InformationalVersion>
+    <InformationalVersion>1.4.6</InformationalVersion>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
 
     <!-- Avalonia requires this for XAML compilation -->
@@ -114,6 +114,12 @@
   <!-- YAML: Lyricsfile (word-level sync) parsing -->
   <ItemGroup>
     <PackageReference Include="YamlDotNet" Version="15.3.0" />
+  </ItemGroup>
+
+  <!-- Web Remote QR code (Settings → Integrations). Pure managed MIT port of
+       Nayuki's QR generator; zero transitive dependencies. -->
+  <ItemGroup>
+    <PackageReference Include="Net.Codecrete.QrCodeGenerator" Version="3.1.0" />
   </ItemGroup>
 
   <!-- Embedded assets -->

@@ -1,11 +1,57 @@
 using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using Noctis.Services;
+using Noctis.ViewModels;
 using Xunit;
 
 namespace Noctis.Tests;
 
 public class WebRemoteServerTests
 {
+    private static WebRemoteServer CreateServer() => new(new PlayerViewModel(
+        new FakeAudioPlayer(), new FakeLibraryService(),
+        new TestPersistenceService(), new FakeAnimatedCoverService()));
+
+    private static async Task<string?> SendRequestAsync(int port, string target)
+    {
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, port);
+        var stream = client.GetStream();
+        var request = $"GET {target} HTTP/1.1\r\nHost: x\r\n\r\n";
+        await stream.WriteAsync(Encoding.ASCII.GetBytes(request));
+        using var reader = new StreamReader(stream);
+        return await reader.ReadLineAsync();
+    }
+
+    [Fact]
+    public async Task AuthorizedRequest_Returns200_AndRaisesClientConnected()
+    {
+        using var server = CreateServer();
+        server.Start(0);
+        var connected = new TaskCompletionSource();
+        server.ClientConnected += (_, _) => connected.TrySetResult();
+
+        var statusLine = await SendRequestAsync(server.Port, $"/?k={server.Token}");
+
+        Assert.Contains("200", statusLine);
+        await connected.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task WrongToken_Returns403_WithoutClientConnected()
+    {
+        using var server = CreateServer();
+        server.Start(0);
+        var raised = false;
+        server.ClientConnected += (_, _) => raised = true;
+
+        var statusLine = await SendRequestAsync(server.Port, "/?k=wrong");
+
+        Assert.Contains("403", statusLine);
+        Assert.False(raised);
+    }
+
     [Theory]
     [InlineData("127.0.0.1", true)]
     [InlineData("10.0.0.5", true)]
