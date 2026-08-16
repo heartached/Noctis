@@ -11,7 +11,7 @@ namespace Noctis.Services;
 /// </summary>
 public class LibraryService : ILibraryService
 {
-    private const int CurrentMetadataSchemaVersion = 7;
+    private const int CurrentMetadataSchemaVersion = 8;
     // v3: album track order normalized (disc 0 → 1, missing track numbers last)
     private const int CurrentIndexCacheVersion = 3;
     // Throttle scan progress so a large library (tens of thousands of files)
@@ -117,6 +117,9 @@ public class LibraryService : ILibraryService
         // scan that starts before SettingsViewModel finishes loading honors it.
         MetadataService.UseEmbeddedArtwork = settings.UseEmbeddedArtwork;
         var includeRoots = BuildIncludeRoots(folders, settings).ToList();
+        // Mirror the roots so folder-derived metadata (untagged files) never
+        // credits a library root folder itself as an artist or album.
+        MetadataService.MusicRootFolders = includeRoots.ToArray();
         var excludedRoots = settings.FolderRules
             .Where(r => r.Enabled && !r.Include && !string.IsNullOrWhiteSpace(r.Path))
             .Select(r => TryNormalizePath(r.Path))
@@ -1654,6 +1657,8 @@ public class LibraryService : ILibraryService
         // static enrichment toggle reflects the persisted setting from the first read.
         MetadataService.MergeFeaturedFromTitles = settings.MergeFeaturedFromTitles;
         MetadataService.UseEmbeddedArtwork = settings.UseEmbeddedArtwork;
+        MetadataService.MusicRootFolders = settings.MusicFolders
+            .Where(f => !string.IsNullOrWhiteSpace(f)).ToArray();
 
         if (settings.MetadataSchemaVersion >= CurrentMetadataSchemaVersion)
             return false;
@@ -1686,6 +1691,13 @@ public class LibraryService : ILibraryService
         // advisory flag in Apple Music downloads for a star rating.
         if (settings.MetadataSchemaVersion < 7)
             didBackfillMetadata |= await BackfillAdvisoryMisreadRatingsAsync(_tracks);
+
+        // v8: untagged files (iTunes WAV rips) all merged into the shared
+        // Unknown-Album bucket; derive artist/album from the folder structure and
+        // track numbers from filenames, matching what ReadTrackMetadata now does
+        // for new imports. Pure string work against stored paths — no file reads.
+        if (settings.MetadataSchemaVersion < 8)
+            didBackfillMetadata |= BackfillFolderMetadata(_tracks, settings);
 
         // Only advance the recorded schema version when the pass actually completed.
         // Cancelling at shutdown mid-backfill and still stamping it done would leave the
@@ -2002,6 +2014,24 @@ public class LibraryService : ILibraryService
     /// One-time migration: enrich Artist with featured artists from title
     /// so collaboration tracks always show the artist subtitle.
     /// </summary>
+    private static bool BackfillFolderMetadata(List<Track> tracks, AppSettings settings)
+    {
+        var roots = settings.MusicFolders
+            .Where(f => !string.IsNullOrWhiteSpace(f))
+            .ToArray();
+
+        var changedCount = 0;
+        foreach (var track in tracks)
+        {
+            // Server-side tracks carry connector paths; their placeholders are the
+            // server's to resolve, same as during a scan.
+            if (track.SourceType != SourceType.Local) continue;
+            if (Helpers.FolderMetadata.TryApplyToTrack(track, roots))
+                changedCount++;
+        }
+        return changedCount > 0;
+    }
+
     private bool BackfillArtistFromTitle(List<Track> tracks)
     {
         var changedCount = 0;

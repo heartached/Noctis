@@ -115,6 +115,20 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
     {
         while (!_disposed)
         {
+            // Suspended (WASAPI exclusive output holds the endpoint): don't
+            // create a stream at all. Only the inner loop checked _suspended,
+            // so a worker that lost its client (creation error, device change,
+            // exclusive taking the device from the parked shared client)
+            // retried Initialize(SHARED) against the exclusively-held endpoint
+            // every ErrorRetryDelayMs — AUDCLNT_E_DEVICE_IN_USE (0x8889000A)
+            // KeepAlive.Error spam every 3s for the whole exclusive session
+            // (field log, 2026-08-16 exclusive-pause report).
+            if (_suspended)
+            {
+                if (_wake.Wait(1000)) _wake.Reset();
+                continue;
+            }
+
             var hadError = false;
             IMMDeviceEnumerator? enumerator = null;
             IMMDevice? device = null;
@@ -158,9 +172,20 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
                 {
                     if (running)
                     {
-                        if (_suspended ||
-                            (_idleStopMs > 0 &&
-                             Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks) > _idleStopMs))
+                        if (_suspended)
+                        {
+                            // Exclusive output is taking the endpoint: RELEASE the
+                            // client entirely instead of holding it open stopped. A
+                            // held-open client Stop/Start-whipsawed by mode churn
+                            // ended up wedged (Start → AUDCLNT_E_DEVICE_INVALIDATED)
+                            // and, while wedged, made the endpoint read as held —
+                            // the next exclusive open failed AUDCLNT_E_DEVICE_IN_USE
+                            // until this worker rebuilt (field repro 08-16).
+                            DebugLogger.Info(DebugLogger.Category.Playback, "KeepAlive.Suspended");
+                            break; // finally releases COM; the outer suspend gate waits
+                        }
+                        if (_idleStopMs > 0 &&
+                            Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks) > _idleStopMs)
                         {
                             // Park: stop the stream so the OS audio power request is
                             // released (allows system auto-sleep) and the endpoint may
@@ -201,7 +226,7 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
                             _wake.Reset();
                         if (_disposed) break;
                         if (_suspended)
-                            continue;
+                            break; // release the parked client too — see above
                         if (_idleStopMs > 0 &&
                             Environment.TickCount64 - Volatile.Read(ref _lastActivityTicks) > _idleStopMs)
                             continue;

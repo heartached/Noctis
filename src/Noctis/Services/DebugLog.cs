@@ -140,6 +140,10 @@ public static class DebugLog
                   (UpdateService.IsPrereleaseBuild ? " (pre-release)" : ""));
         Lines.Add($"{RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
         Lines.Add($"Install source: {UpdateService.Source}");
+        // An AppImage's BaseDirectory is its throwaway /tmp squashfs mount, so
+        // prefer $APPIMAGE (the real on-disk file) when set.
+        var appImage = Environment.GetEnvironmentVariable("APPIMAGE");
+        Lines.Add($"Install location: {(string.IsNullOrEmpty(appImage) ? AppContext.BaseDirectory : appImage)}");
         Lines.Add($"Session started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         Lines.Add("────────────────────────────");
     }

@@ -278,16 +278,25 @@ internal sealed class WasapiGainOutput : IDisposable
         }
     }
 
+    // Pause/Resume park the render chain instead of pausing WasapiOut. NAudio's
+    // WasapiOut.Pause() only stops FILLING the stream — IAudioClient keeps
+    // running. Shared mode then mixes silence, but in exclusive event-driven
+    // mode the hardware keeps cycling the client-owned DMA buffer that nobody
+    // refills, replaying the last ~100ms of stale PCM as CONSTANT STATIC for
+    // the whole pause; resume then re-engaged the fill loop out of phase over
+    // stale buffers (crackles/stutters). Parking keeps the stream fed with
+    // freshly written silence — no state change, no starvation, and resume
+    // continues click-free at the exact held sample.
     public void Pause()
     {
         if (_disposed) return;
-        try { _out.Pause(); } catch { }
+        _gain.Park();
     }
 
     public void Resume()
     {
         if (_disposed) return;
-        try { _out.Play(); } catch { }
+        _gain.Unpark();
     }
 
     public void Flush()
@@ -354,13 +363,22 @@ internal sealed class WasapiGainOutput : IDisposable
     /// waveform discontinuity, hence no click, regardless of how fast the slider
     /// moves. Because it runs at the output (not at decode time), the change is
     /// heard within one render quantum, not after the whole queued buffer.
+    ///
+    /// Also owns pause (<see cref="Park"/>/<see cref="Unpark"/>): parked, it
+    /// fades to zero on the same slew, then emits full buffers of true silence
+    /// WITHOUT consuming the source, holding the pre-pause tail for a
+    /// sample-exact resume. The stream itself never pauses — see the note on
+    /// <see cref="WasapiGainOutput.Pause"/> for the exclusive-mode DMA-loop
+    /// static this design exists to avoid. Internal for tests.
     /// </summary>
-    private sealed class GainSampleProvider : ISampleProvider
+    internal sealed class GainSampleProvider : ISampleProvider
     {
         private readonly ISampleProvider _src;
         private readonly int _channels;
         private float _current = 1f;
         private volatile float _target = 1f;
+        private volatile bool _parked;
+        private float _parkGain = 1f; // render-thread only, slews toward _parked ? 0 : 1
         private readonly float _step; // per-frame gain step to reach target in ~15ms
         private long _readCount;
         private long _setCount;
@@ -382,11 +400,38 @@ internal sealed class WasapiGainOutput : IDisposable
                 Diag($"SetTarget #{_setCount}: {target:F4}");
         }
 
+        public void Park() => _parked = true;
+
+        public void Unpark() => _parked = false;
+
         public int Read(float[] buffer, int offset, int count)
         {
-            var read = _src.Read(buffer, offset, count);
+            var parked = _parked;
+            var park = _parkGain;
+
+            // Fully parked: full buffers of silence, source untouched. The
+            // explicit loop (not Array.Clear) matters — the buffer can be a
+            // WaveBuffer-punned float[] whose Length lies about its element count.
+            if (parked && park == 0f)
+            {
+                for (var i = 0; i < count; i++) buffer[offset + i] = 0f;
+                return count;
+            }
+
+            // Fading out: consume only the ~15ms the ramp still needs, so the
+            // rest of the pre-pause tail stays queued for resume instead of
+            // being eaten at zero gain.
+            var toConsume = count;
+            if (parked)
+            {
+                var rampFramesLeft = (int)MathF.Ceiling(park / _step);
+                toConsume = Math.Min(count, rampFramesLeft * _channels);
+            }
+
+            var read = _src.Read(buffer, offset, toConsume);
             var target = _target;
             var cur = _current;
+            var parkTarget = parked ? 0f : 1f;
             var step = _step;
             var peak = 0f;
 
@@ -394,6 +439,8 @@ internal sealed class WasapiGainOutput : IDisposable
             {
                 if (cur < target) cur = Math.Min(target, cur + step);
                 else if (cur > target) cur = Math.Max(target, cur - step);
+                if (park < parkTarget) park = Math.Min(parkTarget, park + step);
+                else if (park > parkTarget) park = Math.Max(parkTarget, park - step);
 
                 for (var ch = 0; ch < _channels; ch++)
                 {
@@ -401,11 +448,21 @@ internal sealed class WasapiGainOutput : IDisposable
                     var s = buffer[idx];
                     var a = s < 0 ? -s : s;
                     if (a > peak) peak = a;
-                    buffer[idx] = s * cur;
+                    buffer[idx] = s * cur * park;
                 }
             }
 
             _current = cur;
+            _parkGain = park;
+
+            // Parked (or a short source read): pad the rest of the buffer with
+            // silence and claim the full count, so WasapiOut's render loop keeps
+            // running — a starved exclusive stream loops its stale DMA buffer.
+            if (parked)
+            {
+                for (var i = read; i < count; i++) buffer[offset + i] = 0f;
+                read = count;
+            }
             // Diag() is a no-op unless NOCTIS_WASAPI_LOG=1, but keep the interpolation
             // itself off the render thread's hot path when logging is off.
             if (DiagEnabled && ++_readCount % 400 == 1)

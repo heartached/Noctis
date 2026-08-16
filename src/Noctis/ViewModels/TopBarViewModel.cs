@@ -386,8 +386,8 @@ public partial class TopBarViewModel : ViewModelBase
     public bool AlbumSortDescending => !AlbumSortAscending;
 
     /// <summary>"Default" floats recent imports instead of ordering by a single key,
-    /// so a direction can't be applied to it.</summary>
-    public bool AlbumSortDirectionEnabled => AlbumSortMode != "default";
+    /// and "Random" is a shuffle — no direction applies to either.</summary>
+    public bool AlbumSortDirectionEnabled => AlbumSortMode is not ("default" or "random");
 
     // Dropdown variants of the release-type / quality filters (albums grid top bar).
     [ObservableProperty] private ICommand? _releaseTypeFilterCommand;

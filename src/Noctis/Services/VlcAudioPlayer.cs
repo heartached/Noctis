@@ -188,6 +188,18 @@ public class VlcAudioPlayer : IAudioPlayer
     private volatile bool _exclusiveModeEnabled;
     private volatile WasapiGainOutput? _exclusiveOut;
     private readonly object _exclusiveSinkLock = new();
+    // Output mode the players are currently WIRED for (set by
+    // RebuildOutputModeLocked). Lets queued SetExclusiveMode workers coalesce:
+    // each executes against the latest desired mode and no-ops when the players
+    // already match, so toggle spam collapses to the net transition instead of
+    // replaying every flip as a full teardown/rebuild.
+    private volatile bool _outputModeExclusiveBuilt;
+    // Resume target of the most recent output-mode rebuild. Consulted only by a
+    // back-to-back rebuild that lands while the previous rebuild's input is
+    // still opening (IsPlaying false, Time 0), so the track resumes at the
+    // position the user actually heard instead of restarting at 0:00.
+    private long _rebuildResumeMs;
+    private long _rebuildResumeTicks;
 
     private Media? _currentMedia;
     private Media? _standbyMedia;
@@ -1522,7 +1534,18 @@ public class VlcAudioPlayer : IAudioPlayer
             try
             {
                 if (!_disposed)
-                    RebuildOutputModeLocked(enabled);
+                {
+                    // Coalesce queued toggles: spam queues one worker per flip and
+                    // each used to replay its stale flip as a full teardown/rebuild
+                    // (field repro 08-16: 8 rebuilds in 1.2s whipsawed the
+                    // keep-alive into a wedged client that then blocked the next
+                    // exclusive open with DEVICE_IN_USE, and the rebuild chain
+                    // dropped the playing track). Execute against the LATEST
+                    // desired mode; workers whose flip is already built no-op.
+                    var desired = _exclusiveModeEnabled;
+                    if (desired != _outputModeExclusiveBuilt)
+                        RebuildOutputModeLocked(desired);
+                }
             }
             catch (Exception ex)
             {
@@ -1538,8 +1561,11 @@ public class VlcAudioPlayer : IAudioPlayer
     /// <summary>
     /// Tear down both MediaPlayers and recreate them wired for the requested
     /// output mode. Must be called under _playbackLock on a worker thread.
+    /// <paramref name="resumeTrack"/> is false only for the no-output-at-all
+    /// failure rebuild inside PrepareExclusiveOutputFor, which runs mid-
+    /// PlayInternal and must not nest another resume.
     /// </summary>
-    private void RebuildOutputModeLocked(bool exclusive)
+    private void RebuildOutputModeLocked(bool exclusive, bool resumeTrack = true)
     {
         // The splice engine's callbacks die with the rebuilt players; disable it
         // (until app restart) so segment bookkeeping can't run against players
@@ -1553,12 +1579,31 @@ public class VlcAudioPlayer : IAudioPlayer
             DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.Disabled", "output mode rebuilt");
         }
 
-        var wasActive = _currentMedia != null && (_player.IsPlaying || _isPaused);
+        // Loaded media counts as active even when IsPlaying is still false:
+        // VLC opens the input ASYNCHRONOUSLY, so a rebuild landing right after
+        // a previous rebuild's resume (or any fresh Play) sees IsPlaying false
+        // for the first few hundred ms. The old `IsPlaying || _isPaused` check
+        // dropped the track there — toggle spam ended with playback dead
+        // (field repro 08-16: rebuild #2 ran 157ms after #1, resuming=False
+        // cascade, state=Stopped).
+        var wasActive = _currentMedia != null;
+        var opening = wasActive && !_player.IsPlaying && !_isPaused;
+        // Captured before the reset below: a PAUSED track must come back paused.
+        // The unconditional PlayInternal used to resume audible playback while
+        // the UI still said paused (field report: pause → toggle exclusive
+        // on/off → track plays).
+        var wasPaused = _isPaused;
         var resumePath = _currentMediaPath;
         long resumeMs = 0;
         if (wasActive)
         {
             try { resumeMs = Math.Max(0, _player.Time); } catch { }
+            // Still-opening input reads Time 0 — resume where the previous
+            // rebuild aimed instead of restarting at 0:00. Recency-gated so a
+            // stale target can never teleport an unrelated later rebuild.
+            if (resumeMs <= 0 && opening &&
+                Environment.TickCount64 - Volatile.Read(ref _rebuildResumeTicks) < 10000)
+                resumeMs = Volatile.Read(ref _rebuildResumeMs);
         }
 
         ResetEndReachedPending();
@@ -1632,13 +1677,19 @@ public class VlcAudioPlayer : IAudioPlayer
             OutputModeChanged?.Invoke(this, "Shared output (system mixer)");
         }
 
+        _outputModeExclusiveBuilt = exclusive;
         DebugLogger.Info(DebugLogger.Category.Playback, "Exclusive.ModeSwitched",
-            $"exclusive={exclusive}, resuming={wasActive}");
+            $"exclusive={exclusive}, resuming={resumeTrack && wasActive}");
 
-        if (wasActive && !string.IsNullOrEmpty(resumePath) && File.Exists(resumePath))
+        if (resumeTrack && wasActive && !string.IsNullOrEmpty(resumePath) && File.Exists(resumePath))
         {
             Interlocked.Exchange(ref _pendingSeekMs, resumeMs > 1000 ? resumeMs : -1);
-            PlayInternal(resumePath);
+            Volatile.Write(ref _rebuildResumeMs, resumeMs);
+            Volatile.Write(ref _rebuildResumeTicks, Environment.TickCount64);
+            // :start-paused + :start-time (the drag-to-start/Previous mechanism):
+            // the input reopens ON the resume frame but paused, so the mode
+            // switch never turns a paused track into audible playback.
+            PlayInternal(resumePath, startPaused: wasPaused);
         }
     }
 
@@ -1718,7 +1769,7 @@ public class VlcAudioPlayer : IAudioPlayer
                         DebugLogger.Warn(DebugLogger.Category.Playback, "Exclusive.SetupFailed",
                             "no WASAPI output available");
                         _exclusiveModeEnabled = false;
-                        RebuildOutputModeLocked(false);
+                        RebuildOutputModeLocked(false, resumeTrack: false);
                         OutputModeChanged?.Invoke(this,
                             "No audio output could be opened in exclusive mode — " +
                             "Exclusive Mode was turned off and playback moved back to the shared system mixer.");

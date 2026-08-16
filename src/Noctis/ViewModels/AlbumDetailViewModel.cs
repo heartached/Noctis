@@ -417,16 +417,58 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(MoreByArtistTitle));
     }
 
+    /// <summary>
+    /// Rows the page realizes synchronously on open; anything beyond streams in
+    /// on background dispatcher passes. The track list is non-virtualized (see
+    /// AlbumDetailView's ItemsPanel comment), so every row is real layout work —
+    /// degenerate track sets like the shared Unknown-Album bucket (every untagged
+    /// file in the library in one pseudo-album) froze the UI thread for minutes
+    /// and ran the app out of memory when realized in one pass. Real albums
+    /// almost never exceed this and keep their single-pass behavior.
+    /// </summary>
+    private const int TrackRealizeChunk = 200;
+
+    // Cancels an in-flight incremental fill when the groups are rebuilt
+    // (library update, album re-key) or the page is disposed.
+    private int _discFillGeneration;
+
     private void BuildDiscGroups()
     {
+        var generation = ++_discFillGeneration;
         DiscGroups.Clear();
-        var groups = Tracks
-            .GroupBy(t => t.DiscNumber)
-            .OrderBy(g => g.Key)
-            .Select(g => new DiscGroup(g.Key, $"Disc {g.Key}", g.ToList()));
-        foreach (var g in groups)
-            DiscGroups.Add(g);
+        var pending = new List<(ObservableCollection<Track> Target, List<Track> Remainder)>();
+        foreach (var g in Tracks.GroupBy(t => t.DiscNumber).OrderBy(g => g.Key))
+        {
+            var all = g.ToList();
+            var visible = new ObservableCollection<Track>(all.Take(TrackRealizeChunk));
+            DiscGroups.Add(new DiscGroup(g.Key, $"Disc {g.Key}", visible));
+            if (all.Count > visible.Count)
+                pending.Add((visible, all.GetRange(visible.Count, all.Count - visible.Count)));
+        }
+        if (pending.Count > 0)
+            Dispatcher.UIThread.Post(
+                () => FillNextTrackChunk(pending, 0, 0, generation),
+                DispatcherPriority.Background);
         OnPropertyChanged(nameof(HasMultipleDiscs));
+    }
+
+    private void FillNextTrackChunk(
+        List<(ObservableCollection<Track> Target, List<Track> Remainder)> pending,
+        int groupIndex, int offset, int generation)
+    {
+        if (generation != _discFillGeneration || groupIndex >= pending.Count)
+            return;
+
+        var (target, remainder) = pending[groupIndex];
+        var end = Math.Min(offset + TrackRealizeChunk, remainder.Count);
+        for (var i = offset; i < end; i++)
+            target.Add(remainder[i]);
+
+        var (nextGroup, nextOffset) = end >= remainder.Count ? (groupIndex + 1, 0) : (groupIndex, end);
+        if (nextGroup < pending.Count)
+            Dispatcher.UIThread.Post(
+                () => FillNextTrackChunk(pending, nextGroup, nextOffset, generation),
+                DispatcherPriority.Background);
     }
 
     private static List<Track> InAlbumOrder(IEnumerable<Track> tracks) =>
@@ -864,6 +906,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        _discFillGeneration++; // halt any in-flight track streaming
         _player.PropertyChanged -= _playerPropertyChangedHandler;
         _library.LibraryUpdated -= _libraryUpdatedHandler;
         _library.FavoritesChanged -= _favoritesChangedHandler;
@@ -877,5 +920,6 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 /// <summary>Display item for an individual artist name in a multi-artist album header.</summary>
 public record ArtistTokenItem(string Name, bool IsLast);
 
-/// <summary>A group of tracks belonging to a single disc within an album.</summary>
-public record DiscGroup(int DiscNumber, string Header, List<Track> Tracks);
+/// <summary>A group of tracks belonging to a single disc within an album.
+/// Observable so large albums can stream rows in after first paint.</summary>
+public record DiscGroup(int DiscNumber, string Header, ObservableCollection<Track> Tracks);

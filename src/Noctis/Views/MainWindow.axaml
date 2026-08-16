@@ -299,6 +299,15 @@
                                                      IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=mostplayed}" />
                                         </MenuItem.Icon>
                                     </MenuItem>
+                                    <!-- Re-picking Random deals a new shuffle (issue #45). -->
+                                    <MenuItem Header="Random"
+                                              Command="{Binding AlbumSortCommand}"
+                                              CommandParameter="random">
+                                        <MenuItem.Icon>
+                                            <PathIcon Data="{StaticResource CheckmarkIcon}" Width="14" Height="14"
+                                                     IsVisible="{Binding AlbumSortMode, Converter={StaticResource StringEquals}, ConverterParameter=random}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <Separator />
                                     <!-- Direction is meaningless for "Default", which floats
                                          recent imports rather than ordering by one key. -->
