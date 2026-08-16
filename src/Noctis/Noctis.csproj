@@ -116,6 +116,12 @@
     <PackageReference Include="YamlDotNet" Version="15.3.0" />
   </ItemGroup>
 
+  <!-- Web Remote QR code (Settings → Integrations). Pure managed MIT port of
+       Nayuki's QR generator; zero transitive dependencies. -->
+  <ItemGroup>
+    <PackageReference Include="Net.Codecrete.QrCodeGenerator" Version="3.1.0" />
+  </ItemGroup>
+
   <!-- Embedded assets -->
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />

@@ -35,6 +35,11 @@ public sealed class WebRemoteServer : IDisposable
     /// <summary>Per-session access token required on every request; regenerated on Start.</summary>
     public string Token { get; private set; } = string.Empty;
 
+    /// <summary>Raised on every authorized request, from a worker thread. The first one
+    /// proves a phone actually reached this PC — Settings turns it into connection
+    /// feedback, so "scanned but nothing loaded" is diagnosable from the card.</summary>
+    public event EventHandler? ClientConnected;
+
     public WebRemoteServer(PlayerViewModel player) => _player = player;
 
     /// <summary>Binds the remote. Pass 0 to let the OS pick a free port; read
@@ -74,9 +79,12 @@ public sealed class WebRemoteServer : IDisposable
     {
         try
         {
-            // Connect-less UDP trick: routes without sending a packet.
+            // Connect-less UDP trick: routes without sending a packet. The probe target
+            // must be a PUBLIC address: a private one (192.168.1.1 previously) can land
+            // inside a virtual adapter's subnet (Hyper-V/WSL/VirtualBox host networks
+            // are commonly 192.168.x), which advertised an IP no phone could reach.
             using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            socket.Connect("192.168.1.1", 65530);
+            socket.Connect("8.8.8.8", 65530);
             return (socket.LocalEndPoint as IPEndPoint)?.Address.ToString();
         }
         catch
@@ -242,6 +250,8 @@ public sealed class WebRemoteServer : IDisposable
         // so LAN devices without the link and cross-origin pages get nothing.
         if (!IsAuthorized(query))
             return ("403 Forbidden", "text/plain", "forbidden");
+
+        ClientConnected?.Invoke(this, EventArgs.Empty);
 
         switch (method, path)
         {

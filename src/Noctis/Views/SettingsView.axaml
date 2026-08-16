@@ -221,6 +221,11 @@
         <Style Selector="Button:pointerover">
             <Setter Property="RenderTransform" Value="scale(1.045)"/>
         </Style>
+        <!-- The QR thumbnail must not grow on hover: a moving code reads as decoration,
+             and phones scan it in place. The press dip stays for click feedback. -->
+        <Style Selector="Button.qr-thumb:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
         <Style Selector="Button.accent-swatch:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
@@ -2306,19 +2311,74 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="Web Remote" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="Control playback from your phone on your local network. Traffic is unencrypted — avoid untrusted Wi-Fi."
+                            <TextBlock Text="Control playback from your phone on your local network. Traffic is unencrypted, so avoid untrusted Wi-Fi."
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               IsChecked="{Binding WebRemoteEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-                    <Border Background="#18000000" CornerRadius="8" Padding="12,8"
+                    <Border Background="#18000000" CornerRadius="8" Padding="12,10"
                             IsVisible="{Binding WebRemoteUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="Open on your phone:" FontSize="12" Opacity="0.6" VerticalAlignment="Center"/>
-                            <SelectableTextBlock Text="{Binding WebRemoteUrl}" FontSize="13" FontWeight="SemiBold"
-                                                 VerticalAlignment="Center"/>
+                        <StackPanel Spacing="8">
+                            <!-- Running: QR thumbnail + connection details. The card shows the
+                                 token-free URL; the full auth link lives in the QR, the copy
+                                 button and the enlarge flyout (screenshots leaked a live key). -->
+                            <Grid ColumnDefinitions="Auto,*"
+                                  IsVisible="{Binding WebRemoteQr, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Button Grid.Column="0" Classes="qr-thumb" Padding="0" Background="Transparent" BorderThickness="0"
+                                        VerticalAlignment="Center" ToolTip.Tip="Tap to enlarge">
+                                    <Border CornerRadius="6" ClipToBounds="True">
+                                        <Image Source="{Binding WebRemoteQr}" Width="84" Height="84"/>
+                                    </Border>
+                                    <Button.Flyout>
+                                        <Flyout Placement="RightEdgeAlignedTop">
+                                            <StackPanel Spacing="10">
+                                                <!-- Natural bitmap size: 1 module = 8 device px, no resampling —
+                                                     the crispest render a camera can get off this screen. -->
+                                                <Border CornerRadius="8" ClipToBounds="True" HorizontalAlignment="Center">
+                                                    <Image Source="{Binding WebRemoteQr}" Stretch="None"/>
+                                                </Border>
+                                                <SelectableTextBlock Text="{Binding WebRemoteUrl}" FontSize="12" Opacity="0.7"
+                                                                     TextWrapping="Wrap" TextAlignment="Center" MaxWidth="300"/>
+                                                <TextBlock Text="If your phone blocks the link as insecure, choose Continue. The remote uses plain HTTP on your local network."
+                                                           FontSize="11" Opacity="0.45" TextWrapping="Wrap"
+                                                           TextAlignment="Center" MaxWidth="300"/>
+                                            </StackPanel>
+                                        </Flyout>
+                                    </Button.Flyout>
+                                </Button>
+                                <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="4" VerticalAlignment="Center">
+                                    <TextBlock Text="OPEN ON YOUR PHONE" FontSize="10" Opacity="0.5"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <SelectableTextBlock Text="{Binding WebRemoteDisplayUrl}" FontSize="14" FontWeight="SemiBold"
+                                                             VerticalAlignment="Center"/>
+                                        <Button Classes="pill-action" Command="{Binding CopyWebRemoteUrlCommand}"
+                                                ToolTip.Tip="Copy the full link, including the access key">
+                                            <TextBlock Text="Copy" FontSize="11"/>
+                                        </Button>
+                                        <TextBlock Text="Copied!" FontSize="11"
+                                                   Foreground="{DynamicResource AccentColorBrush}"
+                                                   VerticalAlignment="Center"
+                                                   IsVisible="{Binding WebRemoteUrlCopied}"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                                IsVisible="{Binding !WebRemotePhoneSeen}">
+                                        <Ellipse Width="6" Height="6" Fill="#E5A34D" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Waiting for a phone. Scan the code or tap it to enlarge."
+                                                   FontSize="11" Opacity="0.55" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                                IsVisible="{Binding WebRemotePhoneSeen}">
+                                        <Ellipse Width="6" Height="6" Fill="#52B788" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Phone connected"
+                                                   FontSize="11" Opacity="0.55" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                            <!-- Enabled but the server threw on start -->
+                            <TextBlock Text="{Binding WebRemoteUrl}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                                       IsVisible="{Binding WebRemoteStartFailed}"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
