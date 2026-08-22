@@ -16,7 +16,7 @@
     <!-- Headless UI harness (same version as the app's Avalonia pin): lets tests
          mount real views, run layout + the frame-clock scroll animations, and
          assert on geometry — used by the lyrics-panel overlap regression tests. -->
-    <PackageReference Include="Avalonia.Headless.XUnit" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="12.1.1" />
     <!-- Matches the app's pin so the test run doesn't drag in the pre-fix native SQLite
          (CVE-2025-6965 / GHSA-2m69-gcr7-jv3q). See Noctis.csproj for the rationale. -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
