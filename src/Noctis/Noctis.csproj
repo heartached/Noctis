@@ -68,7 +68,7 @@
 
   <!-- Audio playback via libVLC -->
   <ItemGroup>
-    <PackageReference Include="LibVLCSharp" Version="3.10.0" />
+    <PackageReference Include="LibVLCSharp" Version="3.10.1" />
     <PackageReference Include="LibVLCSharp.Avalonia" Version="3.10.0" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <!-- macOS gets NO libvlc NuGet on purpose: VideoLAN.LibVLC.Mac's 3.0.21 pin
