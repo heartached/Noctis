@@ -17,26 +17,23 @@ namespace Noctis.Tests;
 
 public class ShortcutsSettingsViewModelTests
 {
-    private static (ShortcutsSettingsViewModel Vm, ShortcutService Service) Build(bool developerMode = false)
+    private static (ShortcutsSettingsViewModel Vm, ShortcutService Service) Build()
     {
         var service = new ShortcutService(isMac: false);
-        var vm = new ShortcutsSettingsViewModel(service, () => developerMode, isMac: false);
+        var vm = new ShortcutsSettingsViewModel(service, isMac: false);
         return (vm, service);
     }
 
     private static ShortcutRowViewModel Row(ShortcutsSettingsViewModel vm, ShortcutAction a) => vm.Rows.Single(r => r.Action == a);
 
     [Fact]
-    public void Rows_CoverEveryAction_AndDeveloperRowHidesUntilDeveloperMode()
+    public void Rows_CoverEveryAction_GroupedInDisplayOrder()
     {
         var (vm, _) = Build();
         Assert.Equal(ShortcutDefaults.All.Count, vm.Rows.Count);
-        Assert.False(Row(vm, ShortcutAction.DebugPanel).IsVisible);
-        Assert.DoesNotContain(vm.VisibleGroups, g => g.Name == ShortcutDefaults.GroupDeveloper);
-
-        var (dev, _) = Build(developerMode: true);
-        Assert.True(Row(dev, ShortcutAction.DebugPanel).IsVisible);
-        Assert.Contains(dev.VisibleGroups, g => g.Name == ShortcutDefaults.GroupDeveloper);
+        Assert.Equal(new[] { ShortcutDefaults.GroupPlayback, ShortcutDefaults.GroupWindow, ShortcutDefaults.GroupNavigation },
+                     vm.Groups.Select(g => g.Name));
+        Assert.Equal(ShortcutDefaults.All.Count, vm.Groups.Sum(g => g.Rows.Count));
     }
 
     [Fact]
@@ -45,9 +42,8 @@ public class ShortcutsSettingsViewModelTests
         var (vm, _) = Build();
         Assert.Equal(new[] { "Ctrl", "→" }, Row(vm, ShortcutAction.NextTrack).GestureParts);
         Assert.Equal(new[] { "Space" }, Row(vm, ShortcutAction.PlayPause).GestureParts);
-        Assert.Equal(new[] { "Ctrl", "Shift", "D" }, Row(vm, ShortcutAction.DebugPanel).GestureParts);
 
-        var mac = new ShortcutsSettingsViewModel(new ShortcutService(isMac: true), () => false, isMac: true);
+        var mac = new ShortcutsSettingsViewModel(new ShortcutService(isMac: true), isMac: true);
         Assert.Equal(new[] { "⌘", "→" }, Row(mac, ShortcutAction.NextTrack).GestureParts);
     }
 
@@ -166,10 +162,9 @@ public class ShortcutsSettingsViewModelTests
         Assert.Equal(new[] { "Ctrl", "→" }, next.GestureParts);
     }
 
-    /// <summary>The tab actually renders: one chip per visible row, none for the
-    /// developer-only row until Developer Mode is on.</summary>
+    /// <summary>The tab actually renders: one chip per row.</summary>
     [AvaloniaFact]
-    public async Task ShortcutsTab_RendersOneChipPerVisibleRow()
+    public async Task ShortcutsTab_RendersOneChipPerRow()
     {
         var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
         try
@@ -182,13 +177,7 @@ public class ShortcutsSettingsViewModelTests
             var window = new Window { Width = 900, Height = 1400, Content = view };
             window.Show();
 
-            var expected = ShortcutDefaults.All.Count(d => !d.DeveloperOnly);
             var chips = view.GetVisualDescendants().OfType<ShortcutKeyChip>().Where(c => c.IsEffectivelyVisible).ToList();
-            Assert.Equal(expected, chips.Count);
-
-            vm.DeveloperMode = true;
-            window.UpdateLayout();
-            chips = view.GetVisualDescendants().OfType<ShortcutKeyChip>().Where(c => c.IsEffectivelyVisible).ToList();
             Assert.Equal(ShortcutDefaults.All.Count, chips.Count);
         }
         finally

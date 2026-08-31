@@ -1249,7 +1249,7 @@
             </Transitions>
         </Border.Transitions>
         <Border Name="SettingsCard"
-                Width="920" MaxHeight="720"
+                Width="1000" MaxHeight="720"
                 Background="{DynamicResource AppMainBackground}"
                 BorderBrush="#22FFFFFF"
                 BorderThickness="1"

@@ -737,7 +737,7 @@
         <Style Selector="Button.rail-item:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
-        <Style Selector="Button.rail-profile:pointerover">
+        <Style Selector="Button.profile-avatar-btn:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
         <Style Selector="Button.rail-profile">
@@ -757,10 +757,11 @@
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}"/>
         </Style>
         <Style Selector="TextBox.settings-search">
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="MinHeight" Value="34"/>
-            <Setter Property="FontSize" Value="12.5"/>
-            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="FontSize" Value="13"/>
         </Style>
         <!-- Settings search hides non-matching cards through a class (see
              SettingsSearchIndex) so cards whose IsVisible is bound keep that binding. -->
@@ -794,17 +795,23 @@
     <!-- Rail -->
     <Border Grid.Column="0" Classes="settings-rail">
         <DockPanel Margin="12,14,12,16">
-            <!-- Profile chip: read-only here, click jumps to General where it is edited. -->
-            <Button DockPanel.Dock="Top" Classes="rail-profile"
-                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="General"
-                    ToolTip.Tip="Profile">
-                <Grid ColumnDefinitions="Auto,*">
-                    <Border Grid.Column="0" Width="30" Height="30" CornerRadius="15" ClipToBounds="True">
+            <!-- Profile: click the picture to change it, click the name to edit it. -->
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="4,2,4,0">
+                <Button Grid.Column="0"
+                        Classes="profile-avatar-btn"
+                        Background="Transparent" BorderThickness="0"
+                        Padding="0" Cursor="Hand"
+                        Width="34" Height="34"
+                        CornerRadius="999"
+                        VerticalAlignment="Center"
+                        ToolTip.Tip="Change picture"
+                        Click="OnPickAvatarClick">
+                    <Border Width="34" Height="34" CornerRadius="17" ClipToBounds="True">
                         <Panel>
-                            <Border CornerRadius="15"
+                            <Border CornerRadius="17"
                                     Background="{DynamicResource AccentColorBrush}"
                                     IsVisible="{Binding ProfileAvatarPath, Converter={x:Static StringConverters.IsNullOrEmpty}}">
-                                <TextBlock Text="?" FontSize="14" FontWeight="SemiBold"
+                                <TextBlock Text="?" FontSize="15" FontWeight="SemiBold"
                                            Foreground="{DynamicResource AccentForegroundBrush}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
@@ -814,11 +821,22 @@
                                                   IsVisible="{Binding ProfileAvatarPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                         </Panel>
                     </Border>
-                    <TextBlock Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
-                               Text="{Binding ProfileName}" FontSize="13" FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis"/>
-                </Grid>
-            </Button>
+                </Button>
+                <TextBox Grid.Column="1"
+                         Classes="profile-input"
+                         Text="{Binding ProfileName, Mode=TwoWay}"
+                         Watermark="Your name"
+                         FontSize="13" FontWeight="SemiBold"
+                         Margin="8,0,0,0"
+                         VerticalAlignment="Center"
+                         VerticalContentAlignment="Center"
+                         Background="Transparent"
+                         BorderThickness="0" Padding="2,0"
+                         MinHeight="0"
+                         ToolTip.Tip="Click to edit your name"
+                         KeyDown="OnProfileNameKeyDown"
+                         Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+            </Grid>
 
             <!-- Search across every section (Ctrl+F while Settings is open). -->
             <TextBox DockPanel.Dock="Top"
@@ -890,61 +908,6 @@
             <!-- GENERAL                                             -->
             <!-- ═══════════════════════════════════════════════════ -->
             <StackPanel x:Name="GeneralTabPanel" Classes="tab-page" IsVisible="{Binding IsGeneralTabVisible}" Spacing="4">
-
-            <!-- Profile -->
-            <Border Classes="setting-card" Padding="18,16" Margin="0,0,0,16">
-                <Grid ColumnDefinitions="Auto,*">
-                    <!-- Round avatar (click to change) -->
-                    <Button Grid.Column="0"
-                            Classes="profile-avatar-btn"
-                            Background="Transparent" BorderThickness="0"
-                            Padding="0" Cursor="Hand"
-                            Width="64" Height="64"
-                            CornerRadius="999"
-                            VerticalAlignment="Center"
-                            ToolTip.Tip="Change avatar"
-                            Click="OnPickAvatarClick">
-                        <Border Width="64" Height="64" CornerRadius="32"
-                                ClipToBounds="True">
-                            <Panel>
-                                <!-- Accent fallback (glyph on accent disc): only rendered while no
-                                     avatar is configured. The accent used to be the outer Border's
-                                     permanent background, so every async (re)decode of the photo
-                                     flashed accent-colored for a few frames. -->
-                                <Border CornerRadius="32"
-                                        Background="{DynamicResource AccentColorBrush}"
-                                        IsVisible="{Binding ProfileAvatarPath, Converter={x:Static StringConverters.IsNullOrEmpty}}">
-                                    <TextBlock Text="?"
-                                               FontSize="28" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource AccentForegroundBrush}"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"/>
-                                </Border>
-                                <!-- Picked avatar overlay. Single-item surface: hold the current
-                                     photo while a reload decodes instead of blanking to the panel. -->
-                                <controls:CachedImage SourcePath="{Binding ProfileAvatarPath}"
-                                                      Stretch="UniformToFill"
-                                                      ClearOnSourceChange="False"
-                                                      IsVisible="{Binding ProfileAvatarPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                            </Panel>
-                        </Border>
-                    </Button>
-
-                    <!-- Display name -->
-                    <TextBox Grid.Column="1"
-                             Classes="profile-input"
-                             Text="{Binding ProfileName, Mode=TwoWay}"
-                             Watermark="Your name"
-                             FontSize="16" FontWeight="SemiBold"
-                             Margin="16,0,0,0"
-                             VerticalAlignment="Center"
-                             Background="Transparent"
-                             BorderThickness="0" Padding="0"
-                             MinHeight="0"
-                             KeyDown="OnProfileNameKeyDown"
-                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                </Grid>
-            </Border>
 
             <!-- Startup & window behaviour -->
             <Border Classes="setting-card">
@@ -1623,39 +1586,6 @@
                             </StackPanel>
                         </Button>
 
-                        <!-- System -->
-                        <Button Classes="theme-btn"
-                                Classes.active="{Binding IsSystemTheme}"
-                                Command="{Binding SetSystemThemeCommand}">
-                            <StackPanel Spacing="8" HorizontalAlignment="Center">
-                                <Border Width="64" Height="40" CornerRadius="6"
-                                        BorderBrush="#888" BorderThickness="1">
-                                    <Grid ColumnDefinitions="*,*">
-                                        <Border Grid.Column="0" Background="#1E1E1E"
-                                                CornerRadius="5,0,0,5">
-                                            <StackPanel Margin="4,5,0,0" Spacing="3">
-                                                <Border Height="3" Width="16" CornerRadius="1.5"
-                                                        Background="#555" HorizontalAlignment="Left"/>
-                                                <Border Height="3" Width="10" CornerRadius="1.5"
-                                                        Background="#444" HorizontalAlignment="Left"/>
-                                            </StackPanel>
-                                        </Border>
-                                        <Border Grid.Column="1" Background="#F5F5F5"
-                                                CornerRadius="0,5,5,0">
-                                            <StackPanel Margin="2,5,0,0" Spacing="3">
-                                                <Border Height="3" Width="16" CornerRadius="1.5"
-                                                        Background="#CCC" HorizontalAlignment="Left"/>
-                                                <Border Height="3" Width="10" CornerRadius="1.5"
-                                                        Background="#DDD" HorizontalAlignment="Left"/>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-                                <TextBlock Text="System" FontSize="12"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
                         <!-- User-created themes -->
                         <ItemsControl ItemsSource="{Binding CustomThemes}">
                             <ItemsControl.ItemsPanel>
@@ -1739,7 +1669,7 @@
 
                     <!-- Preset grid + custom-picker tile -->
                     <StackPanel Spacing="8">
-                        <WrapPanel Orientation="Horizontal">
+                        <StackPanel>
                             <!-- Preset swatches -->
                             <ItemsControl ItemsSource="{Binding AccentSwatches}">
                                 <ItemsControl.ItemsPanel>
@@ -1775,16 +1705,17 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <!-- Custom-color tile: rainbow ring + plus, opens reusable HSV/hex picker. -->
-                            <Panel Width="58" Height="58" Margin="-55,100,0,0" VerticalAlignment="Top">
+                            <!-- Custom-color tile: rainbow ring + plus, opens reusable HSV/hex picker.
+                                 Same 44px cell as a swatch so it reads as the next slot in the grid. -->
+                            <Panel Width="44" Height="44" HorizontalAlignment="Left" Margin="0,0,4,4">
                                 <controls:ColorPickerFlyout Hex="{Binding CustomAccentHex, Mode=TwoWay}"
-                                                            SwatchSize="58"
+                                                            SwatchSize="44"
                                                             HorizontalAlignment="Center"
                                                             VerticalAlignment="Center"
                                                             ToolTip.Tip="Custom Color"
                                                             Cursor="Hand">
                                     <controls:ColorPickerFlyout.SwatchContent>
-                                        <Panel Width="58" Height="58">
+                                        <Panel Width="44" Height="44">
                                             <!-- Rainbow ring -->
                                             <Border Width="40" Height="40" CornerRadius="20"
                                                     HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -1816,7 +1747,7 @@
                                     </controls:ColorPickerFlyout.SwatchContent>
                                 </controls:ColorPickerFlyout>
                             </Panel>
-                        </WrapPanel>
+                        </StackPanel>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -2153,15 +2084,15 @@
             <Border Classes="setting-card" Padding="22,16,38,16" ClipToBounds="False">
                 <StackPanel Spacing="16">
                     <!-- Header row with icon, preset selector, and reset button -->
-                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                        <StackPanel Grid.Column="0">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
                             <StackPanel Spacing="2">
                                 <TextBlock Text="Equalizer" FontSize="15" FontWeight="SemiBold"/>
                                 <TextBlock Text="Parametric EQ — tune each band's frequency, gain, and width (Q)."
-                                           FontSize="12" Opacity="0.5"/>
+                                           FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                             </StackPanel>
                         </StackPanel>
-                        <ComboBox Grid.Column="2"
+                        <ComboBox Grid.Column="1"
                                   x:Name="EqPresetCombo"
                                   Classes="pill-combo stable-popup"
                                   Width="164"
@@ -2169,7 +2100,7 @@
                                   SelectedItem="{Binding SelectedEqPresetName}"
                                   VerticalAlignment="Center"
                                   Margin="0,0,10,0" />
-                        <Button Grid.Column="3"
+                        <Button Grid.Column="2"
                                 Classes="pill-action"
                                 Command="{Binding ResetEqualizerCommand}"
                                 CornerRadius="16"
@@ -3418,7 +3349,7 @@
                     </Grid>
                 </Border>
 
-                <ItemsControl ItemsSource="{Binding Shortcuts.VisibleGroups}">
+                <ItemsControl ItemsSource="{Binding Shortcuts.Groups}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:ShortcutGroup">
                             <Border Classes="setting-card">
@@ -3432,7 +3363,7 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:ShortcutRowViewModel">
-                                                <Grid ColumnDefinitions="*,Auto,Auto" IsVisible="{Binding IsVisible}">
+                                                <Grid ColumnDefinitions="*,Auto,Auto">
                                                     <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="13" VerticalAlignment="Center"/>
                                                     <controls:ShortcutKeyChip Grid.Column="1" VerticalAlignment="Center"/>
                                                     <!-- Per-row reset, only once the row differs from its default. -->

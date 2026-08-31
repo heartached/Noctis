@@ -1334,11 +1334,7 @@ public partial class MainWindow : Window
             case ShortcutAction.VolumeDown:
                 vm.Player.Volume = Math.Max(0, vm.Player.Volume - 5);
                 return true;
-            // Two fullscreen slots: on some Linux desktops the F9–F12 range is captured by
-            // the DE/media layer and never reaches the app, so a low F-key (F2 by default)
-            // is the only fullscreen shortcut those users can actually press.
             case ShortcutAction.ToggleFullscreen:
-            case ShortcutAction.ToggleFullscreenAlt:
                 ToggleFullScreen();
                 return true;
             case ShortcutAction.SearchLibrary:
@@ -1356,9 +1352,6 @@ public partial class MainWindow : Window
                 return true;
             case ShortcutAction.NewPlaylist:
                 vm.Sidebar.CreatePlaylistCommand.Execute(null);
-                return true;
-            case ShortcutAction.DebugPanel:
-                vm.ToggleDebugPanel();
                 return true;
             default:
                 return false;

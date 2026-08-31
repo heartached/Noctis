@@ -118,8 +118,8 @@ public class ShortcutServiceTests
         Assert.Null(s.TryMatch(Press(Key.F11, KeyModifiers.Control)));
         Assert.Equal(ShortcutAction.VolumeUp, s.TryMatch(Press(Key.Up, KeyModifiers.Control)));
         Assert.Null(s.TryMatch(Press(Key.Up)));
-        Assert.Equal(ShortcutAction.DebugPanel, s.TryMatch(Press(Key.D, KeyModifiers.Control | KeyModifiers.Shift)));
-        Assert.Null(s.TryMatch(Press(Key.D, KeyModifiers.Control)));
+        Assert.Equal(ShortcutAction.SearchLibrary, s.TryMatch(Press(Key.F, KeyModifiers.Control)));
+        Assert.Null(s.TryMatch(Press(Key.F, KeyModifiers.Control | KeyModifiers.Shift)));
     }
 
     [Fact]

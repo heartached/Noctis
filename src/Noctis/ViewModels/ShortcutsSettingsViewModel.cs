@@ -80,14 +80,12 @@ public sealed partial class ShortcutRowViewModel : ObservableObject
     public ShortcutAction Action { get; }
     public string Label { get; }
     public string Group { get; }
-    public bool DeveloperOnly { get; }
 
     [ObservableProperty] private IReadOnlyList<string> _gestureParts = Array.Empty<string>();
     [ObservableProperty] private bool _isUnbound;
     [ObservableProperty] private bool _isRecording;
     [ObservableProperty] private bool _isDefault = true;
     [ObservableProperty] private string? _conflictMessage;
-    [ObservableProperty] private bool _isVisible = true;
 
     public bool HasConflict => ConflictMessage is not null;
 
@@ -99,7 +97,6 @@ public sealed partial class ShortcutRowViewModel : ObservableObject
         Action = descriptor.Action;
         Label = descriptor.Label;
         Group = descriptor.Group;
-        DeveloperOnly = descriptor.DeveloperOnly;
         Refresh();
     }
 
@@ -194,20 +191,18 @@ public sealed partial class ShortcutRowViewModel : ObservableObject
 
 /// <summary>
 /// The Shortcuts tab: every rebindable action grouped for display, backed by the
-/// shared <see cref="ShortcutService"/>. Developer-only rows hide until Developer Mode.
+/// shared <see cref="ShortcutService"/>.
 /// </summary>
 public sealed partial class ShortcutsSettingsViewModel : ObservableObject
 {
     private readonly ShortcutService _service;
-    private readonly Func<bool> _developerMode;
 
     public ObservableCollection<ShortcutRowViewModel> Rows { get; } = new();
     public IReadOnlyList<ShortcutGroup> Groups { get; }
 
-    public ShortcutsSettingsViewModel(ShortcutService service, Func<bool> developerMode, bool? isMac = null)
+    public ShortcutsSettingsViewModel(ShortcutService service, bool? isMac = null)
     {
         _service = service;
-        _developerMode = developerMode;
         var mac = isMac ?? OperatingSystem.IsMacOS();
 
         foreach (var d in ShortcutDefaults.All)
@@ -218,7 +213,6 @@ public sealed partial class ShortcutsSettingsViewModel : ObservableObject
             .Select(g => new ShortcutGroup(g.Key, g.ToList()))
             .ToList();
 
-        RefreshVisibility();
         _service.Changed += (_, _) =>
         {
             foreach (var row in Rows) row.Refresh();
@@ -233,17 +227,6 @@ public sealed partial class ShortcutsSettingsViewModel : ObservableObject
         foreach (var row in Rows)
             if (!ReferenceEquals(row, keep) && row.IsRecording) row.CancelRecordCommand.Execute(null);
     }
-
-    public void RefreshVisibility()
-    {
-        var dev = _developerMode();
-        foreach (var row in Rows)
-            row.IsVisible = !row.DeveloperOnly || dev;
-        OnPropertyChanged(nameof(VisibleGroups));
-    }
-
-    /// <summary>Groups that still have at least one visible row (hides "Developer" outside Developer Mode).</summary>
-    public IReadOnlyList<ShortcutGroup> VisibleGroups => Groups.Where(g => g.Rows.Any(r => r.IsVisible)).ToList();
 
     [RelayCommand]
     private void ResetAll()

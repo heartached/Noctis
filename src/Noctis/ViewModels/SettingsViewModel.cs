@@ -902,7 +902,7 @@ public partial class SettingsViewModel : ViewModelBase
         // view-model only owns persistence. Saved through the same debounce as every toggle.
         ShortcutService = shortcuts ?? new ShortcutService();
         ShortcutService.Changed += (_, _) => { if (_settingsLoaded) QueueSettingsSave(); };
-        Shortcuts = new ShortcutsSettingsViewModel(ShortcutService, () => DeveloperMode);
+        Shortcuts = new ShortcutsSettingsViewModel(ShortcutService);
 
         _library.ScanProgress += (_, count) =>
         {
@@ -1030,6 +1030,14 @@ public partial class SettingsViewModel : ViewModelBase
                 _settings.Theme = "Dark";
             }
             _settings.ThemeV2Migrated = true;
+
+            // The "System" tile was removed on 2026-08-31 (Gray is the default and the
+            // app no longer follows the OS). Anyone still on it lands on Gray.
+            if (storedTheme == "System")
+            {
+                storedTheme = "Gray";
+                _settings.Theme = "Gray";
+            }
             SetActiveThemeFlags(storedTheme);
 
             // Hydrate user-created themes.
@@ -4427,7 +4435,6 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnDeveloperModeChanged(bool value)
     {
-        Shortcuts.RefreshVisibility();
         _settings.DeveloperMode = value;
         _ = SaveAsync();
 
