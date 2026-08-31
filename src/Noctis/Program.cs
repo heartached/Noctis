@@ -266,6 +266,7 @@ internal class Program
         services.AddSingleton<ArtistImageService>();
         services.AddSingleton<ITunesArtworkService>();
         services.AddSingleton<UpdateService>();
+        services.AddSingleton<ShortcutService>();
         services.AddSingleton<ILrcLibService, LrcLibService>();
         services.AddSingleton<INetEaseService, NetEaseService>();
         services.AddSingleton<IPlayHistoryService, PlayHistoryService>();

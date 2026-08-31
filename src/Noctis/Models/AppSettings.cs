@@ -449,6 +449,14 @@ public class AppSettings
     /// <summary>When true, computed BPM/key are also written to file tags (TBPM/TKEY). Off by default.</summary>
     public bool WriteAnalysisToTags { get; set; } = false;
 
+    // ── Shortcuts ──
+    /// <summary>
+    /// Rebound keyboard shortcuts, keyed by <see cref="ShortcutAction"/> name with the
+    /// gesture as Avalonia's <c>KeyGesture</c> string ("Ctrl+Right"). Only overrides are
+    /// stored; an empty string means the user unbound that action. Null = all defaults.
+    /// </summary>
+    public Dictionary<string, string>? Shortcuts { get; set; }
+
     /// <summary>
     /// Clamps the numeric fields whose bounds were previously enforced only by the
     /// Settings UI. A hand-edited (or partially corrupt) settings.json could otherwise
