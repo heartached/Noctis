@@ -83,13 +83,6 @@ public partial class MainWindowViewModel : ViewModelBase
         _favoritesVm.IsActive = ReferenceEquals(current, _favoritesVm);
     }
 
-    // ── Debug panel ──
-    [ObservableProperty] private bool _isDebugPanelVisible;
-    private DebugPanelViewModel? _debugPanelVm;
-
-    /// <summary>ViewModel for the debug overlay panel (created on first toggle).</summary>
-    public DebugPanelViewModel? DebugPanel => _debugPanelVm;
-
     // ── Scrobble tracking ──
     private DateTime _trackStartedAt;
     private Track? _scrobbleTrack;
@@ -2662,31 +2655,6 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Final scrobble flush: {ex.Message}"); }
     }
 
-    // ── Debug panel ──────────────────────────────────────────
-
-    /// <summary>Toggles the debug overlay panel and enables/disables logging.</summary>
-    public void ToggleDebugPanel()
-    {
-        if (IsDebugPanelVisible)
-        {
-            // The view-model was built once and never disposed, so a single Ctrl+Shift+D
-            // left a permanent subscription to Player.PropertyChanged posting
-            // RefreshLiveState to the UI thread on every Position tick — for the rest of
-            // the session, with the panel hidden.
-            IsDebugPanelVisible = false;
-            _debugPanelVm?.Dispose();
-            _debugPanelVm = null;
-            OnPropertyChanged(nameof(DebugPanel));
-            DebugLogger.Info(DebugLogger.Category.UI, "DebugPanel closed");
-            return;
-        }
-
-        _debugPanelVm = new DebugPanelViewModel(Player, this);
-        OnPropertyChanged(nameof(DebugPanel));
-        IsDebugPanelVisible = true;
-        DebugLogger.IsEnabled = true; // keep logging even when panel closes
-        DebugLogger.Info(DebugLogger.Category.UI, "DebugPanel opened");
-    }
 }
 
 

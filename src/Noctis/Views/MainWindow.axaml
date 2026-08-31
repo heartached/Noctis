@@ -1108,15 +1108,6 @@
             </Grid>
             </DockPanel>
 
-            <!-- Debug panel overlay (toggled via Ctrl+Shift+D) -->
-            <views:DebugPanelView Grid.Row="1"
-                                  DataContext="{Binding DebugPanel}"
-                                  IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsDebugPanelVisible}"
-                                  HorizontalAlignment="Left"
-                                  VerticalAlignment="Stretch"
-                                  Width="620"
-                                  Margin="228,8,0,8"
-                                  IsHitTestVisible="True" />
         </Grid>
     </DockPanel>
 
