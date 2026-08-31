@@ -33,7 +33,8 @@
         <!-- About-tab update pill: accent by default, subdued while showing the
              transient "✓ Up to date" confirmation so it stops reading as a CTA. -->
         <Style Selector="Button.update-pill">
-            <Setter Property="Background" Value="#E74856"/>
+            <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
         </Style>
         <Style Selector="Button.update-pill.up-to-date">
             <Setter Property="Background" Value="#26FFFFFF"/>
@@ -731,12 +732,13 @@
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
         </Style>
-        <Style Selector="Button.rail-item PathIcon">
-            <Setter Property="Opacity" Value="0.75"/>
+        <!-- The app-wide Button:pointerover scale(1.045) reads as a jump on a list of
+             full-width rows; the rail relies on the background highlight alone. -->
+        <Style Selector="Button.rail-item:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
-        <Style Selector="Button.rail-item.active PathIcon">
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-            <Setter Property="Opacity" Value="1"/>
+        <Style Selector="Button.rail-profile:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
         <Style Selector="Button.rail-profile">
             <Setter Property="Background" Value="Transparent"/>
@@ -812,10 +814,9 @@
                                                   IsVisible="{Binding ProfileAvatarPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                         </Panel>
                     </Border>
-                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="1">
-                        <TextBlock Text="{Binding ProfileName}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding AppVersion}" FontSize="10.5" Opacity="0.5"/>
-                    </StackPanel>
+                    <TextBlock Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                               Text="{Binding ProfileName}" FontSize="13" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"/>
                 </Grid>
             </Button>
 
@@ -824,6 +825,7 @@
                      x:Name="SettingsSearchBox"
                      Classes="settings-search"
                      Watermark="Search settings"
+                     VerticalContentAlignment="Center"
                      Text="{Binding SearchQuery, Mode=TwoWay}"
                      Margin="0,12,0,10"/>
 
@@ -840,19 +842,17 @@
                                 Classes.active="{Binding IsSelected}"
                                 Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).SelectSettingsTabCommand}"
                                 CommandParameter="{Binding Key}">
-                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                                <PathIcon Grid.Column="0" Width="15" Height="15" VerticalAlignment="Center"
-                                          Data="{Binding IconKey, Converter={x:Static conv:ResourceKeyToGeometryConverter.Instance}}"/>
-                                <TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
-                                           Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
+                                           Margin="2,0,0,0" VerticalAlignment="Center"/>
                                 <!-- Search hit count while a query is active -->
-                                <Border Grid.Column="2" CornerRadius="999" Padding="6,1" Margin="6,0,0,0"
+                                <Border Grid.Column="1" CornerRadius="999" Padding="6,1" Margin="6,0,0,0"
                                         Background="#22FFFFFF" VerticalAlignment="Center"
                                         IsVisible="{Binding HasMatches}">
                                     <TextBlock Text="{Binding MatchCount}" FontSize="10.5" FontWeight="SemiBold"/>
                                 </Border>
                                 <!-- Update-available dot on About -->
-                                <Ellipse Grid.Column="3" Width="8" Height="8" Margin="6,0,0,0"
+                                <Ellipse Grid.Column="2" Width="8" Height="8" Margin="6,0,0,0"
                                          Fill="{DynamicResource AccentColorBrush}" VerticalAlignment="Center">
                                     <Ellipse.IsVisible>
                                         <MultiBinding Converter="{x:Static BoolConverters.And}">
@@ -871,25 +871,12 @@
 
     <!-- Content column: section title + close, then the existing tab pages. -->
     <Grid Grid.Column="1" RowDefinitions="Auto,*">
-    <Grid Grid.Row="0" Margin="28,22,18,8" ColumnDefinitions="*,Auto">
+    <Grid Grid.Row="0" Margin="28,22,28,8">
         <TextBlock Grid.Column="0"
                    Text="{Binding SelectedSettingsTab}"
                    FontSize="22"
                    FontWeight="Bold"
                    VerticalAlignment="Center"/>
-        <Button Grid.Column="1"
-                Width="32" Height="32"
-                Padding="0"
-                Background="Transparent"
-                BorderThickness="0"
-                CornerRadius="999"
-                Cursor="Hand"
-                ToolTip.Tip="Close"
-                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CloseSettingsCommand}">
-            <PathIcon Data="M 5 5 L 13 13 M 13 5 L 5 13"
-                      Width="14" Height="14"
-                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-        </Button>
     </Grid>
 
     <ScrollViewer x:Name="SettingsScrollViewer"

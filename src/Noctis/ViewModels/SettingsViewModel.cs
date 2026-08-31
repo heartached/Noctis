@@ -837,7 +837,7 @@ public partial class SettingsViewModel : ViewModelBase
     public string CheckForUpdatesButtonText =>
         IsCheckingForUpdate ? "Checking..."
         : IsUpToDate ? "✓ Up to date"
-        : "Check for Updates";
+        : "Update";
 
     /// <summary>Label for the update-available buttons, naming the target version
     /// when known (e.g. "Update to 1.2.8").</summary>
@@ -4377,7 +4377,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (!IsUpdateAvailable && !IsDownloadingUpdate && !IsReadyToInstall)
         {
             UpdateStatusText = "";
-            IsUpToDate = false;   // reverts the button label to "Check for Updates"
+            IsUpToDate = false;   // reverts the button label to "Update"
         }
     }
 

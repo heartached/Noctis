@@ -1277,34 +1277,39 @@
                     </DoubleTransition>
                 </Transitions>
             </Border.Transitions>
-            <Grid RowDefinitions="*,Auto">
-                <!-- Settings content, built on first open rather than at window
-                     construction. SettingsView is ~3,000 lines of XAML for a modal that
-                     is closed at startup, and instantiating it inline made it part of
-                     MainWindow's InitializeComponent — the single largest block of the
-                     launch path. Code-behind fills this host the first time the modal
-                     opens (EnsureSettingsViewLoaded). -->
-                <ContentControl Grid.Row="0"
-                                Name="SettingsViewHost"
-                                DataContext="{Binding Settings}"
-                                Background="Transparent"/>
+            <!-- Clip children (the opaque settings rail in particular) to the card's
+                 rounded rect. Done on an inner Border so the card's BoxShadow, which
+                 draws outside the bounds, is not clipped with it. -->
+            <Border CornerRadius="21" ClipToBounds="True">
+                <Grid RowDefinitions="*,Auto">
+                    <!-- Settings content, built on first open rather than at window
+                         construction. SettingsView is ~3,000 lines of XAML for a modal that
+                         is closed at startup, and instantiating it inline made it part of
+                         MainWindow's InitializeComponent — the single largest block of the
+                         launch path. Code-behind fills this host the first time the modal
+                         opens (EnsureSettingsViewLoaded). -->
+                    <ContentControl Grid.Row="0"
+                                    Name="SettingsViewHost"
+                                    DataContext="{Binding Settings}"
+                                    Background="Transparent"/>
 
-                <!-- Footer with Close button -->
-                <Border Grid.Row="1"
-                        BorderBrush="#14FFFFFF" BorderThickness="0,1,0,0"
-                        Padding="20,12">
-                    <Button Classes="accent-btn"
-                            HorizontalAlignment="Right"
-                            Padding="22,9"
-                            CornerRadius="999"
-                            Background="{DynamicResource AccentButtonBackground}"
-                            Foreground="{DynamicResource AccentForegroundBrush}"
-                            Cursor="Hand"
-                            Content="Close"
-                            FontWeight="Bold"
-                            Command="{Binding CloseSettingsCommand}"/>
-                </Border>
-            </Grid>
+                    <!-- Footer with Close button -->
+                    <Border Grid.Row="1"
+                            BorderBrush="#14FFFFFF" BorderThickness="0,1,0,0"
+                            Padding="20,12">
+                        <Button Classes="accent-btn"
+                                HorizontalAlignment="Right"
+                                Padding="22,9"
+                                CornerRadius="999"
+                                Background="{DynamicResource AccentButtonBackground}"
+                                Foreground="{DynamicResource AccentForegroundBrush}"
+                                Cursor="Hand"
+                                Content="Close"
+                                FontWeight="Bold"
+                                Command="{Binding CloseSettingsCommand}"/>
+                    </Border>
+                </Grid>
+            </Border>
         </Border>
     </Border>
 
