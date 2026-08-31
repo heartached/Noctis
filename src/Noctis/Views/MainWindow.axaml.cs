@@ -751,7 +751,9 @@ public partial class MainWindow : Window
             appMenu.Items.Add(settings);
             NativeMenu.SetMenu(Application.Current!, appMenu);
 
-            // Gestures mirror Music.app (⌘→ next, ⌘← previous).
+            // Gestures mirror Music.app (⌘→ next, ⌘← previous) by default, and follow
+            // whatever the user rebinds in Settings › Shortcuts.
+            var shortcuts = vm.Settings.ShortcutService;
             var playback = new NativeMenu();
 
             var playPause = new NativeMenuItem("Play / Pause");
@@ -760,17 +762,23 @@ public partial class MainWindow : Window
 
             var next = new NativeMenuItem("Next Track")
             {
-                Gesture = new KeyGesture(Key.Right, KeyModifiers.Meta),
+                Gesture = shortcuts.Get(ShortcutAction.NextTrack),
             };
             next.Click += (_, _) => vm.Player.NextCommand.Execute(null);
             playback.Items.Add(next);
 
             var previous = new NativeMenuItem("Previous Track")
             {
-                Gesture = new KeyGesture(Key.Left, KeyModifiers.Meta),
+                Gesture = shortcuts.Get(ShortcutAction.PreviousTrack),
             };
             previous.Click += (_, _) => vm.Player.PreviousCommand.Execute(null);
             playback.Items.Add(previous);
+
+            shortcuts.Changed += (_, _) =>
+            {
+                next.Gesture = shortcuts.Get(ShortcutAction.NextTrack);
+                previous.Gesture = shortcuts.Get(ShortcutAction.PreviousTrack);
+            };
 
             var windowMenu = new NativeMenu();
             windowMenu.Items.Add(new NativeMenuItem("Playback") { Menu = playback });

@@ -38,6 +38,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Action → gesture map behind Settings › Shortcuts and MainWindow's key dispatch.</summary>
     public ShortcutService ShortcutService { get; }
+
+    /// <summary>Rows behind the Shortcuts tab.</summary>
+    public ShortcutsSettingsViewModel Shortcuts { get; }
     private bool _suspendSettingPersistence;
     private CancellationTokenSource? _eqSaveDebounceCts;
     private CancellationTokenSource? _scanStatusClearCts;
@@ -875,6 +878,7 @@ public partial class SettingsViewModel : ViewModelBase
         // view-model only owns persistence. Saved through the same debounce as every toggle.
         ShortcutService = shortcuts ?? new ShortcutService();
         ShortcutService.Changed += (_, _) => { if (_settingsLoaded) QueueSettingsSave(); };
+        Shortcuts = new ShortcutsSettingsViewModel(ShortcutService, () => DeveloperMode);
 
         _library.ScanProgress += (_, count) =>
         {
@@ -4399,6 +4403,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnDeveloperModeChanged(bool value)
     {
+        Shortcuts.RefreshVisibility();
         _settings.DeveloperMode = value;
         _ = SaveAsync();
 
