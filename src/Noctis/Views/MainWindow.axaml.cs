@@ -602,8 +602,10 @@ public partial class MainWindow : Window
         // click a lyric line to seek and Space re-seeked to it, click the fullscreen
         // toggle and Space toggled fullscreen again. Tunnel it, same reasoning as the
         // queue-popup handler above.
-        AddHandler(KeyDownEvent, OnGlobalPlayPauseKeyDown, RoutingStrategies.Tunnel);
-        AddHandler(KeyUpEvent, OnGlobalPlayPauseKeyUp, RoutingStrategies.Tunnel);
+        // Every rebindable shortcut goes through the same tunnel pair, resolved against
+        // ShortcutService so Settings › Shortcuts can change any of them at runtime.
+        AddHandler(KeyDownEvent, OnGlobalShortcutKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, OnGlobalShortcutKeyUp, RoutingStrategies.Tunnel);
 
         // Volume control via mouse wheel and keyboard
         KeyDown += OnWindowKeyDown;
@@ -1271,94 +1273,115 @@ public partial class MainWindow : Window
 #pragma warning restore CS0618 // Type or member is obsolete
 
     /// <summary>
-    /// True between the Space press we consumed as play/pause and its release. Button
-    /// raises Click on key *up*, so swallowing only the press still let the focused
-    /// button fire on the way back up.
+    /// Set when the tunnelling KeyDown handler ran a shortcut, so the matching KeyUp is
+    /// swallowed too. Avalonia's Button raises Click on key *up*, so swallowing only the
+    /// press still let the focused button fire on the way back up.
     /// </summary>
-    private bool _spaceShortcutConsumed;
+    private ShortcutAction? _consumedShortcut;
 
-    private void OnGlobalPlayPauseKeyDown(object? sender, KeyEventArgs e)
+    private ShortcutService? Shortcuts => (DataContext as MainWindowViewModel)?.Settings.ShortcutService;
+
+    private void OnGlobalShortcutKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Space || e.KeyModifiers != KeyModifiers.None) return;
-        if (DataContext is not MainWindowViewModel vm) return;
+        if (DataContext is not MainWindowViewModel vm || Shortcuts is not { } shortcuts) return;
+        if (shortcuts.TryMatch(e) is not { } action) return;
 
-        // Typing a space in a search/edit box stays typing a space.
-        if (e.Source is TextBox) return;
+        // An unmodified key (Space, or whatever the user bound) must still type in an
+        // edit box: typing a space in the search box stays typing a space.
+        if (e.KeyModifiers == KeyModifiers.None && e.Source is TextBox) return;
 
-        vm.Player.PlayPauseCommand.Execute(null);
-        _spaceShortcutConsumed = true;
+        if (!ExecuteShortcut(vm, action)) return;
+        _consumedShortcut = action;
         e.Handled = true;
     }
 
-    private void OnGlobalPlayPauseKeyUp(object? sender, KeyEventArgs e)
+    private void OnGlobalShortcutKeyUp(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Space || !_spaceShortcutConsumed) return;
-        _spaceShortcutConsumed = false;
+        if (_consumedShortcut is null) return;
+        _consumedShortcut = null;
         e.Handled = true;
+    }
+
+    /// <summary>Runs the command behind a shortcut. Returns false for actions this window
+    /// does not handle, so the key falls through untouched.</summary>
+    private bool ExecuteShortcut(MainWindowViewModel vm, ShortcutAction action)
+    {
+        switch (action)
+        {
+            case ShortcutAction.PlayPause:
+                vm.Player.PlayPauseCommand.Execute(null);
+                return true;
+            case ShortcutAction.NextTrack:
+                vm.Player.NextCommand.Execute(null);
+                return true;
+            case ShortcutAction.PreviousTrack:
+                vm.Player.PreviousCommand.Execute(null);
+                return true;
+            case ShortcutAction.VolumeUp:
+                vm.Player.Volume = Math.Min(100, vm.Player.Volume + 5);
+                return true;
+            case ShortcutAction.VolumeDown:
+                vm.Player.Volume = Math.Max(0, vm.Player.Volume - 5);
+                return true;
+            // Two fullscreen slots: on some Linux desktops the F9–F12 range is captured by
+            // the DE/media layer and never reaches the app, so a low F-key (F2 by default)
+            // is the only fullscreen shortcut those users can actually press.
+            case ShortcutAction.ToggleFullscreen:
+            case ShortcutAction.ToggleFullscreenAlt:
+                ToggleFullScreen();
+                return true;
+            case ShortcutAction.SearchLibrary:
+                vm.Sidebar.TopBar.ToggleSearchCommand.Execute(null);
+                return true;
+            case ShortcutAction.CommandPalette:
+                _ = vm.OpenCommandPaletteAsync();
+                return true;
+            case ShortcutAction.NewPlaylist:
+                vm.Sidebar.CreatePlaylistCommand.Execute(null);
+                return true;
+            case ShortcutAction.DebugPanel:
+                vm.ToggleDebugPanel();
+                return true;
+            default:
+                return false;
+        }
     }
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm) return;
 
-        switch (e.Key)
+        // Escape is the one fixed key: it closes the topmost open surface, in z-order.
+        // Everything rebindable is dispatched by OnGlobalShortcutKeyDown (tunnelling) so
+        // a focused button can't swallow it first.
+        if (e.Key != Key.Escape) return;
+
+        // Escape used to check only the queue popup and otherwise unconditionally clear
+        // the search box — so with the Settings modal or the lyrics side panel open it
+        // silently wiped the user's search while the modal stayed up.
+        if (WindowState == WindowState.FullScreen)
         {
-            case Key.Up when e.KeyModifiers == KeyModifiers.Control:
-                vm.Player.Volume = Math.Min(100, vm.Player.Volume + 5);
-                e.Handled = true;
-                break;
-            case Key.Down when e.KeyModifiers == KeyModifiers.Control:
-                vm.Player.Volume = Math.Max(0, vm.Player.Volume - 5);
-                e.Handled = true;
-                break;
-            case Key.Escape:
-                // Close the topmost open surface, in z-order. Escape used to check only
-                // the queue popup and otherwise unconditionally clear the search box —
-                // so with the Settings modal or the lyrics side panel open it silently
-                // wiped the user's search while the modal stayed up.
-                if (WindowState == WindowState.FullScreen)
-                {
-                    // Fullscreen (F11) counts as the topmost surface — leave it first,
-                    // browser-style, before closing any in-app overlay.
-                    ToggleFullScreen();
-                }
-                else if (vm.IsSettingsModalOpen)
-                {
-                    vm.CloseSettingsCommand.Execute(null);
-                }
-                else if (vm.IsLyricsPanelOpen)
-                {
-                    vm.IsLyricsPanelOpen = false;
-                }
-                else if (vm.Player.IsQueuePopupOpen)
-                {
-                    vm.Player.IsQueuePopupOpen = false;
-                }
-                else
-                {
-                    vm.TopBar.ClearSearchCommand.Execute(null);
-                }
-                e.Handled = true;
-                break;
-            // Space is handled by OnGlobalPlayPauseKeyDown (tunneling) so a focused
-            // button can't swallow it first.
-            case Key.D when e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift):
-                vm.ToggleDebugPanel();
-                e.Handled = true;
-                break;
-            case Key.K when e.KeyModifiers == KeyModifiers.Control:
-                _ = vm.OpenCommandPaletteAsync();
-                e.Handled = true;
-                break;
-            // F2 mirrors F11: on some Linux desktops the F9–F12 range is captured by
-            // the DE/media layer and never reaches the app, so a low F-key is the
-            // only fullscreen shortcut those users can actually press.
-            case Key.F2:
-            case Key.F11:
-                ToggleFullScreen();
-                e.Handled = true;
-                break;
+            // Fullscreen counts as the topmost surface — leave it first, browser-style,
+            // before closing any in-app overlay.
+            ToggleFullScreen();
         }
+        else if (vm.IsSettingsModalOpen)
+        {
+            vm.CloseSettingsCommand.Execute(null);
+        }
+        else if (vm.IsLyricsPanelOpen)
+        {
+            vm.IsLyricsPanelOpen = false;
+        }
+        else if (vm.Player.IsQueuePopupOpen)
+        {
+            vm.Player.IsQueuePopupOpen = false;
+        }
+        else
+        {
+            vm.TopBar.ClearSearchCommand.Execute(null);
+        }
+        e.Handled = true;
     }
 
     // ── Fullscreen toggle (issue #22) ──

@@ -22,12 +22,8 @@
         <conv:StringEqualsConverter x:Key="StringEquals" />
     </Window.Resources>
 
-    <Window.KeyBindings>
-        <KeyBinding Gesture="Ctrl+Right" Command="{Binding Player.NextCommand}" />
-        <KeyBinding Gesture="Ctrl+Left" Command="{Binding Player.PreviousCommand}" />
-        <KeyBinding Gesture="Ctrl+N" Command="{Binding Sidebar.CreatePlaylistCommand}" />
-        <KeyBinding Gesture="Ctrl+F" Command="{Binding Sidebar.TopBar.ToggleSearchCommand}" />
-    </Window.KeyBindings>
+    <!-- Keyboard shortcuts are dispatched in code-behind through ShortcutService
+         (Settings › Shortcuts makes them rebindable); nothing is hardcoded here. -->
 
     <Window.Styles>
         <!-- Ghost buttons inside the translucent page-actions pill (Songs top bar):
