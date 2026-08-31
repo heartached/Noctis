@@ -184,4 +184,27 @@ public class SettingsViewModelPersistenceTests : IDisposable
         Assert.False(after.IsMediaServerConnected);
         Assert.Empty(after.GetSettings().SourceConnections);
     }
+
+    [AvaloniaFact]
+    public async Task Shortcuts_SurviveSaveAndReload_AndStoreOnlyOverrides()
+    {
+        var vm = CreateViewModel();
+        await vm.LoadAsync();
+
+        vm.ShortcutService.Set(ShortcutAction.PlayPause, new Avalonia.Input.KeyGesture(Avalonia.Input.Key.P));
+        await vm.SaveAsync();
+
+        var reloaded = CreateViewModel();
+        await reloaded.LoadAsync();
+
+        Assert.Equal(new Avalonia.Input.KeyGesture(Avalonia.Input.Key.P), reloaded.ShortcutService.Get(ShortcutAction.PlayPause));
+        Assert.True(reloaded.ShortcutService.IsDefault(ShortcutAction.NextTrack));
+
+        // Only the override is written: defaults never bloat settings.json.
+        var json = await File.ReadAllTextAsync(Path.Combine(_root, "settings.json"));
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var shortcuts = doc.RootElement.GetProperty("shortcuts");
+        Assert.Single(shortcuts.EnumerateObject());
+        Assert.Equal("P", shortcuts.GetProperty("PlayPause").GetString());
+    }
 }

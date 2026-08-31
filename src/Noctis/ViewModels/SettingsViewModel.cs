@@ -35,6 +35,9 @@ public partial class SettingsViewModel : ViewModelBase
     private string? _downloadedInstallerPath;
     private CancellationTokenSource? _lastFmAuthCts;
     private bool _settingsLoaded;
+
+    /// <summary>Action → gesture map behind Settings › Shortcuts and MainWindow's key dispatch.</summary>
+    public ShortcutService ShortcutService { get; }
     private bool _suspendSettingPersistence;
     private CancellationTokenSource? _eqSaveDebounceCts;
     private CancellationTokenSource? _scanStatusClearCts;
@@ -860,13 +863,18 @@ public partial class SettingsViewModel : ViewModelBase
     public event EventHandler? OpenStatisticsRequested;
 
     public SettingsViewModel(IPersistenceService persistence, ILibraryService library, IPlayHistoryService playHistory,
-        IMediaServerService? mediaServer = null)
+        IMediaServerService? mediaServer = null, ShortcutService? shortcuts = null)
     {
         _persistence = persistence;
         _library = library;
         _playHistory = playHistory;
         _mediaServer = mediaServer;
         _settings = new AppSettings();
+
+        // Rebindable keys live in the shared service (MainWindow matches against it); the
+        // view-model only owns persistence. Saved through the same debounce as every toggle.
+        ShortcutService = shortcuts ?? new ShortcutService();
+        ShortcutService.Changed += (_, _) => { if (_settingsLoaded) QueueSettingsSave(); };
 
         _library.ScanProgress += (_, count) =>
         {
@@ -977,6 +985,7 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             _settings = await _persistence.LoadSettingsAsync();
+            ShortcutService.Load(_settings);
 
             // Theme — with one-shot migration from the v1 schema where "Dark" denoted today's Gray.
             // Also collapse any prior "MidnightBlack" choice into "Dark" since the two themes
@@ -1355,6 +1364,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     private void SyncToSettings()
     {
+        ShortcutService.SaveTo(_settings);
         if (IsGrayTheme) _settings.Theme = "Gray";
         else if (IsDarkTheme) _settings.Theme = "Dark";
         else if (IsLightTheme) _settings.Theme = "Light";
