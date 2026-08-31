@@ -9,6 +9,8 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System.ComponentModel;
 using Noctis.Helpers;
+using System.Collections.Generic;
+using System.Linq;
 using Noctis.ViewModels;
 
 namespace Noctis.Views;
@@ -31,6 +33,15 @@ public partial class SettingsView : UserControl
 
         // Wire up the Add Folder button to open a native folder picker
         AddFolderButton.Click += OnAddFolderClicked;
+
+        // Settings search: the card index is built lazily on the first keystroke (all tab
+        // panels exist by then) and applied on every change. Watch the property, not
+        // TextChanged: the latter does not fire for a programmatic/bound Text set.
+        SettingsSearchBox.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == TextBox.TextProperty) ApplySearch();
+        };
+        SettingsSearchBox.KeyDown += OnSearchBoxKeyDown;
         DataContextChanged += OnSettingsDataContextChanged;
 
         // Pre-amp pill slider: the visible track/fill/thumb are drawn on a Canvas and
@@ -58,6 +69,80 @@ public partial class SettingsView : UserControl
         {
             eqCombo.DropDownOpened += OnEqPresetDropDownOpened;
             eqCombo.DropDownClosed += OnEqPresetDropDownClosed;
+        }
+    }
+
+    // ── Settings search ──
+
+    private SettingsSearchIndex? _searchIndex;
+
+    /// <summary>Test hook: the index as built so far (null until the first query).</summary>
+    internal SettingsSearchIndex? SearchIndexForTests => _searchIndex;
+    internal void ApplySearchForTests() => ApplySearch();
+
+    private static readonly string[] TabPanelNames =
+    {
+        "General", "Appearance", "Audio", "Library", "Shortcuts", "Integrations", "Statistics", "About",
+    };
+
+    private SettingsSearchIndex EnsureSearchIndex()
+    {
+        if (_searchIndex is not null) return _searchIndex;
+        var panels = new List<(string Tab, Control Panel)>();
+        foreach (var tab in TabPanelNames)
+        {
+            if (this.FindControl<Control>(tab + "TabPanel") is { } panel)
+                panels.Add((tab, panel));
+        }
+        return _searchIndex = SettingsSearchIndex.Build(panels);
+    }
+
+    /// <summary>Focus the rail's search box (Ctrl+F while the modal is open).</summary>
+    public void FocusSearch()
+    {
+        SettingsSearchBox.Focus();
+        SettingsSearchBox.SelectAll();
+    }
+
+    private void ApplySearch()
+    {
+        var query = SettingsSearchBox.Text ?? string.Empty;
+        // Nothing to restore and nothing to hide: don't walk the tree for an empty box.
+        if (_searchIndex is null && query.Trim().Length == 0) return;
+        var index = EnsureSearchIndex();
+        index.Apply(query);
+
+        if (DataContext is not SettingsViewModel vm) return;
+        var counts = index.CountByTab(query);
+        foreach (var section in vm.Sections)
+            section.MatchCount = counts.TryGetValue(section.Key, out var n) ? n : 0;
+
+        // Typing something the current section doesn't contain jumps to the first section
+        // that does, so the user never stares at an empty page.
+        if (query.Trim().Length > 0 && !counts.ContainsKey(vm.SelectedSettingsTab))
+        {
+            var first = vm.Sections.FirstOrDefault(sct => sct.MatchCount > 0);
+            if (first is not null) vm.SelectedSettingsTab = first.Key;
+        }
+    }
+
+    private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Escape when !string.IsNullOrEmpty(SettingsSearchBox.Text):
+                // First Escape clears the query; the next one closes Settings as usual.
+                SettingsSearchBox.Text = string.Empty;
+                e.Handled = true;
+                break;
+            case Key.Return when DataContext is SettingsViewModel vm:
+                if (_searchIndex?.FirstMatch(SettingsSearchBox.Text ?? string.Empty, vm.SelectedSettingsTab) is { } hit)
+                {
+                    if (hit.Tab != vm.SelectedSettingsTab) vm.SelectedSettingsTab = hit.Tab;
+                    hit.Card.BringIntoView();
+                }
+                e.Handled = true;
+                break;
         }
     }
 

@@ -64,6 +64,22 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private string _selectedSettingsTab = TabGeneral;
 
+    /// <summary>Rail entries in display order; IsSelected mirrors <see cref="SelectedSettingsTab"/>.</summary>
+    public IReadOnlyList<SettingsSection> Sections { get; } = new[]
+    {
+        new SettingsSection(TabGeneral, "SettingsIcon") { IsSelected = true },
+        new SettingsSection(TabAppearance, "PaletteIcon"),
+        new SettingsSection(TabAudio, "SpeakerHighIcon"),
+        new SettingsSection(TabLibrary, "FolderIcon"),
+        new SettingsSection(TabShortcuts, "KeyboardIcon"),
+        new SettingsSection(TabIntegrations, "PlugIcon"),
+        new SettingsSection(TabStatistics, "StatisticsIcon"),
+        new SettingsSection(TabAbout, "InfoIcon"),
+    };
+
+    /// <summary>Text in the rail's search box. The view applies it to the card index.</summary>
+    [ObservableProperty] private string _searchQuery = string.Empty;
+
     public bool IsGeneralTabSelected => SelectedSettingsTab == TabGeneral;
     public bool IsAppearanceTabSelected => SelectedSettingsTab == TabAppearance;
     public bool IsAudioTabSelected => SelectedSettingsTab == TabAudio;
@@ -84,6 +100,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     partial void OnSelectedSettingsTabChanged(string value)
     {
+        foreach (var section in Sections)
+            section.IsSelected = section.Key == value;
+
         OnPropertyChanged(nameof(IsGeneralTabSelected));
         OnPropertyChanged(nameof(IsAppearanceTabSelected));
         OnPropertyChanged(nameof(IsAudioTabSelected));

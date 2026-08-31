@@ -1342,6 +1342,13 @@ public partial class MainWindow : Window
                 ToggleFullScreen();
                 return true;
             case ShortcutAction.SearchLibrary:
+                // With Settings open the search key belongs to the settings search box.
+                if (vm.IsSettingsModalOpen
+                    && this.FindControl<ContentControl>("SettingsViewHost")?.Content is SettingsView settingsView)
+                {
+                    settingsView.FocusSearch();
+                    return true;
+                }
                 vm.Sidebar.TopBar.ToggleSearchCommand.Execute(null);
                 return true;
             case ShortcutAction.CommandPalette:

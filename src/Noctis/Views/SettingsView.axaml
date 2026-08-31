@@ -704,23 +704,67 @@
             <Setter Property="Opacity" Value="0"/>
         </Style>
 
-        <!-- Settings tab strip -->
-        <Style Selector="Button.settings-tab">
+        <!-- Settings rail (left column): section list, profile chip, search. -->
+        <Style Selector="Border.settings-rail">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+            <Setter Property="BorderBrush" Value="#14FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0,0,1,0"/>
+            <Setter Property="CornerRadius" Value="21,0,0,0"/>
+        </Style>
+        <Style Selector="Button.rail-item">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="12,9"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         </Style>
-        <Style Selector="Button.settings-tab /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
-            <Setter Property="CornerRadius" Value="999"/>
+        <Style Selector="Button.rail-item /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="12"/>
         </Style>
-        <Style Selector="Button.settings-tab.active /template/ ContentPresenter">
+        <Style Selector="Button.rail-item:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}"/>
+        </Style>
+        <Style Selector="Button.rail-item.active /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
         </Style>
-
+        <Style Selector="Button.rail-item PathIcon">
+            <Setter Property="Opacity" Value="0.75"/>
+        </Style>
+        <Style Selector="Button.rail-item.active PathIcon">
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.rail-profile">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Button.rail-profile /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="14"/>
+        </Style>
+        <Style Selector="Button.rail-profile:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}"/>
+        </Style>
+        <Style Selector="TextBox.settings-search">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="MinHeight" Value="34"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Padding" Value="10,6"/>
+        </Style>
+        <!-- Settings search hides non-matching cards through a class (see
+             SettingsSearchIndex) so cards whose IsVisible is bound keep that binding. -->
+        <Style Selector="Border.setting-card.search-hidden">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
         <!-- Tab switch: the incoming page fades in with a short upward glide.
              Keyframe animations can't drive RenderTransform (no registered
              animator — crashed at startup), so the hidden state pins
@@ -743,53 +787,110 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid ColumnDefinitions="216,*">
 
-    <!-- Tab strip -->
-    <StackPanel Grid.Row="0" Margin="28,4,40,10" Spacing="10">
-        <StackPanel Orientation="Horizontal" Spacing="6">
-            <Button Classes="settings-tab" Classes.active="{Binding IsGeneralTabSelected}"
-                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="General">
-                <TextBlock Text="General" FontSize="13" FontWeight="SemiBold"/>
+    <!-- Rail -->
+    <Border Grid.Column="0" Classes="settings-rail">
+        <DockPanel Margin="12,14,12,16">
+            <!-- Profile chip: read-only here, click jumps to General where it is edited. -->
+            <Button DockPanel.Dock="Top" Classes="rail-profile"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="General"
+                    ToolTip.Tip="Profile">
+                <Grid ColumnDefinitions="Auto,*">
+                    <Border Grid.Column="0" Width="30" Height="30" CornerRadius="15" ClipToBounds="True">
+                        <Panel>
+                            <Border CornerRadius="15"
+                                    Background="{DynamicResource AccentColorBrush}"
+                                    IsVisible="{Binding ProfileAvatarPath, Converter={x:Static StringConverters.IsNullOrEmpty}}">
+                                <TextBlock Text="?" FontSize="14" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentForegroundBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <controls:CachedImage SourcePath="{Binding ProfileAvatarPath}"
+                                                  Stretch="UniformToFill"
+                                                  ClearOnSourceChange="False"
+                                                  IsVisible="{Binding ProfileAvatarPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        </Panel>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="1">
+                        <TextBlock Text="{Binding ProfileName}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding AppVersion}" FontSize="10.5" Opacity="0.5"/>
+                    </StackPanel>
+                </Grid>
             </Button>
-            <Button Classes="settings-tab" Classes.active="{Binding IsAppearanceTabSelected}"
-                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Appearance">
-                <TextBlock Text="Appearance" FontSize="13" FontWeight="SemiBold"/>
-            </Button>
-            <Button Classes="settings-tab" Classes.active="{Binding IsAudioTabSelected}"
-                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Audio">
-                <TextBlock Text="Audio" FontSize="13" FontWeight="SemiBold"/>
-            </Button>
-            <Button Classes="settings-tab" Classes.active="{Binding IsLibraryTabSelected}"
-                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Library">
-                <TextBlock Text="Library" FontSize="13" FontWeight="SemiBold"/>
-            </Button>
-            <Button Classes="settings-tab" Classes.active="{Binding IsShortcutsTabSelected}"
-                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Shortcuts">
-                <TextBlock Text="Shortcuts" FontSize="13" FontWeight="SemiBold"/>
-            </Button>
-            <Button Classes="settings-tab" Classes.active="{Binding IsStatisticsTabSelected}"
-                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Statistics">
-                <TextBlock Text="Statistics" FontSize="13" FontWeight="SemiBold"/>
-            </Button>
-            <Button Classes="settings-tab" Classes.active="{Binding IsIntegrationsTabSelected}"
-                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Integrations">
-                <TextBlock Text="Integrations" FontSize="13" FontWeight="SemiBold"/>
-            </Button>
-            <Button Classes="settings-tab" Classes.active="{Binding IsAboutTabSelected}"
-                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="About">
-                <StackPanel Orientation="Horizontal" Spacing="5">
-                    <TextBlock Text="About" FontSize="13" FontWeight="SemiBold"/>
-                    <!-- Update-available dot, vertically centered on the tab label -->
-                    <Ellipse Width="8" Height="8"
-                             Fill="{DynamicResource AccentColorBrush}"
-                             VerticalAlignment="Center"
-                             Margin="0,0,-3,0"
-                             IsVisible="{Binding IsUpdateAvailable}"/>
-                </StackPanel>
-            </Button>
-        </StackPanel>
-    </StackPanel>
+
+            <!-- Search across every section (Ctrl+F while Settings is open). -->
+            <TextBox DockPanel.Dock="Top"
+                     x:Name="SettingsSearchBox"
+                     Classes="settings-search"
+                     Watermark="Search settings"
+                     Text="{Binding SearchQuery, Mode=TwoWay}"
+                     Margin="0,12,0,10"/>
+
+            <!-- Sections -->
+            <ItemsControl ItemsSource="{Binding Sections}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="2"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SettingsSection">
+                        <Button Classes="rail-item"
+                                Classes.active="{Binding IsSelected}"
+                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).SelectSettingsTabCommand}"
+                                CommandParameter="{Binding Key}">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                <PathIcon Grid.Column="0" Width="15" Height="15" VerticalAlignment="Center"
+                                          Data="{Binding IconKey, Converter={x:Static conv:ResourceKeyToGeometryConverter.Instance}}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
+                                           Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                <!-- Search hit count while a query is active -->
+                                <Border Grid.Column="2" CornerRadius="999" Padding="6,1" Margin="6,0,0,0"
+                                        Background="#22FFFFFF" VerticalAlignment="Center"
+                                        IsVisible="{Binding HasMatches}">
+                                    <TextBlock Text="{Binding MatchCount}" FontSize="10.5" FontWeight="SemiBold"/>
+                                </Border>
+                                <!-- Update-available dot on About -->
+                                <Ellipse Grid.Column="3" Width="8" Height="8" Margin="6,0,0,0"
+                                         Fill="{DynamicResource AccentColorBrush}" VerticalAlignment="Center">
+                                    <Ellipse.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="IsAbout"/>
+                                            <Binding Path="$parent[ItemsControl].((vm:SettingsViewModel)DataContext).IsUpdateAvailable"/>
+                                        </MultiBinding>
+                                    </Ellipse.IsVisible>
+                                </Ellipse>
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </DockPanel>
+    </Border>
+
+    <!-- Content column: section title + close, then the existing tab pages. -->
+    <Grid Grid.Column="1" RowDefinitions="Auto,*">
+    <Grid Grid.Row="0" Margin="28,22,18,8" ColumnDefinitions="*,Auto">
+        <TextBlock Grid.Column="0"
+                   Text="{Binding SelectedSettingsTab}"
+                   FontSize="22"
+                   FontWeight="Bold"
+                   VerticalAlignment="Center"/>
+        <Button Grid.Column="1"
+                Width="32" Height="32"
+                Padding="0"
+                Background="Transparent"
+                BorderThickness="0"
+                CornerRadius="999"
+                Cursor="Hand"
+                ToolTip.Tip="Close"
+                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CloseSettingsCommand}">
+            <PathIcon Data="M 5 5 L 13 13 M 13 5 L 5 13"
+                      Width="14" Height="14"
+                      Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        </Button>
+    </Grid>
 
     <ScrollViewer x:Name="SettingsScrollViewer"
                   Grid.Row="1"
@@ -3613,7 +3714,5 @@
         </StackPanel>
     </ScrollViewer>
     </Grid>
-
+    </Grid>
 </UserControl>
-
-

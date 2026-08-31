@@ -1249,7 +1249,7 @@
             </Transitions>
         </Border.Transitions>
         <Border Name="SettingsCard"
-                Width="780" MaxHeight="720"
+                Width="920" MaxHeight="720"
                 Background="{DynamicResource AppMainBackground}"
                 BorderBrush="#22FFFFFF"
                 BorderThickness="1"
@@ -1277,42 +1277,20 @@
                     </DoubleTransition>
                 </Transitions>
             </Border.Transitions>
-            <Grid RowDefinitions="Auto,*,Auto">
-                <!-- Header -->
-                <Grid Grid.Row="0" Margin="28,22,18,8" ColumnDefinitions="*,Auto">
-                    <TextBlock Grid.Column="0"
-                               Text="Settings"
-                               FontSize="22"
-                               FontWeight="Bold"
-                               VerticalAlignment="Center"/>
-                    <Button Grid.Column="1"
-                            Width="32" Height="32"
-                            Padding="0"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            CornerRadius="999"
-                            Cursor="Hand"
-                            ToolTip.Tip="Close"
-                            Command="{Binding CloseSettingsCommand}">
-                        <PathIcon Data="M 5 5 L 13 13 M 13 5 L 5 13"
-                                  Width="14" Height="14"
-                                  Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                    </Button>
-                </Grid>
-
+            <Grid RowDefinitions="*,Auto">
                 <!-- Settings content, built on first open rather than at window
                      construction. SettingsView is ~3,000 lines of XAML for a modal that
                      is closed at startup, and instantiating it inline made it part of
                      MainWindow's InitializeComponent — the single largest block of the
                      launch path. Code-behind fills this host the first time the modal
                      opens (EnsureSettingsViewLoaded). -->
-                <ContentControl Grid.Row="1"
+                <ContentControl Grid.Row="0"
                                 Name="SettingsViewHost"
                                 DataContext="{Binding Settings}"
                                 Background="Transparent"/>
 
                 <!-- Footer with Close button -->
-                <Border Grid.Row="2"
+                <Border Grid.Row="1"
                         BorderBrush="#14FFFFFF" BorderThickness="0,1,0,0"
                         Padding="20,12">
                     <Button Classes="accent-btn"
