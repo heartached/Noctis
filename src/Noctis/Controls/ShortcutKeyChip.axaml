@@ -1,0 +1,105 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Noctis.ViewModels"
+             x:Class="Noctis.Controls.ShortcutKeyChip"
+             x:DataType="vm:ShortcutRowViewModel"
+             Focusable="True"
+             Cursor="Hand"
+             ToolTip.Tip="Click to change">
+    <UserControl.Styles>
+        <!-- Key caps: one per part of the gesture ("Ctrl", "→"). -->
+        <Style Selector="Border.key-cap">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+            <Setter Property="BorderThickness" Value="1,1,1,2"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="8,2"/>
+            <Setter Property="MinWidth" Value="26"/>
+        </Style>
+        <Style Selector="Border.key-cap > TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <!-- The chip around the caps: transparent at rest, accent while recording,
+             red while the pressed chord belongs to another action. -->
+        <Style Selector="Border.chip">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="MinWidth" Value="44"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="UserControl:pointerover Border.chip">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+        </Style>
+        <Style Selector="UserControl:focus Border.chip">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+        </Style>
+        <Style Selector="Border.chip.recording">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
+        </Style>
+        <Style Selector="Border.chip.recording TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+        </Style>
+        <Style Selector="Border.chip.conflict">
+            <Setter Property="Background" Value="#33FF6B6B"/>
+            <Setter Property="BorderBrush" Value="#FF6B6B"/>
+        </Style>
+        <Style Selector="Border.chip.conflict TextBlock">
+            <Setter Property="Foreground" Value="#FF6B6B"/>
+        </Style>
+        <Style Selector="Border.chip.unbound Border.key-cap">
+            <Setter Property="Opacity" Value="0.45"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <TextBlock Text="{Binding ConflictMessage}"
+                   IsVisible="{Binding HasConflict}"
+                   Foreground="#FF6B6B"
+                   FontSize="11"
+                   FontWeight="SemiBold"
+                   VerticalAlignment="Center"/>
+        <Border x:Name="Chip"
+                Classes="chip"
+                Classes.recording="{Binding IsRecording}"
+                Classes.conflict="{Binding HasConflict}"
+                Classes.unbound="{Binding IsUnbound}">
+            <Panel>
+                <ItemsControl ItemsSource="{Binding GestureParts}"
+                              IsVisible="{Binding !IsRecording}"
+                              VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <Border Classes="key-cap">
+                                <TextBlock Text="{Binding}"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="Press keys…"
+                           IsVisible="{Binding IsRecording}"
+                           FontSize="11"
+                           FontWeight="Bold"
+                           Margin="8,0"
+                           VerticalAlignment="Center"/>
+            </Panel>
+        </Border>
+    </StackPanel>
+</UserControl>

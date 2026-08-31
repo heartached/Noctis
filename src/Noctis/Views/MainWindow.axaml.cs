@@ -1292,6 +1292,9 @@ public partial class MainWindow : Window
     private void OnGlobalShortcutKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm || Shortcuts is not { } shortcuts) return;
+        // A Shortcuts-tab chip is waiting for a chord: the chip owns every key until it
+        // is done, otherwise pressing the key you are trying to assign would run it.
+        if (vm.Settings.Shortcuts.IsRecording) return;
         if (shortcuts.TryMatch(e) is not { } action) return;
 
         // An unmodified key (Space, or whatever the user bound) must still type in an

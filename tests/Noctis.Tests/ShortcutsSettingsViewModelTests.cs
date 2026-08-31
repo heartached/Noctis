@@ -1,4 +1,12 @@
+using System;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
+using Avalonia.VisualTree;
+using Noctis.Controls;
+using Noctis.Views;
 using Avalonia.Input;
 using Noctis.Models;
 using Noctis.Services;
@@ -156,5 +164,45 @@ public class ShortcutsSettingsViewModelTests
         vm.ResetAllCommand.Execute(null);
         Assert.True(next.IsDefault);
         Assert.Equal(new[] { "Ctrl", "→" }, next.GestureParts);
+    }
+
+    /// <summary>The tab actually renders: one chip per visible row, none for the
+    /// developer-only row until Developer Mode is on.</summary>
+    [AvaloniaFact]
+    public async Task ShortcutsTab_RendersOneChipPerVisibleRow()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
+            await vm.LoadAsync();
+            vm.SelectedSettingsTab = SettingsViewModel.TabShortcuts;
+
+            var view = new SettingsView { DataContext = vm };
+            var window = new Window { Width = 900, Height = 1400, Content = view };
+            window.Show();
+
+            var expected = ShortcutDefaults.All.Count(d => !d.DeveloperOnly);
+            var chips = view.GetVisualDescendants().OfType<ShortcutKeyChip>().Where(c => c.IsEffectivelyVisible).ToList();
+            Assert.Equal(expected, chips.Count);
+
+            vm.DeveloperMode = true;
+            window.UpdateLayout();
+            chips = view.GetVisualDescendants().OfType<ShortcutKeyChip>().Where(c => c.IsEffectivelyVisible).ToList();
+            Assert.Equal(ShortcutDefaults.All.Count, chips.Count);
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
+
+    private sealed class NoOpPlayHistory : IPlayHistoryService
+    {
+        public System.Collections.Generic.IReadOnlyList<PlayHistoryEvent> Events => Array.Empty<PlayHistoryEvent>();
+        public Task PreloadAsync() => Task.CompletedTask;
+        public void RecordPlay(Track track) { }
+        public void RecordSkip(Track track) { }
+        public Task FlushAsync() => Task.CompletedTask;
     }
 }

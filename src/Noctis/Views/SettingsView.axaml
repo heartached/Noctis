@@ -764,6 +764,10 @@
                     Command="{Binding SelectSettingsTabCommand}" CommandParameter="Library">
                 <TextBlock Text="Library" FontSize="13" FontWeight="SemiBold"/>
             </Button>
+            <Button Classes="settings-tab" Classes.active="{Binding IsShortcutsTabSelected}"
+                    Command="{Binding SelectSettingsTabCommand}" CommandParameter="Shortcuts">
+                <TextBlock Text="Shortcuts" FontSize="13" FontWeight="SemiBold"/>
+            </Button>
             <Button Classes="settings-tab" Classes.active="{Binding IsStatisticsTabSelected}"
                     Command="{Binding SelectSettingsTabCommand}" CommandParameter="Statistics">
                 <TextBlock Text="Statistics" FontSize="13" FontWeight="SemiBold"/>
@@ -3301,6 +3305,75 @@
             </StackPanel>
 
             <!-- ═══════════════════════════════════════════════════ -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- SHORTCUTS (rebindable keys)                          -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <StackPanel x:Name="ShortcutsTabPanel" Classes="tab-page" IsVisible="{Binding IsShortcutsTabVisible}" Spacing="4">
+                <Border Classes="setting-card">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="Keyboard shortcuts" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="Click a key to change it. Press Esc while recording to cancel, Backspace to unbind. Media keys on your keyboard always work and are not listed here."
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Content="Reset all"
+                                FontSize="12" FontWeight="SemiBold"
+                                Padding="14,7"
+                                CornerRadius="999"
+                                BorderThickness="0"
+                                Background="{DynamicResource SystemControlBackgroundListMediumBrush}"
+                                Cursor="Hand"
+                                VerticalAlignment="Center"
+                                Margin="16,0,0,0"
+                                Command="{Binding Shortcuts.ResetAllCommand}"/>
+                    </Grid>
+                </Border>
+
+                <ItemsControl ItemsSource="{Binding Shortcuts.VisibleGroups}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ShortcutGroup">
+                            <Border Classes="setting-card">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"/>
+                                    <ItemsControl ItemsSource="{Binding Rows}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Spacing="12"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:ShortcutRowViewModel">
+                                                <Grid ColumnDefinitions="*,Auto,Auto" IsVisible="{Binding IsVisible}">
+                                                    <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="13" VerticalAlignment="Center"/>
+                                                    <controls:ShortcutKeyChip Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <!-- Per-row reset, only once the row differs from its default. -->
+                                                    <Button Grid.Column="2"
+                                                            Width="26" Height="26"
+                                                            Margin="6,0,0,0"
+                                                            Padding="0"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            CornerRadius="999"
+                                                            Cursor="Hand"
+                                                            ToolTip.Tip="Reset to default"
+                                                            IsVisible="{Binding !IsDefault}"
+                                                            Command="{Binding ResetCommand}">
+                                                        <PathIcon Data="M 12.5 8 A 4.5 4.5 0 1 1 11.2 4.8 M 11.5 2 L 11.5 5 L 8.5 5"
+                                                                  Width="13" Height="13"
+                                                                  Opacity="0.7"/>
+                                                    </Button>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
             <!-- STATISTICS (listening statistics)                   -->
             <!-- ═══════════════════════════════════════════════════ -->
             <StackPanel x:Name="StatisticsTabPanel" Classes="tab-page" IsVisible="{Binding IsStatisticsTabVisible}" Spacing="4">

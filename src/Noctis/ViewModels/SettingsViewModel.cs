@@ -57,6 +57,7 @@ public partial class SettingsViewModel : ViewModelBase
     public const string TabAppearance = "Appearance";
     public const string TabAudio = "Audio";
     public const string TabLibrary = "Library";
+    public const string TabShortcuts = "Shortcuts";
     public const string TabStatistics = "Statistics";
     public const string TabIntegrations = "Integrations";
     public const string TabAbout = "About";
@@ -67,6 +68,7 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsAppearanceTabSelected => SelectedSettingsTab == TabAppearance;
     public bool IsAudioTabSelected => SelectedSettingsTab == TabAudio;
     public bool IsLibraryTabSelected => SelectedSettingsTab == TabLibrary;
+    public bool IsShortcutsTabSelected => SelectedSettingsTab == TabShortcuts;
     public bool IsStatisticsTabSelected => SelectedSettingsTab == TabStatistics;
     public bool IsIntegrationsTabSelected => SelectedSettingsTab == TabIntegrations;
     public bool IsAboutTabSelected => SelectedSettingsTab == TabAbout;
@@ -75,6 +77,7 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsAppearanceTabVisible => IsAppearanceTabSelected;
     public bool IsAudioTabVisible => IsAudioTabSelected;
     public bool IsLibraryTabVisible => IsLibraryTabSelected;
+    public bool IsShortcutsTabVisible => IsShortcutsTabSelected;
     public bool IsStatisticsTabVisible => IsStatisticsTabSelected;
     public bool IsIntegrationsTabVisible => IsIntegrationsTabSelected;
     public bool IsAboutTabVisible => IsAboutTabSelected;
@@ -85,6 +88,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsAppearanceTabSelected));
         OnPropertyChanged(nameof(IsAudioTabSelected));
         OnPropertyChanged(nameof(IsLibraryTabSelected));
+        OnPropertyChanged(nameof(IsShortcutsTabSelected));
         OnPropertyChanged(nameof(IsStatisticsTabSelected));
         OnPropertyChanged(nameof(IsIntegrationsTabSelected));
         OnPropertyChanged(nameof(IsAboutTabSelected));
@@ -92,6 +96,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsAppearanceTabVisible));
         OnPropertyChanged(nameof(IsAudioTabVisible));
         OnPropertyChanged(nameof(IsLibraryTabVisible));
+        OnPropertyChanged(nameof(IsShortcutsTabVisible));
         OnPropertyChanged(nameof(IsStatisticsTabVisible));
         OnPropertyChanged(nameof(IsIntegrationsTabVisible));
         OnPropertyChanged(nameof(IsAboutTabVisible));
