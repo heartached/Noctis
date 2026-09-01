@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 
@@ -18,7 +19,29 @@ public sealed class SettingsSearchIndex
     public const string CardClass = "setting-card";
     public const string HiddenClass = "search-hidden";
 
-    public sealed record Entry(string Text, string Tab, Border Card);
+    public sealed record Entry(string Text, string Tab, Border Card, Control Panel)
+    {
+        /// <summary>
+        /// Visible for reasons other than the search itself: a card gated off by a
+        /// binding (platform, Developer Mode, a parent toggle) must neither count as a
+        /// hit nor be jumped to, or the badge points at something the user cannot see.
+        /// </summary>
+        public bool IsNaturallyVisible
+        {
+            get
+            {
+                for (ILogical? v = Card; v != null && !ReferenceEquals(v, Panel); v = v.LogicalParent)
+                {
+                    if (v is not Visual visual) continue;
+                    if (visual.IsVisible) continue;
+                    // Hidden by us, not by the page: still a real card.
+                    if (ReferenceEquals(v, Card) && Card.Classes.Contains(HiddenClass)) continue;
+                    return false;
+                }
+                return true;
+            }
+        }
+    }
 
     private readonly List<Entry> _entries;
 
@@ -35,11 +58,13 @@ public sealed class SettingsSearchIndex
             foreach (var card in panel.GetLogicalDescendants().OfType<Border>())
             {
                 if (!card.Classes.Contains(CardClass)) continue;
-                var text = string.Join(' ',
+                // The section name is part of the text so "audio" or "about" finds the
+                // section's cards, the way a person would expect.
+                var text = tab + ' ' + string.Join(' ',
                     card.GetLogicalDescendants().OfType<TextBlock>()
                         .Select(t => t.Text)
                         .Where(t => !string.IsNullOrWhiteSpace(t)));
-                entries.Add(new Entry(text, tab, card));
+                entries.Add(new Entry(text, tab, card, panel));
             }
         }
         return new SettingsSearchIndex(entries);
@@ -56,7 +81,7 @@ public sealed class SettingsSearchIndex
     {
         var tokens = Tokens(query);
         if (tokens.Length == 0) return Array.Empty<Entry>();
-        return _entries.Where(e => Matches(e, tokens)).ToList();
+        return _entries.Where(e => e.IsNaturallyVisible && Matches(e, tokens)).ToList();
     }
 
     /// <summary>Hide non-matching cards; an empty query shows everything again.</summary>
@@ -65,7 +90,9 @@ public sealed class SettingsSearchIndex
         var tokens = Tokens(query);
         foreach (var e in _entries)
         {
-            var hide = tokens.Length > 0 && !Matches(e, tokens);
+            // Only cards the page shows get the class: it must mean "hidden by search"
+            // and nothing else, or IsNaturallyVisible could not tell the two apart.
+            var hide = tokens.Length > 0 && e.IsNaturallyVisible && !Matches(e, tokens);
             if (hide) e.Card.Classes.Add(HiddenClass);
             else e.Card.Classes.Remove(HiddenClass);
         }

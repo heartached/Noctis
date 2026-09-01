@@ -773,6 +773,13 @@
              SettingsSearchIndex) so cards whose IsVisible is bound keep that binding. -->
         <Style Selector="Border.setting-card.search-hidden">
             <Setter Property="IsVisible" Value="False"/>
+            <!-- A card whose IsVisible is bound (platform / Developer Mode gates) keeps
+                 that binding over the setter above, so collapse it geometrically too. -->
+            <Setter Property="MaxHeight" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="ClipToBounds" Value="True"/>
         </Style>
         <!-- Tab switch: the incoming page fades in with a short upward glide.
              Keyframe animations can't drive RenderTransform (no registered

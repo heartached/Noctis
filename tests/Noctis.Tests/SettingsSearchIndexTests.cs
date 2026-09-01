@@ -49,6 +49,40 @@ public class SettingsSearchIndexTests
     }
 
     [AvaloniaFact]
+    public void Query_IgnoresCardsHiddenByThePage_ButNotCardsHiddenBySearch()
+    {
+        var panel = new StackPanel();
+        var shown = Card("Developer Mode", "Show the version manager");
+        var gated = Card("Developer Mode", "Engine debug");
+        gated.IsVisible = false;                                  // e.g. bound to DeveloperMode=false
+        var nested = Card("Developer Mode", "inside a collapsed group");
+        var group = new StackPanel { IsVisible = false };
+        group.Children.Add(nested);
+        panel.Children.Add(shown);
+        panel.Children.Add(gated);
+        panel.Children.Add(group);
+        var index = SettingsSearchIndex.Build(new[] { ("About", (Control)panel) });
+
+        Assert.Same(shown, Assert.Single(index.Query("developer mode")).Card);
+        Assert.Equal(1, index.CountByTab("developer")["About"]);
+
+        // Hidden by a previous query, then queried again: still a real hit.
+        index.Apply("nothing-matches");
+        Assert.Contains(SettingsSearchIndex.HiddenClass, shown.Classes);
+        Assert.Same(shown, Assert.Single(index.Query("developer")).Card);
+    }
+
+    [AvaloniaFact]
+    public void Query_MatchesTheSectionName()
+    {
+        var panel = new StackPanel();
+        var eq = Card("Equalizer");
+        panel.Children.Add(eq);
+        var index = SettingsSearchIndex.Build(new[] { ("Audio", (Control)panel) });
+        Assert.Same(eq, Assert.Single(index.Query("audio")).Card);
+    }
+
+    [AvaloniaFact]
     public void Apply_HidesNonMatchingCards_ByClass_AndRestores()
     {
         var panel = new StackPanel();
