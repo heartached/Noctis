@@ -327,7 +327,9 @@
         <!-- Header: artwork + track title, artist, album -->
         <Border Grid.Row="0" DockPanel.Dock="Top"
                 Padding="24,20,24,16"
-                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="104,16,*,Auto">
                 <Border Grid.Column="0"
                         Width="104" Height="104"

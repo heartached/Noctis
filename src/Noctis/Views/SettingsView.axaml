@@ -741,6 +741,11 @@
         <Style Selector="Button.profile-avatar-btn:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
+        <!-- About-tab version chip: plain text that copies on click; the app-wide hover
+             zoom makes it wobble under the pointer. -->
+        <Style Selector="Button.version-copy:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
         <Style Selector="Button.rail-profile">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -1118,7 +1123,8 @@
                                 <TextBlock Text="Noctis" FontSize="16" FontWeight="Bold"/>
                                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <!-- Click-to-copy version + OS/arch (handy for bug reports) -->
-                                    <Button Background="Transparent"
+                                    <Button Classes="version-copy"
+                                            Background="Transparent"
                                             Padding="0"
                                             BorderThickness="0"
                                             Cursor="Hand"
